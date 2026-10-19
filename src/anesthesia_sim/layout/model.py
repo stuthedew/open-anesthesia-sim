@@ -40,8 +40,9 @@ reader sees the rectangles and never the tree.
 **What is not here yet.** Minimum sizes, the clamp on a drag and `too_small()`
 are `PL-K285`'s; taking an Area into its own window is a later operation of
 `ROADMAP.md` item 34. Closing an Area is a join that gives its place to a
-neighbour, which the adapter's Area menu asks `join` for (`PL-2KXB`); what a Workspace carries beyond its layout
-is `PL-WV9K`'s; and the file is `PL-SSQW`'s.
+neighbour, which the adapter's Area menu asks `join` for (`PL-2KXB`). What a
+Workspace carries beyond its layout is `PL-WV9K`'s, and the file is
+`PL-SSQW`'s.
 """
 
 from __future__ import annotations

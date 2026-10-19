@@ -78,20 +78,25 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import Enum
 from functools import partial
 from typing import Final
 
-from PySide6.QtCore import QEvent, QRect, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QEnterEvent,
     QFont,
     QFontMetrics,
+    QKeyEvent,
+    QMouseEvent,
     QPainter,
     QPaintEvent,
+    QPen,
     QResizeEvent,
 )
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QMenu,
@@ -113,11 +118,17 @@ from anesthesia_sim.app.stylesheets import (
     view_chooser_stylesheet,
 )
 from anesthesia_sim.app.theme import (
+    AREA_CLOSING_TINT_ALPHA,
+    AREA_CORNER_ZONE,
+    AREA_GRIP_STROKE_LENGTH,
+    AREA_GRIP_STROKE_WIDTH,
     AREA_HANDLE_LINE_WIDTH,
     AREA_HANDLE_WIDTH,
+    AREA_PREVIEW_LINE_WIDTH,
     GRIDLINE,
     INK,
     METRIC_NAME_SIZE,
+    MUTED,
     PANEL_PADDING,
     PRIMARY,
     WARNING,
@@ -151,6 +162,8 @@ __all__ = [
     "AreaMenu",
     "AreaNotice",
     "AreaOperation",
+    "JoinPreview",
+    "SplitPreview",
     "ViewChooser",
     "ViewFor",
 ]
@@ -166,8 +179,9 @@ its own, and the Area then shows a notice that says so.
 _HEADER_RULE_PX: Final = 1
 
 # The space at each end of an Area's header row, before the chooser and after
-# the Area menu.
-_HEADER_MARGIN_PX: Final = PANEL_PADDING // 2
+# the Area menu. It is as wide as a corner's drag zone, so the zone never takes
+# the first click meant for a header control (`PL-30L5` Q1).
+_HEADER_MARGIN_PX: Final = AREA_CORNER_ZONE
 
 # The Area menu and its entries (`PL-MS34` Q2, `PL-2KXB`). The wording is a
 # placeholder until the visual pass, planned-milestone item 33. A split names
@@ -236,6 +250,42 @@ class AreaOperation:
         return self.result is not None
 
 
+@dataclass(frozen=True, slots=True)
+class SplitPreview:
+    """A corner drag inside its own Area: where the cut would fall, and the layout it makes.
+
+    Attributes:
+        area_id: The Area being split.
+        orientation: `ROW` for a cut into left and right, `COLUMN` for top
+            and bottom.
+        at: Where the cut falls, as a fraction of the Area across the cut.
+        result: The layout releasing the drag makes, or None where a part
+            would be too small to hold its header, in which case the line is
+            drawn in WARNING and releasing changes nothing.
+    """
+
+    area_id: AreaId
+    orientation: Orientation
+    at: float
+    result: LayoutModel | None
+
+
+@dataclass(frozen=True, slots=True)
+class JoinPreview:
+    """A corner drag into a neighbour: the Area that keeps its View, the one that closes.
+
+    Attributes:
+        keep: The Area the drag started in, which takes the other's place.
+        remove: The Area under the pointer, which closes.
+        result: The layout releasing the drag makes, or None where the two
+            cannot be joined, in which case releasing changes nothing.
+    """
+
+    keep: AreaId
+    remove: AreaId
+    result: LayoutModel | None
+
+
 # A row lays its children out left to right, which Qt calls horizontal, and a
 # column stacks them, which Qt calls vertical (`layout/tree.py` says why the
 # model does not use Qt's words).
@@ -292,6 +342,9 @@ class AreaLayout(QWidget):
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
+        self._corner_drag: tuple[AreaId, QPoint] | None = None
+        self.preview: SplitPreview | JoinPreview | None = None
+        self._overlay = _LayoutOverlay(self)
         self._build()
 
     @property
@@ -391,6 +444,110 @@ class AreaLayout(QWidget):
         self._model = moved
         self._build()
         self.layout_changed.emit(moved)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._overlay.setGeometry(self.rect())
+
+    def corner_pressed(self, area_id: AreaId, at: QPoint) -> None:
+        """Start a corner drag of the Area `area_id`, pressed at `at` on the screen."""
+
+        self._corner_drag = (area_id, at)
+        self._show_preview(None)
+
+    def corner_moved(self, at: QPoint) -> None:
+        """Preview what releasing the corner drag at `at`, on the screen, would do."""
+
+        if self._corner_drag is not None:
+            self._show_preview(self._preview_at(*self._corner_drag, at))
+
+    def corner_released(self, at: QPoint) -> None:
+        """Make the split or join the drag previews at `at`, where it can be made."""
+
+        if self._corner_drag is None:
+            return
+
+        preview = self._preview_at(*self._corner_drag, at)
+        self.corner_cancelled()
+
+        if isinstance(preview, SplitPreview) and preview.result is not None:
+            self._apply(preview.result)
+        elif isinstance(preview, JoinPreview) and preview.result is not None:
+            self._apply(preview.result)
+
+    def corner_cancelled(self) -> None:
+        """End a corner drag with nothing changed, as Escape does."""
+
+        self._corner_drag = None
+        self._show_preview(None)
+
+    def _show_preview(self, preview: SplitPreview | JoinPreview | None) -> None:
+        self.preview = preview
+        self._overlay.update()
+
+    def frame_rect(self, area_id: AreaId) -> QRect:
+        """Where the Area `area_id` is drawn, in this widget's coordinates."""
+
+        frame = self._frames[area_id]
+
+        return QRect(frame.mapTo(self, QPoint(0, 0)), frame.size())
+
+    def _preview_at(
+        self, area_id: AreaId, pressed: QPoint, at: QPoint
+    ) -> SplitPreview | JoinPreview | None:
+        """What a corner drag of `area_id` from `pressed` would do if released at `at`.
+
+        Inside its own Area, the drag splits it. The cut runs across the
+        direction the pointer has moved further in, through the pointer, so a
+        drag sideways cuts the Area into left and right. Nothing is previewed
+        until the pointer has moved the platform's drag distance. In another
+        Area, the drag joins that Area into this one, which keeps its View.
+        Anywhere else, nothing is previewed.
+        """
+
+        local = self.mapFromGlobal(at)
+        own = self.frame_rect(area_id)
+
+        if own.contains(local):
+            moved = at - pressed
+
+            if max(abs(moved.x()), abs(moved.y())) < QApplication.startDragDistance():
+                return None
+
+            if abs(moved.x()) >= abs(moved.y()):
+                return self._split_preview(
+                    area_id, Orientation.ROW, local.x() - own.left(), own.width()
+                )
+
+            return self._split_preview(
+                area_id, Orientation.COLUMN, local.y() - own.top(), own.height()
+            )
+
+        for other in self._frames:
+            if other != area_id and self.frame_rect(other).contains(local):
+                result = _attempt("", None, partial(self._model.join, area_id, other)).result
+
+                return JoinPreview(area_id, other, result)
+
+        return None
+
+    def _split_preview(
+        self, area_id: AreaId, orientation: Orientation, offset_px: int, extent_px: int
+    ) -> SplitPreview:
+        """A cut `offset_px` into an Area `extent_px` long, refused where a part is too small."""
+
+        minimum = _structural_minimum(self._frames[area_id])
+        needed = minimum[0] if orientation is Orientation.ROW else minimum[1]
+        at = offset_px / extent_px if extent_px > 0 else 0.0
+        result: LayoutModel | None = None
+
+        if needed <= offset_px and needed <= extent_px - offset_px - AREA_HANDLE_WIDTH:
+            try:
+                result = self._model.split(area_id, orientation, at)[0]
+            except LayoutRefused:
+                result = None
+
+        return SplitPreview(area_id, orientation, at, result)
 
     def _title(self, area_id: AreaId) -> str:
         """The View an Area shows, by its registry title, or by its tag where none is held."""
@@ -494,6 +651,7 @@ class AreaLayout(QWidget):
         self._column.addWidget(root)
         self._root = root
         self._lay_out_all()
+        self._overlay.raise_()
 
     def _widget_for(self, node: Node, path: tuple[int, ...]) -> QWidget:
         """The widget drawing `node`: its frame for an Area, a splitter for a split."""
@@ -501,7 +659,7 @@ class AreaLayout(QWidget):
         if isinstance(node, Area):
             chooser = ViewChooser(node, self._registered, self.choose_view)
             menu = AreaMenu(node.id, self.operations, self.perform)
-            frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu)
+            frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu, drags=self)
             self._frames[node.id] = frame
 
             return frame
@@ -794,6 +952,7 @@ class AreaFrame(QFrame):
         parent: QWidget | None = None,
         *,
         menu: AreaMenu | None = None,
+        drags: AreaLayout | None = None,
     ) -> None:
         super().__init__(parent)
         self.area_id = area_id
@@ -831,6 +990,35 @@ class AreaFrame(QFrame):
         # A View handed back unparented by an earlier layout was hidden when
         # it lost its parent, and a layout does not show it again by itself.
         content.show()
+
+        self.corners: tuple[_CornerZone, ...] = ()
+
+        if drags is not None:
+            self.corners = tuple(_CornerZone(self, drags, corner) for corner in _Corner)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+
+        for zone in self.corners:
+            zone.place()
+
+    def enterEvent(self, event: QEnterEvent) -> None:
+        super().enterEvent(event)
+        self._show_grips(True)
+
+    def leaveEvent(self, event: QEvent) -> None:
+        super().leaveEvent(event)
+        self._show_grips(False)
+
+    def _show_grips(self, shown: bool) -> None:
+        """Draw the corners' grips while the pointer is in this Area, and only then.
+
+        `PL-30L5` Q1 decided it: an Area being handled shows its corners
+        work, and an Area being read shows nothing.
+        """
+
+        for zone in self.corners:
+            zone.set_grip_shown(shown)
 
 
 class AreaNotice(QFrame):
@@ -968,6 +1156,167 @@ class _AreaHandle(QSplitterHandle):
         painter = QPainter(self)
         painter.fillRect(line, QColor(PRIMARY))
         painter.end()
+
+
+class _Corner(Enum):
+    """One of an Area's four corners, by which sides of the Area it lies on."""
+
+    TOP_LEFT = (False, False)
+    TOP_RIGHT = (True, False)
+    BOTTOM_LEFT = (False, True)
+    BOTTOM_RIGHT = (True, True)
+
+    @property
+    def right(self) -> bool:
+        return self.value[0]
+
+    @property
+    def bottom(self) -> bool:
+        return self.value[1]
+
+
+class _CornerZone(QWidget):
+    """A corner of an Area that a reader drags to split or join it (`PL-30L5` Q1).
+
+    It is an `AREA_CORNER_ZONE` square inside the corner, above the View, with
+    the platform's cross cursor. It draws a grip of three short strokes in
+    MUTED while the pointer is in its Area, and nothing otherwise. A press
+    starts a drag that `AreaLayout` previews and makes on release, and Escape
+    during the drag cancels it.
+    """
+
+    def __init__(self, frame: AreaFrame, drags: AreaLayout, corner: _Corner) -> None:
+        super().__init__(frame)
+        self.frame = frame
+        self.corner = corner
+        self._drags = drags
+        self._grip_shown = False
+        self.setFixedSize(AREA_CORNER_ZONE, AREA_CORNER_ZONE)
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.place()
+        self.raise_()
+
+    @property
+    def grip_shown(self) -> bool:
+        return self._grip_shown
+
+    def set_grip_shown(self, shown: bool) -> None:
+        if shown != self._grip_shown:
+            self._grip_shown = shown
+            self.update()
+
+    def place(self) -> None:
+        """Move to this zone's corner of the frame."""
+
+        x = self.frame.width() - AREA_CORNER_ZONE if self.corner.right else 0
+        y = self.frame.height() - AREA_CORNER_ZONE if self.corner.bottom else 0
+        self.move(x, y)
+        self.raise_()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setFocus()
+            self._drags.corner_pressed(self.frame.area_id, event.globalPosition().toPoint())
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        self._drags.corner_moved(event.globalPosition().toPoint())
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drags.corner_released(event.globalPosition().toPoint())
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            self._drags.corner_cancelled()
+        else:
+            super().keyPressEvent(event)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self._grip_shown:
+            return
+
+        painter = QPainter(self)
+        painter.setPen(QPen(QColor(MUTED), AREA_GRIP_STROKE_WIDTH))
+        # Three diagonal strokes across the corner, the nearest the shortest.
+        for step in (1, 2, 3):
+            reach = step * AREA_GRIP_STROKE_LENGTH // 2
+            start = QPoint(reach, 0)
+            end = QPoint(0, reach)
+
+            if self.corner.right:
+                start.setX(AREA_CORNER_ZONE - 1 - start.x())
+                end.setX(AREA_CORNER_ZONE - 1 - end.x())
+
+            if self.corner.bottom:
+                start.setY(AREA_CORNER_ZONE - 1 - start.y())
+                end.setY(AREA_CORNER_ZONE - 1 - end.y())
+
+            painter.drawLine(start, end)
+
+        painter.end()
+
+
+class _LayoutOverlay(QWidget):
+    """What a corner drag shows before it is released, drawn over the Areas (`PL-30L5` Q2).
+
+    A split draws a line across the Area where the cut will fall, in PRIMARY,
+    or in WARNING where a part would be too small to hold its header. A join
+    tints the Area that will close in MUTED and outlines the Area the two
+    will make in PRIMARY. A join the layout cannot make outlines the Area
+    under the pointer in WARNING, with no tint. The overlay takes no mouse
+    events, so the Areas under it work as usual.
+    """
+
+    def __init__(self, layout: AreaLayout) -> None:
+        super().__init__(layout)
+        self._layout = layout
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setGeometry(layout.rect())
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        preview = self._layout.preview
+
+        if preview is None:
+            return
+
+        painter = QPainter(self)
+
+        if isinstance(preview, SplitPreview):
+            own = self._layout.frame_rect(preview.area_id)
+            colour = QColor(PRIMARY if preview.result is not None else WARNING)
+
+            if preview.orientation is Orientation.ROW:
+                x = own.left() + round(preview.at * own.width()) - AREA_PREVIEW_LINE_WIDTH // 2
+                line = QRect(x, own.top(), AREA_PREVIEW_LINE_WIDTH, own.height())
+            else:
+                y = own.top() + round(preview.at * own.height()) - AREA_PREVIEW_LINE_WIDTH // 2
+                line = QRect(own.left(), y, own.width(), AREA_PREVIEW_LINE_WIDTH)
+
+            painter.fillRect(line, colour)
+        else:
+            closing = self._layout.frame_rect(preview.remove)
+
+            if preview.result is None:
+                _outline(painter, closing, WARNING)
+            else:
+                tint = QColor(MUTED)
+                tint.setAlphaF(AREA_CLOSING_TINT_ALPHA)
+                painter.fillRect(closing, tint)
+                _outline(painter, closing.united(self._layout.frame_rect(preview.keep)), PRIMARY)
+
+        painter.end()
+
+
+def _outline(painter: QPainter, rect: QRect, colour: str) -> None:
+    """Draw `rect`'s edge, `AREA_PREVIEW_LINE_WIDTH` thick and inside it, in `colour`."""
+
+    width = AREA_PREVIEW_LINE_WIDTH
+    fill = QColor(colour)
+    painter.fillRect(QRect(rect.left(), rect.top(), rect.width(), width), fill)
+    painter.fillRect(QRect(rect.left(), rect.bottom() - width + 1, rect.width(), width), fill)
+    painter.fillRect(QRect(rect.left(), rect.top(), width, rect.height()), fill)
+    painter.fillRect(QRect(rect.right() - width + 1, rect.top(), width, rect.height()), fill)
 
 
 def _drawable(model: LayoutModel) -> LayoutModel:

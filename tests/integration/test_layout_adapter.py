@@ -31,6 +31,8 @@ from anesthesia_sim.app.area_layout import (
     AreaMenu,
     AreaNotice,
     AreaOperation,
+    JoinPreview,
+    SplitPreview,
     ViewChooser,
 )
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
@@ -982,3 +984,237 @@ def test_a_lone_areas_drawn_menu_shows_join_and_swap_unavailable(
 
     assert not top[JOIN_WITH_LABEL].isEnabled()
     assert not top[SWAP_WITH_LABEL].isEnabled()
+
+
+# ------------------------------------------------------------ the corner drag
+
+
+def _global(container: AreaLayout, x: int, y: int) -> QPoint:
+    return container.mapToGlobal(QPoint(x, y))
+
+
+def _corner_drag(container: AreaLayout, area: int, path: list[tuple[int, int]]) -> None:
+    """Press in Area `area`'s top-left corner and move through `path`, in container pixels."""
+
+    corner = container.frame_rect(AreaId(area)).topLeft() + QPoint(4, 4)
+    container.corner_pressed(AreaId(area), container.mapToGlobal(corner))
+
+    for x, y in path:
+        container.corner_moved(_global(container, x, y))
+
+
+def test_each_area_has_a_zone_at_every_corner_that_shows_a_grip_only_while_the_pointer_is_in_it(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """`PL-30L5` Q1: a cross cursor over a 16 px zone, and a grip only in the Area being handled."""
+
+    from anesthesia_sim.app.theme import AREA_CORNER_ZONE
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    frame = container.frame(AreaId(1))
+
+    assert len(frame.corners) == 4
+    assert {(zone.x(), zone.y()) for zone in frame.corners} == {
+        (0, 0),
+        (frame.width() - AREA_CORNER_ZONE, 0),
+        (0, frame.height() - AREA_CORNER_ZONE),
+        (frame.width() - AREA_CORNER_ZONE, frame.height() - AREA_CORNER_ZONE),
+    }
+    assert all(zone.cursor().shape() == Qt.CursorShape.CrossCursor for zone in frame.corners)
+
+    QApplication.sendEvent(frame, QEvent(QEvent.Type.Leave))
+
+    assert not any(zone.grip_shown for zone in frame.corners)
+
+    QApplication.sendEvent(
+        frame,
+        QEnterEvent(QPointF(50, 50), QPointF(50, 50), QPointF(frame.mapToGlobal(QPoint(50, 50)))),
+    )
+
+    assert all(zone.grip_shown for zone in frame.corners)
+    assert not any(zone.grip_shown for zone in container.frame(AreaId(2)).corners)
+
+    QApplication.sendEvent(frame, QEvent(QEvent.Type.Leave))
+
+    assert not any(zone.grip_shown for zone in frame.corners)
+
+
+def test_a_header_control_starts_after_the_corner_zone(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The zone must not take the chooser's first click (`PL-30L5` Q1)."""
+
+    from anesthesia_sim.app.theme import AREA_CORNER_ZONE
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    frame = container.frame(AreaId(1))
+    assert frame.menu is not None
+
+    assert frame.chooser.mapTo(frame, QPoint(0, 0)).x() >= AREA_CORNER_ZONE
+    assert frame.menu.mapTo(frame, QPoint(frame.menu.width(), 0)).x() <= (
+        frame.width() - AREA_CORNER_ZONE
+    )
+
+
+def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """A sideways drag cuts left and right through the pointer; nothing changes until release."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+    before = container.model
+
+    _corner_drag(container, 1, [(100, 50), (200, 60)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.orientation is Orientation.ROW
+    assert preview.at == pytest.approx(200 / 800)
+    assert preview.result is not None
+    assert container.model == before
+
+    container.corner_released(_global(container, 200, 60))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.25, 0.75), _area(1), _area(2)), 3)
+    assert container.preview is None
+
+
+def test_a_downward_corner_drag_previews_a_cut_into_top_and_bottom(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+
+    _corner_drag(container, 1, [(30, 300)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.orientation is Orientation.COLUMN
+    assert preview.at == pytest.approx(300 / 600)
+
+
+def test_a_split_too_close_to_an_edge_is_previewed_refused_and_release_does_nothing(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """`PL-30L5` Q2: below the header and a line of text, the line turns WARNING."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+    before = container.model
+
+    _corner_drag(container, 1, [(30, 20)])
+    preview = container.preview
+
+    assert isinstance(preview, SplitPreview)
+    assert preview.result is None
+
+    container.corner_released(_global(container, 30, 20))
+    application.processEvents()
+
+    assert container.model == before
+
+
+def test_a_corner_drag_into_a_neighbour_previews_the_join_and_makes_it_on_release(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The Area dragged from keeps its View and takes the other's place."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    lower = container.frame_rect(AreaId(3)).center()
+    corner = container.frame_rect(AreaId(2)).topLeft() + QPoint(4, 4)
+    container.corner_pressed(AreaId(2), container.mapToGlobal(corner))
+    container.corner_moved(container.mapToGlobal(lower))
+    preview = container.preview
+
+    assert isinstance(preview, JoinPreview)
+    assert (preview.keep, preview.remove) == (AreaId(2), AreaId(3))
+    assert preview.result is not None
+
+    container.corner_released(container.mapToGlobal(lower))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 4)
+
+
+def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_nothing(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """Area 1 meets Area 2 along only part of its edge, so the two cannot be joined."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    before = container.model
+    upper = container.frame_rect(AreaId(2)).center()
+    _corner_drag(container, 1, [])
+    container.corner_moved(container.mapToGlobal(upper))
+    preview = container.preview
+
+    assert isinstance(preview, JoinPreview)
+    assert preview.result is None
+
+    container.corner_released(container.mapToGlobal(upper))
+    application.processEvents()
+
+    assert container.model == before
+
+
+def test_escape_cancels_a_corner_drag_and_changes_nothing(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """Driven through the zone itself, with the mouse and the keyboard."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+    before = container.model
+    (zone,) = [
+        zone for zone in container.frame(AreaId(1)).corners if (zone.x(), zone.y()) == (0, 0)
+    ]
+
+    QTest.mousePress(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(4, 4))
+    QTest.mouseMove(zone, QPoint(200, 60))
+    application.processEvents()
+
+    assert isinstance(container.preview, SplitPreview)
+
+    QTest.keyClick(zone, Qt.Key.Key_Escape)
+    QTest.mouseRelease(
+        zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(200, 60)
+    )
+    application.processEvents()
+
+    assert container.preview is None
+    assert container.model == before
+
+
+def test_a_drag_through_the_zone_with_the_mouse_makes_the_split(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+    (zone,) = [
+        zone for zone in container.frame(AreaId(1)).corners if (zone.x(), zone.y()) == (0, 0)
+    ]
+
+    QTest.mousePress(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(4, 4))
+    QTest.mouseMove(zone, QPoint(400, 60))
+    QTest.mouseRelease(
+        zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(400, 60)
+    )
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+
+
+def test_the_overlay_draws_the_split_line_in_primary_and_a_refused_one_in_warning(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    from anesthesia_sim.app.theme import WARNING
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+
+    _corner_drag(container, 1, [(200, 60)])
+    painted = container.grab().toImage()
+
+    assert painted.pixelColor(200, 300).name().upper() == PRIMARY.upper()
+
+    _corner_drag(container, 1, [(30, 20)])
+    painted = container.grab().toImage()
+
+    assert painted.pixelColor(30, 300).name().upper() == WARNING.upper()
+    container.corner_cancelled()

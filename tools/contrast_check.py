@@ -670,7 +670,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "no exemption is claimed and none has to be (PL-DHBX). The other is an "
         "unavailable entry of a header menu (`menu_stylesheet`), such as a join "
         "the layout cannot make, which is drawn in MUTED on the menu's PANEL so "
-        "that it reads as unavailable (PL-2KXB). The enabled "
+        "that it reads as unavailable (PL-2KXB). Also the grip an Area's corner "
+        "draws while the pointer is in the Area (`_CornerZone`), which is how a "
+        "reader finds the corner drag and so needs SC 1.4.11's 3:1, met here "
+        "(PL-30L5 Q1). The enabled "
         "label is INK on the same surface, and the 11.50:1 against this "
         "5.00:1 is what separates the two states; `_status_text` beside them "
         "says which in words. Also the placeholder in the bookmark editor's two "
@@ -747,7 +750,23 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`OffScaleLine`), the line of the new-case "
         "confirmation stating what a switch would discard (`NewCaseDialog`, "
         "PL-R3KB), and the title of the notice an Area shows in place of a "
-        "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ)",
+        "View it cannot draw (`AreaNotice`, PL-DB5G, PL-R1WQ). Also the line a "
+        "corner drag draws where a split would leave a part too small for its "
+        "header, and the outline around an Area a corner drag cannot join, "
+        "both drawn over the Area's PANEL (`_LayoutOverlay`, PL-30L5 Q2). They "
+        "need only SC 1.4.11's 3:1 and meet the text minimum here",
+    ),
+    Requirement(
+        "PRIMARY",
+        "PANEL",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the line a corner drag draws across an Area where a split will fall, "
+        "and the outline around the Area a join will make (`_LayoutOverlay`, "
+        "PL-30L5 Q2). Both are drawn over the Areas' PANEL, and both are how a "
+        "reader sees what releasing the drag will do before it is done. The "
+        "MUTED tint over the Area that would close only marks which of the two "
+        "goes, and the outline carries the preview without it",
     ),
     Requirement(
         "PANEL",

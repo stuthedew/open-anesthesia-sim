@@ -4422,6 +4422,18 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "no text: nothing at rest, and under the pointer a PRIMARY line that "
         "`tools/contrast_check.py` measures against BACKGROUND (PL-RQT1)."
     ),
+    "_CornerZone": (
+        "an Area's corner, where a drag splits or joins it. It draws no text: "
+        "nothing at rest, and while the pointer is in its Area a grip of three "
+        "strokes in MUTED, which `tools/contrast_check.py` measures against "
+        "PANEL (PL-30L5)."
+    ),
+    "_LayoutOverlay": (
+        "what a corner drag shows before release, drawn over the Areas. It "
+        "draws no text: a split line or a joined Area's outline in PRIMARY or "
+        "WARNING, and a MUTED tint, each measured against PANEL by "
+        "`tools/contrast_check.py` (PL-30L5)."
+    ),
     "_LineSwatch": (
         "the legend's line samples. Each paints with the pen of the trace it "
         "stands for and never reads its foreground role; contrast_check holds "
@@ -6327,7 +6339,7 @@ def test_splitting_and_closing_the_chart_area_leaves_the_unconditional_values_wh
     areas = view.layout_container
     before = areas.model
     region = view.unconditional_region
-    shown_before = _interface_strings(view)
+    shown_before = _visible_strings(view)
 
     (split,) = [op for op in areas.operations(AreaId(1)) if op.label == SPLIT_STACKED_LABEL]
     areas.perform(split)
@@ -6347,7 +6359,7 @@ def test_splitting_and_closing_the_chart_area_leaves_the_unconditional_values_wh
 
     assert [area.id for area in areas.model.areas()] == [AreaId(1), AreaId(2)]
     assert areas.model.windows == before.windows
-    assert _interface_strings(view) == shown_before
+    assert _visible_strings(view) == shown_before
 
 
 def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
