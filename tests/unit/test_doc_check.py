@@ -8430,6 +8430,11 @@ NO_RULE_OPEN = (
     'conditional, which make refuses where it reads the line ("recipe commences before first '
     'target")'
 )
+#: Why `_make_lines` declines a Makefile that assigns `.RECIPEPREFIX`.
+RECIPEPREFIX_ASSIGNED = (
+    "this line assigns `.RECIPEPREFIX`, after which make opens a recipe line with that "
+    "character instead of a tab, and this reader knows a recipe line only by its tab"
+)
 #: Why it declines one after a branch that changed which rule is open.
 BRANCH_CHANGED_THE_RULE = (
     "a branch of the conditional on line {} changes which rule is open, so which rule this "
@@ -9160,6 +9165,18 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make lines, a tab-led line where no rule is open": (
         lambda _: _make_lines_refusal("\t@echo hi\nall:\n\t@echo all\n"),
         (1, NO_RULE_OPEN),
+    ),
+    "make lines, an assignment to .RECIPEPREFIX is refused by name": (
+        lambda _: _make_lines_refusal(".RECIPEPREFIX = >\ncheck:\n>@echo ran\n"),
+        (1, RECIPEPREFIX_ASSIGNED),
+    ),
+    "make lines, an overriding define of .RECIPEPREFIX is refused by name": (
+        lambda _: _make_lines_refusal("override define .RECIPEPREFIX\n>\nendef\n"),
+        (1, RECIPEPREFIX_ASSIGNED),
+    ),
+    "make lines, a reference to .RECIPEPREFIX is read": (
+        lambda _: _make_lines_refusal("X := $(.RECIPEPREFIX)\n"),
+        [("X := $(.RECIPEPREFIX)", 1)],
     ),
     "make lines, a target-specific variable opens no rule": (
         lambda _: _make_lines_refusal("check: X = 1\n\t@echo hi\n"),
@@ -11240,6 +11257,53 @@ def test_each_makefile_check_declines_a_define_no_endef_closes(
         [
             "Makefile:4: this `define` is closed by no `endef`, which make refuses as an "
             f"unterminated `define`, so {unchecked}"
+        ],
+    )
+
+
+#: A Makefile that sets the recipe prefix, which GNU make 4.3 runs: `make check`
+#: prints `ran` (`PL-GSJ6`). Read by tab, it has a `check` with no recipe.
+RECIPEPREFIX_MAKEFILE = ".PHONY: check\n.RECIPEPREFIX = >\ncheck:\n>uv run ruff check .\n"
+
+
+@pytest.mark.parametrize(
+    ("check", "unchecked"),
+    [
+        (
+            lambda root, report: doc_check.check_make_targets(
+                root, {root / "README.md": "Run `make check`.\n"}, report
+            ),
+            "no documented `make` command was checked against it",
+        ),
+        (doc_check.check_coverage_gate, "the coverage gate was not compared"),
+        (
+            doc_check.check_ruff_cache,
+            "whether the Makefile runs `ruff check` without the flag was not decided",
+        ),
+        (doc_check.check_gate_parity, "the scripts `make check` runs were not compared"),
+    ],
+    ids=["make targets", "coverage gate", "ruff cache", "gate parity"],
+)
+def test_a_makefile_that_sets_recipeprefix_is_declined_by_each_check(
+    check: Callable[[Path, doc_check.Report], None], unchecked: str, tmp_path: Path
+) -> None:
+    """Each check declines at the assignment rather than read every recipe as missing.
+
+    Before the fix, `check_make_targets` read `check` as a target with no
+    recipe, and the other three compared no command and said nothing.
+    """
+    root = _with_workflow(_repo(tmp_path))
+    (root / "Makefile").write_text(RECIPEPREFIX_MAKEFILE, encoding="utf-8")
+    report = doc_check.Report()
+
+    check(root, report)
+
+    assert (report.errors, report.declined) == (
+        [],
+        [
+            "Makefile:2: this line assigns `.RECIPEPREFIX`, after which make opens a recipe "
+            "line with that character instead of a tab, and this reader knows a recipe line "
+            f"only by its tab, so {unchecked}"
         ],
     )
 

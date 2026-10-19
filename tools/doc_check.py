@@ -1215,6 +1215,16 @@ MAKE_DEFINE_RE = re.compile(
     r"[ \t]*(?:(?:export|override|private)[ \t]+)*define"
     r"(?:[ \t]+(?![ \t]|(?:::|[:+?!])?=)|$)(?P<name>[^#]*)"
 )
+#: An assignment to `.RECIPEPREFIX`, after any of make's modifiers and with
+#: any operator, or a `define` of it. From that line on make 4.3 opens a
+#: recipe line with the variable's first character instead of a tab (`eval`
+#: in GNU make 4.3's `src/read.c` tests a line against `cmd_prefix`), and
+#: every reader here knows a recipe line by its tab, so `_make_lines` declines
+#: the Makefile by name rather than read its recipes as missing (`PL-GSJ6`).
+MAKE_RECIPEPREFIX_RE = re.compile(
+    r"[ \t]*(?:(?:export|override|private)[ \t]+)*(?:define[ \t]+)?"
+    r"\.RECIPEPREFIX[ \t]*(?:(?:::|[:+?!])?=|$|#)"
+)
 #: The body lines that nest a `define` or close one, as `do_define` in the same
 #: file reads them: a bare `define`, no modifier ahead of it, opens another, and
 #: an `endef` alone or before a blank closes one, so `endef # done` closes and
@@ -5864,8 +5874,10 @@ def _make_lines(text: str, every_branch: bool = True) -> Iterator[tuple[str, int
     where it reads it; a line led by a tab after a branch that changed which
     rule is open (both run through make 4.3 on 2026-10-06); a rule line
     escaping what its names end at, which make unquotes (`MAKE_ESCAPED_NAME_RE`,
-    `PL-5M36`), where every reader of a rule took the names as written; and,
-    with `every_branch` false, a recipe line inside a conditional.
+    `PL-5M36`), where every reader of a rule took the names as written; an
+    assignment to `.RECIPEPREFIX`, after which make opens a recipe line with
+    another character (`MAKE_RECIPEPREFIX_RE`, `PL-GSJ6`); and, with
+    `every_branch` false, a recipe line inside a conditional.
     """
     lines = split_lines(text)
     index = 0
@@ -5893,6 +5905,13 @@ def _make_lines(text: str, every_branch: bool = True) -> Iterator[tuple[str, int
         statement = _make_uncommented(line)
         if not statement.strip(MAKE_SPACE):
             continue
+        if MAKE_RECIPEPREFIX_RE.match(statement):
+            raise UnreadStatement(
+                opens + 1,
+                "this line assigns `.RECIPEPREFIX`, after which make opens a recipe line "
+                "with that character instead of a tab, and this reader knows a recipe line "
+                "only by its tab",
+            )
         define = MAKE_DEFINE_RE.match(line)
         if define is not None:
             if not define["name"].strip():
