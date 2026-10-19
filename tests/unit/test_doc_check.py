@@ -286,7 +286,7 @@ def _versioned(tmp_path: Path, roadmap: str = VERSIONED_ROADMAP, version: str = 
     return root
 
 
-def test_the_digest_hook_runs_without_the_callers_virtualenv(tmp_path: Path) -> None:
+def test_the_digest_is_measured_without_the_calling_virtualenv(tmp_path: Path) -> None:
     """Under `uv run`, the hook's bare `python3` was the virtualenv's (`PL-HDMP`)."""
     venv = tmp_path / ".venv"
     environ = {
