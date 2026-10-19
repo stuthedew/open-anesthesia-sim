@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: model-evidence
-touches: docs/maintainer.md, .claude/rules/apparatus-standard.md
+touches: docs/maintainer.md, .claude/rules/apparatus-standard.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-19
 closed: 2026-10-19
 pr: 1672
@@ -27,3 +27,9 @@ figure is published (Anthropic, *Optimizing for cost and intelligence*, read
 2026-10-19).
 
 **Generator check.** A one-off record of an owner decision, not a member of a head.
+
+**Widened the same day.** The owner then made `high` the default for all work
+for now, simulator sessions included, replacing the ratified 2026-09-19 record
+of `max` for simulator sessions. They asked to be told when the ledger shows
+statistically significant evidence that `high` led to real-world issues;
+`PL-63CB` § "Effort monitoring" holds the method (project owner, 2026-10-19).

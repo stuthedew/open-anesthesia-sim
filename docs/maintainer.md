@@ -179,25 +179,34 @@ same amount of reasoning on two models. Anthropic reports that "Opus 5.5 at
 evaluations" (Claude Code docs, *Model configuration*, section "Adjust effort
 level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
 
-**On Opus 5.5, apparatus sessions open at `high`, and so do analysis and design
-rounds about the apparatus** (project owner, 2026-10-19, over `max` and
-`xhigh`, `PL-6XZG`). This is the owner's own judgement for now: the published
-gain from `xhigh` over `high` is small. It replaces a ratified record from
-2026-10-17 (`PL-SW0B`) whose stated reason was cost. Cost alone never
-justifies a lower setting (project owner, 2026-10-19), so a session does not
-argue for `high` on cost. The owner may revisit the level as evidence arrives,
-for example from the model review's comparison of outcomes by effort level
-(`PL-63CB`). On 2026-10-17 six of the
-seven sessions in this repository ran at `xhigh`, which matches neither half of
-the split below. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of
+**On Opus 5.5, every session opens at `high` for now, simulator and apparatus
+alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). This is
+the owner's own judgement: the published gain from `xhigh` over `high` is
+small. It replaces two ratified records whose stated reason was cost: `high`
+for apparatus sessions (2026-10-17, `PL-SW0B`) and `max` for simulator
+sessions (2026-09-19, below). Cost alone never justifies a lower setting
+(project owner, 2026-10-19), so a session does not argue for `high` on cost.
+On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of
 tasks at `high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4
 points for about 2.5 times the cost, and the page calls its figures directional
 (*Optimizing for cost and intelligence*,
 https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence,
-read 2026-10-17). The simulator half of the split is unchanged.
+read 2026-10-17). The same page reports 88.4% at `high` and 91.1% at `xhigh`
+on an internal agentic-coding set, and gives no figure for `max` (read
+2026-10-19).
 
-**Open apparatus sessions at `high` and simulator sessions at `max`** (project
-owner, 2026-09-19, ratified, over running every session at `max`). The split
+**The owner wants evidence on whether `high` causes real problems** (project
+owner, 2026-10-19). The session ledger records each session's model and
+effort so that this can be measured. Once the data is adequate, the model
+review (`PL-63CB`) tests whether work done at `high` shows more rework,
+reopened items, unintended behavior or other real-world issues than work done
+at `xhigh` or `max`. When it finds a statistically significant difference, it
+tells the owner, with the size of the effect and its uncertainty. `PL-63CB`
+holds the method.
+
+**Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
+at `max`** (project owner, 2026-09-19, ratified, over running every session at
+`max`). The split
 follows the two standards `CLAUDE.md` already draws rather than a new
 judgment: `.claude/rules/apparatus-standard.md` governs the apparatus paths
 that `CLAUDE.md` lists, and asks for working reliably rather than for specialist quality; `src/`, `tests/`, `docs/MODEL.md`
