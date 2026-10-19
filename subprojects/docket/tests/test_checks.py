@@ -10,6 +10,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 
+import pytest
+
 from docket.checks import Report, analyze
 from docket.config import Config
 from docket.grep import Wrap
@@ -765,8 +767,9 @@ def test_a_coined_status_is_read_bare_and_an_english_one_is_not() -> None:
 
 
 def test_a_sentence_about_other_items_leaving_a_status_is_no_claim() -> None:
-    """`PL-JNWS`'s "Every one of the 17 then left `needs-decision`" narrates
-    other items departing a status, and says nothing of this item's (`PL-2GY0`).
+    """A sentence adapted from `PL-JNWS`, "Every one of the 17 then left
+    `needs-decision`", narrates other items departing a status, and says
+    nothing of this item's (`PL-2GY0`).
     The passive "left" still reads as this item's, at a sentence's start or
     after "is" or "are", while "left at" reads as this item's wherever it
     stands."""
@@ -5493,3 +5496,28 @@ def test_a_pr_value_with_a_leading_zero_is_refused() -> None:
     report = analyze([_item(pr="07")], TODAY)
 
     assert any("`pr` is '07'" in line for line in report.errors)
+
+
+@pytest.mark.parametrize(
+    ("named", "fault"),
+    [
+        ("PL-NXST", "names PL-NXST, which no item in this store carries"),
+        ("PL-K7QX", "names itself"),
+        ("PL-DR0P", "names PL-DR0P, which is not `done`"),
+        ("PL-0PN1", "names PL-0PN1, which is not `done`"),
+    ],
+    ids=["no-item", "itself", "dropped", "open"],
+)
+def test_a_no_successor_id_that_answers_nothing_is_refused(named: str, fault: str) -> None:
+    """A mistyped id left the re-entered line listed, or answered another (`PL-21Z5`)."""
+    closed = {"status": "done", "closed": date(2026, 8, 2), "reason": "fixed"}
+    store = [
+        _item("PL-DN01", **closed),
+        _item("PL-DR0P", status="dropped", closed=date(2026, 8, 2), reason="not needed"),
+        _item("PL-0PN1"),
+    ]
+
+    errors = _errors(_item(no_successor=(named,)), *store)
+
+    assert _has(errors, f"`no-successor:` {fault}")
+    assert not _has(_errors(_item(no_successor=("PL-DN01",)), *store), "no-successor")

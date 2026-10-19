@@ -3,11 +3,13 @@ id: PL-RX0W
 title: A possessive quotation of an item brief, such as PL-CNJ1's "writes nothing" in PL-SSQW, is read by no check: QUOTED_SOURCE_RE reads only a .md document and PL-QYN4 holds only the section mark after an item id; of the eleven such quotations on 2026-09-26 the one that misses quotes across emphasis (the brief has writes **nothing**), so reading them needs doc_check's comparison to fold markup first
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_checks.py, docs/items/PL-TH35-define-the-common-view-contract-every-app-view.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-10-19
+pr: 1620
 payoff: a quotation attributed to an item brief with a possessive is held to that brief, so a misquoted brief is caught as a misquoted document already is
 verify: grep -q 'def test_a_possessive_quotation_of_an_item_brief_is_held_to_it' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-XW87 withdrawn 2026-10-04 PL-XW87, 2026-10-04 PL-BYJ5 withdrawn 2026-10-04 PL-R417, 2026-10-06 PL-CZ28 withdrawn 2026-10-06 PL-R417
@@ -36,3 +38,18 @@ quotations pass.
 **Generator check.** One-off: the possessive is what `PL-QYN4` scoped out on
 purpose, not a sibling its fix should have covered, and no head's `misread:`
 states which quotations `check_quoted_sources` reads.
+
+**Done 2026-10-19.** `ITEM_SECTION_RE` now takes either claiming connective
+after a code-spanned item id, the section mark or the possessive, from the one
+`CLAIMING_CONNECTIVE` pattern that `CLAIMING_CONNECTIVE_RE` compiles. A new
+`_without_emphasis` removes the delimiters that CommonMark pairs, as
+`docket.markdown.emphasis` pairs them, from each statement of the cited file
+and from the quotation. So a faithful quotation of `writes **nothing**` passes,
+and a `*` that pairs with nothing stays. This applies after a document too.
+Two possessive quotations written since 2026-09-26 then failed, because each
+paraphrased its brief in quotation marks. They were repaired in place: the
+`PL-TH35` brief now names the run-not-present state of `PL-7Z84` without
+quotation marks, and a docstring in `subprojects/docket/tests/test_checks.py`
+now says its sentence is adapted from `PL-JNWS`. Regression: `uv run pytest -q
+tests/unit/test_doc_check.py -k possessive_quotation_of_an_item_brief` against
+the code before the fix fails with "assert False" on the misquoted brief.
