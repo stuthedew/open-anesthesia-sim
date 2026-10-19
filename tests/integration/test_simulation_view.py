@@ -193,7 +193,7 @@ from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
-from anesthesia_sim.layout.tree import Split
+from anesthesia_sim.layout.tree import AreaId, Split
 
 # The identities a dashboard gives the first runs it places, in order, which
 # render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
@@ -6261,7 +6261,7 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert isinstance(tree, Split)
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
-    assert splitter.widget(0) is view._chart_column
+    assert view.layout_container.frame(AreaId(1)).content is view._chart_column
 
 
 def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:

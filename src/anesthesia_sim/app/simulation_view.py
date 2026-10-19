@@ -639,24 +639,19 @@ class SimulationView(QWidget):
 
         return self._areas
 
-    def _area_view(self, area: Area) -> QWidget:
-        """The widget `area` draws: the chart panel, or the sidebar of accounting panels.
+    def _area_view(self, area: Area) -> QWidget | None:
+        """The widget `area` draws: the chart panel, the sidebar of accounting panels, or None.
 
-        Raises:
-            LookupError: `area` names a registered View kind the dashboard
-                does not draw as a View of its own yet, such as the wash-in
-                plot. `_DASHBOARD_LAYOUT` names only these two, so this is a
-                defect in that layout rather than a reader's file. A kind the
-                registry does not hold never reaches here: the adapter draws
-                its failure notice instead.
+        None is for a registered View kind the dashboard does not draw as a
+        View of its own yet, such as the wash-in plot, which a reader can
+        choose for any Area from its View chooser. The adapter shows a notice
+        in that Area instead (`PL-50PZ`). A kind the registry does not hold
+        never reaches here: the adapter draws its failure notice instead.
         """
 
         views = {CONCENTRATION_CHART: self._chart_column, AGENT_ACCOUNTING: self._sidebar}
 
-        if area.view not in views:
-            raise LookupError(f"the dashboard draws no View of the kind {area.view!r}")
-
-        return views[area.view]
+        return views.get(area.view)
 
     def _build_chart_column(self) -> QWidget:
         """The chart panel: heading and time base, captions, legend, advisories, both plots.
