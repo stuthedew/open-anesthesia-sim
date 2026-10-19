@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: session-cost, infra
 feature: model-evidence
-touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
+touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, tools/effort_trial.py, tests/unit/test_effort_trial.py
 added: 2026-10-19
 payoff: the randomized effort trial runs without the owner setting a level by hand, so its result can say whether high causes real problems
 verify: grep -qi 'effort trial started' docs/maintainer.md
