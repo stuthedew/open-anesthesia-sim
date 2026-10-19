@@ -163,10 +163,7 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
         )
 
         assert timeline == ["named", "declared", "built the first widget"]
-        assert names == [
-            ("organization", APP_ORGANIZATION_NAME),
-            ("application", APP_DISPLAY_NAME),
-        ]
+        assert names == [("organization", APP_ORGANIZATION_NAME), ("application", APP_DISPLAY_NAME)]
         entry = view.tab_strip.save_entry()
         assert entry.question is not None
         assert str(tmp_path / WORKSPACES_FILE_NAME) in entry.question.text
