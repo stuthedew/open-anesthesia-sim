@@ -156,6 +156,44 @@ def view_chooser_stylesheet() -> str:
     )
 
 
+def workspace_tab_stylesheet() -> str:
+    """Return the style of a Workspace tab, with the active tab in bold INK over a PRIMARY line.
+
+    `PL-QW1Z` Q2 decided its look. A tab has no fill, so its label sits on the
+    page's BACKGROUND. An inactive tab is MUTED and regular, and turns INK
+    under the pointer. The active tab is INK and bold, with a 2px PRIMARY line
+    along its lower edge, so weight and shape tell it apart as well as colour.
+    A tab with the keyboard focus has a 1px INK edge on its other three sides.
+    At rest those sides have a transparent edge of the same width, so the
+    label does not move when the focus arrives. `tools/contrast_check.py`
+    measures each pair on BACKGROUND.
+    """
+
+    return (
+        f"QToolButton {{ color: {MUTED}; background-color: transparent; font-weight: normal; "
+        "border: 1px solid transparent; border-bottom: 2px solid transparent; "
+        "padding: 2px 10px; } "
+        f"QToolButton:hover {{ color: {INK}; }} "
+        f"QToolButton:checked {{ color: {INK}; font-weight: bold; "
+        f"border-bottom-color: {PRIMARY}; }} "
+        f"QToolButton:focus {{ border-left-color: {INK}; border-top-color: {INK}; "
+        f"border-right-color: {INK}; }}"
+    )
+
+
+def workspace_separator_stylesheet() -> str:
+    """The rule between the shipped Workspaces' tabs and the reader's own, in MUTED.
+
+    `PL-QW1Z` Q4 asked for a GRIDLINE rule. But GRIDLINE's contrast on
+    BACKGROUND is less than the 3:1 that WCAG SC 1.4.11 requires, and this rule
+    is the one thing on screen that shows where the shipped tabs end. So it is
+    drawn in MUTED, which `tools/contrast_check.py` measures on BACKGROUND
+    (`PL-2KXB`).
+    """
+
+    return f"background-color: {MUTED};"
+
+
 def menu_stylesheet() -> str:
     """A menu a button opens: PANEL fill, INK entries, a PRIMARY selection, as a popup draws.
 

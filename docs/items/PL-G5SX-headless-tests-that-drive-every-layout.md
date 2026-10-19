@@ -1,14 +1,14 @@
 ---
 id: PL-G5SX
 title: Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
-status: blocked
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: M
-blocked-by: PL-904Y, PL-2KXB
+status: blocked
 classes: safety, anticipated
+feature: interface-areas
 touches: tests/integration
+blocked-by: PL-DWHG
+added: 2026-09-16
 ---
 
 **Problem.** Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
@@ -31,3 +31,5 @@ new width.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 18.
+
+**Checked 2026-10-19:** `PL-904Y` and `PL-2KXB` have closed, so every operation but one can now be driven. Save and reload cannot, because nothing loads the reader's saved Workspaces or saves them yet. That is `PL-DWHG`, which this item now waits on.

@@ -7347,9 +7347,10 @@ run's. That is so while another run is drawn anywhere in the application, while
 the view is pinned to a run, and always in a window broken out of the main one
 (§ "What a second top-level window owes, and it is not the whole set"). The
 count of runs on the dashboard was the old test, and it fails the run shown
-alone in a pinned Area or in a window of its own. Until pins and break-out
-windows are built, the dashboard is the only place a run is drawn. So in this
-version the names are shown exactly when two runs are compared.
+alone in a pinned Area or in a window of its own. Break-out windows are not
+built, so the dashboard is the only window a run is drawn in. So in this
+version the names are shown when two runs are compared, and a pinned
+Workspace names its run in the header of every Area (`PL-2KXB`).
 
 **A Workspace pins a run by its identity, and an absent pin is stated**
 (`PL-WV9K` Q6). The pin is saved with the Workspace as the run's number and a
@@ -8837,9 +8838,12 @@ join, a border drag or a Workspace switch never changes the width the row is
 laid out at. Two things do: the window's width, and how the region divides that
 width. Since `PL-J8K2`, the region holds the runs' rows in a left column and the
 control-change record in a right column. Since `PL-F2YS` the two columns take
-the shares of the width that the chart panel's Area and the sidebar's Area take,
-0.82 and 0.18, so the record is as wide as the sidebar under it, as `PL-J8K2`
-Q3 ratified. The left column never narrows below its own minimum width. At whatever width that leaves, the reservation rule above (`PL-3355`)
+0.82 and 0.18 of the width. Those were the shares of the chart panel's Area and
+the sidebar's Area in the layout the dashboard opened on, so the record was as
+wide as the sidebar under it, as `PL-J8K2` Q3 ratified. Since `PL-2KXB` the
+dashboard opens on the shipped Workspaces, whose Areas divide the width
+differently, and the region keeps its own shares, because a Workspace switch
+must not change the width the row is laid out at. The left column never narrows below its own minimum width. At whatever width that leaves, the reservation rule above (`PL-3355`)
 still applies: every rung lays each panel out at its full reserved width, so
 no value is wrapped away from its unit.
 

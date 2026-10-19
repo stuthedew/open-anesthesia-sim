@@ -541,7 +541,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "administers (`_compartment_substance_text`) and its delivered "
         "concentration (`_delivered_text`, PL-NWTM), and the View chooser's "
         "title under the pointer and while its menu is open, when the chooser "
-        "is filled in BACKGROUND (`view_chooser_stylesheet`, PL-RBXL Q1)",
+        "is filled in BACKGROUND (`view_chooser_stylesheet`, PL-RBXL Q1). Also "
+        "the current Workspace's tab label in bold, an inactive tab's label and "
+        "the '+' under the pointer, and the 1px edge a tab carries with the "
+        "keyboard focus (`workspace_tab_stylesheet`, `WorkspaceTab`, PL-QW1Z Q2)",
     ),
     Requirement(
         "INK",
@@ -629,7 +632,14 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "minimum this pair already carries (PL-SN2C), and the border of each "
         "usable transport button in the same row (`transport_button_stylesheet`), "
         "which is the edge that locates the control once its fill is PANEL "
-        "rather than the platform's bevel (PL-DHBX)",
+        "rather than the platform's bevel (PL-DHBX). Also each inactive "
+        "Workspace tab's label and the '+' at the strip's end "
+        "(`workspace_tab_stylesheet`, `WorkspaceTab`, PL-QW1Z Q2), and the rule "
+        "between the shipped tabs and the reader's own "
+        "(`workspace_separator_stylesheet`), which is a graphical object "
+        "needing SC 1.4.11's 3:1. It is the one mark of where the shipped tabs "
+        "end, so it is drawn in MUTED rather than the GRIDLINE PL-QW1Z Q4 named "
+        "(PL-2KXB)",
     ),
     Requirement(
         "MUTED",
@@ -727,7 +737,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "gap between two Areas paints nothing of its own, so the line sits on "
         "the page's BACKGROUND. It is how a reader sees which line a drag will "
         "move before pressing, so it identifies a component's state (PL-RQT1 "
-        "Q2, PL-W9P6)",
+        "Q2, PL-W9P6). Also the 2px line under the current Workspace's tab, "
+        "which marks which tab is current beside the bold label "
+        "(`workspace_tab_stylesheet`, PL-QW1Z Q2)",
     ),
     Requirement(
         "WARNING",
@@ -748,7 +760,8 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the halted-run notice (`_notice_text`, a `NoticeLabel` written by "
         "`refresh`), the run-status word while stopped (`_status_text`), and "
         "the educational-use disclaimer, which `SimulationView` places at the "
-        "foot of the page",
+        "foot of the page. Also why a Workspace name typed into a tab was "
+        "not taken, beside the tabs (`WorkspaceTabs`, PL-2KXB)",
     ),
     Requirement(
         "WARNING",

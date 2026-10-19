@@ -45,8 +45,50 @@ from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, ONE_MAC_LINE_COLOR, PANEL
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
+
+#: One Workspace that holds the charts and the accounting. Each test then finds
+#: the View it reads, whichever Workspace is shipped first. The concentration
+#: chart sits over the F_A/F_I plot, beside the accounting. That was the
+#: dashboard's layout before it began opening on the shipped Workspaces
+#: (`PL-2KXB`). These tests read no setting control, so the parameter controls
+#: are left out and the plots keep the height they were drawn at then.
+_EVERY_VIEW = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Charts and accounting"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.ROW,
+                            (0.82, 0.18),
+                            (
+                                Split(
+                                    Orientation.COLUMN,
+                                    (0.55, 0.45),
+                                    (
+                                        Area(AreaId(1), CONCENTRATION_CHART),
+                                        Area(AreaId(3), WASH_IN),
+                                    ),
+                                ),
+                                Area(AreaId(2), AGENT_ACCOUNTING),
+                            ),
+                        )
+                    ),
+                ),
+                AreaId(4),
+            ),
+        ),
+    ),
+    0,
+)
 
 #: The size the dashboard is rendered at. Wide enough that the page's own
 #: minimum width - the seven readout panels beside one another, then the
@@ -138,7 +180,7 @@ def dashboard(application: QApplication) -> Iterator[SimulationView]:
         Percent(controller.snapshot().delivered_concentration_percent * 1.5)
     )
     _advance(controller, 180.0)
-    view = SimulationView((controller,))
+    view = SimulationView((controller,), workspaces=_EVERY_VIEW)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
@@ -267,7 +309,7 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     controller.start()
     _advance(controller, _INDUCTION_S)
     controller.pause()
-    view = SimulationView((controller,))
+    view = SimulationView((controller,), workspaces=_EVERY_VIEW)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
