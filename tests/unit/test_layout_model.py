@@ -1656,6 +1656,38 @@ def test_neighbours_lists_each_area_an_edge_meets_by_side_and_whether_it_could_j
     )
 
 
+def test_edges_gives_the_nearest_border_on_each_side_that_has_one() -> None:
+    """In row[1, column[2, 3], 4], Area 2 has the row's side borders and the column's lower one."""
+
+    model = layout(row((0.25, 0.5, 0.25), area(1), column((0.5, 0.5), area(2), area(3)), area(4)))
+
+    assert model.edges(AreaId(1)) == ((Side.RIGHT, Handle(0, (), 0)),)
+    assert model.edges(AreaId(2)) == (
+        (Side.LEFT, Handle(0, (), 0)),
+        (Side.RIGHT, Handle(0, (), 1)),
+        (Side.BELOW, Handle(0, (1,), 0)),
+    )
+    assert model.edges(AreaId(3)) == (
+        (Side.LEFT, Handle(0, (), 0)),
+        (Side.ABOVE, Handle(0, (1,), 0)),
+        (Side.RIGHT, Handle(0, (), 1)),
+    )
+    assert model.edges(AreaId(4)) == ((Side.LEFT, Handle(0, (), 1)),)
+
+    for area_id in (1, 2, 3, 4):
+        for _, handle in model.edges(AreaId(area_id)):
+            assert handle in model.handles()
+
+
+def test_edges_of_the_only_area_is_empty_and_an_unknown_area_is_refused() -> None:
+    model = LayoutModel.single_area(CHART)
+
+    assert model.edges(AreaId(1)) == ()
+
+    with pytest.raises(NotInLayout):
+        model.edges(AreaId(9))
+
+
 def test_two_areas_that_meet_only_at_a_corner_are_not_neighbours() -> None:
     """In a two by two grid, the diagonal Areas share a point and no edge."""
 
@@ -1672,3 +1704,20 @@ def test_two_areas_that_meet_only_at_a_corner_are_not_neighbours() -> None:
 
 def test_a_lone_area_has_no_neighbours() -> None:
     assert LayoutModel.single_area(CHART).neighbours(AreaId(1)) == ()
+
+
+def test_edges_gives_the_nearest_border_when_a_side_is_bordered_at_two_depths() -> None:
+    """In row[column[row[2, 3], 4], 5], Area 2's right border is the inner row's, not the root's.
+
+    Both borders lie to Area 2's right. The inner row's border moves only Area 2's right
+    side. The root's border moves the whole left column.
+    """
+
+    model = layout(
+        row((0.5, 0.5), column((0.5, 0.5), row((0.5, 0.5), area(2), area(3)), area(4)), area(5))
+    )
+
+    assert model.edges(AreaId(2)) == (
+        (Side.RIGHT, Handle(0, (0, 0), 0)),
+        (Side.BELOW, Handle(0, (0,), 0)),
+    )

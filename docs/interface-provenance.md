@@ -808,6 +808,14 @@ bar and window controls stay, which is what `PL-005` refused a full-screen
 start to keep, and every Area item 34 builds gets the most room the screen
 has.
 
+**Ctrl+PgUp and Ctrl+PgDn step through the Workspaces, and wrap round.** The
+Blender Manual's "Workspaces" page binds Previous Workspace to Ctrl-PageUp and
+Next Workspace to Ctrl-PageDown, and `space_workspace_cycle_invoke` in
+`source/blender/editors/screen/screen_ops.cc` wraps at both ends
+(`blender/blender` `main`, both read 2026-10-19). This project binds the same
+keys, steps through the tabs in the order the strip draws them, and wraps the
+same way (`PL-M352`).
+
 ### Diverged, and each divergence has a specific cause
 
 **The occupant of an Area is called a View here, not an Editor** (project owner,
@@ -912,6 +920,30 @@ refuses too (`PL-G60V`; project owner, 2026-10-12, ratified, over taking or
 refusing such a join by which split came first). Blender's join also trims two
 Areas that share only part of an edge, as the measurement above found; this
 model joins only Areas that share a whole edge.
+
+**A border takes the keyboard focus, and the arrow keys move it.** Blender
+gives a border no keyboard route: its Manual's "Areas" page resizes by drag
+alone, and the right-click "Area Options" menu on a border splits, joins and
+swaps but does not resize (read 2026-10-19). `ROADMAP.md`'s v0.6.0 scope
+requires every layout operation without a drag, so this project follows the
+W3C WAI-ARIA Authoring Practices "Window Splitter" pattern instead. Each
+border is in the tab order, and an arrow key along its axis moves it one step.
+Shift moves it alone, as Shift does in a drag, and Escape puts back the layout
+drawn when it took the focus. The pattern's Enter, which collapses a pane, is
+not offered, because collapsing an Area below its least size is what
+`PL-K285` refuses. Each Area's menu also lists its borders under Resize, and
+choosing one gives that border the focus (`PL-M352`; the pattern read
+2026-10-19 from `w3c/aria-practices` `main`, since `w3.org` refused the
+connection).
+
+**The Workspace menu sits at the right end of the tab strip, not in a menu
+bar.** Blender's top bar holds its menus and its Workspace tabs in one row. A
+menu bar of its own would cost this window a row of height on Windows and
+Linux, where `PL-QLZ5` was fighting for 70 to 80 px of chart height on the
+1366 by 700 laptop reference. So the
+Layout menu is a button at the strip's right end, after "+". It lists every
+Workspace, steps to the previous or next one, and holds the current
+Workspace's rename, duplicate, reset and delete (`PL-M352`).
 
 **Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
 hooks nothing implements and a field nothing assigns, and nothing in the design
