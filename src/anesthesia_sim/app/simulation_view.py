@@ -136,6 +136,7 @@ from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW
 from anesthesia_sim.layout.run_identity import RunId, RunIdentities
 from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.store import WorkspaceStore
 from anesthesia_sim.layout.workspace import PinnedRunAbsent, WorkspaceSet
 
 #: The fractions of the unconditional region's width that the run rows and
@@ -311,6 +312,8 @@ class SimulationView(QWidget):
         case: BranchedCase | None = None,
         run_identities: RunIdentities | None = None,
         workspaces: WorkspaceSet | None = None,
+        store: WorkspaceStore | None = None,
+        notice: str | None = None,
     ) -> None:
         """Build the dashboard with one `RunView` for each of `controllers`, and draw nothing yet.
 
@@ -336,6 +339,11 @@ class SimulationView(QWidget):
                 knows.
             workspaces: The Workspaces the tab strip offers, opened on the
                 current one. By default, the shipped Workspaces.
+            store: The store `workspaces` was loaded from, which the Layout
+                menu's "Save as default" writes to. Without one, that entry
+                is shown unavailable, so a test never writes a file.
+            notice: What the reader is told about how `workspaces` was
+                loaded, shown under the tab strip, or `None`.
 
         Raises:
             ValueError: If no run is given, if more than
@@ -384,6 +392,10 @@ class SimulationView(QWidget):
         # ones it had when it was last drawn. The `workspaces` property reads
         # the live ones from the Areas (`PL-2KXB`).
         self._workspaces = shipped_workspaces() if workspaces is None else workspaces
+        # Where "Save as default" writes, and what the reader is told about
+        # the load, both handed to the tab strip when it is built (`PL-DWHG`).
+        self._store = store
+        self._notice = notice
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. Held across
@@ -502,7 +514,12 @@ class SimulationView(QWidget):
         column.addWidget(self._build_unconditional_region())
 
         self._tabs = WorkspaceTabs(
-            self._workspaces, self._change_workspaces, self._open_runs, live=lambda: self.workspaces
+            self._workspaces,
+            self._change_workspaces,
+            self._open_runs,
+            live=lambda: self.workspaces,
+            store=self._store,
+            notice=self._notice,
         )
         requests = ViewRequests(self._handle_frame_request, self._handle_compartment_request)
         current = self._workspaces.current

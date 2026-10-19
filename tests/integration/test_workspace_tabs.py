@@ -116,8 +116,7 @@ def test_the_shipped_tabs_come_first_and_a_rule_follows_them(owner: _Owner) -> N
     assert display_order(workspaces) == (0, 2, 3, 1)
     assert owner.names == ["Default", "Induction", "Maintenance", "Default (copy)"]
 
-    row = owner.strip.layout()
-    assert row is not None
+    row = owner.strip.row
     items = [row.itemAt(i) for i in range(row.count())]
     widgets = [None if item is None else item.widget() for item in items]
     assert widgets.index(owner.strip.separator) == 3
@@ -258,7 +257,10 @@ def test_delete_asks_first_naming_the_workspace_and_its_origin(owner: _Owner) ->
     assert question is not None
     assert owner.changes == []
     texts = [label.text() for label in question.findChildren(type(owner.strip.refusal_label))]
-    assert 'Delete the shipped Workspace "Induction"? This cannot be undone.' in texts
+    assert (
+        'Delete the shipped Workspace "Induction"? "Restore shipped Workspaces" in the Layout '
+        "menu brings back the shipped version." in texts
+    )
 
     question.keep_button.click()
     assert owner.changes == []

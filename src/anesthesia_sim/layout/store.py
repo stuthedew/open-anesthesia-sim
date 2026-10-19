@@ -83,8 +83,9 @@ loads and that Area shows `PL-R1WQ`'s failure state (`LayoutModel.unknown_kinds`
 
 The shipped set is `PL-KXTL`'s: `layout/shipped.py` reads it from
 `data/workspaces/` with the same reader as a learner's file, and the store is
-handed it and does not know where it came from. Wiring the store into the
-application is the adapter's (`PL-W9P6`): nothing under `app/` calls it yet.
+handed it and does not know where it came from. `app/main.py` resolves the
+directory and loads the set at launch, and the Layout menu in
+`app/workspace_tabs.py` saves it (`PL-DWHG`).
 """
 
 from __future__ import annotations
@@ -252,6 +253,16 @@ class WorkspaceStore:
         """Where `workspaces.json` is, or will be."""
 
         return self._directory / WORKSPACES_FILE_NAME
+
+    @property
+    def loaded(self) -> Loaded | None:
+        """The `Loaded` result of the last `load` or `save`, or `None` before the first `load`.
+
+        The interface reads its `writable` and `notice` fields. They decide
+        whether "Save as default" is offered, and give the reason when it is not.
+        """
+
+        return self._loaded
 
     def load(self, shipped: WorkspaceSet) -> Loaded:
         """What this launch shows, by the policy above; `shipped` is shown where no file can be.
