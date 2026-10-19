@@ -8,7 +8,7 @@ added: 2026-10-19
 
 **Problem.** Make the first month of API-credit runs the model-evidence trial: run the same five delegable S items on Haiku 5.5 and Sonnet 5.5, and score each by whether bin/docket verify accepts it, review findings, and total_cost_usd, so the delegable tier is chosen on a measurement instead of the 2026-09-19 asymmetry alone
 
-**Revised design (2026-10-19), recommended.** As first written, this trial
+**Revised design (2026-10-19), decided (project owner, 2026-10-19, ratified, over merging the cheaper runs' work).** As first written, this trial
 would merge cheaper-model work into the record, which is the risk that
 `PL-2D28` refused. **Recommended:** run each trial item three times, on Opus
 5.5, Sonnet 5.5 and Haiku 5.5. Merge only the Opus run. Score the two cheaper
