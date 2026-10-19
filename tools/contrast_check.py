@@ -638,7 +638,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the compartment name and the smaller clinical gloss under it on each "
         "readout, and the MAC multiple under the value (`MetricPanel`), the "
-        "chart's axis description (`_time_axis_caption`; the wash-in chart's "
+        "chart's axis description (`time_axis_caption`; the wash-in chart's "
         "own went with the prose `PL-F9TQ` removed, having restated that "
         "chart's axis titles), the sub-headings and status lines the chart and "
         "its neighbours hold (`SimulationView` for the chart column's, "

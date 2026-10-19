@@ -1,10 +1,12 @@
 """The dashboard: what every displayed run shares, in PySide6.
 
 `SimulationView` is the shared half of the dashboard along `PL-B9PY`'s seam.
-It holds what two runs cannot each have their own of - the concentration
-chart, the wash-in plot, the compartment legend and the selection it shows,
-the time base and its caption, the two clinical reference lines - and one
-`RunView` per run for everything else.
+It holds what two runs cannot each have their own of - the compartment
+selection, the time base, the Areas and the Views in them, the marks and the
+branch control - and one `RunView` per run for everything else. The Views are
+built by `app/area_layout.py` through the View registry, each from the View
+contract's context (`app/view_contract.py`, `PL-TH35`), so this class names
+none of them but to keep the concentration chart in view after a branch.
 
 **The unconditional region is outside the splitters** (`PL-NWTM`). Each run's
 transport row, its notice banner, its readouts and its control-change record
@@ -13,18 +15,19 @@ across its foot. `docs/MODEL.md` § "Minimum displayed outputs" requires those
 values on screen in every Workspace, and `app/unconditional_set.py` declares
 which they are; `_place_run` refuses a run whose declared values the band does
 not hold. Under the band, each run's setting controls stand at their own
-height, and under them the Areas: the chart panel beside the sidebar, drawn
-from a layout model by `app/area_layout.py`, so a reader can drag the border
-between them (`PL-W9P6`). The Areas are the layout container. Nothing in the
+height, and under them the Areas: the concentration chart over the F_A/F_I
+plot, beside the accounting sidebar, drawn from a layout model by
+`app/area_layout.py`, so a reader can drag the borders between them
+(`PL-W9P6`). The Areas are the layout container. Nothing in the
 band has an ancestor among them, so no split, join or close can reach it.
 
-**One frame, both charts, then every run.** `_refresh_view` reads one
+**One frame, every View, then every run.** `_refresh_view` reads one
 snapshot per run, assembles one `ChartFrame` through `app/chart_frame.py`,
-draws both plots from it, writes the captions from it and only then
-refreshes each run against it, so the readouts, the traces and the
-sentences beside them are one instant of one run (decision D2). Every claim
-in a caption is `app/dashboard_frame.py`'s; this class formats nothing and
-decides nothing a reader interprets.
+hands it to every View in one `ViewTick`, and only then refreshes each run
+against it, so the readouts, the traces and the sentences beside them are one
+instant of one run (decision D2). Every claim in a caption is
+`app/dashboard_frame.py`'s; this class formats nothing and decides nothing a
+reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps it;
 this view's render timer draws, and only while a run is running or a frame
@@ -34,9 +37,10 @@ set, or by a run whose record differs from what its view last wrote
 out of the shared render path is attributable to none of them. No wall
 clock is read anywhere.
 
-**The legend is a frame widget** (`PL-G3K7`). It is handed the selection a
-frame was assembled from once both plots have drawn it, so its boxes name
-the curves on the plot even where the frame a click asked for fails.
+**The legend is a frame widget** (`PL-G3K7`). Its View hands it the
+selection a frame was assembled from once its plot has drawn that frame, so
+its boxes name the curves on the plot even where the frame a click asked for
+fails.
 
 **Hover is the chart's** (decision D6): `qt_chart` answers whenever the
 pointer is over a drawn point, running or paused, and the dashboard adds
@@ -47,6 +51,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
+from functools import partial
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -73,42 +78,24 @@ from anesthesia_sim.app.compartment_selection import (
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
-    CHART_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
-    NO_TRACES_SHOWN_TEXT,
     REMOVE_NOTHING_SELECTED_TEXT,
     RENDER_INTERVAL_S,
-    TIME_BASE_LABEL,
     TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
-    WASH_IN_DENOMINATOR_TEXT,
-    WASH_IN_HEADING,
-    WASH_IN_MODELLED_TEXT,
     BranchAtStake,
     NewCaseQuestion,
     RunMarks,
     bookmark_panel,
     branch_at_stake,
     comparing_fork_lock_text,
-    compartment_cap_notice,
     fork_offer,
-    mac_awake_caption,
-    mac_reference_caption,
-    no_traces_shown,
     refused_setting_notice,
     run_label,
-    time_axis_caption,
     trunk_reset_question,
 )
 from anesthesia_sim.app.formatting import mac_multiple
-from anesthesia_sim.app.qt_chart import (
-    ConcentrationChart,
-    TimeBaseSelector,
-    TraceLegend,
-    WashInChart,
-    WashInLegend,
-)
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -120,46 +107,57 @@ from anesthesia_sim.app.stylesheets import (
 )
 from anesthesia_sim.app.theme import (
     GRIDLINE,
-    INK,
-    METRIC_QUALIFIER_SIZE,
-    MUTED,
     PAGE_PADDING,
     PAGE_SPACING,
     PANEL_PADDING,
     SECTION_DIVIDER_HEIGHT,
+    VIEW_ROW_SPACING,
     WARNING,
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART
+from anesthesia_sim.app.view_contract import ViewRequests, ViewTick
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
+from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
-#: The shares of the window's width the chart panel and the sidebar take
-#: (`PL-W9P6`). The chart panel still holds the wash-in plot, the marks and the
-#: branch control under the concentration plot, until each is a View of its
-#: own (`PL-TH35`, `PL-9LNF`), so it carries the tag of the View it leads with.
-#: The sidebar's 0.18 gives it about the 228 px it had beside the charts in a
-#: 1366 px window before the row was an Area layout, when it stood at its own
-#: minimum width at every window size. A placeholder until the
-#: shipped Workspaces replace this layout.
+#: The shares of the window's width the two charts and the accounting sidebar
+#: take (`PL-W9P6`). The sidebar's 0.18 gives it about the 228 px it had beside
+#: the charts in a 1366 px window before the row was an Area layout, when it
+#: stood at its own minimum width at every window size. A placeholder until
+#: the shipped Workspaces replace this layout.
 _CHART_PANEL_SHARE: Final = 0.82
 _SIDEBAR_SHARE: Final = 0.18
 
-#: The dashboard's Areas: the chart panel beside the sidebar, in one row.
+#: The shares of the charts' height the concentration chart and the F_A/F_I
+#: plot take, the second under the first as they stood in one panel before
+#: each was a View of its own (`PL-TH35`). A placeholder.
+_CONCENTRATION_SHARE: Final = 0.55
+_WASH_IN_SHARE: Final = 0.45
+
+#: The dashboard's Areas: the concentration chart over the F_A/F_I plot,
+#: beside the accounting sidebar.
 _DASHBOARD_LAYOUT: Final = LayoutModel(
     (
         Window(
             Split(
                 Orientation.ROW,
                 (_CHART_PANEL_SHARE, _SIDEBAR_SHARE),
-                (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(2), AGENT_ACCOUNTING)),
+                (
+                    Split(
+                        Orientation.COLUMN,
+                        (_CONCENTRATION_SHARE, _WASH_IN_SHARE),
+                        (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(3), WASH_IN)),
+                    ),
+                    Area(AreaId(2), AGENT_ACCOUNTING),
+                ),
             )
         ),
     ),
-    AreaId(3),
+    AreaId(4),
 )
 
 #: The unconditional region divides its width as the Areas under it do. The
@@ -177,11 +175,11 @@ _RECORD_COLUMN_STRETCH: Final = round(100 * _SIDEBAR_SHARE)
 #: sliders.
 _FIXED_SECTION_POLICY: Final = QSizePolicy.Policy.Maximum
 
-#: Object names the page and the chart panel are styled through.
+#: Object names the page and the case's controls are styled through.
 _PAGE_NAME: Final = "dashboardPage"
 _REGION_NAME: Final = "unconditionalRegion"
 _RECORD_COLUMN_NAME: Final = "controlRecordColumn"
-_CHART_COLUMN_NAME: Final = "chartColumn"
+_CASE_SECTION_NAME: Final = "caseSection"
 
 
 def _fixed_height(section: QWidget) -> QWidget:
@@ -232,7 +230,7 @@ def _holder(
         layout: The shared layout to add it to.
         widgets: This run's widgets for that layout, in order.
         before_stretch: True where the layout ends in a stretch the run's
-            widgets must stay in front of - the record column and the sidebar.
+            widgets must stay in front of - the record column.
 
     Returns:
         The holder, already placed.
@@ -261,10 +259,9 @@ class _RunSlots:
 
     Attributes:
         parameters: The run's setting controls, a section of the settings
-            column above the Areas, held to its own height. A height a reader
-            could drag is a fraction of the window in the layout model, so the
-            controls join the Areas as a View of their own,
-            `parameter_controls`, once the View contract exists (`PL-TH35`).
+            column above the Areas, held to its own height. A reader can also
+            show them in any Area as the `parameter_controls` View, which
+            builds copies of its own (`PL-TH35`).
         placed: Every widget this run put into a shared layout, the section
             included, and for a later run the readings it put into the first
             run's readout panels. Removing the run is deleting these.
@@ -284,21 +281,21 @@ class SimulationView(QWidget):
     """
 
     compartment_selection_changed = Signal(object)
-    """Emitted with the selection a frame was assembled from, once both plots have drawn it.
+    """Emitted with the selection a frame was assembled from, once every View has drawn it.
 
     Not when the selection is set, by a reader's request or a change to the
     run set: a frame that then failed left the legend naming curves the plot
-    was not drawing (`PL-G3K7`). Every legend showing this view's selection
-    is connected to it rather than called, so one that has been closed is
-    simply no longer told, and a second is told the same (`PL-VN6M`).
+    was not drawing (`PL-G3K7`). Every View is handed the same selection in
+    its `ViewTick`. A legend outside the Areas connects to this signal, so
+    one that has been closed is simply no longer told (`PL-VN6M`).
     """
 
     time_base_changed = Signal(object)
-    """Emitted with the time base a frame was drawn at, None for "Fit run", once both plots drew it.
+    """Emitted with the time base a frame was drawn at, None for "Fit run", once every View drew it.
 
-    Every time-base control is connected to it rather than called, so one
-    that has been closed is simply no longer told, and a second is told the
-    same (`PL-9LNF`), as `compartment_selection_changed` is for the legend.
+    Every View is handed the same time base in its `ViewTick`. A time-base
+    control outside the Areas connects to this signal (`PL-9LNF`), as a
+    legend connects to `compartment_selection_changed`.
     """
 
     def __init__(
@@ -388,43 +385,8 @@ class SimulationView(QWidget):
         # (`_keep_chart_in_view`, `PL-562Z`).
         self._chart_view_owed = False
 
-        self._concentration_chart = ConcentrationChart()
-        self._wash_in_chart = WashInChart()
-        # Every chart one frame is drawn on. The frame's width and the render
-        # tick's question of whether a chart has outgrown it are read over
-        # these rather than over two charts named in place, because once each
-        # chart is a View in its own Area either may be absent and a second
-        # of one kind may be open at another width (`PL-9LNF`).
-        self._charts: tuple[ConcentrationChart | WashInChart, ...] = (
-            self._concentration_chart,
-            self._wash_in_chart,
-        )
-        self._legend = TraceLegend()
-        self.compartment_selection_changed.connect(self._legend.show_selection)
-        self._wash_in_legend = WashInLegend()
-        # The control shows this view's time base and asks to change it; it
-        # holds none of its own, so closing it takes nothing with it and a
-        # second shows the same width (`PL-9LNF`).
-        self._time_base_selector = TimeBaseSelector()
-        self.time_base_changed.connect(self._time_base_selector.show_time_base)
-        self._time_axis_caption = styled_label("", color=MUTED)
-        self._mac_reference_text = styled_label("", color=MUTED)
-        self._mac_awake_reference_text = styled_label("", color=MUTED)
-        self._hidden_traces_text = styled_label(
-            NO_TRACES_SHOWN_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
-        )
-        self._hidden_traces_text.setHidden(True)
-        # Conditional text, and it earns a sentence on
-        # `.claude/rules/ui-reader.md`'s own test: it says why boxes the
-        # reader checked have come unchecked, which no label, unit or axis
-        # title can carry.
-        self._capped_traces_text = styled_label(
-            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
-        )
-        self._capped_traces_text.setHidden(True)
-
         # The marks are the *case's* and not any one run's, which is why they
-        # are built here beside the chart rather than in `RunView`
+        # are built here beside the Areas rather than in `RunView`
         # (`docs/ARCHITECTURE.md` § "Where new code belongs": a control shared
         # between runs must not be duplicated into each). Every run holds its
         # own copy and this is the only thing that writes them, so the copies
@@ -442,14 +404,10 @@ class SimulationView(QWidget):
         self._fork_panel.take_button.clicked.connect(self._handle_fork)
         self._fork_panel.here_button.clicked.connect(self._handle_here_fork)
 
-        self._chart_column = self._build_chart_column()
         self._build_page()
 
         for controller in controllers:
             self._place_run(controller)
-
-        self._time_base_selector.time_base_requested.connect(self._handle_time_base_request)
-        self._legend.compartment_requested.connect(self._handle_compartment_request)
 
         self._render_timer = QTimer(self)
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
@@ -491,10 +449,12 @@ class SimulationView(QWidget):
         banners sit under the transport rows and above every displayed
         value, so a halted run is read before the values it explains. Under
         the region come the setting controls of each run, each at its own
-        height, and then the Areas, the chart panel beside the sidebar, which
-        take the spare height. The Areas are drawn from `_DASHBOARD_LAYOUT`
-        by the adapter, so a reader can drag the border between them. The use
-        disclaimer is the page's last line.
+        height, and then the Areas, which take the spare height. The adapter
+        draws them from `_DASHBOARD_LAYOUT`, and builds each Area's View
+        through the View registry (`PL-TH35`), so a reader can drag the
+        borders between them and choose any View for any Area. Under the
+        Areas come the case's controls, the marks and the branch control,
+        and the use disclaimer is the page's last line.
 
         No run is placed here. Every layout a run contributes to is kept, so
         that `_place_run` can fill them in the same order whether it is
@@ -517,12 +477,11 @@ class SimulationView(QWidget):
         self._settings_column = _spaced_column(settings, PAGE_SPACING)
         column.addWidget(settings)
 
-        self._sidebar = QWidget()
-        self._sidebar_column = _spaced_column(self._sidebar, PAGE_SPACING)
-        self._sidebar_column.addStretch(1)
-
-        self._areas = AreaLayout(_DASHBOARD_LAYOUT, self._area_view)
+        requests = ViewRequests(self._handle_time_base_request, self._handle_compartment_request)
+        self._areas = AreaLayout(_DASHBOARD_LAYOUT, requests)
+        self._areas.views_changed.connect(partial(self.present, False))
         column.addWidget(self._areas, 1)
+        column.addWidget(self._build_case_section())
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
 
         scroll = QScrollArea()
@@ -553,7 +512,7 @@ class SimulationView(QWidget):
         every run's control-change record, scrolling within itself so a long
         record never makes the band taller than the rows beside it
         (`PL-J8K2` Q3). The two columns take the band's width in the shares
-        the chart panel and the sidebar take the Areas' width, so one run's
+        the charts and the sidebar take the Areas' width, so one run's
         seven readouts stand in one row at a 1366 px window (`PL-F2YS`).
         Nothing new is drawn around the region (`PL-J8K2` Q4).
 
@@ -621,76 +580,29 @@ class SimulationView(QWidget):
 
         return self._areas
 
-    def _area_view(self, area: Area) -> QWidget | None:
-        """The widget `area` draws: the chart panel, the sidebar of accounting panels, or None.
+    def _build_case_section(self) -> QWidget:
+        """The case's controls, under the Areas: the marks, then the branch control.
 
-        None is for a registered View kind the dashboard does not draw as a
-        View of its own yet, such as the wash-in plot, which a reader can
-        choose for any Area from its View chooser. The adapter shows a notice
-        in that Area instead (`PL-50PZ`). A kind the registry does not hold
-        never reaches here: the adapter draws its failure notice instead.
-        """
-
-        views = {CONCENTRATION_CHART: self._chart_column, AGENT_ACCOUNTING: self._sidebar}
-
-        return views.get(area.view)
-
-    def _build_chart_column(self) -> QWidget:
-        """The chart panel: heading and time base, captions, legend, advisories, both plots.
-
-        Everything above each plot is a label, a legend entry or a reference
-        value rather than a sentence (`PL-6580`, `PL-F9TQ`); the two
-        advisories - no trace drawn, a trace above the axis - speak only when
-        they apply. A compartment's legend entry stays on screen when its
-        trace is unchecked and keeps its line-style words while it is off
-        (`PL-YTX9`). Both charts are direct children of this widget, in
-        this order, so a walk of its layout reads the panel as a reader
-        does.
+        Neither is a View, because neither belongs to a plot. Both offer
+        instants of the case rather than of any one run or plot, so neither
+        sits inside a `RunView` or an Area. Where they sit is a placeholder
+        (`PL-TH35`).
         """
 
         panel = QWidget()
-        panel.setObjectName(_CHART_COLUMN_NAME)
+        panel.setObjectName(_CASE_SECTION_NAME)
         panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        panel.setStyleSheet(panel_stylesheet(_CHART_COLUMN_NAME))
+        panel.setStyleSheet(panel_stylesheet(_CASE_SECTION_NAME))
         column = QVBoxLayout(panel)
         column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
-        column.setSpacing(6)
+        column.setSpacing(VIEW_ROW_SPACING)
 
-        heading = QHBoxLayout()
-        heading.setSpacing(8)
-        heading.addWidget(styled_label(CHART_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
-        heading.addWidget(self._time_base_selector)
-        column.addLayout(heading)
-        column.addWidget(self._time_axis_caption)
-        column.addWidget(self._mac_reference_text)
-        column.addWidget(self._mac_awake_reference_text)
-        column.addWidget(self._legend)
-        column.addWidget(self._hidden_traces_text)
-        column.addWidget(self._capped_traces_text)
-        off_scale_notices = QWidget()
-        self._off_scale_column = _spaced_column(off_scale_notices, column.spacing())
-        column.addWidget(off_scale_notices)
-        column.addWidget(self._concentration_chart)
-        column.addWidget(self._section_divider())
-
-        column.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True))
-        column.addWidget(styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True))
-        column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
-        column.addWidget(self._wash_in_legend)
-        wash_in_states = QWidget()
-        self._wash_in_state_column = _spaced_column(wash_in_states, column.spacing())
-        column.addWidget(wash_in_states)
-        column.addWidget(self._wash_in_chart)
-
-        # A section of its own, below both plots, rather than under the
-        # concentration chart it is most often read against. Two reasons, and
-        # the second is the stronger: the marks are the case's rather than
-        # either plot's, so nesting them in one plot's chrome would say
-        # otherwise; and `PL-F9TQ` governs what may stand between a chart
-        # heading and its plot, which is the accretion a control placed there
-        # would resume.
-        column.addWidget(self._section_divider())
+        # A section of its own rather than inside the concentration chart's
+        # View it is most often read against. Two reasons, and the second is
+        # the stronger: the marks are the case's rather than either plot's,
+        # so nesting them in one plot's chrome would say otherwise; and
+        # `PL-F9TQ` governs what may stand between a chart heading and its
+        # plot, which is the accretion a control placed there would resume.
         column.addWidget(self._bookmarks_panel)
 
         # And the branch control below them, for the same reason and one
@@ -744,9 +656,6 @@ class SimulationView(QWidget):
             _holder(self._notice_column, (run.build_notice(),)),
             readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
-            _holder(self._sidebar_column, (run.build_accounting_panel(),), before_stretch=True),
-            _holder(self._off_scale_column, (run.build_off_scale_notice(),)),
-            _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
             parameters,
         )
         # A later run's readouts join the first run's panels, so two runs
@@ -1135,7 +1044,7 @@ class SimulationView(QWidget):
         self._show_branch(branch)
 
     def _show_branch(self, branch: SimulationController) -> None:
-        """Draw a branch just taken beside the trunk, and bring the chart comparing them into view.
+        """Draw a branch just taken beside the trunk, and bring the charts comparing them into view.
 
         Both branch controls end here. The new run's readouts are laid out
         above the chart, so without the scroll the chart the learner branched
@@ -1150,7 +1059,9 @@ class SimulationView(QWidget):
     def _keep_chart_in_view(self) -> None:
         """Scroll the page to the concentration chart, and keep it there until the reader scrolls.
 
-        The new run's widgets reach their final size over several passes of
+        The chart is the plot of the first Area showing a concentration chart
+        View, or the Areas themselves where none does (`_chart_in_view`). The
+        new run's widgets reach their final size over several passes of
         layout after the press returns, and each pass moves the chart. So
         the scroll is made now and again each time the page's height changes
         (`_follow_chart`), until the reader scrolls the page themselves or the
@@ -1161,7 +1072,15 @@ class SimulationView(QWidget):
         """
 
         self._chart_view_owed = True
-        self._page_scroll.ensureWidgetVisible(self._concentration_chart, 0, 0)
+        self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
+
+    def _chart_in_view(self) -> QWidget:
+        """The plot that `_keep_chart_in_view` keeps on screen, or the Areas where none is shown."""
+
+        return next(
+            (view.chart for view in self._areas.views() if isinstance(view, ConcentrationView)),
+            self._areas,
+        )
 
     def _release_chart_view(self) -> None:
         """Stop holding the chart in view, because the reader has scrolled the page."""
@@ -1172,7 +1091,7 @@ class SimulationView(QWidget):
         """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
         if self._chart_view_owed:
-            self._page_scroll.ensureWidgetVisible(self._concentration_chart, 0, 0)
+            self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
 
     def _restate_fork_panel(self) -> None:
         """Restate both branch controls from the case on a halt, and offer nothing if that raises.
@@ -1285,14 +1204,16 @@ class SimulationView(QWidget):
         A frame is owed when a change asked for one (`present(True)`), when
         the run set differs from the one the last frame was drawn over, when
         a run's record differs from the one its view last wrote
-        (`RunView.owes_a_frame`), and when a chart is wider than the frame it
-        drew was sampled for (`ConcentrationChart.owes_a_frame`). The last
-        three are read from the runs and the charts rather than asked for by
-        whatever changed them, so a run that stops itself inside its own step
-        tick is redrawn within one tick (`PL-T995`), a run added without a
-        frame is drawn on the next (`PL-0LG6`), a chart whose Area a reader
-        widens is redrawn although the window kept its size (`PL-9LNF`), and
-        a path added later is covered without being named (`PL-X7D5`).
+        (`RunView.owes_a_frame`), and when a View owes one (`View.owes_a_frame`):
+        a View not drawn yet, or a chart wider than the frame it drew was
+        sampled for. The last three are read from the runs and the Views
+        rather than asked for by whatever changed them, so a run that stops
+        itself inside its own step tick is redrawn within one tick
+        (`PL-T995`), a run added without a frame is drawn on the next
+        (`PL-0LG6`), a View a reader chooses for an Area is drawn on the next
+        (`PL-TH35`), a chart whose Area a reader widens is redrawn although
+        the window kept its size (`PL-9LNF`), and a path added later is
+        covered without being named (`PL-X7D5`).
 
         The pending flag is cleared before the frame is drawn, so a frame
         that raises cannot leave the change that asked for it owed forever;
@@ -1305,7 +1226,7 @@ class SimulationView(QWidget):
             and not self._render_pending
             and len(self._runs) == self._drawn_run_count
             and not any(run.owes_a_frame for run in self._runs)
-            and not any(chart.owes_a_frame for chart in self._charts)
+            and not self._areas.owes_a_frame
         ):
             return
 
@@ -1317,18 +1238,17 @@ class SimulationView(QWidget):
             self._halt_every_run(error)
 
     def _refresh_view(self) -> None:
-        """Read every run once, assemble one frame, draw both plots, then refresh every run.
+        """Read every run once, assemble one frame, draw every View, then refresh every run.
 
-        The frame is assembled for the widest of the charts, so none draws
-        a chord wider than a pixel (`PL-GS3R`). One frame rather than one per
-        chart at its own width: the two plots differ by about 53 px at every
-        window width measured, so a frame each would assemble twice on every
-        tick (`PL-9LNF`). The MAC-awake line is
-        the reference run's, because the frame carries the band's edges and
-        not the published fraction it was drawn from. Both legends are told
-        what the frame drew once both plots have drawn it, and not before,
-        so where the frame fails they go on naming the curves still on the
-        plot (`PL-G3K7`).
+        The frame is assembled for the widest plot any View draws, so none
+        draws a chord wider than a pixel (`PL-GS3R`). One frame rather than
+        one per plot at its own width: the two plots differ by about 53 px at
+        every window width measured, so a frame each would assemble twice on
+        every tick, and the two plots would not draw the same instants
+        (`PL-9LNF`). The adapter hands the frame to every View in one
+        `ViewTick` (`PL-TH35`). Each legend is told what its plot drew once
+        the plot has drawn it, and not before, so where the frame fails it
+        goes on naming the curves still on the plot (`PL-G3K7`).
 
         Raises:
             ValueError: If the runs have come to be on different agents
@@ -1346,25 +1266,11 @@ class SimulationView(QWidget):
             for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True))
         )
         frame = assemble_chart_frame(
-            inputs,
-            time_base,
-            selection.shown,
-            plot_width_px=max(chart.plot_width_px() for chart in self._charts),
+            inputs, time_base, selection.shown, plot_width_px=self._areas.frame_width_px()
         )
-
-        for chart in self._charts:
-            chart.draw(frame)
-
+        self._areas.refresh(ViewTick(frame, snapshots, self._runs, time_base, selection))
         self.compartment_selection_changed.emit(selection)
         self.time_base_changed.emit(time_base)
-        self._wash_in_legend.set_run_count(len(frame.runs))
-        self._time_axis_caption.setText(time_axis_caption(frame))
-        self._mac_reference_text.setText(mac_reference_caption(frame))
-        self._mac_awake_reference_text.setText(mac_awake_caption(snapshots[0]))
-        self._hidden_traces_text.setHidden(not no_traces_shown(frame))
-        cap_notice = compartment_cap_notice(frame)
-        self._capped_traces_text.setText(cap_notice or "")
-        self._capped_traces_text.setHidden(cap_notice is None)
 
         for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
             run.refresh(snapshot, frame, index)
@@ -1657,7 +1563,8 @@ class SimulationView(QWidget):
 
         Every label, every button and the name assistive technology
         announces for it, every entry of every combo, every window title, and
-        the titles on both plots' axes - so a whole-interface test holds one
+        what every View paints itself, such as its plot's axis titles
+        (`View.painted_strings`) - so a whole-interface test holds one
         definition of "on screen" rather than each walking the tree its own
         way. The hover readout is not standing text and is held by the chart's
         own tests.
@@ -1667,8 +1574,7 @@ class SimulationView(QWidget):
 
     def _interface_strings(self) -> Iterator[str]:
         yield self.window().windowTitle()
-        yield from self._concentration_chart.axis_titles()
-        yield from self._wash_in_chart.axis_titles()
+        yield from self._areas.painted_strings()
 
         for widget in (self, *self.findChildren(QWidget)):
             if isinstance(widget, QDialog):

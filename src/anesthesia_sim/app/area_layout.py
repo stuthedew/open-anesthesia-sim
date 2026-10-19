@@ -33,11 +33,19 @@ draws the result. The menu reads the registry and not the Workspace, so every
 registered kind, the agent accounting among them, can be brought into any
 Area of any layout. That is what `docs/MODEL.md` means by reachable.
 
-**Each Area's View kind is looked up in the View registry.** An Area whose
-kind `app/view_registry.py` registers draws the widget the caller's
-`view_for` returns for it. An Area whose kind is not registered draws the
-failure notice in its place, and `view_for` is never asked for it
-(`PL-R1WQ`). The notice names the saved kind, says what became of it, and
+**Each Area's View kind is looked up in the View registry, and its View is
+built by the entry's factory** (`PL-R1WQ`, `PL-TH35`). The factory is called
+with a `ViewContext`: how the View asks for a change to shared state, and the
+state this layout kept for that Area and kind. So every registered kind can be
+drawn in any Area, and two Areas naming one kind each get their own View. This
+module is the only caller of the View contract's members
+(`app/view_contract.py`). It hands every View each frame's `ViewTick`, asks
+each for the plot width its frame must be sampled for, and saves a View's
+state when the reader replaces it through the chooser. When that kind returns
+to that Area, its View is built from the saved state. A View the layout still
+draws in the same Area keeps its instance across a rebuild. An Area whose kind
+is not registered draws the failure notice in its place, and no factory is
+called for it. The notice names the saved kind, says what became of it, and
 tells the reader to choose a View from the chooser above it. Where the View
 was renamed, the notice also offers a button that shows it under its new tag,
 since a renamed tag is never mapped silently (`PL-R1WQ` Q3). It shows no value
@@ -45,15 +53,6 @@ from any run, and the model keeps the kind, so the Area's neighbours draw as
 usual and a later save writes back what was read. The notice's look is
 `PL-DB5G`'s: a bold title in `WARNING` over a body in `INK`, on the panel
 surface, with no fill, border or icon.
-
-**Until `PL-TH35` gives the registry a factory, the caller builds each View,
-and may not have one to give.** `view_for` returns None for a registered kind
-the caller cannot yet draw in an Area of its own, and that Area shows a notice
-saying so. The caller may also hand back a widget another Area already
-shows, where it draws only one of that View. A widget cannot sit in two
-places, so the second Area shows a notice instead and the first keeps the
-View. Both notices are `AreaNotice`s, so a reader meets one shape for every
-state in which an Area shows no View (`PL-DB5G`).
 
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
@@ -70,7 +69,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping
 from functools import partial
-from typing import Final
+from typing import Final, cast
 
 from PySide6.QtCore import QEvent, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QEnterEvent, QFont, QPainter, QPaintEvent, QResizeEvent
@@ -105,31 +104,21 @@ from anesthesia_sim.app.theme import (
     PRIMARY,
     WARNING,
 )
+from anesthesia_sim.app.view_contract import SavedState, View, ViewContext, ViewRequests, ViewTick
 from anesthesia_sim.app.view_registry import (
     MISSING_VIEW_TITLE,
     REGISTERED,
     RETIRED_TAGS,
-    SHOWN_ELSEWHERE_TITLE,
-    UNPLACED_VIEW_TITLE,
     RegisteredView,
     RetiredTag,
     missing_view_text,
     rename_offer_text,
-    shown_elsewhere_text,
-    unplaced_view_text,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused
 from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind
 
-__all__ = ["AreaFrame", "AreaLayout", "AreaNotice", "ViewChooser", "ViewFor"]
-
-type ViewFor = Callable[[Area], QWidget | None]
-"""What gives the adapter each Area's View: the widget to draw in that Area.
-
-It returns None for a registered kind the caller cannot yet draw in an Area of
-its own, and the Area then shows a notice that says so.
-"""
+__all__ = ["AreaFrame", "AreaLayout", "AreaNotice", "ViewChooser"]
 
 # The height of the rule under an Area's header.
 _HEADER_RULE_PX: Final = 1
@@ -150,11 +139,15 @@ class AreaLayout(QWidget):
         layout_changed: Emitted with the new `LayoutModel` after a reader's
             drag has changed it. `set_model` does not emit it, because the
             caller already holds the layout it passed.
+        views_changed: Emitted once the Areas are built again, after a View
+            is chosen or a layout of another shape is set. A View built then
+            has drawn nothing yet, so the caller draws a frame at once rather
+            than leave its Area blank until the next tick.
 
     Args:
         model: The layout to draw.
-        view_for: Gives the widget for each Area whose View kind is
-            registered, or None where it has none to give.
+        requests: How every View asks the dashboard to change shared state,
+            handed to each in its `ViewContext`.
         parent: The Qt parent.
         registered: The View kinds this build can draw, in the order each
             Area's chooser lists them. A test passes a registry of its own.
@@ -162,30 +155,36 @@ class AreaLayout(QWidget):
             reads. A test passes a table of its own.
 
     Raises:
-        TypeError: `model` is not a `LayoutModel`.
+        TypeError: `model` is not a `LayoutModel`; or a factory returned
+            something that is not a `QWidget` satisfying `View`.
         ValueError: `model` holds more than one window.
     """
 
     layout_changed = Signal(object)
+    views_changed = Signal()
 
     def __init__(
         self,
         model: LayoutModel,
-        view_for: ViewFor,
+        requests: ViewRequests,
         parent: QWidget | None = None,
         *,
         registered: Mapping[str, RegisteredView] = REGISTERED,
         retired: Mapping[str, RetiredTag] = RETIRED_TAGS,
     ) -> None:
         super().__init__(parent)
-        self._view_for = view_for
+        self._requests = requests
         self._registered = registered
         self._retired = retired
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._model = _drawable(model)
+        self._previous_views: dict[AreaId, tuple[ViewKind, View]] = {}
         self._root: QWidget | None = None
-        self._views: list[QWidget] = []
+        # Each Area's View, with the kind it was built for, in reading order.
+        self._views: dict[AreaId, tuple[ViewKind, View]] = {}
+        # The state of each View the reader replaced, by its Area and kind.
+        self._saved: dict[tuple[AreaId, ViewKind], SavedState] = {}
         self._notices: list[AreaNotice] = []
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
@@ -197,6 +196,47 @@ class AreaLayout(QWidget):
         """The layout drawn now, after every drag the reader has made."""
 
         return self._model
+
+    def views(self) -> tuple[QWidget, ...]:
+        """Every View drawn now, in the reading order of the Areas that show them."""
+
+        return tuple(_widget(view) for _, view in self._views.values())
+
+    def refresh(self, tick: ViewTick) -> None:
+        """Draw `tick` in every View, in the reading order of their Areas.
+
+        Raises:
+            Exception: whatever a View raises while drawing. The Views after
+                it are not drawn, and the caller halts every run.
+        """
+
+        for _, view in tuple(self._views.values()):
+            view.refresh(tick)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        """Whether any View needs a frame although nothing in the runs changed."""
+
+        return any(view.owes_a_frame for _, view in self._views.values())
+
+    def frame_width_px(self) -> float:
+        """The widest plot any View needs its frame sampled for, or 0 where none draws one.
+
+        At 0, `chart_frame.chart_columns` samples the frame at its floor.
+        """
+
+        widths = [
+            width
+            for _, view in self._views.values()
+            if (width := view.frame_width_px()) is not None
+        ]
+
+        return max(widths, default=0.0)
+
+    def painted_strings(self) -> tuple[str, ...]:
+        """The text every View paints without a label or a button, in reading order."""
+
+        return tuple(text for _, view in self._views.values() for text in view.painted_strings())
 
     def frame(self, area_id: AreaId) -> AreaFrame:
         """The widget drawing the Area `area_id`: its header, and its View or notice under it.
@@ -233,11 +273,10 @@ class AreaLayout(QWidget):
 
         Where `model` holds the same splits and the same Areas in the same
         places, only the sizes change, and every View stays where it is.
-        Otherwise the splitters are built again and each Area's View is asked
-        for again. A View the new layout still draws is moved into the new
-        splitters. A View it no longer draws is taken out of this widget and
-        left to whatever made it. Each failure notice is built again with the
-        splitters.
+        Otherwise the splitters are built again. An Area that still shows the
+        same kind keeps its View, moved into the new splitters. Any other
+        View's state is saved under its Area and kind, and the View is
+        deleted. Each failure notice is built again with the splitters.
 
         Raises:
             TypeError: `model` is not a `LayoutModel`.
@@ -260,18 +299,23 @@ class AreaLayout(QWidget):
         """Build the splitters for the model and put each Area's View in its place."""
 
         previous_root = self._root
-        previous_views = self._views
+        self._previous_views = self._views
         previous_notices = self._notices
-        self._views = []
+        self._views = {}
         self._notices = []
         self._frames = {}
         self._splitters = {}
         self._hovered = None
         root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
 
-        for view in previous_views:
-            if not any(view is kept for kept in self._views):
-                view.setParent(None)
+        for area_id, (kind, view) in self._previous_views.items():
+            if not any(view is kept for _, kept in self._views.values()):
+                self._saved[(area_id, kind)] = view.save_state()
+                widget = _widget(view)
+                widget.setParent(None)
+                widget.deleteLater()
+
+        self._previous_views = {}
 
         for notice in previous_notices:
             notice.setParent(None)
@@ -287,6 +331,7 @@ class AreaLayout(QWidget):
         self._column.addWidget(root)
         self._root = root
         self._lay_out_all()
+        self.views_changed.emit()
 
     def _widget_for(self, node: Node, path: tuple[int, ...]) -> QWidget:
         """The widget drawing `node`: its frame for an Area, a splitter for a split."""
@@ -326,21 +371,17 @@ class AreaLayout(QWidget):
 
             return self._notice(notice)
 
-        view = self._view_for(area)
+        kept = self._previous_views.get(area.id)
 
-        if view is None:
-            return self._notice(
-                AreaNotice(UNPLACED_VIEW_TITLE, unplaced_view_text(area.view, self._registered))
-            )
+        if kept is not None and kept[0] == area.view:
+            view = kept[1]
+        else:
+            context = ViewContext(self._requests, self._saved.get((area.id, area.view)))
+            view = _checked_view(area.view, self._registered[area.view].factory(context))
 
-        if any(view is placed for placed in self._views):
-            return self._notice(
-                AreaNotice(SHOWN_ELSEWHERE_TITLE, shown_elsewhere_text(area.view, self._registered))
-            )
+        self._views[area.id] = (area.view, view)
 
-        self._views.append(view)
-
-        return view
+        return _widget(view)
 
     def _notice(self, notice: AreaNotice) -> AreaNotice:
         self._notices.append(notice)
@@ -669,6 +710,30 @@ class _AreaHandle(QSplitterHandle):
         painter = QPainter(self)
         painter.fillRect(line, QColor(PRIMARY))
         painter.end()
+
+
+def _checked_view(kind: ViewKind, view: object) -> View:
+    """`view`, once it is a `QWidget` that satisfies the View contract.
+
+    Raises:
+        TypeError: the factory for `kind` returned something else. A View
+            that could not be drawn or refreshed would leave its Area showing
+            whatever it drew last, or nothing, as if it were current.
+    """
+
+    if not isinstance(view, QWidget) or not isinstance(view, View):
+        raise TypeError(
+            f"the factory for the View kind {kind!r} returned a {type(view).__name__}, which "
+            "is not a QWidget that satisfies the View contract"
+        )
+
+    return view
+
+
+def _widget(view: View) -> QWidget:
+    """`view` as the widget it is: `_checked_view` admitted only a `QWidget`."""
+
+    return cast(QWidget, view)
 
 
 def _drawable(model: LayoutModel) -> LayoutModel:

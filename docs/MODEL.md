@@ -7117,10 +7117,8 @@ fails when the module is imported. A layout always holds at least one Area,
 so there is always a chooser to use. None of the shipped Workspaces names the
 accounting View, so the chooser is its route in the shipped set, and
 `tests/integration/test_view_chooser.py` checks that route from every Area of
-each of them. *Until each View can be built once per Area* (`PL-TH35`), the
-dashboard draws one accounting sidebar. Where two Areas name it, the one
-first in reading order shows it and the other shows a notice saying it is
-shown elsewhere, so it stays on screen either way.
+each of them. Each Area that names the accounting View builds a View of its
+own (`PL-TH35`), so two Areas naming it both show the five amounts.
 
 **Conditional. These bind a surface only when that surface is shown.** A
 concentration chart carries the MAC-awake band, the 1 MAC line, the control

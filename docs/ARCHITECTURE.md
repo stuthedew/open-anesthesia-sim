@@ -96,9 +96,11 @@ src/anesthesia_sim/
 │   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the charts, the legend and the compartment selection it shows, the time base, the captions, the wash-in section, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
-│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); an Area whose View cannot be drawn shows an AreaNotice instead (PL-R1WQ)
-│   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of each Area notice; toolkit-independent (PL-R1WQ)
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection and the time base every View is shown, the one chart frame a tick assembles, the case section of bookmarks and branching under the Areas, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
+│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered shows an AreaNotice instead (PL-R1WQ)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the ViewTick it is drawn from, ViewRequests for a change to shared state, and the saved-state version check (PL-TH35)
+│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35)
+│   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind notice (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── run_surfaces.py             # the four parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, OffScaleLine, WashInStateLine, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
@@ -961,13 +963,21 @@ in it, or a line left behind after a deletion, fails `make check`.
   the literals that predate it and only shrinks, and a finding names any
   constant of the same value without deciding that it is the same quantity,
   which stays the reader's call (`PL-40SJ`).
-- A new View kind → its tag as a literal in `app/view_registry.py`, with a
-  `RegisteredView` entry beside it. The tag is what saved layouts name, so it
-  never changes: a View renamed or removed goes into `RETIRED_TAGS` with the
-  release that retired it, and its old tag is never registered again
-  (`PL-R1WQ`). Every Area's chooser lists the new kind at once. Where the
-  dashboard cannot yet draw it in an Area, `SimulationView._area_view`
-  returns None for it and the Area says so (`PL-50PZ`).
+- A new View → a class in `app/views.py` that is a `QWidget` and satisfies
+  `app/view_contract.py`'s `View` protocol, built from a `ViewContext` alone.
+  It is drawn from each `ViewTick` and asks for a change to shared state
+  through the context's requests, never holding that state itself. The
+  module docstring of `app/view_contract.py` states the contract, and
+  `ConcentrationView` is the instance to read end to end. Then give it a tag
+  as a literal in `app/view_registry.py`, with a `RegisteredView` entry
+  beside it that names the class as its factory. The tag is what saved
+  layouts name, so it never changes: a View renamed or removed goes into
+  `RETIRED_TAGS` with the release that retired it, and its old tag is never
+  registered again (`PL-R1WQ`). Every Area's chooser lists the new kind at
+  once (`PL-50PZ`), and `tests/integration/test_view_contract.py` builds it,
+  checks it against the protocol and checks that it reads back the state it
+  saves. A value `docs/MODEL.md` § "Minimum displayed outputs" puts in the
+  unconditional set never goes in a View.
 - A new display panel or control → what it *claims*, as a plain value with a
   test in `tests/unit/test_dashboard_frame.py`, in `app/dashboard_frame.py`;
   the widget that draws it, deciding nothing, in `app/qt_widgets.py`; and its
@@ -999,13 +1009,14 @@ in it, or a line left behind after a deletion, fails `make check`.
   the instants that span plots, so what crosses that boundary is bounded by
   the display rather than by the run's length.
 
-  **The *whose is it* question describes the fixed layout shipped today, and
-  is superseded when `ROADMAP.md` item 34's area system lands.** It routes by
-  which of two containers holds a surface, and an area holds one View with
-  any View able to occupy any area, so the question stops having an answer:
-  `PL-TH35` is where the View contract that replaces it is written, and
-  adding that route is its work rather than this bullet's. Until then this
-  bullet still decides **where the code goes**, and
+  **The *whose is it* question describes the fixed layout, and the View
+  contract supersedes it for anything an Area holds.** It routes by which of
+  two containers holds a surface, and an Area holds one View with any View
+  able to occupy any Area, so the question stops having an answer there. The
+  route for a View is the bullet above (`PL-TH35`). This bullet still decides
+  **where the code goes** for what stays outside the Areas - the
+  unconditional region, the settings above the Areas and the case section
+  below them - and
   `.claude/rules/ui-areas.md` — which loads on the same `src/` read as this
   file — decides **what shape it is in**: a widget that does not assume its
   size, its neighbours, or that it is alone. The two are not in conflict once

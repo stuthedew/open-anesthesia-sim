@@ -6,21 +6,36 @@ each Area its View, the splitters take the model's sizes, a reader's drag
 changes the model and every widget follows the model, and a layout the model
 refuses changes nothing. An Area whose View kind the registry does not hold
 shows the failure notice and nothing else, while its neighbours draw as usual
-(`PL-R1WQ`). Each expected size is worked out here from the
+(`PL-R1WQ`). Each Area's View is built by its registry entry's factory, and
+the adapter holds the View contract's side of it (`PL-TH35`): a View of its
+own for every Area, its state kept when it is replaced, and every View drawn
+from one tick. Each expected size is worked out here from the
 pixels, never read back from the adapter. They render under the `offscreen`
 platform `tests/conftest.py` selects.
 """
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
 
 from anesthesia_sim.app.area_layout import AreaFrame, AreaLayout, AreaNotice, ViewChooser
+from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
+from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
+from anesthesia_sim.app.view_contract import (
+    STATE_VERSION_KEY,
+    SavedState,
+    ViewContext,
+    ViewRequests,
+    ViewTick,
+)
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
@@ -28,8 +43,63 @@ from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, V
 _VIEW = ViewKind("test_view")
 _UNKNOWN = ViewKind("retired_view")
 
+# Every test View built, in the order it was built. `_forget_the_views` empties
+# it before each test.
+_BUILT: list[_TestView] = []
+
+# A View asks the dashboard for nothing here.
+_REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
+
+
+class _TestView(QWidget):
+    """A View that draws nothing, and records what it was built from and shown.
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__()
+        self.context = context
+        self.ticks: list[ViewTick] = []
+        self.width_px: float | None = None
+        self.setting = 0
+        # Small enough that Qt's own minimum never stops a drag here.
+        self.setMinimumSize(10, 10)
+        _BUILT.append(self)
+
+        if context.saved_state is not None:
+            setting = context.saved_state["setting"]
+            assert isinstance(setting, int)
+            self.setting = setting
+
+    def refresh(self, tick: ViewTick) -> None:
+        self.ticks.append(tick)
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return not self.ticks
+
+    def frame_width_px(self) -> float | None:
+        return self.width_px
+
+    def save_state(self) -> SavedState:
+        return {STATE_VERSION_KEY: 1, "setting": self.setting}
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return (f"painted {self.setting}",)
+
+
+class _OtherView(_TestView):
+    """The View of `_OTHER`, told apart from `_TestView` by its class."""
+
+
+class _ThirdView(_TestView):
+    """The View of `_THIRD`."""
+
+
 # The tests draw a View kind of their own, so they register it themselves.
-_REGISTERED = registry(RegisteredView(_VIEW, "Test view"))
+_REGISTERED = registry(RegisteredView(_VIEW, "Test view", _TestView))
 
 # A container this size leaves 400 px for the children of a split of two, once
 # the 8 px handle is taken out, so a fraction reads straight off as pixels.
@@ -52,27 +122,6 @@ def _column(sizes: tuple[float, ...], *children: Node) -> Split:
     return Split(Orientation.COLUMN, sizes, children)
 
 
-class _Views:
-    """Hands each Area a plain widget, the same one each time it is asked."""
-
-    def __init__(self) -> None:
-        self.by_id: dict[int, QWidget] = {}
-        self.asked: list[int] = []
-
-    def __call__(self, area: Area) -> QWidget:
-        self.asked.append(area.id)
-        view = self.by_id.get(area.id)
-
-        if view is None:
-            view = QWidget()
-            view.setObjectName(f"view{area.id}")
-            # Small enough that Qt's own minimum never stops a drag here.
-            view.setMinimumSize(10, 10)
-            self.by_id[area.id] = view
-
-        return view
-
-
 @pytest.fixture(scope="module")
 def application() -> Iterator[QApplication]:
     existing = QApplication.instance()
@@ -80,9 +129,11 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
-@pytest.fixture
-def views() -> _Views:
-    return _Views()
+@pytest.fixture(autouse=True)
+def _forget_the_views() -> Iterator[None]:
+    _BUILT.clear()
+    yield
+    _BUILT.clear()
 
 
 @pytest.fixture
@@ -103,10 +154,9 @@ def _show(
     application: QApplication,
     shown: list[AreaLayout],
     model: LayoutModel,
-    views: _Views,
     size: tuple[int, int] = (_SIDE_PX, _SIDE_PX),
 ) -> AreaLayout:
-    container = AreaLayout(model, views, registered=_REGISTERED)
+    container = AreaLayout(model, _REQUESTS, registered=_REGISTERED)
     container.resize(*size)
     container.show()
     application.processEvents()
@@ -164,31 +214,32 @@ def _primary_pixels(image: QImage) -> int:
 
 
 def test_each_split_is_a_splitter_and_each_area_its_view(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """A column holding a row of Areas 1 and 2 above Area 3 is two splitters, nested."""
 
     model = _layout(_column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3)), 4)
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
     splitters = _splitters(container)
 
     assert set(splitters) == {(), (0,)}
     assert splitters[()].orientation() == Qt.Orientation.Vertical
     assert splitters[(0,)].orientation() == Qt.Orientation.Horizontal
     assert splitters[()].widget(0) is splitters[(0,)]
-    assert _content(splitters[()].widget(1)) is views.by_id[3]
-    assert _content(splitters[(0,)].widget(0)) is views.by_id[1]
-    assert _content(splitters[(0,)].widget(1)) is views.by_id[2]
-    assert sorted(views.asked) == [1, 2, 3]
+    assert len(_BUILT) == 3
+    assert _content(splitters[(0,)].widget(0)) is _BUILT[0]
+    assert _content(splitters[(0,)].widget(1)) is _BUILT[1]
+    assert _content(splitters[()].widget(1)) is _BUILT[2]
+    assert container.views() == tuple(_BUILT)
 
 
 def test_every_handle_is_live_and_no_area_can_be_dragged_to_nothing(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """The handles v0.4.26 built inert are enabled, the width `PL-RQT1` set, with split cursors."""
 
     model = _layout(_column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3)), 4)
-    splitters = _splitters(_show(application, shown, model, views))
+    splitters = _splitters(_show(application, shown, model))
     cursors = {(): Qt.CursorShape.SplitVCursor, (0,): Qt.CursorShape.SplitHCursor}
 
     for path, splitter in splitters.items():
@@ -199,44 +250,45 @@ def test_every_handle_is_live_and_no_area_can_be_dragged_to_nothing(
 
 
 def test_a_layout_of_one_area_is_its_view_alone(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    container = _show(application, shown, LayoutModel.single_area(_VIEW), views)
+    container = _show(application, shown, LayoutModel.single_area(_VIEW))
 
     assert _splitters(container) == {}
-    assert views.by_id[1].parentWidget() is container.frame(AreaId(1))
+    (view,) = _BUILT
+    assert view.parentWidget() is container.frame(AreaId(1))
     assert container.frame(AreaId(1)).parentWidget() is container
-    assert views.by_id[1].isVisible()
+    assert view.isVisible()
 
 
 def test_the_splitters_take_the_sizes_the_model_holds(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """A quarter and three quarters of 400 px are 100 px and 300 px."""
 
-    container = _show(application, shown, _layout(_row((0.25, 0.75), _area(1), _area(2)), 3), views)
+    container = _show(application, shown, _layout(_row((0.25, 0.75), _area(1), _area(2)), 3))
 
     assert _splitters(container)[()].sizes() == [100, 300]
 
 
-def test_a_layout_of_two_windows_is_refused(views: _Views) -> None:
+def test_a_layout_of_two_windows_is_refused() -> None:
     """This build opens one window, so an Area in a second would not be drawn at all."""
 
     model = LayoutModel((Window(_area(1)), Window(_area(2))), AreaId(3))
 
     with pytest.raises(ValueError, match="draws one window, and the layout holds 2"):
-        AreaLayout(model, views, registered=_REGISTERED)
+        AreaLayout(model, _REQUESTS, registered=_REGISTERED)
 
 
 # --------------------------------------------------------- a reader's drag
 
 
 def test_a_drag_on_a_border_changes_the_layout_model(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """Dragging the border 100 px right of the middle of 400 px leaves it three quarters across."""
 
-    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3), views)
+    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
 
@@ -250,7 +302,7 @@ def test_a_drag_on_a_border_changes_the_layout_model(
 
 
 def test_a_drag_moves_every_handle_on_the_dragged_line(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """Two rows stacked, each split at the middle: dragging the top border moves the bottom one.
 
@@ -265,7 +317,7 @@ def test_a_drag_moves_every_handle_on_the_dragged_line(
         ),
         5,
     )
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
     splitters = _splitters(container)
 
     _drag(application, splitters[(0,)], 1, -100)
@@ -282,7 +334,7 @@ def test_a_drag_moves_every_handle_on_the_dragged_line(
 
 
 def test_a_drag_leaves_a_border_on_another_line_where_it_was(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """The bottom border, at 0.7, is not on the top border's line at 0.5, so it stays."""
 
@@ -292,7 +344,7 @@ def test_a_drag_leaves_a_border_on_another_line_where_it_was(
         ),
         5,
     )
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
     splitters = _splitters(container)
 
     _drag(application, splitters[(0,)], 1, -100)
@@ -306,7 +358,7 @@ def test_a_drag_leaves_a_border_on_another_line_where_it_was(
 
 
 def test_a_drag_the_model_refuses_changes_nothing(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """Dragging the top border to 0.75 would carry the bottom one past its neighbour at 0.6.
 
@@ -324,7 +376,7 @@ def test_a_drag_the_model_refuses_changes_nothing(
         ),
         6,
     )
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
     splitters = _splitters(container)
@@ -337,11 +389,11 @@ def test_a_drag_the_model_refuses_changes_nothing(
 
 
 def test_a_resize_keeps_the_fractions_and_changes_no_model(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """After a drag to three quarters, a window twice as wide draws 600 px and 200 px."""
 
-    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3), views)
+    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     _drag(application, _splitters(container)[()], 1, 100)
     dragged = container.model
     changed: list[LayoutModel] = []
@@ -359,9 +411,9 @@ def test_a_resize_keeps_the_fractions_and_changes_no_model(
 
 
 def test_new_sizes_keep_every_view_where_it_is(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3), views)
+    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     splitter = _splitters(container)[()]
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
@@ -374,16 +426,16 @@ def test_new_sizes_keep_every_view_where_it_is(
     assert _splitters(container)[()] is splitter
     assert splitter.sizes() == [100, 300]
     assert changed == []
-    assert views.asked == [1, 2]
+    assert len(_BUILT) == 2
 
 
 def test_a_swap_moves_each_view_to_the_other_area(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """The splitters are built again, and each View is moved, not made again."""
 
-    container = _show(application, shown, _layout(_row((0.25, 0.75), _area(1), _area(2)), 3), views)
-    first, second = views.by_id[1], views.by_id[2]
+    container = _show(application, shown, _layout(_row((0.25, 0.75), _area(1), _area(2)), 3))
+    first, second = _BUILT
 
     container.set_model(container.model.swap(AreaId(1), AreaId(2)))
     application.processEvents()
@@ -393,22 +445,30 @@ def test_a_swap_moves_each_view_to_the_other_area(
     assert _content(splitter.widget(1)) is first
     assert first.isVisible() and second.isVisible()
     assert splitter.sizes() == [100, 300]
+    assert _BUILT == [first, second]
 
 
 def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Joining Area 2 into Area 1 leaves one View; the other is handed back unparented."""
+    """Joining Area 2 into Area 1 leaves one View; the other is taken out and deleted."""
 
-    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3), views)
-    removed = views.by_id[2]
+    container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    kept, removed = _BUILT
+    deleted: list[bool] = []
+    removed.destroyed.connect(lambda: deleted.append(True))
 
     container.set_model(container.model.join(AreaId(1), AreaId(2)))
     application.processEvents()
 
     assert _splitters(container) == {}
-    assert views.by_id[1].parentWidget() is container.frame(AreaId(1))
+    assert kept.parentWidget() is container.frame(AreaId(1))
     assert removed.parentWidget() is None
+    assert container.views() == (kept,)
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    assert deleted, "the View no Area shows was kept alive"
 
 
 # ------------------------------------------------- an unknown View kind
@@ -429,31 +489,31 @@ def _texts(widget: QWidget) -> list[str]:
 
 
 def test_an_area_of_an_unknown_kind_shows_the_notice_and_nothing_else(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """The middle Area of three fails alone, and its neighbours draw their Views."""
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _UNKNOWN), _area(3)), 4)
-    container = _show(application, shown, model, views, (800 + 2 * AREA_HANDLE_WIDTH, 400))
+    container = _show(application, shown, model, (800 + 2 * AREA_HANDLE_WIDTH, 400))
     splitter = _splitters(container)[()]
     notice = _content(splitter.widget(1))
 
-    assert _content(splitter.widget(0)) is views.by_id[1]
-    assert _content(splitter.widget(2)) is views.by_id[3]
+    assert _content(splitter.widget(0)) is _BUILT[0]
+    assert _content(splitter.widget(2)) is _BUILT[1]
     assert isinstance(notice, AreaNotice)
     assert notice.isVisible()
     assert _texts(notice) == [_NOTICE_TITLE, _NOTICE_BODY]
-    assert views.asked == [1, 3]
+    assert len(_BUILT) == 2
     assert splitter.sizes() == [200, 400, 200]
 
 
 def test_the_model_keeps_the_unknown_kind_so_a_save_writes_back_what_was_read(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """A drag beside the failed Area changes its size and never its kind."""
 
     model = _layout(_row((0.5, 0.5), _area(1), Area(AreaId(2), _UNKNOWN)), 3)
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
 
     _drag(application, _splitters(container)[()], 1, 100)
 
@@ -462,39 +522,40 @@ def test_the_model_keeps_the_unknown_kind_so_a_save_writes_back_what_was_read(
 
 
 def test_a_layout_of_one_unknown_area_is_the_notice_alone(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    container = _show(application, shown, _layout(Area(AreaId(1), _UNKNOWN), 2), views)
+    container = _show(application, shown, _layout(Area(AreaId(1), _UNKNOWN), 2))
 
     assert _splitters(container) == {}
     assert [type(child) for child in container.findChildren(AreaNotice)] == [AreaNotice]
     assert _texts(container) == [_NOTICE_TITLE, _NOTICE_BODY]
-    assert views.asked == []
+    assert _BUILT == []
 
 
 def test_a_rebuild_deletes_the_notices_the_old_layout_drew(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """Replacing the failed Area's layout leaves no notice behind, not even a hidden one."""
 
     model = _layout(_row((0.5, 0.5), _area(1), Area(AreaId(2), _UNKNOWN)), 3)
-    container = _show(application, shown, model, views)
+    container = _show(application, shown, model)
 
     container.set_model(_layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     application.processEvents()
 
     assert container.findChildren(AreaNotice) == []
-    assert _content(_splitters(container)[()].widget(1)) is views.by_id[2]
+    assert _content(_splitters(container)[()].widget(1)) is _BUILT[-1]
+    assert len(_BUILT) == 2
 
 
-def test_the_default_registry_holds_no_test_kind(application: QApplication, views: _Views) -> None:
+def test_the_default_registry_holds_no_test_kind(application: QApplication) -> None:
     """Built with the shipped registry, the adapter draws a test-only kind as a failure."""
 
-    container = AreaLayout(_layout(_area(1), 2), views)
+    container = AreaLayout(_layout(_area(1), 2), _REQUESTS)
 
     try:
         assert len(container.findChildren(AreaNotice)) == 1
-        assert views.asked == []
+        assert _BUILT == []
     finally:
         container.deleteLater()
 
@@ -503,7 +564,7 @@ def test_the_default_registry_holds_no_test_kind(application: QApplication, view
 
 
 def test_a_handle_draws_nothing_at_rest_and_lights_its_whole_line_under_the_pointer(
-    application: QApplication, shown: list[AreaLayout], views: _Views
+    application: QApplication, shown: list[AreaLayout]
 ) -> None:
     """`PL-RQT1` Q1 and Q2: a gap at rest, and a line on every handle a drag would move.
 
@@ -517,7 +578,7 @@ def test_a_handle_draws_nothing_at_rest_and_lights_its_whole_line_under_the_poin
         ),
         5,
     )
-    splitters = _splitters(_show(application, shown, model, views))
+    splitters = _splitters(_show(application, shown, model))
     top, bottom, across = (splitters[path].handle(1) for path in ((0,), (1,), ()))
 
     assert [_primary_pixels(handle.grab().toImage()) for handle in (top, bottom, across)] == [
@@ -553,33 +614,21 @@ _THIRD = ViewKind("third_view")
 # Three kinds, so the chooser's order and its one checked entry are told apart
 # from an order or a check that only happens to match.
 _THREE = registry(
-    RegisteredView(_VIEW, "Test view"),
-    RegisteredView(_OTHER, "Other view"),
-    RegisteredView(_THIRD, "Third view"),
+    RegisteredView(_VIEW, "Test view", _TestView),
+    RegisteredView(_OTHER, "Other view", _OtherView),
+    RegisteredView(_THIRD, "Third view", _ThirdView),
 )
-
-
-class _ViewsByKind(_Views):
-    """Hands each Area a widget of its own for its kind, or None for `_THIRD`."""
-
-    def __call__(self, area: Area) -> QWidget | None:  # type: ignore[override]
-        if area.view == _THIRD:
-            self.asked.append(area.id)
-            return None
-
-        return super().__call__(Area(AreaId(area.id * 10 + (area.view == _OTHER)), area.view))
 
 
 def _show_with(
     application: QApplication,
     shown: list[AreaLayout],
     model: LayoutModel,
-    view_for: Callable[[Area], QWidget | None],
     registered: Mapping[str, RegisteredView] = _THREE,
     retired: Mapping[str, RetiredTag] | None = None,
 ) -> AreaLayout:
     container = AreaLayout(
-        model, view_for, registered=registered, retired={} if retired is None else retired
+        model, _REQUESTS, registered=registered, retired={} if retired is None else retired
     )
     container.resize(800 + AREA_HANDLE_WIDTH, 400)
     container.show()
@@ -612,7 +661,7 @@ def test_every_area_has_a_header_whose_chooser_names_its_view(
     """`PL-MS34` Q2: the chooser is the header's first control and shows the View's title."""
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
-    container = _show_with(application, shown, model, _ViewsByKind())
+    container = _show_with(application, shown, model)
 
     for area_id, title in ((1, "Test view"), (2, "Other view")):
         frame = container.frame(AreaId(area_id))
@@ -630,7 +679,7 @@ def test_the_chooser_lists_every_registered_kind_in_order_with_the_current_one_c
     """`PL-RBXL` Q2: a plain menu in registry order, whatever the layout names."""
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _OTHER), Area(AreaId(2), _OTHER)), 3)
-    container = _show_with(application, shown, model, _ViewsByKind())
+    container = _show_with(application, shown, model)
 
     assert _entries(container.frame(AreaId(1)).chooser) == [
         ("Test view", False),
@@ -642,30 +691,29 @@ def test_the_chooser_lists_every_registered_kind_in_order_with_the_current_one_c
 def test_choosing_a_view_sets_it_in_that_area_and_nowhere_else(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    views = _ViewsByKind()
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _VIEW)), 3)
-    container = _show_with(application, shown, model, views)
+    container = _show_with(application, shown, model)
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
-    kept = views.by_id[20]
+    replaced = container.frame(AreaId(1)).content
+    kept = container.frame(AreaId(2)).content
 
     _pick(application, container.frame(AreaId(1)).chooser, "Other view")
 
     expected = _layout(_row((0.5, 0.5), Area(AreaId(1), _OTHER), Area(AreaId(2), _VIEW)), 3)
     assert container.model == expected
     assert changed == [expected]
-    assert container.frame(AreaId(1)).content is views.by_id[11]
+    assert isinstance(container.frame(AreaId(1)).content, _OtherView)
     assert container.frame(AreaId(1)).chooser.text() == "Other view"
     assert container.frame(AreaId(2)).content is kept
-    assert views.by_id[10].parentWidget() is None
+    assert replaced.parentWidget() is None
 
 
 def test_choosing_the_view_already_shown_changes_nothing(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    views = _ViewsByKind()
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
-    container = _show_with(application, shown, model, views)
+    container = _show_with(application, shown, model)
     frame = container.frame(AreaId(1))
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
@@ -677,48 +725,111 @@ def test_choosing_the_view_already_shown_changes_nothing(
     assert container.frame(AreaId(1)) is frame
 
 
-# The notices' text, written out here rather than read from the module.
-_UNPLACED_TITLE = "This View cannot be shown in an Area of its own yet."
-_UNPLACED_BODY = (
-    "This build cannot put 'Third view' in an Area yet. Choose a View from the menu above."
-)
-_ELSEWHERE_TITLE = "This View is already shown in another Area."
-_ELSEWHERE_BODY = "This build draws one 'Test view' at a time. Choose a View from the menu above."
-
-
-def test_a_view_the_caller_cannot_draw_yet_is_a_notice_in_its_area(
+def test_two_areas_of_one_kind_each_get_a_view_of_their_own(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Choosing a registered kind with no widget to give shows a notice, not a crash."""
+    """`PL-TH35` Q8: the factory builds a View for each Area, so neither Area is a notice."""
 
-    views = _ViewsByKind()
-    model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
-    container = _show_with(application, shown, model, views)
-
-    _pick(application, container.frame(AreaId(2)).chooser, "Third view")
-    notice = container.frame(AreaId(2)).content
-
-    assert isinstance(notice, AreaNotice)
-    assert _texts(notice) == [_UNPLACED_TITLE, _UNPLACED_BODY]
-    assert container.frame(AreaId(1)).content is views.by_id[10]
-    assert container.model.area(AreaId(2)).view == _THIRD
-    assert container.frame(AreaId(2)).chooser.text() == "Third view"
-
-
-def test_one_widget_handed_out_for_two_areas_draws_in_the_first_and_a_notice_in_the_second(
-    application: QApplication, shown: list[AreaLayout], views: _Views
-) -> None:
-    """A widget cannot sit in two places, so the second Area says why it shows no View."""
-
-    single = QWidget()
-    single.setMinimumSize(10, 10)
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
-    container = _show_with(application, shown, model, lambda area: single)
-    second = container.frame(AreaId(2)).content
+    container = _show_with(application, shown, model)
+    first, second = (container.frame(AreaId(n)).content for n in (1, 2))
 
-    assert container.frame(AreaId(1)).content is single
-    assert isinstance(second, AreaNotice)
-    assert _texts(second) == [_ELSEWHERE_TITLE, _ELSEWHERE_BODY]
+    assert isinstance(first, _TestView) and isinstance(second, _TestView)
+    assert first is not second
+    assert container.findChildren(AreaNotice) == []
+    assert first.isVisible() and second.isVisible()
+
+
+def test_a_view_replaced_and_chosen_again_comes_back_with_its_state(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-TH35` Q10: the replaced View's state is kept under its Area and kind.
+
+    Area 2 shows the same kind and keeps its own setting, so the state is
+    told apart by Area as well as by kind.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    first = container.frame(AreaId(1)).content
+    assert isinstance(first, _TestView)
+    first.setting = 7
+
+    _pick(application, container.frame(AreaId(1)).chooser, "Other view")
+    other = container.frame(AreaId(1)).content
+
+    assert isinstance(other, _OtherView)
+    assert other.context.saved_state is None
+
+    _pick(application, container.frame(AreaId(1)).chooser, "Test view")
+    back = container.frame(AreaId(1)).content
+
+    assert isinstance(back, _TestView) and back is not first
+    assert back.context.saved_state == {STATE_VERSION_KEY: 1, "setting": 7}
+    assert back.setting == 7
+    second = container.frame(AreaId(2)).content
+    assert isinstance(second, _TestView)
+    assert second.setting == 0
+
+
+def test_a_factory_that_returns_no_view_is_refused(application: QApplication) -> None:
+    """A widget that cannot be refreshed would leave its Area showing a stale picture."""
+
+    for built in (lambda _context: QWidget(), lambda _context: object()):
+        registered = registry(RegisteredView(_VIEW, "Test view", built))
+
+        with pytest.raises(TypeError, match="not a QWidget that satisfies the View contract"):
+            AreaLayout(_layout(_area(1), 2), _REQUESTS, registered=registered)
+
+
+def _tick() -> ViewTick:
+    """A tick from one run that has not started, as the dashboard assembles one."""
+
+    controller = SimulationController()
+    snapshot = controller.snapshot()
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
+    frame = assemble_chart_frame(
+        [RunInput(run_label(0), controller, snapshot, ())],
+        None,
+        selection.shown,
+        plot_width_px=400.0,
+    )
+
+    return ViewTick(frame, (snapshot,), (), None, selection)
+
+
+def test_every_view_is_drawn_from_the_one_tick_in_reading_order(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The adapter hands each View the same tick, and owes a frame until each has drawn one."""
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _OTHER), _area(3)), 4)
+    container = _show_with(application, shown, model)
+    tick = _tick()
+
+    assert container.owes_a_frame
+
+    container.refresh(tick)
+
+    assert [view.ticks for view in _BUILT] == [[tick], [tick], [tick]]
+    assert not container.owes_a_frame
+    assert container.painted_strings() == ("painted 0", "painted 0", "painted 0")
+
+
+def test_the_frame_is_sampled_for_the_widest_view_that_draws_one(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A View that draws no frame asks for no width, and with none asking the width is 0."""
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
+    container = _show_with(application, shown, model)
+
+    assert container.frame_width_px() == 0.0
+
+    _BUILT[0].width_px = 300.0
+    _BUILT[2].width_px = 650.5
+
+    assert container.frame_width_px() == 650.5
 
 
 def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(
@@ -726,9 +837,8 @@ def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(
 ) -> None:
     """The notice's chooser lists every kind, none checked, and a choice replaces the notice."""
 
-    views = _ViewsByKind()
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _UNKNOWN)), 3)
-    container = _show_with(application, shown, model, views)
+    container = _show_with(application, shown, model)
     chooser = container.frame(AreaId(2)).chooser
 
     assert chooser.text() == "retired_view"
@@ -736,7 +846,7 @@ def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(
 
     _pick(application, chooser, "Other view")
 
-    assert container.frame(AreaId(2)).content is views.by_id[21]
+    assert isinstance(container.frame(AreaId(2)).content, _OtherView)
     assert container.findChildren(AreaNotice) == []
 
 
@@ -745,10 +855,9 @@ def test_a_renamed_kind_is_offered_its_new_tag_and_never_mapped_to_it(
 ) -> None:
     """`PL-R1WQ` Q3: the notice offers the rename, and only the reader's click takes it."""
 
-    views = _ViewsByKind()
     retired = retirements(_THREE, RetiredTag(_UNKNOWN, "0.7.0", _OTHER))
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _UNKNOWN)), 3)
-    container = _show_with(application, shown, model, views, retired=retired)
+    container = _show_with(application, shown, model, retired=retired)
     notice = container.frame(AreaId(2)).content
 
     assert isinstance(notice, AreaNotice)
@@ -760,7 +869,7 @@ def test_a_renamed_kind_is_offered_its_new_tag_and_never_mapped_to_it(
     application.processEvents()
 
     assert container.model.area(AreaId(2)).view == _OTHER
-    assert container.frame(AreaId(2)).content is views.by_id[21]
+    assert isinstance(container.frame(AreaId(2)).content, _OtherView)
 
 
 def test_a_removed_or_unknown_kind_offers_no_button(
@@ -769,7 +878,7 @@ def test_a_removed_or_unknown_kind_offers_no_button(
     gone = ViewKind("gone_view")
     retired = retirements(_THREE, RetiredTag(gone, "0.7.0"))
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), gone), Area(AreaId(2), _UNKNOWN)), 3)
-    container = _show_with(application, shown, model, _ViewsByKind(), retired=retired)
+    container = _show_with(application, shown, model, retired=retired)
 
     for area_id in (1, 2):
         notice = container.frame(AreaId(area_id)).content
