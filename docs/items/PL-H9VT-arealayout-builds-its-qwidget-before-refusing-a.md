@@ -2,6 +2,7 @@
 id: PL-H9VT
 title: AreaLayout builds its QWidget before refusing a layout of two windows, so the refusal test aborts a pytest worker with no QApplication and turns main red
 status: done
+milestone: v0.5.41
 added: 2026-10-19
 closed: 2026-10-19
 pr: 1651
