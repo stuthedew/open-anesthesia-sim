@@ -50,6 +50,15 @@ splitters when the tree changes shape, so a split, join or swap reaches the
 screen through it.
 
 
+## Pinning reaches the tab strip here, 2026-10-18
+
+`PL-7Z84` built a run's identity and a Workspace's `pinned_run`, and left the
+reader's half to this item, since this item builds the tab strip. The tab's
+context menu carries "Pin current run" or "Unpin", in `PL-QW1Z` Q3's order. It
+calls `Workspace.pinned_to`. Each View bound to a pinned Workspace shows the
+runs `Workspace.shown_runs` returns. Where that is `PinnedRunAbsent`, the Area
+states "run not present" in its rectangle (`PL-TH35` Q6), never another run.
+
 ## Built 2026-10-19: the Area menu, the corner drag and the border drag
 
 `#1618` lands the first three parts and leaves this item open for the fourth.
@@ -86,9 +95,9 @@ The header has 16 px side margins so a corner zone never takes the chooser's
 or the menu's click.
 
 **What is left: the Workspace tab strip** (`PL-QW1Z`), with the lifecycle
-from `PL-WV9K` and "Pin current run" on the tab. It waits on two things.
-`PL-TH35` builds the Wash-in and Parameters Views that the shipped
-Workspaces name, so the dashboard can open on them. `PL-7Z84` (`#1614`)
-gives a Workspace its pinned run. The fourth part also wires a
+from `PL-WV9K` and "Pin current run" on the tab. `PL-TH35` (`#1619`) has
+built the Wash-in and Parameters Views that the shipped Workspaces name, but
+it does not open the dashboard on them. The tab strip waits on `PL-7Z84`
+(`#1614`), which gives a Workspace its pinned run. The fourth part also wires a
 `WorkspaceSet` into the dashboard, since nothing holds one yet. The rewritten
 `verify:` names that part's test.

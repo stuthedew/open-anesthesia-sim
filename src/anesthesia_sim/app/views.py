@@ -280,6 +280,9 @@ class ConcentrationView(QWidget):
         frame = tick.frame
         self.chart.draw(frame)
         self._drawn = True
+        # The names before the selection, so a legend told of a second run's
+        # curves already knows what that run is called (`PL-7Z84`).
+        self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.legend.show_selection(tick.selection)
         self.time_base_selector.show_time_base(tick.time_base)
         self.time_axis_caption.setText(time_axis_caption(frame))
@@ -341,7 +344,7 @@ class WashInView(QWidget):
         self._states.follow(tick.runs)
         self.chart.draw(tick.frame)
         self._drawn = True
-        self.legend.set_run_count(len(tick.frame.runs))
+        self.legend.show_run_names(tuple(run.label for run in tick.frame.runs))
 
     @property
     def owes_a_frame(self) -> bool:

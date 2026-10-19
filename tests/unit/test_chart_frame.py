@@ -64,6 +64,15 @@ from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
+
+# The identities a dashboard gives the first runs it places, in order, which
+# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
+# rather than from where it is drawn (`PL-7Z84`).
+TEST_SESSION = SessionToken("0" * 32)
+RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
+FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
+
 
 _STEP_S = SimulationStep(0.1)
 _PLOT_WIDTH_PX = 900.0
@@ -84,7 +93,7 @@ def _run(seconds: float, agent_id: str = "sevoflurane") -> SimulationController:
 
 def _input(controller: SimulationController, *marks_at_s: float, run_index: int = 0) -> RunInput:
     return RunInput(
-        run_label(run_index),
+        run_label(RUN_IDS[run_index]),
         controller,
         controller.snapshot(),
         tuple(
@@ -475,7 +484,7 @@ def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...
     }
 
     return RunFrame(
-        label=run_label(0),
+        label=run_label(FIRST_RUN),
         branch_point_s=None,
         agent_id="sevoflurane",
         agent_display_name="Sevoflurane",
@@ -647,7 +656,7 @@ def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
-    second = replace(first, label=run_label(1))
+    second = replace(first, label=run_label(SECOND_RUN))
 
     assert format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[0] == (
         "Modelled sevoflurane \u00b7 20m8s"
@@ -697,7 +706,7 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
-    second = replace(_run_frame((1208.0,), alveolar=(0.0145,)), label=run_label(1))
+    second = replace(_run_frame((1208.0,), alveolar=(0.0145,)), label=run_label(SECOND_RUN))
     frame = replace(_frame(first), runs=(first, second))
 
     # Both runs' alveolar points are well inside the radius of this pointer.
@@ -741,7 +750,9 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
     times_s = tuple(3400.0 + 4.0 * column for column in range(50))
     still_carrying = _run_frame(times_s, fat=tuple(0.00033 for _ in times_s))
-    emerging = replace(_run_frame(times_s, fat=tuple(0.00009 for _ in times_s)), label=run_label(1))
+    emerging = replace(
+        _run_frame(times_s, fat=tuple(0.00009 for _ in times_s)), label=run_label(SECOND_RUN)
+    )
     frame = replace(
         _frame(still_carrying, visible=(RecordedQuantity.FAT,)), runs=(still_carrying, emerging)
     )
@@ -820,7 +831,7 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
         _run_frame(
             times_s, muscle=tuple(0.0009 for _ in times_s), fat=tuple(0.00008 for _ in times_s)
         ),
-        label=run_label(1),
+        label=run_label(SECOND_RUN),
     )
     frame = replace(
         _frame(still_carrying, visible=(RecordedQuantity.MUSCLE, RecordedQuantity.FAT)),
@@ -1207,7 +1218,9 @@ def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() ->
     """
 
     drawn = _run_frame((1208.0,), alveolar=(0.0143,))
-    empty = replace(drawn, label=run_label(1), times_s=(), wash_in=(WashInStretch((), (), False),))
+    empty = replace(
+        drawn, label=run_label(SECOND_RUN), times_s=(), wash_in=(WashInStretch((), (), False),)
+    )
     frame = replace(_frame(drawn), runs=(empty, drawn))
 
     target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
@@ -1315,7 +1328,7 @@ def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
-    second = replace(_run_frame((1208.0,), alveolar=(0.0193,)), label=run_label(1))
+    second = replace(_run_frame((1208.0,), alveolar=(0.0193,)), label=run_label(SECOND_RUN))
     frame = replace(_frame(first), runs=(first, second))
 
     target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
@@ -1337,7 +1350,7 @@ def test_a_compared_hover_states_each_run_s_own_instant() -> None:
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
-    second = replace(_run_frame((1204.0,), alveolar=(0.0143,)), label=run_label(1))
+    second = replace(_run_frame((1204.0,), alveolar=(0.0143,)), label=run_label(SECOND_RUN))
     frame = replace(_frame(first), runs=(first, second))
 
     target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
@@ -1356,7 +1369,10 @@ def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are(
     """Nothing in the rule is a property of there being exactly two runs."""
 
     runs = tuple(
-        replace(_run_frame((1208.0,), alveolar=(0.0143 + 0.0001 * index,)), label=run_label(index))
+        replace(
+            _run_frame((1208.0,), alveolar=(0.0143 + 0.0001 * index,)),
+            label=run_label(RUN_IDS[index]),
+        )
         for index in range(3)
     )
     frame = replace(_frame(runs[0]), runs=runs)
@@ -1377,7 +1393,7 @@ def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -
     """
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
-    other = replace(run, agent_display_name="Desflurane", label=run_label(1))
+    other = replace(run, agent_display_name="Desflurane", label=run_label(SECOND_RUN))
 
     with pytest.raises(ValueError, match="must be on the same agent"):
         format_compared_trace_hover(
@@ -1407,7 +1423,7 @@ def test_the_wash_in_hover_answers_every_run_in_reach_in_its_own_units() -> None
     first = _run_frame((0.0, 100.0, 200.0))
     second = replace(
         _run_frame((0.0, 100.0, 200.0)),
-        label=run_label(1),
+        label=run_label(SECOND_RUN),
         wash_in=(WashInStretch((0.0, 100.0, 200.0), (0.68, 0.68, 0.68), False),),
     )
     frame = replace(_frame(first), runs=(first, second))
@@ -1508,7 +1524,7 @@ def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() ->
 
     assert frame.visible == COMPARTMENT_QUANTITIES[:COMPARED_COMPARTMENT_CAP]
     assert frame.undrawn_compartments == len(COMPARTMENT_QUANTITIES) - COMPARED_COMPARTMENT_CAP
-    assert tuple(run.label for run in frame.runs) == (run_label(0), run_label(1))
+    assert tuple(run.label for run in frame.runs) == (run_label(FIRST_RUN), run_label(SECOND_RUN))
 
 
 def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:

@@ -20,9 +20,11 @@ from anesthesia_sim.layout.exceptions import (
     NotInWorkspaceSet,
 )
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import AreaId, Orientation, ViewKind
 from anesthesia_sim.layout.workspace import (
     Origin,
+    PinnedRunAbsent,
     ShippedWorkspaceId,
     Workspace,
     WorkspaceName,
@@ -33,6 +35,11 @@ CHART = ViewKind("concentration_chart")
 ACCOUNTING = ViewKind("agent_accounting")
 ONE = AreaId(1)
 TWO = AreaId(2)
+SESSION = SessionToken("0123456789abcdef0123456789abcdef")
+EARLIER = SessionToken("fedcba9876543210fedcba9876543210")
+TRUNK = RunId(SESSION, 1)
+BRANCH = RunId(SESSION, 2)
+LATER_BRANCH = RunId(SESSION, 3)
 
 
 def two_areas() -> LayoutModel:
@@ -225,6 +232,70 @@ class TestWorkspace:
         assert shipped.renamed(WorkspaceName("Mine")).origin == shipped.origin
         assert shipped.as_mine().origin == Origin.mine()
         assert shipped.as_mine().name == "Default"
+
+
+class TestPinnedRun:
+    """`PL-WV9K` Q6 and `PL-7Z84`: a pin names a run, and an absent run is stated, not replaced."""
+
+    def test_a_workspace_is_unpinned_unless_pinned(self) -> None:
+        assert workspace("Mine").pinned_run is None
+        assert workspace("Mine").pinned_to(BRANCH).pinned_run == BRANCH
+        assert workspace("Mine").pinned_to(BRANCH).pinned_to(None).pinned_run is None
+
+    def test_a_pin_is_a_run_identity(self) -> None:
+        with pytest.raises(TypeError, match="pinned_run is a RunId or None, not int"):
+            workspace("Mine").pinned_to(2)  # type: ignore[arg-type]
+
+    def test_unpinned_views_show_every_run_the_session_has_open(self) -> None:
+        assert workspace("Mine").shown_runs((TRUNK, LATER_BRANCH, BRANCH)) == (
+            TRUNK,
+            LATER_BRANCH,
+            BRANCH,
+        )
+        assert workspace("Mine").shown_runs(()) == ()
+
+    def test_pinned_views_show_the_pinned_run_alone_wherever_it_stands(self) -> None:
+        pinned = workspace("Mine").pinned_to(BRANCH)
+
+        assert pinned.shown_runs((TRUNK, BRANCH, LATER_BRANCH)) == (BRANCH,)
+        assert pinned.shown_runs((LATER_BRANCH, TRUNK, BRANCH)) == (BRANCH,)
+
+    def test_an_absent_pinned_run_is_stated_and_no_other_run_takes_its_place(self) -> None:
+        """The branch it pinned was dropped and another taken: the new one is not shown instead."""
+
+        pinned = workspace("Mine").pinned_to(BRANCH)
+
+        for open_runs in ((TRUNK, LATER_BRANCH), (TRUNK,), (), (RunId(EARLIER, 2),)):
+            assert pinned.shown_runs(open_runs) == PinnedRunAbsent(BRANCH)
+
+    def test_a_run_of_the_same_number_from_another_session_is_not_the_pinned_run(self) -> None:
+        """A pin read back from the saved file names a run of the session that saved it."""
+
+        from_earlier = workspace("Mine").pinned_to(RunId(EARLIER, 1))
+
+        assert from_earlier.shown_runs((TRUNK, BRANCH)) == PinnedRunAbsent(RunId(EARLIER, 1))
+
+    def test_the_open_runs_are_a_tuple_naming_each_run_once(self) -> None:
+        with pytest.raises(TypeError, match="the open runs are a tuple of RunIds"):
+            workspace("Mine").shown_runs([TRUNK])  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="the open runs are a tuple of RunIds"):
+            workspace("Mine").shown_runs((1,))  # type: ignore[arg-type]
+
+        with pytest.raises(ValueError, match="the open runs name each run once"):
+            workspace("Mine").shown_runs((TRUNK, TRUNK))
+
+    def test_an_absence_names_a_run_identity(self) -> None:
+        with pytest.raises(TypeError, match="a pinned run is a RunId, not str"):
+            PinnedRunAbsent("Run 2")  # type: ignore[arg-type]
+
+    def test_the_pin_survives_a_layout_change_a_rename_and_a_duplicate(self) -> None:
+        pinned = workspace("Mine").pinned_to(BRANCH)
+        duplicated = WorkspaceSet((pinned,), 0).duplicate(0)
+
+        assert pinned.with_layout(LayoutModel.single_area(CHART)).pinned_run == BRANCH
+        assert pinned.renamed(WorkspaceName("Other")).as_mine().pinned_run == BRANCH
+        assert duplicated.current.pinned_run == BRANCH
 
 
 class TestWorkspaceSetInvariants:

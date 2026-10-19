@@ -174,6 +174,7 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
+from anesthesia_sim.layout.run_identity import RunId
 
 # Adding a built-in agent without a verified identification colour would make
 # the selector silently lose a safety cue (ISO 5360 Table 2, footnote b). Fail
@@ -257,6 +258,10 @@ class RunView(QWidget):
 
     Attributes:
         controller: The run.
+        run_id: The run's identity, which its name renders (`PL-7Z84`). It
+            lasts as long as this view: through the run's own Reset and a
+            change of agent, which begin a new run definition in the same
+            place, and until the dashboard drops the run.
         presentation_requested: Emitted with the coalesce flag when this
             run's action owes the dashboard a frame. `True` leaves the frame
             to the render tick - a slider drag - and `False` asks for one
@@ -271,16 +276,26 @@ class RunView(QWidget):
     presentation_requested = Signal(bool)
     case_restarted = Signal()
 
-    def __init__(self, controller: SimulationController, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, controller: SimulationController, parent: QWidget | None = None, *, run_id: RunId
+    ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
         Args:
             controller: The run this view drives and displays.
             parent: The Qt parent.
+            run_id: The run's identity, minted by the dashboard that places it.
+
+        Raises:
+            TypeError: If `run_id` is not a `RunId`.
         """
+
+        if not isinstance(run_id, RunId):
+            raise TypeError(f"a run's identity is a RunId, not {type(run_id).__name__}")
 
         super().__init__(parent)
         self.controller = controller
+        self.run_id = run_id
         snapshot = controller.snapshot()
 
         # Why the last setting change did not take, or None if it did. Held
@@ -1468,8 +1483,8 @@ class RunView(QWidget):
     def set_run_name(self, name: str | None) -> None:
         """Name this view in its own header, its readouts and both its record panels, or not at all.
 
-        The dashboard decides the name, from `dashboard_frame.run_label`, so
-        that this panel and the chart's legend call one run the same thing -
+        The dashboard decides the name, from `dashboard_frame.run_label` over
+        `run_id`, so that this panel and the chart's legend call one run the same thing -
         a legend entry reading "Run 2" attributes a curve only if something
         holding that run's settings also says "Run 2".
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "active": 0,
   "workspaces": [
     {
@@ -29,7 +29,8 @@
           }
         ]
       },
-      "view_state": {}
+      "view_state": {},
+      "pinned_run": null
     }
   ]
 }

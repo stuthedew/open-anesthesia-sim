@@ -13,6 +13,7 @@ a test that holds the same thing (`PL-25KS`).
 Snapshots come either from a real `SimulationController` stepped at the
 shipped step, or from `_snapshot`, a fixture whose MAC and MAC-awake resolve
 from the named agent's data file so a test cannot pair one agent's
+
 concentrations with another agent's divisor. Where a claim needs the frame
 the chart drew - the off-scale notice, the undrawn-mark count, the
 time-axis caption - `_FakeController` answers `drawn_window` with exactly
@@ -60,7 +61,6 @@ from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
-    BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
@@ -97,7 +97,6 @@ from anesthesia_sim.app.dashboard_frame import (
     STATUS_PAUSED_TEXT,
     STATUS_RUNNING_TEXT,
     TIME_BOOKMARK_HEADING,
-    TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
     WIDEST_COMPARTMENT_SECONDARY,
     WIDEST_COMPARTMENT_VALUE,
@@ -105,6 +104,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_READOUT_VALUE,
     BookmarkPanel,
     BranchAtStake,
+    ComparedRuns,
     Emphasis,
     ForkOffer,
     ForkPoint,
@@ -205,6 +205,15 @@ from anesthesia_sim.core.supported_ranges import (
     CaseInstant,
     FreshGasFlow,
 )
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
+
+# The identities a dashboard gives the first runs it places, in order, which
+# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
+# rather than from where it is drawn (`PL-7Z84`).
+TEST_SESSION = SessionToken("0" * 32)
+RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
+FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
+COMPARED = ComparedRuns(run_label(FIRST_RUN), run_label(SECOND_RUN))
 
 #: The agent every fixture here runs unless it says otherwise. Named once
 #: because the snapshot and the recorded run have to agree on it.
@@ -276,7 +285,7 @@ def _one_run(standings: BookmarkStandings) -> tuple[RunMarks, ...]:
     the label here is the one the dashboard would pass and no row draws it.
     """
 
-    return (RunMarks(run_label(0), standings),)
+    return (RunMarks(run_label(FIRST_RUN), standings),)
 
 
 def _two_runs(trunk: BookmarkStandings, branch: BookmarkStandings) -> tuple[RunMarks, ...]:
@@ -286,7 +295,7 @@ def _two_runs(trunk: BookmarkStandings, branch: BookmarkStandings) -> tuple[RunM
     run, so the trunk is always run 1 and a branch is always run 2.
     """
 
-    return (RunMarks(run_label(0), trunk), RunMarks(run_label(1), branch))
+    return (RunMarks(run_label(FIRST_RUN), trunk), RunMarks(run_label(SECOND_RUN), branch))
 
 
 def _unreached(marks: BookmarkSet) -> BookmarkStandings:
@@ -467,7 +476,7 @@ def _frame(
     """The frame one tick would draw for one run, under "Fit run" unless told otherwise."""
 
     return assemble_chart_frame(
-        (RunInput(run_label(0), controller, controller.snapshot(), adjustments),),
+        (RunInput(run_label(FIRST_RUN), controller, controller.snapshot(), adjustments),),
         time_base,
         shown,
         plot_width_px=_PLOT_WIDTH_PX,
@@ -479,7 +488,7 @@ def _compared_frame(*controllers: Any) -> ChartFrame:
 
     return assemble_chart_frame(
         tuple(
-            RunInput(run_label(index), controller, controller.snapshot(), ())
+            RunInput(run_label(RUN_IDS[index]), controller, controller.snapshot(), ())
             for index, controller in enumerate(controllers)
         ),
         None,
@@ -2374,18 +2383,22 @@ def test_a_compared_run_s_panel_heading_closes_with_the_run_s_own_name() -> None
     """
 
     assert (
-        compared_panel_heading(ACCOUNTING_HEADING, run_label(1))
+        compared_panel_heading(ACCOUNTING_HEADING, run_label(SECOND_RUN))
         == "Agent accounting validation — Run 2"
     )
     assert (
-        compared_panel_heading(CONTROL_TIMELINE_HEADING, run_label(0)) == "Control changes — Run 1"
+        compared_panel_heading(CONTROL_TIMELINE_HEADING, run_label(FIRST_RUN))
+        == "Control changes — Run 1"
     )
 
 
 def test_a_panel_heading_is_named_without_knowing_which_panel_it_is() -> None:
     """Any heading, so the next view to earn an area takes the same attribution."""
 
-    assert compared_panel_heading("Bookmarked states", run_label(0)) == "Bookmarked states — Run 1"
+    assert (
+        compared_panel_heading("Bookmarked states", run_label(FIRST_RUN))
+        == "Bookmarked states — Run 1"
+    )
 
 
 def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
@@ -2871,8 +2884,8 @@ def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> No
     (row,) = bookmark_panel(marks, _two_runs(passed, passed)).times.rows
 
     assert MARK_STANDING_TEXT[MarkStanding.PASSED] in row
-    assert run_label(0) not in row
-    assert run_label(1) not in row
+    assert run_label(FIRST_RUN) not in row
+    assert run_label(SECOND_RUN) not in row
 
 
 def test_two_runs_still_running_for_a_mark_add_no_words_to_its_row() -> None:
@@ -2886,7 +2899,7 @@ def test_two_runs_still_running_for_a_mark_add_no_words_to_its_row() -> None:
     panel = bookmark_panel(marks, _two_runs(unreached, unreached))
     everything = " ".join((*panel.times.rows, *panel.targets.rows))
 
-    assert run_label(0) not in everything
+    assert run_label(FIRST_RUN) not in everything
     assert MARK_STILL_RUNNING_TEXT not in everything
 
 
@@ -2916,8 +2929,8 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
     # wrong run that still reads plausibly on the screen.
     assert row == (
         f"Alveolar 0.50 ×MAC"
-        f"{MARK_STANDING_JOINER}{run_label(0)} {MARK_STILL_RUNNING_TEXT}"
-        f"{MARK_STANDING_JOINER}{run_label(1)}"
+        f"{MARK_STANDING_JOINER}{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}"
+        f"{MARK_STANDING_JOINER}{run_label(SECOND_RUN)}"
         f" {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}"
     )
 
@@ -2938,9 +2951,9 @@ def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() 
 
     (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).times.rows
 
-    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in row
+    assert f"{run_label(FIRST_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in row
     assert row.endswith(
-        f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
+        f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
     )
 
 
@@ -3058,7 +3071,7 @@ def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
     none carries a mark.
     """
 
-    offer = fork_offer((0.0, 60.0, 185.0), marks=(), comparing=False, here=None)
+    offer = fork_offer((0.0, 60.0, 185.0), marks=(), comparing=None, here=None)
 
     assert _offered_instants(offer) == (0.0, 60.0, 185.0)
     assert _offered_labels(offer) == tuple(
@@ -3080,7 +3093,7 @@ def test_fork_offer_requires_the_marks_to_be_stated() -> None:
     """
 
     with pytest.raises(TypeError, match="marks"):
-        fork_offer((CaseInstant(0.0),), comparing=False, here=None)  # type: ignore[call-arg]
+        fork_offer((CaseInstant(0.0),), comparing=None, here=None)  # type: ignore[call-arg]
 
 
 def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out() -> None:
@@ -3091,10 +3104,10 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
     comparison - by the run it belongs to, which is the test below.
     """
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=True, here=None)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=None)
 
     assert offer.locked is True
-    assert offer.lock_reason == comparing_fork_lock_text()
+    assert offer.lock_reason == comparing_fork_lock_text(COMPARED)
 
 
 def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
@@ -3119,14 +3132,14 @@ def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
     simulated since its fork while leaving the lock exactly where it was.
     """
 
-    way_out, _, instead = comparing_fork_lock_text().partition(";")
+    way_out, _, instead = comparing_fork_lock_text(COMPARED).partition(";")
 
-    assert f"{run_label(TRUNK_RUN_INDEX)}'s {RESET_LABEL}" in way_out
-    assert run_label(BRANCH_RUN_INDEX) not in way_out
+    assert f"{run_label(FIRST_RUN)}'s {RESET_LABEL}" in way_out
+    assert run_label(SECOND_RUN) not in way_out
     assert "starts the case over" in way_out
 
-    assert f"{run_label(BRANCH_RUN_INDEX)}'s {RESET_LABEL}" in instead
-    assert run_label(TRUNK_RUN_INDEX) not in instead
+    assert f"{run_label(SECOND_RUN)}'s {RESET_LABEL}" in instead
+    assert run_label(FIRST_RUN) not in instead
     assert "where it branched" in instead
 
 
@@ -3137,7 +3150,7 @@ def test_fork_offer_offers_no_fork_here_while_the_trunk_is_going() -> None:
     the paused point and the selector never trade rows with each other.
     """
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, here=None)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=None)
 
     assert offer.here_offered is False
     assert offer.here_label == ""
@@ -3156,7 +3169,7 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
 
     here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
 
-    offer = fork_offer((0.0, 60.0), marks=(), comparing=False, here=here)
+    offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=here)
 
     assert offer.here_offered is True
     assert offer.here_label == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(45.0))
@@ -3183,8 +3196,8 @@ def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
     halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True)
     paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False)
 
-    on_the_mark = fork_offer((0.0,), marks=(), comparing=False, here=halted).here_label
-    on_a_pause = fork_offer((0.0,), marks=(), comparing=False, here=paused).here_label
+    on_the_mark = fork_offer((0.0,), marks=(), comparing=None, here=halted).here_label
+    on_a_pause = fork_offer((0.0,), marks=(), comparing=None, here=paused).here_label
 
     assert on_the_mark == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halted_s))
     assert on_a_pause == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halted_s))
@@ -3205,7 +3218,7 @@ def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     for stopped_on_mark in (False, True):
         here = HereForkPoint(CaseInstant(45.0), stopped_on_mark)
 
-        offer = fork_offer((0.0, 60.0), marks=(), comparing=True, here=here)
+        offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=here)
 
         assert offer.here_offered is False
         assert offer.here_label == ""
@@ -3224,9 +3237,11 @@ def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
     refusal = "Setting refused: no keyframe at 30.0 s"
 
     assert (
-        fork_offer((0.0,), marks=(), comparing=False, here=None, refusal=refusal).refusal == refusal
+        fork_offer((0.0,), marks=(), comparing=None, here=None, refusal=refusal).refusal == refusal
     )
-    assert fork_offer((0.0,), marks=(), comparing=True, here=None, refusal=refusal).refusal is None
+    assert (
+        fork_offer((0.0,), marks=(), comparing=COMPARED, here=None, refusal=refusal).refusal is None
+    )
 
 
 def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> None:
@@ -3245,7 +3260,7 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0), CaseInstant(185.0)),
         marks=(late, early),
-        comparing=False,
+        comparing=None,
         here=None,
     )
 
@@ -3270,9 +3285,7 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
     template, so an edit to the template cannot move both sides at once.
     """
 
-    offer = fork_offer(
-        (CaseInstant(0.0),), marks=(_MARK_INSIDE_A_STEP,), comparing=False, here=None
-    )
+    offer = fork_offer((CaseInstant(0.0),), marks=(_MARK_INSIDE_A_STEP,), comparing=None, here=None)
     entry = offer.points[-1]
 
     assert entry.label == "45.4s, on your mark"
@@ -3299,7 +3312,7 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0)),
         marks=(at_opening, on_the_change),
-        comparing=False,
+        comparing=None,
         here=None,
     )
 
@@ -3333,7 +3346,7 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0)),
         marks=(_MARK_INSIDE_A_STEP,),
-        comparing=False,
+        comparing=None,
         here=None,
     )
     control_events = [point for point in offer.points if point.mark is None]
@@ -3356,14 +3369,14 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
     refusal = "Setting refused: no keyframe at 30.0 s"
     keyframes = (CaseInstant(0.0), CaseInstant(60.0))
 
-    unmarked = fork_offer(keyframes, marks=(), comparing=True, here=here, refusal=refusal)
+    unmarked = fork_offer(keyframes, marks=(), comparing=COMPARED, here=here, refusal=refusal)
     marked = fork_offer(
-        keyframes, marks=(_MARK_INSIDE_A_STEP,), comparing=True, here=here, refusal=refusal
+        keyframes, marks=(_MARK_INSIDE_A_STEP,), comparing=COMPARED, here=here, refusal=refusal
     )
 
     for offer in (unmarked, marked):
         assert offer.locked is True
-        assert offer.lock_reason == comparing_fork_lock_text()
+        assert offer.lock_reason == comparing_fork_lock_text(COMPARED)
         assert offer.here_offered is False
         assert offer.here_label == ""
         assert offer.refusal is None
@@ -3404,3 +3417,19 @@ def test_the_chip_names_the_lock_that_lasts_longest(
 
     assert locked.selector_locked is True
     assert locked.selector_lock_reason == expected
+
+
+def test_a_run_is_named_by_its_number_in_its_session() -> None:
+    """The name renders the identity's number, whatever position the run is drawn at."""
+
+    assert run_label(RunId(TEST_SESSION, 1)) == "Run 1"
+    assert run_label(RunId(TEST_SESSION, 3)) == "Run 3"
+    assert run_label(RunId(SessionToken("f" * 32), 3)) == "Run 3"
+
+
+@pytest.mark.parametrize("position", [0, 1, True])
+def test_a_run_is_not_named_from_a_drawing_position(position: object) -> None:
+    """A drawing position names whichever run stands there, so it is refused (`PL-7Z84`)."""
+
+    with pytest.raises(TypeError, match="a run is named from its RunId"):
+        run_label(position)  # type: ignore[arg-type]

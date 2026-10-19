@@ -1,10 +1,12 @@
 """Unit tests for `layout/migrations.py`: the version, and the steps that read the ones before it.
 
 `PL-SSQW` Q5 (project owner, 2026-09-27, ratified): a set document an older
-build wrote is migrated in memory, one step per version, and the table is
-empty at version 1 with the hook in place. These hold the hook to its
-contract with a chain of the test's own, since the build's own is empty.
+build wrote is migrated in memory, one step per version. Most of these hold the
+hook to its contract with a chain of the test's own. The build's own chain has
+one step, which `PL-7Z84` added with `pinned_run` at version 2.
 """
+
+import json
 
 import pytest
 
@@ -30,10 +32,43 @@ def renaming(old: str, new: str) -> Migration:
     return Migration(1, apply)
 
 
-def test_the_build_has_one_version_and_no_steps_yet() -> None:
-    assert LAYOUT_SCHEMA_VERSION == 1
-    assert MIGRATIONS == ()
-    assert OLDEST_READABLE_VERSION == LAYOUT_SCHEMA_VERSION
+def test_the_build_writes_version_two_and_reads_version_one_through_one_step() -> None:
+    assert LAYOUT_SCHEMA_VERSION == 2
+    assert tuple(step.reads for step in MIGRATIONS) == (1,)
+    assert OLDEST_READABLE_VERSION == 1
+
+
+def test_version_one_workspaces_are_read_unpinned_and_nothing_is_lost() -> None:
+    """`PL-7Z84`: no run could be pinned before version 2, so version 1 Workspaces are unpinned."""
+
+    layout = {"next_area_id": 2, "windows": [{"tree": {"area": 1, "view": "concentration_chart"}}]}
+    workspace = {"name": "Mine", "origin": "mine", "layout": layout, "view_state": {}}
+    other = {**workspace, "name": "Other"}
+    body: dict[str, object] = {"active": 1, "workspaces": [workspace, other]}
+
+    migrated = migrate(body, 1)
+
+    assert migrated.body == {
+        "active": 1,
+        "workspaces": [{**workspace, "pinned_run": None}, {**other, "pinned_run": None}],
+    }
+    assert migrated.lossy == ()
+    assert "pinned_run" not in workspace
+
+
+def test_a_version_one_workspace_holding_a_pin_is_refused_rather_than_read_as_one() -> None:
+    pinned = {"name": "Mine", "pinned_run": {"session": "0" * 32, "number": 1}}
+
+    with pytest.raises(
+        LayoutFormatError,
+        match=r"workspaces\[1\]: has 'pinned_run', which schema version 1 does not",
+    ):
+        migrate({"active": 0, "workspaces": [{"name": "First"}, pinned]}, 1)
+
+
+def test_a_version_one_body_of_the_wrong_shape_is_left_for_the_reader_to_name() -> None:
+    for body in ({"active": 0}, {"workspaces": "none"}, {"workspaces": [3]}):
+        assert migrate(json.loads(json.dumps(body)), 1).body == body
 
 
 def test_a_body_at_the_current_version_passes_through_unchanged() -> None:
@@ -54,7 +89,7 @@ def test_a_newer_version_is_refused_as_newer_and_an_older_one_with_no_step_as_un
         LAYOUT_SCHEMA_VERSION,
     )
 
-    with pytest.raises(LayoutFormatError, match="reads versions from 1 to 1, and 0 is older"):
+    with pytest.raises(LayoutFormatError, match="reads versions from 1 to 2, and 0 is older"):
         migrate({}, 0)
 
 

@@ -23,6 +23,7 @@ from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout.exceptions import LayoutFormatError, UnsupportedSchemaVersion
 from anesthesia_sim.layout.migrations import Migrated
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.serialization import (
     LAYOUT_SCHEMA_VERSION,
     layout_from_dict,
@@ -58,7 +59,7 @@ def document(**changes: object) -> dict[str, object]:
     """A valid two-Area document, with any top-level field replaced."""
 
     written: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": LAYOUT_SCHEMA_VERSION,
         "next_area_id": 3,
         "windows": [
             {
@@ -175,8 +176,8 @@ def test_a_document_from_a_newer_build_is_refused_as_newer_before_its_body_is_re
     with pytest.raises(UnsupportedSchemaVersion) as raised:
         layout_from_json(newer)
 
-    assert (raised.value.found, raised.value.supported) == (2, 1)
-    assert "versions up to 1" in str(raised.value)
+    assert (raised.value.found, raised.value.supported) == (3, 2)
+    assert "versions up to 2" in str(raised.value)
 
 
 def test_a_newer_document_is_refused_as_newer_whatever_its_other_fields_hold() -> None:
@@ -244,7 +245,10 @@ def test_text_that_is_not_json_is_refused_as_such() -> None:
 def test_a_key_given_twice_is_refused_rather_than_resolved() -> None:
     """`json` keeps the last of two equal keys silently; which was meant cannot be known."""
 
-    twice = '{"schema_version": 1, "next_area_id": 2, "next_area_id": 3, "windows": []}'
+    twice = (
+        f'{{"schema_version": {LAYOUT_SCHEMA_VERSION}, "next_area_id": 2, "next_area_id": 3, '
+        '"windows": []}'
+    )
     nested = with_tree({"area": 1, "view": "concentration_chart"}).replace(
         '"area": 1', '"area": 1, "area": 1'
     )
@@ -472,6 +476,7 @@ def workspace_body(**changes: object) -> dict[str, object]:
         "origin": "shipped:default",
         "layout": {key: value for key, value in document().items() if key != "schema_version"},
         "view_state": {"1": {"concentration_chart": {"zoom_s": [0.0, 900.0]}}},
+        "pinned_run": None,
     }
     written.update(changes)
 
@@ -496,6 +501,9 @@ def refused_set(text: str) -> str:
     return str(raised.value)
 
 
+PINNED = RunId(SessionToken("0123456789abcdef0123456789abcdef"), 2)
+
+
 def the_set() -> WorkspaceSet:
     chart = ViewKind("concentration_chart")
     layout = (
@@ -509,7 +517,9 @@ def the_set() -> WorkspaceSet:
         layout,
         {AreaId(1): {chart: {"zoom_s": [0.0, 900.0]}}, AreaId(2): {}},
     )
-    induction = Workspace(WorkspaceName("Induction"), Origin.mine(), LayoutModel.single_area(chart))
+    induction = Workspace(
+        WorkspaceName("Induction"), Origin.mine(), LayoutModel.single_area(chart), pinned_run=PINNED
+    )
 
     return WorkspaceSet((default, induction), 1)
 
@@ -543,6 +553,60 @@ class TestWorkspaceSetDocument:
             "2": {},
         }
         assert written["workspaces"][1]["view_state"] == {}
+        assert written["workspaces"][0]["pinned_run"] is None
+        assert written["workspaces"][1]["pinned_run"] == {
+            "session": "0123456789abcdef0123456789abcdef",
+            "number": 2,
+        }
+
+    @pytest.mark.parametrize(
+        ("pinned_run", "said"),
+        [
+            ("Run 2", "workspaces[0].pinned_run: a pinned run is an object, not a string"),
+            ({"number": 2}, "workspaces[0].pinned_run: is missing 'session'"),
+            (
+                {"session": "0" * 32, "number": 2, "name": "Run 2"},
+                "workspaces[0].pinned_run: has 'name', which the schema does not",
+            ),
+            (
+                {"session": 7, "number": 2},
+                "workspaces[0].pinned_run.session: a run's session is a string, not a number",
+            ),
+            (
+                {"session": "0" * 32, "number": 2.0},
+                "workspaces[0].pinned_run.number: a run's number is a whole number, not 2.0",
+            ),
+            (
+                {"session": "0" * 32, "number": True},
+                "workspaces[0].pinned_run.number: a run's number is a whole number, not true",
+            ),
+            (
+                {"session": "0" * 32, "number": 0},
+                "workspaces[0].pinned_run: runs are numbered from 1, not 0",
+            ),
+            (
+                {"session": "ABC", "number": 1},
+                "workspaces[0].pinned_run: a session token is 32 lowercase hexadecimal digits",
+            ),
+        ],
+    )
+    def test_a_pin_that_is_not_a_run_identity_is_refused_by_name_and_place(
+        self, pinned_run: object, said: str
+    ) -> None:
+        assert said in refused_set(set_document(workspace_body(pinned_run=pinned_run)))
+
+    def test_a_workspace_without_a_pinned_run_field_is_refused_at_version_two(self) -> None:
+        body = {key: value for key, value in workspace_body().items() if key != "pinned_run"}
+
+        assert "workspaces[0]: is missing 'pinned_run'" in refused_set(set_document(body))
+
+    def test_a_version_one_document_is_read_with_every_workspace_unpinned(self) -> None:
+        body = {key: value for key, value in workspace_body().items() if key != "pinned_run"}
+        read = workspace_set_from_json(set_document(body, schema_version=1))
+
+        assert read.written_at == 1
+        assert read.lossy == ()
+        assert read.workspaces.current.pinned_run is None
 
     def test_a_body_is_written_and_read_without_a_version(self) -> None:
         body = workspace_to_dict(the_set().workspaces[0])

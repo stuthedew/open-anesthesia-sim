@@ -17,9 +17,10 @@ any rule of this build's touches the body, and **invalid at a supported
 version** is `LayoutFormatError`; both are raised in `layout/serialization.py`,
 and what the store does with each is `layout/store.py`'s.
 
-**At version 1 the table is empty and the hook exists**, so the first bump has
-somewhere to go. The change that raises `LAYOUT_SCHEMA_VERSION` adds the step
-that reads the version before it in the same commit, and `oldest_readable`
+**Version 2 added `pinned_run` to every Workspace** (`PL-7Z84`), and the step
+reading version 1 writes it as `null`, since nothing could pin a run before
+there was an identity to pin. The change that raises `LAYOUT_SCHEMA_VERSION`
+adds the step that reads the version before it in the same commit, and `oldest_readable`
 checks the chain when this module loads - the steps read consecutive versions
 ending one below the current - so a version raised without its step fails at
 import rather than at a reader's launch. The steps migrate the **set
@@ -61,7 +62,7 @@ __all__ = [
 # The version of the serialized form this build writes, and the newest it
 # reads. Raised by the change that alters the shape, together with the
 # `Migration` that reads the version before it.
-LAYOUT_SCHEMA_VERSION: Final = 1
+LAYOUT_SCHEMA_VERSION: Final = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,9 +132,41 @@ def oldest_readable(steps: tuple[Migration, ...], current: int) -> int:
     return oldest
 
 
+def _unpinned(body: dict[str, object]) -> dict[str, object]:
+    """A version 1 set body as version 2 writes it: every Workspace given `"pinned_run": null`.
+
+    A Workspace that is not an object, or a `workspaces` that is not a list,
+    is left as it stands, so the reader refuses it and names where it broke.
+
+    Raises:
+        LayoutFormatError: a Workspace already holds `pinned_run`, which
+            version 1 did not have. Kept, it would be read as a pin no build
+            ever wrote.
+    """
+
+    workspaces = body.get("workspaces")
+
+    if not isinstance(workspaces, list):
+        return body
+
+    for index, workspace in enumerate(workspaces):
+        if isinstance(workspace, dict) and "pinned_run" in workspace:
+            raise LayoutFormatError(
+                f"workspaces[{index}]: has 'pinned_run', which schema version 1 does not"
+            )
+
+    return {
+        **body,
+        "workspaces": [
+            {**workspace, "pinned_run": None} if isinstance(workspace, dict) else workspace
+            for workspace in workspaces
+        ],
+    }
+
+
 # The steps this build applies, in order, each reading the version the one
-# before it writes. Empty at version 1, the only version there has been.
-MIGRATIONS: Final[tuple[Migration, ...]] = ()
+# before it writes.
+MIGRATIONS: Final[tuple[Migration, ...]] = (Migration(1, _unpinned),)
 
 # The oldest version this build reads: the current one, less a step for each
 # version before it that has one.

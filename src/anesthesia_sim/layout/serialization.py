@@ -3,7 +3,7 @@
 **The shape is `PL-HJPY` Q5's**, which illustrated it and left the schema to
 this build:
 
-    {"schema_version": 1,
+    {"schema_version": 2,
      "next_area_id": 3,
      "windows": [{"tree": {"split": "row", "sizes": [0.7, 0.3],
                            "children": [{"area": 1, "view": "concentration_chart"},
@@ -19,12 +19,13 @@ gains later is a field rather than a change of shape.
 `windows` - which is what a Workspace holds under `"layout"` beside its own
 fields, in the one document the application writes (`PL-SSQW` Q2):
 
-    {"schema_version": 1,
+    {"schema_version": 2,
      "active": 0,
      "workspaces": [{"name": "Default",
                      "origin": "shipped:default",
                      "layout": {"next_area_id": 3, "windows": [...]},
-                     "view_state": {"1": {"concentration_chart": {...}}}}]}
+                     "view_state": {"1": {"concentration_chart": {...}}},
+                     "pinned_run": null}]}
 
 `workspace_set_to_json` and `workspace_set_from_json` write and read that
 document, holding a whole `WorkspaceSet` - its order, its active Workspace and
@@ -36,7 +37,8 @@ A body never carries a version of its own, so a document holding several has
 one. `view_state` is keyed by Area id, written as the string a JSON object key
 is - the digits alone, as `str` writes the number - then by View kind, and each
 entry is the JSON object the View handed over, held and written as the JSON it
-is (`PL-WV9K` Q1).
+is (`PL-WV9K` Q1). `pinned_run` is `null`, or the pinned run's identity as
+`{"session": "<32 hex digits>", "number": 2}` (`PL-7Z84`).
 
 **Reading refuses, and says what it refused** (`PL-SSQW` Q5, ratified). Every
 way a document can fail to describe a valid layout raises `LayoutFormatError`
@@ -58,9 +60,9 @@ could not name the place, and it would refuse a newer document as invalid
 before that document's version was read.
 
 **Versions.** `LAYOUT_SCHEMA_VERSION` is `layout/migrations.py`'s, with the
-steps that read the versions before it; it is 1, the only version there has
-been. A document from a newer build raises `UnsupportedSchemaVersion` whatever
-else it holds: no rule of this build's is applied to anything in it but its
+steps that read the versions before it; it is 2, which added `pinned_run`. A
+document from a newer build raises `UnsupportedSchemaVersion` whatever else it
+holds: no rule of this build's is applied to anything in it but its
 `schema_version`, since its body is free to follow rules this build does not
 know. One claiming a version below 1 is a format error, and so is text no
 version can be read from - text that is not JSON, or JSON nested past what the
@@ -85,6 +87,7 @@ from anesthesia_sim.layout.exceptions import (
 )
 from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, migrate
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import (
     AREA_ID_MAXIMUM,
     TREE_DEPTH_MAXIMUM,
@@ -247,6 +250,7 @@ def workspace_to_dict(workspace: Workspace) -> dict[str, object]:
             }
             for area_id, kinds in sorted(workspace.view_state.items())
         },
+        "pinned_run": _run_id_to_dict(workspace.pinned_run),
     }
 
 
@@ -256,13 +260,16 @@ def workspace_from_dict(body: object, where: str = "the Workspace") -> Workspace
     Raises:
         LayoutFormatError: the body does not describe a valid Workspace: a
             name a tab could not show, an origin in neither written form, a
-            layout that does not read, or a `view_state` keyed by anything
+            layout that does not read, a `view_state` keyed by anything
             but an Area the layout holds and a View kind, or holding anything
-            but an object per kind. The message names the invariant and where
-            it broke.
+            but an object per kind, or a `pinned_run` that is neither `null`
+            nor a run identity. The message names the invariant and where it
+            broke.
     """
 
-    fields = _fields(body, where, "a Workspace", ("name", "origin", "layout", "view_state"))
+    fields = _fields(
+        body, where, "a Workspace", ("name", "origin", "layout", "view_state", "pinned_run")
+    )
     name = fields["name"]
     origin = fields["origin"]
 
@@ -288,9 +295,10 @@ def workspace_from_dict(body: object, where: str = "the Workspace") -> Workspace
 
     layout = _read_layout(fields["layout"], f"{where}.layout", f"{where}.layout")
     view_state = _read_view_state(fields["view_state"], f"{where}.view_state")
+    pinned_run = _read_run_id(fields["pinned_run"], f"{where}.pinned_run")
 
     try:
-        return Workspace(read_name, read_origin, layout, view_state)
+        return Workspace(read_name, read_origin, layout, view_state, pinned_run)
     except InvalidLayout as error:
         raise LayoutFormatError(f"{where}: {error}") from None
 
@@ -633,6 +641,41 @@ def _read_split(fields: dict[str, object], where: str, depth: int) -> Split:
 
     try:
         return Split(Orientation(orientation), tuple(sizes), read)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"{where}: {error}") from None
+
+
+def _run_id_to_dict(run: RunId | None) -> dict[str, object] | None:
+    """A pinned run as a file holds it: `null`, or its session and its number."""
+
+    if run is None:
+        return None
+
+    return {"session": str(run.session), "number": run.number}
+
+
+def _read_run_id(value: object, where: str) -> RunId | None:
+    """A pinned run, as `_run_id_to_dict` writes it: `null`, or a session and a number."""
+
+    if value is None:
+        return None
+
+    fields = _fields(value, where, "a pinned run", ("session", "number"))
+    session = fields["session"]
+    number = fields["number"]
+
+    if not isinstance(session, str):
+        raise LayoutFormatError(
+            f"{where}.session: a run's session is a string, not {_json_kind(session)}"
+        )
+
+    if isinstance(number, bool) or not isinstance(number, int):
+        raise LayoutFormatError(
+            f"{where}.number: a run's number is a whole number, not {_json_value(number)}"
+        )
+
+    try:
+        return RunId(SessionToken(session), number)
     except InvalidLayout as error:
         raise LayoutFormatError(f"{where}: {error}") from None
 

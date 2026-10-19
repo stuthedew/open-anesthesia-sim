@@ -1493,7 +1493,11 @@ def test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_to
             "sizes": sizes,
             "children": [{"area": number, "view": "concentration_chart"} for number in (1, 2, 3)],
         }
-        document = {"schema_version": 1, "next_area_id": 4, "windows": [{"tree": tree}]}
+        document = {
+            "schema_version": LAYOUT_SCHEMA_VERSION,
+            "next_area_id": 4,
+            "windows": [{"tree": tree}],
+        }
 
         assert 0.99 * LAYOUT_SIZE_SUM_TOLERANCE < abs(math.fsum(sizes) - 1)
 
@@ -1599,12 +1603,12 @@ def test_the_serialized_root_holds_a_window_set_at_version_one() -> None:
 
     written = layout_to_dict(LayoutModel.single_area(CHART))
 
-    assert LAYOUT_SCHEMA_VERSION == 1
+    assert LAYOUT_SCHEMA_VERSION == 2
     assert written == {
         "next_area_id": 2,
         "windows": [{"tree": {"area": 1, "view": "concentration_chart"}}],
     }
-    assert layout_to_json(LayoutModel.single_area(CHART)).startswith('{\n  "schema_version": 1,')
+    assert layout_to_json(LayoutModel.single_area(CHART)).startswith('{\n  "schema_version": 2,')
 
 
 def test_a_layout_survives_the_round_trip_through_json_exactly() -> None:

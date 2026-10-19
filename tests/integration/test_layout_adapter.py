@@ -55,6 +55,7 @@ from anesthesia_sim.app.view_contract import (
 )
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.sizing import PixelSize
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 
@@ -963,7 +964,7 @@ def _tick() -> ViewTick:
     snapshot = controller.snapshot()
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
     frame = assemble_chart_frame(
-        [RunInput(run_label(0), controller, snapshot, ())],
+        [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())],
         None,
         selection.shown,
         plot_width_px=400.0,

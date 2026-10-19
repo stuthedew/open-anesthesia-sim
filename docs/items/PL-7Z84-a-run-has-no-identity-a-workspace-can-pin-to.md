@@ -3,12 +3,14 @@ id: PL-7Z84
 title: A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, src/anesthesia_sim/layout/workspace.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/, src/anesthesia_sim/data/workspaces/, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md, tests/unit, tests/integration
 blocked-by: PL-WV9K
 added: 2026-09-16
+closed: 2026-10-18
+pr: 1614
 payoff: a run carries an identity stable across serialization and drawing order, a Workspace pins one by it, and a pinned run that is absent shows a named state rather than another run
 verify: grep -q 'pinned_run' src/anesthesia_sim/layout/workspace.py
 ---
@@ -47,3 +49,46 @@ So a run's identity today is *index in this dashboard's drawing order*, held by 
 is startable, so the band is the gate's rule rather than a weighing, and the
 owner agreed to it on the read of `#1481` (project owner, 2026-10-17,
 ratified, over leaving it `P2` and blocked).
+
+## Built 2026-10-18
+
+**What a run is called by.** `src/anesthesia_sim/layout/run_identity.py` adds
+`RunId`, a session token and a number. `RunIdentities` is the session's
+counter, and `SimulationView` mints one identity for each run it places.
+`run_label` now takes a `RunId` and refuses an index with `TypeError`. Every
+name on screen, the fork control's lock text and both legends render the
+identity, so none of them depends on drawing position. `TRUNK_RUN_INDEX` and
+`BRANCH_RUN_INDEX` stay as positions in `view.runs`, and no longer name a run.
+
+**What a Workspace saves.** `Workspace` gains `pinned_run`, and its docstring
+lists what it saves and what it does not. The layout file moves to schema
+version 2. `migrations._unpinned` reads a version 1 file as unpinned, and the
+three shipped Workspaces ship unpinned, as `PL-WV9K` Q6 says.
+`Workspace.shown_runs` returns the open runs when unpinned, the pinned run when
+it is open, and `PinnedRunAbsent` when it is not. It never returns another run.
+
+**Decided here, each the one correct option.**
+
+- *The identity survives the run's own Reset and a change of agent.* Both
+  replace the run's definition in the same place, after any confirmation, and
+  the reader goes on calling it by the same name. A new identity at Reset would
+  silently unpin a Workspace from the run the reader is still working in.
+- *Numbers are never reused within a session.* A branch taken after a dropped
+  one is "Run 3". Reusing "Run 2" would let a pin to the dropped branch find the
+  new one and show its values as the dropped run's, which is the failure this
+  item exists to prevent. The test is
+  `test_a_branch_taken_after_a_dropped_one_is_named_by_a_new_number`. Its
+  variant without `run_id` fails on `origin/main` (`0fb9f90a`) with
+  `AssertionError: assert 'Run 2' == 'Run 3'`.
+- *A pin is saved to the file, and it is absent in a later session.* A run's
+  data is not saved, so a pin restored from the file never finds its run. The
+  session token makes that certain rather than a coincidence of numbering.
+- *When a view names its run* is restated in `docs/MODEL.md` § "A run's name
+  renders its identity, not its place". The rule is now that another run is
+  drawn anywhere, the view is pinned, or the view is in a broken-out window.
+  Until pins and break-out are built, that is exactly the old two-run test.
+
+**Left to `PL-2KXB`** (the tab strip). Setting a pin from the tab's context
+menu, and drawing the "run not present" state in each bound Area, belong to the
+tab strip that `ROADMAP.md` v0.6.0 Required-scope entry 14 builds.
+`Workspace.pinned_to` and `Workspace.shown_runs` are what it calls.
