@@ -713,6 +713,10 @@ for the workers (`PL-W38C`).
    would run and the credit left, and starts nothing.
 5. `uv run python tools/headless_worker.py --runs 3` runs them, one after another.
    Each prints one line: the item, the cost, and the branch it pushed.
+   A run that pushed everything it made removes its clone and keeps its log
+   in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
+   `--no-push` one, keeps both, and its line names the clone to read
+   (`PL-TX7K`).
 
 Each branch is a worker's, so review it as delegated work: `bin/docket verify
 <id>` on the branch, then open its pull request. `--item <id>` runs one named
