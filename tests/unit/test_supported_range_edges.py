@@ -208,9 +208,22 @@ def _without_none(annotation: object) -> object:
 
 @cache
 def _parameters(function: Function) -> dict[str, object]:
-    """Each annotated parameter's type, in signature order, `self` excluded."""
+    """Each annotated parameter's type, in signature order, `self` excluded.
 
-    hints = typing.get_type_hints(function)
+    A method of a generic class, such as `class _RunCopies[W: QWidget]`, names
+    the class's type parameters in its annotations. Those parameters are not
+    module globals, so they are passed in from the class the method is on.
+    """
+
+    owner: object = sys.modules[function.__module__]
+
+    for part in function.__qualname__.split(".")[:-1]:
+        owner = getattr(owner, part, None)
+
+    type_parameters = getattr(owner, "__type_params__", ())
+    hints = typing.get_type_hints(
+        function, localns={parameter.__name__: parameter for parameter in type_parameters}
+    )
 
     return {
         name: _without_none(hints[name])

@@ -90,7 +90,7 @@ Playing a run faster takes more of the same steps per tick rather than larger
 steps: the same case at 1× and at 300× is the same arithmetic, sample for
 sample. Separately, the **chart's time base** — how much of the case is in view,
 from fifteen minutes to twelve hours, or the whole run so far — is chosen by the
-reader and changes only what is drawn.
+reader for each chart and changes only what is drawn.
 
 For what this models today and what is planned next, see
 [`ROADMAP.md`](ROADMAP.md).
