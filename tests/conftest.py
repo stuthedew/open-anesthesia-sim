@@ -74,6 +74,19 @@ the controller runs are shared through `computed_once` as the curves are, so a
 worker handed a controller test waits for the run instead of building it
 again (`PL-ZWQS`). `tools/main_ci_status.py`'s pytest line reads the parts'
 sum, so compare the two jobs' pytest steps in a run's log.
+
+**The windows the tests leave open** (`PL-CW51`). Many tests build a dashboard
+and never delete it, so a worker can end its run holding hundreds of windows.
+The interpreter's exit then destroyed them in no particular order. Qt also
+keeps parentless widgets of its own: each `QGraphicsLayoutStyleInfo`, which a
+pyqtgraph plot's layout builds, holds one in a `unique_ptr` and deletes it with
+the layout (https://github.com/qt/qtbase/blob/6.11/src/widgets/graphicsview/qgraphicslayoutstyleinfo.cpp).
+Deleting such a widget before its plot makes the plot's layout delete it a
+second time, which crashes the process. A drift job on CPython 3.15.0 printed
+"pure virtual method called" as a worker exited, and a worker here on 3.15.0
+died of a segmentation fault while the exit destroyed its windows. So
+`pytest_sessionfinish` deletes the windows Python built while the application
+still runs, and leaves Qt's own widgets to their owners, which delete them.
 """
 
 from __future__ import annotations
@@ -81,11 +94,12 @@ from __future__ import annotations
 import argparse
 import os
 import pickle
+import sys
 from collections.abc import Callable, Collection, Hashable, Sequence
 from itertools import islice
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
 
@@ -361,3 +375,39 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         return
 
     items[:] = deal(items, _units(items), workerinput["workercount"])
+
+
+def windows_built(windows: Sequence[Any]) -> list[Any]:
+    """The parentless windows among `windows` that Python built, in their order.
+
+    A window Qt built for its own use is left out, because its owner deletes it
+    and a second deletion crashes the process (`PL-CW51`).
+    """
+
+    import shiboken6
+
+    return [
+        window
+        for window in windows
+        if window.parent() is None and shiboken6.createdByPython(window)
+    ]
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Delete the windows the tests built, while the application still runs (`PL-CW51`).
+
+    A run that never started a `QApplication` is left alone, and nothing from
+    Qt is imported for it.
+    """
+
+    widgets = sys.modules.get("PySide6.QtWidgets")
+    if widgets is None or widgets.QApplication.instance() is None:
+        return
+
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    for window in windows_built(widgets.QApplication.topLevelWidgets()):
+        window.deleteLater()
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

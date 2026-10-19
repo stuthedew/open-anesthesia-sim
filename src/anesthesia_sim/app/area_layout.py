@@ -110,7 +110,7 @@ from enum import Enum
 from functools import partial
 from typing import Final, cast
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QContextMenuEvent,
@@ -483,6 +483,8 @@ class AreaLayout(QWidget):
         self._pin: tuple[str | None, bool] = (None, False)
         self._settling = False
         self._least: PixelSize | None = None
+        # The needs the last settle used, so a frame that changes one settles again.
+        self._needs: dict[AreaId, PixelSize] = {}
         self._build(frozenset())
 
     @property
@@ -522,6 +524,42 @@ class AreaLayout(QWidget):
             request = view.frame_request()
             frame = None if request is None else frames[request.time_base]
             view.refresh(ViewTick(frame, snapshots, runs, selection))
+
+        self.follow_needs()
+
+    def follow_needs(self) -> None:
+        """Settle the Areas again if what was just drawn changed what a View needs.
+
+        `refresh` calls this method once the Views have drawn. After `refresh`, a
+        host may write into a widget that a View shows. That host calls this method
+        again once it has written, as the dashboard does for each run's own surfaces.
+
+        A View can build, show or hide widgets while it draws. The setting
+        controls build their per-run copies on their first frame, and a chart
+        shows and hides its per-run lines. These changes post layout requests.
+        Qt updates a widget's minimum size only when it handles those requests,
+        and otherwise it handles them on the next passes of the event loop. So
+        this method handles the requests first (`_handle_layout_requests`). The
+        needs that it reads afterwards are then the ones those passes would read.
+
+        If a need changed, this method settles the Areas again and tells the
+        host that this widget's size hint changed. As a result, the splitters
+        have the sizes that the next pass would give them as soon as the frame
+        is drawn (`PL-4L8B`). A host that sized this widget from its earlier hint
+        also lays it out again (`PL-PHPZ`). This method then handles the requests
+        that follow too, so the page and every View in it have their final sizes
+        before the caller sees the frame (`PL-MXMG`).
+        """
+
+        _handle_layout_requests()
+        needs = {area_id: self._need(area_id) for area_id in self._frames}
+
+        if needs == self._needs:
+            return
+
+        self._settle(self._drawn)
+        self.updateGeometry()
+        _handle_layout_requests()
 
     @property
     def owes_a_frame(self) -> bool:
@@ -1169,6 +1207,7 @@ class AreaLayout(QWidget):
         try:
             tree = self._model.windows[MAIN_WINDOW].tree
             needs = {area_id: self._need(area_id) for area_id in self._frames}
+            self._needs = needs
             floors = {area_id: _floor(frame) for area_id, frame in self._frames.items()}
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
@@ -1353,8 +1392,14 @@ class AreaLayout(QWidget):
         if total <= 0:
             return
 
+        # A keyboard step starts from where the border is drawn, as a drag does.
+        # The drawn border can differ from the model's position while an Area is
+        # held wider than its share so that its View fits. A step from the model's
+        # position would then move nothing on screen until it caught up with the
+        # drawn border (`PL-4L8B`).
         low, high = self._model.span(address)
-        target = self._model.position(address) + steps * AREA_KEYBOARD_STEP * (high - low) / total
+        drawn = sum(handle.owner.sizes()[: address.index + 1]) / total
+        target = low + (high - low) * (drawn + steps * AREA_KEYBOARD_STEP / total)
         step = _BorderDrag(address, alone, self._model, 0)
         moved, self._at_minimum = self._farthest(step, target)
         self._resized(moved)
@@ -1983,6 +2028,56 @@ class AreaNotice(QFrame):
 # Twenty halvings place the border to a millionth of its split's span, finer
 # than a pixel on any screen.
 _BORDER_BISECTIONS: Final = 20
+
+#: The maximum number of rounds in which `_handle_layout_requests` handles the posted
+#: layout requests. Each round handles the requests that the round before it posted,
+#: which are one level further up or down the widgets. The dashboard needs fewer than ten.
+_LAYOUT_REQUEST_ROUNDS: Final = 64
+
+
+class _LayoutRequestCount(QObject):
+    """An application event filter that counts the layout requests handed out while installed."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = 0
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.LayoutRequest:
+            self.count += 1
+
+        return False
+
+
+def _handle_layout_requests() -> None:
+    """Handle every posted layout request now, and the requests those post, until none is left.
+
+    A layout that handles a request can post the next request, to the widget
+    above it or below it. If a request is posted while Qt is handling posted
+    requests, Qt keeps it until the next time it handles them. So this function
+    repeats until a round handles no requests, or for `_LAYOUT_REQUEST_ROUNDS`
+    rounds. The event loop handles any request still left, as it would have
+    done without this function.
+    """
+
+    application = QApplication.instance()
+
+    if application is None:
+        return
+
+    count = _LayoutRequestCount()
+    application.installEventFilter(count)
+
+    try:
+        for _ in range(_LAYOUT_REQUEST_ROUNDS):
+            count.count = 0
+            QApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
+
+            if count.count == 0:
+                return
+    finally:
+        application.removeEventFilter(count)
+
 
 # What assistive technology says a border is, and how the keyboard moves it.
 _BORDER_ACCESSIBLE_NAME: Final = "Area border"

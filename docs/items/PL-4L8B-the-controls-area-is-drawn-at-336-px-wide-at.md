@@ -3,12 +3,14 @@ id: PL-4L8B
 title: The controls Area is drawn at 336 px wide at launch though its frame's minimumSizeHint is 590 px, so the first border move of any size jumps the chart Area by about 250 px
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: interface-areas
-touches: src/anesthesia_sim/app/area_layout.py, tests/integration
+touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_keyboard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1686
 payoff: the dashboard opens at the width it keeps, so a border move moves the border by what was asked and a layout test measures only the move
 verify: grep -q 'def test_the_controls_area_has_its_least_width_from_the_first_frame' tests/integration/test_layout_keyboard.py
 ---
@@ -69,3 +71,19 @@ sizes after the next event-loop pass, so no border move follows a relayout. A
 test in `tests/integration/test_layout_keyboard.py` asserts the controls
 Area's pixel width straight after the first frame, and a one-step move then
 changes it by `AREA_KEYBOARD_STEP` and no more.
+
+**Fixed 2026-10-19, with `PL-YJ21`.** The cause is `PL-YJ21`'s: the Areas
+were settled before Qt had applied the setting controls' first frame. With
+`AreaLayout.follow_needs`, the root splitter reads 756 and 590 px straight
+after the first `present`, as it does after the next event-loop pass. A second
+half appeared once the jump was gone. An arrow key stepped from the model's
+position, 0.75 of the window, while the border was drawn at 0.56 because the
+controls Area was held at its need. So about twelve steps moved nothing on
+screen. `border_stepped` now starts each step where the border is drawn, as a
+drag does. `test_every_layout_operation_is_reachable_from_the_keyboard`
+asserted the old behaviour in model fractions, and now asserts the first
+Area's drawn width.
+
+`pytest tests/integration/test_layout_keyboard.py -k controls_area_has_its_least_width`
+fails on the code before the fix with `assert 336 >= 590`, the controls Area's
+width against its frame's `minimumSizeHint`.
