@@ -112,7 +112,7 @@ jobs:
   #
   # not-required: gated by `checks`, which needs this job and fails unless it succeeded
   checks-part-1:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     # The default is 360 minutes. `bin/docket check --verify` shells out to
     # every `ready` or `needs-decision` item's own `verify:` command - 216 of
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
@@ -520,7 +520,7 @@ jobs:
   #
   # not-required: gated by `checks`, which needs this job and fails unless it succeeded
   checks-part-2:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     # The first part's bound, for the first part's reasons.
     timeout-minutes: 15
     # The fast path's answer, for `checks` (`PL-DXD4`).
