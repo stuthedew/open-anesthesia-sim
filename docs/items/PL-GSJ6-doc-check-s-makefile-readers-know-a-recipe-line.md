@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_makefile_reference.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
 closed: 2026-10-19
