@@ -97,6 +97,15 @@ from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
+
+# The identities a dashboard gives the first runs it places, in order, which
+# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
+# rather than from where it is drawn (`PL-7Z84`).
+TEST_SESSION = SessionToken("0" * 32)
+RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
+FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
+
 
 _STEP_S = SimulationStep(0.1)
 
@@ -157,7 +166,10 @@ def _frame(
         snapshot = controller.snapshot()
         runs.append(
             RunInput(
-                run_label(len(runs)), controller, snapshot, grouping.of(snapshot.control_timeline)
+                run_label(RUN_IDS[len(runs)]),
+                controller,
+                snapshot,
+                grouping.of(snapshot.control_timeline),
             )
         )
 
@@ -431,7 +443,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
         for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 3), 5)
     )
     frame = assemble_chart_frame(
-        [RunInput(run_label(0), controller, snapshot, crowded)],
+        [RunInput(run_label(FIRST_RUN), controller, snapshot, crowded)],
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
@@ -1110,6 +1122,7 @@ def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
     assert legend.shown == COMPARTMENT_QUANTITIES
     assert legend._compared_caption.isHidden() is True
 
+    legend.show_run_names((run_label(FIRST_RUN), run_label(SECOND_RUN)))
     legend.show_selection(reduced)
 
     assert requests == []
@@ -1362,8 +1375,9 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     wash_in.draw(frame)
     legend = TraceLegend()
     wash_in_legend = WashInLegend()
+    legend.show_run_names(tuple(run.label for run in frame.runs))
     legend.show_selection(INITIAL_COMPARTMENT_SELECTION.with_run_count(len(frame.runs)))
-    wash_in_legend.set_run_count(len(frame.runs))
+    wash_in_legend.show_run_names(tuple(run.label for run in frame.runs))
 
     # The cap: two compartments, which is what leaves the width free at all.
     assert len(frame.runs) == 2
@@ -1407,7 +1421,9 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 
     named = {mark.label for mark in marks}
     expected = {
-        compared_trace_legend_label(trace_legend_label(trace_style(quantity)), run_label(index))
+        compared_trace_legend_label(
+            trace_legend_label(trace_style(quantity)), run_label(RUN_IDS[index])
+        )
         for quantity in frame.visible
         for index in range(len(frame.runs))
     }
@@ -1417,7 +1433,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     for quantity in frame.visible:
         for index in range(len(frame.runs)):
             label = compared_trace_legend_label(
-                trace_legend_label(trace_style(quantity)), run_label(index)
+                trace_legend_label(trace_style(quantity)), run_label(RUN_IDS[index])
             )
             entry = next(mark for mark in marks if mark.label == label)
             drawn = chart.drawn_pen(index, quantity)
@@ -1430,12 +1446,12 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     wash_in_named = {mark.label for mark in wash_in_legend.compared_marks}
 
     assert wash_in_named == {
-        compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(index))
+        compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(RUN_IDS[index]))
         for index in range(len(frame.runs))
     }
 
     for index in range(len(frame.runs)):
-        assert any(run_label(index) in label for label in named)
+        assert any(run_label(RUN_IDS[index]) in label for label in named)
 
     branch_mark = legend.branch_mark
 

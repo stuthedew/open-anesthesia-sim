@@ -105,6 +105,7 @@ from anesthesia_sim.app.dashboard_frame import (
     STATUS_PAUSED_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
     TRUNK_RUN_INDEX,
+    ComparedRuns,
     ForkPoint,
     MarkListing,
     comparing_fork_lock_text,
@@ -191,7 +192,17 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Split
+
+# The identities a dashboard gives the first runs it places, in order, which
+# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
+# rather than from where it is drawn (`PL-7Z84`).
+TEST_SESSION = SessionToken("0" * 32)
+RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
+FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
+COMPARED = ComparedRuns(run_label(FIRST_RUN), run_label(SECOND_RUN))
+
 
 # The size every dashboard here is shown at: wide enough for the seven
 # readouts to stand side by side and for a chart column with pixels to
@@ -3184,7 +3195,7 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
     host = QWidget()
     windows_before = len(application.topLevelWindows())
 
-    run = RunView(SimulationController(), host)
+    run = RunView(SimulationController(), host, run_id=FIRST_RUN)
     application.processEvents()
 
     assert len(application.topLevelWindows()) == windows_before
@@ -5496,8 +5507,8 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
 
     listed = view._bookmarks_panel.targets.text()
 
-    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in listed
-    assert f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}" in listed
+    assert f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in listed
+    assert f"{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}" in listed
 
 
 def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
@@ -5518,9 +5529,9 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
     listed = view._bookmarks_panel.times.text()
 
     assert listed.endswith(
-        f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
+        f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
     )
-    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in listed
+    assert f"{run_label(FIRST_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in listed
 
 
 def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplication) -> None:
@@ -5568,19 +5579,19 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
     assert trunk._status_text.text() == STATUS_FAILED_TEXT
 
     said = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
-    still_reachable = f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}"
+    still_reachable = f"{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}"
     times = view._bookmarks_panel.times.text()
     targets = view._bookmarks_panel.targets.text()
 
-    assert f"{run_label(0)} {said}" in times
-    assert f"{run_label(0)} {said}" in targets
+    assert f"{run_label(FIRST_RUN)} {said}" in times
+    assert f"{run_label(FIRST_RUN)} {said}" in targets
     assert still_reachable not in times
     assert still_reachable not in targets
     # The branch still answers for itself, and the trunk still reports what
     # it did reach before the failure.
-    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
-    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
-    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in targets
+    assert f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
+    assert f"{run_label(FIRST_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
+    assert f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in targets
 
 
 def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
@@ -5603,7 +5614,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     listed = view._bookmarks_panel.times.text()
 
     assert listed.endswith(MARK_STANDING_TEXT[MarkStanding.PASSED])
-    assert run_label(0) not in listed
+    assert run_label(FIRST_RUN) not in listed
 
 
 def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
@@ -5821,10 +5832,12 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     assert len(view.runs) == 2
     assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP, "the cap reduced nothing"
     assert view.presented_frames == presented + 1, "one press drew other than one frame"
-    assert told == [(run_label(0), run_label(1))], (
+    assert told == [(run_label(FIRST_RUN), run_label(SECOND_RUN))], (
         "the frame was assembled before the run set had been told it had grown"
     )
-    assert view._wash_in_legend._run_count == 2, "the frame did not tell the wash-in legend"
+    assert view._wash_in_legend._run_names == (run_label(FIRST_RUN), run_label(SECOND_RUN)), (
+        "the frame did not tell the wash-in legend"
+    )
 
 
 def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
@@ -5847,9 +5860,10 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
     assert len(_setting_sections(view)) == sections_before + 1
     assert view.unconditional_region.isAncestorOf(view.runs[1]._readout_row)
     assert view._legend._run_count == 2
-    assert view._wash_in_legend._run_count == 2
-    assert view.runs[0]._run_name_text.text() == run_label(0)
-    assert view.runs[1]._run_name_text.text() == run_label(1)
+    assert view._legend._run_names == (run_label(FIRST_RUN), run_label(SECOND_RUN))
+    assert view._wash_in_legend._run_names == (run_label(FIRST_RUN), run_label(SECOND_RUN))
+    assert view.runs[0]._run_name_text.text() == run_label(FIRST_RUN)
+    assert view.runs[1]._run_name_text.text() == run_label(SECOND_RUN)
     assert view.runs[1]._run_name_text.isHidden() is False
 
 
@@ -5887,7 +5901,7 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
     assert len(view.runs) == 2
 
     for index, run in enumerate(view.runs):
-        opening = f"{run_label(index)} — "
+        opening = f"{run_label(RUN_IDS[index])} — "
         assert run._wash_in_state_lines[0].text().startswith(opening)
         assert run._off_scale_lines[0].isHidden() is False
         assert run._off_scale_lines[0].text().startswith(opening)
@@ -5912,8 +5926,8 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     assert run._off_scale_lines[0].isHidden() is False
     assert run._off_scale_lines[0].text().startswith("Above the top of the plot:")
     assert run._wash_in_state_lines[0].text().startswith("Now: F_A/F_I =")
-    assert run_label(0) not in run._off_scale_lines[0].text()
-    assert run_label(0) not in run._wash_in_state_lines[0].text()
+    assert run_label(FIRST_RUN) not in run._off_scale_lines[0].text()
+    assert run_label(FIRST_RUN) not in run._wash_in_state_lines[0].text()
 
 
 #: A dial position above every agent's calibrated vaporizer maximum, so the core
@@ -5952,9 +5966,9 @@ def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) 
     branch_notice = branch._notice_text.notice()
 
     assert trunk_notice is not None
-    assert trunk_notice.startswith(f"{run_label(0)}: Simulation stopped")
+    assert trunk_notice.startswith(f"{run_label(FIRST_RUN)}: Simulation stopped")
     assert branch_notice is not None
-    assert branch_notice.startswith(f"{run_label(1)}: Setting refused")
+    assert branch_notice.startswith(f"{run_label(SECOND_RUN)}: Setting refused")
     assert "The simulation is unchanged" in branch_notice
 
 
@@ -5983,7 +5997,7 @@ def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
     for index, run in enumerate(view.runs):
         notice = run._notice_text.notice()
         assert notice is not None
-        assert notice.startswith(f"{run_label(index)}: Simulation stopped")
+        assert notice.startswith(f"{run_label(RUN_IDS[index])}: Simulation stopped")
 
 
 def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
@@ -6022,7 +6036,7 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
     after = trunk._notice_text.notice()
 
     assert after is not None
-    assert after.startswith(f"{run_label(0)}: Setting refused")
+    assert after.startswith(f"{run_label(FIRST_RUN)}: Setting refused")
 
 
 def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) -> None:
@@ -6043,7 +6057,7 @@ def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) 
 
     assert notice is not None
     assert notice.startswith("Setting refused")
-    assert run_label(0) not in notice
+    assert run_label(FIRST_RUN) not in notice
 
 
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
@@ -6086,7 +6100,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     columns = (view._sidebar_column.parentWidget(), view._record_column.parentWidget())
 
     for index, run in enumerate(view.runs):
-        name = run_label(index)
+        name = run_label(RUN_IDS[index])
         headings = (
             run._accounting_panels[0]._accounting_heading_text,
             run._control_timeline_heading_text,
@@ -6215,8 +6229,8 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
 
     assert run._accounting_panels[0]._accounting_heading_text.text() == ACCOUNTING_HEADING
     assert run._control_timeline_heading_text.text() == CONTROL_TIMELINE_HEADING
-    assert run_label(0) not in run._accounting_panels[0]._accounting_heading_text.text()
-    assert run_label(0) not in run._control_timeline_heading_text.text()
+    assert run_label(FIRST_RUN) not in run._accounting_panels[0]._accounting_heading_text.text()
+    assert run_label(FIRST_RUN) not in run._control_timeline_heading_text.text()
 
 
 def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
@@ -6340,7 +6354,7 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
     assert panel.take_button.isEnabled() is False
     assert panel.point_selector.isHidden() is True
     assert panel.point_selector.isEnabled() is False
-    assert panel.lock_text.text() == comparing_fork_lock_text()
+    assert panel.lock_text.text() == comparing_fork_lock_text(COMPARED)
     assert panel.lock_text.isHidden() is False
     # The mode is not a warning: this interface has one alarm colour and a
     # comparison in progress is the dashboard working as intended.
@@ -6350,7 +6364,7 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
-    assert panel.lock_text.text() == comparing_fork_lock_text()
+    assert panel.lock_text.text() == comparing_fork_lock_text(COMPARED)
 
 
 def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QApplication) -> None:
@@ -6569,7 +6583,7 @@ def test_the_fork_here_is_refused_with_the_rest_while_two_runs_are_shown(
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
-    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text()
+    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text(COMPARED)
 
 
 def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
@@ -6781,7 +6795,7 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
         fork_offer(
             (CaseInstant(0.0), unkeyframed.instant_s, CaseInstant(60.0)),
             marks=(),
-            comparing=False,
+            comparing=None,
             here=None,
         )
     )
@@ -6819,7 +6833,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
         fork_offer(
             case.fork_points_s,
             marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
-            comparing=False,
+            comparing=None,
             here=None,
         )
     )
@@ -6946,7 +6960,7 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
         fork_offer(
             (CaseInstant(0.0), CaseInstant(30.0), CaseInstant(60.0)),
             marks=(),
-            comparing=False,
+            comparing=None,
             here=None,
         )
     )
@@ -7214,10 +7228,10 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
 
     lock = view._fork_panel.lock_text.text()
 
-    assert lock == comparing_fork_lock_text()
+    assert lock == comparing_fork_lock_text(COMPARED)
 
     for index, run in enumerate(view.runs):
-        assert run._run_name_text.text() == run_label(index)
+        assert run._run_name_text.text() == run_label(RUN_IDS[index])
         assert run._run_name_text.isHidden() is False
         assert run._run_name_text.text() in lock
         assert run._reset_button.text() == RESET_LABEL
@@ -7708,7 +7722,7 @@ def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplicat
         fork_offer(
             (CaseInstant(0.0),),
             marks=(MarkForkPoint(TimeBookmark(instant), instant),),
-            comparing=False,
+            comparing=None,
             here=None,
         )
     )
@@ -7802,6 +7816,44 @@ def test_dropping_a_branch_takes_its_values_out_of_the_shared_block(
     assert trunk._running_agent_display.maximumWidth() == AGENT_SELECTOR_WIDTH
     assert trunk._delivered_text.isVisible()
     assert trunk._agent_header_badge.isVisible()
+
+
+def test_a_branch_taken_after_a_dropped_one_is_named_by_a_new_number(
+    application: QApplication,
+) -> None:
+    """A run's name comes from its identity, so a later branch is never the dropped one's name.
+
+    Named by drawing position, the second branch to stand beside the trunk was
+    "Run 2" again, the same name as the branch the trunk's Reset dropped. A
+    Workspace pinned to that dropped branch would then find a run of its name
+    and show the new branch's values as if they were the old one's
+    (`PL-7Z84`). The trunk keeps its identity through its own Reset.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=_LAPTOP_WIDTH_PX)
+    _take_fork(view, 60.0)
+    _settle(application)
+    first_trunk, dropped_branch = (run.run_id for run in view.runs)
+
+    view.runs[TRUNK_RUN_INDEX]._reset_button.click()
+    _settle(application)
+    (restarted_at_s,) = _offered_fork_instants(view)
+    _take_fork(view, restarted_at_s)
+    _settle(application)
+    trunk, branch = view.runs
+
+    assert trunk.run_id == first_trunk
+    assert branch.run_id not in (first_trunk, dropped_branch)
+    assert [panel.run_name_label.text() for panel in trunk._readout_row.panels] == ["Run 1"] * len(
+        trunk._readout_row.panels
+    )
+    assert [panel.run_name_label.text() for panel in branch._readout_row.panels] == ["Run 3"] * len(
+        branch._readout_row.panels
+    )
+    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text(
+        ComparedRuns("Run 1", "Run 3")
+    )
+    assert view._wash_in_legend._run_names == ("Run 1", "Run 3")
 
 
 def test_two_compared_runs_take_one_line_each_above_one_shared_heading(

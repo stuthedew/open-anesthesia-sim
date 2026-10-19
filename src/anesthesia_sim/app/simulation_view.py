@@ -86,6 +86,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
     BranchAtStake,
+    ComparedRuns,
     NewCaseQuestion,
     RunMarks,
     bookmark_panel,
@@ -135,6 +136,7 @@ from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
+from anesthesia_sim.layout.run_identity import RunIdentities
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
 #: The shares of the window's width the chart panel and the sidebar take
@@ -293,6 +295,15 @@ class SimulationView(QWidget):
     simply no longer told, and a second is told the same (`PL-VN6M`).
     """
 
+    run_names_changed = Signal(object)
+    """Emitted with what each run a frame drew is called, in drawing order, before its selection.
+
+    Each name is the run's identity rendered by `run_label` (`PL-7Z84`), so a
+    legend names a curve as the run's own panel does. Both legends are
+    connected to it rather than called, as they are to
+    `compartment_selection_changed`.
+    """
+
     time_base_changed = Signal(object)
     """Emitted with the time base a frame was drawn at, None for "Fit run", once both plots drew it.
 
@@ -307,6 +318,7 @@ class SimulationView(QWidget):
         parent: QWidget | None = None,
         *,
         case: BranchedCase | None = None,
+        run_identities: RunIdentities | None = None,
     ) -> None:
         """Build the dashboard over `controllers`, one `RunView` each, drawing nothing yet.
 
@@ -365,6 +377,10 @@ class SimulationView(QWidget):
 
         super().__init__(parent)
         self._case = case
+        # Where every run this dashboard places takes its identity, so no
+        # number is given out twice in the session and a dropped branch's is
+        # never a later branch's (`PL-7Z84`).
+        self._run_identities = RunIdentities() if run_identities is None else run_identities
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. Held across
@@ -401,7 +417,9 @@ class SimulationView(QWidget):
         )
         self._legend = TraceLegend()
         self.compartment_selection_changed.connect(self._legend.show_selection)
+        self.run_names_changed.connect(self._legend.show_run_names)
         self._wash_in_legend = WashInLegend()
+        self.run_names_changed.connect(self._wash_in_legend.show_run_names)
         # The control shows this view's time base and asks to change it; it
         # holds none of its own, so closing it takes nothing with it and a
         # second shows the same width (`PL-9LNF`).
@@ -732,7 +750,7 @@ class SimulationView(QWidget):
             The view built for it.
         """
 
-        run = RunView(controller, self)
+        run = RunView(controller, self, run_id=self._run_identities.mint())
 
         if not self._runs:
             # Only the first run's restart is a new case: a branch's Reset
@@ -916,7 +934,7 @@ class SimulationView(QWidget):
             return None
 
         branches = (
-            self._branch_at_stake(index, run)
+            self._branch_at_stake(run)
             for index, run in enumerate(self._runs)
             if index != TRUNK_RUN_INDEX
         )
@@ -925,11 +943,11 @@ class SimulationView(QWidget):
         if not at_stake:
             return None
 
-        return trunk_reset_question(run_label(TRUNK_RUN_INDEX), at_stake)
+        return trunk_reset_question(run_label(self._runs[TRUNK_RUN_INDEX].run_id), at_stake)
 
     @staticmethod
-    def _branch_at_stake(index: int, run: RunView) -> BranchAtStake | None:
-        """What discarding the branch drawn at `index` would lose, or None where it holds nothing.
+    def _branch_at_stake(run: RunView) -> BranchAtStake | None:
+        """What discarding this drawn branch would lose, or None where it holds nothing.
 
         A branch whose snapshot refuses a value still holds work, so it is
         stated from what its controller can say without one: its fork and
@@ -946,7 +964,7 @@ class SimulationView(QWidget):
         record = run.controller.record() if snapshot is None else snapshot
 
         return branch_at_stake(
-            run_label(index), run.controller.began_at_s, snapshot, len(run.adjustments(record))
+            run_label(run.run_id), run.controller.began_at_s, snapshot, len(run.adjustments(record))
         )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:
@@ -1018,8 +1036,12 @@ class SimulationView(QWidget):
 
         Said on every change to the run set rather than once at
         construction. A lone run is given no name, having nothing to be told
-        apart from; two runs are named by `run_label`, which is what the
-        legend entries call them. The same count decides whether an agent
+        apart from. Two runs are named by `run_label` from each run's
+        identity, which is what the legend entries call them. `docs/MODEL.md`
+        names a value's run whenever another run is drawn anywhere. Every run
+        is drawn in this dashboard until a run can be drawn elsewhere, so that
+        moment is the one at which this dashboard holds more than one run
+        (`PL-7Z84`). The same count decides whether an agent
         selector may be used at all, because two runs share one MAC axis,
         and whether the compartment selection is held to the cap
         (`CompartmentSelection.with_run_count`). Neither legend is told here:
@@ -1038,8 +1060,8 @@ class SimulationView(QWidget):
         comparing = len(self._runs) > 1
         self._compartment_selection = self._compartment_selection.with_run_count(len(self._runs))
 
-        for index, run in enumerate(self._runs):
-            run.set_run_name(run_label(index) if comparing else None)
+        for run in self._runs:
+            run.set_run_name(run_label(run.run_id) if comparing else None)
             run.set_comparing(comparing)
 
     # ----------------------------------------------------------- branching
@@ -1070,8 +1092,11 @@ class SimulationView(QWidget):
         if case is None:
             return
 
-        if len(self._runs) >= MAX_DISPLAYED_RUNS:
-            self._fork_refusal = comparing_fork_lock_text()
+        compared = self._compared_runs()
+
+        if compared is not None:
+            # `MAX_DISPLAYED_RUNS` is two, so a second run on the chart is the cap.
+            self._fork_refusal = comparing_fork_lock_text(compared)
             self.present(False)
 
             return
@@ -1123,8 +1148,11 @@ class SimulationView(QWidget):
         if case is None:
             return
 
-        if len(self._runs) >= MAX_DISPLAYED_RUNS:
-            self._fork_refusal = comparing_fork_lock_text()
+        compared = self._compared_runs()
+
+        if compared is not None:
+            # `MAX_DISPLAYED_RUNS` is two, so a second run on the chart is the cap.
+            self._fork_refusal = comparing_fork_lock_text(compared)
             self.present(False)
 
             return
@@ -1202,7 +1230,7 @@ class SimulationView(QWidget):
                 fork_offer(
                     (),
                     marks=(),
-                    comparing=len(self._runs) > 1,
+                    comparing=self._compared_runs(),
                     here=None,
                     refusal=self._fork_refusal,
                 )
@@ -1237,11 +1265,21 @@ class SimulationView(QWidget):
             fork_offer(
                 self._case.fork_points_s,
                 marks=self._case.mark_fork_points,
-                comparing=len(self._runs) > 1,
+                comparing=self._compared_runs(),
                 here=self._case.here_fork_point,
                 refusal=self._fork_refusal,
             )
         )
+
+    def _compared_runs(self) -> ComparedRuns | None:
+        """What the trunk and its branch are called while both are drawn, or None while one is."""
+
+        if len(self._runs) < MAX_DISPLAYED_RUNS:
+            return None
+
+        trunk, branch = self._runs
+
+        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id))
 
     def _section_divider(self) -> QFrame:
         """The rule between two sections of the chart column."""
@@ -1347,8 +1385,8 @@ class SimulationView(QWidget):
         time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
-            RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))
-            for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True))
+            RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
+            for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
         frame = assemble_chart_frame(
             inputs,
@@ -1360,9 +1398,11 @@ class SimulationView(QWidget):
         for chart in self._charts:
             chart.draw(frame)
 
+        # The names before the selection, so a legend told of a second run's
+        # curves already knows what that run is called.
+        self.run_names_changed.emit(tuple(run.label for run in frame.runs))
         self.compartment_selection_changed.emit(selection)
         self.time_base_changed.emit(time_base)
-        self._wash_in_legend.set_run_count(len(frame.runs))
         self._time_axis_caption.setText(time_axis_caption(frame))
         self._mac_reference_text.setText(mac_reference_caption(frame))
         self._mac_awake_reference_text.setText(mac_awake_caption(snapshots[0]))
@@ -1432,8 +1472,8 @@ class SimulationView(QWidget):
         panel = bookmark_panel(
             reference.bookmarks,
             tuple(
-                RunMarks(run_label(index), snapshot.bookmark_standings)
-                for index, snapshot in enumerate(snapshots)
+                RunMarks(run_label(run.run_id), snapshot.bookmark_standings)
+                for run, snapshot in zip(self._runs, snapshots, strict=True)
             ),
         )
         self._bookmarks_panel.set_panel(panel)

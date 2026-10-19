@@ -49,3 +49,12 @@ swap, and Workspace tabs. `AreaLayout.set_model` already rebuilds the
 splitters when the tree changes shape, so a split, join or swap reaches the
 screen through it.
 
+
+## Pinning reaches the tab strip here, 2026-10-18
+
+`PL-7Z84` built a run's identity and a Workspace's `pinned_run`, and left the
+reader's half to this item, since this item builds the tab strip. The tab's
+context menu carries "Pin current run" or "Unpin", in `PL-QW1Z` Q3's order. It
+calls `Workspace.pinned_to`. Each View bound to a pinned Workspace shows the
+runs `Workspace.shown_runs` returns. Where that is `PinnedRunAbsent`, the Area
+states "run not present" in its rectangle (`PL-TH35` Q6), never another run.

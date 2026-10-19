@@ -17,6 +17,8 @@ a `QApplication`, and one adapter module builds the widget tree from the value
   versioned document holding one on its own.
 - `exceptions.py` - what the package refuses, and what each refusal means to
   a caller.
+- `run_identity.py` - `RunId`, what a run is called by independently of
+  where it is drawn, which a Workspace pins (`PL-7Z84`).
 - `shipped.py` - the Workspaces shipped under `data/workspaces/`, read by the
   same reader as the reader's own file (`PL-KXTL`).
 """

@@ -7,13 +7,24 @@ geometry of Areas in its windows (`PL-C842`, `PL-WV9K`). The layout is
 the set of them behaves, as `PL-WV9K` decided (project owner, 2026-09-27,
 ratified, over the alternative each answer names).
 
-**What a Workspace carries** (`PL-WV9K` Q1): a `name`, unique in its set; an
-`origin`, shipped under an id or the reader's own; its `LayoutModel`; and
-`view_state`, each View's own saved state, held per Area id and per View kind
-as a JSON object this module never reads (`PL-TH35`). Nothing else: no reader
-preferences, which `ROADMAP.md` v0.6.0 entry 11 routes to a tier of their own,
-no run data, and no window geometry. The run a Workspace pins is `PL-7Z84`'s,
-and arrives with the run identity it holds.
+**What a Workspace carries, and so what its saved form holds** (`PL-WV9K`
+Q1): a `name`, unique in its set; an `origin`, shipped under an id or the
+reader's own; its `LayoutModel`; `view_state`, each View's own saved state,
+held per Area id and per View kind as a JSON object this module never reads
+(`PL-TH35`); and `pinned_run`, the identity of the run its Views show, or
+`None` (`PL-7Z84`). Nothing else: no reader preferences, which `ROADMAP.md`
+v0.6.0 entry 11 routes to a tier of their own, no run data, and no window
+geometry. Runs belong to the session rather than to a Workspace, so switching
+Workspaces changes which run a View shows and never the run itself.
+
+**A pin names a run, and an absent run is stated rather than replaced**
+(`PL-WV9K` Q6, `PL-7Z84`). Unpinned, a Workspace's Views show the runs the
+session has open. Pinned, they show the pinned run alone. Where the pinned run
+is not open, `shown_runs` returns `PinnedRunAbsent` and no run at all, so a
+caller cannot draw another run in its place. That is the usual case for a pin
+read back from the saved file, because nothing persists a run across
+sessions, and an identity from another session never matches one minted in
+this one (`layout/run_identity.py`).
 
 **One retained entry per View kind per Area.** When an Area's View changes
 and changes back, the outgoing View's state is kept under its kind rather than
@@ -60,12 +71,14 @@ from anesthesia_sim.layout.exceptions import (
     NotInWorkspaceSet,
 )
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.run_identity import RunId
 from anesthesia_sim.layout.tree import AreaId, ViewKind, is_tag
 
 __all__ = [
     "MINE",
     "SHIPPED_PREFIX",
     "Origin",
+    "PinnedRunAbsent",
     "ShippedWorkspaceId",
     "ViewState",
     "Workspace",
@@ -219,6 +232,26 @@ type ViewState = Mapping[AreaId, Mapping[ViewKind, Mapping[str, object]]]
 
 
 @dataclass(frozen=True, slots=True)
+class PinnedRunAbsent:
+    """A Workspace's pinned run is not open, so its Views show no run.
+
+    Returned by `Workspace.shown_runs` in place of the runs to show, so the
+    absence is a value a caller has to handle rather than an empty tuple it
+    could pass on. A View bound to the pin states the absence in its Area and
+    draws no value.
+
+    Raises:
+        TypeError: `pinned` is not a `RunId`.
+    """
+
+    pinned: RunId
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.pinned, RunId):
+            raise TypeError(f"a pinned run is a RunId, not {type(self.pinned).__name__}")
+
+
+@dataclass(frozen=True, slots=True)
 class Workspace:
     """A named layout with each View's own saved state: one tab of the set.
 
@@ -228,6 +261,9 @@ class Workspace:
     Area the layout holds. A View's state is a record of named fields, so each
     entry is a JSON object whose keys are strings at every depth; what the
     fields mean is the View's.
+
+    `pinned_run` is the run its Views show, or `None` for the runs the
+    session has open; `shown_runs` resolves it.
 
     Raises:
         TypeError: a field is not of its declared type; a `view_state` key is
@@ -244,6 +280,7 @@ class Workspace:
     origin: Origin
     layout: LayoutModel
     view_state: ViewState = field(default_factory=dict)
+    pinned_run: RunId | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, WorkspaceName):
@@ -257,6 +294,11 @@ class Workspace:
         if not isinstance(self.layout, LayoutModel):
             raise TypeError(
                 f"a Workspace's layout is a LayoutModel, not {type(self.layout).__name__}"
+            )
+
+        if self.pinned_run is not None and not isinstance(self.pinned_run, RunId):
+            raise TypeError(
+                f"a Workspace's pinned_run is a RunId or None, not {type(self.pinned_run).__name__}"
             )
 
         if not isinstance(self.view_state, Mapping):
@@ -336,6 +378,41 @@ class Workspace:
         kept = {area_id: kinds for area_id, kinds in self.view_state.items() if area_id in held}
 
         return replace(self, layout=layout, view_state=kept)
+
+    def pinned_to(self, run: RunId | None) -> Workspace:
+        """This Workspace pinned to `run`, or unpinned where `run` is `None`.
+
+        Raises:
+            TypeError: `run` is neither `None` nor a `RunId`.
+        """
+
+        return replace(self, pinned_run=run)
+
+    def shown_runs(self, open_runs: tuple[RunId, ...]) -> tuple[RunId, ...] | PinnedRunAbsent:
+        """The runs this Workspace's Views show, out of the runs the session has open.
+
+        Unpinned, every open run, in the order given. Pinned, the pinned run
+        alone where it is open, and `PinnedRunAbsent` where it is not. No
+        other run is ever returned in a pinned run's place.
+
+        Raises:
+            TypeError: `open_runs` is not a tuple of `RunId`s.
+            ValueError: `open_runs` names one run twice.
+        """
+
+        if not isinstance(open_runs, tuple) or not all(isinstance(run, RunId) for run in open_runs):
+            raise TypeError("the open runs are a tuple of RunIds")
+
+        if len(set(open_runs)) != len(open_runs):
+            raise ValueError("the open runs name each run once")
+
+        if self.pinned_run is None:
+            return open_runs
+
+        if self.pinned_run in open_runs:
+            return (self.pinned_run,)
+
+        return PinnedRunAbsent(self.pinned_run)
 
     def renamed(self, name: WorkspaceName) -> Workspace:
         """This Workspace under `name`. Whether the name is free is the set's question.

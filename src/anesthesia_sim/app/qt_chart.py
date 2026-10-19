@@ -104,7 +104,6 @@ from anesthesia_sim.app.dashboard_frame import (
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
-    run_label,
     trace_legend_label,
 )
 from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
@@ -1777,6 +1776,8 @@ class TraceLegend(QWidget):
         # True while the boxes are being written from a selection, so a box
         # that toggles under that pass is repainted and not taken for a click.
         self._showing = False
+        # What each drawn run is called, from the last `show_run_names`.
+        self._run_names: tuple[str, ...] = ()
         self.show_selection(INITIAL_COMPARTMENT_SELECTION)
 
     @property
@@ -1818,6 +1819,21 @@ class TraceLegend(QWidget):
         self._selection = selection
         self._check_exactly(selection.shown)
         self._branch_entry.setHidden(selection.run_count <= 1)
+        self._refresh_compared_row()
+
+    def show_run_names(self, names: tuple[str, ...]) -> None:
+        """Name the runs' curves as the runs' own panels name them, in drawing order.
+
+        The dashboard's answer to a frame drawn over a new run set, given
+        before the selection that frame was drawn from, so each compared
+        entry names its run by the run's identity rather than by where it is
+        drawn (`PL-7Z84`).
+
+        Args:
+            names: What each drawn run is called, from `run_label`.
+        """
+
+        self._run_names = names
         self._refresh_compared_row()
 
     def _check_exactly(self, shown: tuple[RecordedQuantity, ...]) -> None:
@@ -1887,14 +1903,18 @@ class TraceLegend(QWidget):
         """Write one entry per drawn curve, and hide the rest of the pool."""
 
         drawn = self._selection.shown
+        # Drawn only once both counts agree: between a selection over a new
+        # run set and the names of its runs, an entry would otherwise name a
+        # curve with a name it does not have.
+        named = len(self._run_names) == self._run_count
         entries = (
             []
-            if self._run_count <= 1
+            if self._run_count <= 1 or not named
             else [
                 (
                     run_trace_pen(quantity, index, self._run_count),
                     compared_trace_legend_label(
-                        trace_legend_label(trace_style(quantity)), run_label(index)
+                        trace_legend_label(trace_style(quantity)), self._run_names[index]
                     ),
                 )
                 # Grouped by compartment rather than by run, so the two
@@ -2046,25 +2066,27 @@ class WashInLegend(QWidget):
         row.addWidget(self._branch_entry)
         self._compared_entries = [_PooledEntry(row) for _ in range(MAX_DISPLAYED_RUNS)]
         layout.addLayout(row)
-        self._run_count = 1
+        self._run_names: tuple[str, ...] = ()
 
-    def set_run_count(self, run_count: int) -> None:
-        """Tell the legend how many runs are drawn, and name each one's trace.
+    def show_run_names(self, names: tuple[str, ...]) -> None:
+        """Tell the legend which runs are drawn, and name each one's trace by its run's name.
 
         Args:
-            run_count: How many runs the dashboard is displaying.
+            names: What each run the dashboard is displaying is called, in
+                drawing order, from `run_label` (`PL-7Z84`).
 
         Raises:
-            ValueError: If fewer than one run is given.
+            ValueError: If no run is named.
         """
 
-        if run_count < 1:
-            raise ValueError(f"a legend describes at least one run, not {run_count}")
+        if not names:
+            raise ValueError("a legend describes at least one run, and none was named")
 
-        if run_count == self._run_count:
+        if names == self._run_names:
             return
 
-        self._run_count = run_count
+        self._run_names = names
+        run_count = len(names)
         comparing = run_count > 1
         # The single unqualified entry stands down while the per-run entries
         # stand in for it: two entries naming the same trace, one of them
@@ -2078,7 +2100,7 @@ class WashInLegend(QWidget):
             if index < run_count and comparing:
                 entry.show(
                     _wash_in_pen(index, run_count),
-                    compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(index)),
+                    compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, names[index]),
                 )
             else:
                 entry.hide()

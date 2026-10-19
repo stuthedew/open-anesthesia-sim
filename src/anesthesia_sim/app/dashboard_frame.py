@@ -92,6 +92,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     CaseInstant,
 )
+from anesthesia_sim.layout.run_identity import RunId
 
 # The step each simulation tick advances by. What range of steps is
 # *supported* is `core/`'s to declare: `core.simulation_step.MINIMUM_SIMULATION_STEP_S`
@@ -134,12 +135,10 @@ INITIAL_CHART_TIME_BASE: Final = TIME_BASE_LADDER[0]
 # is two-level (`PL-HLD5`: the run on line width, under a cap of two
 # compartments). A third run would have nothing left to be drawn with.
 MAX_DISPLAYED_RUNS: Final = 2
-# Where the two runs of a comparison are drawn, and so what `run_label` calls
-# them. The trunk first and its branch second is an invariant of how
-# `SimulationView` builds and adds runs rather than a fact about a case, and
-# `comparing_fork_lock_text` is what depends on it: a sentence sending a
-# learner to one run's Reset is only findable if it names the run that Reset
-# belongs to.
+# Where the two runs of a comparison are drawn. The trunk first and its branch
+# second is an invariant of how `SimulationView` builds and adds runs rather
+# than a fact about a case. It decides where a run is drawn and never what it
+# is called: `run_label` names a run from its identity (`PL-7Z84`).
 TRUNK_RUN_INDEX: Final = 0
 BRANCH_RUN_INDEX: Final = 1
 
@@ -431,7 +430,7 @@ TAKE_FORK_LABEL: Final = "Branch"
 # the case, the branch's returns that run to its own fork and leaves this
 # lock standing - which is the one a learner reaches for, being the run they
 # are trying to end. So the sentence names both, and
-# `comparing_fork_lock_text` fills it from `run_label` and `RESET_LABEL`,
+# `comparing_fork_lock_text` fills it from the runs' names and `RESET_LABEL`,
 # which is what stops an instruction and the control it names drifting apart
 # again.
 #
@@ -664,10 +663,13 @@ TRACE_LEGEND_LABEL_TEMPLATE: Final = "{label} ({line_style})"
 #: position: colour is spent on the compartment, and position alone fails the
 #: reader who has looked away and back.
 #:
-#: Numbered by drawing order, which is also the order the run panels are laid
-#: out in, because the name has to be findable - a legend entry reading "Run 2"
-#: is only an attribution if something else on screen also says "Run 2", and
-#: that is the panel holding the settings that produced it.
+#: Numbered by the run's identity rather than by where it is drawn
+#: (`PL-7Z84`): a session numbers its runs in the order it places them and
+#: never gives a number out twice, so a branch taken after an earlier one was
+#: dropped is "Run 3", never a second "Run 2". The name has to be findable as
+#: well - a legend entry reading "Run 2" is only an attribution if something
+#: else on screen also says "Run 2", and that is the panel holding the
+#: settings that produced it.
 RUN_LABEL_TEMPLATE: Final = "Run {number}"
 #: One drawn trace's legend words while more than one run is shown: the
 #: compartment's own words, then the run's. Both dimensions named on every
@@ -1971,27 +1973,40 @@ class ForkOffer:
     refusal: str | None
 
 
-def comparing_fork_lock_text() -> str:
+@dataclass(frozen=True, slots=True)
+class ComparedRuns:
+    """What the two runs of a comparison are called, the trunk's first, from `run_label`."""
+
+    trunk: str
+    branch: str
+
+
+def comparing_fork_lock_text(runs: ComparedRuns) -> str:
     """The caption standing where the branch control stood, naming the way out of the lock.
 
-    Filled from `run_label` and `RESET_LABEL` rather than written out. The way
+    Filled from the runs' names and `RESET_LABEL` rather than written out. The way
     out is a button, a button is found by the words on it, and a comparison
     draws two Resets - one per run, each in a transport row led by that run's
     name - so a sentence that names neither leaves the reader to guess which
     (`PL-WG73`, and `COMPARING_FORK_LOCK_TEMPLATE` for what that guess cost).
 
     The lock stands only while a second run is drawn - `fork_offer`'s
-    `comparing` - so the first two positions both name a run on screen
-    whenever this text is on screen: the trunk, whose Reset ends the
-    comparison, and the branch, whose Reset returns that run to its fork and
-    leaves the lock exactly where it was.
+    `comparing` - so both names are of runs on screen whenever this text is
+    on screen: the trunk, whose Reset ends the comparison, and the branch,
+    whose Reset returns that run to its fork and leaves the lock exactly
+    where it was. They are the names the runs carry rather than their
+    positions, because a branch taken after an earlier one was dropped is
+    not "Run 2" (`PL-7Z84`).
+
+    Args:
+        runs: What the trunk and the branch are called on screen.
 
     Returns:
         The sentence, naming both Resets as the screen names them.
     """
 
     return COMPARING_FORK_LOCK_TEMPLATE.format(
-        trunk=run_label(TRUNK_RUN_INDEX), branch=run_label(BRANCH_RUN_INDEX), reset=RESET_LABEL
+        trunk=runs.trunk, branch=runs.branch, reset=RESET_LABEL
     )
 
 
@@ -1999,7 +2014,7 @@ def fork_offer(
     fork_points_s: Sequence[CaseInstant],
     *,
     marks: Sequence[MarkForkPoint],
-    comparing: bool,
+    comparing: ComparedRuns | None,
     here: HereForkPoint | None,
     refusal: str | None = None,
 ) -> ForkOffer:
@@ -2040,7 +2055,8 @@ def fork_offer(
             a branch taken there opens at, from `BranchedCase.mark_fork_points`.
             Required rather than defaulted, so a caller states that the trunk
             has passed none instead of leaving the third door off unseen.
-        comparing: Whether a second run is already on the chart. The display
+        comparing: The two runs on the chart, while a second run is already
+            there, or None while one is. The display
             is capped at `MAX_DISPLAYED_RUNS` and no run selector exists yet
             (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"), so a
             second branch taken now would have to replace the shown one while
@@ -2082,15 +2098,15 @@ def fork_offer(
     )
     # The comparison cap refuses every door, so it is applied once, here,
     # rather than by each field asking about it separately.
-    offered_here = None if comparing else here
+    offered_here = None if comparing is not None else here
 
     return ForkOffer(
         points=tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s)),
-        locked=comparing,
-        lock_reason=comparing_fork_lock_text() if comparing else "",
+        locked=comparing is not None,
+        lock_reason="" if comparing is None else comparing_fork_lock_text(comparing),
         here_offered=offered_here is not None,
         here_label="" if offered_here is None else _here_fork_label(offered_here),
-        refusal=None if comparing else refusal,
+        refusal=None if comparing is not None else refusal,
     )
 
 
@@ -2374,28 +2390,33 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     )
 
 
-def run_label(run_index: int) -> str:
-    """What the run at this position on the chart is called, in text.
+def run_label(run: RunId) -> str:
+    """What this run is called, in text: a rendering of its identity, never of where it is drawn.
 
     The one place a run is named, so the legend entry, the run's own panel
     heading and any later view say the same word. A name is only an
     attribution if the reader can find what it refers to, and what it
     refers to is the panel carrying that run's settings.
 
+    The name is the run's number alone. The session the identity also holds
+    tells two sessions' runs apart for a Workspace's pin, and a reader never
+    sees two sessions' runs at once (`PL-7Z84`).
+
     Args:
-        run_index: Which run, as a position in the frame's runs.
+        run: The run's identity (`layout/run_identity.py`).
 
     Returns:
         The run's name.
 
     Raises:
-        ValueError: If `run_index` is negative, which addresses no run.
+        TypeError: If `run` is not a `RunId`. A position in a tuple of runs
+            names whichever run stands there, which is what this replaced.
     """
 
-    if run_index < 0:
-        raise ValueError(f"a run is at a nonnegative position on the chart, not {run_index}")
+    if not isinstance(run, RunId):
+        raise TypeError(f"a run is named from its RunId, not from {type(run).__name__}")
 
-    return RUN_LABEL_TEMPLATE.format(number=run_index + 1)
+    return RUN_LABEL_TEMPLATE.format(number=run.number)
 
 
 def trace_legend_label(style: TraceStyle) -> str:

@@ -118,8 +118,9 @@ src/anesthesia_sim/
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
 │   ├── model.py                    # LayoutModel: every window's tree; split, join, resize, swap and set_view, each returning a new layout; the borders() line a drag moves
 │   ├── serialization.py            # the layout, a Workspace and the set of them as JSON: each body, and the versioned documents - the set's is the file the application writes
-│   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
-│   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; the table is empty at version 1 and the chain is checked at import (PL-SSQW Q5)
+│   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind and the run it is pinned to, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
+│   ├── run_identity.py             # RunId, a run's identity as the session that placed it and its number there, and RunIdentities, the session's counter; what a run is called and what a Workspace pins (PL-7Z84)
+│   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; version 2 added each Workspace's pinned run, and the chain is checked at import (PL-SSQW Q5, PL-7Z84)
 │   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
 │   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the learner's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
@@ -772,8 +773,10 @@ from, which is why `PL-4YY1` added a third directory rather than a field to
 
 The application writes one thing outside its own tree: the reader's saved
 Workspaces, as a single JSON document holding the whole `WorkspaceSet` - every
-Workspace with its layout and each View's saved state, their order, and the
-active one - under one `schema_version`. `layout/store.py` owns it, and the
+Workspace with its layout, each View's saved state and the run it is pinned to,
+their order, and the active one - under one `schema_version`. No run's data is
+saved: a pin names a run by its identity, and in a later session the pinned run
+is absent (`PL-7Z84`). `layout/store.py` owns it, and the
 decisions are `PL-SSQW`'s (project owner, 2026-09-27, ratified) and `PL-WV9K`
 Q4's (project owner, 2026-09-27, specified). This entry replaces the
 measurement `PL-CNJ1` took on 2026-09-15, that nothing under `src/` wrote to

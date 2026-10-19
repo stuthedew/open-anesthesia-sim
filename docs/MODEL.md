@@ -7311,6 +7311,37 @@ fails the reader who has looked away and back, which is the stale-context
 failure this requirement exists for. A concentration that does not say which
 management produced it is the correct number under the wrong patient context.
 
+**A run's name renders its identity, not its place** (`PL-7Z84`). Each run the
+session places is given a number, counting from 1, and the name is "Run" and
+that number. A run keeps its number for as long as it holds its place on
+screen. For the trunk that is from when the dashboard opens, and for a branch
+it is from its fork until it is dropped. The run's own Reset and a change of
+agent keep the number, because both start a new run definition in the same
+place, after any confirmation § "Agent-change behavior" asks for. No number is
+given out twice in a session. So a branch taken after a dropped one is "Run 3",
+never a second "Run 2". A reused name would let a Workspace pinned to the
+dropped run find a run of that name and show its values as the dropped run's.
+`src/anesthesia_sim/layout/run_identity.py` holds the identity, and
+`dashboard_frame.run_label` is the one place it is rendered.
+
+A view names its run whenever the reader could take its values for another
+run's. That is so while another run is drawn anywhere in the application, while
+the view is pinned to a run, and always in a window broken out of the main one
+(§ "What a second top-level window owes, and it is not the whole set"). The
+count of runs on the dashboard was the old test, and it fails the run shown
+alone in a pinned Area or in a window of its own. Until pins and break-out
+windows are built, the dashboard is the only place a run is drawn. So in this
+version the names are shown exactly when two runs are compared.
+
+**A Workspace pins a run by its identity, and an absent pin is stated**
+(`PL-WV9K` Q6). The pin is saved with the Workspace as the run's number and a
+random token for the session that placed it, so a run numbered alike in a later
+session is a different run. A pinned run that is not open gives the Workspace's
+Areas a named "run not present" state. Another run is never shown in its place,
+and the simulation is not touched. `Workspace.shown_runs` decides which runs a
+Workspace's Views show, and the tab strip (`PL-2KXB`) is where a reader sets a
+pin and sees the absent state.
+
 **Both runs are shown, rather than the selected one with the selection stated.**
 Showing one would make the readout block a mode, and a stale selection there has
 no visual signature at all: the block looks identical whichever run is selected,
