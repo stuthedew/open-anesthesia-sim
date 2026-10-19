@@ -1,14 +1,16 @@
 ---
 id: PL-J69Y
-title: The delegated-worker path closed 3 items since 2026-09-21 and its premise, a cheaper model working delegable items, was ruled out on 2026-10-19 (PL-2D28): decide whether to retire docs/worker.md, docket delegable and not-delegable while keeping verify --self
+title: Reword the docket text that calls delegation handing work to a cheaper model, so it describes the API runner, which runs the same model on the API credit; the worker path and its code stay (project owner, 2026-10-19)
 priority: P2
 effort: S
-status: needs-decision
-classes: planning, docs
+status: ready
+classes: docs
 feature: defect-review-2026-10
-touches: docs/worker.md, subprojects/docket/README.md
+touches: docs/worker.md, subprojects/docket/README.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/
 deferred-from: v0.6.0 - captured after the freeze; a workflow decision that v0.6.0's layout scope does not reach
 added: 2026-10-19
+payoff: the docs describe the API runner as what it is, the same model on the API credit, not a cheaper one
+verify: ! grep -rq 'cheaper model' subprojects/docket/README.md subprojects/docket/src && grep -q 'API runner' docs/worker.md
 ---
 
 **Problem.** The delegated-worker path closed 3 items since 2026-09-21 and its premise, a cheaper model working delegable items, was ruled out on 2026-10-19 (PL-2D28): decide whether to retire docs/worker.md, docket delegable and not-delegable while keeping verify --self
@@ -27,10 +29,19 @@ added: 2026-10-19
 
 **Reopened 2026-10-19, before any of it was built.** The case above missed one consumer. `tools/headless_worker.py`, the API runner (`PL-80R5`, merged as #1666 at 12:08 CDT the same day), runs each item it takes by following `docs/worker.md`. It chooses those items with `bin/docket delegable --ids`. Retiring the path as decided would break the runner. The case's premise does not hold for the runner either. It runs `claude-opus-5-5` (`WORKER_MODEL`), not a cheaper model, and its effort follows the item's lane: `max` for simulator work and `high` for the apparatus. It is paid for by the monthly API credit, which expires unused at the end of each billing cycle. Its work therefore costs no subscription usage, and nothing `PL-2D28` refused applies to it.
 
-**Decision needed.** Keep the delegated-worker path for the API runner, or retire both together? **Recommendation:** keep the path, and narrow this item to rewording. Change `subprojects/docket/README.md`'s "what a cheaper model may work" to "what a headless run may work", and make `docs/worker.md` name the runner as its reader. The runner is the one place where parallel work costs no subscription usage. The three items the path closed since 2026-09-21 predate the runner, so they do not measure it. The question is yours because it reverses a decision you ratified.
+**Decision needed.** Keep the delegated-worker path for the API runner, or retire both together? [superseded 2026-10-19: answered below] **Recommendation:** keep the path, and narrow this item to rewording. Change `subprojects/docket/README.md`'s "what a cheaper model may work" to "what a headless run may work", and make `docs/worker.md` name the runner as its reader. The runner is the one place where parallel work costs no subscription usage. The three items the path closed since 2026-09-21 predate the runner, so they do not measure it. The question is yours because it reverses a decision you ratified.
 
-**Done when** [superseded 2026-10-19 while the question above is open].
+**Answer** (project owner, 2026-10-19): "We just implemented this api runner today so do not delete code needed for that. Modify or drop that PL that would delete that code." The path stays, with all of its code: `docs/worker.md`, `docket delegable`, the `not-delegable:` field and the delegated review in `verify.py`. This item is narrowed to one change. Text that describes delegation as handing work "to a cheaper model" is reworded to describe the API runner, because no worker runs a cheaper model since `PL-2D28`. Narrowed rather than dropped because that text is now false: it says the runner exists to save on the model, when it runs the same model on the API credit. The places, from `grep -rn "cheaper model"` on 2026-10-19:
+- `subprojects/docket/README.md` lines 39, 2590 and 3924
+- the `delegable` help text in `subprojects/docket/src/docket/cli.py`
+- `Item.delegability`'s docstring in `model.py`
+- two output strings in `render.py`
+- a comment and a mark in `plan.py`
+- a check message in `checks.py`
+- any test under `subprojects/docket/tests/` that pins one of those strings
 
-**Done when.** The path and its docs, checks and tests are gone, `verify --self` passes its tests unchanged, and no doc still points at the worker flow.
+`docs/worker.md` gains one sentence naming the API runner as its usual reader.
+
+**Done when.** No text under `subprojects/docket/` says "cheaper model", `docs/worker.md` names `tools/headless_worker.py` as the API runner, and `bin/docket delegable` lists the same items before and after the change.
 
 **Generator check.** Not a head and not a re-entry: a single decision that missed one consumer, `tools/headless_worker.py`, which landed the same day.
