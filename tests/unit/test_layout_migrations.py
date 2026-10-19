@@ -154,10 +154,11 @@ def test_a_step_says_which_version_it_reads_and_what_it_loses() -> None:
 
 
 def test_a_schema_version_is_checked_once_and_a_step_builds_through_it() -> None:
-    """`PL-8JV2`: `SchemaVersion` checks the rule once, and a step builds its version with it.
+    """`PL-8JV2`: `SchemaVersion` checks the version rule once, and builds each step's version.
 
-    Before it, `Migration`, the reader's `_check_version` and `oldest_readable`
-    each held a copy of the rule or none, and a bare `int` reached the store.
+    Before `SchemaVersion` existed, `Migration`, the reader's `_check_version`
+    and `oldest_readable` each held their own copy of the rule or had none, and
+    a bare `int` reached the store.
     """
 
     assert SchemaVersion(1) == 1

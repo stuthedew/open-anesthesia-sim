@@ -105,10 +105,10 @@ class UnsupportedSchemaVersion(LayoutError):
     refused and left untouched, and the session it was opened in saves nothing.
     """
 
-    # The two versions are the `SchemaVersion`s the reader built, typed here
-    # as the `int` that type subclasses: `layout/migrations.py` defines it and
-    # imports this module, so naming it here would make the two import each
-    # other (`PL-8JV2`).
+    # `found` and `supported` are `SchemaVersion` values, built by the code that reads
+    # the file. They are typed here as `int`, the type that `SchemaVersion` subclasses.
+    # `layout/migrations.py` defines `SchemaVersion` and imports this module, so naming
+    # `SchemaVersion` here would make the two modules import each other (`PL-8JV2`).
     def __init__(self, found: int, supported: int) -> None:
         super().__init__(
             f"this layout was written at schema version {shown(found)}, and this build reads "

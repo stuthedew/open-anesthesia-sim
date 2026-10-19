@@ -745,10 +745,11 @@ def _whole_number(digits: str) -> int | _LongInteger:
 
 
 def _read_version(document: dict[str, object]) -> SchemaVersion:
-    """The document's `schema_version`, read before any other rule of this build's applies.
+    """Read the document's `schema_version` before any other rule of this build applies.
 
-    This is where the package builds a `SchemaVersion` from a file, so it is
-    the one place the rule that a version counts from 1 meets a document.
+    This is where the package builds a `SchemaVersion` from a file. So it is
+    the one place where the rule that a version counts from 1 is applied to a
+    document.
 
     Raises:
         LayoutFormatError: `schema_version` is missing, given twice, not a

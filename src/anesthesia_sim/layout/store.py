@@ -143,10 +143,10 @@ _SET_ASIDE_TIME_FORMAT: Final = "%Y%m%dT%H%M%SZ"
 
 
 def set_aside_file_name(when: datetime, attempt: int = 0) -> str:
-    """The name an invalid file is set aside under at `when`, numbered where a second holds two.
+    """Return the name for an invalid file set aside at `when`, numbered if two fall in one second.
 
-    `attempt` counts the names already taken in that second, from 0, which
-    adds no number.
+    `attempt` counts the names already taken in that second, starting from 0.
+    An `attempt` of 0 adds no number to the name.
 
     Raises:
         TypeError: `attempt` is not an `int`, or is a `bool`, which would
@@ -168,7 +168,7 @@ def set_aside_file_name(when: datetime, attempt: int = 0) -> str:
 
 
 def kept_file_name(written_at: SchemaVersion) -> str:
-    """The name the pre-migration file is kept under: the version it was written at.
+    """Return the name for the pre-migration file, which records the version it was written at.
 
     Raises:
         TypeError: `written_at` is not an `int`, or is a `bool`, which would

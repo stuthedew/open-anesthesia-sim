@@ -365,7 +365,7 @@ def test_the_layouts_own_invariants_are_refused_by_name() -> None:
 
 
 def test_a_file_whose_sizes_leave_an_area_no_width_is_refused() -> None:
-    """`PL-391Y`'s file: sizes of 1 and 5e-10 sum to one within the tolerance.
+    """The file from `PL-391Y` has sizes of 1 and 5e-10, which sum to one within the tolerance.
 
     Its second Area would lie between 1.0 and 1.0 of the window, where `resize`
     can never give it room. The reader refuses the file and names the Area

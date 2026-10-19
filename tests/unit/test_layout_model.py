@@ -484,10 +484,11 @@ def test_a_split_past_the_last_id_is_refused() -> None:
 def test_a_split_that_leaves_an_area_no_width_is_refused() -> None:
     """A cut that leaves a part no wider or taller than `BORDER_ALIGNMENT_TOLERANCE` is refused.
 
-    `PL-391Y`'s reproducer: `split(1, ROW, 5e-324)` was taken and left Area 1
-    with a width of 5e-324 of the window, whose two edges `borders()` and
-    `join` read as one line, and which no drag could widen again. Each
-    refusal names the part and its size, worked out here from the cut.
+    This is the reproducer from `PL-391Y`. `split(1, ROW, 5e-324)` used to
+    succeed, leaving Area 1 with a width of 5e-324 of the window. `borders()`
+    and `join` treated that Area's two edges as one line, and no drag could
+    widen it again. Each refusal names the part and its size, which this test
+    works out from the cut.
     """
 
     whole = layout(area(1))
@@ -518,11 +519,11 @@ def test_a_split_that_leaves_an_area_no_width_is_refused() -> None:
 
 
 def test_a_layout_holding_an_area_no_wider_than_the_alignment_tolerance_is_refused() -> None:
-    """The width is the window's fraction, however the sizes that give it are nested.
+    """An Area's width is a fraction of the window, however the sizes that give it are nested.
 
     Each size here is far above the tolerance on its own. Area 3 is a tenth of
-    a column that is a hundred-millionth of the window wide, so it is 1e-9 of
-    the window wide and its two edges would be read as one line.
+    a column that is a hundred-millionth of the window wide. So Area 3 is 1e-9
+    of the window wide, and its two edges would be treated as one line.
     """
 
     edge = 1.0 - 5e-10
@@ -972,15 +973,16 @@ def test_a_join_reads_two_edges_that_differ_only_by_rounding_as_one() -> None:
 
 
 def test_a_chain_of_borders_wider_than_the_tolerance_is_cut_where_it_enters_no_area() -> None:
-    """A line of edges each within the tolerance of the next is cut where it enters no Area.
+    """A chain of edges, each within the tolerance of the next, is cut where it enters no Area.
 
-    `PL-8GLZ`. Area 2's left edge is at 0.5, Area 4's at 0.5 + 6e-10 and Area
-    6's at 0.5 + 1.2e-9: one line, followed edge to edge, but wider than
-    `BORDER_ALIGNMENT_TOLERANCE`. Joining Areas 1 and 3 leaves Area 7 across
-    every horizontal cut, so the region must be cut along that line. Drawn at
-    its first edge, the cut entered Area 5, which ends at 0.5 + 1.2e-9, and
-    the join was refused. Drawn at 0.5 + 6e-10, it enters no Area by more than
-    the tolerance, so the join is taken and every Area keeps its place.
+    This tests `PL-8GLZ`. Area 2's left edge is at 0.5, Area 4's is at 0.5 + 6e-10,
+    and Area 6's is at 0.5 + 1.2e-9. Followed from edge to edge, they form one line,
+    but that line is wider than `BORDER_ALIGNMENT_TOLERANCE`. Joining Areas 1 and 3
+    leaves Area 7 across every horizontal cut, so the region must be cut along that
+    line. When the cut was drawn at the line's first edge, it entered Area 5, which
+    ends at 0.5 + 1.2e-9, and the join was refused. Drawn at 0.5 + 6e-10, the cut
+    enters no Area by more than the tolerance. So the join succeeds, and every Area
+    keeps its place.
     """
 
     step = 6e-10
@@ -1142,15 +1144,15 @@ def test_a_drag_past_a_border_beside_its_line_is_refused() -> None:
 
 
 def test_a_drag_refuses_a_gap_the_stored_sizes_would_round_away() -> None:
-    """A drag is refused when the Area it narrows would come back with no width.
+    """A drag is refused when the Area it narrows would have no width once the sizes are stored.
 
-    The check once read the sizes the drag computed, not the borders they
-    give. A drag to 0.9999999999999999 left Area 4 a size of about 1.7e-16,
-    which passed, but the border placed from the stored sizes lands on 1.0,
-    the window's edge. The layout then held an Area with no width, and a drag
-    inside a split of no width divided by zero. A drag that leaves an Area
-    with some width, but no more than `BORDER_ALIGNMENT_TOLERANCE`, is refused
-    the same way, since a layout cannot hold that Area (`PL-391Y`).
+    The check once looked at the sizes the drag computed, not at the borders
+    those sizes give. A drag to 0.9999999999999999 gave Area 4 a size of about
+    1.7e-16, which passed the check. But the border placed from the stored sizes
+    lands on 1.0, the window's edge. The layout then held an Area with no width,
+    and a drag inside a split of no width divided by zero. A drag that leaves an
+    Area some width, but no more than `BORDER_ALIGNMENT_TOLERANCE`, is refused
+    in the same way, because a layout cannot hold that Area (`PL-391Y`).
     """
 
     model = layout(
@@ -1315,12 +1317,12 @@ def test_a_drag_moves_every_handle_on_its_line_or_is_refused() -> None:
     """Two handles of one split on the line are both moved, and no handle is left behind.
 
     The upper row's middle Area is one and a half times
-    `BORDER_ALIGNMENT_TOLERANCE` wide, the narrowest a layout holds, and the
-    lower row's border lies halfway across it. So both of the middle Area's
-    borders are within the tolerance of the lower one, on its line. Moving
-    the line moves both, which leaves that Area no room, so the drag is
-    refused and names it, where it once moved one of the two and left the
-    other where it was.
+    `BORDER_ALIGNMENT_TOLERANCE` wide, just above the narrowest width a layout
+    allows. The lower row's border lies halfway across it. So both of the
+    middle Area's borders lie within the tolerance of the lower row's border,
+    on its line. Moving that line moves both borders, which leaves the middle
+    Area no room. So the drag is refused, and the message names that Area. The
+    drag once moved one of the two borders and left the other where it was.
     """
 
     sliver = 1.5 * BORDER_ALIGNMENT_TOLERANCE
