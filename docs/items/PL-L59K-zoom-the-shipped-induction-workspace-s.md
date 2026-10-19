@@ -180,3 +180,9 @@ is the regression test for the moved advisory. A case at 8% sevoflurane for
 run. The chart that fits the run names it, and a 15-minute chart, whose window
 starts after the excursion, does not.
 
+
+**Next steps, 2026-10-19.** The build is on `claude/v060-l59k-zbbp-zuw20e`,
+on top of `PL-7Z84`'s branch, and the full test suite passes there. Once
+`#1614` merges: bring `origin/main` in, run `make check`, close this item
+with its `pr:`, open the pull request, and ask `bin/docket arm`. It changes
+which window each clinical advisory describes, so expect the owner's read.
