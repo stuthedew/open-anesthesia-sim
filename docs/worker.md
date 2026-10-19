@@ -73,7 +73,9 @@ to be picked up cold; if it is not enough, see **When a brief is unclear**.
 ## The loop
 
 1. Make **one branch** for the whole batch: `codex/batch-<id>-<id>-...`,
-   carrying every item id you plan to work.
+   carrying every item id you plan to work. A headless run that
+   `tools/headless_worker.py` started has made its branch already, named for
+   its one item, so work on that branch instead.
 2. For each item, in turn:
    - Do exactly what the brief says.
    - Run the item's `verify:` command from its front matter. It must pass.

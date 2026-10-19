@@ -1626,6 +1626,15 @@ def test_delegable_lists_only_what_qualifies(
         assert excluded not in out
 
 
+def test_delegable_ids_prints_the_same_list_and_nothing_else(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--ids` is the list a script reads, so stdout holds one id per line and no prose."""
+    items = _delegable_store(tmp_path)
+    assert main(["--items", str(items), "--no-git", "delegable", "--ids"]) == 0
+    assert capsys.readouterr().out == "PL-8888\n"
+
+
 def test_delegable_sends_the_worker_to_the_instructions_that_qualify_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

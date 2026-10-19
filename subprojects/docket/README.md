@@ -37,6 +37,7 @@ docket feature halted-step   # progress on one feature
 docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
+docket delegable --ids       # the same list as bare ids, one per line, for a script
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a delegated one
 docket claim PL-K7QX         # record that this branch holds an item: one empty commit,
