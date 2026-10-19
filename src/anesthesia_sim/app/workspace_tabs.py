@@ -39,6 +39,29 @@ Ctrl+PageDown, which Blender uses for the same thing (Blender Manual,
 "This Workspace" submenu, which holds the current tab's own menu. The menu's
 button is in the tab order after "+". Its place and its wording are
 placeholders, chosen under the project owner's rule of 2026-10-18.
+
+**The Layout menu ends with the three entries that keep or undo a session's
+changes** (`PL-DWHG`). A separator sets them apart. `PL-WV9K` § "Answers
+2026-09-27" decided them, modelled on Blender's Save Startup File and Load
+Factory Settings. The three entries are these.
+
+- "Save as default" writes every Workspace, their order and the current one
+  to `workspaces.json` through `layout/store.py`. It first asks a question
+  that names the file it will write. The next launch opens on what it saved.
+  Nothing else writes the file, so a change that is not saved is lost at
+  quit. The entry is shown as unavailable, with the reason as its tooltip,
+  when there is no store or the store refuses to save in this session.
+- "Restore shipped Workspaces" puts back each shipped Workspace that the
+  reader deleted, as its shipped file holds it, and changes nothing else.
+- "Reset all layouts" replaces every Workspace with the shipped set. It asks
+  a question first, because a session's Workspaces have no undo. It writes
+  no file, so the saved default stays until the reader saves again.
+
+**What the store reports is shown, never kept quiet** (`PL-WV9K` Q5). Three
+kinds of message are shown on a line under the tabs: a notice from the load,
+a save that the operating system refused, and a save that worked. Each one
+stays until the reader dismisses it or the next one replaces it. A notice is
+conditional text, so the line is not shown when there is no notice.
 """
 
 from __future__ import annotations
@@ -63,7 +86,7 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.dashboard_frame import run_label
-from anesthesia_sim.app.qt_widgets import declare_interface_colours, styled_label
+from anesthesia_sim.app.qt_widgets import declare_interface_colours, style_label, styled_label
 from anesthesia_sim.app.stylesheets import (
     filled_button_stylesheet,
     menu_stylesheet,
@@ -85,9 +108,11 @@ from anesthesia_sim.layout.exceptions import (
     LastWorkspace,
     LayoutRefused,
     ShippedWorkspaceError,
+    WorkspaceFileError,
 )
 from anesthesia_sim.layout.run_identity import RunId
-from anesthesia_sim.layout.shipped import shipped_workspace
+from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
+from anesthesia_sim.layout.store import WorkspaceStore
 from anesthesia_sim.layout.workspace import (
     ShippedWorkspaceId,
     Workspace,
@@ -98,6 +123,7 @@ from anesthesia_sim.layout.workspace import (
 __all__ = [
     "ADD_WORKSPACE_LABEL",
     "DELETE_LABEL",
+    "DISMISS_LABEL",
     "DUPLICATE_LABEL",
     "LAYOUT_MENU_LABEL",
     "MOVE_LEFT_LABEL",
@@ -107,15 +133,22 @@ __all__ = [
     "PREVIOUS_WORKSPACE_KEYS",
     "PREVIOUS_WORKSPACE_LABEL",
     "RENAME_LABEL",
+    "RESET_ALL_LABEL",
     "RESET_LABEL",
+    "RESTORE_SHIPPED_LABEL",
+    "SAVE_AS_DEFAULT_LABEL",
     "THIS_WORKSPACE_LABEL",
     "LayoutMenu",
+    "SaveEntry",
     "TabOperation",
     "WorkspaceQuestion",
     "WorkspaceQuestionDialog",
     "WorkspaceTab",
     "WorkspaceTabs",
+    "default_operations",
     "display_order",
+    "restore_shipped",
+    "save_entry",
     "tab_operations",
 ]
 
@@ -133,6 +166,10 @@ LAYOUT_MENU_LABEL: Final = "Layout"
 PREVIOUS_WORKSPACE_LABEL: Final = "Previous Workspace"
 NEXT_WORKSPACE_LABEL: Final = "Next Workspace"
 THIS_WORKSPACE_LABEL: Final = "This Workspace"
+SAVE_AS_DEFAULT_LABEL: Final = "Save as default"
+RESTORE_SHIPPED_LABEL: Final = "Restore shipped Workspaces"
+RESET_ALL_LABEL: Final = "Reset all layouts"
+DISMISS_LABEL: Final = "Dismiss"
 PREVIOUS_WORKSPACE_KEYS: Final = "Ctrl+PgUp"
 NEXT_WORKSPACE_KEYS: Final = "Ctrl+PgDown"
 _LAYOUT_DESCRIPTION: Final = "Switch, rename, duplicate or delete Workspaces"
@@ -145,14 +182,38 @@ _LAST_TEXT: Final = "Not available: this tab is already last in its group."
 _NO_RUN_TEXT: Final = "Not available: no run is open."
 _KEEP_LABEL: Final = "Keep"
 _DELETE_TITLE: Final = "Delete this Workspace?"
-_DELETE_SHIPPED_TEXT: Final = 'Delete the shipped Workspace "{name}"? This cannot be undone.'
+_DELETE_SHIPPED_TEXT: Final = (
+    'Delete the shipped Workspace "{name}"? "Restore shipped Workspaces" in the Layout menu '
+    "brings back the shipped version."
+)
 _DELETE_MINE_TEXT: Final = 'Delete your Workspace "{name}"? This cannot be undone.'
 _RESET_TITLE: Final = "Reset this Workspace?"
 _RESET_TEXT: Final = (
     'Reset "{name}" to the Workspace shipped as "{shipped}"? Its layout and every '
     "View's settings return to the shipped ones. This cannot be undone."
 )
-_RESET_REFUSED_TEXT: Final = "Not available: {reason}"
+_REFUSED_TEXT: Final = "Not available: {reason}"
+_ALL_RESTORED_TEXT: Final = "Not available: every shipped Workspace is already here."
+_RESET_ALL_TITLE: Final = "Reset all layouts?"
+_RESET_ALL_TEXT: Final = (
+    "Replace every Workspace with the shipped ones? Your own Workspaces and your changes to "
+    "the shipped ones are removed. The saved default is not changed until you save again."
+)
+_RESET_ALL_PROCEED_LABEL: Final = "Reset all"
+_SAVE_TITLE: Final = "Save as default?"
+_SAVE_REPLACING_TEXT: Final = (
+    "Save these {count} Workspaces as the default that opens at each launch? They replace the "
+    "default saved in {path}."
+)
+_SAVE_FIRST_TEXT: Final = (
+    "Save these {count} Workspaces as the default that opens at each launch? They are saved "
+    "in {path}."
+)
+_SAVE_PROCEED_LABEL: Final = "Save"
+_CANCEL_LABEL: Final = "Cancel"
+_NO_STORE_TEXT: Final = "Not available: this session has no folder to save Workspaces in."
+_SAVED_TEXT: Final = "Saved {count} Workspaces as the default, in {path}."
+_SAVE_FAILED_TEXT: Final = "The Workspaces were not saved: {reason}"
 
 #: The width of the rule between the shipped tabs and the reader's own.
 _SEPARATOR_WIDTH: Final = 1
@@ -165,6 +226,7 @@ class WorkspaceQuestion:
     title: str
     text: str
     proceed_label: str
+    keep_label: str = _KEEP_LABEL
 
 
 @dataclass(frozen=True, slots=True)
@@ -293,7 +355,7 @@ def _reset(
         restored = read()
         result = workspaces.replace(index, restored)
     except (ShippedWorkspaceError, LayoutRefused) as refusal:
-        return TabOperation(RESET_LABEL, None, _RESET_REFUSED_TEXT.format(reason=refusal))
+        return TabOperation(RESET_LABEL, None, _REFUSED_TEXT.format(reason=refusal))
 
     question = WorkspaceQuestion(
         _RESET_TITLE, _RESET_TEXT.format(name=workspace.name, shipped=restored.name), RESET_LABEL
@@ -316,19 +378,168 @@ def _delete(workspaces: WorkspaceSet, index: int, workspace: Workspace) -> TabOp
     return TabOperation(DELETE_LABEL, result, question=question)
 
 
+@dataclass(frozen=True, slots=True)
+class SaveEntry:
+    """The "Save as default" entry: the question asked before saving, or why it is unavailable.
+
+    Exactly one of the two is set.
+    """
+
+    question: WorkspaceQuestion | None
+    refusal: str | None
+
+    @property
+    def available(self) -> bool:
+        """Whether the entry can be chosen."""
+
+        return self.question is not None
+
+
+def save_entry(
+    store: WorkspaceStore | None, workspaces: WorkspaceSet, missing_store: str | None = None
+) -> SaveEntry:
+    """Return the "Save as default" entry for saving `workspaces` to `store`.
+
+    The entry is unavailable where there is no store, where the store has
+    loaded nothing yet, and where its load turned saving off for the session.
+    In the last case the reason is the store's own notice, which names the
+    file.
+
+    Args:
+        store: The store the session loaded from, or `None` where there is
+            none.
+        workspaces: The set the entry would save.
+        missing_store: Why there is no store, shown as the reason where
+            `store` is `None`. Where both are `None`, a generic reason is
+            shown instead.
+    """
+
+    if store is None:
+        reason = (
+            _NO_STORE_TEXT if missing_store is None else _REFUSED_TEXT.format(reason=missing_store)
+        )
+
+        return SaveEntry(None, reason)
+
+    loaded = store.loaded
+
+    if loaded is None:
+        return SaveEntry(
+            None, _REFUSED_TEXT.format(reason=f"nothing has been loaded from {store.directory} yet")
+        )
+
+    if not loaded.writable:
+        reason = loaded.notice or "saving is off for this session"
+
+        return SaveEntry(None, _REFUSED_TEXT.format(reason=reason))
+
+    template = _SAVE_REPLACING_TEXT if store.path.exists() else _SAVE_FIRST_TEXT
+    text = template.format(count=len(workspaces.workspaces), path=store.path)
+
+    return SaveEntry(WorkspaceQuestion(_SAVE_TITLE, text, _SAVE_PROCEED_LABEL, _CANCEL_LABEL), None)
+
+
+def restore_shipped(workspaces: WorkspaceSet, shipped: WorkspaceSet) -> WorkspaceSet:
+    """Return `workspaces` with each shipped Workspace it no longer holds put back.
+
+    A shipped Workspace counts as still in the set while some Workspace in
+    the set has it as its origin, whatever that Workspace has been renamed to
+    or changed into. So only a deleted one comes back, and it comes back as
+    its shipped file holds it. Each one goes back after the nearest Workspace
+    that comes before it in the shipped order and is still in the set. Where
+    no such Workspace exists, it goes back before the first shipped Workspace
+    in the set. The current Workspace stays current, so the Areas do not
+    change.
+
+    Args:
+        workspaces: The reader's set.
+        shipped: The shipped set, in its shipped order.
+
+    Raises:
+        LayoutRefused: A Workspace in `workspaces` already has the name of
+            a shipped Workspace that would be put back. The message names
+            that Workspace.
+    """
+
+    order = [workspace.origin.shipped_id for workspace in shipped.workspaces]
+    current = workspaces.current.name
+    result = workspaces
+
+    for place, workspace in enumerate(shipped.workspaces):
+        held = [ws.origin.shipped_id for ws in result.workspaces]
+
+        if order[place] in held:
+            continue
+
+        before = set(order[:place])
+        earlier = [i for i, shipped_id in enumerate(held) if shipped_id in before]
+        shipped_places = [i for i, shipped_id in enumerate(held) if shipped_id is not None]
+
+        if earlier:
+            at = max(earlier) + 1
+        elif shipped_places:
+            at = min(shipped_places)
+        else:
+            at = 0
+
+        result = result.add(workspace, at=at)
+
+    return result.activate(result.position_of(current))
+
+
+def default_operations(
+    workspaces: WorkspaceSet, shipped: Callable[[], WorkspaceSet] = shipped_workspaces
+) -> tuple[TabOperation, TabOperation]:
+    """Return the Restore shipped Workspaces and Reset all layouts entries for `workspaces`.
+
+    Where the shipped set cannot be read, both entries are unavailable, and
+    the reason names the file.
+
+    Args:
+        workspaces: The set the strip is drawn from.
+        shipped: Returns the shipped set. A test passes its own.
+    """
+
+    try:
+        factory = shipped()
+    except ShippedWorkspaceError as refusal:
+        reason = _REFUSED_TEXT.format(reason=refusal)
+
+        return (
+            TabOperation(RESTORE_SHIPPED_LABEL, None, reason),
+            TabOperation(RESET_ALL_LABEL, None, reason),
+        )
+
+    try:
+        restored = restore_shipped(workspaces, factory)
+    except LayoutRefused as refusal:
+        restore = TabOperation(RESTORE_SHIPPED_LABEL, None, _REFUSED_TEXT.format(reason=refusal))
+    else:
+        restore = (
+            TabOperation(RESTORE_SHIPPED_LABEL, None, _ALL_RESTORED_TEXT)
+            if len(restored.workspaces) == len(workspaces.workspaces)
+            else TabOperation(RESTORE_SHIPPED_LABEL, restored)
+        )
+
+    question = WorkspaceQuestion(_RESET_ALL_TITLE, _RESET_ALL_TEXT, _RESET_ALL_PROCEED_LABEL)
+
+    return restore, TabOperation(RESET_ALL_LABEL, factory, question=question)
+
+
 class WorkspaceQuestionDialog(QDialog):
-    """The question asked before a Workspace is deleted or reset.
+    """The question asked before a Workspace is deleted or reset, or the set saved or reset.
 
     The dialog is laid out like `NewCaseDialog`, with the destructive button
     first and the safe one last. The entry's own button is outlined. The keep
-    button is filled and is the default, so Return and Escape both keep the
-    Workspace. `accept()` means "go ahead". The dialog is shown with `open()`,
-    so a test can call `accept()` itself.
+    button is filled and is the default, so Return and Escape both leave
+    everything as it was. `accept()` means "go ahead". The dialog is shown
+    with `open()`, so a test can call `accept()` itself.
 
     Attributes:
         proceed_button: Applies the entry. Its `clicked` signal runs
             `accept()`.
-        keep_button: Keeps the Workspace and is the default.
+        keep_button: Leaves everything as it was, and is the default. It is
+            labelled with the question's `keep_label`.
     """
 
     def __init__(self, question: WorkspaceQuestion, parent: QWidget | None = None) -> None:
@@ -342,7 +553,7 @@ class WorkspaceQuestionDialog(QDialog):
         self.proceed_button = QPushButton(question.proceed_label)
         self.proceed_button.setAutoDefault(False)
         self.proceed_button.setStyleSheet(outlined_button_stylesheet())
-        self.keep_button = QPushButton(_KEEP_LABEL)
+        self.keep_button = QPushButton(question.keep_label)
         self.keep_button.setDefault(True)
         self.keep_button.setStyleSheet(filled_button_stylesheet())
 
@@ -414,6 +625,18 @@ class LayoutMenu(QToolButton):
         current.setStyleSheet(menu_stylesheet())
         current.setToolTipsVisible(True)
         strip.fill_tab_menu(current, now.active)
+        menu.addSeparator()
+        save = strip.save_entry()
+        action = menu.addAction(SAVE_AS_DEFAULT_LABEL)
+        action.setEnabled(save.available)
+        action.setToolTip(save.refusal or "")
+        action.triggered.connect(partial(strip.save_as_default, save))
+
+        for operation in strip.default_operations():
+            action = menu.addAction(operation.label)
+            action.setEnabled(operation.available)
+            action.setToolTip(operation.refusal or "")
+            action.triggered.connect(partial(strip.choose, operation))
 
 
 def _clear(menu: QMenu) -> None:
@@ -518,11 +741,20 @@ class WorkspaceTabs(QWidget):
         live: Returns the set as it stands now. The owner's current Workspace
             can change after the strip draws it, through a dragged border or
             a View's own settings. Every entry is worked out from this set, so
-            a duplicate copies what the reader sees. By default, the set that
-            was drawn.
+            a duplicate copies what the reader sees, and "Save as default"
+            saves it. By default, the set that was drawn.
+        store: The store that "Save as default" writes to, or `None`. With
+            `None`, that entry is shown as unavailable.
+        notice: What the reader is told about the load, shown under the tabs
+            from the start, or `None`. Where `store` is `None` it is also the
+            reason "Save as default" is unavailable.
+        shipped: Returns the shipped set, for Restore shipped Workspaces and
+            Reset all layouts. A test passes its own.
 
     Attributes:
         question: The question dialog open now, or `None`.
+        notice_label: The line under the tabs that shows the last notice.
+        dismiss_button: Hides the notice line.
     """
 
     def __init__(
@@ -533,19 +765,30 @@ class WorkspaceTabs(QWidget):
         parent: QWidget | None = None,
         *,
         live: Callable[[], WorkspaceSet] | None = None,
+        store: WorkspaceStore | None = None,
+        notice: str | None = None,
+        shipped: Callable[[], WorkspaceSet] = shipped_workspaces,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("workspaceTabs")
         self._change = change
         self._open_runs = open_runs
         self._live = live
+        self._store = store
+        # Why there is no store, which is the load's notice when there is one.
+        self._missing_store = notice if store is None else None
+        self._shipped = shipped
         self._workspaces = workspaces
         self._tabs: list[WorkspaceTab] = []
         self._editor: _NameEditor | None = None
         self.question: WorkspaceQuestionDialog | None = None
-        self._row = QHBoxLayout(self)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(0)
+        self._row = QHBoxLayout()
         self._row.setContentsMargins(0, 0, 0, 0)
         self._row.setSpacing(0)
+        column.addLayout(self._row)
         self._separator = QFrame(self)
         self._separator.setObjectName("workspaceSeparator")
         self._separator.setFixedWidth(_SEPARATOR_WIDTH)
@@ -567,7 +810,28 @@ class WorkspaceTabs(QWidget):
         # Conditional text: why the name a reader typed was not taken.
         self.refusal_label = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
         self.refusal_label.hide()
+        # Conditional text: what the store reported, or what a save did.
+        self.notice_label = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
+        self.notice_label.setObjectName("workspaceNotice")
+        self.notice_label.setWordWrap(True)
+        self.notice_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.dismiss_button = QToolButton(self)
+        self.dismiss_button.setObjectName("dismissWorkspaceNotice")
+        self.dismiss_button.setText(DISMISS_LABEL)
+        self.dismiss_button.setAutoRaise(True)
+        self.dismiss_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.dismiss_button.setStyleSheet(workspace_tab_stylesheet())
+        self.dismiss_button.clicked.connect(self.dismiss_notice)
+        notice_row = QHBoxLayout()
+        notice_row.setContentsMargins(0, 0, 0, 0)
+        notice_row.addWidget(self.notice_label, 1)
+        notice_row.addWidget(self.dismiss_button)
+        column.addLayout(notice_row)
+        self.dismiss_notice()
         self.show_set(workspaces)
+
+        if notice:
+            self.show_notice(notice, warning=True)
 
     @property
     def workspaces(self) -> WorkspaceSet:
@@ -584,6 +848,12 @@ class WorkspaceTabs(QWidget):
         """The set every menu entry is worked out from, as the Layout menu reads it."""
 
         return self._now()
+
+    @property
+    def row(self) -> QHBoxLayout:
+        """The row holding the tabs, "+", the rename refusal and the Layout menu."""
+
+        return self._row
 
     @property
     def tabs(self) -> tuple[WorkspaceTab, ...]:
@@ -637,8 +907,8 @@ class WorkspaceTabs(QWidget):
         self._separator.setVisible(0 < shipped < len(self._tabs))
 
         # The keyboard reaches the tabs in the order they stand, then "+",
-        # then the Layout menu.
-        chain = [*self._tabs, self.add_button, self.layout_menu]
+        # then the Layout menu, then Dismiss while a notice is shown.
+        chain = [*self._tabs, self.add_button, self.layout_menu, self.dismiss_button]
 
         for before, after in zip(chain, chain[1:], strict=False):
             QWidget.setTabOrder(before, after)
@@ -732,8 +1002,76 @@ class WorkspaceTabs(QWidget):
             self._change(operation.result)
             return
 
-        dialog = WorkspaceQuestionDialog(operation.question, self)
-        dialog.accepted.connect(partial(self._change, operation.result))
+        self._ask(operation.question, partial(self._change, operation.result))
+
+    def save_entry(self) -> SaveEntry:
+        """The "Save as default" entry for the set as it stands now."""
+
+        return save_entry(self._store, self._now(), self._missing_store)
+
+    def default_operations(self) -> tuple[TabOperation, TabOperation]:
+        """The Restore shipped Workspaces and Reset all layouts entries for the set now."""
+
+        return default_operations(self._now(), self._shipped)
+
+    def save_as_default(self, entry: SaveEntry) -> None:
+        """Ask the entry's question, and save the set as it then stands if the reader agrees."""
+
+        if entry.question is None:
+            return
+
+        self._ask(entry.question, self._save)
+
+    def _save(self) -> None:
+        """Save the set as it stands now, and say what happened under the tabs.
+
+        When the store refuses a save, or the operating system makes it fail,
+        the failure is reported here, at the action the reader chose, and the
+        session carries on (`PL-SSQW` Q6).
+        """
+
+        store = self._store
+
+        if store is None:
+            return
+
+        workspaces = self._now()
+
+        try:
+            path = store.save(workspaces)
+        except (LayoutRefused, WorkspaceFileError) as refusal:
+            self.show_notice(_SAVE_FAILED_TEXT.format(reason=refusal), warning=True)
+            return
+
+        self.show_notice(
+            _SAVED_TEXT.format(count=len(workspaces.workspaces), path=path), warning=False
+        )
+
+    def show_notice(self, text: str, *, warning: bool) -> None:
+        """Show `text` on the line under the tabs, in the warning colour where `warning`."""
+
+        style_label(
+            self.notice_label,
+            color=WARNING if warning else INK,
+            size_px=METRIC_QUALIFIER_SIZE,
+            wrap=True,
+        )
+        self.notice_label.setText(text[:1].upper() + text[1:])
+        self.notice_label.show()
+        self.dismiss_button.show()
+
+    def dismiss_notice(self) -> None:
+        """Hide the line under the tabs."""
+
+        self.notice_label.hide()
+        self.notice_label.clear()
+        self.dismiss_button.hide()
+
+    def _ask(self, question: WorkspaceQuestion, then: Callable[[], None]) -> None:
+        """Open `question`, and run `then` if the reader goes ahead."""
+
+        dialog = WorkspaceQuestionDialog(question, self)
+        dialog.accepted.connect(then)
         dialog.finished.connect(partial(self._question_closed, dialog))
         self.question = dialog
         dialog.open()
