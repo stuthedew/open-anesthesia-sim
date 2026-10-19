@@ -4,42 +4,44 @@ A saved layout names each Area's View by a kind tag (`layout.tree.ViewKind`).
 The layout package treats that tag as opaque. It checks the tag's syntax and
 keeps it unchanged, but holds no list of View kinds (`PL-R1WQ` Q1, project
 owner, 2026-09-27, ratified). This module is the one list. The adapter,
-`app/area_layout.py`, looks each Area's tag up here when it builds the widget
-tree. A tag this build does not register gets the failure notice in that Area
-and nothing else, and the model keeps the tag. So a layout saved under another
-build loses nothing when it is saved again (`ROADMAP.md` § "v0.6.0 - the
-layout is the reader's", Required scope entry 4).
+`app/area_layout.py`, looks up each Area's tag here when it builds the widget
+tree. When this build does not register an Area's tag, that Area shows only
+the failure notice, and the model keeps the tag. So a layout saved under
+another build loses nothing when it is saved again (`ROADMAP.md` § "v0.6.0 -
+the layout is the reader's", Required scope entry 4).
 
 **A tag is a string literal written once, below, beside its entry** (`PL-R1WQ`
 Q3). It is never derived from a class name, a module path or a title. So
-renaming a class, moving a module or rewording a title changes nothing a saved
-file can see, and cannot set off the failure meant for a View that is really
-missing.
+renaming a class, moving a module or rewording a title changes nothing that a
+saved file can see. Such a change also cannot trigger the failure notice that
+is meant for a View that is really missing.
 
 **Renaming or removing a tag is a change to the saved file's meaning.** The old
-tag goes into `RETIRED_TAGS`, with the version that retired it and, where the
-View was renamed rather than removed, the tag it now has. A layout naming a
-retired tag then gets a notice that says which of the two happened. A retired
-tag is never registered again, for this View or any other. Blender keeps its
-retired editor numbers reserved in `eSpace_Type` for the same reason: a saved
-file's tag must never come to mean a different View (`PL-R1WQ` Q3).
+tag goes into `RETIRED_TAGS` with the version that retired it. Where the View
+was renamed rather than removed, the entry also holds the tag that the View
+now has. A layout that names a retired tag then gets a notice that says which
+of the two happened. A retired tag is never registered again, for this View or
+any other. Blender keeps its retired editor numbers reserved in `eSpace_Type`
+for the same reason: a saved file's tag must never come to mean a different
+View (`PL-R1WQ` Q3).
 
 **Some kinds must stay reachable in every layout** (`PL-50PZ`). `docs/MODEL.md`
 § "Minimum displayed outputs" lets a Workspace leave the agent accounting out,
 but says it "must stay reachable in every layout, and must not be removable
 from the application". `REQUIRED_REACHABLE` is that requirement as data. Each
 kind it names must be registered, and its entry must carry
-`required_reachable`; `required_kinds` checks both when this module is
+`required_reachable`. `required_kinds` checks both when this module is
 imported, so a build that drops one fails at once. The View chooser in each
-Area's header lists every registered kind whatever the Workspace names, so a
+Area's header lists every registered kind, whatever the Workspace names. So a
 registered kind is reachable from every Workspace by construction.
 
-**What an entry does not carry yet.** The ratified entry also holds a factory
-that builds the View and the View's minimum size. The factory is called with
-the context `PL-TH35` defines, so it arrives with that contract. Until then the
-caller of `AreaLayout` builds each registered View. The minimum size is
-`PL-K285`'s. This module imports no toolkit, so its tests run without a
-display.
+**Each entry holds the factory that builds its View** (`PL-TH35`). The
+adapter calls the factory with a `ViewContext` for every Area that shows the
+kind. So any registered View can be built in any Area, any number of times.
+Each shipped entry names a View class from `app/views.py`, and that class is
+its own factory. So this module imports the GUI toolkit through
+`app/views.py`. The ratified design of an entry also includes the View's
+minimum size. That part is left to `PL-K285`.
 """
 
 from __future__ import annotations
@@ -50,6 +52,13 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final
 
+from anesthesia_sim.app.view_contract import ViewFactory
+from anesthesia_sim.app.views import (
+    AccountingView,
+    ConcentrationView,
+    ParameterControlsView,
+    WashInView,
+)
 from anesthesia_sim.layout.tree import ViewKind
 
 __all__ = [
@@ -57,12 +66,11 @@ __all__ = [
     "CHOOSE_A_VIEW",
     "CONCENTRATION_CHART",
     "MISSING_VIEW_TITLE",
+    "UNBUILT_VIEW_TITLE",
     "PARAMETER_CONTROLS",
     "REGISTERED",
     "REQUIRED_REACHABLE",
     "RETIRED_TAGS",
-    "SHOWN_ELSEWHERE_TITLE",
-    "UNPLACED_VIEW_TITLE",
     "WASH_IN",
     "RegisteredView",
     "RetiredTag",
@@ -71,8 +79,7 @@ __all__ = [
     "rename_offer_text",
     "required_kinds",
     "retirements",
-    "shown_elsewhere_text",
-    "unplaced_view_text",
+    "unbuilt_view_text",
 ]
 
 # The tags. Each is written here once and never changed; see the module
@@ -86,13 +93,9 @@ AGENT_ACCOUNTING: Final = ViewKind("agent_accounting")
 #: does not have (`PL-DB5G` Q2, project owner, 2026-10-11, ratified).
 MISSING_VIEW_TITLE: Final = "This Area's View is not in this build."
 
-#: The first line of the notice an Area shows in place of a registered View
-#: that the dashboard cannot yet draw in an Area of its own. A placeholder.
-UNPLACED_VIEW_TITLE: Final = "This View cannot be shown in an Area of its own yet."
-
-#: The first line of the notice an Area shows in place of a View that another
-#: Area already shows, where the dashboard draws only one of it. A placeholder.
-SHOWN_ELSEWHERE_TITLE: Final = "This View is already shown in another Area."
+#: The first line of the notice an Area shows when building its View failed.
+#: A placeholder.
+UNBUILT_VIEW_TITLE: Final = "This Area's View could not be built."
 
 #: What every Area notice tells the reader to do: the View chooser is the
 #: first control of the Area's header, above the notice (`PL-DB5G` Q2).
@@ -109,18 +112,22 @@ class RegisteredView:
     Attributes:
         kind: The tag a saved layout names the View by.
         title: The View's name as a reader sees it.
+        factory: Builds the View from its context, for each Area that shows
+            the kind (`PL-TH35`).
         required_reachable: Whether `docs/MODEL.md` requires the View to stay
-            reachable in every layout. `required_kinds` holds this to
-            `REQUIRED_REACHABLE`.
+            reachable in every layout. `required_kinds` checks this field
+            against `REQUIRED_REACHABLE`.
 
     Raises:
-        TypeError: `kind` is not a `ViewKind`, `title` is not a `str`, or
-            `required_reachable` is not a `bool`.
+        TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
+            `factory` cannot be called, or `required_reachable` is not a
+            `bool`.
         ValueError: `title` is empty or only spaces.
     """
 
     kind: ViewKind
     title: str
+    factory: ViewFactory
     required_reachable: bool = False
 
     def __post_init__(self) -> None:
@@ -132,6 +139,12 @@ class RegisteredView:
 
         if not self.title.strip():
             raise ValueError(f"the View of kind {self.kind!r} has no title")
+
+        if not callable(self.factory):
+            raise TypeError(
+                f"the View of kind {self.kind!r} has a factory that cannot be called: "
+                f"{type(self.factory).__name__}"
+            )
 
         if not isinstance(self.required_reachable, bool):
             raise TypeError(
@@ -299,10 +312,10 @@ def required_kinds(
 #: Every View kind this build can draw, in the order the View chooser lists
 #: them. The titles are placeholders.
 REGISTERED: Final = registry(
-    RegisteredView(CONCENTRATION_CHART, "Concentrations"),
-    RegisteredView(WASH_IN, "Wash-in"),
-    RegisteredView(PARAMETER_CONTROLS, "Parameters"),
-    RegisteredView(AGENT_ACCOUNTING, "Agent accounting", required_reachable=True),
+    RegisteredView(CONCENTRATION_CHART, "Concentrations", ConcentrationView),
+    RegisteredView(WASH_IN, "Wash-in", WashInView),
+    RegisteredView(PARAMETER_CONTROLS, "Parameters", ParameterControlsView),
+    RegisteredView(AGENT_ACCOUNTING, "Agent accounting", AccountingView, required_reachable=True),
 )
 
 #: The View kinds `docs/MODEL.md` § "Minimum displayed outputs" requires to
@@ -312,6 +325,23 @@ REQUIRED_REACHABLE: Final = required_kinds(REGISTERED, AGENT_ACCOUNTING)
 
 #: Every tag a View has had and no longer has. None has been retired yet.
 RETIRED_TAGS: Final = retirements(REGISTERED)
+
+
+def unbuilt_view_text(
+    kind: ViewKind, error: Exception, registered: Mapping[str, RegisteredView] = REGISTERED
+) -> str:
+    """The body of the notice an Area shows when the factory for `kind` raised `error`.
+
+    It names the View by its title and the error by its type and message, so
+    the failure can be traced, and it tells the reader to choose a View.
+
+    Raises:
+        KeyError: `kind` is not in `registered`.
+    """
+
+    title = registered[kind].title
+
+    return f"Building '{title}' failed: {type(error).__name__}: {error}. {CHOOSE_A_VIEW}"
 
 
 def missing_view_text(
@@ -380,44 +410,3 @@ def rename_offer_text(
         return None
 
     return f"Show '{registered[tag.successor].title}'"
-
-
-def unplaced_view_text(
-    kind: ViewKind, registered: Mapping[str, RegisteredView] = REGISTERED
-) -> str:
-    """The body of the notice for a registered View the dashboard cannot yet put in an Area.
-
-    Until `PL-TH35` gives each entry a factory, the dashboard draws some
-    registered Views only inside another surface, so an Area that names one
-    shows this notice instead. The wording is a placeholder.
-
-    Raises:
-        TypeError: `kind` is not a `ViewKind`.
-        KeyError: `kind` is not registered, which is `missing_view_text`'s case.
-    """
-
-    if not isinstance(kind, ViewKind):
-        raise TypeError(f"a View kind is a ViewKind, not {type(kind).__name__}")
-
-    return f"This build cannot put '{registered[kind].title}' in an Area yet. {CHOOSE_A_VIEW}"
-
-
-def shown_elsewhere_text(
-    kind: ViewKind, registered: Mapping[str, RegisteredView] = REGISTERED
-) -> str:
-    """The body of the notice for a View another Area already shows.
-
-    Until each View can be built once per Area (`PL-TH35`, `PL-9LNF`), the
-    dashboard draws one of some Views, so a second Area naming the same kind
-    shows this notice and the first keeps the View. The wording is a
-    placeholder.
-
-    Raises:
-        TypeError: `kind` is not a `ViewKind`.
-        KeyError: `kind` is not registered.
-    """
-
-    if not isinstance(kind, ViewKind):
-        raise TypeError(f"a View kind is a ViewKind, not {type(kind).__name__}")
-
-    return f"This build draws one '{registered[kind].title}' at a time. {CHOOSE_A_VIEW}"

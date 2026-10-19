@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated, defect
 feature: interface-areas
+milestone: v0.5.31
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-16
 closed: 2026-10-19
