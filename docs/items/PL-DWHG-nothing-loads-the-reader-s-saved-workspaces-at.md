@@ -31,3 +31,20 @@ question for a shipped Workspace names it (`app/workspace_tabs.py`'s
 `_DELETE_SHIPPED_TEXT`). Tests use `tmp_path` and never write outside it.
 
 *Found by* `PL-2KXB`, 2026-10-19, while wiring the tab strip.
+
+**Handover, 2026-10-19.** The thread that built `PL-M352` (#1655, merged)
+stopped here because it had used up its context budget. It had not claimed this item yet.
+The next session should do three things in order:
+
+1. Triage this item first, because it blocks `PL-G5SX`. Its `touches` should
+   cover `src/anesthesia_sim/app/main.py`, `src/anesthesia_sim/app/workspace_tabs.py`,
+   `src/anesthesia_sim/app/simulation_view.py` and `tests/integration`.
+2. Put the three entries in `LayoutMenu.fill` in `app/workspace_tabs.py`,
+   after the "This Workspace" submenu and behind a separator. `fill` rewrites
+   the menu each time it opens. It clears old submenus through `_clear`, so
+   any new submenu must be created inside `fill`. Save is shown disabled,
+   with its reason as the tooltip, during a read-only session, as the Area
+   menu does for an unavailable entry.
+3. Drive each entry with keys in a test under `tests/integration/`, as
+   `tests/integration/test_layout_keyboard.py`'s `_choose_by_keys` does, and
+   use `tmp_path` for the store's directory.
