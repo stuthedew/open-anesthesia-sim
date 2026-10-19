@@ -698,7 +698,9 @@ def test_no_hover_box_is_left_outside_a_plot_that_shrinks_under_a_resting_pointe
     _hover_on(chart, time_s, percent)
     tall_box = chart.hover_box()
     assert tall_box is not None
-    assert tall_box.center().y() < chart.plot_pixel(time_s, percent)[1], "the tall plot put it below"
+    assert tall_box.center().y() < chart.plot_pixel(time_s, percent)[1], (
+        "the tall plot put it below"
+    )
 
     chart.resize(_WINDOW_WIDTH_PX, chart.minimumSizeHint().height())
     application.processEvents()
