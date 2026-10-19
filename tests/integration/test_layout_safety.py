@@ -246,16 +246,18 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
         assert view.workspaces.current.name == WorkspaceName("Default")
         seen = _check(application, view, "launch", frozenset())
 
-        # The drag back is shorter than the drag away, because the splitter
-        # then holds the controls Area at its 590 px size hint, wider than the
-        # 336 px it opened at (`PL-4L8B`).
-        _drag_only_border(application, view, -400)
+        # Narrow the chart to its least width, then widen it by less than the
+        # narrowing. Once the border has moved, the splitter holds the controls
+        # Area at its size hint, which is wider than the width it opened at
+        # (`PL-4L8B`), and that hint depends on the platform's fonts. A short
+        # widening from the least width stays clear of it.
+        _drag_only_border(application, view, -800)
         view.present(False)
         narrowed_px = _chart(view).chart.plot_width_px()
         seen = _check(application, view, "narrowing the chart's Area", seen)
         presented = view.presented_frames
-        _drag_only_border(application, view, 200)
-        assert _chart(view).chart.plot_width_px() > narrowed_px + 100
+        _drag_only_border(application, view, 150)
+        assert _chart(view).chart.plot_width_px() > narrowed_px * 1.2
         assert _widest_chord_px(view) > 1, "the drag did not widen the plot under the old frame"
         view.render_tick()
         assert view.presented_frames == presented + 1, "the widened chart was not redrawn"
