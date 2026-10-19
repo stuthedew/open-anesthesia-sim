@@ -89,10 +89,31 @@ up. `get_session` on the probe returns no `effort_level` at all, so the brief's
 plan to read the level with `get_session` does not work for a session the app
 did not open. The model review needs another record of the level actually run.
 
-**Unknown 2 is still open, and it can be tested on `main`.** If the app's
-picker counts as an explicit choice, a session opened from the app with the
-picker at a level other than `high` prints that level, not the file's `high`.
-If it prints `high`, the file wins over the picker.
+**Unknown 2, measured 2026-10-19: the app's picker wins over the settings
+files.** The owner opened a session from the app on `main` with the picker at
+Medium, and it printed `CLAUDE_EFFORT=medium` against `.claude/settings.json`'s
+`high`. Every app-opened session records an effort level, so the app most
+likely always sends its picker's level. A setup script that writes only
+`effortLevel` would then change nothing in an app-opened session. Managed
+settings do not help either. The docs place a managed `effortLevel` at the
+same settings step, and "users can still change the level with `/effort` or
+`--effort`" (*Model configuration*, section "Set the effort level",
+https://code.claude.com/docs/en/model-config.md, read 2026-10-19).
+
+**What does beat the picker is a cap.** `maxEffortLevel` caps "the effort
+level a session can use … Any higher level runs at the cap instead, including
+one from `/effort`, the `/model` picker, `--effort`,
+`CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or
+the model's own default." Its scope is "Any file", so
+`.claude/settings.local.json` can carry it, and "when several scopes set a
+cap, the lowest applies". It needs Claude Code v2.1.267 or later, and the
+cloud containers run 2.1.303 (*Settings reference*, section `maxEffortLevel`,
+https://code.claude.com/docs/en/settings-reference.md, read 2026-10-19). So the
+trial can run with the picker left at `xhigh`. The setup script writes
+`"maxEffortLevel": "high"` in three sessions of four and no cap in the fourth.
+It also writes `effortLevel` to match, for sessions the app does not open.
+Whether a cap actually limits the app's level is still untested. The docs say
+it should, and the test needs an app-opened session with the file in place.
 
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
