@@ -3,15 +3,17 @@ id: PL-KS01
 title: The session-start digest, list, status and concurrent answer from the working tree's copy of each item while next and show read origin/main's newer copy, so behind origin/main the digest's Top line can name an item next no longer offers
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-snapshot
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-10-19
 payoff: the digest, list, status and concurrent answer from the same copy of each item as next and show, so a session resumed behind origin/main is not pointed at work main has closed
 verify: grep -q 'def test_digest_reads_the_base_s_copy_behind_main' subprojects/docket/tests/test_cli.py
 reenters: PL-XBV4
+recurrences: 2026-10-19 PL-4T32
 ---
 
 **Problem.** The session-start digest, list, status and concurrent answer from the working tree's copy of each item while next and show read origin/main's newer copy, so behind origin/main the digest's Top line can name an item next no longer offers
@@ -75,3 +77,12 @@ and the counts moving is the correction: they then describe the moment the
 refs line already dates. B is not taken, for the reason given above - one
 digest answering from two moments. A defect in what exists, so the pause on
 new workflow mechanisms does not hold it.
+
+**Worked** (2026-10-19). Option A, as decided. `cli._load_to_read` is
+`_load` followed by `_from_base`, and it is now the only caller of
+`_from_base`. The digest, `list`, `status`, `concurrent`, `next`, `show` and
+`picks` load the store through it, and each prints `_say_read_from_base`
+with its answer. `check`, `set`, `new`, `withdraw` and `record` still call
+`_load`. `test_digest_reads_the_base_s_copy_behind_main` fails against the
+old `cli.py` on the digest's `Top:` line. The other read commands that still
+use the working tree's copy are captured as `PL-4T32`.
