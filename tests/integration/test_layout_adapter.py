@@ -1142,7 +1142,7 @@ def _labels(container: AreaLayout, area_id: int) -> list[tuple[str | None, str, 
 def test_a_header_holds_the_chooser_and_no_menu_button(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-R5G4`: the chooser is the header's only button, and the Area menu has none.
+    """`PL-R5G4`: the chooser is the header's only button, and no button opens the Area menu.
 
     The project owner found the "Area" button in every header intrusive on
     2026-10-19. Blender's headers carry no such button.
@@ -1168,10 +1168,10 @@ def test_the_choosers_arrow_sits_to_the_right_of_its_title(
     """`PL-R5G4`: the arrow drew over the title's last letters on the owner's screen.
 
     The chooser is drawn three ways at one size: as it is, with no title, and
-    with neither title nor menu. The title's pixels are those the first two
-    differ in, and the arrow's are those the last two differ in. The arrow
-    must start at least a space's width right of the title, and lie within
-    the title's line rather than below it.
+    with neither title nor menu. The pixels that differ between the first two
+    drawings belong to the title. The pixels that differ between the last two
+    belong to the arrow. The arrow must start at least a space's width to the
+    right of the title, and must lie within the title's line rather than below it.
 
     The owner's macOS style is not available here. Of the two styles that are,
     the Windows style drew the arrow over the title's last letter before the
@@ -1671,10 +1671,10 @@ def test_a_drag_through_the_zone_with_the_mouse_makes_the_split(
 def test_ctrl_and_a_corner_drag_into_another_area_previews_a_swap_and_makes_it_on_release(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-R5G4`: Blender's "Swapping Contents", driven through the zone with the mouse.
+    """`PL-R5G4`: Blender's "Swapping Contents", driven through the corner zone with the mouse.
 
     Area 1 fills the left half, and Areas 2 and 3 stack on the right. Area 1
-    and Area 3 change places, and each keeps its size of place. The expected
+    and Area 3 change places, and each place keeps its size. The expected
     tree is written by hand from that rule.
     """
 

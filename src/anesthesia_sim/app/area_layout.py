@@ -71,27 +71,28 @@ it disabled, with the reason beside it. So a join that the layout cannot make
 is visibly unavailable, and is never approximated.
 
 **A reader also splits, joins and swaps by dragging** (`PL-30L5`, `PL-RQT1`,
-`PL-R5G4`). Each corner of an Area is a 16 px zone with a cross cursor. A drag
-inside the Area previews a split through the pointer, and a drag into a
-neighbour previews a join. With Ctrl held at the press, a drag into any other
-Area previews a swap, as in Blender. The preview is drawn over the Areas,
-and nothing changes until the reader releases the drag. A border drag lays the
-Areas out again as it moves. It stops where an Area beside the moved line
-reaches its minimum size, and the stop is drawn in WARNING. Holding Shift
+`PL-R5G4`). Each corner of an Area is a 16 px zone with a cross cursor, and these
+drags start there. A corner drag that stays inside its Area previews a split,
+with the cut running through the pointer. A corner drag into a neighbour
+previews a join. With Ctrl held at the press, a corner drag into any other Area
+previews a swap, as in Blender. The preview is drawn over the Areas, and nothing
+changes until the reader releases the drag. A border drag lays the Areas out
+again as it moves. It stops where an Area beside the moved line reaches its
+minimum size, and the stop is drawn in the `WARNING` colour. Holding Shift
 moves the dragged border alone, and Escape undoes any drag.
 
 **No View is drawn below the size it needs** (`PL-K285`). An Area needs the
 size that its View needs, plus its header. A View needs the larger of two
 sizes: the minimum that its registry entry declares, and the minimum size that
 Qt would hold the View widget to. `settle`, in `layout/sizing.py`, works out
-the sizes from this widget's size. Each frame is held at the size it was
-given, so a border drag stops before a neighbour gets less than it needs. This
-widget's minimum size hint is the sum of every Area's need. So a host that can
-grow, as the dashboard's scrolling page does, always gives every View its
-size. Where the host cannot grow, an Area that the latest change did not leave
-in place gives way first. That Area shrinks to its header and shows the size
-its View needs beside the size it has. It stays that way until a later change
-can give it the size it needs.
+each Area's size from this widget's size. Each Area's frame is held at the size
+it was given, so a border drag stops before a neighbour gets less than it needs.
+This widget's minimum size hint is the sum of every Area's need. So a host that
+can grow, as the dashboard's scrolling page does, always gives every View its
+size. Where the host cannot grow, the Areas that the latest change did not leave
+in place give way before the Areas that it did. An Area that gives way shrinks
+to its header and shows the size its View needs beside the size it has. It
+stays that way until a later change can give it the size it needs.
 
 **What is not here yet.** The Workspace tab strip is left to `PL-2KXB`. Only
 the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
@@ -373,17 +374,17 @@ class JoinPreview:
 
 @dataclass(frozen=True, slots=True)
 class SwapPreview:
-    """A corner drag with Ctrl held, into another Area: the two Areas that change places.
+    """The two Areas that change places when a corner drag with Ctrl held ends in another Area.
 
-    Blender swaps two Areas' contents on Ctrl and a corner drag (Blender
-    Manual, "Areas", section "Swapping Contents", read 2026-10-19), and `PL-R5G4`
-    took the gesture. The two Areas need not be side by side.
+    Blender swaps the contents of two Areas when Ctrl is held during a corner drag
+    (Blender Manual, "Areas", section "Swapping Contents", read 2026-10-19), and
+    `PL-R5G4` adopted the gesture. The two Areas need not be side by side.
 
     Attributes:
         start: The Area the drag started in.
         other: The Area under the pointer.
-        result: The layout releasing the drag makes, or None where the model
-            refuses the swap, in which case releasing changes nothing.
+        result: The layout that releasing the drag would make, or None if the
+            model rejects the swap. In that case, releasing changes nothing.
     """
 
     start: AreaId
@@ -779,10 +780,10 @@ class AreaLayout(QWidget):
         return fit.too_small
 
     def corner_pressed(self, area_id: AreaId, at: QPoint, *, swap: bool = False) -> None:
-        """Start a corner drag of the Area `area_id`, pressed at `at` on the screen.
+        """Start a corner drag of the Area `area_id`, pressed at the screen position `at`.
 
-        With `swap`, which Ctrl held at the press sets, the drag swaps the
-        Area with the one it is released over, rather than splitting or
+        When `swap` is true, as it is when Ctrl was held at the press, the drag
+        swaps the Area with the one it is released over, rather than splitting or
         joining.
         """
 
@@ -827,16 +828,16 @@ class AreaLayout(QWidget):
     def _preview_at(
         self, area_id: AreaId, pressed: QPoint, swap: bool, at: QPoint
     ) -> SplitPreview | JoinPreview | SwapPreview | None:
-        """What a corner drag of `area_id` from `pressed` would do if released at `at`.
+        """Return the preview of a corner drag of `area_id` from `pressed`, released at `at`.
 
-        Inside its own Area, the drag splits it. The cut runs across the
-        direction the pointer has moved further in, through the pointer, so a
-        drag sideways cuts the Area into left and right. Nothing is previewed
-        until the pointer has moved the platform's drag distance. In another
-        Area, the drag joins that Area into this one, which keeps its View.
-        With `swap`, a drag into another Area swaps the two instead, and a
-        drag inside its own Area does nothing. Anywhere else, nothing is
-        previewed.
+        When the pointer is inside the drag's own Area, the drag splits it. The cut
+        passes through the pointer, across the direction in which the pointer has
+        moved further, so a sideways drag cuts the Area into left and right parts.
+        Nothing is previewed until the pointer has moved the platform's drag
+        distance. When the pointer is in another Area, the drag joins that Area
+        into this one, and this one keeps its View. When `swap` is true, a drag
+        into another Area swaps the two instead, and a drag inside its own Area
+        does nothing. Anywhere else, nothing is previewed.
         """
 
         local = self.mapFromGlobal(at)
@@ -1536,19 +1537,19 @@ class AreaLayout(QWidget):
 
 
 class ViewChooser(QToolButton):
-    """The first control of an Area's header: its View's title, and a menu of every View.
+    """The first control in an Area's header. It names the Area's View and lists every View.
 
-    `PL-RBXL` decided it. It is a flat menu button rather than a combo box,
+    `PL-RBXL` decided its design. It is a flat menu button rather than a combo box,
     because this interface uses combo boxes for settings, and choosing a View
     changes no run. It shows the Area's View by its registry title, or by the
-    saved tag where the registry does not hold it. Its menu lists every kind
+    saved tag if the registry does not hold that kind. Its menu lists every kind
     in `registered`, in registry order, by title, with the current kind
-    checked, and nothing marks the kinds that must stay reachable: the
-    registry keeps them, so the menu needs no warning. Choosing an entry
-    calls `choose`. The menu opens on a click, or on Space with the keyboard
-    focus, and the button is in the tab order. With the keyboard focus, the
-    Menu key and Shift+F10 open the Area menu instead, as a right-click on the
-    header does (`PL-R5G4`).
+    checked. Nothing in the menu marks the kinds that must stay reachable. The
+    registry keeps those kinds, so the menu needs no warning about them.
+    Choosing an entry calls `choose`. The menu opens on a click, or on Space
+    while the button has the keyboard focus, and the button is in the tab
+    order. While the button has the keyboard focus, the Menu key and Shift+F10
+    open the Area menu instead, as a right-click on the header does (`PL-R5G4`).
 
     Args:
         area: The Area whose header holds this chooser.
@@ -1591,9 +1592,9 @@ class ViewChooser(QToolButton):
         shift = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
 
         if event.key() == Qt.Key.Key_F10 and shift:
-            # The header opens the Area menu on a context menu event that
-            # this button leaves to it. Qt makes one from the Menu key itself,
-            # and from Shift+F10 only here.
+            # The header opens the Area menu when it receives a context menu event,
+            # and this button passes that event on to it. Qt sends such an event for
+            # the Menu key by itself. For Shift+F10 it does not, so this code sends one.
             at = self.rect().bottomLeft()
             keyboard = QContextMenuEvent.Reason.Keyboard
             QApplication.sendEvent(self, QContextMenuEvent(keyboard, at, self.mapToGlobal(at)))
@@ -1604,7 +1605,7 @@ class ViewChooser(QToolButton):
 class AreaMenu(QMenu):
     """The menu of layout operations on one Area, opened from the Area's header.
 
-    `PL-2KXB` fills it. It holds the two splits, a "Join with" submenu, a
+    `PL-2KXB` builds its entries. It holds the two splits, a "Join with" submenu, a
     "Swap with" submenu and Close Area. It works out its entries each time it
     opens, from the layout drawn at that moment. An unavailable entry is still
     shown, but disabled, with the reason as its tooltip. So the reader sees an
@@ -2242,12 +2243,12 @@ class _Corner(Enum):
 class _CornerZone(QWidget):
     """A corner of an Area that a reader drags to split or join it (`PL-30L5` Q1).
 
-    It is an `AREA_CORNER_ZONE` square inside the corner, above the View, with
-    the platform's cross cursor. It draws a grip of three short strokes in
-    MUTED while the pointer is in its Area, and nothing otherwise. A press
-    starts a drag that `AreaLayout` previews and makes on release, and Escape
-    during the drag cancels it. With Ctrl held at the press, the drag swaps
-    two Areas (`PL-R5G4`).
+    It is a square, `AREA_CORNER_ZONE` px wide, inside the corner and on top of the
+    View, and it shows the platform's cross cursor. While the pointer is in its
+    Area, it draws a grip of three short strokes in the MUTED colour. Otherwise it
+    draws nothing. A press starts a drag. `AreaLayout` previews the drag and carries
+    out the operation on release, and Escape during the drag cancels it. With Ctrl
+    held at the press, the drag swaps two Areas (`PL-R5G4`).
     """
 
     def __init__(self, frame: AreaFrame, drags: AreaLayout, corner: _Corner) -> None:
@@ -2326,12 +2327,12 @@ class _CornerZone(QWidget):
 
 
 class _LayoutOverlay(QWidget):
-    """What a corner drag shows before it is released, drawn over the Areas (`PL-30L5` Q2).
+    """Draws a corner drag's preview over the Areas until it is released (`PL-30L5` Q2).
 
     A split draws a line across the Area where the cut will fall, in PRIMARY,
     or in WARNING where a part would be too small to hold its header. A join
-    tints the Area that will close in MUTED and outlines the Area the two
-    will make in PRIMARY. A join the layout cannot make outlines the Area
+    tints in MUTED the Area that will close, and outlines in PRIMARY the Area
+    that the two will make. A join the layout cannot make outlines the Area
     under the pointer in WARNING, with no tint. A swap outlines the two Areas
     that change places in PRIMARY, or in WARNING where the swap is refused.
     The overlay takes no mouse events, so the Areas under it work as usual.

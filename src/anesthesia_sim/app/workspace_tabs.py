@@ -1,8 +1,9 @@
 """This module draws the Workspace tab strip in PySide6, with one tab for each Workspace.
 
 `PL-QW1Z` decided its place and its look, and `PL-2KXB` builds it. The strip
-sits directly above the Areas, under the unconditional region, and spans the
-layout container's width. It sits there because a tab switches the Areas and
+sits directly above the Areas, under the unconditional region, which is the part
+of the window that is always shown. It spans the layout container's width. It
+sits there because a tab switches the Areas and
 nothing above them (Q1). It holds the tabs and a "+" at its end, and nothing
 else (Q2). The shipped Workspaces' tabs come first, then a separator line,
 then the reader's own (Q4).
@@ -42,8 +43,9 @@ Ctrl+PageUp and Ctrl+PageDown, which Blender uses for the same thing (Blender
 Manual, "Workspaces", "Controls", read 2026-10-19). As in Blender's
 `SCREEN_OT_workspace_cycle`, they wrap around at either end. Then comes a
 "This Workspace" submenu, which holds the current tab's own entries. Which
-part of the strip opens it and its wording are placeholders, chosen under the
-project owner's rule of 2026-10-18.
+part of the strip opens the menu, and the menu's wording, are placeholders. The
+project owner's rule of 2026-10-18 treats look and placement as placeholders
+while the structure is built.
 
 **Both menus end with the three entries that keep or undo a session's
 changes** (`PL-DWHG`). A separator sets them apart. `PL-WV9K` § "Answers
@@ -65,8 +67,8 @@ Factory Settings. The three entries are these.
 **What the store reports is shown, never kept quiet** (`PL-WV9K` Q5). Three
 kinds of message are shown on a line under the tabs: a notice from the load,
 a save that the operating system refused, and a save that worked. Each one
-stays until the reader dismisses it or the next one replaces it. A notice is
-conditional text, so the line is not shown when there is no notice.
+stays until the reader dismisses it or the next one replaces it. Like any
+conditional text, the line is hidden while it has no notice to show.
 """
 
 from __future__ import annotations
@@ -580,7 +582,7 @@ class LayoutMenu(QMenu):
 
     A right-click on the strip outside a tab opens it (`PL-R5G4`). The strip
     carries no button for it, as Blender's top bar carries none beside its
-    Workspace tabs. The menu writes its entries each time it opens. It works
+    Workspace tabs. The menu builds its entries again each time it opens. It works
     them out from the same set that the strip uses for its own entries. The
     module docstring lists the menu's entries.
 
@@ -954,7 +956,7 @@ class WorkspaceTabs(QWidget):
         self.layout_menu.popup(event.globalPos())
 
     def menu_for(self, index: int) -> QMenu:
-        """The context menu of the tab at `index`, built from the set drawn now.
+        """Return the context menu for the tab at `index`, built from the set shown now.
 
         The tab's own entries come first. Previous and Next Workspace and the
         three entries that keep or undo a session's changes follow, so the

@@ -183,11 +183,12 @@ def test_the_menu_lists_q3s_entries_in_order(owner: _Owner) -> None:
 
 
 def test_a_tabs_menu_ends_with_the_entries_for_every_workspace(owner: _Owner) -> None:
-    """`PL-R5G4`: the strip has no Layout button, so a tab's menu carries these for the keyboard.
+    """`PL-R5G4`: a tab's menu ends with the entries that act on every Workspace.
 
-    After the tab's own entries come Previous and Next Workspace, then the
-    three entries that keep or undo a session's changes, each group after a
-    separator.
+    The strip has no Layout button, so these entries are on each tab's menu for
+    the keyboard to reach. After the tab's own entries come Previous and Next
+    Workspace, then the three entries that keep or undo a session's changes. A
+    separator comes before each of these two groups.
     """
 
     actions = owner.strip.menu_for(0).actions()

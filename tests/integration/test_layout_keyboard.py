@@ -695,7 +695,7 @@ def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
 
     The right Area starts 400 px wide, many steps above the minimum width that
     its frame declares. Pressing Right until the border can go no further
-    leaves the Area at least that minimum wide and less than one step wider.
+    leaves the Area at least as wide as that minimum, and less than one step wider.
     A border that stopped at its last whole step would be up to a whole step
     wider.
     """

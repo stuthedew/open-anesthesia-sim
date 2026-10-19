@@ -140,20 +140,21 @@ def selector_stylesheet() -> str:
 
 
 def view_chooser_stylesheet() -> str:
-    """The View chooser in an Area's header: a flat menu button, INK on its surface.
+    """Return the style sheet for the View chooser, a flat menu button in an Area's header.
 
     `PL-RBXL` Q1 decided its look. At rest it has no frame and no fill, so the
     title reads as the header's own text, INK on the header's PANEL. Under the
     pointer, and while its menu is open, it is filled in BACKGROUND, the
-    page's colour, with the title still in INK. With the keyboard focus it
-    carries a 1px INK edge, which the transparent edge at rest keeps from
-    moving the title. `tools/contrast_check.py` measures INK on both surfaces.
+    page's colour, with the title still in INK. While it has the keyboard
+    focus, it has a 1px INK border. At rest the border is 1px and transparent,
+    so the title does not move when the focus border appears.
+    `tools/contrast_check.py` measures INK on both surfaces.
 
     The arrow that marks the menu sits in the right padding, centred on the
     title's line, as Blender's Editor Type selector draws its arrow after the
-    icon. Left to the platform, the arrow sat at the bottom right corner on
-    top of the title's last letters (`PL-R5G4`). The arrow's size and gap are
-    placeholders.
+    icon. When the platform style placed the arrow, it sat at the bottom right
+    corner, over the title's last letters (`PL-R5G4`). The arrow's size and gap
+    are placeholders.
     """
 
     return (

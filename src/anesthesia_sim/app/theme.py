@@ -515,11 +515,13 @@ AREA_HANDLE_LINE_WIDTH = 2
 # structure is built.
 AREA_KEYBOARD_STEP = 20
 
-# The square at each corner of an Area that a reader drags to split or join it,
-# in px (`PL-30L5` Q1). Twice Blender's, and less than WCAG 2.2 SC 2.5.8's 24
-# px. The Area menu meets that criterion as the equivalent route, since a
+# The side, in px, of the square at each corner of an Area that a reader drags to
+# split or join it (`PL-30L5` Q1). It is twice Blender's size, and less than the
+# 24 px target size that WCAG 2.2 SC 2.5.8 asks for. The Area menu is the
+# equivalent route that lets the layout meet that criterion, because a
 # right-click anywhere on the Area's header opens it (`PL-R5G4`). The header's
-# end margins are this wide too, so a zone never takes a header control's click.
+# end margins are this wide too, so a zone never takes a click meant for a
+# header control.
 AREA_CORNER_ZONE = 16
 
 # The grip a corner draws while the pointer is in its Area: this many strokes,
