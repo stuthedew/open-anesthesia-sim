@@ -605,10 +605,21 @@ deviating from a described deliverable, not acting without one.
   need no merge confirmation (project owner, 2026-10-12, `PL-KPM2`). `behind N`: bring `origin/main` in
   and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
   and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
-  `PL-H14W`). **`main` red for a reason outside the item, or the same check
-  failing twice, stops the session**: say so to the owner before any retry,
-  and wait (project owner, 2026-09-25, ratified, in the Projects trial's
-  instructions, `PL-NZC0`; the retry clause by 2026-10-03, kind unrecorded).
+  `PL-H14W`). **`main` red for a reason outside the item stops the session**:
+  say so to the owner before any retry, and wait (project owner, 2026-09-25,
+  ratified, in the Projects trial's instructions, `PL-NZC0`). **A check that
+  fails again on the same pull request stops it too, unless the session
+  reproduced the new failure and found a cause no earlier failure of that
+  check there had.** Then it fixes that cause and carries on. A repeated cause,
+  a failure it cannot explain, or a need for a stronger model stops it, and the
+  reply says what failed, why, and what it wants, asking nothing where nothing
+  needs weighing. **Four failed runs of one check on one pull request stop it
+  whatever the causes.** That reply says the check failed four times and names
+  each cause. It asks the owner a real question with options and a
+  recommendation, such as a retry on a stronger model, a narrower or split
+  change, or setting the item aside, and never only whether to try again
+  (project owner, 2026-10-19, ratified, over a stop at every second failure;
+  the question at four is the owner's own, `PL-M44T`).
   Where the **web harness
   says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per
