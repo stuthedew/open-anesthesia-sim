@@ -1063,8 +1063,8 @@ def arm(
         rest = paths - {GATE}
         if gate:
             fork = run(["merge-base", base, "HEAD"], root).strip()
-            held = run(["ls-tree", "--name-only", fork, "--", GATE], root) if fork else ""
-            moved = held.strip() != GATE
+            held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
+            moved = held.rstrip("\0") != GATE
         tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
         unread.extend(unreadable)
         if PINS is not None and PINS in paths:
