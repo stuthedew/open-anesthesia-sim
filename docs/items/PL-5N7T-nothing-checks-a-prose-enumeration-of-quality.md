@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.5.31
 touches: docs/apparatus.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-10-18
