@@ -10,6 +10,7 @@ touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1645
 payoff: a simulator branch's long docstrings and comments get the fresh review that cut awkward prose from 58% to 22% of verdicts, rather than skipping it five times in six
 verify: grep -q 'def test_arm_holds_without_prose_review' subprojects/docket/tests/test_arming.py && grep -q 'def test_arm_holds_when_prose_count_fails' subprojects/docket/tests/test_arming.py && grep -q 'def test_counts_units_since_commit' tests/unit/test_new_prose.py && grep -q 'Prose-review:' .claude/skills/docket/modes/close-out.md
 ---
