@@ -9,6 +9,7 @@ touches: tests/unit/test_branch_sweep.py, tests/unit/test_makefile_reference.py,
 deferred-from: v0.6.0 - a workflow-lane test defect outside the layout release
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1690
 payoff: make check on the owner's Mac passes once bash and GNU make are current, so a worker there sees the failures its own change causes
 verify: grep -q 'needs version 4 or newer' tests/unit/test_makefile_reference.py && grep -q 'pack-refs' tests/unit/test_branch_sweep.py && grep -q 'brew install bash make' docs/maintainer.md
 ---
