@@ -50,7 +50,11 @@ record" with the steps, so the type sits beside it. The reader's
 `_read_version` is where a `SchemaVersion` is built from a file, and its
 refusal of a version below 1 moved there from `_check_version`, with the same
 message. `Migration.reads`, `oldest_readable`, `migrate`, `ReadWorkspaceSet`,
-`Loaded` and `UnsupportedSchemaVersion` take the type. `Migration` refuses a
+and `Loaded` take the type. `UnsupportedSchemaVersion` is handed
+`SchemaVersion`s but is annotated with the `int` the type subclasses, since
+`layout/migrations.py` imports the exceptions module, and a checker-only
+import there broke `test_supported_range_edges.py`, which resolves every
+annotation in the package at run time. `Migration` refuses a
 bare `int` at run time. `kept_file_name` builds its argument through the type
 too, so `True` and 0 are refused, and `set_aside_file_name` refuses a `bool`
 or a negative attempt.

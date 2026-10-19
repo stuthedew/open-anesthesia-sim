@@ -43,14 +43,8 @@ interface acts on:
 from __future__ import annotations
 
 from pathlib import PurePath
-from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import shown
-
-if TYPE_CHECKING:
-    # `layout/migrations.py` imports this module, so the type is named for the
-    # checker alone.
-    from anesthesia_sim.layout.migrations import SchemaVersion
 
 __all__ = [
     "InvalidLayout",
@@ -111,7 +105,11 @@ class UnsupportedSchemaVersion(LayoutError):
     refused and left untouched, and the session it was opened in saves nothing.
     """
 
-    def __init__(self, found: SchemaVersion, supported: SchemaVersion) -> None:
+    # The two versions are the `SchemaVersion`s the reader built, typed here
+    # as the `int` that type subclasses: `layout/migrations.py` defines it and
+    # imports this module, so naming it here would make the two import each
+    # other (`PL-8JV2`).
+    def __init__(self, found: int, supported: int) -> None:
         super().__init__(
             f"this layout was written at schema version {shown(found)}, and this build reads "
             f"versions up to {supported}; a newer build wrote it, so it is left untouched"
