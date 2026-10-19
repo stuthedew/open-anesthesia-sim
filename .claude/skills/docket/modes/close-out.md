@@ -357,5 +357,6 @@ page and decides which file a session reads.
    original sentence there, because the safety-critical standard applies to
    what a docstring states. Say in the pull request body how many units the
    reviewer read, how many it rewrote and how many rewrites you rejected.
-   The step is a trial: `PL-PRCS` records its measured cost, and the item it
-   filed re-measures the prose and retires the step if it has not helped.
+   `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
+   2026-10-19: long prose from the branch that ran it was awkward in 22% of
+   blind verdicts, against 58% from branches that skipped it, so it is kept.

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: interface-areas
+milestone: v0.5.34
 touches: .claude/rules/ui-areas.md, docs/ARCHITECTURE.md
 blocked-by: PL-TH35
 added: 2026-09-16
