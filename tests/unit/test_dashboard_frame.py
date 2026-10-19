@@ -1658,6 +1658,88 @@ def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
 
 
 @pytest.mark.parametrize(
+    ("control", "controller_settings", "refusal"),
+    (
+        # Between two 0.1 L/min steps: the slider would sit at 5.2, since
+        # `slider_position` rounds half to even, and the readout would print
+        # 5.2 over a run at 5.25.
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(5.25)},
+            "Alveolar ventilation is 5.25 L/min, which the slider cannot show: it offers "
+            "0.1 L/min steps from 0.0 to 12.0 L/min, so a patient profile must open the run "
+            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+        ),
+        (
+            ControlInput.CARDIAC_OUTPUT,
+            {"cardiac_output_l_min": CardiacOutput(5.25)},
+            "Cardiac output is 5.25 L/min, which the slider cannot show: it offers "
+            "0.1 L/min steps from 0.0 to 10.0 L/min, so a patient profile must open the run "
+            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+        ),
+    ),
+)
+def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused(
+    control: ControlInput, controller_settings: dict[str, Any], refusal: str
+) -> None:
+    """A run cannot open at a ventilation or cardiac output its slider cannot show (`PL-96SQ`).
+
+    The patient profile states both opening values. The core checks only
+    that they are positive and finite, so it accepts 5.25 L/min and opens
+    the run. The controls reject that value, as they reject an off-grid
+    fresh gas flow (`PL-1KQ9`). Otherwise the slider would sit at 5.2,
+    beside a readout showing 5.2, while the run used 5.25. This test opens
+    the run through the controller's explicit setting rather than a patient
+    file. That is enough, because the check reads the setting in force,
+    whatever stated it.
+    """
+
+    controller = SimulationController(**controller_settings)
+
+    assert {
+        ControlInput.ALVEOLAR_VENTILATION: controller.snapshot().alveolar_ventilation_l_min,
+        ControlInput.CARDIAC_OUTPUT: controller.snapshot().cardiac_output_l_min,
+    }[control] == 5.25
+
+    with pytest.raises(ValueError) as refused:
+        setting_readouts(controller.snapshot())
+
+    assert str(refused.value) == refusal
+
+
+@pytest.mark.parametrize(
+    ("control", "controller_settings"),
+    (
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(5.3)},
+        ),
+        (
+            ControlInput.ALVEOLAR_VENTILATION,
+            {"alveolar_ventilation_l_min": AlveolarVentilation(12.0)},
+        ),
+        (ControlInput.CARDIAC_OUTPUT, {"cardiac_output_l_min": CardiacOutput(5.3)}),
+        (ControlInput.CARDIAC_OUTPUT, {"cardiac_output_l_min": CardiacOutput(10.0)}),
+    ),
+)
+def test_an_opening_ventilation_or_cardiac_output_on_the_slider_grid_opens(
+    control: ControlInput, controller_settings: dict[str, Any]
+) -> None:
+    """A run opens at a ventilation or cardiac output on a slider step, including the range's top.
+
+    The readout shows the stated value. That is the property that the
+    rejection in the test above protects.
+    """
+
+    controller = SimulationController(**controller_settings)
+    [stated] = controller_settings.values()
+    readout = _settings_by_control(controller.snapshot())[control]
+
+    assert readout.value == stated
+    assert readout.value_text == f"{stated:.1f} L/min"
+
+
+@pytest.mark.parametrize(
     ("minimum", "maximum", "decimals", "offered"),
     (
         # Whole steps are offered as they are, which is every shipped range.
@@ -2359,6 +2441,37 @@ def test_each_run_s_off_scale_line_is_named_while_runs_are_compared() -> None:
         compared_run_line(off_scale_notice(compared, 0) or "", compared, 0),
         None,
     )
+
+
+def test_off_scale_notice_refuses_a_negative_run_index() -> None:
+    """A run index of -1 is rejected rather than treated as the last run (`PL-7694`).
+
+    Python treats `frame.runs[-1]` as the last run. Here run 1 stays inside
+    the axis and run 2 rises above it. An index of -1 that reached the frame
+    would therefore report run 2's clipped circuit trace under the name of
+    whichever run the caller meant. `compared_run_line` takes the same index
+    and rejects it for the same reason.
+    """
+
+    inside = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.02, 0.018, 0.015, 0.014, 0.01, 0.005),
+    )
+    above = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.08, 0.01, 0.01, 0.01, 0.0, 0.0),
+    )
+    compared = _compared_frame(_fake_controller(history=inside), _fake_controller(history=above))
+
+    # The frame is what the test says: the last run is the one off scale.
+    assert off_scale_notice(compared, 0) is None
+    assert off_scale_notice(compared, 1) is not None
+
+    with pytest.raises(ValueError, match="a run index is a position among the chart's runs"):
+        off_scale_notice(compared, -1)
+
+    with pytest.raises(ValueError, match="a run index is a position among the chart's runs"):
+        compared_run_line("line", compared, -1)
 
 
 def test_each_run_s_wash_in_state_line_counts_its_own_undrawn_stretches() -> None:

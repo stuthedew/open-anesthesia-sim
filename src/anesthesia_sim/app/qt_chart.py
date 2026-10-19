@@ -75,6 +75,8 @@ from anesthesia_sim.app.chart_frame import (
     WASH_IN_AXIS_MAXIMUM,
     ChartFrame,
     HoverTarget,
+    RunCount,
+    RunIndex,
     TraceStyle,
     nearest_trace_point,
     nearest_wash_in_point,
@@ -246,7 +248,7 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
     return pen
 
 
-def run_trace_pen(quantity: RecordedQuantity, run_index: int, run_count: int) -> QPen:
+def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: RunCount) -> QPen:
     """The pen one run draws a compartment with, on the chart and in the legend.
 
     `chart_frame.run_trace_style` decides it and this only builds it, so the
@@ -282,7 +284,15 @@ def _branch_point_pen() -> QPen:
     return pen
 
 
-def _wash_in_pen(run_index: int = 0, run_count: int = 1) -> QPen:
+#: The position and the count of the one run that a plot draws when it is
+#: not comparing runs. `_wash_in_pen` uses them as its defaults for that run.
+_LONE_RUN_INDEX: Final = RunIndex(0)
+_LONE_RUN_COUNT: Final = RunCount(1)
+
+
+def _wash_in_pen(
+    run_index: RunIndex = _LONE_RUN_INDEX, run_count: RunCount = _LONE_RUN_COUNT
+) -> QPen:
     """The pen one run's F_A/F_I trace is drawn with, on the plot and in its legend.
 
     One constructor for both, as `trace_pen` is for the compartments, so the
@@ -306,7 +316,7 @@ def _wash_in_pen(run_index: int = 0, run_count: int = 1) -> QPen:
         ValueError: If `run_index` does not address one of `run_count` runs.
     """
 
-    if run_count < 1 or not 0 <= run_index < run_count:
+    if run_index >= run_count:
         raise ValueError(
             f"run {run_index} is not one of the {run_count} runs on the plot; a trace "
             "is drawn at the width of a run that is being drawn"
@@ -510,7 +520,7 @@ class _HoverReadout:
 
         return self._scene_position
 
-    def show(self, target: HoverTarget, x_range: tuple[float, float], y_top: float) -> None:
+    def show(self, target: HoverTarget, x_range: tuple[float, float]) -> None:
         """Put a dot on every point that answered and the text beside them.
 
         One dot per reading rather than one for the box, because every run
@@ -529,15 +539,19 @@ class _HoverReadout:
         )
         self._text.setText(target.readout)
         # The box sits to the right of the anchor and above it, unless that
-        # would run it off the plot: past the middle of the window it goes to
-        # the left, and in the top quarter of the axis it goes below. The
-        # newest point of a following window is at the right edge, which is
-        # where a reader most often hovers, so the flip is the common case
-        # rather than an edge one.
+        # would put it off the plot. Past the middle of the window, it goes to
+        # the left. Where the room above the anchor is less than the box's
+        # height, it goes below. A following window keeps its newest point at
+        # the right edge, and that is where a reader most often hovers. So the
+        # flip is the common case rather than a rare one. The vertical flip is
+        # decided in pixels, because the box's height is fixed in pixels while
+        # the plot's height is whatever its Area leaves it. Deciding it at a
+        # fraction of the axis put the box partly above a short plot
+        # (`PL-9BVQ`).
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
-        near_top = anchor.value > 0.75 * y_top
-        self._text.setAnchor((1 if past_middle else 0, 0 if near_top else 1))
+        below = self._room_above_px(anchor.time_s, anchor.value) < self._box_height_px()
+        self._text.setAnchor((1 if past_middle else 0, 0 if below else 1))
         self._text.setPos(anchor.time_s, anchor.value)
         self._dot.show()
         # `setVisible` rather than `show`, which goes straight to Qt's own and
@@ -546,6 +560,26 @@ class _HoverReadout:
         # at its next paint, so read before then it can measure thousands of
         # pixels tall (`PL-J0F7`).
         self._text.setVisible(True)
+
+    def _room_above_px(self, time_s: float, value: float) -> float:
+        """Return how many pixels lie between a plot position and the top of the plot."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+        anchor = self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, value)))
+        top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
+
+        return float(anchor.y() - top)
+
+    def _box_height_px(self) -> float:
+        """Return the box's height in pixels, for the text it now holds.
+
+        The height is read from the text item's own rectangle, which is in
+        pixels at any view scale. It is not read from the box's position in
+        the scene, which is only correct once the box has been oriented for
+        the view (`PL-J0F7`).
+        """
+
+        return float(self._text.boundingRect().height())
 
     def hide(self) -> None:
         self._dot.hide()
@@ -575,12 +609,12 @@ class _RunPens:
     per-frame cost stays what it was: items are moved, never rebuilt.
     """
 
-    def __init__(self, run_index: int) -> None:
+    def __init__(self, run_index: RunIndex) -> None:
         self._run_index = run_index
-        self._pens: dict[tuple[RecordedQuantity, int], QPen] = {}
-        self._penned_for: int | None = None
+        self._pens: dict[tuple[RecordedQuantity, RunCount], QPen] = {}
+        self._penned_for: RunCount | None = None
 
-    def changed_for(self, run_count: int) -> bool:
+    def changed_for(self, run_count: RunCount) -> bool:
         """Whether the pens in use are not this many runs' pens, and record that they are."""
 
         if self._penned_for == run_count:
@@ -590,7 +624,7 @@ class _RunPens:
 
         return True
 
-    def of(self, quantity: RecordedQuantity, run_count: int) -> QPen:
+    def of(self, quantity: RecordedQuantity, run_count: RunCount) -> QPen:
         """This run's pen for a compartment, with this many runs drawn."""
 
         key = (quantity, run_count)
@@ -631,7 +665,7 @@ def _place_branch_point(mark: Any, time_s: float | None) -> None:
 class _RunItems:
     """One run's items on the concentration chart: its curves, its fork, its marks."""
 
-    def __init__(self, item: Any, run_index: int) -> None:
+    def __init__(self, item: Any, run_index: RunIndex) -> None:
         self.pens = _RunPens(run_index)
         self.curves: dict[RecordedQuantity, Any] = {}
 
@@ -761,6 +795,10 @@ class ConcentrationChart(QWidget):
         self._frame: ChartFrame | None = None
         self._hover = _HoverReadout(self._plot)
         self._hover.moved.connect(self._on_pointer)
+        # Whether the box goes above or below its point depends on the plot's
+        # height in pixels. So a resize places the box again, even while the
+        # pointer rests and no frame is drawn (`PL-9BVQ`).
+        item.getViewBox().sigResized.connect(self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -786,7 +824,7 @@ class ConcentrationChart(QWidget):
         self._band.setRegion(frame.mac_awake_band_percent)
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_RunItems(item, len(self._runs)))
+            self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
 
         # Each run's items are added to the plot in turn, so a later run draws
         # over an earlier one. That order is load-bearing rather than
@@ -794,7 +832,7 @@ class ConcentrationChart(QWidget):
         # the branch point the two curves coincide exactly, and it is the
         # narrower second run drawn last that keeps both visible there
         # (`theme.COMPARED_RUN_WIDTH_STEP`).
-        run_count = len(frame.runs)
+        run_count = frame.run_count
 
         for items, run in zip(self._runs, frame.runs, strict=False):
             repen = items.pens.changed_for(run_count)
@@ -999,9 +1037,7 @@ class ConcentrationChart(QWidget):
         if target is None:
             self._hover.hide()
         else:
-            self._hover.show(
-                target, (self._frame.start_s, self._frame.stop_s), self._frame.axis_top_percent
-            )
+            self._hover.show(target, (self._frame.start_s, self._frame.stop_s))
 
     def hover_text(self) -> str | None:
         """What the hover box currently shows, or `None` while it is hidden."""
@@ -1017,9 +1053,9 @@ class ConcentrationChart(QWidget):
 class _WashInRunItems:
     """One run's items on the wash-in plot: its stretches, their ends, its fork, its marks."""
 
-    def __init__(self, item: Any, run_index: int) -> None:
+    def __init__(self, item: Any, run_index: RunIndex) -> None:
         self._run_index = run_index
-        self._penned_for: int | None = None
+        self._penned_for: RunCount | None = None
         pen = _wash_in_pen()
         self.stretches = []
 
@@ -1039,7 +1075,7 @@ class _WashInRunItems:
         self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
 
-    def repen(self, run_count: int) -> None:
+    def repen(self, run_count: RunCount) -> None:
         """Re-pen every stretch when the number of runs on the plot has changed."""
 
         if self._penned_for == run_count:
@@ -1107,6 +1143,10 @@ class WashInChart(QWidget):
         self._frame: ChartFrame | None = None
         self._hover = _HoverReadout(self._plot)
         self._hover.moved.connect(self._on_pointer)
+        # Whether the box goes above or below its point depends on the plot's
+        # height in pixels. So a resize places the box again, even while the
+        # pointer rests and no frame is drawn (`PL-9BVQ`).
+        item.getViewBox().sigResized.connect(self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -1122,10 +1162,10 @@ class WashInChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in wash_in_axis_ticks()])
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_WashInRunItems(item, len(self._runs)))
+            self._runs.append(_WashInRunItems(item, RunIndex(len(self._runs))))
 
         for items, run in zip(self._runs, frame.runs, strict=False):
-            items.repen(len(frame.runs))
+            items.repen(frame.run_count)
             ends_x: list[float] = []
             ends_y: list[float] = []
 
@@ -1300,9 +1340,7 @@ class WashInChart(QWidget):
         if target is None:
             self._hover.hide()
         else:
-            self._hover.show(
-                target, (self._frame.start_s, self._frame.stop_s), WASH_IN_AXIS_MAXIMUM
-            )
+            self._hover.show(target, (self._frame.start_s, self._frame.stop_s))
 
     def hover_text(self) -> str | None:
         """What the hover box currently shows, or `None` while it is hidden."""
@@ -1849,7 +1887,7 @@ class TraceLegend(QWidget):
             self._showing = showing
 
     @property
-    def _run_count(self) -> int:
+    def _run_count(self) -> RunCount:
         """How many runs the selection this legend shows is drawn across."""
 
         return self._selection.run_count
@@ -1912,7 +1950,7 @@ class TraceLegend(QWidget):
             if self._run_count <= 1 or not named
             else [
                 (
-                    run_trace_pen(quantity, index, self._run_count),
+                    run_trace_pen(quantity, RunIndex(index), self._run_count),
                     compared_trace_legend_label(
                         trace_legend_label(trace_style(quantity)), self._run_names[index]
                     ),
@@ -2076,17 +2114,15 @@ class WashInLegend(QWidget):
                 drawing order, from `run_label` (`PL-7Z84`).
 
         Raises:
-            ValueError: If no run is named.
+            ValueError: If no run is named (`RunCount`).
         """
 
-        if not names:
-            raise ValueError("a legend describes at least one run, and none was named")
+        run_count = RunCount(len(names))
 
         if names == self._run_names:
             return
 
         self._run_names = names
-        run_count = len(names)
         comparing = run_count > 1
         # The single unqualified entry stands down while the per-run entries
         # stand in for it: two entries naming the same trace, one of them
@@ -2099,7 +2135,7 @@ class WashInLegend(QWidget):
         for index, entry in enumerate(self._compared_entries):
             if index < run_count and comparing:
                 entry.show(
-                    _wash_in_pen(index, run_count),
+                    _wash_in_pen(RunIndex(index), run_count),
                     compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, names[index]),
                 )
             else:
