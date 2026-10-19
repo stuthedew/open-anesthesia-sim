@@ -199,6 +199,13 @@ def test_an_agent_branch_named_in_another_case_is_listed(forge: Path) -> None:
     # `claims.agent_branch` reads `Claude/x` as an agent branch, so the sweep
     # must list it too; a case-sensitive `for-each-ref` pattern never did
     # (`PL-KL6B`). The default branch is still left out.
+    #
+    # Packing the refs first removes the loose `claude/` directories. On a
+    # filesystem that ignores case, such as macOS's, git would otherwise file
+    # `Claude/upper-q7x2kd` inside `claude/` and report it in lower case
+    # (`PL-TSH9`).
+    _git(forge.parent / "origin.git", "pack-refs", "--all")
+    _git(forge, "pack-refs", "--all")
     _git(forge, "push", "-q", "origin", "HEAD:refs/heads/Claude/upper-q7x2kd")
     _git(forge, "fetch", "-q", "origin")
     assert sorted(branch.name for branch in branches(forge)) == ["Claude/upper-q7x2kd", NAME]
