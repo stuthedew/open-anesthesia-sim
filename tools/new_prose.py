@@ -31,6 +31,20 @@ Exits 0 when it read the diff, whether or not it printed a unit. A changed file
 that will not parse is named in a "Not read" line, so a partial answer is never
 given as a whole one. Exits 1 when the diff could not be read or the default
 branch is unknown.
+
+**`--count` prints only how many units need a review, for `bin/docket arm`.**
+`arm` holds a simulator branch until step 8's review is recorded as a
+`Prose-review:` trailer, and it runs this through `docket.toml`'s
+`prose_count_command` (`PL-W04Z`). This mode reads the committed branch, from
+the fork to `HEAD`, because `arm` judges commits and not the working tree.
+`--count REV` names the commit that carries the newest record. A unit then
+counts only when its text is not a unit of the same file at `REV`, so a code
+fix after the review needs no second review, while a new or reworded long unit
+does. Comparing texts rather than diffing from `REV` keeps out the prose that a
+merge of the default branch brings in, because that prose is not in the
+branch's own diff from the fork. The count is one line holding a whole number.
+Exits 2, printing the unread files to standard error, when a changed file will
+not parse, because a count that skipped a file is not a count.
 """
 
 from __future__ import annotations
@@ -48,7 +62,14 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.arming import TESTS, imports_product  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
-from docket.vcs import GitUnanswered, default_base, read_git, resolved  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    GitUnanswered,
+    changed_path_args,
+    default_base,
+    listed_paths,
+    read_git,
+    resolved,
+)
 
 import doc_check  # noqa: E402
 from diff_mutation import changed_rows  # noqa: E402
@@ -121,25 +142,61 @@ class Found:
     unread: list[str]
 
 
-def branch_prose(root: Path, base: str) -> Found:
-    """The long units changed between the fork from `base` and the working tree."""
+def branch_prose(root: Path, base: str, *, committed: bool = False) -> Found:
+    """The long units changed between the fork from `base` and the working tree.
+
+    With `committed`, the units changed between the fork and `HEAD`, read from
+    the commits alone, so an uncommitted edit counts for nothing.
+    """
     fork, against = doc_check._diff_from(root, base)
+    if committed:
+        listing = changed_path_args("diff", "--name-only", "--diff-filter=d", fork, "HEAD", "--")
+        paths = sorted(set(listed_paths(read_git(listing, root))))
+    else:
+        paths = doc_check._changed_paths(root, fork)
     units: list[Unit] = []
     unread: list[str] = []
-    for path in doc_check._changed_paths(root, fork):
-        if PurePosixPath(path).suffix != ".py" or not (root / path).is_file():
+    for path in paths:
+        if PurePosixPath(path).suffix != ".py":
             continue
         if not (path.startswith(SOURCE) or path.startswith(TESTS)):
             continue
+        if not committed and not (root / path).is_file():
+            continue
         try:
-            source = (root / path).read_text(encoding="utf-8")
+            if committed:
+                source = read_git(["show", f"HEAD:{path}"], root)
+            else:
+                source = (root / path).read_text(encoding="utf-8")
             if not is_simulator_file(path, ast.parse(source, filename=path)):
                 continue
-            rows = changed_rows(read_git(["diff", "-U0", fork, "--", path], root))
+            to = ["HEAD"] if committed else []
+            rows = changed_rows(read_git(["diff", "-U0", fork, *to, "--", path], root))
             units.extend(changed_units(path, source, rows))
         except UNTOKENIZABLE as error:
             unread.append(f"{path}: {refusal(error)}")
     return Found(against, units, unread)
+
+
+def unreviewed(root: Path, found: Found, since: str | None) -> list[Unit]:
+    """The units in `found` whose text is not a unit of the same file at commit `since`.
+
+    With no `since`, every unit. A file that `since` does not hold, or holds in
+    a form Python refuses, has no units there, so all of its units count.
+    """
+    if since is None:
+        return list(found.units)
+    reviewed: dict[str, set[str]] = {}
+    for path in {unit.path for unit in found.units}:
+        reviewed[path] = set()
+        if not listed_paths(read_git(["ls-tree", "-z", "--name-only", since, "--", path], root)):
+            continue
+        try:
+            before = read_git(["show", f"{since}:{path}"], root)
+            reviewed[path] = {unit.text for unit in prose_units(path, before)}
+        except UNTOKENIZABLE:
+            pass
+    return [unit for unit in found.units if unit.text not in reviewed[unit.path]]
 
 
 def excerpt(lines: Sequence[str], unit: Unit) -> Iterator[str]:
@@ -185,6 +242,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to run in")
     parser.add_argument("--base", help="branch to diff against; the default branch by default")
+    parser.add_argument(
+        "--count",
+        nargs="?",
+        const="",
+        metavar="REV",
+        help="print only how many committed units need a review, for `bin/docket arm`, "
+        "leaving out units already at commit REV where one is given",
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
     base = args.base or default_base(root)
@@ -195,7 +260,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
     try:
-        print(report(root, branch_prose(root, base)))
+        if args.count is not None:
+            found = branch_prose(root, base, committed=True)
+            if found.unread:
+                for line in found.unread:
+                    print(f"new_prose: not read: {line}", file=sys.stderr)
+                return 2
+            print(len(unreviewed(root, found, args.count or None)))
+        else:
+            print(report(root, branch_prose(root, base)))
     except (GitUnanswered, OSError) as error:
         print(f"new_prose: no answer: {error!r}", file=sys.stderr)
         return 1

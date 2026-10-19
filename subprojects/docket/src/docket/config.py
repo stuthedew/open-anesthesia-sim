@@ -273,6 +273,15 @@ class Config:
     #: never switched on, and non-zero where it could not ask. A command, and
     #: empty by default, for `open_pull_requests_command`'s reason.
     auto_merge_command: str = ""
+    #: A command counting the long docstrings and comments that the branch's
+    #: simulator change adds and that no review has covered, which `docket arm`
+    #: reads so that a simulator branch waits for close-out step 8's review
+    #: (`PL-W04Z`). The package appends the commit carrying the newest
+    #: `Prose-review` record, where one does. The command owes exit 0 and one
+    #: line holding a whole number, and non-zero where it could not count,
+    #: which holds the pull request. Empty by default, which turns the hold
+    #: off: docket names no repository tool, so the project supplies the count.
+    prose_count_command: str = ""
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -559,6 +568,9 @@ def load(root: Path) -> Config:
         ),
         auto_merge_command=_str(
             section.get("auto_merge_command"), defaults.auto_merge_command, "auto_merge_command"
+        ),
+        prose_count_command=_str(
+            section.get("prose_count_command"), defaults.prose_count_command, "prose_count_command"
         ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths, "code_paths"),
         product_paths=_tuple(section.get("product_paths"), defaults.product_paths, "product_paths"),

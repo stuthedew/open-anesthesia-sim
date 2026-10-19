@@ -3,12 +3,13 @@ id: PL-W04Z
 title: Make close-out step 8's prose review run on every simulator branch that changes long prose: only 1 of the 6 simulator branches that held the step from 2026-10-18 to 2026-10-19 recorded running it (#1619), and the 5 that did not wrote prose rated 58% awkward against 22% for #1619 (PL-J6CK)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: housekeeping
 feature: prose-quality
-touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/tests
+touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, docket.toml, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
+closed: 2026-10-19
 payoff: a simulator branch's long docstrings and comments get the fresh review that cut awkward prose from 58% to 22% of verdicts, rather than skipping it five times in six
 verify: grep -q 'def test_arm_holds_without_prose_review' subprojects/docket/tests/test_arming.py && grep -q 'def test_arm_holds_when_prose_count_fails' subprojects/docket/tests/test_arming.py && grep -q 'def test_counts_units_since_commit' tests/unit/test_new_prose.py && grep -q 'Prose-review:' .claude/skills/docket/modes/close-out.md
 ---
@@ -121,3 +122,21 @@ Done when `bin/docket arm` holds a branch that adds a long unit with no
 recorded, and holds again when a later commit adds another long unit. Close-out
 step 8 tells a session to record the trailer. The tests named in `verify:`
 cover the three cases and the failing command.
+
+**Done 2026-10-19.** `bin/docket arm` now holds a simulator branch while
+`prose_count_command` counts any long docstring or comment that no
+`Prose-review: read N, rewrote M, rejected K` trailer covers, and while that
+count cannot be read. `docket.toml` names `python3 tools/new_prose.py --count`.
+That mode reads the committed branch from the fork to `HEAD`. Given the commit
+that carries the newest record, it counts a unit only when its text was not a
+unit of the same file at that commit. So a code fix after the review needs no
+second review, a new or reworded long unit does, and prose that a merge of the
+default branch brings in is not counted, because it is not in the branch's
+own diff. A record that is not in the trailer's form is named and covers
+nothing. When a branch also lacks its `Owner-read:` record, one hold names
+both, so one commit can carry both trailers. Close-out step 8 now tells a
+session to record the trailer. `subprojects/docket/tests/test_arming.py` pins
+the three cases, the failing count, the combined hold, a change outside the
+simulator that is not counted, and the command's output contract.
+`tests/unit/test_new_prose.py` pins the count, its reading of commits rather
+than the working tree, the merge case, and the exit on a file Python refuses.

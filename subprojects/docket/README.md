@@ -1031,7 +1031,12 @@ ask. `auto_merge_command` is the same boundary for `arm`'s other question
 prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
 where it was never switched on, or exits non-zero where it could not ask. A
 switch off that no `Auto-merge: off - <why>` trailer on a commit made since
-records as the session's holds the pull request.
+records as the session's holds the pull request. `prose_count_command` is how
+`arm` counts the long docstrings and comments a simulator change adds that no
+review covers (`PL-W04Z`): the package appends the commit carrying the newest
+`Prose-review: read N, rewrote M, rejected K` trailer, where one does, and the
+command prints one whole number or exits non-zero. A count above zero holds the
+pull request, and so does a count that could not be read.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the
