@@ -130,6 +130,7 @@ from anesthesia_sim.app.theme import (
     AREA_CORNER_ZONE,
     AREA_GRIP_STROKE_LENGTH,
     AREA_GRIP_STROKE_WIDTH,
+    AREA_GRIP_STROKES,
     AREA_HANDLE_LINE_WIDTH,
     AREA_HANDLE_WIDTH,
     AREA_PREVIEW_LINE_WIDTH,
@@ -1479,8 +1480,8 @@ class _CornerZone(QWidget):
 
         painter = QPainter(self)
         painter.setPen(QPen(QColor(MUTED), AREA_GRIP_STROKE_WIDTH))
-        # Three diagonal strokes across the corner, the nearest the shortest.
-        for step in (1, 2, 3):
+        # Diagonal strokes across the corner, the nearest the shortest.
+        for step in range(1, AREA_GRIP_STROKES + 1):
             reach = step * AREA_GRIP_STROKE_LENGTH // 2
             start = QPoint(reach, 0)
             end = QPoint(0, reach)

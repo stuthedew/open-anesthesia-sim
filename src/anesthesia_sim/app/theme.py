@@ -504,12 +504,13 @@ AREA_HANDLE_LINE_WIDTH = 2
 # margins are this wide too, so a zone never takes a header control's click.
 AREA_CORNER_ZONE = 16
 
-# The grip a corner draws while the pointer is in its Area: three strokes this
-# long and this thick, in px, in MUTED. `PL-30L5` Q1 had it at 40 % alpha; it
+# The grip a corner draws while the pointer is in its Area: this many strokes,
+# this long and this thick, in px, in MUTED. `PL-30L5` Q1 had it at 40 % alpha; it
 # is drawn opaque so that it meets SC 1.4.11's 3:1 against PANEL, which a
 # reader needs to find the zone. A placeholder for planned-milestone item 33.
 AREA_GRIP_STROKE_LENGTH = 6
 AREA_GRIP_STROKE_WIDTH = 1
+AREA_GRIP_STROKES = 3
 
 # The line a corner drag draws across an Area where a split will fall, in px
 # (`PL-30L5` Q2). PRIMARY while the split can be made, WARNING where a half
