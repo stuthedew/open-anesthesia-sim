@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_arming.py, subprojects/docket/README.md, .claude/hooks/gate-status-guard.sh, .claude/hooks/owner-ask-guard.sh, .claude/settings.json, tests/unit/test_gate_status_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/hooks/gate-status-guard.sh, .claude/hooks/owner_ask_guard.py, .claude/settings.json, tests/unit/test_gate_status_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner agreed to the fix on 2026-10-19
 added: 2026-10-19
 payoff: a pull request reaches the owner only with arm's recorded ask in the message, because the reply tool refuses a read or merge ask that carries none

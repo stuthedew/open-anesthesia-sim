@@ -434,7 +434,11 @@ between approaches to the interface comes with one annotated screenshot per
 option (project owner, 2026-10-19, `PL-KYTY`). A risk review says what could
 go wrong and for whom, what was
 checked, and the one thing to look at. Until a record made after the newest
-change covers it, `arm` tells the session to send you nothing. A question
+change covers it, `arm` tells the session to send you nothing, on the first
+line of its answer and with an exit status of its own. A thread cannot send it
+anyway: `.claude/hooks/owner_ask_guard.py` refuses a thread's reply that asks
+you to read or merge unless `arm` has a recorded ask and the reply carries its
+line (`PL-TLPH`). A question
 whose answer is obvious is wrong, as on `#1516`. When there is nothing to
 decide or review, the session records `Owner-read: not needed` and the change
 merges on green without asking you. A change to a test pinning `arm`'s
