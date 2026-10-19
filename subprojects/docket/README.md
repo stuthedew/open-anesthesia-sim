@@ -605,18 +605,22 @@ changed after the fork (`vcs.base_copies`) in place of the working tree's -
 unless this branch changed the item too, when its own edit stands except over
 a closure, since `holdings` releases every claim on an item the base has
 closed. Those commands are the digest, `list`, `status`, `next`, `show`,
-`picks` and `concurrent`, and each loads the store through
-`cli._load_to_read`, so a read command added later gets the base's copy by
-calling it (`PL-KS01`). Each one counts the items whose status it took from
+`picks`, `concurrent`, `triage`, `delegable`, `wave`, `feature`, `gate` and
+`generators`, and each loads the store through `cli._load_to_read`, so a read
+command added later gets the base's copy by calling it (`PL-KS01`,
+`PL-4T32`). `triage` reads it too, although `set` then edits the working
+tree's file, because an item the base has already triaged should not be
+offered for a second answer that the merge would discard. Each one counts the items whose status it took from
 there and names the closed ones; `show` says so under the band. So the
 digest's counts and its releasable count describe the base at the moment of
 the refs line, not this checkout's files. `claim` reads the base's copy after
 its fetch and refuses, writing nothing, an item the base has closed, which is
 the rule its read-back would have released the claim by. The commands that
 validate or write the store - `check`, `set`, `new`, `withdraw` and `record` -
-read the working tree's copy and never the base's. `triage`, `delegable`,
-`flight`, `stranded`, `branch`, `wave`, `feature`, `gate` and `generators`
-also still read the working tree's copy.
+read the working tree's copy and never the base's. `flight`, `stranded` and
+`branch` report on branches and refs rather than on the items, and also read
+the working tree's copy. So do `trend` and `inflow`, which count this
+checkout's own history and fetch nothing.
 
 **When the refs were last refreshed is read from `FETCH_HEAD`, and read before
 a fetch.** Git writes it on every fetch that reaches the remote - a fetch that
