@@ -136,8 +136,10 @@ with neither runs at its session's level. The docs imply that rather than
 state it. A cap "still limits the level the skill or subagent runs at"
 (*Model configuration*, "Adjust effort level"). This repository's one
 subagent definition, `.claude/agents/Explore.md`, sets no `effort`, and
-`docs/maintainer.md` keeps sessions from passing one. So a capped session's
-subagents run at `high`, and an uncapped session's subagents run at `xhigh`.
+`docs/maintainer.md` forbids a session from asking a subagent for a lower one.
+So a capped session's subagents run at `high`, even when a higher level is
+asked for. An uncapped session's subagents run at `xhigh` unless a session
+asks for `max`.
 The unit stays the session together with its subagents. A subagent's level
 cannot be read from `CLAUDE_EFFORT`: the variable belongs to the session's
 process, and a subagent runs inside that process.
