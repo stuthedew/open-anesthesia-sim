@@ -95,6 +95,19 @@ def test_every_registered_kind_has_a_factory() -> None:
     assert all(callable(entry.factory) for entry in REGISTERED.values())
 
 
+def test_every_registered_kind_declares_a_minimum_a_reader_can_see() -> None:
+    """`PL-K285` Q1: a View that holds nothing yet still needs this size, never none."""
+
+    assert all(
+        entry.minimum.width_px > 0 and entry.minimum.height_px > 0 for entry in REGISTERED.values()
+    )
+
+
+def test_an_entry_refuses_a_minimum_that_is_not_a_pixel_size() -> None:
+    with pytest.raises(TypeError, match="declares a minimum that is not a PixelSize: tuple"):
+        RegisteredView(OLD, "Old", _factory, minimum=(100, 100))  # type: ignore[arg-type]
+
+
 # --- Building a registry and a retirement table ------------------------------------
 
 

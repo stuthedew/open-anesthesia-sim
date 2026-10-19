@@ -40,8 +40,17 @@ adapter calls the factory with a `ViewContext` for every Area that shows the
 kind. So any registered View can be built in any Area, any number of times.
 Each shipped entry names a View class from `app/views.py`, and that class is
 its own factory. So this module imports the GUI toolkit through
-`app/views.py`. The ratified design of an entry also includes the View's
-minimum size. That part is left to `PL-K285`.
+`app/views.py`.
+
+**Each entry declares the least size its View is drawn at** (`PL-K285` Q1,
+project owner, 2026-09-27, ratified). The size is in logical pixels, and it
+is a constraint: the layout holds an Area at it where it can, and an Area it
+cannot give that size states the size it needs instead of drawing the View
+(`layout/sizing.py`). What a View needs is the larger, on each axis, of this
+declared size and the View widget's own minimum size hint. The hint grows
+with what the View holds, such as one row per displayed run, so the declared
+size is the floor under it, and it is what holds a View that holds nothing
+yet to a size a reader can see. The shipped sizes are placeholders.
 """
 
 from __future__ import annotations
@@ -59,11 +68,13 @@ from anesthesia_sim.app.views import (
     ParameterControlsView,
     WashInView,
 )
+from anesthesia_sim.layout.sizing import PixelSize
 from anesthesia_sim.layout.tree import ViewKind
 
 __all__ = [
     "AGENT_ACCOUNTING",
     "CHOOSE_A_VIEW",
+    "NO_DECLARED_MINIMUM",
     "CONCENTRATION_CHART",
     "MISSING_VIEW_TITLE",
     "UNBUILT_VIEW_TITLE",
@@ -101,6 +112,10 @@ UNBUILT_VIEW_TITLE: Final = "This Area's View could not be built."
 #: first control of the Area's header, above the notice (`PL-DB5G` Q2).
 CHOOSE_A_VIEW: Final = "Choose a View from the menu above."
 
+#: The minimum of an entry that declares none: its View's need is then its
+#: widget's own minimum size hint alone.
+NO_DECLARED_MINIMUM: Final = PixelSize(0, 0)
+
 # A release number as `pyproject.toml` writes it.
 _VERSION: Final = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 
@@ -117,11 +132,13 @@ class RegisteredView:
         required_reachable: Whether `docs/MODEL.md` requires the View to stay
             reachable in every layout. `required_kinds` checks this field
             against `REQUIRED_REACHABLE`.
+        minimum: The least size the View is drawn at, in logical pixels,
+            under its widget's own minimum size hint (`PL-K285`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
-            `factory` cannot be called, or `required_reachable` is not a
-            `bool`.
+            `factory` cannot be called, `required_reachable` is not a
+            `bool`, or `minimum` is not a `PixelSize`.
         ValueError: `title` is empty or only spaces.
     """
 
@@ -129,6 +146,7 @@ class RegisteredView:
     title: str
     factory: ViewFactory
     required_reachable: bool = False
+    minimum: PixelSize = NO_DECLARED_MINIMUM
 
     def __post_init__(self) -> None:
         if not isinstance(self.kind, ViewKind):
@@ -150,6 +168,12 @@ class RegisteredView:
             raise TypeError(
                 "whether a View must stay reachable is a bool, not "
                 f"{type(self.required_reachable).__name__}"
+            )
+
+        if not isinstance(self.minimum, PixelSize):
+            raise TypeError(
+                f"the View of kind {self.kind!r} declares a minimum that is not a PixelSize: "
+                f"{type(self.minimum).__name__}"
             )
 
 
@@ -310,12 +334,22 @@ def required_kinds(
 
 
 #: Every View kind this build can draw, in the order the View chooser lists
-#: them. The titles are placeholders.
+#: them. The titles and the minimum sizes are placeholders.
 REGISTERED: Final = registry(
-    RegisteredView(CONCENTRATION_CHART, "Concentrations", ConcentrationView),
-    RegisteredView(WASH_IN, "Wash-in", WashInView),
-    RegisteredView(PARAMETER_CONTROLS, "Parameters", ParameterControlsView),
-    RegisteredView(AGENT_ACCOUNTING, "Agent accounting", AccountingView, required_reachable=True),
+    RegisteredView(
+        CONCENTRATION_CHART, "Concentrations", ConcentrationView, minimum=PixelSize(420, 300)
+    ),
+    RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, 220)),
+    RegisteredView(
+        PARAMETER_CONTROLS, "Parameters", ParameterControlsView, minimum=PixelSize(220, 160)
+    ),
+    RegisteredView(
+        AGENT_ACCOUNTING,
+        "Agent accounting",
+        AccountingView,
+        required_reachable=True,
+        minimum=PixelSize(220, 160),
+    ),
 )
 
 #: The View kinds `docs/MODEL.md` § "Minimum displayed outputs" requires to
