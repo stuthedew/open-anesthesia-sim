@@ -49,8 +49,11 @@ one place that list is computed.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -61,7 +64,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import record_text, split_lines  # noqa: E402
+from docket import cli as docket_cli  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.vcs import call_git, default_base, read_git  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
@@ -172,17 +176,45 @@ def delegable_ids(docket: Callable[[], str]) -> list[str]:
 
 
 def run_docket_delegable() -> str:
-    """`bin/docket delegable --ids`'s output, or `Refused` with its reason."""
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "bin" / "docket"), "delegable", "--ids"],
-        cwd=ROOT,
+    """`docket delegable --ids`'s output, or `Refused` when it fails.
+
+    Run in this process rather than through `bin/docket`, which starts
+    whatever `python3` is first on `PATH`. On the owner's Mac that was Xcode's
+    3.9, below the 3.11 every tool here needs (`PL-W38C`).
+    """
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = docket_cli.main(["delegable", "--ids"])
+    if code:
+        raise Refused(f"docket delegable --ids exited {code}; its reason is above.")
+    return out.getvalue()
+
+
+def check_tools(env: Mapping[str, str]) -> None:
+    """Refuse before any spend when a run would fail on a missing or old tool.
+
+    A worker runs `claude`, `uv` and the bare `python3` that `bin/docket` and
+    the hooks start, all from the run's `PATH`. A `python3` older than 3.11
+    fails on its first `bin/docket` call, after the run has started paying.
+    """
+    path = env.get("PATH", "")
+    missing = [
+        name for name in ("claude", "uv", "python3") if shutil.which(name, path=path) is None
+    ]
+    if missing:
+        raise Refused(f"not found on PATH: {', '.join(missing)}. Install them first.")
+    python3 = shutil.which("python3", path=path)
+    floor = subprocess.run(
+        [str(python3), "-c", "import sys; sys.exit(sys.version_info < (3, 11))"],
         capture_output=True,
         check=False,
     )
-    if result.returncode:
-        reason = result.stderr.decode("utf-8", "replace").strip()
-        raise Refused(f"bin/docket delegable --ids failed: {reason}")
-    return record_text(result.stdout)
+    if floor.returncode:
+        raise Refused(
+            f"{python3} is older than Python 3.11, which bin/docket and the hooks need. "
+            "Start the runner with `uv run python tools/headless_worker.py`, which puts "
+            "the project's Python first on PATH."
+        )
 
 
 def choose(offered: Sequence[str], asked: Sequence[str], runs: int) -> list[str]:
@@ -364,11 +396,13 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     docket: Callable[[], str] = run_docket_delegable,
+    tools: Callable[[Mapping[str, str]], None] = check_tools,
     today: Callable[[], date] = lambda: datetime.now(UTC).date(),
 ) -> int:
     args = parse_args(argv)
     try:
         env = child_environment(environ)
+        tools(env)
         items = choose(delegable_ids(docket), args.item, args.runs)
         origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
         start = cycle_start(today(), args.cycle_day)

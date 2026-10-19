@@ -16,14 +16,18 @@ from pathlib import Path
 
 import headless_worker
 import pytest
+from docket.lines import split_lines
+from docket.store import ID_RE
 from headless_worker import (
     NO_PUSH_URL,
     OUTRANKING_CREDENTIALS,
     Refused,
     Run,
+    check_tools,
     child_environment,
     choose,
     cycle_start,
+    run_docket_delegable,
     spent_since,
     work,
 )
@@ -190,6 +194,7 @@ def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
     code = headless_worker.main(
         ["--ledger", str(ledger), "--per-run-usd", "15"],
         environ={"ANTHROPIC_API_KEY": "sk-test"},
+        tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
         today=lambda: date(2026, 10, 19),
     )
@@ -210,6 +215,7 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
     args = ["--ledger", str(ledger), "--runs", "2"]
     common = {
         "environ": {"ANTHROPIC_API_KEY": "sk-test"},
+        "tools": lambda env: None,
         "docket": lambda: "PL-B7K2\nPL-C8M3\n",
         "today": lambda: date(2026, 10, 19),
     }
@@ -250,3 +256,31 @@ def test_run_lines_are_json_the_ledger_reads_back(tmp_path: Path) -> None:
     ledger = tmp_path / "l.jsonl"
     ledger.write_text(_run(2.5).line() + "\n", encoding="utf-8")
     assert spent_since(ledger, datetime(2026, 10, 1, tzinfo=UTC).date()) == 2.5
+
+
+@pytest.mark.reads_item_store
+def test_the_delegable_list_is_read_without_the_bash_launcher() -> None:
+    """`bin/docket` is a bash script, so starting it with Python failed (`PL-W38C`)."""
+    ids = split_lines(run_docket_delegable())
+    assert all(ID_RE.fullmatch(line) for line in ids if line)
+
+
+def _path_with(tmp_path: Path, scripts: dict[str, str]) -> str:
+    for name, body in scripts.items():
+        script = tmp_path / name
+        script.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        script.chmod(0o755)
+    return str(tmp_path)
+
+
+def test_a_python3_older_than_the_tools_floor_is_refused_before_any_spend(tmp_path: Path) -> None:
+    """Xcode's 3.9 was first on the owner's PATH, and bin/docket cannot run under it."""
+    path = _path_with(tmp_path, {"claude": "exit 0", "uv": "exit 0", "python3": "exit 1"})
+    with pytest.raises(Refused, match="older than Python 3.11"):
+        check_tools({"PATH": path})
+
+
+def test_a_missing_claude_is_refused_by_name(tmp_path: Path) -> None:
+    path = _path_with(tmp_path, {"uv": "exit 0", "python3": "exit 0"})
+    with pytest.raises(Refused, match="claude"):
+        check_tools({"PATH": path})
