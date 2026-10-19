@@ -1130,7 +1130,8 @@ QUOTED_SOURCE_RE = re.compile(
 #: one contained in its file that day, so the move lost no finding. The
 #: possessive stays hard because neither refusal came through it, and because
 #: it is how this project quotes a sentence, whose drift is the point.
-CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?")
+CLAIMING_CONNECTIVE = r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?"
+CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
 #: A code-spanned source - a document, an item, a module - standing directly
 #: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
@@ -1138,17 +1139,17 @@ CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?")
 QUALIFIED_RE = re.compile(
     r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
 )
-#: A section mark after a code-spanned item id, which cites that item's brief:
-#: `` `PL-MB2W` § "Design round, 2026-09-24" ``. `QUALIFIED_RE` hands it on
-#: from `check_citations`, since no documentation heading answers it, and
-#: `QUOTED_SOURCE_RE` names only a `.md` document, so the seven such citations
-#: standing on 2026-09-26 were read by nothing (`PL-QYN4`). The mark alone,
-#: because nothing else after an id claims the brief holds the words: `under
-#: "X"` names the heading the item is listed under elsewhere, as both such sites
-#: did that day, and a quotation after a bare id is prose. The possessive would
-#: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
+#: A claiming connective after a code-spanned item id, which cites that item's
+#: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
+#: "writes nothing" ``. `QUALIFIED_RE` hands it on from `check_citations`,
+#: since no documentation heading answers it, and `QUOTED_SOURCE_RE` names only
+#: a `.md` document, so the seven section marks standing on 2026-09-26 were read
+#: by nothing (`PL-QYN4`), and the eleven possessives until `PL-RX0W`. Only
+#: the connectives that claim the brief holds the words: `under "X"` names the
+#: heading the item is listed under elsewhere, as both such sites did that day,
+#: and a quotation after a bare id is prose.
 ITEM_SECTION_RE = re.compile(
-    rf"`(?P<item>{ID_PATTERN})`{GAP}*§{{1,2}}{GAP}*"
+    rf"`(?P<item>{ID_PATTERN})`{GAP}*(?:{CLAIMING_CONNECTIVE}){GAP}*"
     rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 
@@ -4767,6 +4768,30 @@ def _comparable(text: str) -> str:
     return _normalized(text).translate(TYPOGRAPHY).casefold()
 
 
+def _without_emphasis(text: str) -> str:
+    """`text` with the delimiters of each emphasis CommonMark pairs in it removed.
+
+    A faithful quotation leaves out a passage's bold and italic marks, so
+    `writes **nothing**` is quoted as "writes nothing" (`PL-RX0W`). Only the
+    delimiters CommonMark 0.31.2 § 6.2 pairs are removed, as `emphasis` pairs
+    them, so a `*` in arithmetic and a `_` inside a name stay. A delimiter
+    inside a code span pairs with nothing.
+    """
+    runs = emphasis(text, [span.span() for span in code_spans(text)])
+    cuts = sorted(
+        cut
+        for run in runs
+        for cut in ((run.start, run.start + run.width), (run.end - run.width, run.end))
+    )
+    kept: list[str] = []
+    position = 0
+    for start, end in cuts:
+        kept.append(text[position:start])
+        position = end
+    kept.append(text[position:])
+    return "".join(kept)
+
+
 def _comparable_statements(text: str) -> str:
     """The document `text` as `_comparable` reads it, one statement to a line, and each fence.
 
@@ -4783,7 +4808,8 @@ def _comparable_statements(text: str) -> str:
     blocks = read_blocks(_body_lines(lines)).blocks
     fences = [(block.start, block.end) for block in blocks if block.kind == FENCE]
     return "\n".join(
-        _comparable("\n".join(blanked[first:end])) for first, end in [*_statements(lines), *fences]
+        _comparable(_without_emphasis("\n".join(blanked[first:end])))
+        for first, end in [*_statements(lines), *fences]
     )
 
 
@@ -5718,7 +5744,8 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     Case, dash style and quote style are folded, because a passage copied by
     hand settles on one of the forms this project writes and the passage is
-    still there either way. The words must stand in one statement of the file,
+    still there either way. So is emphasis, which a quotation leaves out
+    (`_without_emphasis`, `PL-RX0W`). The words must stand in one statement of the file,
     as `_comparable_statements` reads it, so a splice across a heading and its
     paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
     written with an ellipsis cannot be found verbatim, and declining to
@@ -5730,7 +5757,8 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     since dropped, which it rightly lacks, and a reader can tell that from
     drift where no spelling can (`PL-HVST`).
 
-    **An item id is a source too, after the mark** - `ITEM_SECTION_RE`. The
+    **An item id is a source too, after the mark or the possessive** -
+    `ITEM_SECTION_RE`. The
     brief its file holds is tested the same way, closed or open, because a
     citation of a closed brief still claims the words are there; only a
     closed brief's own citations go unread, since `_quoting_sources` reads the
@@ -5781,7 +5809,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, which does not exist"
-            elif _comparable(quoted).rstrip(" .,;:") not in body:
+            elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
             else:
                 continue
@@ -5819,7 +5847,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     f'{path}:{line}: quotes {item} as "{quoted}", but {len(held)} files under '
                     "docs/items/ carry that id, so which brief it cites was not decided"
                 )
-            elif _comparable(quoted).rstrip(" .,;:") not in (body_of(held[0]) or ""):
+            elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in (
+                body_of(held[0]) or ""
+            ):
                 report.errors.append(
                     f'{path}:{line}: quotes {item} as "{quoted}", which is not in {held[0]}'
                 )

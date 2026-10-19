@@ -1409,6 +1409,36 @@ def test_a_marked_citation_of_an_item_is_held_to_its_brief(tmp_path: Path) -> No
     )
 
 
+def test_a_possessive_quotation_of_an_item_brief_is_held_to_it(tmp_path: Path) -> None:
+    """`` `PL-CNJ1`'s "writes nothing" `` claims the brief holds the words, as after a document.
+
+    Before `PL-RX0W`, only the section mark after an id was read, so a
+    misquoted brief passed. Emphasis is folded, so a faithful quotation of
+    `writes **nothing**` passes. A quotation of words the brief lacks fails.
+    """
+    readme = '# Demo\n\nThe spike is `PL-T3ST`\'s "writes nothing" case.\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design.** The spike writes **nothing** there."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design.** The spike writes everything."))
+    assert any(
+        'quotes PL-T3ST as "writes nothing", which is not in docs/items/PL-T3ST-demo.md' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_quotation_keeps_a_star_that_pairs_with_nothing(tmp_path: Path) -> None:
+    """Only the delimiters CommonMark pairs are folded, so `2 * 3` is still quoted as written."""
+    readme = '# Demo\n\nThe rule is `PL-T3ST` § "2 * 3 = 6".\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Rule.** We know 2 * 3 = 6 here."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Rule.** We know 23 = 6 here."))
+    assert any('quotes PL-T3ST as "2 * 3 = 6"' in e for e in _errors(root))
+
+
 def test_a_marked_citation_of_an_item_no_file_holds_is_an_error(tmp_path: Path) -> None:
     """An id no brief carries resolves against nothing, which is the finding itself."""
     readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'

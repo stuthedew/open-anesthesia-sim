@@ -767,8 +767,9 @@ def test_a_coined_status_is_read_bare_and_an_english_one_is_not() -> None:
 
 
 def test_a_sentence_about_other_items_leaving_a_status_is_no_claim() -> None:
-    """`PL-JNWS`'s "Every one of the 17 then left `needs-decision`" narrates
-    other items departing a status, and says nothing of this item's (`PL-2GY0`).
+    """A sentence adapted from `PL-JNWS`, "Every one of the 17 then left
+    `needs-decision`", narrates other items departing a status, and says
+    nothing of this item's (`PL-2GY0`).
     The passive "left" still reads as this item's, at a sentence's start or
     after "is" or "are", while "left at" reads as this item's wherever it
     stands."""
