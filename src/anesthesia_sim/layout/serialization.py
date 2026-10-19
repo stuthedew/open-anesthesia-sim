@@ -85,7 +85,7 @@ from anesthesia_sim.layout.exceptions import (
     LayoutFormatError,
     UnsupportedSchemaVersion,
 )
-from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, migrate
+from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, SchemaVersion, migrate
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import (
@@ -371,7 +371,7 @@ class ReadWorkspaceSet:
     """What reading a set document gives: the set, the version it was written at, what was lost."""
 
     workspaces: WorkspaceSet
-    written_at: int
+    written_at: SchemaVersion
     lossy: tuple[str, ...]
 
 
@@ -405,7 +405,7 @@ def workspace_set_from_json(text: str) -> ReadWorkspaceSet:
     return ReadWorkspaceSet(workspace_set_from_dict(migrated.body), version, migrated.lossy)
 
 
-def _parse(text: str, noun: str) -> tuple[dict[str, object], int]:
+def _parse(text: str, noun: str) -> tuple[dict[str, object], SchemaVersion]:
     """`text` as a document - an object with a `schema_version` - and that version.
 
     Raises:
@@ -433,21 +433,15 @@ def _parse(text: str, noun: str) -> tuple[dict[str, object], int]:
     return document, _read_version(document)
 
 
-def _check_version(version: int) -> None:
-    """Refuse a version this build does not read: newer as newer, below 1 as a format error.
+def _check_version(version: SchemaVersion) -> None:
+    """Refuse a version newer than this build reads; one below 1 is never built (`_read_version`).
 
     Raises:
         UnsupportedSchemaVersion: `version` is above `LAYOUT_SCHEMA_VERSION`.
-        LayoutFormatError: `version` is below 1.
     """
 
     if version > LAYOUT_SCHEMA_VERSION:
         raise UnsupportedSchemaVersion(version, LAYOUT_SCHEMA_VERSION)
-
-    if version < 1:
-        raise LayoutFormatError(
-            f"schema_version: a schema version counts from 1, not {shown(version)}"
-        )
 
 
 def _body_of(document: dict[str, object]) -> dict[str, object]:
@@ -750,12 +744,17 @@ def _whole_number(digits: str) -> int | _LongInteger:
         return _LongInteger(len(digits.lstrip("-")))
 
 
-def _read_version(document: dict[str, object]) -> int:
-    """The document's `schema_version`, read before any other rule of this build's applies.
+def _read_version(document: dict[str, object]) -> SchemaVersion:
+    """Read the document's `schema_version` before any other rule of this build applies.
+
+    This is where the package builds a `SchemaVersion` from a file. So it is
+    the one place where the rule that a version counts from 1 is applied to a
+    document.
 
     Raises:
-        LayoutFormatError: `schema_version` is missing, given twice, or not a
-            whole number this build can read; the message names the value.
+        LayoutFormatError: `schema_version` is missing, given twice, not a
+            whole number this build can read, or below 1; the message names
+            the value.
     """
 
     if isinstance(document, _RepeatedKeys) and "schema_version" in document.repeated:
@@ -780,7 +779,10 @@ def _read_version(document: dict[str, object]) -> int:
             f"schema_version: a schema version is a whole number, not {_json_value(version)}"
         )
 
-    return version
+    try:
+        return SchemaVersion(version)
+    except InvalidLayout as error:
+        raise LayoutFormatError(f"schema_version: {error}") from None
 
 
 def _refuse_kept(document: dict[str, object]) -> None:

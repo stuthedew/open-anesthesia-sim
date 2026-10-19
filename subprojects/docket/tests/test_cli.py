@@ -12647,3 +12647,36 @@ def test_a_forge_command_is_split_as_bash_splits_it(tmp_path: Path) -> None:
     assert not isinstance(done, str)
     assert done.stdout == ".[0]"
     assert "not one simple command" in str(_run_forge_command("echo a | cat", tmp_path))
+
+
+def test_show_and_next_print_the_matching_model_evidence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-3R6L`: the review's table, read from beside `docket.toml`, reaches both commands."""
+    (tmp_path / "model-evidence.toml").write_text(
+        '[[evidence]]\nmatch = { class = "perf" }\nmodel = "claude-sonnet-5-5"\n'
+        'effort = "high"\ndate = 2026-10-17\ntrial = "PL-T1T1"\nn = 24\n',
+        encoding="utf-8",
+    )
+    store = _store(tmp_path, READY)
+    printed = "evidence: claude-sonnet-5-5 at high effort (trial PL-T1T1, n=24, 2026-10-17)"
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+    assert f"  model: {printed}" in capsys.readouterr().out
+    assert _run("next", "--items", str(store)) == 0
+    assert printed in capsys.readouterr().out
+
+
+def test_an_empty_evidence_table_changes_nothing_show_or_next_print(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _store(tmp_path, READY)
+    commands = (["show", "PL-B1B1"], ["next"])
+    before = [_run(*command, "--items", str(store)) for command in commands]
+    said_before = capsys.readouterr().out
+    (tmp_path / "model-evidence.toml").write_text("# no trial has met its bar\n", encoding="utf-8")
+    after = [_run(*command, "--items", str(store)) for command in commands]
+
+    assert before == after == [0, 0]
+    assert capsys.readouterr().out == said_before
+    assert "model:" not in said_before
