@@ -1,14 +1,16 @@
 ---
 id: PL-M352
 title: Every layout operation is reachable without a drag, through a menu and the keyboard, so the area system does not ship an interaction a keyboard-only reader cannot perform
-status: blocked
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: M
-blocked-by: PL-2KXB
+status: ready
 classes: feature, ux
+feature: interface-areas
 touches: src/anesthesia_sim/app/, tests/integration
+blocked-by: PL-2KXB
+added: 2026-09-16
+payoff: a keyboard-only reader can perform every layout operation the mouse can, so the area system ships no interaction that shuts them out
+verify: grep -q 'def test_every_layout_operation_is_reachable_from_the_keyboard' tests/integration/test_layout_keyboard.py
 ---
 
 **Problem.** Every layout operation is reachable without a drag, through a menu and the keyboard, so the area system does not ship an interaction a keyboard-only reader cannot perform

@@ -90,6 +90,8 @@ __all__ = [
     "rename_offer_text",
     "required_kinds",
     "retirements",
+    "pinned_run_absent_text",
+    "pinned_run_absent_title",
     "too_small_text",
     "too_small_title",
     "unbuilt_view_text",
@@ -380,6 +382,28 @@ def unbuilt_view_text(
     title = registered[kind].title
 
     return f"Building '{title}' failed: {type(error).__name__}: {error}. {CHOOSE_A_VIEW}"
+
+
+def pinned_run_absent_title(run_name: str) -> str:
+    """The title of the notice every Area of a Workspace shows while its pinned run is not open.
+
+    `run_name` is the run's name as `dashboard_frame.run_label` renders it.
+    The wording is a placeholder, decided by `PL-2KXB`.
+    """
+
+    return f"{run_name} is not open."
+
+
+def pinned_run_absent_text(run_name: str) -> str:
+    """The body of that notice: why no run is shown, and how to show the open runs.
+
+    No other run is shown in the pinned run's place (`PL-WV9K` Q6).
+    """
+
+    return (
+        f"This Workspace is pinned to {run_name}, so its Views show no run. Unpin it "
+        "from the Workspace's tab to show the runs that are open."
+    )
 
 
 def too_small_title(title: str) -> str:
