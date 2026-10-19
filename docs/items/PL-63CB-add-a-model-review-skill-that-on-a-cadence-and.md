@@ -120,11 +120,11 @@ choice that needed rework or unintended behavior. Each monthly run does this:
    So compare within origin as well. The groups also differ in date, project
    phase (product focus began 2026-09-25) and the apparatus around them. A significant difference is therefore an association that points at
    a cause, not proof of one. The report says so.
-6. **The trial from 2026-10-24 04:00 UTC.** Sessions the owner opens are
-   assigned by the minute of `created_at`: minutes 00 to 14 to `xhigh`, any
-   other minute to `high` (`docs/maintainer.md`). Analyze these sessions by
-   the level their minute assigned (intention to treat), and report as a
-   second result the level they actually ran at. Report how many ran at a
+6. **The trial, once `PL-HYRM` starts it.** Each new cloud session is
+   assigned `xhigh` or `high` automatically, and the assignment is recorded
+   (`docs/maintainer.md`, `PL-HYRM`). Analyze sessions by the level they were
+   assigned (intention to treat), and report as a second result the level
+   they actually ran at. Report how many ran at a
    level other than the one assigned. This comparison is randomized, so it
    is the primary result once it has adequate data. The historical
    comparison above becomes a supporting one. Projects threads are not

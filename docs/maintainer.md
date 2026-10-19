@@ -180,8 +180,13 @@ evaluations" (Claude Code docs, *Model configuration*, section "Adjust effort
 level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
 
 **On Opus 5.5, every session opens at `high` for now, simulator and apparatus
-alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). This is
-the owner's own judgement: the published gain from `xhigh` over `high` is
+alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). The
+`effortLevel` key in `.claude/settings.json` sets it, so a session the owner
+opens without choosing a level runs at `high`. A level the owner picks when
+opening a session still wins over the file, because Claude Code ranks an
+explicit choice above settings (Claude Code docs, *Model configuration*,
+section "Adjust effort level", https://code.claude.com/docs/en/model-config,
+read 2026-10-19). This is the owner's own judgement: the published gain from `xhigh` over `high` is
 small. It replaces two ratified records whose stated reason was cost: `high`
 for apparatus sessions (2026-10-17, `PL-SW0B`) and `max` for simulator
 sessions (2026-09-19, below). Cost alone never justifies a lower setting
@@ -204,16 +209,13 @@ at `xhigh` or `max`. When it finds a statistically significant difference, it
 tells the owner, with the size of the effect and its uncertainty. `PL-63CB`
 holds the method.
 
-**From Friday 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), about one
-session in four runs at `xhigh` as a comparison group** (project owner,
-2026-10-19, over `high` for every session and an observational comparison
-only). The rule is the clock's minute when the owner opens a session. At
-minutes :00 to :14 the owner sets `xhigh`; at any other minute, `high`. The
-minute has nothing to do with the work, so it acts as a random assignment.
-The ledger's `created_at` records the minute, so the model review can check
-that each session ran at the level its minute assigned. Projects threads are
-started by the coordinator rather than the owner, so they stay at `high` and
-are analyzed apart. The trial runs until the owner ends it.
+**About one session in four runs at `xhigh` as a randomized comparison
+group, assigned automatically** (project owner, 2026-10-19, over `high` for
+every session and an observational comparison only). The owner asked that
+they not have to set the level by hand. The trial starts after Friday
+2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), and only once the automatic
+assignment is built and tested (`PL-HYRM`). Until then every session
+runs at `high`. The trial runs until the owner ends it.
 
 **Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
 at `max`** (project owner, 2026-09-19, ratified, over running every session at

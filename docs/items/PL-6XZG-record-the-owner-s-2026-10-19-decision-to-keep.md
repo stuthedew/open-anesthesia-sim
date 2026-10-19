@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: model-evidence
-touches: docs/maintainer.md, .claude/rules/apparatus-standard.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
+touches: docs/maintainer.md, .claude/rules/apparatus-standard.md, .claude/settings.json, docs/items/PL-HYRM-assign-each-new-cloud-session-s-effort.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-19
 closed: 2026-10-19
 pr: 1672
@@ -38,3 +38,9 @@ statistically significant evidence that `high` led to real-world issues;
 group: from Friday 2026-10-23 at 11 pm CDT, sessions they open at minutes :00
 to :14 run at `xhigh` and all others at `high` (project owner, 2026-10-19,
 over `high` for every session with observational data only).
+
+**Changed the same day.** The owner said that setting the level by the clock's
+minute by hand is not feasible, and asked for automatic assignment instead.
+`.claude/settings.json` now sets `high`, and `PL-HYRM` builds the automatic
+draw. The trial starts once that is tested, and not before Friday 2026-10-23
+at 11 pm CDT (project owner, 2026-10-19).
