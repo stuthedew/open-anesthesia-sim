@@ -209,6 +209,49 @@ every turn re-reads the whole conversation, those multiply. And each effort
 level keeps its own cache, so changing effort mid-session starts a cold one:
 set it when the session opens rather than toggling it.
 
+## The session ledger records what model and effort worked each item
+
+`docs/session-ledger.tsv` has one row per session in this repository. Each row
+gives the session's configured model, the model its session context names, the
+model that served its last turn, any model the owner switched to, its effort
+level, its tokens by kind, its cost in USD as the harness reports it, and the
+date the row was written. A closed item reaches its sessions through its `pr:`
+field. The squash commit for that pull request carries the session's
+`Claude-Session:` trailer, and `docs/pr-bodies/` is the fallback.
+
+**Only the model review writes the ledger, from the harness's own record**
+(project owner, 2026-10-17, ratified, over a field or trailer that each working
+session writes about itself, `PL-92ZN`). A working session writes nothing about
+itself, so the ledger costs working sessions nothing. A self-report would also
+name the configured model, while a fallback can serve another one. The facts
+belong to a session rather than an item: about two closed items share each
+session, and a session keeps spending after it closes its item. So the ledger
+stores each session once, and an item is joined to it when it is read (project
+owner, 2026-10-19, ratified, over model and effort fields on each closed item,
+`PL-70M6`).
+
+**The model review refreshes it monthly**, and after any generator or cluster
+appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
+cadence, `PL-63CB`). Until `.claude/skills/model-review/SKILL.md` exists, a
+refresh has three steps:
+
+<!-- absent: .claude/skills/model-review/SKILL.md -->
+
+1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
+   `claude-code-remote` MCP server. A page is too large to show inline, so the
+   harness saves it to a file. Copy each file unchanged and parse it with a
+   script, so that no model retypes a value. Keep a session when any of its
+   sources is this repository, not only its first.
+2. Fetch every Projects thread with `get_session`. `list_sessions` leaves
+   threads out, because they carry the `hearth-thread` tag, and a session
+   cannot pass the `tags` filter. Find them as the session ids in
+   `Claude-Session:` trailers on `main` and in `docs/pr-bodies/` that have no
+   ledger row yet.
+3. Rewrite the file, sorted by creation time, and keep any row whose session
+   the harness no longer returns. The harness's retention is unknown, and the
+   ledger exists so that this record outlives it.
+
+
 ## Settings that make sessions cheaper
 
 - `subagentPromptCacheTtl` is set to `1h` in `.claude/settings.json`. On a Max
@@ -232,10 +275,12 @@ set it when the session opens rather than toggling it.
   and "Built-in subagents", read 2026-10-17), so the file changes no model.
   What it adds is a report footer naming what was searched and what was not,
   and the narrow tool set. A search runs at the session's effort level. The
-  model question is undetermined on estimates: a cheaper model pays only if
-  its excess miss rate on a thorough search is below about 1 in 20 for Sonnet
-  5.5 and about 1 in 11 for Haiku 5.5, and `PL-G2D4` is the pre-registered
-  measurement that would settle it. Until it reports, Opus stays. A cloud
+  model question is settled by correctness, not cost. The owner would rather
+  pay for Opus and correct work than take incorrect work from a cheaper model
+  for free, so price is never the reason to choose a weaker model (project
+  owner, 2026-10-19). So a session never puts a trade of correctness against
+  cost as the case for a cheaper model. Opus stays unless a measurement shows
+  a cheaper model is no less correct at the task. A cloud
   session loads this definition. In an Opus 5.5 cloud session started after
   it merged, the Explore subagent's transcript records the definition's own
   system prompt. Every turn ran on `claude-opus-5-5` at the session's effort
@@ -251,8 +296,17 @@ set it when the session opens rather than toggling it.
   its parent's model (`PL-KLN5`, `PL-2D28`). In a local session whose folder
   is trusted it would have put every `general-purpose` subagent on Haiku with
   no per-item judgment, which § "Which model each flag means" refuses. So a
-  subagent that names no model runs on the session's own model, and a cheaper
-  one is asked for per call.
+  subagent that names no model runs on the session's own model. A session
+  does not ask for a cheaper model for any subagent unless the owner approves
+  it for that task (project owner, 2026-10-19, ratified, over asking for a
+  cheaper model per call; `PL-2D28` reached the same answer for searches on
+  2026-10-17). The owner then added the reason in their own words: price,
+  even a price of zero, does not justify a model that may be less correct
+  (project owner, 2026-10-19). The same holds for effort: a subagent runs at
+  the session's own effort level unless the owner approves a lower one for
+  that task (project owner, 2026-10-19). This covers subagents that copy values as well as those that
+  search: on 2026-10-19 a session put Sonnet runners on the session ledger's
+  values on the strength of the old wording here, and the owner asked why.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
   new session, `PL-YJG1`). It pushes everything first, so what the summary

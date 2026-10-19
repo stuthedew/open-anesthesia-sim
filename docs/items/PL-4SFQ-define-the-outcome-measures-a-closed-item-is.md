@@ -44,3 +44,15 @@ every run GitHub still holds.
 **Generator check.** Work the owner asked for on 2026-10-17. The CI retention
 half re-files `PL-JYJJ`'s finding with the consumer it lacked; not an instance
 of a head.
+
+**Progress, 2026-10-19.** `docs/ci-runs.tsv` holds the CI snapshot: 11,658
+completed workflow runs from 2026-08-22 to 2026-10-19, one row per run and
+attempt. A standard-library script paged the GitHub REST API
+(`actions/runs?per_page=100`) and wrote JSON lines, and a second script wrote
+the file, so no model retyped a value. The columns are `run_id`, `workflow`,
+`run_number`, `attempt`, `event`, `head_branch`, `head_sha`,
+`pull_requests`, `status`, `conclusion`, `created_at` and `updated_at`. Two
+runs still in progress were left out, and nine duplicates from overlapping
+pages were merged. Conclusions: 9,646 success, 1,459 cancelled, 553 failure.
+The outcome measures themselves are still to define, and they wait for the
+model-review skill (`PL-63CB`). The refresh belongs in that skill too.

@@ -18,3 +18,11 @@ review finds in their diffs, and `total_cost_usd`. Nothing cheap reaches
 its decision. `PL-G2D4`, the pre-registered Explore miss-rate measurement, is
 the same kind of measurement for search. It is priced at about $140 at most,
 so the credit could pay for it too once its `v0.7.0` block lifts.
+
+**Checked 2026-10-19.** The owner stated that day that neither a cheaper model
+nor a lower effort level is chosen to save cost, even at no cost (project
+owner, 2026-10-19; `docs/maintainer.md`). A cheaper delegable tier could now be
+adopted only on a measurement that it is no less correct than Opus 5.5. Five
+items cannot show that. Recommendation for triage: drop this item, unless the
+owner wants the trial for a reason other than choosing a cheaper tier.
+`PL-G2D4`, cited above, was dropped on the same day for the same reason.

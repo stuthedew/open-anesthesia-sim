@@ -60,18 +60,24 @@ over a tool that computes the analysis, and over per-session self-assessment).
   decision for the owner. It also reports what was not asked: a model
   over-used on trivial work, a session type with high cost and little output,
   a feature whose apparatus cost outran its product payoff.
-- *Triggers.* A cadence the owner sets, and after any generator or cluster
-  appears: the review checks every generator recorded since the last pass.
+- *Triggers.* Monthly, and after any generator or cluster appears: the
+  review checks every generator recorded since the last pass (project owner,
+  2026-10-19, ratified, over a weekly or a quarterly cadence; a 30-day outcome
+  window makes a shorter cadence mostly re-score the same items).
   The first run doubles as the backfill (`PL-92ZN`) and the CI snapshot
   (`PL-4SFQ`).
 
-**What history can say.** In the sessions sampled on 2026-10-17, model and
-effort both track the calendar: Sonnet 5 at high in August, Opus 5 at max in
-September, Fable 5.1 or Opus 5.5 at xhigh in October. So the backfill will
-show model by period, confounded with a codebase and rule set that changed
-over the same weeks, and will say almost nothing about effort, which is
-learned prospectively only. October's Fable 5.1 against Opus 5.5 is the first
-within-period comparison.
+**What history can say.** The first draft of this paragraph rested on a
+sample and said Sonnet 5 at high in August. The ledger (`PL-92ZN`) corrects
+it. Counting the 888 listed sessions on 2026-10-19 by the model that served
+the last turn: August's 78 were mostly Opus 5 at high or xhigh, with 4 on
+Sonnet 5. September's 707 were mostly Opus 5 at max (439), with Opus 5.5 at
+max (139) and both models at xhigh. October's 103 so far are Opus 5.5 at
+xhigh, max and high. So model and effort still track the calendar, confounded
+with a codebase and rule set that changed over the same weeks. But September
+already holds a within-period comparison of Opus 5 against Opus 5.5 at max,
+which the first review can use. Effort is still learned mostly
+prospectively.
 
 **Done when.** `.claude/skills/model-review/SKILL.md` exists, carries the
 pre-registration template, the rules above with the rule-of-three table, the

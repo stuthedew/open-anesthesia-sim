@@ -332,7 +332,8 @@ page and decides which file a session reads.
    docstring and comment of 30 words or more that the branch added or changed
    in `src/` or in a file under `tests/` that imports the simulator, with its
    rows and the code around it. Where it prints none, this step is done.
-   Otherwise start one subagent, `general-purpose` at `high` effort, with the
+   Otherwise start one subagent, `general-purpose` at the session's own
+   effort level (`docs/maintainer.md`, 2026-10-19), with the
    prompt below followed by the tool's whole output. The prompt tells it to
    open nothing, so it costs one turn (project owner, 2026-10-18, ratified,
    over a review on every branch and over no review, `PL-PRCS`).
