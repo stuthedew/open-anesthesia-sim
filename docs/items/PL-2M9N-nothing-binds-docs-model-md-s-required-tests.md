@@ -85,5 +85,5 @@ entry, the hazard table; § "Required tests" is not in it, so a heading that
 names *nothing* is still unchecked - and 14 of its subsections are in that
 state. Two stale numbers with it: the section carries **17** `###` headings
 rather than fifteen (`awk '/^## Required tests/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c}' docs/MODEL.md`),
-its "Where" pointer `docs/MODEL.md:923-1308` is now `:2818-3861`, and `PL-GZP6`
-- named here as the two that will not resolve - closed 2026-09-07 in v0.4.9.
+its "Where" pointer `docs/MODEL.md:923-1308` is now `:2818-3861`, and `PL-GZP6` -
+named here as the two that will not resolve - closed 2026-09-07 in v0.4.9.

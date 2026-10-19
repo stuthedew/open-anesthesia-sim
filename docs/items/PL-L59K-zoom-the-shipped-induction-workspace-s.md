@@ -2,7 +2,7 @@
 id: PL-L59K
 title: Zoom the shipped Induction Workspace's concentration chart to the first 15 minutes, once the chart saves its own state
 priority: P2
-effort: S
+effort: M
 status: ready
 classes: feature
 feature: interface-areas
@@ -55,3 +55,74 @@ instants. *Alternative:* save the time base with the Workspace. That is
 cheaper, but it cannot express a fixed window and it would zoom every chart
 in the Workspace, not one.
 
+
+## Set aside for the project owner's answer, 2026-10-19
+
+The build thread that picked this item up found two recorded decisions that
+disagree about who owns a chart's time window, and this item cannot be built
+until one of them gives way.
+
+- `ROADMAP.md` § "v0.6.0 - the layout is the reader's", Required scope
+  entry 11, puts the time window in "per-View-instance state". Two charts in
+  one Workspace hold it independently. Its example is the project owner's own
+  case of 2026-09-17: three charts in one Workspace, one of them "zoomed to the
+  first fifteen minutes to read the wash-in". Blender keeps zoom in each
+  editor's own regions, so it agrees (`docs/interface-provenance.md`, the
+  paragraph on what `ED_area_newspace` keeps).
+- `PL-TH35` Q2 and Q7 (project owner, 2026-09-27, ratified, over a View that
+  owns its own time base) made the time base shared state. The dashboard owns
+  it, every chart shows it, and one frame per tick serves every plot
+  (`PL-9LNF`). That is what is built.
+
+**Settled in this round, whichever answer comes.** The zoom is the ladder's 15-minute
+rung following the run, not a fixed window of 0 to 900 s. With the 2%
+headroom, a 15-minute following window shows exactly the first 15 minutes
+until the newest sample reaches 882 s, and then slides so that the newest
+sample stays on the plot. A fixed window would carry the current values off
+the right edge after 15 minutes with nothing saying so. That is the
+stale-display failure `CLAUDE.md`'s display standard names, and panning away
+from the live edge with a statement that it has happened is `PL-Z7LY`'s. The
+15-minute width is the narrowest the selector offers and the project owner's
+own example, so it is taken as the default here. It is a placeholder under the
+project owner's rule of 2026-10-18 on look, wording and placement, because the
+current values stay on screen at any width.
+
+**One correction to the brief.** Under "Fit run", the default, the first
+minutes of a case already fill the chart: a 30-second case is drawn on the
+60-second rung. The zoom matters when a reader's wider choice would otherwise
+carry into the Induction Workspace, and because a fixed width keeps each
+trace's slope proportional to its rate (`PL-012`), where "Fit run" rescales at
+1, 2, 5 and 15 minutes.
+
+**The question put to the project owner.** Should a chart's time-window control
+change only that chart, or every chart on screen?
+
+- **Only that chart (recommended).** Each chart View saves its own window as
+  `{"state_version": 2, "time_base_s": 900}`, or `"fit"` for "Fit run", and
+  the F_A/F_I plot gets the same control. The dashboard assembles one frame
+  per distinct window, so charts at the same window still draw the same
+  instants. This is what entry 11 and Blender describe, and it makes the
+  three-chart case possible. The cost is that two stacked charts can show
+  different windows, so their time axes stop lining up. Each still states its
+  own window on its axis, and the F_A/F_I plot gains the caption of the window
+  in force that the concentration chart already has.
+- **Every chart.** The time base stays shared, and the Workspace saves it, so
+  switching to the Induction Workspace sets every chart to 15 minutes. It is
+  cheaper and keeps stacked plots aligned. It cannot show the three-chart case,
+  and entry 11's sentence would have to be rewritten to match.
+
+**Answered** (project owner, 2026-10-19, ratified, over one shared window
+saved per Workspace): only that chart. In his words, "Only the chart but want
+to allow later to allow chart time windows to sync similar to blender's
+timeline areas". So each chart View owns its time window and saves it, and
+the F_A/F_I plot gets the same control. This reopens `PL-TH35` Q2 and Q7 for
+the time base only, on the evidence recorded above: roadmap entry 11 and this
+item. The compartment selection stays shared. The later sync is `PL-1RFZ`,
+filed from his answer, and this build leaves room for it: charts at the same
+window share one frame, which is the same grouping a synced set of charts
+would use.
+
+**Build order.** `PL-7Z84` (`#1614`, run identity) changes
+`app/views.py`, `app/simulation_view.py` and `induction.json` and waits on the
+project owner's read. This build starts on top of it and opens its pull
+request after it merges.

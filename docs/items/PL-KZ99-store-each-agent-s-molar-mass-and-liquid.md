@@ -59,8 +59,8 @@ same conversion. Nothing about the work changes — the same two fields, the
 same primary source, the same `schema_version` bump. Only the thing that
 consumes it does. (`PL-S6WW`, which held it then, closed on 2026-09-17.)
 
-**Why it matters.** The alternative is storing the published composite constant
-- one number per agent for the vapour volume from 1 mL of liquid - which puts a
+**Why it matters.** The alternative is storing the published composite constant -
+one number per agent for the vapour volume from 1 mL of liquid - which puts a
 temperature-dependent quantity in the data files with its temperature invisible.
 That is the same defect as `PL-S6WW`, reproduced one layer down and harder to
 see, and it would sit under a displayed millilitre figure a reader would take as
