@@ -209,10 +209,29 @@ say that the trial was not blinded.
    such as "Effort: high (trial arm; the picker shows xhigh)". Make the
    session repeat it in its first reply to the owner, through the rule that
    already sets what that reply contains. Do not add a separate instruction.
-6. Add a maximum length or stopping rule to `PL-63CB` § "Effort monitoring".
+6. Announce the trial's start once, clearly (project owner, 2026-10-19). The
+   first session to start after 2026-10-24 04:00 UTC tells the owner, at the
+   top of its first reply, that the effort trial has begun. It says that the
+   picker stays at `xhigh` from then on, that the owner does not reset it per
+   session, and that the app keeps its last level. The owner confirmed that
+   on 2026-10-19, which also answers the open question in the decision
+   above. Later sessions show only the step 5 line. The announcement needs a
+   record that it has been made, so that it fires once. A first-session test
+   with no record fires in every concurrent session.
+7. Make the monthly analysis run without being asked (project owner,
+   2026-10-19: "I don't have to remember to ask you about it"). On
+   2026-10-19 no recurring scheduled task ran it, and `PL-63CB`, the
+   model-review skill it needs, was still `ready`. Before the trial starts,
+   create a monthly scheduled task with `create_trigger`
+   (`create_new_session_on_fire: true`) that runs the model review and
+   reports the effort comparison, "not yet adequate" included. It needs
+   `PL-63CB` built first, or the task must at least run
+   `PL-63CB` § "Effort monitoring" by hand. Tell the owner the task's name
+   and its first run date.
+8. Add a maximum length or stopping rule to `PL-63CB` § "Effort monitoring".
    Today the trial ends only when the power calculation says both arms are
    large enough.
-7. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
+9. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
    `claude/pl-hyrm-probe-cap`.
 
 **A route that removes unknown 3.** The draw can be a fixed function of the
