@@ -1185,10 +1185,11 @@ A positive value represents net uptake from alveolar gas into blood. A negative 
 
 **The alveolar volume is held constant, and that is what excludes nitrous
 oxide** (`PL-L2F2`). The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as
-a constant and divides through by it, and `core/alveolar.py` implements
-exactly that: `apply_blood_uptake` subtracts the transferred volume from the
-compartment's agent amount and leaves its gas volume untouched, with nothing
-augmenting inspired flow to replace what left. For the agents this model ships
+a constant and divides through by it, and `core/governing_equations.py`
+implements exactly that. The alveolar row of `build_system_matrix` divides each
+of its terms by `alveolar_volume_l`, which the equation settings hold fixed for
+the whole step. Ventilation carries the same volume in and out, and no term
+adds inspired gas to replace the agent that blood takes up. For the agents this model ships
 that is correct rather than merely convenient. For nitrous oxide it is not,
 and the difference is arithmetic rather than a matter of degree.
 
@@ -5471,6 +5472,14 @@ before any compartment or settings record can hold it (`PL-0YYV`, below).
 the constants, and its fresh gas flow slider reads the circuit's accepted
 range, which is this envelope narrowed by the mounted machine's (§ "The
 model's envelope and a machine's deliverable range are two claims", below).
+Each of the three sliders steps at 0.1 L/min. A run whose opening ventilation
+or cardiac output, as the patient profile states it, is not one of those steps
+is refused when the dashboard builds its controls, as an off-grid opening fresh
+gas flow is (`PL-96SQ`). Otherwise the slider would stand on a neighbouring
+step beside a rounded readout, and both would show a flow the run does not
+hold. `test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`
+in `tests/unit/test_dashboard_frame.py` holds it. The shipped patient states
+4.0 and 5.0 L/min, so nothing displayed changes.
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
 clamped setting would simulate, display, and chart a value the user did not

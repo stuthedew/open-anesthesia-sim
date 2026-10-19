@@ -21,7 +21,7 @@ import pytest
 from anesthesia_sim.layout import migrations
 from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout.exceptions import LayoutFormatError, UnsupportedSchemaVersion
-from anesthesia_sim.layout.migrations import Migrated
+from anesthesia_sim.layout.migrations import Migrated, SchemaVersion
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.serialization import (
@@ -364,6 +364,26 @@ def test_the_layouts_own_invariants_are_refused_by_name() -> None:
     assert "windows[0]: a window is an object" in refused(json.dumps(document(windows=[[]])))
 
 
+def test_a_file_whose_sizes_leave_an_area_no_width_is_refused() -> None:
+    """The file from `PL-391Y` has sizes of 1 and 5e-10, which sum to one within the tolerance.
+
+    Its second Area would lie between 1.0 and 1.0 of the window, where `resize`
+    can never give it room. The reader refuses the file and names the Area
+    and its size.
+    """
+
+    sliver = {
+        "split": "row",
+        "sizes": [1.0, 5e-10],
+        "children": [
+            {"area": 1, "view": "concentration_chart"},
+            {"area": 2, "view": "agent_accounting"},
+        ],
+    }
+
+    assert "Area 2 is 0.0 of the window wide" in refused(with_tree(sliver))
+
+
 def test_a_view_kind_no_view_is_registered_under_loads() -> None:
     """`PL-SSQW` Q5: an unknown kind is the registry's to report in its Area, not a file error."""
 
@@ -607,6 +627,17 @@ class TestWorkspaceSetDocument:
         assert read.written_at == 1
         assert read.lossy == ()
         assert read.workspaces.current.pinned_run is None
+
+    def test_the_version_read_from_a_document_is_built_as_a_schema_version(self) -> None:
+        """`PL-8JV2`: the reader is where a version is built, so the store is handed the type."""
+
+        body = {key: value for key, value in workspace_body().items() if key != "pinned_run"}
+        older = workspace_set_from_json(set_document(body, schema_version=1))
+        current = workspace_set_from_json(set_document(workspace_body()))
+
+        for read, version in ((older, 1), (current, LAYOUT_SCHEMA_VERSION)):
+            assert isinstance(read.written_at, SchemaVersion)
+            assert read.written_at == version
 
     def test_a_body_is_written_and_read_without_a_version(self) -> None:
         body = workspace_to_dict(the_set().workspaces[0])
