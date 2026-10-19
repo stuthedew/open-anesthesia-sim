@@ -234,6 +234,8 @@ say that the trial was not blinded.
 9. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
    `claude/pl-hyrm-probe-cap`.
 
+**Readiness check scheduled.** A one-off scheduled task, "PL-HYRM: is the effort trial ready to start Friday night?" (`trig_01ANGyWDXegBT6pScgaBJ2Gu`), starts a fresh session on Thursday 2026-10-22 at 9:00 am CDT. That session checks steps 1 to 5 and 7 against the source and tells the owner what is missing. The trial itself needs no reminder: `tools/effort_trial.py` reads the clock each time a container is built.
+
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
 when the hash falls in the lowest quarter. The ledger already holds every
