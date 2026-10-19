@@ -3,13 +3,13 @@ id: PL-HYRM
 title: Assign each new cloud session's effort automatically for the effort trial: the cloud environment's setup script, which runs before Claude starts, draws xhigh for about one session in four and high otherwise, writes it as effortLevel in .claude/settings.local.json, and records the draw where the model review can read it; first test that a cloud session applies it
 priority: P2
 effort: S
-status: untriaged
+status: ready
 classes: session-cost, infra
 feature: model-evidence
 touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-19
 payoff: the randomized effort trial runs without the owner setting a level by hand, so its result can say whether high causes real problems
-verify: grep -q PL-HYRM docs/maintainer.md
+verify: grep -qi 'effort trial started' docs/maintainer.md
 ---
 
 **Problem.** Assign each new cloud session's effort automatically for the effort trial: the cloud environment's setup script, which runs before Claude starts, draws xhigh for about one session in four and high otherwise, writes it as effortLevel in .claude/settings.local.json, and records the draw where the model review can read it; first test that a cloud session applies it
@@ -51,6 +51,42 @@ the level that ran.
 
 Changing the setup script changes the cloud environment, which the owner
 approves through the harness's approval prompt.
+
+**Checked 2026-10-19, before any test.** These facts come from `list_sessions`,
+this session's own environment and `docs/session-ledger.tsv`:
+
+- Every session the owner opened from the app or the phone carries
+  `session_context.effort_level`, and in the rows read it is `high`. The
+  ledger's 2026-08-22 row reads `high` too, a month before
+  `.claude/settings.json` set any level. So the app most likely sends a level
+  with every session it opens. The docs rank an explicit choice above
+  settings, so the file route may do nothing for app-opened sessions. That
+  makes unknown 2 the deciding test, not a detail.
+- A session started with `create_session` carries no
+  `session_context.effort_level`. Inside it, the tools' shell sees
+  `CLAUDE_EFFORT=high`, which matches `.claude/settings.json`, and no
+  `CLAUDE_CODE_EFFORT_LEVEL`.
+- The ledger's `effort_level` column copies `session_context.effort_level`.
+  That is the level the app asked for, which may not be the level that ran.
+  An analysis by level actually run cannot rely on that column alone.
+- The cloud environment is the owner's `Default` personal environment, and its
+  setup script installs `uv`, `poppler-utils` and `libegl1`. It writes no
+  settings today.
+- Auto mode refused this session's commit of a probe
+  `.claude/settings.local.json` on a throwaway branch, as the session
+  modifying its own settings. So the test needs the owner's word first.
+
+**A route that removes unknown 3.** The draw can be a fixed function of the
+session id instead of a stored random number: hash the id, and assign `xhigh`
+when the hash falls in the lowest quarter. The ledger already holds every
+session id, so the model review recomputes each assignment and nothing new has
+to be stored. Online controlled experiments assign by a hash of the unit's id
+for the same reason: the assignment is reproducible and needs no lookup table
+(Kohavi, Tang and Xu, *Trustworthy Online Controlled Experiments*, Cambridge
+University Press, 2020; chapter not checked). It needs the setup script to see the
+session id. `CLAUDE_CODE_REMOTE_SESSION_ID` (`cse_...`) shares its suffix with
+the ledger's `session_...` id, but whether the setup script's environment holds
+that variable is untested.
 
 **Done when.** The three unknowns are answered in this brief. A new cloud
 session gets its level from the draw without the owner setting it, and
