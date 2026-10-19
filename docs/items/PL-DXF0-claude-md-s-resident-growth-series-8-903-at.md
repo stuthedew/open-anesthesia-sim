@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: resident-gauge-basis
+milestone: v0.5.33
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
 closed: 2026-10-19
