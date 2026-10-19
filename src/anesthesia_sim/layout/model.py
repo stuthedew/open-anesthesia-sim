@@ -637,7 +637,20 @@ class LayoutModel:
             f"{TREE_DEPTH_MAXIMUM} deep, the most a split sits in a window's tree"
         )
 
-    def resize(self, handle: Handle, position: float) -> LayoutModel:
+    def position(self, handle: Handle) -> float:
+        """Where `handle` lies across its axis, as a fraction of its window.
+
+        A row's border lies at an x and a column's at a y. A drag starts from
+        here, and `resize()` takes the place it moves to in the same units.
+
+        Raises:
+            TypeError: `handle` is not a `Handle`.
+            NotInLayout: `handle` is not a border of this layout.
+        """
+
+        return self._segments_of(handle)[handle].across
+
+    def resize(self, handle: Handle, position: float, *, alone: bool = False) -> LayoutModel:
         """Move a border, and every handle `borders()` joins to it, to `position`.
 
         `position` is a fraction of the window: an x for a row's border and a y
@@ -658,8 +671,15 @@ class LayoutModel:
         moved handle keeps its sizes exactly. A handle already at `position`
         is not moved, so a drag to where a border lies returns an equal layout.
 
+        **With `alone`, only `handle` moves**, and the other handles on its
+        line stay where they are. That is a drag with Shift held, which the
+        Blender Manual gives as moving only the border under the pointer
+        (`interface/window_system/areas.html` § "Resizing", read 2026-10-11),
+        and which `PL-RQT1` Q3 kept.
+
         Raises:
-            TypeError: `handle` is not a `Handle`, or `position` not a `float`.
+            TypeError: `handle` is not a `Handle`, `position` not a `float`,
+                or `alone` not a `bool`.
             NotInLayout: `handle` is not a border of this layout.
             LayoutRefused: `position` is not finite, or would leave an Area
                 beside the line with no size. That happens when `position`
@@ -674,6 +694,9 @@ class LayoutModel:
 
         _require_float("position", position)
 
+        if not isinstance(alone, bool):
+            raise TypeError(f"alone is a bool, not {type(alone).__name__}")
+
         segments = self._segments_of(handle)
         tree = self.windows[handle.window].tree
 
@@ -684,7 +707,7 @@ class LayoutModel:
         # hold two of them and every one is moved.
         moved: dict[tuple[int, ...], set[int]] = {}
 
-        for member in _chain(handle, segments):
+        for member in (handle,) if alone else _chain(handle, segments):
             if segments[member].across != position:
                 moved.setdefault(member.path, set()).add(member.index)
 

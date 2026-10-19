@@ -66,9 +66,8 @@ join the layout cannot make is visibly unavailable, and never approximated.
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
 View to its own minimum size hint, so a split narrower than that in the model
-is drawn at the minimum instead. Shift to move one handle alone, Escape to
-cancel a drag, the warning line at a minimum and the corner drag are
-`PL-2KXB`'s still. Only the main window is drawn,
+is drawn at the minimum instead, and a border drag stops where an Area
+would go below that hint. Only the main window is drawn,
 because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 - the layout is the
 reader's", "Explicitly out of scope for v0.6.0").
 """
@@ -342,6 +341,8 @@ class AreaLayout(QWidget):
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
+        self._border_drag: _BorderDrag | None = None
+        self._at_minimum = False
         self._corner_drag: tuple[AreaId, QPoint] | None = None
         self.preview: SplitPreview | JoinPreview | None = None
         self._overlay = _LayoutOverlay(self)
@@ -631,6 +632,9 @@ class AreaLayout(QWidget):
         self._frames = {}
         self._splitters = {}
         self._hovered = None
+        # A drag addresses a handle of the splitters being replaced.
+        self._border_drag = None
+        self._at_minimum = False
         root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
 
         for view in previous_views:
@@ -669,8 +673,6 @@ class AreaLayout(QWidget):
 
         for index, child in enumerate(node.children):
             splitter.addWidget(self._widget_for(child, path + (index,)))
-
-        splitter.splitterMoved.connect(partial(self._dragged, splitter))
 
         return splitter
 
@@ -734,29 +736,67 @@ class AreaLayout(QWidget):
         available = extent - splitter.handleWidth() * (splitter.count() - 1)
         splitter.setSizes(_pixel_sizes(split.sizes, max(available, len(split.sizes))))
 
-    def _dragged(self, splitter: _AreaSplitter, _position_px: int, index: int) -> None:
-        """Take a reader's drag of `splitter`'s handle `index` into the model.
+    def border_pressed(self, handle: _AreaHandle, offset_px: int, *, alone: bool) -> None:
+        """Start a drag of the border `handle` draws, pressed `offset_px` into its width.
 
-        Qt numbers a splitter's handles from 1, each before the child of the
-        same index, and `Handle.index` counts the gaps from 0.
+        The drag keeps the layout it started from, so every move is worked
+        out from that layout and Escape can return to it. With `alone`, the
+        reader held Shift and only this border moves, not the rest of its
+        line (`LayoutModel.resize`).
         """
 
-        handle = Handle(MAIN_WINDOW, splitter.path, index - 1)
-        sizes = splitter.sizes()
-        total = sum(sizes)
+        self._border_drag = _BorderDrag(self._handle_of(handle), alone, self._model, offset_px)
+        self._at_minimum = False
+        self._relight()
 
-        if total <= 0:
+    def border_moved(self, handle: _AreaHandle, at: QPoint) -> None:
+        """Move the dragged border toward `at`, on the screen, and re-lay out the Areas now.
+
+        `PL-RQT1` Q3 decided it. The Areas follow the pointer live. The
+        border goes no further than the place where an Area beside a moved
+        line reaches the least size it can be drawn at. Past that place the
+        border stops and its line turns WARNING. A move the model refuses
+        stops the same way.
+        """
+
+        drag = self._border_drag
+
+        if drag is None:
             return
 
-        low, high = self._model.span(handle)
-        position = low + (high - low) * (sum(sizes[:index]) / total)
+        position = self._position_at(handle, drag, at)
 
-        try:
-            moved = self._model.resize(handle, position)
-        except LayoutRefused:
-            # Nothing changed in the model, so nothing changes on screen.
-            self._lay_out_all()
+        if position is None:
             return
+
+        moved, self._at_minimum = self._farthest(drag, position)
+        self._resized(moved)
+
+    def border_released(self) -> None:
+        """End the border drag where it is."""
+
+        self._border_drag = None
+        self._at_minimum = False
+        self._relight()
+
+    def border_cancelled(self) -> None:
+        """End the border drag and return to the layout it started from, as Escape does."""
+
+        drag = self._border_drag
+
+        if drag is None:
+            return
+
+        self._border_drag = None
+        self._at_minimum = False
+        self._resized(drag.start)
+
+    def _resized(self, moved: LayoutModel) -> None:
+        """Give the splitters `moved`'s sizes, and say so if it is a new layout.
+
+        A drag changes only sizes, so the splitters are kept and set again
+        rather than rebuilt.
+        """
 
         changed = moved != self._model
         self._model = moved
@@ -766,6 +806,114 @@ class AreaLayout(QWidget):
         if changed:
             self.layout_changed.emit(moved)
 
+    def _handle_of(self, handle: _AreaHandle) -> Handle:
+        """The model's address of the border `handle` draws.
+
+        Qt numbers a splitter's handles from 1, each before the child of the
+        same index, and `Handle.index` counts the gaps from 0.
+        """
+
+        splitter = handle.owner
+        index = next(
+            index for index in range(1, splitter.count()) if splitter.handle(index) is handle
+        )
+
+        return Handle(MAIN_WINDOW, splitter.path, index - 1)
+
+    def _position_at(self, handle: _AreaHandle, drag: _BorderDrag, at: QPoint) -> float | None:
+        """Where in the window the dragged border lies with the pointer at `at`, on the screen.
+
+        The splitter places a handle's leading edge after the children before
+        it and the handles between them. So the share of the split before the
+        border is that edge, less those handles, over the splitter's width
+        less all its handles. The model's span of the split turns the share
+        into a fraction of the window. None when the splitter has no width.
+        """
+
+        splitter = handle.owner
+        index = drag.handle.index + 1
+        local = splitter.mapFromGlobal(at)
+        horizontal = splitter.orientation() == Qt.Orientation.Horizontal
+        edge = (local.x() if horizontal else local.y()) - drag.offset_px
+        extent = splitter.width() if horizontal else splitter.height()
+        total = extent - splitter.handleWidth() * (splitter.count() - 1)
+
+        if total <= 0:
+            return None
+
+        low, high = drag.start.span(drag.handle)
+        share = (edge - splitter.handleWidth() * (index - 1)) / total
+
+        return low + (high - low) * share
+
+    def _farthest(self, drag: _BorderDrag, position: float) -> tuple[LayoutModel, bool]:
+        """The layout with the border as near `position` as it can go, and whether it stopped.
+
+        The border moves to `position` when the model allows it and every
+        Area still fits (`_fits`). Otherwise the place where it stops lies
+        between where the drag started and `position`, and is found by
+        halving that interval `_BORDER_BISECTIONS` times. Every candidate is
+        worked out from the layout the drag started from, so a drag's result
+        depends only on where the pointer is, not on the path it took.
+        """
+
+        def attempt(at: float) -> LayoutModel | None:
+            try:
+                moved = drag.start.resize(drag.handle, at, alone=drag.alone)
+            except LayoutRefused:
+                return None
+
+            return moved if self._fits(drag.start, moved) else None
+
+        reached = attempt(position)
+
+        if reached is not None:
+            return reached, False
+
+        near, far = drag.start.position(drag.handle), position
+        best = drag.start
+
+        for _ in range(_BORDER_BISECTIONS):
+            middle = (near + far) / 2
+            candidate = attempt(middle)
+
+            if candidate is None:
+                far = middle
+            else:
+                near, best = middle, candidate
+
+        return best, True
+
+    def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
+        """Whether every Area of `moved` is drawn at least at the least size it can take.
+
+        An Area's least size is what Qt would hold it to anyway: its frame's
+        minimum size, or its minimum size hint where none is set. Its drawn
+        size is its share of this widget less one handle's width, which
+        never overstates it. An Area that was already smaller than its least
+        size when the drag started, because the window is small, may stay as
+        it was but may not shrink further.
+        """
+
+        width, height = self.width(), self.height()
+
+        def drawn(model: LayoutModel, area_id: AreaId) -> tuple[float, float]:
+            place = model.rectangle(area_id)
+
+            return (
+                (place.right - place.left) * width - AREA_HANDLE_WIDTH,
+                (place.bottom - place.top) * height - AREA_HANDLE_WIDTH,
+            )
+
+        for area in moved.areas():
+            least = _least_size(self._frames[area.id])
+            now, then = drawn(moved, area.id), drawn(start, area.id)
+
+            if any(now[axis] < min(least[axis], then[axis]) for axis in (0, 1)):
+                return False
+
+        return True
+
     def _hover(self, handle: _AreaHandle | None) -> None:
         """Mark the handles a drag of `handle` would move, or none when the pointer left."""
 
@@ -773,26 +921,34 @@ class AreaLayout(QWidget):
         self._relight()
 
     def _relight(self) -> None:
-        """Light every handle on the hovered handle's line, and only those."""
+        """Light every handle a drag moves, or would move, and only those.
 
-        lit: list[QSplitterHandle] = []
+        During a drag these are the handles it moves: the dragged one alone
+        with Shift, and its whole line otherwise, read from the layout the
+        drag started from. They are lit in WARNING while the drag is stopped
+        at a minimum. With no drag, they are the handles on the hovered
+        handle's line.
+        """
+
+        members: tuple[Handle, ...] = ()
+        drag = self._border_drag
         hovered = self._hovered
 
-        if hovered is not None and self._splitters.get(hovered.owner.path) is hovered.owner:
-            splitter = hovered.owner
-            index = next(
-                index for index in range(1, splitter.count()) if splitter.handle(index) is hovered
-            )
+        if drag is not None:
+            members = (drag.handle,) if drag.alone else drag.start.borders(drag.handle)
+        elif hovered is not None and self._splitters.get(hovered.owner.path) is hovered.owner:
+            members = self._model.borders(self._handle_of(hovered))
 
-            for member in self._model.borders(Handle(MAIN_WINDOW, splitter.path, index - 1)):
-                lit.append(self._splitters[member.path].handle(member.index + 1))
+        lit = [self._splitters[member.path].handle(member.index + 1) for member in members]
+        warning = drag is not None and self._at_minimum
 
         for splitter in self._splitters.values():
             for index in range(1, splitter.count()):
                 handle = splitter.handle(index)
 
                 if isinstance(handle, _AreaHandle):
-                    handle.set_lit(any(handle is member for member in lit))
+                    shown = any(handle is member for member in lit)
+                    handle.set_lit(shown, warning=shown and warning)
 
 
 class ViewChooser(QToolButton):
@@ -1078,6 +1234,22 @@ class AreaNotice(QFrame):
         column.addStretch(1)
 
 
+# How many times a stopped border drag halves the interval where it stops.
+# Twenty halvings place the border to a millionth of its split's span, finer
+# than a pixel on any screen.
+_BORDER_BISECTIONS: Final = 20
+
+
+@dataclass(frozen=True)
+class _BorderDrag:
+    """A border drag in progress: the border, whether it moves alone, and where it began."""
+
+    handle: Handle
+    alone: bool
+    start: LayoutModel
+    offset_px: int
+
+
 class _AreaSplitter(QSplitter):
     """One split of the model, drawn: it knows where in the tree it sits, and nothing else."""
 
@@ -1106,12 +1278,22 @@ class _AreaHandle(QSplitterHandle):
     over it, it and every handle on its line show a `PRIMARY` line down the
     middle, because a drag moves all of them. The cursor is the platform's
     double-headed split arrow, which Qt gives a handle by its orientation.
+
+    A press starts a drag that `AreaLayout` works out (`border_moved`), with
+    Shift held to move this handle alone. The line turns `WARNING` while the
+    drag is stopped at a minimum, and Escape returns the layout to where the
+    drag started (`PL-RQT1` Q3).
     """
 
     def __init__(self, splitter: _AreaSplitter) -> None:
         super().__init__(splitter.orientation(), splitter)
         self.owner = splitter
         self._lit = False
+        self._warning = False
+        self._pressed = False
+        # Escape reaches the handle only while it has the keyboard focus,
+        # which a press gives it. It is not in the tab order.
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 
     @property
     def lit(self) -> bool:
@@ -1119,10 +1301,60 @@ class _AreaHandle(QSplitterHandle):
 
         return self._lit
 
-    def set_lit(self, lit: bool) -> None:
-        if lit != self._lit:
-            self._lit = lit
+    @property
+    def warning(self) -> bool:
+        """Whether the line is drawn in WARNING: a drag of it has stopped at a minimum."""
+
+        return self._warning
+
+    def set_lit(self, lit: bool, *, warning: bool = False) -> None:
+        if (lit, warning) != (self._lit, self._warning):
+            self._lit, self._warning = lit, warning
             self.update()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """Start a drag. Qt's own drag is not used, so the model decides where the border stops."""
+
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+
+        pressed = event.position().toPoint()
+        horizontal = self.orientation() == Qt.Orientation.Horizontal
+        self._pressed = True
+        self.setFocus(Qt.FocusReason.MouseFocusReason)
+        self.owner.layout_owner.border_pressed(
+            self,
+            pressed.x() if horizontal else pressed.y(),
+            alone=bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
+        )
+        event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if not self._pressed:
+            super().mouseMoveEvent(event)
+            return
+
+        self.owner.layout_owner.border_moved(self, event.globalPosition().toPoint())
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if not self._pressed or event.button() != Qt.MouseButton.LeftButton:
+            super().mouseReleaseEvent(event)
+            return
+
+        self._pressed = False
+        self.owner.layout_owner.border_released()
+        event.accept()
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if self._pressed and event.key() == Qt.Key.Key_Escape:
+            self._pressed = False
+            self.owner.layout_owner.border_cancelled()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
 
     def enterEvent(self, event: QEnterEvent) -> None:
         super().enterEvent(event)
@@ -1154,7 +1386,7 @@ class _AreaHandle(QSplitterHandle):
             )
 
         painter = QPainter(self)
-        painter.fillRect(line, QColor(PRIMARY))
+        painter.fillRect(line, QColor(WARNING if self._warning else PRIMARY))
         painter.end()
 
 
@@ -1413,6 +1645,18 @@ def _relative_place(own: Rectangle, other: Rectangle) -> str:
         words.append(_SIDE_WORDS[Side.RIGHT])
 
     return ", ".join(words)
+
+
+def _least_size(frame: AreaFrame) -> tuple[int, int]:
+    """The width and height Qt holds `frame` to in a splitter that does not collapse its children.
+
+    That is the frame's minimum size where one is set, and its minimum size
+    hint otherwise, on each axis.
+    """
+
+    hint = frame.minimumSizeHint()
+
+    return (frame.minimumWidth() or hint.width(), frame.minimumHeight() or hint.height())
 
 
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:

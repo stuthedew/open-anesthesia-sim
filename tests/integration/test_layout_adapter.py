@@ -34,6 +34,7 @@ from anesthesia_sim.app.area_layout import (
     JoinPreview,
     SplitPreview,
     ViewChooser,
+    _AreaHandle,
 )
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
@@ -320,35 +321,142 @@ def test_a_drag_leaves_a_border_on_another_line_where_it_was(
     assert splitters[(1,)].sizes() == [280, 120]
 
 
-def test_a_drag_the_model_refuses_changes_nothing(
+def _press(
+    handle: QWidget, modifier: Qt.KeyboardModifier = Qt.KeyboardModifier.NoModifier
+) -> QPoint:
+    start = handle.rect().center()
+    QTest.mousePress(handle, Qt.MouseButton.LeftButton, modifier, start)
+
+    return start
+
+
+def _along(splitter: QSplitter, by_px: int) -> QPoint:
+    if splitter.orientation() == Qt.Orientation.Horizontal:
+        return QPoint(by_px, 0)
+
+    return QPoint(0, by_px)
+
+
+_PAST_A_NEIGHBOUR = _layout(
+    _column(
+        (0.5, 0.5),
+        _row((0.5, 0.5), _area(1), _area(2)),
+        _row((0.5, 0.1, 0.4), _area(3), _area(4), _area(5)),
+    ),
+    6,
+)
+
+
+def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turns_warning(
     application: QApplication, shown: list[AreaLayout], views: _Views
 ) -> None:
-    """Dragging the top border to 0.75 would carry the bottom one past its neighbour at 0.6.
+    """`PL-RQT1` Q3: the border goes no further, and both handles on its line say so.
 
     The bottom row's first border is on the top border's line, so it moves
-    with it, and moving it to 0.75 would leave Area 4, between 0.5 and 0.6,
-    with no width. The model refuses the drag, so neither the model nor the
-    dragged splitter changes, and nothing is announced.
+    with it. Area 4 lies between that border and the next one, at 0.6 of
+    the window. A drag of 100 px to the right would carry the line to 0.75,
+    past 0.6. So the line stops where Area 4 is as narrow as Qt would draw
+    it: its frame's minimum size hint, plus the handle width the adapter
+    allows for, short of 0.6 of the container's width.
     """
+
+    container = _show(application, shown, _PAST_A_NEIGHBOUR, views)
+    splitters = _splitters(container)
+    top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
+    least = container.frame(AreaId(4)).minimumSizeHint().width()
+    expected = 0.6 - (least + AREA_HANDLE_WIDTH) / container.width()
+    assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
+
+    start = _press(top)
+    back = top.mapToGlobal(start + _along(splitters[(0,)], 10))
+    QTest.mouseMove(top, start + _along(splitters[(0,)], 100))
+    application.processEvents()
+
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(expected, abs=1e-5)
+    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(expected, abs=1e-5)
+    assert top.lit and top.warning
+    assert bottom.lit and bottom.warning
+    assert not splitters[()].handle(1).lit
+
+    # The handle has moved, and QTest places the pointer relative to it.
+    QTest.mouseMove(top, top.mapFromGlobal(back))
+    application.processEvents()
+
+    assert not top.warning
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(210 / 400)
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(10, 0)
+    )
+    application.processEvents()
+
+    assert not top.warning and not bottom.warning
+
+
+def test_a_drag_with_shift_moves_only_the_border_under_the_pointer(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The two rows' borders are one line, but with Shift held only the top one moves."""
 
     model = _layout(
         _column(
-            (0.5, 0.5),
-            _row((0.5, 0.5), _area(1), _area(2)),
-            _row((0.5, 0.1, 0.4), _area(3), _area(4), _area(5)),
+            (0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _row((0.5, 0.5), _area(3), _area(4))
         ),
-        6,
+        5,
     )
+    container = _show(application, shown, model, views)
+    splitters = _splitters(container)
+    top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
+    assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
+
+    start = _press(top, Qt.KeyboardModifier.ShiftModifier)
+    QTest.mouseMove(top, start + QPoint(-100, 0))
+    application.processEvents()
+
+    assert top.lit and not bottom.lit
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, start + QPoint(-100, 0)
+    )
+    application.processEvents()
+
+    tree = _tree(container)
+    assert isinstance(tree, Split)
+    upper, lower = tree.children
+    assert isinstance(upper, Split) and isinstance(lower, Split)
+    assert upper.sizes == pytest.approx((0.25, 0.75), abs=1 / 400)
+    assert lower.sizes == (0.5, 0.5)
+    assert splitters[(0,)].sizes() == [100, 300]
+    assert splitters[(1,)].sizes() == [200, 200]
+
+
+def test_escape_returns_a_border_drag_to_where_it_started(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The Areas followed the pointer live, so Escape announces the layout it returns to."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show(application, shown, model, views)
     changed: list[LayoutModel] = []
     container.layout_changed.connect(changed.append)
-    splitters = _splitters(container)
+    splitter = _splitters(container)[()]
+    handle = splitter.handle(1)
 
-    _drag(application, splitters[(0,)], 1, 100)
+    start = _press(handle)
+    QTest.mouseMove(handle, start + QPoint(100, 0))
+    application.processEvents()
+
+    assert splitter.sizes() == [300, 100]
+
+    QTest.keyClick(handle, Qt.Key.Key_Escape)
+    QTest.mouseRelease(
+        handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(100, 0)
+    )
+    application.processEvents()
 
     assert container.model == model
-    assert changed == []
-    assert splitters[(0,)].sizes() == [200, 200]
+    assert splitter.sizes() == [200, 200]
+    assert changed[-1] == model and len(changed) == 2
 
 
 def test_a_resize_keeps_the_fractions_and_changes_no_model(

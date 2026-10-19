@@ -732,6 +732,17 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(
         "WARNING",
         "BACKGROUND",
+        AA_NON_TEXT,
+        "1.4.11",
+        "the line an Area border draws while a drag of it is stopped at an "
+        "Area's least size (`_AreaHandle`, whose `paintEvent` fills the line "
+        "in WARNING when `_relight` marks it). It sits in the gap between two "
+        "Areas, on the page's BACKGROUND, and tells the reader the border will "
+        "go no further (PL-RQT1 Q3)",
+    ),
+    Requirement(
+        "WARNING",
+        "BACKGROUND",
         AA_TEXT,
         "1.4.3",
         "the halted-run notice (`_notice_text`, a `NoticeLabel` written by "

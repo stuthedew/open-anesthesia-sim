@@ -1230,6 +1230,64 @@ def test_a_drag_moves_every_handle_on_its_line_or_is_refused() -> None:
             model.resize(lower, position)
 
 
+def test_a_drag_with_shift_moves_only_the_border_under_the_pointer() -> None:
+    """`alone` moves one handle, and the other handles on its line stay where they were.
+
+    Three rows are stacked, each split at the middle, so the three borders
+    are one line at 0.5. Without `alone`, moving the middle row's border to
+    0.25 moves all three. With it, only the middle row becomes a quarter and
+    three quarters, and the rows above and below keep their halves.
+    """
+
+    model = layout(
+        column(
+            (1 / 3, 1 / 3, 1 / 3),
+            row((0.5, 0.5), area(1), area(2)),
+            row((0.5, 0.5), area(3), area(4)),
+            row((0.5, 0.5), area(5), area(6)),
+        )
+    )
+    middle = Handle(0, (1,), 0)
+
+    together = model.resize(middle, 0.25)
+    alone = model.resize(middle, 0.25, alone=True)
+
+    for path in ((0,), (1,), (2,)):
+        assert split_at(together, path).sizes == pytest.approx((0.25, 0.75))
+
+    assert split_at(alone, (1,)).sizes == pytest.approx((0.25, 0.75))
+    assert split_at(alone, (0,)).sizes == (0.5, 0.5)
+    assert split_at(alone, (2,)).sizes == (0.5, 0.5)
+    assert alone.borders(middle) == (middle,)
+
+
+@pytest.mark.parametrize("alone", [1, None, "yes"])
+def test_resize_refuses_an_alone_that_is_not_a_bool(alone: object) -> None:
+    model = layout(row((0.5, 0.5), area(1), area(2)))
+
+    with pytest.raises(TypeError, match="alone is a bool"):
+        model.resize(Handle(0, (), 0), 0.25, alone=alone)  # type: ignore[arg-type]
+
+
+def test_position_is_where_a_border_lies_in_its_window() -> None:
+    """A nested border's place is a fraction of the window, not of its own split.
+
+    The lower row fills the right half of the window and is split at a
+    quarter of its own width, so its border lies at 0.5 + 0.25 * 0.5 = 0.625.
+    """
+
+    model = layout(
+        row((0.5, 0.5), area(1), column((0.4, 0.6), area(2), row((0.25, 0.75), area(3), area(4))))
+    )
+
+    assert model.position(Handle(0, (), 0)) == 0.5
+    assert model.position(Handle(0, (1,), 0)) == pytest.approx(0.4)
+    assert model.position(Handle(0, (1, 1), 0)) == pytest.approx(0.625)
+
+    with pytest.raises(NotInLayout):
+        model.position(Handle(0, (1, 1), 1))
+
+
 def test_borders_joins_only_handles_of_its_own_orientation() -> None:
     """A row's border runs down the window and a column's across it; one never continues the other.
 
