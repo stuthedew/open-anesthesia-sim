@@ -12,7 +12,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from new_prose import MIN_WORDS, Unit, branch_prose, excerpt, main, prose_units
+from docket.config import load
+from new_prose import MIN_WORDS, ROOT, Unit, branch_prose, excerpt, main, prose_units
 
 LONG = " ".join(["word"] * MIN_WORDS)
 SHORT = " ".join(["word"] * (MIN_WORDS - 1))
@@ -212,3 +213,16 @@ def test_count_exits_2_when_a_changed_file_will_not_parse(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "src/pkg/broken.py" in captured.err
+
+
+def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
+    """`bin/docket arm` runs this tool under the project interpreter, which parses all of `src/`.
+
+    A bare `python3` is the tools interpreter, held to a 3.11 floor, and `src/`
+    targets 3.14. Under the bare one the count exits 2 on any branch that
+    changes a file written in newer syntax, such as the PEP 758 `except` in
+    `app_metadata.py`, and `arm` then holds correct work (`PL-Q508`).
+    """
+    command = load(ROOT).prose_count_command.split()
+    assert command[:3] == ["uv", "run", "python"]
+    assert "tools/new_prose.py" in command
