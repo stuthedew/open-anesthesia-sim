@@ -590,9 +590,6 @@ class SimulationController:
 
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
-        self._max_delivered_concentration_percent = (
-            agent_parameters.max_delivered_concentration_percent
-        )
         self._agent_mac_percent = agent_parameters.mac_percent
         self._agent_mac_awake = agent_parameters.mac_awake
         self._state = SimulationState(uptake_system=uptake_system)
@@ -903,9 +900,10 @@ class SimulationController:
         Read where a setting control is written on a run whose `snapshot()`
         refuses (`RunView.present_halt`): the setting a drag applied is what
         the run holds, and the control is written from here rather than left
-        on the value before the drag (`PL-85LJ`). The agent, its MAC and its
-        vaporizer maximum are the controller's own; the four settings are the
-        compartments', each a checked type built when it was set.
+        on the value before the drag (`PL-85LJ`). The agent and its MAC are the
+        controller's own. The vaporizer maximum is the circuit's, the one the
+        core enforces (`PL-1MGB`). The four settings are the compartments',
+        each a checked type built when it was set.
         """
 
         system = self._state.uptake_system
@@ -917,7 +915,7 @@ class SimulationController:
             failure_reason=self._failure_reason,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
-            max_delivered_concentration_percent=self._max_delivered_concentration_percent,
+            max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
             agent_mac_percent=self._agent_mac_percent,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             accepted_fresh_gas_flow_range_l_min=circuit.accepted_fresh_gas_flow_range_l_min,
@@ -970,7 +968,7 @@ class SimulationController:
             began_at_s=self.began_at_s,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
-            max_delivered_concentration_percent=self._max_delivered_concentration_percent,
+            max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
             agent_mac_percent=self._agent_mac_percent,
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
@@ -1542,9 +1540,12 @@ class SimulationController:
         Two groups are compared. The equation settings, every field of them and
         of each tissue group, which is everything their equality compares, so a
         setting added to either class is named here without an edit. And the
-        agent's four displayed references, which no equation reads: the MAC is
-        the divisor of every MAC multiple on screen, so a branch rebuilt under
-        another would show one concentration as two multiples beside its parent.
+        agent's three displayed references, which no equation reads: its name,
+        its MAC and its MAC-awake. The MAC is the divisor of every MAC multiple
+        on screen, so a branch rebuilt under another would show one
+        concentration as two multiples beside its parent. The vaporizer maximum
+        is not among them, because the equation settings already carry it and
+        it is read off the circuit (`PL-1MGB`).
 
         Each value is written by its `repr` - for a float the shortest text that
         reads back as the same float, for a string the string in quotes - so two
@@ -1571,11 +1572,6 @@ class SimulationController:
                 for field in fields(TissueGroupEquationSettings)
             ),
             ("agent_display_name", self._agent_display_name, branch._agent_display_name),
-            (
-                "max_delivered_concentration_percent",
-                self._max_delivered_concentration_percent,
-                branch._max_delivered_concentration_percent,
-            ),
             ("agent_mac_percent", self._agent_mac_percent, branch._agent_mac_percent),
             *(
                 (

@@ -2631,6 +2631,43 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
     ) in str(refusal.value)
 
 
+def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A maximum edited between a trunk and its branch is one difference, named once.
+
+    The equation settings carry the circuit's vaporizer maximum (`PL-BBMG`).
+    The controller used to keep a second copy read from the same file, and
+    compared that copy as a displayed reference, so the one edit appeared
+    twice in the refusal and sent its reader looking for a second edit
+    (`PL-1MGB`).
+    """
+
+    trunk = _trunk_with_two_changes()
+    on_file = load_agent_parameters(trunk.snapshot().agent_id)
+    edited = dataclasses.replace(
+        on_file,
+        max_delivered_concentration_percent=Percent(
+            on_file.max_delivered_concentration_percent + 1.0
+        ),
+    )
+    monkeypatch.setattr(uptake_system, "load_agent_parameters", lambda agent_id: edited)
+    monkeypatch.setattr(
+        "anesthesia_sim.app.controller.load_agent_parameters", lambda agent_id: edited
+    )
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+
+    named = (
+        f"max_delivered_concentration_percent is "
+        f"{on_file.max_delivered_concentration_percent!r} in this run and "
+        f"{edited.max_delivered_concentration_percent!r} on the branch"
+    )
+
+    assert str(refusal.value).count(named) == 1
+
+
 def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
     """Every recorded setting change is a branch point, and so is the run's start."""
 
