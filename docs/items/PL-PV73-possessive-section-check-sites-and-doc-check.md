@@ -3,11 +3,13 @@ id: PL-PV73
 title: possessive_section_check.sites and doc_check.check_quoted_sources number a docstring citation's line by counting newlines in the evaluated string, so a backslash-newline inside the docstring reports the line above and a newline escape the line below; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, tests/unit/test_possessive_section_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-19
+pr: 1634
 payoff: a docstring finding from the possessive, quoted-source and host-claim checks names the source line the citation or claim stands on, so a session fixing it edits the right line
 verify: grep -q 'def test_a_citation_below_a_backslash_newline_is_reported_on_its_own_line' tests/unit/test_possessive_section_check.py && grep -q 'def test_a_citation_below_a_newline_escape_is_reported_on_its_own_line' tests/unit/test_possessive_section_check.py && grep -q 'def test_a_host_claim_below_a_backslash_newline_is_reported_on_its_own_line' tests/unit/test_doc_check.py
 ---
@@ -58,3 +60,15 @@ and end, pinned by a test with a backslash-newline and one with a newline
 escape above a citation. Added at triage 2026-10-11: `check_host_claims`
 numbers a docstring's claim from the source text the same way, pinned by a
 test with a backslash-newline above the claim.
+
+**Closed 2026-10-19.** `doc_check._docstrings` now gives each docstring with
+its lines laid out as the source lays them out. `_string_tokens` collects the
+file's string tokens, and `_source_lined` rebuilds the docstring one source
+row at a time from them. A backslash-newline keeps its row, and a `\n` escape
+stays inside its row. The rebuild falls back to the evaluated value whenever
+its text does not match that value exactly, so no finding can come from text
+the docstring does not hold. Over the tree on 2026-10-19 no docstring fell
+back, and four differ from their evaluated value, all through escapes. The
+three callers (`possessive_section_check.sites`, `check_quoted_sources` and
+`check_host_claims`) are unchanged and now name the source line. The three
+tests the `verify:` names fail on the old code and pass on the new.
