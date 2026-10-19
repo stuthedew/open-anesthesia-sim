@@ -102,8 +102,8 @@ pytest step took 1.96 to 2.23 times as long as part 1's (medians 243 s against
 124 s on fast runners, 344 s against 154 s on middle ones, 462 s against 209 s
 on slow ones). Part 2's job finished last in all 141 runs where both parts
 drew the same class. It finished last in 249 of the 293 runs overall. Part 1
-finished last only in the 43 runs where part 2 drew a faster runner than part
-1. The median job times were 318 s for part 1 and 460 s for part 2, a gap of
+finished last only in the 43 runs where part 2 drew a faster runner than part 1.
+The median job times were 318 s for part 1 and 460 s for part 2, a gap of
 about 140 s against the 30 s target. The 17 s gap measured on `#1519` was one
 such lucky pairing: part 1's pytest step took 206 s, the slow class, and part
 2's took 278 s, the fast class. So the statement above that runner speed sets

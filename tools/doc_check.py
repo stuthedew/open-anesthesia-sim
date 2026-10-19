@@ -7885,10 +7885,16 @@ def check_wrapped_list_items(root: Path, report: Report) -> None:
     letter. Both are what a wrap leaves behind: a sentence cut where it goes
     on, and a clause that carries it on.
 
-    Every Markdown file is read but the item store. Its briefs held 83 such
-    wraps when this check was written, and those are their own item
-    (`PL-XLYK`). A file's front matter is YAML rather than Markdown, so its
-    lines are skipped, as `check_math_delimiters` skips them.
+    Every Markdown file is read, and in the item store only the open briefs.
+    A closed brief is a record of the tree its work was done against, not a
+    live statement, so `.claude/rules/citation-drift.md` decides its prose is
+    not a finding. 76 closed briefs held such wraps when the store was added,
+    and rewrapping them would change records for no reader. An open brief is
+    where a session writes new prose, so a wrap there fails where it is
+    written (`PL-XLYK`). `_live_item_briefs` decides which briefs are open,
+    from the store's own reading of each status. A file's front matter is YAML
+    rather than Markdown, so its lines are skipped, as `check_math_delimiters`
+    skips them.
     """
     for path in _walk(root):
         relative = path.relative_to(root)
@@ -7898,24 +7904,31 @@ def check_wrapped_list_items(root: Path, report: Report) -> None:
             text = path.read_text(encoding="utf-8")
         except UNREADABLE:
             continue
-        lines = split_lines(text)
-        document = read_blocks(lines)
-        skip_to = _frontmatter_end(text)
-        ends = {block.end: block for block in document.blocks if block.kind == PARAGRAPH}
-        for item in document.items:
-            paragraph = ends.get(item.start)
-            if item.start < skip_to or paragraph is None or paragraph.depth != item.depth:
-                continue
-            opens = _from_column(lines[item.start], document.columns[item.start])
-            if _ends_a_sentence(lines[item.start - 1]):
-                continue
-            if paragraph.end - paragraph.start > 1 or opens[:1].islower():
-                report.errors.append(
-                    f"{relative}:{item.start + 1} starts a line with a list marker in the middle "
-                    "of the sentence above it, so the rest of that sentence renders as a list "
-                    "item; move the marker to the end of the line above, or put a blank line "
-                    "before a list meant as one"
-                )
+        _check_wrapped_list_items_in(relative, text, report)
+    for relative, text in _live_item_briefs(root):
+        _check_wrapped_list_items_in(relative, text, report)
+
+
+def _check_wrapped_list_items_in(relative: Path, text: str, report: Report) -> None:
+    """Report each list item in one Markdown file that a wrap opened mid-sentence."""
+    lines = split_lines(text)
+    document = read_blocks(lines)
+    skip_to = _frontmatter_end(text)
+    ends = {block.end: block for block in document.blocks if block.kind == PARAGRAPH}
+    for item in document.items:
+        paragraph = ends.get(item.start)
+        if item.start < skip_to or paragraph is None or paragraph.depth != item.depth:
+            continue
+        opens = _from_column(lines[item.start], document.columns[item.start])
+        if _ends_a_sentence(lines[item.start - 1]):
+            continue
+        if paragraph.end - paragraph.start > 1 or opens[:1].islower():
+            report.errors.append(
+                f"{relative}:{item.start + 1} starts a line with a list marker in the middle "
+                "of the sentence above it, so the rest of that sentence renders as a list "
+                "item; move the marker to the end of the line above, or put a blank line "
+                "before a list meant as one"
+            )
 
 
 def _ends_a_sentence(line: str) -> bool:
