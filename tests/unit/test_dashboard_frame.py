@@ -126,6 +126,7 @@ from anesthesia_sim.app.dashboard_frame import (
     new_case_question,
     no_traces_shown,
     notice,
+    off_scale_lines,
     off_scale_notice,
     offered_range,
     readout_columns,
@@ -144,7 +145,9 @@ from anesthesia_sim.app.dashboard_frame import (
     timeline_panel,
     transport,
     trunk_reset_question,
+    unmarked_changes_lines,
     wash_in_state,
+    wash_in_state_lines,
 )
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
@@ -767,14 +770,7 @@ def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends(
     adjustments = group_adjustments(record.control_timeline)
 
     from_snapshot, from_record = (
-        run_statement(
-            stated,
-            adjustments,
-            undrawn_control_marks=0,
-            is_branch=False,
-            comparing=False,
-            banner=None,
-        )
+        run_statement(stated, adjustments, is_branch=False, comparing=False, banner=None)
         for stated in (controller.snapshot(), record)
     )
 
@@ -786,36 +782,29 @@ def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends(
     assert from_record.status == status_word(record)
     assert from_record.status.text == "Paused"
     assert from_record.transport == transport(record)
-    assert from_record.timeline == timeline_panel(adjustments, 0)
+    assert from_record.timeline == timeline_panel(adjustments)
     assert from_record.timeline.entries != NO_CONTROL_CHANGES_TEXT
     assert from_record.banner is None
 
 
-def test_a_run_statement_carries_the_locks_the_undrawn_marks_and_the_banner_it_is_given() -> None:
-    """What only the caller knows reaches the statement as given, and nothing is guessed for it.
+def test_a_run_statement_carries_the_locks_and_the_banner_it_is_given() -> None:
+    """The statement carries what only the caller knows, exactly as given, and guesses nothing.
 
-    Whether the run is a branch and whether a second run is drawn are the
-    view's facts, how many control marks went undrawn is the frame's, and
-    which banner wording applies turns on whether a frame drew, which only
-    the caller knows (`halt_notice`, `notice`).
+    Whether the run is a branch, and whether a second run is drawn, are facts
+    that only the view holds. Which banner wording applies depends on whether
+    a frame drew, and only the caller knows that (`halt_notice`, `notice`).
     """
 
     record = _paused_run_with_history().record()
     adjustments = group_adjustments(record.control_timeline)
 
     statement = run_statement(
-        record,
-        adjustments,
-        undrawn_control_marks=3,
-        is_branch=True,
-        comparing=True,
-        banner="the banner the caller worded",
+        record, adjustments, is_branch=True, comparing=True, banner="the banner the caller worded"
     )
 
     assert statement.transport == transport(record, is_branch=True, comparing=True)
     assert statement.transport.selector_lock_reason == BRANCH_AGENT_LOCK_TEXT
-    assert statement.timeline == timeline_panel(adjustments, 3)
-    assert statement.timeline.overflow != ""
+    assert statement.timeline == timeline_panel(adjustments)
     assert statement.banner == "the banner the caller worded"
 
 
@@ -1975,7 +1964,7 @@ def test_the_list_states_what_was_changed_and_to_what() -> None:
         (_control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
     )
 
-    assert timeline_panel(adjustments, 0).entries == "12s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
+    assert timeline_panel(adjustments).entries == "12s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
 
 
 def test_the_list_reads_most_recent_first() -> None:
@@ -1987,14 +1976,14 @@ def test_the_list_reads_most_recent_first() -> None:
             _control_change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
         )
     )
-    lines = timeline_panel(adjustments, 0).entries.splitlines()
+    lines = timeline_panel(adjustments).entries.splitlines()
 
     assert lines[0].startswith("20s")
     assert lines[1].startswith("10s")
 
 
 def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> None:
-    panel = timeline_panel((), 0)
+    panel = timeline_panel(())
 
     assert panel.entries == NO_CONTROL_CHANGES_TEXT
     assert panel.entries == "No settings changed yet in this run."
@@ -2016,14 +2005,20 @@ def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None
             for index in range(MAX_LISTED_ADJUSTMENTS + 3)
         )
     )
-    panel = timeline_panel(adjustments, 0)
+    panel = timeline_panel(adjustments)
 
     assert len(panel.entries.splitlines()) == MAX_LISTED_ADJUSTMENTS == 12
     assert "3 earlier change(s) not listed" in panel.overflow
 
 
 def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None:
-    """Same rule for the plot: a chart that stops annotating is a claim."""
+    """The plot follows the panel's rule: changes it cannot mark are counted, not dropped.
+
+    A chart that stops marking changes without saying so implies that no more
+    changes happened. The count appears on the chart whose window it covers,
+    not in the run's control-change panel, because each chart has its own
+    window (`PL-L59K`).
+    """
 
     timeline = tuple(
         _control_change(
@@ -2038,12 +2033,46 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
     )
 
     assert frame.runs[0].undrawn_control_marks == 2
-    assert "2 not marked on the chart" in (
-        timeline_panel(adjustments, frame.runs[0].undrawn_control_marks).overflow
+    assert unmarked_changes_lines(frame) == ("2 control change(s) in this window not marked",)
+    assert "not marked" not in timeline_panel(adjustments).overflow
+
+
+def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> None:
+    """The count sits in a chart the runs share, so it names whose changes it counts (`PL-25DD`)."""
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.01, adjustment=index + 1
+        )
+        for index in range(MAX_CHART_CONTROL_MARKS + 2)
+    )
+    adjustments = group_adjustments(timeline)
+    busy = _fake_controller(history=_run_history(600), control_timeline=timeline)
+    quiet = _fake_controller(history=_run_history(600))
+    frame = assemble_chart_frame(
+        (
+            RunInput(run_label(FIRST_RUN), busy, busy.snapshot(), adjustments),
+            RunInput(run_label(SECOND_RUN), quiet, quiet.snapshot(), ()),
+        ),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert unmarked_changes_lines(frame) == (
+        "Run 1 — 2 control change(s) in this window not marked",
+        None,
     )
 
 
-def test_the_two_overflow_counts_are_joined_on_one_line() -> None:
+def test_a_chart_whose_window_marks_every_change_says_nothing_about_marks() -> None:
+    frame = _frame(_fake_controller(history=_run_history(600)))
+
+    assert frame.runs[0].undrawn_control_marks == 0
+    assert unmarked_changes_lines(frame) == (None,)
+
+
+def test_the_unlisted_count_stands_alone_in_the_overflow_line() -> None:
     adjustments = group_adjustments(
         tuple(
             _control_change(
@@ -2053,9 +2082,7 @@ def test_the_two_overflow_counts_are_joined_on_one_line() -> None:
         )
     )
 
-    assert timeline_panel(adjustments, 4).overflow == (
-        "1 earlier change(s) not listed; 4 not marked on the chart"
-    )
+    assert timeline_panel(adjustments).overflow == "1 earlier change(s) not listed"
 
 
 def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> None:
@@ -2310,6 +2337,54 @@ def test_a_shared_line_for_a_run_the_frame_does_not_hold_is_refused() -> None:
 
     with pytest.raises(IndexError):
         compared_run_line("Now: F_A/F_I = 0.50", single, 1)
+
+
+def test_each_run_s_off_scale_line_is_named_while_runs_are_compared() -> None:
+    """A chart writes one line per run from its frame, named while runs are compared (`PL-L59K`)."""
+
+    inside = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.02, 0.018, 0.015, 0.014, 0.01, 0.005),
+    )
+    above = (
+        _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1.0, 0.08, 0.01, 0.01, 0.01, 0.0, 0.0),
+    )
+    lone = _frame(_fake_controller(history=above))
+    compared = _compared_frame(_fake_controller(history=above), _fake_controller(history=inside))
+
+    assert off_scale_lines(lone) == (off_scale_notice(lone, 0),)
+    assert off_scale_lines(lone)[0] is not None
+    assert off_scale_lines(compared) == (
+        compared_run_line(off_scale_notice(compared, 0) or "", compared, 0),
+        None,
+    )
+
+
+def test_each_run_s_wash_in_state_line_counts_its_own_undrawn_stretches() -> None:
+    controllers = (
+        _fake_controller(history=_run_history(40)),
+        _fake_controller(history=_run_history(40)),
+    )
+    frame = _compared_frame(*controllers)
+    snapshots = tuple(controller.snapshot() for controller in controllers)
+
+    assert wash_in_state_lines(frame, snapshots) == tuple(
+        compared_run_line(
+            wash_in_state(snapshot, frame.runs[index].undrawn_wash_in_stretches), frame, index
+        )
+        for index, snapshot in enumerate(snapshots)
+    )
+
+
+def test_wash_in_state_lines_refuse_snapshots_that_do_not_match_the_frame() -> None:
+    """A line from another run's snapshot would put one run's F_A/F_I under another's name."""
+
+    controller = _fake_controller(history=_run_history(40))
+    frame = _frame(controller)
+
+    with pytest.raises(ValueError, match="2 snapshot"):
+        wash_in_state_lines(frame, (controller.snapshot(), controller.snapshot()))
 
 
 def test_a_lone_run_s_banner_is_left_unnamed() -> None:

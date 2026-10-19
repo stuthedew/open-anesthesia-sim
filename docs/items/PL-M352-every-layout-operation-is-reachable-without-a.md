@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: interface-areas
+milestone: v0.5.41
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/model.py, tests/integration, tests/unit/test_layout_model.py
 blocked-by: PL-2KXB
 added: 2026-09-16

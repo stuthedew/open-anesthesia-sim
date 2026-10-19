@@ -56,6 +56,8 @@ __all__ = [
     "fit_to_run",
     "fitted_window",
     "following_window",
+    "saved_time_base",
+    "saved_time_base_value",
     "tick_times",
     "time_base_for_span",
 ]
@@ -218,6 +220,46 @@ def time_base_for_span(span_s: float) -> ChartTimeBase:
             return time_base
 
     raise ValueError(f"no chart time base spans {span_s!r} s")
+
+
+def saved_time_base(saved: object) -> ChartTimeBase | None:
+    """Return the time base that a chart saved as `saved`, or None for "Fit run".
+
+    `app/views.py` reads a chart View's saved state through this function. The
+    saved form is `FIT_RUN_KEY` for "Fit run", or the width in seconds, as
+    `saved_time_base_value` writes it. Only a width that the selector offers is
+    accepted, because a chart can be set only to a width its control can show.
+
+    Args:
+        saved: The value read from the saved state.
+
+    Returns:
+        The `ChartTimeBase` of that width, or None for "Fit run".
+
+    Raises:
+        ValueError: If `saved` is neither `FIT_RUN_KEY` nor the width in
+            seconds of one of `SELECTABLE_TIME_BASES`. A `bool` is rejected,
+            even though Python treats True as 1.
+    """
+
+    if isinstance(saved, str) and saved == FIT_RUN_KEY:
+        return None
+
+    if not isinstance(saved, bool) and isinstance(saved, int | float):
+        for time_base in SELECTABLE_TIME_BASES:
+            if time_base.span_s == saved:
+                return time_base
+
+    raise ValueError(f"no chart time base the selector offers is saved as {saved!r}")
+
+
+def saved_time_base_value(time_base: ChartTimeBase | None) -> str | float:
+    """How a chart saves `time_base`: `FIT_RUN_KEY` for None ("Fit run"), else the width in seconds.
+
+    `saved_time_base` reads the value back.
+    """
+
+    return FIT_RUN_KEY if time_base is None else time_base.span_s
 
 
 def fitted_window(time_base: ChartTimeBase) -> tuple[float, float]:
