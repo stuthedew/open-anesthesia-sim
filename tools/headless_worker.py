@@ -41,6 +41,13 @@ Haiku copies of an item whose work must never leave the machine. The clone's
 push URL is set to a name no remote answers to, so a push fails whatever the
 worker does.
 
+**A clone is removed once nothing in it is only on this machine.** A run
+that succeeded and pushed its branch, where the remote's branch is the
+clone's `HEAD` and the clone has nothing uncommitted, removes its clone and
+keeps its log. Every other run keeps both, so a failure can be read where it
+happened, and the report line names the clone (`PL-TX7K`). Each clone is a
+full copy of the repository, so keeping every one filled the owner's disk.
+
 The cost is `total_cost_usd` from `--output-format json`, which Claude Code
 calls a client-side estimate that can differ from the bill
 (https://code.claude.com/docs/en/headless). A run whose cost could not be read
@@ -140,6 +147,8 @@ class Run:
     denials: int | None
     #: Why a run failed, in Claude Code's words or its last line of stderr.
     reason: str | None = None
+    #: Whether the clone was removed because everything in it was pushed.
+    removed: bool = False
     #: The effort level the run was started at.
     effort: str | None = None
 
@@ -343,10 +352,33 @@ def prepare_clone(origin: str, clone: Path, branch: str, no_push: bool) -> None:
         git_or_refuse(["remote", "set-url", "--push", "origin", NO_PUSH_URL], clone)
 
 
-def branch_on_remote(clone: Path, branch: str) -> bool:
-    """Whether the remote now has `branch`, read from `ls-remote`'s output."""
+def log_for(clone: Path) -> Path:
+    """The file beside `clone` that keeps its run's whole output."""
+    return clone.with_name(clone.name + ".log")
+
+
+def remote_tip(clone: Path, branch: str) -> str | None:
+    """The commit the remote's `branch` points at, or `None` where it has none or git failed."""
     call = call_git(["ls-remote", "--heads", "origin", branch], clone)
-    return call.code == 0 and bool(call.answer.strip())
+    fields = call.answer.split() if call.code == 0 else []
+    return fields[0] if fields else None
+
+
+def only_on_remote(clone: Path, tip: str | None) -> bool:
+    """Whether removing `clone` loses nothing: its `HEAD` is `tip` and nothing is uncommitted.
+
+    Untracked files count as uncommitted, and a git call that fails answers
+    False, so a clone is kept whenever this cannot be shown.
+    """
+    head = call_git(["rev-parse", "HEAD"], clone)
+    status = call_git(["status", "--porcelain"], clone)
+    return (
+        tip is not None
+        and head.code == 0
+        and head.answer.strip() == tip
+        and status.code == 0
+        and not status.answer.strip()
+    )
 
 
 def read_result(stdout: bytes) -> dict[str, object] | None:
@@ -394,12 +426,17 @@ def work(
     except subprocess.TimeoutExpired:
         exit_code, result, stdout, stderr = None, None, b"", b"stopped at the run's time limit"
     # The whole output is kept beside the clone, so a failure can be read in full (PL-MZCN).
-    clone.with_name(clone.name + ".log").write_bytes(stdout + b"\n--- stderr ---\n" + stderr)
+    log_for(clone).write_bytes(stdout + b"\n--- stderr ---\n" + stderr)
     result = result or {}
     denials = result.get("permission_denials")
     turns = number(result.get("num_turns"))
     subtype = result.get("subtype")
     is_error = result.get("is_error")
+    reason = failure_reason(result, exit_code, stderr)
+    tip = None if no_push else remote_tip(clone, branch)
+    removed = reason is None and only_on_remote(clone, tip)
+    if removed:
+        shutil.rmtree(clone)
     return Run(
         item=item,
         model=model,
@@ -407,14 +444,15 @@ def work(
         clone=str(clone),
         started=started.isoformat(),
         finished=now().isoformat(),
-        pushed=not no_push and branch_on_remote(clone, branch),
+        pushed=tip is not None,
         exit_code=exit_code,
         cost_usd=number(result.get("total_cost_usd")),
         is_error=is_error if isinstance(is_error, bool) else None,
         subtype=subtype if isinstance(subtype, str) else None,
         turns=None if turns is None else int(turns),
         denials=len(denials) if isinstance(denials, list) else None,
-        reason=failure_reason(result, exit_code, stderr),
+        reason=reason,
+        removed=removed,
         effort=effort,
     )
 
@@ -437,9 +475,11 @@ def describe(run: Run) -> str:
     cost = "cost unknown" if run.cost_usd is None else f"${run.cost_usd:.2f}"
     where = "pushed" if run.pushed else "not pushed"
     outcome = "error" if run.is_error or run.exit_code != 0 else "finished"
+    log = log_for(Path(run.clone))
+    kept = f"clone removed, log in {log}" if run.removed else f"in {run.clone}, log in {log}"
     line = (
         f"{run.item} on {run.model} at {run.effort} effort: "
-        f"{outcome}, {cost}, {where}, {run.branch}, in {run.clone}"
+        f"{outcome}, {cost}, {where}, {run.branch}, {kept}"
     )
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
