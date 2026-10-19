@@ -31,6 +31,11 @@ unavailable, as for a model that does not support it, Claude Code starts in
 Manual instead and every prompt is denied; the ledger's `denials` count shows
 that (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
+**Effort follows the item's lane.** A worker on an item that reaches the
+simulator runs at `max`, and one on apparatus work at `high`, as the owner
+chose for sessions. Without `--effort` every run took Opus 5.5's default,
+`medium` (`PL-KFJY`).
+
 **`--no-push` is enforced, not asked for.** `PL-6FX6`'s trial runs Sonnet and
 Haiku copies of an item whose work must never leave the machine. The clone's
 push URL is set to a name no remote answers to, so a push fails whatever the
@@ -65,12 +70,30 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket import cli as docket_cli  # noqa: E402
+from docket.config import load as load_docket_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.model import LANE_CROSSING, LANE_PRODUCT  # noqa: E402
+from docket.store import read_items  # noqa: E402
 from docket.vcs import call_git, default_base, read_git  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
 #: Sonnet 5.5 workers, `PL-80R5`).
 WORKER_MODEL = "claude-opus-5-5"
+
+#: The effort a worker runs at, by the lane of its item. Simulator work runs at
+#: `max` and apparatus work at `high` (project owner, 2026-09-19, ratified, over
+#: running every session at `max`; and 2026-10-17, ratified, over `xhigh` for
+#: apparatus work, `PL-SW0B`). `docs/maintainer.md` § "Match effort to the
+#: standard the work is held to" records both. A lane that reaches the
+#: simulator takes the simulator's level (`PL-KFJY`).
+SIMULATOR_EFFORT = "max"
+APPARATUS_EFFORT = "high"
+SIMULATOR_LANES = (LANE_PRODUCT, LANE_CROSSING)
+
+#: Variables Claude Code ranks above `--effort`, so a run that inherited one
+#: would not run at the level chosen for it
+#: (https://code.claude.com/docs/en/env-vars, `CLAUDE_CODE_EFFORT_LEVEL`).
+OUTRANKING_EFFORT = ("CLAUDE_CODE_EFFORT_LEVEL",)
 
 #: The credentials Claude Code ranks above `ANTHROPIC_API_KEY`, so a run that
 #: inherited one would not bill the API credit
@@ -117,6 +140,8 @@ class Run:
     denials: int | None
     #: Why a run failed, in Claude Code's words or its last line of stderr.
     reason: str | None = None
+    #: The effort level the run was started at.
+    effort: str | None = None
 
     def line(self) -> str:
         """The run as one JSON line of the ledger."""
@@ -126,8 +151,9 @@ class Run:
 def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
     """The run's environment: this one, less any credential that outranks the key.
 
-    Refuses when no API key is set, because the run would then bill the
-    subscription login instead of the credit.
+    It also drops any effort setting that outranks `--effort`. Refuses when no
+    API key is set, because the run would then bill the subscription login
+    instead of the credit.
     """
     if not environ.get("ANTHROPIC_API_KEY", "").strip():
         raise Refused(
@@ -135,7 +161,8 @@ def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
             "subscription, not the API credit. Create a key in the Console "
             "organization linked to the credit and export it first."
         )
-    return {key: value for key, value in environ.items() if key not in OUTRANKING_CREDENTIALS}
+    dropped = (*OUTRANKING_CREDENTIALS, *OUTRANKING_EFFORT)
+    return {key: value for key, value in environ.items() if key not in dropped}
 
 
 def cycle_start(today: date, cycle_day: int) -> date:
@@ -190,6 +217,18 @@ def run_docket_delegable() -> str:
     if code:
         raise Refused(f"docket delegable --ids exited {code}; its reason is above.")
     return out.getvalue()
+
+
+def effort_for(lane: str) -> str:
+    """The effort level for a worker on an item in `lane`."""
+    return SIMULATOR_EFFORT if lane in SIMULATOR_LANES else APPARATUS_EFFORT
+
+
+def read_lanes() -> dict[str, str]:
+    """Each item's lane, as docket reads it from the item's `touches`."""
+    config = load_docket_config(ROOT)
+    items = read_items(ROOT / config.items_dir)
+    return {item.identifier: item.lane(config.workflow_paths) for item in items}
 
 
 def check_tools(env: Mapping[str, str]) -> None:
@@ -261,7 +300,7 @@ def prompt_for(item: str, branch: str, no_push: bool) -> str:
     )
 
 
-def claude_argv(claude: str, prompt: str, model: str, per_run_usd: float) -> list[str]:
+def claude_argv(claude: str, prompt: str, model: str, effort: str, per_run_usd: float) -> list[str]:
     """The `claude -p` command for one run."""
     return [
         claude,
@@ -269,6 +308,8 @@ def claude_argv(claude: str, prompt: str, model: str, per_run_usd: float) -> lis
         prompt,
         "--model",
         model,
+        "--effort",
+        effort,
         "--max-budget-usd",
         f"{per_run_usd:.2f}",
         "--output-format",
@@ -288,9 +329,15 @@ def git_or_refuse(args: Sequence[str], root: Path, timeout: float = CLONE_TIMEOU
 
 
 def prepare_clone(origin: str, clone: Path, branch: str, no_push: bool) -> None:
-    """Clone `origin`, borrowing this checkout's objects, onto a new branch from its base."""
+    """Clone `origin`, borrowing this checkout's objects, onto a new branch from its base.
+
+    The objects are borrowed from the repository's shared git directory, not
+    from the checkout. A linked worktree's `.git` is a file, which `git clone
+    --reference` refuses (`PL-29DJ`).
+    """
     clone.parent.mkdir(parents=True, exist_ok=True)
-    git_or_refuse(["clone", "--reference", str(ROOT), "--dissociate", origin, str(clone)], ROOT)
+    shared = read_git(["rev-parse", "--path-format=absolute", "--git-common-dir"], ROOT).strip()
+    git_or_refuse(["clone", "--reference", shared, "--dissociate", origin, str(clone)], ROOT)
     git_or_refuse(["checkout", "-b", branch, default_base(clone)], clone)
     if no_push:
         git_or_refuse(["remote", "set-url", "--push", "origin", NO_PUSH_URL], clone)
@@ -322,6 +369,7 @@ def work(
     item: str,
     *,
     model: str,
+    effort: str,
     per_run_usd: float,
     no_push: bool,
     origin: str,
@@ -335,7 +383,7 @@ def work(
     started = now()
     clone = workdir / f"{branch.removeprefix('claude/')}-{started:%Y%m%dT%H%M%S}"
     prepare_clone(origin, clone, branch, no_push)
-    argv = claude_argv(claude, prompt_for(item, branch, no_push), model, per_run_usd)
+    argv = claude_argv(claude, prompt_for(item, branch, no_push), model, effort, per_run_usd)
     try:
         process = subprocess.run(
             argv, cwd=clone, env=dict(env), capture_output=True, timeout=RUN_TIMEOUT_S, check=False
@@ -367,6 +415,7 @@ def work(
         turns=None if turns is None else int(turns),
         denials=len(denials) if isinstance(denials, list) else None,
         reason=failure_reason(result, exit_code, stderr),
+        effort=effort,
     )
 
 
@@ -388,7 +437,10 @@ def describe(run: Run) -> str:
     cost = "cost unknown" if run.cost_usd is None else f"${run.cost_usd:.2f}"
     where = "pushed" if run.pushed else "not pushed"
     outcome = "error" if run.is_error or run.exit_code != 0 else "finished"
-    line = f"{run.item} on {run.model}: {outcome}, {cost}, {where}, {run.branch}, in {run.clone}"
+    line = (
+        f"{run.item} on {run.model} at {run.effort} effort: "
+        f"{outcome}, {cost}, {where}, {run.branch}, in {run.clone}"
+    )
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
 
@@ -416,6 +468,7 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     docket: Callable[[], str] = run_docket_delegable,
+    lanes: Callable[[], Mapping[str, str]] = read_lanes,
     tools: Callable[[Mapping[str, str]], None] = check_tools,
     today: Callable[[], date] = lambda: datetime.now(UTC).date(),
 ) -> int:
@@ -424,11 +477,17 @@ def main(
         env = child_environment(environ)
         tools(env)
         items = choose(delegable_ids(docket), args.item, args.runs)
+        lane = lanes()
+        unread = [item for item in items if item not in lane]
+        if unread:
+            raise Refused(f"docket gives no lane for {', '.join(unread)}, so no effort is chosen.")
+        efforts = {item: effort_for(lane[item]) for item in items}
         origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
         start = cycle_start(today(), args.cycle_day)
         if args.dry_run:
             left = args.credit_usd - spent_since(args.ledger, start)
-            print(f"Would run {', '.join(items) or 'nothing'} on {args.model}; ${left:.2f} left.")
+            chosen = ", ".join(f"{item} at {efforts[item]}" for item in items) or "nothing"
+            print(f"Would run {chosen} effort on {args.model}; ${left:.2f} left.")
             return 0
         runs: list[Run] = []
         for item in items:
@@ -439,6 +498,7 @@ def main(
             run = work(
                 item,
                 model=args.model,
+                effort=efforts[item],
                 per_run_usd=args.per_run_usd,
                 no_push=args.no_push,
                 origin=origin,

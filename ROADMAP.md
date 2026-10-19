@@ -8547,7 +8547,20 @@ once someone is ready to scope it.
     `circuit_volume_l` means, and a required startup-flow field that no
     manufacturer publishes.
 
-None of items 1-40 mix scientific-core and UI/tooling concerns within a
+41. Let a chart View opt in to keeping its time window in step with every
+    other opted-in chart in its Workspace, as Blender's "Sync Visible Range"
+    does for its time-based editors, after item 34's per-chart windows
+    (`PL-L59K`). Wanted "later" (project owner, 2026-10-19). `PL-1RFZ` holds
+    the Blender source read and a Done-when.
+
+42. Let a learner rename a run, after item 12. The name would show wherever
+    `dashboard_frame.run_label` names the run, and a Workspace's pin stays on
+    the run's `RunId`. Two open runs must never show the same name, because a
+    legend entry must still tell the reader which run's settings drew a
+    curve. Wanted "eventually" (project owner, 2026-10-19). `PL-YBZJ` holds
+    the design note.
+
+None of items 1-42 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

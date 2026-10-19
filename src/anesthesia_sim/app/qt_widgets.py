@@ -60,6 +60,8 @@ from PySide6.QtWidgets import (
     QListWidget,
     QPushButton,
     QSlider,
+    QStyle,
+    QStyleOptionComboBox,
     QVBoxLayout,
     QWidget,
 )
@@ -97,6 +99,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     slider_position,
     slider_value,
+    widest_fork_point_label,
 )
 from anesthesia_sim.app.formatting import (
     MAC_DISPLAY_DECIMALS,
@@ -118,7 +121,6 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
-    FORK_POINT_SELECTOR_WIDTH,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -210,6 +212,31 @@ def _advance_px(label: QLabel, text: str) -> int:
     """How wide `text` is in `label`'s font, in logical pixels."""
 
     return QFontMetrics(label.font()).horizontalAdvance(text)
+
+
+def _fix_width_to_entry(selector: QComboBox, entry: str) -> None:
+    """Fix `selector`'s width so that `entry` fits whole in its text field.
+
+    The width is the entry's advance, its drawn width in the selector's
+    font, plus whatever the style draws around the text field: the frame,
+    the padding and the arrow. The code asks the style for that margin
+    around a field exactly as wide as the entry. So the width stays correct
+    in whatever font face and size the selector is drawn in (`PL-NC0D`).
+
+    Args:
+        selector: The selector, with its stylesheet already set.
+        entry: The widest entry it must show whole.
+    """
+
+    selector.ensurePolished()
+    entry_px = selector.fontMetrics().horizontalAdvance(entry)
+    option = QStyleOptionComboBox()
+    selector.initStyleOption(option)
+    option.rect = QRect(0, 0, entry_px, selector.sizeHint().height())
+    field = selector.style().subControlRect(
+        QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxEditField, selector
+    )
+    selector.setFixedWidth(entry_px + entry_px - field.width())
 
 
 #: The palette roles this interface declares, and the `app/theme.py` colour
@@ -1190,14 +1217,16 @@ class BookmarksPanel(QWidget):
         self.targets.show()
 
     def withdraw(self) -> None:
-        """Hide both collections, because their standings could not be worked out.
+        """Hide both lists of marks, because the halt could not work out their standings.
 
-        A halt calls this method when restating the panel raised
+        A mark's standing says whether the run has reached it. The halt path calls this
+        method when restating the panel raised an exception
         (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
-        last frame. On a failed run, a row that still shows a mark as to come is a
-        stale claim. The halt exists to remove that claim (`PL-YHR3`). The button
-        that opens the editor stays on screen. The next call to `set_panel` shows both
-        collections again.
+        last frame. On a failed run, a row that still shows a mark as still to come is
+        a stale claim. The halt restates the panel to remove that claim (`PL-YHR3`). The
+        button that opens the editor stays on screen. The editor hides its own lists at
+        the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel` shows
+        both lists again.
         """
 
         self.times.hide()
@@ -1267,8 +1296,16 @@ class ForkPanel(QWidget):
         super().__init__(parent)
         self.heading_label = styled_label(FORK_HEADING, color=INK, bold=True)
         self.point_selector = QComboBox()
-        self.point_selector.setFixedWidth(FORK_POINT_SELECTOR_WIDTH)
         self.point_selector.setStyleSheet(selector_stylesheet())
+        # The selector has a fixed width because its entries grow as the trunk runs. A
+        # selector that widened as it filled would move the button beside it under the
+        # reader's pointer. The width is measured from the widest entry in the selector's
+        # own font, because an entry cut short would lose the words that say it is a mark
+        # (`PL-NC0D`).
+        _fix_width_to_entry(
+            self.point_selector,
+            widest_fork_point_label(self.point_selector.fontMetrics().horizontalAdvance),
+        )
         self.take_button = QPushButton(TAKE_FORK_LABEL)
         self.take_button.setStyleSheet(outlined_button_stylesheet())
         # The same outline as the button above, because it is the same kind of
@@ -1570,6 +1607,36 @@ class BookmarkDialog(QDialog):
 
         _refill(self.time_list, panel.times.rows)
         _refill(self.target_list, panel.targets.rows)
+
+        for widget in self._withdrawable():
+            widget.show()
+
+    def withdraw(self) -> None:
+        """Hide both lists and their Remove buttons, because the standings could not be worked out.
+
+        A mark's standing says whether the run has reached it. The halt path calls this
+        method together with `BookmarksPanel.withdraw`, when restating the marks raised an
+        exception (`SimulationView._restate_bookmark_panel`). The rows come from the last
+        frame. On a failed run, a row that still lists a mark as still to come is a stale
+        claim. The panel beside the chart has already hidden the same rows (`PL-F5KT`).
+        The rows are hidden rather than cleared, because Remove selects a mark by its row.
+        Each Remove button is hidden with its list, so the reader cannot remove a mark
+        through a row they cannot see. The two forms stay on screen. The next call to
+        `set_panel` shows the lists and buttons again.
+        """
+
+        for widget in self._withdrawable():
+            widget.hide()
+
+    def _withdrawable(self) -> tuple[QWidget, ...]:
+        """The widgets `withdraw` hides and `set_panel` shows again."""
+
+        return (
+            self.time_list,
+            self.remove_time_button,
+            self.target_list,
+            self.remove_target_button,
+        )
 
     def selected_time_index(self) -> int:
         """Which marked instant is selected, or -1 for none."""

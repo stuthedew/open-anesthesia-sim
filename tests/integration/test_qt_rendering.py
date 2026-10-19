@@ -108,11 +108,13 @@ _SAMPLE_STRIDE_PX = 8
 _AGENT_ID = "sevoflurane"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
-#: The run the hover-box test drives to the plot's edges: sevoflurane dialled
-#: to 8%, its maximum delivered concentration, for twenty minutes, then drawn
-#: in the 15-minute width. A chosen width follows the run, so its newest
-#: points stand at the right edge, and at 8% the circuit and alveolar traces
-#: climb into the top quarter of the axis - the two places the box flips.
+#: The run that the hover-box test uses to reach the plot's edges. Sevoflurane
+#: is dialled to 8%, its maximum delivered concentration, for twenty minutes,
+#: and the run is drawn in the 15-minute width. A chosen width follows the run,
+#: so its newest points sit at the right edge. At 8% the circuit and alveolar
+#: traces climb to the top of the axis, where there is no room above a point
+#: for the box. The right edge and the top of the axis are the two places
+#: where the box flips.
 _INDUCTION_DIAL_PERCENT = 8.0
 _INDUCTION_S = 1200.0
 _FOLLOWING_WIDTH_S = 15 * 60
@@ -121,6 +123,15 @@ _FOLLOWING_WIDTH_S = 15 * 60
 #: are mapped in floating point, and a box anchored on a point at the edge
 #: lands on the edge itself, measured outside by under 0.05 px (`PL-J0F7`).
 _EDGE_TOLERANCE_PX = 0.5
+
+#: How many drawn points apart the least-height hover test samples the
+#: F_A/F_I stretch: about one point every 25 px of a 1600 px window.
+_LEAST_HEIGHT_POINT_STRIDE = 20
+
+#: The height of the tall concentration chart that the resize hover test
+#: shrinks, in pixels: tall enough for the box to fit above a point at 0.88
+#: of the axis top.
+_TALL_CHART_HEIGHT_PX = 700
 
 #: How far inside the box's edge its colours are read: past the one-pixel
 #: border and the anti-aliasing either side of it.
@@ -446,6 +457,33 @@ def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> 
             assert _advance_px(label) <= label.width(), label.text()
 
 
+def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationView) -> None:
+    """The agent-accounting panel gets its whole height once a run is going (`PL-TZNM`).
+
+    A running case writes the lines of the litres readout into the panel. A
+    panel laid out from a size hint taken before those lines arrived would
+    cut off its last line. The expected heights are the panel's and the
+    readout's own size hints, not values read from the layout under test.
+    """
+
+    panels = dashboard.runs[0]._accounting_panels
+
+    assert panels
+
+    for panel in panels:
+        amounts = panel._agent_amounts_text
+        needed_px = (
+            amounts.heightForWidth(amounts.width())
+            if amounts.wordWrap()
+            else amounts.sizeHint().height()
+        )
+
+        assert panel.isVisible()
+        assert amounts.text()
+        assert panel.sizeHint().height() <= panel.height()
+        assert needed_px <= amounts.height(), amounts.text()
+
+
 def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: SimulationView) -> None:
     """Nothing a reader is meant to see is laid out beyond the page's right edge.
 
@@ -494,13 +532,14 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
 ) -> None:
     """`PL-J0F7`: at each corner and end the box is painted inside the plot, over what lies beneath.
 
-    The box stands to the right of its point and above it, and flips to the
-    left past the middle of the window and below it in the top quarter of the
-    axis, so the compartment chart's four corners are where a wrong flip would
-    cut it off - the right edge most of all, where a following window keeps
-    its newest point and a reader's pointer spends most of its time. The
-    wash-in plot is held at its two ends, which take the left-right flip; its
-    points here stay below its own top quarter. Each case is a point a pointer
+    The box sits to the right of its point and above it. It flips to the
+    left past the middle of the window. It flips below the point where the
+    room above the point is less than the box's height (`PL-9BVQ`). So a
+    wrong flip would cut the box off at the compartment chart's four
+    corners. The right edge matters most, because a following window keeps
+    its newest point there and a reader's pointer spends most of its time
+    there. The wash-in plot is tested at its two ends, where the left-right
+    flip happens. Each case is a point a pointer
     can rest on, its pixel inside the plot: the window's first instant stands
     on the left edge, where its pixel can fall outside and rightly no hover
     answers.
@@ -586,3 +625,118 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
         assert _distance(darkest, INK) < _distance(darkest, MUTED), (
             f"{name}: the text's darkest pixel {darkest.name()} is nearer MUTED than INK"
         )
+
+
+def test_the_hover_box_stays_inside_a_plot_at_its_least_height(
+    application: QApplication, induction_dashboard: SimulationView
+) -> None:
+    """Every hover box stays inside the F_A/F_I plot at the plot's smallest height (`PL-9BVQ`).
+
+    A reader can drag an Area down to its View's smallest size, which leaves
+    the F_A/F_I plot only a few box heights tall. The box goes below its
+    point when the room above the point is less than the box's height. When
+    the flip was decided at a fraction of the axis instead, a point just
+    below the top quarter put the box partly above the plot. The induction
+    run's wash-in stretch climbs through that band. So the test hovers over
+    sampled points of the stretch, and its highest point, each at a pixel
+    inside the plot.
+    """
+
+    frame = _wash_in(induction_dashboard).chart.frame
+    assert frame is not None
+    chart = WashInChart()
+    chart.resize(_WINDOW_WIDTH_PX, chart.minimumSizeHint().height())
+    chart.show()
+    application.processEvents()
+    chart.draw(frame)
+    chart.grab()
+    application.processEvents()
+    area = chart.plot_area()
+    restable = [
+        point
+        for point in chart.drawn_stretches(0)[0]
+        if area.contains(QPointF(*chart.plot_pixel(*point)))
+    ]
+    # Every twentieth point, and the stretch's highest, which has the least
+    # room above it.
+    points = [*restable[::_LEAST_HEIGHT_POINT_STRIDE], max(restable, key=lambda point: point[1])]
+    box_height = None
+    escaped = []
+
+    for time_s, ratio in points:
+        # Off the plot first, so the box measured below is the one this point
+        # raised rather than the last point's.
+        _painted_with_the_pointer_off(chart)
+        _hover_on(chart, time_s, ratio)
+        box = chart.hover_box()
+        assert box is not None, f"no hover answered at {time_s} s"
+        box_height = box.height()
+
+        if not area.adjusted(
+            -_EDGE_TOLERANCE_PX, -_EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX
+        ).contains(box):
+            escaped.append((time_s, ratio, box))
+
+    # The plot is short enough that a fraction of the axis would have put the
+    # box outside it, or the test proves nothing about the flip.
+    assert box_height is not None
+    assert area.height() < 4 * box_height, (area.height(), box_height)
+    assert not escaped, (
+        f"{len(escaped)} of {len(points)} boxes leave the plot {area}: {escaped[:3]}"
+    )
+
+
+def test_no_hover_box_is_left_outside_a_plot_that_shrinks_under_a_resting_pointer(
+    application: QApplication, induction_dashboard: SimulationView
+) -> None:
+    """A plot that shrinks under a resting pointer places its hover box again (`PL-9BVQ`).
+
+    On a tall plot there is room for the box above a point high on the axis.
+    The reader then shrinks the Area while the run is paused and the pointer
+    rests, so no frame is drawn and no pointer event arrives. Before the fix
+    the box stayed where the tall plot had put it, with its top cut off above
+    the short plot. Now the hover is answered again for the pointer's
+    position. That position may no longer be near any drawn point, and then
+    no box is the correct result. Either way, no box stands outside the plot.
+    """
+
+    frame = _concentration(induction_dashboard).chart.frame
+    assert frame is not None
+    chart = ConcentrationChart()
+    chart.resize(_WINDOW_WIDTH_PX, _TALL_CHART_HEIGHT_PX)
+    chart.show()
+    application.processEvents()
+    chart.draw(frame)
+    chart.grab()
+    application.processEvents()
+    area = chart.plot_area()
+    top = frame.axis_top_percent
+    # The highest drawn point below 0.88 of the axis top. The tall plot has
+    # room above it for the box, and the shortest plot does not.
+    time_s, percent = max(
+        (
+            (time_s, percent)
+            for quantity in frame.visible
+            for time_s, percent in zip(*chart.drawn_points(0, quantity), strict=True)
+            if percent < 0.88 * top and area.contains(QPointF(*chart.plot_pixel(time_s, percent)))
+        ),
+        key=lambda point: point[1],
+    )
+    _hover_on(chart, time_s, percent)
+    tall_box = chart.hover_box()
+    assert tall_box is not None
+    assert tall_box.center().y() < chart.plot_pixel(time_s, percent)[1], (
+        "the tall plot put it below"
+    )
+
+    chart.resize(_WINDOW_WIDTH_PX, chart.minimumSizeHint().height())
+    application.processEvents()
+    chart.grab()
+    application.processEvents()
+
+    short_area = chart.plot_area()
+    short_box = chart.hover_box()
+    assert short_area.height() < area.height()
+    assert short_box is None or short_area.adjusted(
+        -_EDGE_TOLERANCE_PX, -_EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX
+    ).contains(short_box), (short_area, short_box)

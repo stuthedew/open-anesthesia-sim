@@ -25,7 +25,7 @@ requirements rather than wording: the "Alveolar" readout glossed
 (`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
@@ -41,6 +41,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
+    RunIndex,
     TraceStyle,
     trace_style,
 )
@@ -92,6 +93,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     CaseInstant,
 )
+from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.layout.run_identity import RunId
 
 # The step each simulation tick advances by. What range of steps is
@@ -506,6 +508,52 @@ HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 # (2026-10-12, ratified, over a label stating the mark's typed instant or its
 # name), so a rewrite is put to them rather than made.
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
+
+# Each range below holds one part of a clock reading within the supported run, with every
+# value that part can take. Hours run below the run length, minutes and whole seconds run
+# below 60, and the tenth is nonzero. Each range starts at 1 so that a reading built from
+# them includes every part (`PL-NC0D`).
+_CLOCK_HOURS: Final = range(1, int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // SECONDS_PER_HOUR))
+_CLOCK_MINUTES: Final = range(1, int(MINUTES_PER_HOUR))
+_CLOCK_WHOLE_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
+_TENTHS_PER_SECOND: Final = 10
+_CLOCK_TENTHS: Final = range(1, _TENTHS_PER_SECOND)
+
+
+def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
+    """Return the branch selector's widest possible entry, as `advance_px` measures it.
+
+    The selector has a fixed width, so it reserves the width of its widest
+    entry once, when it is built (`PL-NC0D`). The entry for a mark that the
+    run has passed is the widest kind of entry. It is the clock reading of a
+    control event, followed by the words of `MARK_FORK_LABEL_TEMPLATE`. The
+    widest clock reading is found by measuring, not by counting characters.
+    A proportional font gives its digits different widths, so 23h59m59.9s,
+    the reading at the last step, is not the widest. Hours, minutes and
+    seconds vary independently. So the widest value of each, put together,
+    is the widest reading that `format_elapsed` writes within the supported
+    run.
+
+    Args:
+        advance_px: How wide a string draws in the selector's font, in
+            pixels.
+
+    Returns:
+        The entry for a mark passed at the instant with the widest reading.
+    """
+
+    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(f"{hour}h"))
+    minutes = max(_CLOCK_MINUTES, key=lambda minute: advance_px(f"{minute}m"))
+    whole, tenth = max(
+        ((whole, tenth) for whole in _CLOCK_WHOLE_SECONDS for tenth in _CLOCK_TENTHS),
+        key=lambda second: advance_px(f"{second[0]}.{second[1]}s"),
+    )
+    instant_s = (
+        hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
+    )
+
+    return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
+
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
 EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
@@ -1089,6 +1137,25 @@ class SettingReadout:
     secondary: str
 
 
+# The three flows whose opening value a profile states. Each entry gives the
+# profile that states it and the `docs/MODEL.md` section that gives its range.
+# Every flow that a slider sets is one of the slider's steps. So only an
+# opening value can fall off the slider's grid, and `setting_readouts` rejects
+# one that does (`PL-1KQ9`, `PL-96SQ`). The delivered dial is not listed here.
+# Its setting is a fraction that is converted to percent, so comparing it
+# exactly with a step would first need a rule for rounding that conversion.
+_OPENING_SOURCES: Final[Mapping[ControlInput, tuple[str, str]]] = MappingProxyType(
+    {
+        ControlInput.FRESH_GAS_FLOW: (
+            "machine profile",
+            "The model's envelope and a machine's deliverable range are two claims",
+        ),
+        ControlInput.ALVEOLAR_VENTILATION: ("patient profile", "Supported input ranges"),
+        ControlInput.CARDIAC_OUTPUT: ("patient profile", "Supported input ranges"),
+    }
+)
+
+
 def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
     """The four setting controls, in `PARAMETER_CONTROLS` order, from the settings in force.
 
@@ -1108,12 +1175,14 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             offer no accepted setting fails visibly rather than offering a
             refused one. No shipped range reaches it; a machine profile
             declaring a fresh gas flow range narrower than one step could.
-            Also if the fresh gas flow in force is not one of the steps its
-            slider offers. Every flow a slider sets is a step, so only a
-            machine profile's opening flow can reach it, and the run is
-            refused rather than opened with the slider and its readout each
-            showing a flow the run does not hold (`PL-1KQ9`, `PL-25KS`
-            decision D4). No shipped profile reaches it.
+            Also if the fresh gas flow, alveolar ventilation or cardiac
+            output in force is not one of the steps its slider offers.
+            Every flow that a slider sets is a step, so only an opening flow
+            stated by a machine or patient profile can cause this. The run
+            is then rejected, rather than opened with the slider and its
+            readout each showing a flow that the run does not have
+            (`PL-1KQ9`, `PL-96SQ`, `PL-25KS` decision D4). No shipped
+            profile causes it.
     """
 
     delivered = settings.delivered_partial_pressure_fraction
@@ -1171,15 +1240,15 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
 
         minimum, maximum = offered
 
-        if control.control is ControlInput.FRESH_GAS_FLOW and not _is_offered_step(
+        if control.control in _OPENING_SOURCES and not _is_offered_step(
             value, offered, control.decimals
         ):
+            profile, section = _OPENING_SOURCES[control.control]
             raise ValueError(
                 f"{name} is {value} {control.unit}, which the slider cannot show: it offers "
                 f"{slider_value(1, control.decimals)} {control.unit} steps from {minimum} to "
-                f"{maximum} {control.unit}, so a machine profile must open the run on one of "
-                "those steps (docs/MODEL.md, \"The model's envelope and a machine's "
-                'deliverable range are two claims")'
+                f"{maximum} {control.unit}, so a {profile} must open the run on one of "
+                f'those steps (docs/MODEL.md, "{section}")'
             )
 
         readouts.append(
@@ -1204,8 +1273,9 @@ def _is_offered_step(value: float, offered: tuple[float, float], decimals: int) 
     """Whether a setting is one of the steps a slider offers, so the slider can show it.
 
     A step is compared as the value the slider emits for it, `slider_value`,
-    so a setting the slider wrote is always one. A machine profile's
-    stated opening flow is the one setting no slider wrote (`PL-1KQ9`).
+    so a setting the slider wrote is always one. The only setting that no
+    slider wrote is an opening flow stated by a machine or patient profile
+    (`PL-1KQ9`, `PL-96SQ`).
 
     Args:
         value: The setting in force, in the control's unit.
@@ -2355,10 +2425,12 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     there. A trace is off scale only once it clears the ceiling by more
     than the readouts resolve: isoflurane's ceiling is 3 x 1.2, which in
     binary floating point is 3.5999999999999996, and a comparison against
-    zero would report that noise as an excursion. Nothing here builds a
-    checked type: the percents and the axis top were built when the frame
-    was assembled, so this cannot refuse after the chart has drawn
-    (`PL-7DJK`).
+    zero would report that noise as an excursion. This function builds no
+    checked concentration. The percents and the axis top were built when the
+    frame was assembled, so this function cannot reject a value after the
+    chart has drawn it (`PL-7DJK`). The run index is built as a `RunIndex`
+    before it is used, so a negative index is rejected rather than treated
+    as the last run.
 
     Args:
         frame: The frame drawn this tick.
@@ -2368,10 +2440,14 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
         The notice, or None when every drawn trace is inside the axis.
 
     Raises:
+        TypeError: If `run_index` is not an `int` (`RunIndex`).
+        ValueError: If `run_index` is negative (`RunIndex`). Python would
+            treat `-1` as the last run, and report on that run under the name
+            of the run the caller meant (`PL-7694`).
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
-    run = frame.runs[run_index]
+    run = frame.runs[RunIndex(run_index)]
     off_scale = [
         trace_style(quantity).label
         for quantity in frame.visible
@@ -2547,10 +2623,13 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
         the line while more than one is.
 
     Raises:
+        TypeError: If `run_index` is not an `int` (`RunIndex`).
+        ValueError: If `run_index` is negative (`RunIndex`), for the same
+            reason that `off_scale_notice` rejects one.
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
-    run = frame.runs[run_index]
+    run = frame.runs[RunIndex(run_index)]
 
     if len(frame.runs) <= 1:
         return line

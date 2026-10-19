@@ -3,13 +3,15 @@ id: PL-96SQ
 title: A patient profile can open the run at an alveolar ventilation or cardiac output off the 0.1 L/min slider grid, which PL-1KQ9's refusal holds only for the fresh gas flow, so the slider and its readout would each show a flow the run does not hold (found building PL-1KQ9)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
-touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1673
 payoff: no run opens at a ventilation or cardiac output that the slider and the readout beside it cannot both show
-verify: grep -q "def test_an_opening_cardiac_output_off_the_slider_grid_is_refused" tests/unit/test_dashboard_frame.py
+verify: grep -q 'def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** A patient profile can open the run at an alveolar ventilation or cardiac output off the 0.1 L/min slider grid, which PL-1KQ9's refusal holds only for the fresh gas flow, so the slider and its readout would each show a flow the run does not hold (found building PL-1KQ9)
@@ -46,3 +48,14 @@ route: apply `_is_offered_step` to all three flow controls in the loop, in
 place of the fresh gas flow condition. Check before building that no
 control path writes an off-grid value of either, such as a restore after a
 refused setting or a branch opened from a timeline value.
+
+**Checked 2026-10-19:** still real on `main` at `6fd84bd5`: `setting_readouts`
+applied `_is_offered_step` only to the fresh gas flow. No control path writes
+an off-grid value of either flow: the sliders write steps, a branch reads its
+settings back from the timeline, and a refused setting restores the value it
+replaced. So the opening value is the only way in.
+
+**Regression test against the code before the fix.** `uv run pytest -q
+tests/unit/test_dashboard_frame.py -k ventilation_or_cardiac` on `6fd84bd5`
+with the new tests added failed both refusal cases with `Failed: DID NOT RAISE
+ValueError`; the four on-grid cases passed.

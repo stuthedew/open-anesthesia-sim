@@ -124,7 +124,7 @@ src/anesthesia_sim/
 │   ├── serialization.py            # the layout, a Workspace and the set of them as JSON: each body, and the versioned documents - the set's is the file the application writes
 │   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind and the run it is pinned to, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
 │   ├── run_identity.py             # RunId, a run's identity as the session that placed it and its number there, and RunIdentities, the session's counter; what a run is called and what a Workspace pins (PL-7Z84)
-│   ├── migrations.py               # LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; version 2 added each Workspace's pinned run, and the chain is checked at import (PL-SSQW Q5, PL-7Z84)
+│   ├── migrations.py               # SchemaVersion, a version checked once when it is read (PL-8JV2); LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; version 2 added each Workspace's pinned run, and the chain is checked at import (PL-SSQW Q5, PL-7Z84)
 │   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
 │   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the learner's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
@@ -401,7 +401,12 @@ fails, the boxes go on naming the curves on the plot (`PL-G3K7`); and
 `SimulationView._halt_every_run` restates the branch controls from the case,
 so a failed trunk offers no branch where it stands (`PL-MMNX`). It also
 restates the bookmark standings from each run's controller, so a mark the
-failed run will never reach is not listed as still to come (`PL-YHR3`). The trunk
+failed run will never reach is not listed as still to come (`PL-YHR3`). Both
+panels, and the marks editor with the bookmark panel, are restated from one
+list, `SimulationView.halt_restatements`, and
+`test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
+control that no run, no listed panel and no named exemption holds, so a panel
+added later is checked without being remembered (`PL-5JTH`). The trunk
 records that its frame failed, so it then offers no keyframe and no passed
 mark either: a branch opened there would be drawn by the same failing frame
 (`SimulationController.record_failed_frame`, `PL-T2Q2`). A run that
