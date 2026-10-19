@@ -2354,6 +2354,15 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
+    # The fixed rule and the model review's measurement, side by side, as
+    # `next` marks a pick (`PL-3R6L`). Silent where both are.
+    model = []
+    if item.model_guidance is not None:
+        model.append(f"{item.model_guidance}, strongest model")
+    if (evidence := item.model_evidence(config.model_evidence, config.workflow_paths)) is not None:
+        model.append(evidence.describe())
+    if model:
+        print(f"  model: {'; '.join(model)}")
     root = _invocation(args).root
     plan = _plan(root, items, config)
     # Where this item's rank stands on the generator tier - by its own claim at
@@ -2945,6 +2954,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         generator_paths=config.generator_paths,
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
+        model_evidence=config.model_evidence,
     )
     pending = awaiting_decision(
         items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
@@ -3023,6 +3033,7 @@ def _next_oldest(
         generator_paths=config.generator_paths,
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
+        model_evidence=config.model_evidence,
     )
     where = f" in the {lane} lane" if lane else ""
     if waiting.picks:

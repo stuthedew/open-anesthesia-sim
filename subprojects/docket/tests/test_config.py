@@ -235,3 +235,67 @@ def test_a_store_outside_the_checkout_keeps_its_meaning(
     (tmp_path / "docket.toml").write_text(f'[docket]\nitems_dir = "{written}"\n', encoding="utf-8")
 
     assert load(tmp_path).items_dir == read
+
+
+#: One row of `model-evidence.toml`, matching a perf-classed item of size S.
+EVIDENCE_ROW = """
+[[evidence]]
+match = { class = "perf", effort = "S" }
+model = "claude-sonnet-5-5"
+effort = "high"
+date = 2026-10-17
+trial = "PL-T1T1"
+n = 24
+"""
+
+
+def test_the_model_evidence_table_is_read_beside_docket_toml(tmp_path: Path) -> None:
+    """`PL-3R6L`: the review writes the table, and `load` carries it to every reader."""
+    (tmp_path / "model-evidence.toml").write_text(EVIDENCE_ROW, encoding="utf-8")
+
+    (entry,) = load(tmp_path).model_evidence
+
+    assert entry.match == (("class", "perf"), ("effort", "S"))
+    assert (entry.model, entry.effort, entry.trial, entry.n) == (
+        "claude-sonnet-5-5",
+        "high",
+        "PL-T1T1",
+        24,
+    )
+    assert entry.evidence_date == date(2026, 10, 17)
+
+
+def test_an_absent_or_empty_evidence_table_is_the_empty_table(tmp_path: Path) -> None:
+    assert load(tmp_path).model_evidence == ()
+    (tmp_path / "model-evidence.toml").write_text("# no trial has met its bar\n", encoding="utf-8")
+    assert load(tmp_path).model_evidence == ()
+
+
+def test_evidence_is_not_a_docket_toml_setting(tmp_path: Path) -> None:
+    """The table has one home, so `docket.toml` cannot carry a second copy of it."""
+    (tmp_path / "docket.toml").write_text("[docket]\nmodel_evidence = []\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no setting is named model_evidence"):
+        load(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (('trial = "PL-T1T1"\n', ""), "missing trial"),
+        (("n = 24\n", 'n = 24\nnote = "x"\n'), "no key is named note"),
+        (('class = "perf", effort = "S"', 'colour = "red"'), "not one of class"),
+        (('effort = "S" }', 'effort = "XL" }'), "'XL', not one of S, M, L"),
+        (("n = 24", "n = 0"), "at least 1"),
+        (("date = 2026-10-17", 'date = "yesterday"'), "TOML date"),
+        (('match = { class = "perf", effort = "S" }', "match = {}"), "at least one"),
+    ],
+)
+def test_a_malformed_evidence_entry_is_refused_rather_than_skipped(
+    tmp_path: Path, change: tuple[str, str], message: str
+) -> None:
+    """An entry that matches nothing while looking applied hides the recommendation it holds."""
+    (tmp_path / "model-evidence.toml").write_text(EVIDENCE_ROW.replace(*change), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load(tmp_path)
