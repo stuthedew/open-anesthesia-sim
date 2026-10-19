@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-snapshot
+milestone: v0.5.40
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - a workflow-lane defect in docket's read commands, which the layout milestone does not reach
 added: 2026-10-19
