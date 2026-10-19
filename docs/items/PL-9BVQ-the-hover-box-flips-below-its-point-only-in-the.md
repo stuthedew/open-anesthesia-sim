@@ -20,3 +20,12 @@ verify: grep -q 'def test_the_hover_box_stays_inside_a_plot_at_its_least_height'
 **Why it matters.** A reader can drag an Area down to its View's least size, and the shipped Induction Workspace puts the F_A/F_I plot in half of the chart column. A hover box cut off at the top hides its first line, which names the run when two are drawn.
 
 **Done when** the flip is decided in pixels: the box goes below its point whenever the space above the point is less than the box's height. A test draws the F_A/F_I plot at its least height and keeps every hover case inside the plot.
+
+**Checked 2026-10-19:** still real on `main` at `6fd84bd5`: `_HoverReadout.show`
+flipped on `anchor.value > 0.75 * y_top`. On a standalone F_A/F_I plot at its
+least height, the plot inside its axes is 160 px tall and the box 53 px.
+
+**Regression test against the code before the fix.**
+`QT_QPA_PLATFORM=offscreen uv run pytest -q -p no:xdist
+tests/integration/test_qt_rendering.py -k least_height` on `6fd84bd5` with the
+new test added failed with `AssertionError: 42 of 60 boxes leave the plot`.

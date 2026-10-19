@@ -112,7 +112,8 @@ _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 #: to 8%, its maximum delivered concentration, for twenty minutes, then drawn
 #: in the 15-minute width. A chosen width follows the run, so its newest
 #: points stand at the right edge, and at 8% the circuit and alveolar traces
-#: climb into the top quarter of the axis - the two places the box flips.
+#: climb to the top of the axis, where there is no room above a point for the
+#: box. Those are the two places the box flips.
 _INDUCTION_DIAL_PERCENT = 8.0
 _INDUCTION_S = 1200.0
 _FOLLOWING_WIDTH_S = 15 * 60
@@ -121,6 +122,10 @@ _FOLLOWING_WIDTH_S = 15 * 60
 #: are mapped in floating point, and a box anchored on a point at the edge
 #: lands on the edge itself, measured outside by under 0.05 px (`PL-J0F7`).
 _EDGE_TOLERANCE_PX = 0.5
+
+#: How many drawn points apart the least-height hover test samples the
+#: F_A/F_I stretch: about one point every 25 px of a 1600 px window.
+_LEAST_HEIGHT_POINT_STRIDE = 20
 
 #: How far inside the box's edge its colours are read: past the one-pixel
 #: border and the anti-aliasing either side of it.
@@ -495,12 +500,12 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
     """`PL-J0F7`: at each corner and end the box is painted inside the plot, over what lies beneath.
 
     The box stands to the right of its point and above it, and flips to the
-    left past the middle of the window and below it in the top quarter of the
-    axis, so the compartment chart's four corners are where a wrong flip would
-    cut it off - the right edge most of all, where a following window keeps
-    its newest point and a reader's pointer spends most of its time. The
-    wash-in plot is held at its two ends, which take the left-right flip; its
-    points here stay below its own top quarter. Each case is a point a pointer
+    left past the middle of the window, and below it where there is less room
+    above the point than the box is tall (`PL-9BVQ`). So the compartment
+    chart's four corners are where a wrong flip would cut it off - the right
+    edge most of all, where a following window keeps its newest point and a
+    reader's pointer spends most of its time. The wash-in plot is held at its
+    two ends, which take the left-right flip. Each case is a point a pointer
     can rest on, its pixel inside the plot: the window's first instant stands
     on the left edge, where its pixel can fall outside and rightly no hover
     answers.
@@ -586,3 +591,61 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
         assert _distance(darkest, INK) < _distance(darkest, MUTED), (
             f"{name}: the text's darkest pixel {darkest.name()} is nearer MUTED than INK"
         )
+
+
+def test_the_hover_box_stays_inside_a_plot_at_its_least_height(
+    application: QApplication, induction_dashboard: SimulationView
+) -> None:
+    """`PL-9BVQ`: on the F_A/F_I plot at its least height, every hover box stays inside the plot.
+
+    A reader can drag an Area down to its View's least size, which leaves
+    the F_A/F_I plot only a few box heights tall. The box goes below its
+    point when there is less room above the point than the box is tall.
+    When the flip was taken at a fraction of the axis instead, a point just
+    under the top quarter put the box partly above the plot. The induction
+    run's stretch climbs through that band, so every point it draws is
+    hovered here, its pixel inside the plot.
+    """
+
+    frame = _wash_in(induction_dashboard).chart.frame
+    assert frame is not None
+    chart = WashInChart()
+    chart.resize(_WINDOW_WIDTH_PX, chart.minimumSizeHint().height())
+    chart.show()
+    application.processEvents()
+    chart.draw(frame)
+    chart.grab()
+    application.processEvents()
+    area = chart.plot_area()
+    restable = [
+        point
+        for point in chart.drawn_stretches(0)[0]
+        if area.contains(QPointF(*chart.plot_pixel(*point)))
+    ]
+    # Every twentieth point, and the stretch's highest, which has the least
+    # room above it.
+    points = [*restable[::_LEAST_HEIGHT_POINT_STRIDE], max(restable, key=lambda point: point[1])]
+    box_height = None
+    escaped = []
+
+    for time_s, ratio in points:
+        # Off the plot first, so the box measured below is the one this point
+        # raised rather than the last point's.
+        _painted_with_the_pointer_off(chart)
+        _hover_on(chart, time_s, ratio)
+        box = chart.hover_box()
+        assert box is not None, f"no hover answered at {time_s} s"
+        box_height = box.height()
+
+        if not area.adjusted(
+            -_EDGE_TOLERANCE_PX, -_EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX
+        ).contains(box):
+            escaped.append((time_s, ratio, box))
+
+    # The plot is short enough that a fraction of the axis would have put the
+    # box outside it, or the test proves nothing about the flip.
+    assert box_height is not None
+    assert area.height() < 4 * box_height, (area.height(), box_height)
+    assert not escaped, (
+        f"{len(escaped)} of {len(points)} boxes leave the plot {area}: {escaped[:3]}"
+    )

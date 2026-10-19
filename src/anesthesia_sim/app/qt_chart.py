@@ -510,7 +510,7 @@ class _HoverReadout:
 
         return self._scene_position
 
-    def show(self, target: HoverTarget, x_range: tuple[float, float], y_top: float) -> None:
+    def show(self, target: HoverTarget, x_range: tuple[float, float]) -> None:
         """Put a dot on every point that answered and the text beside them.
 
         One dot per reading rather than one for the box, because every run
@@ -530,14 +530,18 @@ class _HoverReadout:
         self._text.setText(target.readout)
         # The box sits to the right of the anchor and above it, unless that
         # would run it off the plot: past the middle of the window it goes to
-        # the left, and in the top quarter of the axis it goes below. The
-        # newest point of a following window is at the right edge, which is
-        # where a reader most often hovers, so the flip is the common case
-        # rather than an edge one.
+        # the left, and where there is less room above the anchor than the
+        # box is tall it goes below. The newest point of a following window
+        # is at the right edge, which is where a reader most often hovers, so
+        # the flip is the common case rather than an edge one. The vertical
+        # flip is decided in pixels, because the box's height is fixed in
+        # pixels while the plot's height is whatever its Area leaves it. A
+        # fraction of the axis put the box partly above a short plot
+        # (`PL-9BVQ`).
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
-        near_top = anchor.value > 0.75 * y_top
-        self._text.setAnchor((1 if past_middle else 0, 0 if near_top else 1))
+        below = self._room_above_px(anchor.time_s, anchor.value) < self._box_height_px()
+        self._text.setAnchor((1 if past_middle else 0, 0 if below else 1))
         self._text.setPos(anchor.time_s, anchor.value)
         self._dot.show()
         # `setVisible` rather than `show`, which goes straight to Qt's own and
@@ -546,6 +550,26 @@ class _HoverReadout:
         # at its next paint, so read before then it can measure thousands of
         # pixels tall (`PL-J0F7`).
         self._text.setVisible(True)
+
+    def _room_above_px(self, time_s: float, value: float) -> float:
+        """How many pixels lie between a plot position and the top of the plot."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+        anchor = self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, value)))
+        top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
+
+        return float(anchor.y() - top)
+
+    def _box_height_px(self) -> float:
+        """How tall the box is, in pixels, for the text it now holds.
+
+        Read from the text item's own rectangle, which is in pixels whatever
+        the view's scale, rather than from the box's place in the scene, which
+        is only right once the box has been oriented for the view
+        (`PL-J0F7`).
+        """
+
+        return float(self._text.boundingRect().height())
 
     def hide(self) -> None:
         self._dot.hide()
@@ -999,9 +1023,7 @@ class ConcentrationChart(QWidget):
         if target is None:
             self._hover.hide()
         else:
-            self._hover.show(
-                target, (self._frame.start_s, self._frame.stop_s), self._frame.axis_top_percent
-            )
+            self._hover.show(target, (self._frame.start_s, self._frame.stop_s))
 
     def hover_text(self) -> str | None:
         """What the hover box currently shows, or `None` while it is hidden."""
@@ -1300,9 +1322,7 @@ class WashInChart(QWidget):
         if target is None:
             self._hover.hide()
         else:
-            self._hover.show(
-                target, (self._frame.start_s, self._frame.stop_s), WASH_IN_AXIS_MAXIMUM
-            )
+            self._hover.show(target, (self._frame.start_s, self._frame.stop_s))
 
     def hover_text(self) -> str | None:
         """What the hover box currently shows, or `None` while it is hidden."""
