@@ -20,6 +20,7 @@ from anesthesia_sim.layout.migrations import (
     MIGRATIONS,
     OLDEST_READABLE_VERSION,
     Migration,
+    SchemaVersion,
     migrate,
     oldest_readable,
 )
@@ -29,7 +30,7 @@ def renaming(old: str, new: str) -> Migration:
     def apply(body: dict[str, object]) -> dict[str, object]:
         return {new if key == old else key: value for key, value in body.items()}
 
-    return Migration(1, apply)
+    return Migration(SchemaVersion(1), apply)
 
 
 def test_the_build_writes_version_two_and_reads_version_one_through_one_step() -> None:
@@ -96,7 +97,9 @@ def test_a_newer_version_is_refused_as_newer_and_an_older_one_with_no_step_as_un
 def test_steps_apply_in_order_from_the_version_found_and_collect_what_was_lost() -> None:
     first = renaming("tabs", "workspaces")
     second = Migration(
-        2, lambda body: {**body, "active": 0}, lossy="which tab was open was not kept"
+        SchemaVersion(2),
+        lambda body: {**body, "active": 0},
+        lossy="which tab was open was not kept",
     )
     steps = (first, second)
 
@@ -119,7 +122,7 @@ def test_a_chain_with_a_gap_is_refused_when_it_is_built() -> None:
         InvalidLayout,
         match="position 1 reads version 3, and the chain up to version 3 needs the step reading",
     ):
-        oldest_readable((renaming("a", "b"), Migration(3, dict)), 3)
+        oldest_readable((renaming("a", "b"), Migration(SchemaVersion(3), dict)), 3)
 
     with pytest.raises(
         InvalidLayout,
@@ -130,7 +133,7 @@ def test_a_chain_with_a_gap_is_refused_when_it_is_built() -> None:
 
 def test_a_step_that_returns_something_other_than_a_dict_is_refused() -> None:
     with pytest.raises(InvalidLayout, match="reading version 1 returned str, and a step returns"):
-        migrate({}, 1, (Migration(1, lambda body: "oops"),), 2)  # type: ignore[arg-type,return-value]
+        migrate({}, 1, (Migration(SchemaVersion(1), lambda body: "oops"),), 2)  # type: ignore[arg-type,return-value]
 
 
 def test_a_step_says_which_version_it_reads_and_what_it_loses() -> None:
@@ -150,10 +153,47 @@ def test_a_step_says_which_version_it_reads_and_what_it_loses() -> None:
         Migration(1, dict, lossy=True)  # type: ignore[arg-type]
 
 
+def test_a_schema_version_is_checked_once_and_a_step_builds_through_it() -> None:
+    """`PL-8JV2`: `SchemaVersion` checks the version rule once, and builds each step's version.
+
+    Before `SchemaVersion` existed, `Migration`, the reader's `_check_version`
+    and `oldest_readable` each held their own copy of the rule or had none, and
+    a bare `int` reached the store.
+    """
+
+    assert SchemaVersion(1) == 1
+    assert f"{SchemaVersion(2)}" == "2"
+    assert json.dumps({"schema_version": SchemaVersion(2)}) == '{"schema_version": 2}'
+
+    for value in (0, -1):
+        with pytest.raises(InvalidLayout, match=f"a schema version counts from 1, not {value}"):
+            SchemaVersion(value)
+
+    for value in (True, 1.0, "1"):
+        with pytest.raises(TypeError, match="a schema version is an int"):
+            SchemaVersion(value)
+
+    built = Migration(1, dict)  # type: ignore[arg-type]
+
+    assert isinstance(built.reads, SchemaVersion)
+    assert built.reads == 1
+
+    assert isinstance(LAYOUT_SCHEMA_VERSION, SchemaVersion)
+    assert isinstance(OLDEST_READABLE_VERSION, SchemaVersion)
+    assert all(isinstance(step.reads, SchemaVersion) for step in MIGRATIONS)
+
+
+def test_a_chain_longer_than_the_versions_before_the_current_one_is_refused() -> None:
+    steps = (renaming("a", "b"), Migration(SchemaVersion(2), dict))
+
+    with pytest.raises(InvalidLayout, match="a schema version counts from 1, not 0"):
+        oldest_readable(steps, SchemaVersion(2))
+
+
 def test_a_chain_whose_oldest_version_is_above_one_slices_from_the_version_found() -> None:
     steps = (
-        Migration(2, lambda body: {**body, "two": True}),
-        Migration(3, lambda body: {**body, "three": True}),
+        Migration(SchemaVersion(2), lambda body: {**body, "two": True}),
+        Migration(SchemaVersion(3), lambda body: {**body, "three": True}),
     )
 
     from_two = migrate({}, 2, steps, 4)

@@ -3,11 +3,13 @@ id: PL-3R6L
 title: Let bin/docket next print a model and effort recommendation from an evidence table the model review writes, beside the fixed model_guidance flag, only for item types whose pre-registered trial met its bar
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
 touches: model-evidence.toml, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-10-17
+closed: 2026-10-19
+pr: 1681
 payoff: a session picking an item sees the evidence-backed model and effort for its type beside the fixed flag, with no judgment scripted into docket
 verify: grep -rq 'model-evidence.toml' subprojects/docket/src/docket && grep -q 'model-evidence.toml' subprojects/docket/README.md
 ---

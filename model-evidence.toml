@@ -1,0 +1,21 @@
+# The model review's evidence table, which `bin/docket next` and `bin/docket
+# show` print beside the fixed `model_guidance` flag. The review (`PL-63CB`)
+# writes it, and `docket` only reads it (`PL-3R6L`). Do not edit an entry by
+# hand to change a recommendation.
+#
+# An item type appears here only when its pre-registered trial met its bar, so
+# a table with no entries changes nothing a session sees. Each entry names the
+# item attributes it matches, the model and reasoning effort the trial
+# supports, the day the evidence was recorded, the trial's id in the register,
+# and how many sessions it measured. The first matching entry wins.
+#
+# [[evidence]]
+# match = { class = "defect", lane = "workflow", effort = "S" }
+# model = "claude-sonnet-5-5"
+# effort = "high"
+# date = 2026-10-17
+# trial = "PL-XXXX"
+# n = 24
+#
+# `match` may name `class`, `lane`, `effort` (the item's size) and `status`.
+# subprojects/docket/README.md § "The model evidence table" has the format.

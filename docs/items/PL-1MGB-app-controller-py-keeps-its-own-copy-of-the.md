@@ -3,12 +3,14 @@ id: PL-1MGB
 title: app/controller.py keeps its own copy of the vaporizer maximum beside the circuit's, so since PL-BBMG a maximum edited between a trunk and its branch is named twice in _disagreements_with's refusal, once from the settings record and once from the display references; read it off the circuit instead
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, refactor
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-04
+closed: 2026-10-19
+pr: 1683
 payoff: a branch refused over an edited vaporizer maximum names the one difference once, and the dial's maximum on screen is the one the core enforces rather than a second read of the file
 verify: grep -q 'def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once' tests/integration/test_controller.py
 ---
@@ -51,3 +53,13 @@ count of displayed references corrected to three.
 `tests/integration/test_controller.py`, beside
 `test_a_branch_rebuilt_under_another_mac_is_refused`, edits the maximum as
 above and asserts the refusal names it exactly once; it fails on today's tree.
+
+**Fixed 2026-10-19.** `settings()` and `snapshot()` read the maximum off
+`system.circuit`, `_max_delivered_concentration_percent` is gone, and
+`_disagreements_with` compares the agent's three displayed references: its
+name, its MAC and its MAC-awake. Run against the code before the fix,
+`.venv/bin/python -m pytest -q -p no:xdist tests/integration/test_controller.py
+-k named_once` failed with `assert 2 == 1`: the refusal named
+`max_delivered_concentration_percent is 8.0 in this run and 9.0 on the branch`
+twice. The expected count of one comes from the edit the test itself makes,
+not from the controller under test.
