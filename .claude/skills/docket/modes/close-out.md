@@ -111,7 +111,11 @@ page and decides which file a session reads.
    in a discussion that was not about it.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
-   commits that name it. It runs the item's own `verify:` command and `make
+   commits that name it. **On a branch that changes the simulator, run step
+   8's prose review first.** Its rewrites change files that this audit reads.
+   Of five simulator branches that skipped step 8, two reported running this
+   audit, so the step's place at the end of the list was passed over
+   (`PL-W04Z`). It runs the item's own `verify:` command and `make
    check`, so it *is* the close-out's proof rather than a step beside one -
    re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
    neither.
