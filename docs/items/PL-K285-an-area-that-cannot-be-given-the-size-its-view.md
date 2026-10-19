@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: interface-areas
-touches: src/anesthesia_sim/layout/, src/anesthesia_sim/app/, tests/unit, tests/integration, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/layout/, src/anesthesia_sim/app/, tests/unit, tests/integration, docs/ARCHITECTURE.md, docs/MODEL.md
 blocked-by: PL-1FT6, PL-TH35
 added: 2026-09-16
 closed: 2026-10-19
