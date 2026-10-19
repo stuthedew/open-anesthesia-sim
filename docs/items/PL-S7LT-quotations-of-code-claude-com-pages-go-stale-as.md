@@ -3,11 +3,13 @@ id: PL-S7LT
 title: Quotations of code.claude.com pages go stale as the pages change and nothing compares them again: PL-124X found the WebFetch quotation in webfetch-quote-note.sh, read from the page's .md on 2026-10-01, no longer on the page on 2026-10-19
 priority: P3
 effort: S
-status: ready
+status: done
 classes: housekeeping
-touches: tools, .github/workflows/drift.yml, docket.toml, docs/apparatus.md, docs/items
+touches: tools/doc_quote_check.py, tools/doc_quotes.toml, tests/unit/test_doc_quote_check.py, .github/workflows/drift.yml, docket.toml, docs/apparatus.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1643
 payoff: a rule resting on a sentence of Claude Code's documentation is told when that sentence leaves the page
 verify: grep -q 'doc_quote_check' .github/workflows/drift.yml && grep -q 'tests/unit/test_doc_quote_check.py' docket.toml
 ---
@@ -97,3 +99,15 @@ PL-124X's 16 strings as the record's entries. A `doc-quotes` job in
 test, `tests/unit/test_doc_quote_check.py`, is listed under `workflow_paths` in
 `docket.toml` and runs on fixture pages without the network. `docs/apparatus.md`
 lists the script.
+
+**Done 2026-10-19.** `tools/doc_quotes.toml` records 15 quotations, which are
+`PL-124X`'s 16 strings as corrected. The 16th, the WebFetch truncation limit,
+was dropped from its hook that day because the page no longer states it.
+`tools/doc_quote_check.py` checks each entry against its file and against the
+page's markdown, and a run against the live pages on 2026-10-19 reported 15
+quotations from 8 pages and 0 problems. A page it cannot read is reported, and
+the run fails. The `doc-quotes` job in `.github/workflows/drift.yml` runs it on
+the Monday 06:00 UTC schedule it shares with `order`, and on a manual run.
+`tests/unit/test_doc_quote_check.py` runs offline on fixture pages. It also
+holds every entry of the real record to the file that quotes it, so a reworded
+quotation fails `make check` before the weekly job sees it.

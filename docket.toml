@@ -455,6 +455,7 @@ workflow_paths = [
   "tests/unit/test_diff_mutation.py",
   "tests/unit/test_direct_merge_guard.py",
   "tests/unit/test_doc_check.py",
+  "tests/unit/test_doc_quote_check.py",
   "tests/unit/test_makefile_reference.py",
   "tests/unit/test_docket_branch_guard.py",
   "tests/unit/test_docket_digest_hook.py",
