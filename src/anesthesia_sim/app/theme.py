@@ -504,6 +504,12 @@ AREA_HANDLE_WIDTH = 8
 # the pointer is over one of them (`PL-RQT1` Q2). It is drawn in PRIMARY.
 AREA_HANDLE_LINE_WIDTH = 2
 
+# One arrow-key press moves a border that has the keyboard focus by this many px
+# (`PL-M352`). The value is a placeholder. It was chosen under the project owner's
+# rule of 2026-10-18, which treats look and placement as placeholders while the
+# structure is built.
+AREA_KEYBOARD_STEP = 20
+
 # The square at each corner of an Area that a reader drags to split or join it,
 # in px (`PL-30L5` Q1). Twice Blender's, and less than WCAG 2.2 SC 2.5.8's 24
 # px, which the Area menu meets as the equivalent control. The header's end
