@@ -2,8 +2,8 @@
 id: PL-L59K
 title: Zoom the shipped Induction Workspace's concentration chart to the first 15 minutes, once the chart saves its own state
 priority: P2
-effort: S
-status: needs-decision
+effort: M
+status: ready
 classes: feature
 feature: interface-areas
 touches: src/anesthesia_sim/data/workspaces/induction.json, tests/unit/test_layout_shipped.py
@@ -94,7 +94,7 @@ carry into the Induction Workspace, and because a fixed width keeps each
 trace's slope proportional to its rate (`PL-012`), where "Fit run" rescales at
 1, 2, 5 and 15 minutes.
 
-**Decision needed.** Should a chart's time-window control
+**The question put to the project owner.** Should a chart's time-window control
 change only that chart, or every chart on screen?
 
 - **Only that chart (recommended).** Each chart View saves its own window as
@@ -110,3 +110,19 @@ change only that chart, or every chart on screen?
   switching to the Induction Workspace sets every chart to 15 minutes. It is
   cheaper and keeps stacked plots aligned. It cannot show the three-chart case,
   and entry 11's sentence would have to be rewritten to match.
+
+**Answered** (project owner, 2026-10-19, ratified, over one shared window
+saved per Workspace): only that chart. In his words, "Only the chart but want
+to allow later to allow chart time windows to sync similar to blender's
+timeline areas". So each chart View owns its time window and saves it, and
+the F_A/F_I plot gets the same control. This reopens `PL-TH35` Q2 and Q7 for
+the time base only, on the evidence recorded above: roadmap entry 11 and this
+item. The compartment selection stays shared. The later sync is `PL-1RFZ`,
+filed from his answer, and this build leaves room for it: charts at the same
+window share one frame, which is the same grouping a synced set of charts
+would use.
+
+**Build order.** `PL-7Z84` (`#1614`, run identity) changes
+`app/views.py`, `app/simulation_view.py` and `induction.json` and waits on the
+project owner's read. This build starts on top of it and opens its pull
+request after it merges.
