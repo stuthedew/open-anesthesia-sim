@@ -288,9 +288,15 @@ def git_or_refuse(args: Sequence[str], root: Path, timeout: float = CLONE_TIMEOU
 
 
 def prepare_clone(origin: str, clone: Path, branch: str, no_push: bool) -> None:
-    """Clone `origin`, borrowing this checkout's objects, onto a new branch from its base."""
+    """Clone `origin`, borrowing this checkout's objects, onto a new branch from its base.
+
+    The objects are borrowed from the repository's shared git directory, not
+    from the checkout. A linked worktree's `.git` is a file, which `git clone
+    --reference` refuses (`PL-29DJ`).
+    """
     clone.parent.mkdir(parents=True, exist_ok=True)
-    git_or_refuse(["clone", "--reference", str(ROOT), "--dissociate", origin, str(clone)], ROOT)
+    shared = read_git(["rev-parse", "--path-format=absolute", "--git-common-dir"], ROOT).strip()
+    git_or_refuse(["clone", "--reference", shared, "--dissociate", origin, str(clone)], ROOT)
     git_or_refuse(["checkout", "-b", branch, default_base(clone)], clone)
     if no_push:
         git_or_refuse(["remote", "set-url", "--push", "origin", NO_PUSH_URL], clone)

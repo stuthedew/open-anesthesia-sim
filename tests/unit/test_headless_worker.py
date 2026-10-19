@@ -157,6 +157,20 @@ def test_a_pushed_run_records_its_cost_and_the_remote_branch(
     assert "PL-B7K2" in argv[argv.index("-p") + 1]
 
 
+def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
+    origin: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A worktree's `.git` is a file, which `git clone --reference` refused (`PL-29DJ`)."""
+    checkout = tmp_path / "checkout"
+    _git("clone", "-q", str(origin), str(checkout), cwd=tmp_path)
+    worktree = tmp_path / "worktree"
+    _git("worktree", "add", "-q", "--detach", str(worktree), cwd=checkout)
+    monkeypatch.setattr(headless_worker, "ROOT", worktree)
+    clone = tmp_path / "workers" / "run"
+    headless_worker.prepare_clone(str(origin), clone, "claude/pl-b7k2-worker", no_push=True)
+    assert _git("rev-parse", "--abbrev-ref", "HEAD", cwd=clone).strip() == "claude/pl-b7k2-worker"
+
+
 def test_output_that_is_not_a_result_records_no_cost(
     origin: Path, fake_claude: Path, tmp_path: Path
 ) -> None:

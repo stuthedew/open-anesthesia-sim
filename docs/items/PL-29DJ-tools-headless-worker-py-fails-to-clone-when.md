@@ -3,11 +3,12 @@ id: PL-29DJ
 title: tools/headless_worker.py fails to clone when its checkout is a linked git worktree: git clone --reference names the worktree, which has a .git file rather than a repository, so five of tests/unit/test_headless_worker.py's tests fail under bin/docket verify run from a worktree
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 deferred-from: v0.6.0 - a workflow-lane runner defect outside the layout release
 added: 2026-10-19
+closed: 2026-10-19
 payoff: the runner and its tests work from a linked worktree, so reviewing a worker branch from a worktree does not fail on the runner's own tests
 verify: grep -q 'git-common-dir' tools/headless_worker.py
 ---
