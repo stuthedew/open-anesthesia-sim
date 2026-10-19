@@ -9,6 +9,7 @@ feature: model-evidence
 touches: docs/session-ledger.tsv, docs/maintainer.md, .claude/skills/model-review, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/dead-ends.md, docs/items/PL-G2D4-measure-the-excess-miss-rate-of-explore.md, .claude/rules/apparatus-standard.md, .claude/skills/docket/modes/close-out.md, docs/items/PL-70M6-bin-docket-show-prints-for-a-closed-item-the.md, docs/items/PL-5J1S-docs-dead-ends-md-says-raising-its-4-000-byte.md, docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md
 added: 2026-10-17
 closed: 2026-10-19
+pr: 1669
 payoff: what model and effort worked every closed item is a durable record in the tree, so the model review has data on its first run instead of in a year
 verify: grep -q 'session-ledger' docs/maintainer.md && grep -q 'last_served_model' docs/session-ledger.tsv
 recurrences: 2026-10-19 PL-70M6
