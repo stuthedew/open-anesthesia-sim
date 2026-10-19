@@ -727,16 +727,17 @@ def test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name() -> None:
 
 
 def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them() -> None:
-    """`PL-5BD7`: a record holds exact floats and a tuple, so equal records are one cache key.
+    """`PL-5BD7`: a record stores plain floats and a tuple, so equal records make one cache key.
 
     Both propagator caches key on the record by value. A `numpy.float64`
-    volume compares and hashes equal to the plain `float`, yet CPython's `sum`
-    adds exact floats with compensation and a subclass without it, so the
-    propagator built from it differed in 39 of 81 entries at 7 s before the
-    record held its fields as exact floats. A list of tissue groups was
-    accepted and could not be hashed. The expected propagator here is the one
-    built from plain floats and a tuple, which is what every record
-    `AgentUptakeSystem.equation_settings` builds holds.
+    volume compares and hashes equal to the plain `float`. But CPython's `sum`
+    adds values of exact type `float` with compensation, and adds a subclass
+    without it. So before the record stored its fields as exact floats, the
+    propagator built from a subclass differed in 39 of 81 entries at 7 s. A
+    list of tissue groups was accepted, and it could not be hashed. The
+    expected propagator here is the one built from plain floats and a tuple,
+    which is what every record built by `AgentUptakeSystem.equation_settings`
+    holds.
     """
 
     plain = _settings()

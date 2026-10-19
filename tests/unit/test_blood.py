@@ -337,12 +337,12 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 def test_a_capacity_that_overflows_is_refused_at_build() -> None:
     """`PL-FNH3`, `PL-8LQZ`: the volume and the blood:gas coefficient must multiply to a capacity.
 
-    A pool built from a volume and a coefficient of 1e200 had a capacity of
-    `inf`, and its closed form stored `nan` from an equilibrium of `inf` times
-    0.0. Two of 1e-200 gave a capacity of 0.0, so its partial pressure divided
-    by zero. The factor written second is refused, naming both. The largest
-    finite capacity and the smallest positive one are admitted, and a volume
-    rewritten onto a built pool is held to the same rule.
+    A pool built from a volume and a coefficient of 1e200 had a capacity of `inf`. Its
+    closed-form solution then stored `nan`, from an equilibrium of `inf` times 0.0. A
+    volume and a coefficient of 1e-200 gave a capacity of 0.0, so the pool's partial
+    pressure divided by zero. The factor written second is refused, and the message
+    names both factors. The largest finite capacity and the smallest positive one are
+    accepted. A volume written onto a pool already built must meet the same rule.
     """
 
     with pytest.raises(

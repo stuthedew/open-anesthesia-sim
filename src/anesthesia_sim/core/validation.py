@@ -1,58 +1,61 @@
 """Shared numeric-range guards used by every core compartment's field
 writes and setters, so invalid state is rejected at the same boundary
-everywhere instead of trusted or coerced silently. Four of them are
-relations between values rather than properties of one, and are here for the
-same reason: the records that hold each pair refuse it in one sentence.
-`require_within_vaporizer_maximum` holds a dial to its vaporizer's maximum
-(`PL-BBMG`). `require_room_for_the_agent_held` and
-`require_within_the_capacity` hold an agent amount to its compartment's
-capacity, from the capacity's side and from the amount's (`PL-19Y0`,
-`PL-XVCV`). `require_a_capacity` holds a volume and a partition coefficient
-to a product that is a capacity at all (`PL-8LQZ`, `PL-FNH3`).
+everywhere instead of trusted or coerced silently. Four of the guards check a
+relation between two values rather than a property of one value. They are here
+for the same reason. Every record that holds such a pair refuses it with the same
+message. `require_within_vaporizer_maximum` keeps a dial at or below its
+vaporizer's maximum (`PL-BBMG`). `require_room_for_the_agent_held` and
+`require_within_the_capacity` keep an agent amount within its compartment's
+capacity. The first checks a change to the capacity, and the second checks a
+change to the amount (`PL-19Y0`, `PL-XVCV`). `require_a_capacity` checks that a
+volume and a partition coefficient multiply to a capacity that is positive and
+finite (`PL-8LQZ`, `PL-FNH3`).
 
-A concentration's own range is not here. A fraction's 0 to 1 and a percent's 0
-to 100 were checked by guards in this module, at each of the twelve places a
-value entered, until `PL-4R3W` made `Fraction` and `Percent` types built only
-through those checks (`core/concentration.py`), so what is left here is the
-sign and finiteness every other quantity shares and the one relation.
+A concentration's own range is not checked here. Until `PL-4R3W`, guards in this
+module checked a fraction's 0 to 1 and a percent's 0 to 100, at each of the twelve
+places a value entered. `PL-4R3W` made `Fraction` and `Percent` types that can be
+built only through those checks (`core/concentration.py`). What is left here is the
+check of sign and finiteness that every other quantity shares, and the four
+relations above.
 
-Every guard raises `SimulationConfigurationError` for a value it refuses: it
-was rejected before it changed anything. A refusal reached partway through a step means
-something different — the numerics broke down rather than the caller
-passing a bad value — and `AgentUptakeSystem.advance()` is what turns it
-into `SimulationNumericalError`, because it is the only frame that knows a
-step was in progress. It is also the only one that can undo that step, and
-does: the refusal fires after earlier compartments have already been
-written, so the step is rolled back before the numerical error is raised.
-Since `PL-4R3W` that refusal is a computed fraction refused where it is built
-as a `Fraction`, which raises the same exception for the same reason. See
-`core/exceptions.py` for why the hierarchy is kept separate from
+Every guard raises `SimulationConfigurationError` for a value it refuses, because
+the value was rejected before it changed anything. A refusal partway through a step
+means something different. It means the numerics broke down, not that the caller
+passed a bad value. `AgentUptakeSystem.advance()` turns such a refusal into
+`SimulationNumericalError`, because it is the only frame that knows a step was in
+progress. It is also the only frame that can undo the step, and it does. The
+refusal comes after earlier compartments have already been written, so `advance()`
+rolls the step back before it raises the numerical error. Since `PL-4R3W`, that
+refusal comes from a computed fraction that is refused when it is built as a
+`Fraction`. The `Fraction` constructor raises the same exception for the same
+reason. See `core/exceptions.py` for why the hierarchy is kept separate from
 `ValueError`.
 
-What is not a number at all - a `bool`, a `Decimal`, a string - is refused
-before any of that, with the `TypeError` `require_a_number` raises
-(`core/checked_number.py`, `PL-3800`): a programming error in the caller
-rather than a refused value, so not an `AnesthesiaSimulationError`.
-`require_within_vaporizer_maximum` takes two `Percent`s, each already built
-through it.
+A value that is not a number at all, such as a `bool`, a `Decimal` or a string, is
+refused before any of these checks. `require_a_number` raises a `TypeError` for it
+(`core/checked_number.py`, `PL-3800`). Such a value is a programming error in the
+caller rather than a refused value, so the error is not an
+`AnesthesiaSimulationError`. `require_within_vaporizer_maximum` takes two
+`Percent`s, and `require_a_number` already checked each of them when it was built.
 
-**What `name` has to carry.** Each guard raises `f"{name} ..."` and nothing
-else, so `name` is the whole of what a reader is told about *which* value was
-refused — and that reader is usually looking at a banner rather than a
-traceback, since `app/dashboard_frame.py` renders a refused setting verbatim
-and `AgentUptakeSystem.advance()` wraps a refused step into the halted-run
-notice. A bare parameter name identifies the value only where one object can
-raise it. Where several can, the caller prefixes the owner: the instance's own
-`name` where it has one — `f"{self.name} volume_l"`, as
-`governing_equations.py`'s `TissueGroupEquationSettings` does for its volume
-and flow — and the compartment's domain word where it does not, `"alveolar
-..."` and `"venous ..."`. `PL-SPN6` is what the bare name cost: `PL-9SH6` left
-the alveolar compartment, the venous pool and all three tissue groups raising
-one string for a refused fraction, so a refused resume could not say which of
-the five had refused. The prefix is built at the call site rather than from a
-parameter here, so the sentence a reader will see is readable in the line that
-raises it, and `Fraction`'s `name` carries the same convention where a fraction
-is built (`core/concentration.py`).
+**What `name` has to carry.** Each guard raises a message of the form
+`f"{name} ..."`, and nothing else in it identifies the value. So `name` is all that
+a reader is told about *which* value was refused. That reader usually sees a banner
+rather than a traceback. `app/dashboard_frame.py` shows a refused setting's message
+verbatim, and `AgentUptakeSystem.advance()` wraps a refused step into the
+halted-run notice. A bare parameter name identifies the value only where just one
+object can raise it. Where several objects can, the caller puts the owner's name in
+front. It uses the instance's own `name` where the instance has one, as in
+`f"{self.name} volume_l"`. `governing_equations.py`'s `TissueGroupEquationSettings`
+does this for its volume and flow. Where the instance has no `name`, the caller uses
+the compartment's domain word, as in `"alveolar ..."` and `"venous ..."`. `PL-SPN6`
+records what the bare name cost. After `PL-9SH6`, the alveolar compartment, the
+venous pool and all three tissue groups raised the same message for a refused
+fraction. So when a resumed run was refused, the message could not say which of the
+five had refused it. The caller builds the prefix at the call site, rather than
+passing it to a parameter here. Then the sentence a reader will see can be read in
+the line that raises it. `Fraction`'s `name` follows the same convention where a
+fraction is built (`core/concentration.py`).
 """
 
 import sys
@@ -154,14 +157,14 @@ def require_within_vaporizer_maximum(
 ) -> None:
     """Require a vaporizer dial at or below the maximum the vaporizer in use delivers.
 
-    The one guard here that is a relation rather than a property of a number.
-    A dial is deliverable only against a maximum, and the maximum is the
-    agent's vaporizer's rather than the model's, so no type can carry the
-    bound the way `core/supported_ranges.py` carries the model's own: it is
-    checked where the two are held side by side. Two records hold them -
-    `BreathingCircuit`, which owns the dial, and `UptakeEquationSettings`,
-    which a run is built from - and both call this, so both refuse in the
-    same sentence and the relation is written once (`PL-BBMG`).
+    This guard checks a relation between two values rather than a property of one
+    number. Whether a dial setting can be delivered depends on a maximum, and that
+    maximum belongs to the agent's vaporizer rather than to the model. So no type can
+    carry the bound in the way `core/supported_ranges.py` carries the model's own
+    bounds. The bound is checked where a record holds the dial and the maximum side by
+    side. Two records hold both: `BreathingCircuit`, which owns the dial, and
+    `UptakeEquationSettings`, from which a run is built. Both call this function, so
+    both refuse with the same sentence and the relation is written once (`PL-BBMG`).
 
     Rejecting rather than clamping is deliberate: a silently clamped dial
     position would simulate, display, and chart a concentration the caller
@@ -169,21 +172,21 @@ def require_within_vaporizer_maximum(
     `CLAUDE.md` forbids. Zero is always allowed - it is the vaporizer turned
     off, which is how washout begins - and so is the maximum itself.
 
-    Both arguments are `Percent`s, whose constructor is what refuses a `nan`,
-    since no comparison does, and its callers check that each was built as one
-    (`require_percent`, `core/concentration.py`) before calling this; it
-    compares the two and checks nothing else.
+    Both arguments are `Percent`s. The `Percent` constructor is what refuses a `nan`,
+    because no comparison refuses it. Callers check that each argument was built as a
+    `Percent` (`require_percent`, `core/concentration.py`) before they call this
+    function. This function compares the two values and checks nothing else.
 
-    The pair is refused in the words of whichever value was written.
-    `name` is that value's name. `maximum_written` says that the value written
-    was the maximum, so that a maximum lowered under the dial is refused as
-    the maximum, and not as a dial nobody moved (`PL-XVCV`). A record that
-    holds both and checks them together, as `UptakeEquationSettings` does,
-    leaves it `False` and is refused in the dial's words.
+    The refusal is worded for whichever value was written, and `name` is that value's
+    name. Pass `maximum_written=True` when the value written was the maximum. Then a
+    maximum lowered below the dial is refused as the maximum, not as a dial that nobody
+    moved (`PL-XVCV`). A record that holds both values and checks them together, as
+    `UptakeEquationSettings` does, leaves `maximum_written` as `False`. Its refusal is
+    then worded for the dial.
 
     Raises:
         SimulationConfigurationError: the dial is above the maximum. The
-            message quotes both in the percent the dial reads.
+            message quotes both values in percent, the unit the dial shows.
     """
 
     if delivered_concentration_percent <= max_delivered_concentration_percent:
@@ -248,12 +251,13 @@ def require_within_the_capacity(
 ) -> None:
     """Refuse an agent amount larger than the capacity of the compartment it is written to.
 
-    The converse of `require_room_for_the_agent_held`, from the amount's side:
-    that guard refuses a factor of the capacity written too small for the
-    amount held, and this refuses an amount written too large for the
-    capacity. Either way the partial pressure would be above one atmosphere.
-    Both name the value, the capacity and the `docs/MODEL.md` section, so the
-    one relation is refused in the same terms from either side (`PL-XVCV`).
+    This guard is the converse of `require_room_for_the_agent_held`, seen from the
+    amount's side. That guard refuses a volume or a partition coefficient that is
+    written too small for the amount already held. This guard refuses an amount that
+    is written too large for the capacity. Either way the partial pressure would be
+    above one atmosphere. Both guards name the value, the capacity and the
+    `docs/MODEL.md` section, so the single relation is refused in the same terms from
+    either side (`PL-XVCV`).
     The caller checks first that the amount is a nonnegative finite number.
 
     Raises:
@@ -276,18 +280,18 @@ def require_a_capacity(
     compartment: str,
     section: str,
 ) -> None:
-    """Refuse a volume or partition coefficient whose product is not a positive finite capacity.
+    """Refuse a volume or partition coefficient that would leave the capacity zero or not finite.
 
     A blood or tissue compartment's capacity is its volume times its partition
-    coefficient, and its partial pressure is the agent it holds divided by
-    that capacity. Each factor is checked as positive and finite when it is
-    written, but their product can still leave that range. A volume and a
-    coefficient of 1e-200 multiply to 0.0, so every partial pressure read
-    from the compartment divided by zero (`PL-8LQZ`). Two of 1e200 multiply to
-    `inf`, so the venous pool's closed form formed an equilibrium of `inf`
-    times 0.0 and stored `nan` (`PL-FNH3`). So the compartment calls this as
-    either factor is written, once the other is held, with both factors.
-    `value` is the one being written, and `name` names it.
+    coefficient. Its partial pressure is the agent it holds divided by that capacity.
+    Each factor is checked as positive and finite when it is written, but their product
+    can still leave that range. A volume and a coefficient of 1e-200 multiply to 0.0,
+    and every partial pressure read from that compartment then divided by zero
+    (`PL-8LQZ`). A volume and a coefficient of 1e200 multiply to `inf`, and the venous
+    pool's closed-form solution then computed an equilibrium of `inf` times 0.0 and
+    stored `nan` (`PL-FNH3`). So the compartment calls this function, with both
+    factors, whenever either factor is written and the other is already set. `value`
+    is the factor being written, and `name` is its name.
 
     Raises:
         SimulationConfigurationError: the product of `volume_l` and

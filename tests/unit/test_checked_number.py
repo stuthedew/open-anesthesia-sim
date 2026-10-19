@@ -374,12 +374,12 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
 
 
 def _tampered(pickled: bytes, held: float, written: float, protocol: int) -> bytes:
-    """`pickled` with the number it holds overwritten, as a file edited by hand would be.
+    """Return `pickled` with the number it holds overwritten, as a hand edit would leave it.
 
     Protocol 0 writes a number as text, after `F` for a `float` and `I` for an
     `int`. Later protocols write a `float` as eight big-endian bytes after `G`,
-    and a small nonnegative `int` as one byte after `K`, which is replaced by
-    a signed four-byte `int` after `J`.
+    and a small nonnegative `int` as one byte after `K`. This function replaces
+    that `K` and its byte with `J` and a signed four-byte `int`.
     """
 
     if protocol == 0:
@@ -400,14 +400,14 @@ def _tampered(pickled: bytes, held: float, written: float, protocol: int) -> byt
 def test_every_checked_type_unpickled_at_any_protocol_is_rebuilt_through_its_check(
     checked: type[Any], protocol: int
 ) -> None:
-    """`PL-5D1Z`: a pickle at protocol 0 or 1 rebuilt a checked type past its own check.
+    """`PL-5D1Z`: a pickle at protocol 0 or 1 rebuilt a checked type, bypassing its own check.
 
     Those protocols rebuilt a `float` or `int` subclass through `float.__new__`
-    or `int.__new__`, so a hand-edited file loaded a `Fraction` of 1.5 or a
-    `StepCount` of -5 under the type that is meant to prove its range. The
+    or `int.__new__`. So a hand-edited file loaded a `Fraction` of 1.5 or a
+    `StepCount` of -5, as the type whose job is to guarantee its range. The
     expected refusal is the one the constructor gives when it is called
-    directly with the edited number. A pickle left alone loads as the type
-    and value it saved.
+    directly with the edited number. An unedited pickle loads as the type and
+    value it saved.
     """
 
     held = INSIDE_EVERY_RANGE[checked]

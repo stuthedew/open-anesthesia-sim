@@ -62,57 +62,55 @@ class TissueGroup:
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the tissue's constructor would refuse.
 
-            Each field is stored in one place, its slot, so its check is made
-            here, for the constructor, the setters, `advance` and an assignment
-            made past them alike, as `BreathingCircuit.__setattr__` explains
-            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
-            it, and says why. Nothing is written when a value is refused, and
-            the constructor makes no check of its own.
+            Each field is stored in one place, its slot. So the field's check runs here,
+            and it applies alike to the constructor, the setters, `advance` and any
+            direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
+            this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
+            this method, and its docstring says why. Nothing is written when a value is
+            refused, and the constructor makes no check of its own.
 
-            The tissue's partial pressure is its agent amount divided by its
-            capacity, the volume times the tissue:gas coefficient, so the three
-            are held together: an amount above the capacity is refused, and so
-            is a volume or a coefficient too small for the amount already held,
-            which would put the partial pressure above one atmosphere with the
-            amount's own check never consulted (`PL-544D`, found at review;
-            `require_room_for_the_agent_held`). The constructor writes the
-            amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one. The two
-            factors are held to each other as well: whichever is written second
-            must leave a capacity that is positive and finite, which two
-            positive finite factors can fail to do by underflowing to zero or
-            overflowing to `inf` (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`).
+            The tissue's partial pressure is its agent amount divided by its capacity, and
+            the capacity is the volume times the tissue:gas partition coefficient. So the
+            three values are checked together. An amount above the capacity is refused.
+            So is a volume or a coefficient too small for the amount the tissue already
+            holds. Such a value would put the partial pressure above one atmosphere
+            without the amount's own check ever running (`PL-544D`, found at review;
+            `require_room_for_the_agent_held`). The constructor writes the amount last,
+            after the volume and the coefficient have passed their own checks. So a factor
+            is checked against the amount only once an amount exists. The volume and the
+            coefficient are also checked against each other. Whichever is written second
+            must leave a capacity that is positive and finite. Two positive finite factors
+            can fail this by underflowing to zero or overflowing to `inf`
+            (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`).
 
-            Each refusal names the group with the field, as
-            `"muscle volume_l"`, because three groups hold every field
-            (`PL-2TZT`).
+            Each refusal names the group as well as the field, as in `"muscle volume_l"`,
+            because all three groups hold every field (`PL-2TZT`).
 
-            The perfusion fraction is written once, when the group is built,
-            and a later write is refused (`PL-Z0HN`). The patient checks that
-            its three fractions sum to 1 only when it is built, and a tissue
-            group does not know which patient it belongs to. So a fraction
-            changed afterwards would move the group's blood flow, which is its
-            fraction of the cardiac output, with no check that the flows still
-            add up to the output. The new value is checked first, so a value
-            the constructor would refuse is refused in the constructor's
-            words. A copy and a pickle write the fraction onto a new group,
+            The perfusion fraction is written once, when the group is built, and a later
+            write is refused (`PL-Z0HN`). The patient checks that its three fractions sum
+            to 1 only when the patient is built, and a tissue group does not know which
+            patient it belongs to. A fraction changed afterwards would change the group's
+            blood flow, which is its fraction of the cardiac output. Nothing would then
+            check that the flows still add up to the cardiac output. The new value is
+            checked first, so a value the constructor would refuse is refused in the
+            constructor's words. A copy and a pickle write the fraction onto a new group,
             which has none yet, so both still work.
 
             Raises:
-                TypeError: `name` is `name` and `value` is not a `str`, or the
-                    value written to any other field is not an `int` or a
+                TypeError: the field written is `name` and `value` is not a `str`, or
+                    the value written to any other field is not an `int` or a
                     `float` (`require_a_number`).
-                SimulationConfigurationError: the name is blank; the volume, a
-                    partition coefficient or the perfusion fraction is not
-                    positive and finite, or the perfusion fraction is above 1;
-                    the volume and the tissue:gas coefficient multiply to a
-                    capacity that is zero or not finite;
-                    the perfusion fraction is written to a group that already
-                    has one; the agent amount is negative or not finite; or
-                    the agent amount would be more than the tissue
-                    holds at a partial pressure of one atmosphere, whichever of
-                    the amount, the volume and the tissue:gas coefficient is
-                    the one written.
+                SimulationConfigurationError: the name is blank. Also raised when
+                    the volume, a partition coefficient or the perfusion fraction
+                    is not positive and finite, or when the perfusion fraction is
+                    above 1. Also raised when the volume and the tissue:gas
+                    coefficient multiply to a capacity that is zero or not finite,
+                    or when the perfusion fraction is written to a group that
+                    already has one. Also raised when the agent amount is negative
+                    or not finite, or would be more than the tissue holds at a
+                    partial pressure of one atmosphere. That last check applies
+                    whichever of the amount, the volume and the tissue:gas
+                    coefficient is written.
             """
 
             if name == "name":
@@ -128,9 +126,9 @@ class TissueGroup:
 
                 return
 
-            # Three groups hold every field below, so a refusal names the
-            # group as well as the field (`core/validation.py`, `PL-2TZT`).
-            # The constructor writes the name first, so it is there to read.
+            # All three groups hold every field below, so a refusal names the group as
+            # well as the field (`core/validation.py`, `PL-2TZT`). The constructor writes
+            # the name first, so `self.name` is already set here.
             field = f"{self.name} {name}"
             compartment = f"{self.name} tissue"
 

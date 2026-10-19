@@ -459,11 +459,12 @@ def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
 
 
 def test_a_copied_or_pickled_concentration_is_still_checked() -> None:
-    """A state copied for a branch, or saved, keeps a value still of its type.
+    """A `Fraction` or `Percent` copied for a branch, or saved, is still of its own type.
 
     A copy, a deep copy and a pickle each rebuild through the constructor
-    rather than around it, which the test below pins for the pickle.
-    `tests/unit/test_checked_number.py` pins it for every checked type at
+    rather than around it. The next test checks that a pickle edited outside
+    the range is refused when it is loaded.
+    `tests/unit/test_checked_number.py` checks it for every checked type at
     every pickle protocol (`PL-5D1Z`).
     """
 

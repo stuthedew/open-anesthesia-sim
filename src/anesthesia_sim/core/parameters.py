@@ -216,27 +216,30 @@ class AgentParameters:
 
     Raises:
         TypeError: `max_delivered_concentration_percent` or `mac_percent` was
-            not built as a `Percent` - a `Fraction` or a bare `float`
-            included (`core/concentration.py`'s `require_percent`). Their
-            ranges were checked when each was built, so nothing here checks
-            them again; a MAC handed in as a fraction would be a divisor a
-            hundred times too small for every MAC multiple shown (`PL-4R3W`).
-        SimulationConfigurationError: `mac_percent` is zero, the one non-positive
-            value a `Percent` holds, since it refuses a negative one when built.
-            The MAC is the divisor of every MAC multiple shown and of the
-            `1 MAC = x%` reference beside the chart, so the record refuses it
-            where it is built, through `core/validation.py`'s
-            `require_positive_finite`, rather than leaving `format_mac_reference`
-            to print `1 MAC = 0.0%` and the five formatters that divide by it
-            to refuse at draw time (`PL-0FJ8`). The loader's `PositivePercent`
-            refuses it first for a shipped file; this is the same refusal on a
-            record built any other way, `dataclasses.replace` included. Or
-            `max_delivered_concentration_percent` is zero, for the same
-            reason, or `mac_percent` is above it, which the loader's
-            `_mac_percent_must_not_exceed_vaporizer_max` refuses for a file
-            and this refuses for every other record: a run opens at 1 MAC
-            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above
-            the vaporizer maximum (`PL-HPKK`).
+            not built as a `Percent`. A `Fraction` and a bare `float` are both
+            refused (`core/concentration.py`'s `require_percent`). Each value's
+            range was checked when its `Percent` was built, so nothing here
+            checks it again. A MAC passed in as a fraction would be a hundred
+            times too small, and every MAC multiple shown divides by it
+            (`PL-4R3W`).
+        SimulationConfigurationError: `mac_percent` is zero. A `Percent`
+            refuses a negative value when it is built, so zero is the only
+            non-positive value it can hold. The MAC is the divisor of every
+            MAC multiple shown, and of the `1 MAC = x%` reference beside the
+            chart. So the record refuses a zero MAC when it is built, through
+            `core/validation.py`'s `require_positive_finite`. Otherwise
+            `format_mac_reference` would print `1 MAC = 0.0%`, and the five
+            formatters that divide by the MAC would refuse at draw time
+            (`PL-0FJ8`). For a shipped file, the loader's `PositivePercent`
+            refuses a zero MAC first. This check makes the same refusal for a
+            record built any other way, including by `dataclasses.replace`.
+            Also raised when `max_delivered_concentration_percent` is zero, for
+            the same reason, or when `mac_percent` is above it. The loader's
+            `_mac_percent_must_not_exceed_vaporizer_max` refuses a MAC above the
+            maximum for a file, and this check refuses it for every other
+            record. A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a
+            dial cannot be set above the vaporizer maximum, so such a run would
+            open at a dial setting the vaporizer cannot deliver (`PL-HPKK`).
     """
 
     schema_version: int

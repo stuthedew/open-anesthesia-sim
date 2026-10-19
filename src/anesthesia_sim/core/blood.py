@@ -52,43 +52,43 @@ class VenousBloodCompartment:
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the pool's constructor would refuse.
 
-            Each field is stored in one place, its slot, so its check is made
-            here, for the constructor, the setters, `advance` and an assignment
-            made past them alike, as `BreathingCircuit.__setattr__` explains
-            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
-            it, and says why. Nothing is written when a value is refused, and
-            the constructor makes no check of its own. Until `PL-19Y0` the
-            constructor was the only check, so an amount past the capacity
-            written onto a built pool was stored and read back as a fraction of
-            1.0000001.
+            Each field is stored in one place, its slot. So the field's check runs here,
+            and it applies alike to the constructor, the setters, `advance` and any
+            direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
+            this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
+            this method, and its docstring says why. Nothing is written when a value is
+            refused, and the constructor makes no check of its own. Until `PL-19Y0`, the
+            constructor made the only check. So an agent amount larger than the capacity,
+            written onto a pool already built, was stored, and the pool then reported a
+            partial pressure fraction of 1.0000001.
 
-            The pool's partial pressure is its agent amount divided by its
-            capacity, the volume times the blood:gas coefficient, so the three
-            are held together: an amount above the capacity is refused, and so
-            is a volume or a coefficient too small for the amount already held
-            (`require_room_for_the_agent_held`). The constructor writes the
-            amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one. The two
-            factors are held to each other as the tissue group's are: the one
-            written second must leave a positive finite capacity
-            (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`). Each refusal names
-            the pool with the field, as `"venous volume_l"` (`PL-2TZT`).
+            The pool's partial pressure is its agent amount divided by its capacity, and
+            the capacity is the volume times the blood:gas partition coefficient. So the
+            three values are checked together. An amount above the capacity is refused.
+            So is a volume or a coefficient too small for the amount the pool already
+            holds (`require_room_for_the_agent_held`). The constructor writes the amount
+            last, after the volume and the coefficient have passed their own checks. So
+            a factor is checked against the amount only once an amount exists. The volume
+            and the coefficient are also checked against each other, as a tissue group's
+            are. Whichever is written second must leave a capacity that is positive and
+            finite (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`). Each refusal names the
+            pool as well as the field, as in `"venous volume_l"` (`PL-2TZT`).
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`
                     (`require_a_number`).
                 SimulationConfigurationError: the volume or the partition
-                    coefficient is not positive and finite; the two multiply
-                    to a capacity that is zero or not finite; the agent amount
-                    is negative or not finite; or the agent
-                    amount would be more than the pool holds at a partial
-                    pressure of one atmosphere, whichever of the amount, the
-                    volume and the coefficient is the one written.
+                    coefficient is not positive and finite, or the two multiply
+                    to a capacity that is zero or not finite. Also raised when
+                    the agent amount is negative or not finite, or would be more
+                    than the pool holds at a partial pressure of one atmosphere.
+                    That last check applies whichever of the amount, the volume
+                    and the coefficient is written.
             """
 
-            # Every compartment holds an agent amount, and the tissue groups
-            # a volume and a blood:gas coefficient too, so a refusal names
-            # the pool as well as the field (`core/validation.py`, `PL-2TZT`).
+            # Every compartment holds an agent amount, and the tissue groups also hold a
+            # volume and a blood:gas coefficient. So a refusal names the pool as well as
+            # the field (`core/validation.py`, `PL-2TZT`).
             field = f"venous {name}"
 
             if name == "volume_l":

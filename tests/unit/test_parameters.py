@@ -426,15 +426,15 @@ def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
 
 
 def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() -> None:
-    """`PL-HPKK`: the record refuses a zero maximum and a MAC above it, not only the loader.
+    """`PL-HPKK`: the record, and not only the loader, refuses a zero maximum and a MAC above it.
 
     The loader's `PositivePercent` and `_mac_percent_must_not_exceed_vaporizer_max`
-    refuse both for a file, and until `PL-HPKK` a record built by
-    `dataclasses.replace` met neither. A run opens at 1 MAC, so a MAC above the
-    agent's own vaporizer maximum is a run that could never be dialled. Each
-    record below sets both values itself, so the expected refusal does not
-    depend on the shipped file. A MAC equal to the maximum is admitted, as the
-    loader admits it.
+    refuse both for a file. Until `PL-HPKK`, a record built by `dataclasses.replace`
+    was checked by neither. A run opens at 1 MAC, so a MAC above the agent's own
+    vaporizer maximum would open the run at a dial setting the vaporizer cannot
+    deliver. Each record below sets both values itself, so the expected refusal does
+    not depend on the shipped file. A MAC equal to the maximum is accepted, as the
+    loader accepts it.
     """
 
     sevoflurane = load_sevoflurane_parameters()

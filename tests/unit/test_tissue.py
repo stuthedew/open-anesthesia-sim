@@ -571,13 +571,13 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 def test_a_capacity_that_overflows_is_refused_at_build() -> None:
     """`PL-FNH3`, `PL-8LQZ`: the volume and the tissue:gas coefficient must multiply to a capacity.
 
-    Each factor passed its own check as positive and finite, and their product
-    did not. A volume and a coefficient of 1e200 built a group whose capacity
-    was `inf`, and two of 1e-200 one whose capacity was 0.0, so its partial
-    pressure divided by zero. The factor written second is refused, naming
-    both. The largest finite capacity, `sys.float_info.max`, and the smallest
-    positive one, the least subnormal, are admitted, and a volume rewritten
-    onto a built group is held to the same rule.
+    Each factor passed its own check as positive and finite, but their product did
+    not. A volume and a coefficient of 1e200 built a group whose capacity was `inf`.
+    A volume and a coefficient of 1e-200 built a group whose capacity was 0.0, so its
+    partial pressure divided by zero. The factor written second is refused, and the
+    message names both factors. The largest finite capacity, `sys.float_info.max`,
+    and the smallest positive one, the least subnormal, are accepted. A volume
+    written onto a group already built must meet the same rule.
     """
 
     def build(volume_l: float, tissue_gas_partition_coefficient: float) -> TissueGroup:

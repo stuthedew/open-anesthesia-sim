@@ -450,11 +450,11 @@ class BreathingCircuit:
             elif name == "max_delivered_concentration_percent":
                 require_percent(name, value)
                 require_positive_finite(name, value)
-                # A maximum written onto a built circuit is a maximum lowered
-                # under the dial, and is refused in its own words. The first
-                # write, in a constructor, a copy or a pickle, meets a dial
-                # just written beside it, and is refused in the dial's words,
-                # which name both values (`PL-XVCV`).
+                # If a maximum written onto a circuit already built is refused, it was
+                # lowered below the dial, so the refusal is worded for the maximum. The
+                # first write comes from a constructor, a copy or a pickle, just after the
+                # dial is written. Its refusal is worded for the dial, and that message
+                # names both values (`PL-XVCV`).
                 rewritten = hasattr(self, "max_delivered_concentration_percent")
                 require_within_vaporizer_maximum(
                     "max_delivered_concentration_percent"
