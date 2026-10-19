@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: release-process
+milestone: v0.5.31
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-13
 closed: 2026-10-18

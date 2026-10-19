@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, infra
 feature: doc-consistency-checks
+milestone: v0.5.31
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md
 added: 2026-08-30
 closed: 2026-10-18
