@@ -151,6 +151,64 @@ Each of these was measured on 2026-10-17.
 A kill rate below is killed / (killed + survived). Mutants that timed out or
 that no test reaches are left out of it.
 
+### 2026-10-18 whole tree, forkserver mode, at `d7c1d74c`
+
+This run is the one `make mutate ARGS=--all` makes: mutmut 3.8.0 in
+forkserver mode with no warm-up imports, against the 45 simulator unit test
+files that `tools/diff_mutation.py` selects by import (`PL-5N95`). It had 2,489
+mutants and tested all of them. 2,237 were killed, 235 survived, 15 timed out
+and 2 were killed by a signal, so about 90% were killed. 225 of the kills are
+mutants whose test modules failed while importing. `diff_mutation.py` ran
+their test files again as whole files, with no mutant applied first, and
+counted each as killed only after that run. The run took about three and a
+half hours on four cores. A container restart stopped it at 2,435 mutants,
+and `mutmut run` in the same `mutants/` directory finished the last 54, since
+mutmut keeps each recorded result.
+
+| Module | Killed / (killed + survived) | Rate | Fork mode, 2026-10-17 |
+| --- | --- | --- | --- |
+| `app/run_series.py` | 12 / 19 | 63% | 63% |
+| `core/circuit.py` | 122 / 144 | 85% | 86% |
+| `core/agent_simulation_validation.py` | 67 / 79 | 85% | 76% |
+| `core/simulation_step.py` | 28 / 33 | 85% | 85% |
+| `core/parameters.py` | 299 / 352 | 85% | 88% |
+| `core/matrix_exponential.py` | 217 / 243 | 89% | 89% |
+| `app/formatting.py` | 202 / 221 (1 killed by a signal) | 91% | 88% |
+| `core/concentration.py` | 66 / 72 | 92% | 85% |
+| `core/supported_ranges.py` | 143 / 156 (6 timeouts) | 92% | 91% |
+| `core/run_definition.py` | 338 / 368 (7 timeouts) | 92% | 92% |
+| `core/uptake_system.py` | 204 / 222 | 92% | 91% |
+| `core/checked_number.py` | 27 / 29 | 93% | 82% |
+| `core/exponential_approach.py` | 14 / 15 | 93% | 93% |
+| `core/simulation.py` | 29 / 31 | 94% | 94% |
+| `app/chart_time_base.py` | 62 / 66 (2 timeouts, 1 killed by a signal) | 94% | 94% |
+| `core/blood.py` | 52 / 55 | 95% | 73% |
+| `core/tissue.py` | 53 / 56 | 95% | 78% |
+| `core/governing_equations.py` | 141 / 148 | 95% | 95% |
+| `core/validation.py` | 39 / 40 | 98% | 100% |
+| `core/patient.py` | 81 / 82 | 99% | 92% |
+| `app/wash_in.py` | 21 / 21 | 100% | 100% |
+| `core/alveolar.py` | 20 / 20 | 100% | 96% |
+
+It differs from the fork-mode table in three ways, so compare the two with
+care:
+
+- **The process mode differs.** Fork mode counted some survivors as kills
+  (§ "Pitfalls"), so a module's rate can fall in forkserver mode without any
+  test getting weaker.
+- **The test selection differs.** The audit listed 33 test files by hand. This
+  run takes the 45 under `tests/unit/` that import the simulator, so a module
+  can gain kills from tests the audit did not run.
+- **The code differs.** `b9b3c812` and `d7c1d74c` are a day apart, and the
+  mutant counts changed with the code: 2,619 then, 2,489 now. The audit also
+  left 180 mutants unchecked, 76 of them in `core/parameters.py` and 35 in
+  `core/validation.py`. This run checked every mutant, so those two modules'
+  rates now cover mutants that the audit's rates did not.
+
+`core/blood.py` (73% to 95%) and `core/tissue.py` (78% to 95%) moved most.
+This run does not measure which of the three causes moved them. Compare a
+later whole-tree run with this table, not with the fork-mode one.
+
 ### 2026-10-17 audit, fork mode, at `b9b3c812`
 
 The audit ran mutmut 3.8.0 in fork mode over `core/` and the four presentation

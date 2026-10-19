@@ -244,10 +244,18 @@ class AreaLayout(QWidget):
 
         return max(widths, default=0.0)
 
-    def painted_strings(self) -> tuple[str, ...]:
-        """The text every View paints without a label or a button, in reading order."""
+    def painted_strings(self) -> tuple[tuple[QWidget, str], ...]:
+        """The text every View paints without a label or a button, in reading order.
 
-        return tuple(text for _, view in self._views.values() for text in view.painted_strings())
+        Each string comes with the View that paints it, so that a caller can
+        ask whether the reader can see that View now.
+        """
+
+        return tuple(
+            (_widget(view), text)
+            for _, view in self._views.values()
+            for text in view.painted_strings()
+        )
 
     def frame(self, area_id: AreaId) -> AreaFrame:
         """The widget drawing the Area `area_id`: its header, and its View or notice under it.

@@ -209,6 +209,52 @@ def _within(widget: QWidget, ancestor: QWidget) -> bool:
     return False
 
 
+@dataclass(frozen=True, slots=True)
+class InterfaceText:
+    """One string the dashboard holds, and whether a reader can see it now (`PL-904Y`)."""
+
+    text: str
+    visible: bool
+
+
+def _seen_by_reader(widget: QWidget) -> bool:
+    """Whether a reader can see `widget` now, scrolling aside.
+
+    The widget and every widget it sits inside are shown, its window is shown
+    and not minimized, and it has an area to draw in. A widget scrolled out
+    of view still counts as seen, because the reader reaches it by scrolling
+    without opening, choosing or switching anything. A View that no Area
+    draws has no shown window, so it is not seen.
+    """
+
+    return (
+        widget.isVisible()
+        and not widget.window().isMinimized()
+        and widget.width() > 0
+        and widget.height() > 0
+    )
+
+
+def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
+    """The strings `widget` draws itself, not those of the widgets inside it."""
+
+    seen = _seen_by_reader(widget)
+
+    if isinstance(widget, QDialog):
+        yield InterfaceText(widget.windowTitle(), seen)
+
+    if isinstance(widget, QLabel | QAbstractButton):
+        yield InterfaceText(widget.text(), seen)
+
+    if isinstance(widget, QAbstractButton) and widget.accessibleName():
+        yield InterfaceText(widget.accessibleName(), seen)
+    elif isinstance(widget, QComboBox):
+        current = widget.currentIndex()
+
+        for index in range(widget.count()):
+            yield InterfaceText(widget.itemText(index), seen and index == current)
+
+
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
     """A vertical layout on `widget` with no margins and the given spacing."""
 
@@ -1602,32 +1648,59 @@ class SimulationView(QWidget):
 
     # ------------------------------------------------------------- reading
 
-    def interface_strings(self) -> tuple[str, ...]:
-        """Every string a reader can see on the dashboard, hidden widgets included.
+    def interface_text(self) -> tuple[InterfaceText, ...]:
+        """Every string the dashboard holds, each marked with whether a reader can see it now.
 
-        The strings are every label and every button, the name that assistive
-        technology announces for each, every entry of every combo box, every
-        window title, and the text that every View paints itself, such as its
-        plot's axis titles (`View.painted_strings`). So a whole-interface test
-        has one definition of "on screen", rather than each test walking the
-        widget tree its own way. The hover readout is not standing text. The
+        This is the one definition of "on screen" that the whole-interface
+        tests assert through (`PL-904Y`). It covers every label and every
+        button, the name that assistive technology announces for each, every
+        entry of every combo box, every window and dialog title, and the text
+        that every View paints itself, such as its plot's axis titles
+        (`View.painted_strings`). The hover readout is not standing text. The
         chart's own tests check it.
+
+        It walks the window, and a dialog the dashboard opens is a child of
+        it, so the walk reaches that too. Every View the dashboard holds is
+        in the window, because the adapter deletes a View that no Area draws
+        any more and keeps only its saved state (`PL-TH35`). So no string
+        can move out of the walk's reach while it is still held. A window
+        broken out of the main one (`ROADMAP.md` planned-milestone item 34,
+        not yet built) is to be added to this walk when it is built.
+
+        A string is visible where `_seen_by_reader` holds for the widget
+        that draws it. Of a combo's entries, only the current one is visible:
+        the rest are a click away and not on screen. A widget hidden until
+        its condition holds and a window that is minimized are held and not
+        visible.
         """
 
-        return tuple(self._interface_strings())
+        return tuple(self._interface_text())
 
-    def _interface_strings(self) -> Iterator[str]:
-        yield self.window().windowTitle()
-        yield from self._areas.painted_strings()
+    def interface_strings(self) -> tuple[str, ...]:
+        """Every string the dashboard holds, whether or not a reader can see it now.
+
+        Use it to show that something is never said anywhere, since a hidden
+        string can be shown at any moment. To show that a reader is told
+        something, use `visible_strings`.
+        """
+
+        return tuple(text.text for text in self._interface_text())
+
+    def visible_strings(self) -> tuple[str, ...]:
+        """The strings a reader can see now, in every window the dashboard owns.
+
+        Use it to show that a reader is told something. A string in a hidden
+        widget is not among them.
+        """
+
+        return tuple(text.text for text in self._interface_text() if text.visible)
+
+    def _interface_text(self) -> Iterator[InterfaceText]:
+        window = self.window()
+        yield InterfaceText(window.windowTitle(), _seen_by_reader(window))
+
+        for view, text in self._areas.painted_strings():
+            yield InterfaceText(text, _seen_by_reader(view))
 
         for widget in (self, *self.findChildren(QWidget)):
-            if isinstance(widget, QDialog):
-                yield widget.windowTitle()
-
-            if isinstance(widget, QLabel | QAbstractButton):
-                yield widget.text()
-
-            if isinstance(widget, QAbstractButton) and widget.accessibleName():
-                yield widget.accessibleName()
-            elif isinstance(widget, QComboBox):
-                yield from (widget.itemText(index) for index in range(widget.count()))
+            yield from _widget_text(widget)

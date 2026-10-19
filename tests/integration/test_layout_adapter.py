@@ -865,7 +865,11 @@ def test_every_view_is_drawn_from_the_one_tick_in_reading_order(
     assert [view.ticks for view in _BUILT] == [[tick], [tick], [tick]]
     assert _REFRESHED == _BUILT
     assert not container.owes_a_frame
-    assert container.painted_strings() == ("painted 0", "painted 1", "painted 2")
+    assert [text for _, text in container.painted_strings()] == [
+        "painted 0",
+        "painted 1",
+        "painted 2",
+    ]
 
 
 def test_the_frame_is_sampled_for_the_widest_view_that_draws_one(

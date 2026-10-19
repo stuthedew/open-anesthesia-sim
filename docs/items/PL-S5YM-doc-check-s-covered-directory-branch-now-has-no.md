@@ -3,11 +3,13 @@ id: PL-S5YM
 title: doc_check's covered-directory branch now has no instance in any tree and no test
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md
 added: 2026-08-30
+closed: 2026-10-18
+pr: 1601
 verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tree draws one today' docs/apparatus.md
 ---
 
@@ -118,3 +120,11 @@ trees, so the covered-directory branch serves both. `verify:` lost its
 `uv run pytest tests/unit/test_doc_check.py` clause, which is not a shape a
 command written since 2026-09-24 may take; `bin/docket verify` runs
 `make check`, which runs that file, so nothing the clause proved is lost.
+
+**Done 2026-10-18 on #1601.** `test_a_childless_directory_covers_nothing_outside_its_own_subtree`
+adds the negative direction. It parses the fixture's apparatus tree, checks
+that `covered_dirs` is exactly `tools/harness`, and checks that
+`tools/harness_old/run.py`, a sibling whose name starts the same, is still
+reported as unmapped. `docs/apparatus.md` now names both tests in place of
+"no tree draws one today", and the `TreeMap` comment says the same.
+
