@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulatio
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1686
 payoff: a pixel measurement in a rendering test no longer depends on which tests ran before it in the same worker
 verify: grep -q 'def test_the_dashboard_page_keeps_its_height_from_its_first_paint' tests/integration/test_qt_rendering.py
 ---

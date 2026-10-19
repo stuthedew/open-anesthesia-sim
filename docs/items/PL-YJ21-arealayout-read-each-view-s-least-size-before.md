@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulatio
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1686
 payoff: the Areas and the page stand at their final sizes as soon as a frame is drawn, so no border move or pixel test meets a late relayout
 verify: grep -q 'def _handle_layout_requests' src/anesthesia_sim/app/area_layout.py
 root-cause-of: PL-4L8B, PL-PHPZ, PL-MXMG

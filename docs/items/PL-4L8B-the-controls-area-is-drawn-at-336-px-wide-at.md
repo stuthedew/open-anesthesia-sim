@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_ke
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1686
 payoff: the dashboard opens at the width it keeps, so a border move moves the border by what was asked and a layout test measures only the move
 verify: grep -q 'def test_the_controls_area_has_its_least_width_from_the_first_frame' tests/integration/test_layout_keyboard.py
 ---

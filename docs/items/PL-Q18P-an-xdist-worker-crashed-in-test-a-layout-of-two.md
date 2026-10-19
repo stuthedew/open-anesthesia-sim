@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_ad
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
 closed: 2026-10-19
+pr: 1686
 payoff: A refused layout no longer leaves a half-built Qt widget that can crash a test worker and turn main red for no reason
 verify: grep -q 'def test_a_refused_layout_leaves_no_widget' tests/integration/test_layout_adapter.py
 ---

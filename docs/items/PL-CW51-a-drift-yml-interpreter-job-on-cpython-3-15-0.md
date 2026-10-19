@@ -10,6 +10,7 @@ touches: tests/conftest.py, tests/integration/test_session_end.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
 closed: 2026-10-19
+pr: 1686
 payoff: The suite stops destroying a Qt object under a live call, so the next interpreter upgrade does not arrive with a worker crash already in it
 verify: grep -q 'def windows_built' tests/conftest.py
 not-delegable: Reproducing it needs the drift job's CPython 3.15.0 with the newest PySide6, and the message is printed by a run that still passes, so no command run on the base interpreter can fail before the work and pass after it
