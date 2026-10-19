@@ -274,6 +274,9 @@ ASK_RISK = ("risk", "checked", "look")
 #: read on 2026-10-18. The owner's rule is that a pull request with nothing to
 #: review does not reach him at all, so the way out of a hold with nothing in
 #: it is `Owner-read: not needed`, never a question made up to fill the form.
+#: On `#1650` the owner had to ask twice what a recorded ask asked them to
+#: judge, so the text also asks for learner terms and, for a choice between
+#: interface approaches, a screenshot per option (`PL-KYTY`).
 READ_ASK = (
     "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
     "since its newest change outside the store and the pull request bodies says what to "
@@ -283,7 +286,12 @@ READ_ASK = (
     "Co-authored-by line, then ask again. For a decision, with at least two options a "
     f"careful person could each pick: `{OWNER_ASK}: <question>? | <option>: <what it changes "
     f"for the owner or a learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - "
-    f"<why>`. For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
+    f"<why>`. Word it in clinical or learner terms, so that the owner sees on first reading "
+    "what they are judging. Say under each option what a learner sees, and say why the "
+    "choice is the owner's. A choice between approaches to the interface goes with one "
+    "annotated screenshot per option, attached to the reply that carries the line "
+    "(.claude/skills/run-the-app/SKILL.md). "
+    f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
     f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
     f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
     f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
