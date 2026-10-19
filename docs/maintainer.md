@@ -700,10 +700,21 @@ works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
 credit left cannot cover. A run on an item that reaches the simulator uses
 `max` effort, and a run on apparatus work uses `high`, as § "Match effort to
 the standard the work is held to" sets for sessions (`PL-KFJY`). Run it on
-your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it through `uv run python`, never a
-bare `python3`: macOS's own `python3` is Xcode's 3.9, older than the 3.11
-the tools need, and `uv run` also puts the project's Python first on `PATH`
-for the workers (`PL-W38C`).
+your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it
+through `uv run python`, never a bare `python3`: macOS's own `python3` is
+Xcode's 3.9, older than the 3.11 the tools need, and `uv run` also puts the
+project's Python first on `PATH` for the workers (`PL-W38C`).
+
+A worker runs `make check` before it commits, so the Mac needs the tools the
+suite compares its readers against: bash 5.2 or newer, and GNU Make 4 or newer.
+macOS ships bash 3.2 and GNU Make 3.81, and with them 89 tests fail whatever the
+change, so a worker cannot see its own failures among them (`PL-TSH9`).
+`brew install bash make` installs both. Homebrew installs the new make as
+`gmake`, so also add `export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`
+to the end of `~/.zshrc`, which makes it `make` in a new Terminal window
+(the formula's own caveat, `Formula/m/make.rb` in Homebrew/homebrew-core,
+read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
+4.4.1 or newer.
 
 1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
    organization. This links one Console organization, and changing it later
