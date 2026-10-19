@@ -142,10 +142,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("RunView._lay_out_readout_section", "4"): 1,
         ("RunView._lay_out_transport_row", "8"): 1,
     },
-    "src/anesthesia_sim/app/simulation_view.py": {
-        ("SimulationView._build_chart_column", "6"): 1,
-        ("SimulationView._build_chart_column", "8"): 1,
-    },
     "src/anesthesia_sim/core/alveolar.py": {
         ("AlveolarCompartment", "2.5"): 1,
         ("AlveolarCompartment", "4.0"): 1,

@@ -73,6 +73,10 @@ screen through it.
   (`LayoutModel.resize(..., alone=True)`), and Escape returns the layout to
   where the drag started. A drag the model refuses now stops at the farthest
   place it allows, where it used to change nothing.
+- **A split copies the source View's state** (`PL-TH35` Q10). The new half
+  of a split, from the menu or by the corner, is built from a copy of the
+  source View's `save_state()`, so splitting a chart gives two identical
+  charts. `AreaLayout._copy_split_state` does it once, for every split.
 
 **Placeholders decided here** (look, wording and placement, project owner
 2026-10-18). The menu's wording. "Join with" keeps this Area's View. Close
