@@ -1,9 +1,16 @@
 ---
 id: PL-9BVQ
 title: The hover box flips below its point only in the top quarter of the axis, so on a plot shorter than about four box heights it runs off the top
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, ux
 feature: interface-areas
+touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_rendering.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
+payoff: a hover box on a short plot stays inside it, so its first line, which names the run when two are drawn, is never cut off
+verify: grep -q 'def test_the_hover_box_stays_inside_a_plot_at_its_least_height' tests/integration/test_qt_rendering.py
 ---
 
 **Problem.** `_HoverReadout.show_at` in `src/anesthesia_sim/app/qt_chart.py` places the hover box above its point unless the point is in the top quarter of the y axis (`anchor.value > 0.75 * y_top`). The test is a fraction of the axis, but the box has a fixed height in pixels, about 53 px for the F_A/F_I plot. So on a plot less than about four box heights tall, a point just under the top quarter puts the box partly above the plot.
