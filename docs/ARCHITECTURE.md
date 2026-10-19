@@ -1017,12 +1017,10 @@ in it, or a line left behind after a deletion, fails `make check`.
   route for a View is the bullet above (`PL-TH35`). This bullet still decides
   **where the code goes** for what stays outside the Areas - the
   unconditional region, the settings above the Areas and the case section
-  below them - and
-  `.claude/rules/ui-areas.md` — which loads on the same `src/` read as this
-  file — decides **what shape it is in**: a widget that does not assume its
-  size, its neighbours, or that it is alone. The two are not in conflict once
-  read that way, and neither licenses building splitting, joining, workspace
-  tabs or layout persistence early. What outlives the fixed layout is this
+  below them. `.claude/rules/ui-areas.md` decides **what shape a View is
+  in**: a widget that is given what it draws and does not assume its size,
+  its neighbours, or that it is alone. It loads with any file under `app/`,
+  `layout/` or `data/workspaces/`. What outlives the fixed layout is this
   bullet's *reason* rather than its routing: a run's panel must not state one
   branch's numbers over both, and a control shared between runs must not be
   duplicated into each. Both are properties of the value rather than of the
