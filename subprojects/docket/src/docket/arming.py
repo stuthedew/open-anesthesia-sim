@@ -41,6 +41,9 @@ every later push while a pull request is open.
   (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
   line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
   says that nothing goes to the owner until there is one (`READ_ASK`).
+  Long docstrings and comments that a simulator change adds, and that no
+  `Prose-review` record covers, hold it until the session records close-out
+  step 8's review (`PROSE_ASK`), and so does a count that could not be read.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -169,7 +172,17 @@ has already merged; what went unread is said beside it.
   loosening through what the answer is read through has to edit one (project
   owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
   and `test_cli.py` whole, and over leaving it; `PL-WW0Q`). It reopens, for
-  that one route, `PL-SQTR`'s line at this module alone.
+  that one route, `PL-SQTR`'s line at this module alone;
+- a simulator change's new long prose waits for a recorded review: `arm`
+  holds while the count that `prose_count_command` gives is above zero, or
+  could not be read, and only the prose added since the newest
+  `Prose-review` record is counted (2026-10-19, decided in the workflow
+  decision round without the owner as the one clearly correct option, over
+  relying on a pointer in close-out step 5 and measuring five more branches,
+  `PL-W04Z`). Five of six simulator branches had skipped step 8's review, and
+  their prose was rated awkward in 58% of verdicts against 22% for the one
+  that ran it (`PL-J6CK`). Docket names no repository tool, so the count is a
+  configured command, as the forge's are.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -181,6 +194,7 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import re
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
@@ -322,6 +336,30 @@ OWNER_OFF = (
     "this session switched it off itself, as its own transcript shows, record that as "
     f"`{AUTO_MERGE}: {AUTO_MERGE_OFF} - <why>` in the last paragraph of a commit made after "
     "the switch, and ask again."
+)
+
+#: The commit trailer a session records close-out step 8's prose review in, with
+#: the value `read N, rewrote M, rejected K` (`PL-W04Z`). A long docstring or
+#: comment that a simulator change adds after the newest such record holds the
+#: pull request, so a code fix after the review needs no second review, while a
+#: new long docstring does.
+PROSE_REVIEW = "Prose-review"
+PROSE_FORM = re.compile(r"read \d+, rewrote \d+, rejected \d+")
+
+#: What a `hold` on unreviewed long prose tells the session. The step's own
+#: instructions are in the close-out mode, so they are pointed at, not restated.
+PROSE_ASK = (
+    "  Run close-out step 8's prose review (.claude/skills/docket/modes/close-out.md) on "
+    "the long docstrings and comments the branch adds, apply the rewrites you accept, and "
+    "record the review as a trailer in the last paragraph of a commit made after it, beside "
+    f"its Co-authored-by line: `{PROSE_REVIEW}: read N, rewrote M, rejected K`. One commit can "
+    f"carry this and an {OWNER_READ} record together. Then ask again."
+)
+
+#: What a `hold` tells the session when the count of long prose could not be read.
+PROSE_UNCOUNTED = (
+    "  A branch whose prose could not be counted is never armed as though it had none. Make "
+    "the count readable, most often by fixing a file Python will not parse, and ask again."
 )
 
 #: What a `hold` on a simulator path with no record tells the session. The
@@ -621,6 +659,18 @@ AUTO_MERGE_ON = "on"
 
 
 @dataclass(frozen=True)
+class ProseCount:
+    """How many long docstrings and comments need a review, as `prose_count_command` says.
+
+    `count` is that number. `declined` says why it could not be read, so that
+    "could not count" never reads as "nothing to review".
+    """
+
+    count: int = 0
+    declined: str = ""
+
+
+@dataclass(frozen=True)
 class OwnerRead:
     """A session's recorded judgment of whether the owner needs to read the branch.
 
@@ -715,7 +765,10 @@ class Verdict:
     whether it brings the module in at a path the base does not hold it at,
     `pinned` the
     existing tests in `PINS` pinning its answers that it would change or
-    delete, `switched_off` when the owner switched its auto-merge off, and
+    delete, `switched_off` when the owner switched its auto-merge off,
+    `unreviewed` how many long docstrings and comments it adds that no
+    `PROSE_REVIEW` record covers, `prose_since` the commit carrying the newest
+    such record, `prose_declined` why that count could not be read, and
     `behind`
     how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
     the remote holds that HEAD lacks, with what brings it in, or why that
@@ -738,6 +791,9 @@ class Verdict:
     moved: bool = False
     pinned: tuple[str, ...] = ()
     switched_off: str = ""
+    unreviewed: int = 0
+    prose_since: str = ""
+    prose_declined: str = ""
     behind: int = 0
     unpulled: str = ""
     unread: tuple[str, ...] = ()
@@ -751,6 +807,11 @@ class Verdict:
     def unjudged(self) -> bool:
         """Whether simulator paths change and no record says whether the owner must read them."""
         return bool(self.read) and self.record is None
+
+    @property
+    def prose_held(self) -> bool:
+        """Whether long prose with no recorded review, or a count that failed, holds it."""
+        return self.unreviewed > 0 or bool(self.prose_declined)
 
     @property
     def needs_owner(self) -> bool:
@@ -868,6 +929,10 @@ class Verdict:
         # A claim keeps the pull request a draft, which nobody is asked to read.
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
+        if self.unreviewed:
+            said.append(PROSE_ASK)
+        if self.prose_declined:
+            said.append(PROSE_UNCOUNTED)
         if read and not self.claims:
             if self.misasked:
                 said.append(f"  {self.misasked}")
@@ -905,6 +970,23 @@ class Verdict:
                 f"it changes {count} simulator {noun} and no {OWNER_READ} record on a commit "
                 "since its newest change there says whether the owner must read it"
             )
+        if self.prose_held:
+            since = (
+                f"the {PROSE_REVIEW} record on {self.prose_since[:12]}"
+                if self.prose_since
+                else "it forked"
+            )
+            if self.prose_declined:
+                reasons.append(
+                    f"how many long docstrings and comments it adds since {since} could not be "
+                    f"counted - {self.prose_declined}"
+                )
+            else:
+                noun = "docstring or comment" if self.unreviewed == 1 else "docstrings and comments"
+                reasons.append(
+                    f"it adds {self.unreviewed} long {noun} in the simulator since {since}, and "
+                    f"no {PROSE_REVIEW} record covers {'it' if self.unreviewed == 1 else 'them'}"
+                )
         if self.record is not None and self.record.needed:
             reasons.append(
                 f"the {OWNER_READ} record on {self.record.commit[:12]} asks for the owner's "
@@ -940,6 +1022,7 @@ def arm(
     runner: Runner | None = None,
     newest: Callable[[str, str], PullRequestLookup] | None = None,
     auto_merge: Callable[[int], AutoMerge] | None = None,
+    prose_count: Callable[[str], ProseCount] | None = None,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -971,6 +1054,13 @@ def arm(
     handed its number. A switch off that no `AUTO_MERGE` record on a commit
     made since covers holds the pull request, and a forge that could not be
     asked is unread.
+
+    **And a simulator change's new long prose may have had no review**
+    (`PL-W04Z`). `prose_count` counts the long docstrings and comments the
+    branch adds, handed the commit carrying the newest `PROSE_REVIEW` record,
+    or `""` where none does. It is asked only where the change reaches a
+    simulator path. A count above zero holds the pull request, and so does a
+    count that could not be read.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -1080,6 +1170,20 @@ def arm(
         )
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
+    unreviewed = 0
+    prose_since = ""
+    prose_declined = ""
+    if on_list and prose_count is not None:
+        prose_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], PROSE_REVIEW)
+        if prose_since and not PROSE_FORM.fullmatch(value):
+            unread.append(
+                f"the {PROSE_REVIEW} record on {prose_since[:12]} is not 'read N, rewrote M, "
+                f"rejected K', so it was not read: {value}"
+            )
+            prose_since = ""
+        prose = prose_count(prose_since)
+        prose_declined = prose.declined
+        unreviewed = 0 if prose_declined else prose.count
     record, misread = _owner_read(root, run, base, on_list)
     unread.extend(misread)
     ask, misasked = _owner_ask(root, run, base, worked)
@@ -1124,11 +1228,14 @@ def arm(
         moved=moved,
         pinned=pinned,
         switched_off=switched_off,
+        unreviewed=unreviewed,
+        prose_since=prose_since,
+        prose_declined=prose_declined,
         behind=behind,
         unpulled=unpulled,
         unread=tuple(unread),
     )
-    if claims or found.unjudged or found.needs_owner or switched_off:
+    if claims or found.unjudged or found.needs_owner or switched_off or found.prose_held:
         return found
     if unpulled or unread:
         return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))

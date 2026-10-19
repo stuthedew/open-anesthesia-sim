@@ -361,6 +361,11 @@ page and decides which file a session reads.
    original sentence there, because the safety-critical standard applies to
    what a docstring states. Say in the pull request body how many units the
    reviewer read, how many it rewrote and how many rewrites you rejected.
+   Record the same three counts as a trailer in the last paragraph of the
+   commit that applies the rewrites, or of the next commit where there were
+   none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm` holds
+   a simulator branch whose long prose was added after the newest such
+   trailer, as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.

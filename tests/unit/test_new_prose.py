@@ -148,3 +148,67 @@ def test_main_numbers_each_unit_with_its_rows(
     assert out.startswith("3 docstrings and comments of 30 words or more changed")
     assert f"[1] src/pkg/fresh.py, rows 1-1, docstring, {MIN_WORDS} words" in out
     assert "[3] src/pkg/fresh.py, rows 13-13, comment" in out
+
+
+def _commit(repo: Path, message: str) -> str:
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", message)
+    return _git(repo, "rev-parse", "HEAD").strip()
+
+
+def _count(repo: Path, capsys: pytest.CaptureFixture[str], *extra: str) -> tuple[int, str]:
+    code = main(["--root", str(repo), "--base", "main", "--count", *extra])
+    return code, capsys.readouterr().out.strip()
+
+
+def test_counts_units_since_commit(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`--count` counts committed long units, leaving out those already at a given commit.
+
+    This is what `bin/docket arm` reads (`PL-W04Z`). A code fix after the
+    review must not ask for a second review, and a new long unit must.
+    """
+    _write(repo, "src/pkg/fresh.py", SOURCE)
+    _commit(repo, "add a file with three long units")
+    assert _count(repo, capsys) == (0, "3")
+
+    reviewed = _commit(repo, "record the review")
+    (repo / "src/pkg/fresh.py").write_text(SOURCE.replace("x * LIMIT", "x * LIMIT * 2"), "utf-8")
+    _commit(repo, "a code fix beside a reviewed docstring")
+    assert _count(repo, capsys, reviewed) == (0, "0")
+
+    _write(repo, "src/pkg/fresh.py", SOURCE + f'\n\ndef later():\n    """{LONG} again"""\n')
+    _commit(repo, "a new long docstring")
+    assert _count(repo, capsys, reviewed) == (0, "1")
+
+
+def test_count_reads_the_commits_and_not_the_working_tree(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(repo, "src/pkg/fresh.py", SOURCE)
+
+    assert _count(repo, capsys) == (0, "0")
+
+
+def test_count_leaves_out_prose_a_merge_of_the_base_brings_in(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reviewed = _commit(repo, "a review with nothing to review")
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "src/pkg/other.py", SOURCE)
+    _commit(repo, "someone else's long prose")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "--no-edit", "main")
+
+    assert _count(repo, capsys, reviewed) == (0, "0")
+
+
+def test_count_exits_2_when_a_changed_file_will_not_parse(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(repo, "src/pkg/broken.py", "def f(:\n")
+    _commit(repo, "a file Python refuses")
+
+    assert main(["--root", str(repo), "--base", "main", "--count"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "src/pkg/broken.py" in captured.err
