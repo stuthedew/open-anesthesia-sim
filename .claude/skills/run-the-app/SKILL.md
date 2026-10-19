@@ -1,6 +1,6 @@
 ---
 name: run-the-app
-description: Launch, drive and screenshot this repository's Qt interface in a session with no display. Use when asked to run, start, see or screenshot the app, or to check how a change looks in the real interface.
+description: Launch, drive and screenshot this repository's Qt interface in a session with no display. Use when asked to run, start, see or screenshot the app, to check how a change looks in the real interface, or to show the owner annotated screenshots of each option in a question about the interface.
 ---
 
 # run-the-app
@@ -87,6 +87,76 @@ for**: the Simulated time readout must show the time you advanced to.
   adjustment's start - emit `sliderPressed` yourself first when that start is
   part of what you are checking. Then `present(False)` and `processEvents()`
   before the grab, as above.
+
+## Compare interface approaches for the owner
+
+`.claude/rules/instruction-writing.md` rule 10 requires a question about
+different approaches to the interface to carry one screenshot per option,
+annotated where the options differ (project owner, 2026-10-19, `PL-KYTY`).
+This is how to make them.
+
+1. **Pick one concrete run that shows the difference**, and use it for every
+   option. On `#1650` that was 8% sevoflurane for 10 minutes, then 0% for 25,
+   because its circuit trace leaves the chart early and comes back. Use the
+   same run, simulated time, window size and controls for every capture, so
+   that the option is the only thing that changes.
+2. **Render each option from code, not from memory.** Render a built option
+   from the branch, and the current behaviour from `origin/main` in a
+   worktree. An option nobody has built can be a quick patch or a
+   monkeypatch in the render script. Call it a mock-up in the reply.
+3. **Box and label the part that differs** with Qt's painter. The project has
+   no Pillow. The function below draws a red box round a widget of the view
+   and a label above it, on the grab. Pass the widget whose look changes
+   between the options, found with `view.findChildren(<type>)`. Run it after
+   the render in § "See the dashboard in a given state", in the same script.
+
+```python
+from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtWidgets import QWidget
+
+from anesthesia_sim.app.qt_chart import ConcentrationChart
+
+
+def annotate(image, view: QWidget, widget: QWidget, label: str) -> None:
+    """Draw a labelled box round `widget` on `image`, a grab of `view`."""
+    box = QRect(widget.mapTo(view, QPoint(0, 0)), widget.size()).adjusted(-4, -4, 4, 4)
+    painter = QPainter(image)
+    painter.setPen(QPen(QColor("#d62728"), 4))
+    painter.drawRect(box)
+    font = QFont()
+    font.setPointSize(16)
+    font.setBold(True)
+    painter.setFont(font)
+    text = painter.fontMetrics().boundingRect(label).adjusted(-8, -4, 8, 4)
+    text.moveBottomLeft(box.topLeft() + QPoint(0, -4))
+    if text.top() < 0:
+        text.moveTopLeft(box.topLeft() + QPoint(4, 4))
+    painter.fillRect(text, QColor("#d62728"))
+    painter.setPen(QColor("white"))
+    painter.drawText(text, Qt.AlignmentFlag.AlignCenter, label)
+    painter.end()
+
+
+image = view.grab()
+chart = next(c for c in view.findChildren(ConcentrationChart) if c.isVisible())
+annotate(image, view, chart, "A: the note is gone here")
+print(image.save("out/1-whole-run-chart.png"))
+```
+
+It prints `True`. Run as written on 2026-10-19, it boxed the Default
+Workspace's concentration chart at 120 s. Where the difference is small
+on a full page, save `image.copy(<box widened by a margin>)` as well, so
+that it can be seen at the size a chat shows. The label names what the owner
+should look at, in the reply's words: "A: the note is gone here", not the
+widget's class.
+
+4. **Number the files in the order the reply describes them**, such as
+   `1-whole-run-chart.png` and `2-15-minute-chart-as-built.png`, and open each
+   one with `Read` before sending it. In a Projects thread, copy them under
+   `/mnt/project-files/<release>/<item>-screens/` and list each one in the
+   reply's `attached_outputs`, because a file in `out/` reaches nobody. The
+   reply then says, for each picture in turn, what the learner sees in it.
 
 ## What an offscreen frame cannot settle
 

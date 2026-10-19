@@ -3,11 +3,13 @@ id: PL-KYTY
 title: Make every question or read ask put to the owner obvious on first reading, with annotated screenshots of each option for an interface choice
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: owner-attention
-touches: .claude/rules/instruction-writing.md, .claude/skills/run-the-app/SKILL.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
+touches: .claude/rules/instruction-writing.md, .claude/skills/run-the-app/SKILL.md, docs/maintainer.md, docs/resident-instructions.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1654
 payoff: the owner sees on first reading what each question asks them to judge, and sees each interface option side by side, so no ask needs a second round
 verify: grep -q 'what they are judging' .claude/rules/instruction-writing.md && grep -q 'Compare interface approaches for the owner' .claude/skills/run-the-app/SKILL.md && grep -q 'def test_arm_read_ask_asks_in_learner_terms_with_screenshots' subprojects/docket/tests/test_cli.py
 ---

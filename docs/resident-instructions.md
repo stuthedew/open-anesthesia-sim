@@ -1139,3 +1139,28 @@ owner is not restated anywhere new: the ask points at
 clause for `PL-KKHD`, which `arming.py`'s decision record and
 `docs/maintainer.md` still carry, paid for the new sentence. The file grows by
 18 characters, 54,160 to 54,178.
+
+## Rule 10's sentence on what the reader is judging, added 2026-10-19
+
+On `#1650` (`PL-L59K`, the chart time-window notes) the project owner had to
+ask twice what they were being asked to judge. The ask named the change in the
+code's terms and showed nothing. The ask that worked showed one concrete run,
+one picture per option and the question in one sentence. The owner then gave
+the rule in their own words: every ask must make plain what they are judging,
+and a question about different approaches to the interface comes with
+annotated screenshots of each (`PL-KYTY`). It is the owner's own request, so
+the pause on new workflow mechanisms does not hold it back.
+
+**The carrier test.** A question can go to the owner in any reply, a card or a
+pull request, and none of those is preceded by a read, so no `paths:` scope
+can carry the rule. A skill loads at its own trigger, which a question does
+not have. Rule 10 already decides how a decision request opens, so the rule
+joins it there. How to render and annotate the screenshots is a procedure
+with its own trigger, so it went to the run-the-app skill. `bin/docket arm`'s
+`READ_ASK` text asks for the same things at the moment a held pull request
+needs its ask written.
+
+**Why nothing more is cut.** No resident sentence said how plainly an ask must
+be worded or that an interface choice comes with pictures, so nothing is
+superseded. The story of `#1650` sits here rather than in rule 10. The rules
+file grows by 664 characters.

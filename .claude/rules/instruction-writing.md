@@ -46,6 +46,15 @@ rules, "phases," or "closed loops" in the output itself.
 10. DECISION FIRST. A message asking the user to decide opens with the
     question(s) and the recommendation, one line each. Supporting detail
     follows; nothing precedes the questions.
+    **The reader must see on first reading what they are judging** (project
+    owner, 2026-10-19). This applies to every question, card and read ask.
+    Word the question in clinical or learner terms, not the code's or the
+    item's. Under each option, say what a learner sees or what changes for
+    them. Give the recommendation and its reason, and say why the choice is
+    theirs rather than the session's. A question about different approaches
+    to the interface carries one screenshot per option, of one concrete run,
+    annotated where the options differ. The run-the-app skill § "Compare
+    interface approaches for the owner" says how (`PL-KYTY`).
 11. PROGRESSIVE DISCLOSURE. Do not include execution steps for options
     not yet chosen. Name the option and its cost; deliver its procedure
     after the user picks it.

@@ -11489,6 +11489,28 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
     assert "every later reply that still waits on it" in arming.ASK_LINE
 
 
+def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
+    """The ask text asks for what the owner judges in plain terms, and for screenshots.
+
+    On `#1650` the owner had to ask twice what they were judging: the ask named
+    the change in the code's terms and showed nothing (`PL-KYTY`). The parts sit
+    between the decision form and the risk form, because they shape a decision.
+    """
+    parts = (
+        "recommend <option> - <why>",
+        "clinical or learner terms",
+        "what they are judging",
+        "what a learner sees",
+        "why the choice is the owner's",
+        "one annotated screenshot per option",
+        ".claude/skills/run-the-app/SKILL.md",
+        "For a high-risk change",
+    )
+    places = [arming.READ_ASK.index(part) for part in parts]
+
+    assert places == sorted(places)
+
+
 def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
     """A commit carrying the session's `Owner-ask` record, beside its attribution line."""
     git(
