@@ -3,12 +3,14 @@ id: PL-TX7K
 title: tools/headless_worker.py never removes a run's clone: every run, failed or pushed, leaves a full clone and a log in ~/.local/state/open-anesthesia-sim/workers until the owner deletes it by hand. Keep failed runs' clones for diagnosis and remove a clone once its branch is pushed
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: api-credit-runs
-touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
+touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1687
 payoff: the owner's machine stops gaining a full repository clone per credit run, while a failed run's clone stays for diagnosis
 verify: grep -q 'def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it' tests/unit/test_headless_worker.py
 ---

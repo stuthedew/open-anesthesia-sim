@@ -40,6 +40,8 @@ head = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 branch = subprocess.run(head, capture_output=True, text=True).stdout.strip()
 subprocess.run(["git", "commit", "--allow-empty", "-qm", "work"], check=True)
 subprocess.run(["git", "push", "-q", "-u", "origin", branch], capture_output=True)
+if os.environ.get("FAKE_OUTPUT") == "dirty":
+    open("left-behind.txt", "w").write("not committed")
 if os.environ.get("FAKE_OUTPUT") == "refused":
     print(json.dumps({"type": "result", "subtype": "success", "is_error": True,
                       "result": "Invalid API key", "total_cost_usd": 0, "num_turns": 1}))
@@ -159,6 +161,34 @@ def test_a_pushed_run_records_its_cost_and_the_remote_branch(
     assert argv[argv.index("--max-budget-usd") + 1] == "15.00"
     assert argv[argv.index("--output-format") + 1] == "json"
     assert "PL-B7K2" in argv[argv.index("-p") + 1]
+
+
+@pytest.mark.parametrize(
+    ("no_push", "output", "removed"),
+    [
+        (False, "json", True),
+        (True, "json", False),
+        (False, "refused", False),
+        (False, "dirty", False),
+    ],
+    ids=["pushed", "trial-run", "failed-after-pushing", "uncommitted-file"],
+)
+def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it(
+    origin: Path, fake_claude: Path, tmp_path: Path, no_push: bool, output: str, removed: bool
+) -> None:
+    """Every run used to leave a full clone behind until the owner deleted it (`PL-TX7K`).
+
+    Only a run that succeeded and pushed everything it made removes its clone.
+    A trial run, a failure and a clone holding a file the remote lacks are kept
+    for reading. Every run keeps its log.
+    """
+    run = _work(origin, fake_claude, tmp_path, no_push=no_push, output=output)
+    assert run.removed is removed
+    assert Path(run.clone).is_dir() is not removed
+    assert Path(run.clone + ".log").is_file()
+    line = headless_worker.describe(run)
+    kept = f"in {run.clone}, log in {run.clone}.log"
+    assert ("clone removed, log in" in line, kept in line) == (removed, not removed)
 
 
 def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
