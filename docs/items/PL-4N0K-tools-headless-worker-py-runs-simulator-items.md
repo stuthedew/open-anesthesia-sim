@@ -1,9 +1,16 @@
 ---
 id: PL-4N0K
 title: tools/headless_worker.py runs simulator items at max effort, but the owner set high for all work on 2026-10-19 (PL-6XZG): read the level from effortLevel in .claude/settings.json, its one home, instead of a lane table
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1682
+payoff: every API-runner worker runs at the effort the owner set for all work, read from the one file that holds it
+verify: grep -q 'effortLevel' tools/headless_worker.py && ! grep -q 'SIMULATOR_EFFORT' tools/headless_worker.py
 ---
 
 **Problem.** tools/headless_worker.py runs simulator items at max effort, but the owner set high for all work on 2026-10-19 (PL-6XZG): read the level from effortLevel in .claude/settings.json, its one home, instead of a lane table
