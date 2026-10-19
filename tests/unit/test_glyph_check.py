@@ -142,7 +142,7 @@ def test_an_attribute_docstring_is_read_as_the_other_checks_read_it(tmp_path: Pa
 
     assert list(glyph_check.python_strings(module)) == []
     assert fixture_id_check.scan_python(module) == []
-    assert [text for _, text in doc_check._docstrings(tree)] == [
+    assert [text for _, text in doc_check._docstrings(tree, source.encode())] == [
         'See PL-ZZZZ and docs/MODEL.md \u00a7 "Limits".'  # not-an-id
     ]
 

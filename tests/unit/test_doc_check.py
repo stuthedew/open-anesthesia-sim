@@ -11544,6 +11544,22 @@ def test_a_host_block_claim_without_its_probe_date_is_refused(tmp_path: Path) ->
     ]
 
 
+def test_a_host_claim_below_a_backslash_newline_is_reported_on_its_own_line(tmp_path: Path) -> None:
+    """`PL-PV73`: a docstring's claim is numbered from the source, not the evaluated value.
+
+    A backslash-newline removes a source line from the value, so counting its
+    newlines named source line 4 for a claim that stands on line 5.
+    """
+    source = (
+        'def f() -> None:\n    """One sentence \\\n    wraps.\n\n'
+        '    Nothing was checked: `doi.org` is blocked by the proxy.\n    """\n'
+    )
+    errors = _host_claim_errors(tmp_path, {"tools/m.py": source})
+
+    assert len(errors) == 1
+    assert errors[0].startswith("tools/m.py:5 names `doi.org` beside a refusal")
+
+
 @pytest.mark.parametrize(
     "sentence",
     [
