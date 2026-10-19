@@ -75,7 +75,7 @@ def _menu_entry(strip: WorkspaceTabs, label: str) -> tuple[bool, str]:
     """Whether the Layout menu's entry `label` is enabled, and its tooltip."""
 
     strip.layout_menu.fill()
-    action = next(a for a in strip.layout_menu.menu().actions() if a.text() == label)
+    action = next(a for a in strip.layout_menu.actions() if a.text() == label)
 
     return action.isEnabled(), action.toolTip()
 

@@ -936,14 +936,42 @@ choosing one gives that border the focus (`PL-M352`; the pattern read
 2026-10-19 from `w3c/aria-practices` `main`, since `w3.org` refused the
 connection).
 
-**The Workspace menu sits at the right end of the tab strip, not in a menu
-bar.** Blender's top bar holds its menus and its Workspace tabs in one row. A
-menu bar of its own would cost this window a row of height on Windows and
-Linux, where `PL-QLZ5` was fighting for 70 to 80 px of chart height on the
-1366 by 700 laptop reference. So the
-Layout menu is a button at the strip's right end, after "+". It lists every
-Workspace, steps to the previous or next one, and holds the current
-Workspace's rename, duplicate, reset and delete (`PL-M352`).
+**The Workspace menu opens from the tab strip, not from a menu bar.**
+Blender's top bar holds its menus and its Workspace tabs in one row. A menu
+bar of its own would cost this window a row of height on Windows and Linux,
+where `PL-QLZ5` was fighting for 70 to 80 px of chart height on the 1366 by
+700 laptop reference. `PL-M352` first built the Layout menu as a button at the
+strip's right end, after "+". It lists every Workspace, steps to the previous
+or next one, and holds the current Workspace's rename, duplicate, reset and
+delete. The button was removed by `PL-R5G4`, as the next paragraph says, and a
+right-click on the strip outside a tab now opens the menu.
+
+**No header carries a menu button; the menus open on a right-click, as in
+Blender** (project owner, 2026-10-19, ratified, over keeping a button in each
+Area header and at the tab strip's end, and over removing the menus
+altogether). On his own screen the owner found the "Area" and "Layout"
+buttons "overlapping and intrusive". Blender's headers carry no such button.
+A right-click on a header opens its context menu, which holds the splits,
+Maximize Area and Close Area. A right-click on a border opens "Area Options",
+with the splits, the joins and Swap Areas. A right-click on a Workspace tab
+opens that tab's menu (Blender Manual: "Regions", section "Header"; "Areas",
+section "Area Options"; "Workspaces", section "Controls"; read 2026-10-19). So
+here a
+right-click anywhere on an Area's header opens the Area menu, and a
+right-click on the tab strip outside a tab opens the Layout menu. Each tab's
+own menu also holds Previous and Next Workspace, Save as default, Restore
+shipped Workspaces and Reset all layouts. The keyboard still reaches every
+entry: the Menu key or Shift+F10 opens the Area menu from the View chooser and
+a tab's menu from the tab, so `PL-M352`'s routes still hold. A right-click on
+a border opens nothing yet; the Area menu holds what Blender's border menu
+does. The View chooser stays, as Blender's Editor Type selector stays the
+first control of every header.
+
+**Ctrl and a corner drag swap two Areas, as in Blender.** Blender's Manual
+gives the gesture ("Areas", section "Swapping Contents", read 2026-10-19): Ctrl held
+as a corner is pressed, then a release over any other Area in the window, and
+the two need not be side by side. `PL-R5G4` added it, with a preview that
+outlines both Areas, beside the Area menu's "Swap with".
 
 **Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
 hooks nothing implements and a field nothing assigns, and nothing in the design

@@ -18,10 +18,20 @@ selects.
 from collections.abc import Iterator, Mapping
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QEnterEvent, QImage
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, QRect, Qt
+from PySide6.QtGui import QContextMenuEvent, QEnterEvent, QImage, QKeyEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMenu,
+    QScrollArea,
+    QSplitter,
+    QStyleFactory,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from anesthesia_sim.app.area_layout import (
     AREA_MENU_LABEL,
@@ -38,6 +48,7 @@ from anesthesia_sim.app.area_layout import (
     AreaOperation,
     JoinPreview,
     SplitPreview,
+    SwapPreview,
     ViewChooser,
     _AreaHandle,
 )
@@ -1128,10 +1139,14 @@ def _labels(container: AreaLayout, area_id: int) -> list[tuple[str | None, str, 
     ]
 
 
-def test_every_header_ends_with_the_area_menu(
+def test_a_header_holds_the_chooser_and_no_menu_button(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-MS34` Q2: chooser first, then a stretch, then the Area menu."""
+    """`PL-R5G4`: the chooser is the header's only button, and no button opens the Area menu.
+
+    The project owner found the "Area" button in every header intrusive on
+    2026-10-19. Blender's headers carry no such button.
+    """
 
     container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
 
@@ -1141,9 +1156,111 @@ def test_every_header_ends_with_the_area_menu(
         assert row is not None
 
         assert isinstance(frame.menu, AreaMenu)
-        assert frame.menu.text() == AREA_MENU_LABEL
+        assert frame.menu.title() == AREA_MENU_LABEL
         assert row.itemAt(0).widget() is frame.chooser
-        assert row.itemAt(row.count() - 1).widget() is frame.menu
+        assert frame.header.findChildren(QToolButton) == [frame.chooser]
+
+
+@pytest.mark.parametrize("style", ["Fusion", "Windows"])
+def test_the_choosers_arrow_sits_to_the_right_of_its_title(
+    application: QApplication, shown: list[AreaLayout], style: str
+) -> None:
+    """`PL-R5G4`: the arrow drew over the title's last letters on the owner's screen.
+
+    The chooser is drawn three ways at one size: as it is, with no title, and
+    with neither title nor menu. The pixels that differ between the first two
+    drawings belong to the title. The pixels that differ between the last two
+    belong to the arrow. The arrow must start at least a space's width to the
+    right of the title, and must lie within the title's line rather than below it.
+
+    The owner's macOS style is not available here. Of the two styles that are,
+    the Windows style drew the arrow over the title's last letter before the
+    fix, so it is the one that reproduces the defect.
+    """
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    chooser = container.frame(AreaId(1)).chooser
+    base = QStyleFactory.create(style)
+    assert base is not None
+    chooser.setStyle(base)
+    chooser.setStyleSheet(chooser.styleSheet())
+    title, menu = chooser.text(), chooser.menu()
+    titled = chooser.grab().toImage()
+    chooser.setText("")
+    untitled = chooser.grab().toImage()
+    chooser.setMenu(None)
+    plain = chooser.grab().toImage()
+    chooser.setMenu(menu)
+    chooser.setText(title)
+
+    def changed(first: QImage, second: QImage) -> list[tuple[int, int]]:
+        return [
+            (x, y)
+            for x in range(first.width())
+            for y in range(first.height())
+            if first.pixelColor(x, y) != second.pixelColor(x, y)
+        ]
+
+    title_ink = changed(titled, untitled)
+    arrow_ink = changed(untitled, plain)
+    assert title_ink and arrow_ink
+    space_px = chooser.fontMetrics().horizontalAdvance(" ")
+
+    assert min(x for x, _ in arrow_ink) - max(x for x, _ in title_ink) > space_px
+    assert min(y for _, y in title_ink) <= min(y for _, y in arrow_ink)
+    assert max(y for _, y in arrow_ink) <= max(y for _, y in title_ink)
+
+
+def _opened_by(application: QApplication, menu: QMenu, target: QWidget, send: QEvent) -> bool:
+    """Whether sending `send` to `target` opens `menu`, which is closed again after."""
+
+    assert not menu.isVisible()
+    QApplication.sendEvent(target, send)
+    application.processEvents()
+    opened = menu.isVisible()
+    menu.close()
+    application.processEvents()
+
+    return opened
+
+
+def test_a_right_click_on_the_header_or_its_chooser_opens_the_area_menu(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-R5G4`: as in Blender, the header's context menu holds the Area's operations."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    frame = container.frame(AreaId(2))
+    menu = frame.menu
+    assert menu is not None
+    mouse = QContextMenuEvent.Reason.Mouse
+
+    # The empty middle of the header, past the chooser.
+    middle = QPoint(frame.header.width() // 2, frame.header.height() // 2)
+    assert frame.header.childAt(middle) is None
+    assert _opened_by(
+        application,
+        menu,
+        frame.header,
+        QContextMenuEvent(mouse, middle, frame.header.mapToGlobal(middle)),
+    )
+
+    on_chooser = QPoint(4, 4)
+    assert _opened_by(
+        application,
+        menu,
+        frame.chooser,
+        QContextMenuEvent(mouse, on_chooser, frame.chooser.mapToGlobal(on_chooser)),
+    )
+
+    # Shift+F10 on the chooser, the keyboard's route to the same menu.
+    shift_f10 = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_F10, Qt.KeyboardModifier.ShiftModifier)
+    assert _opened_by(application, menu, frame.chooser, shift_f10)
+
+    # Another Area's header opens that Area's menu, not this one.
+    other = container.frame(AreaId(1))
+    assert other.menu is not None and other.menu is not menu
+    assert other.menu.area_id == AreaId(1)
 
 
 def test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make(
@@ -1296,10 +1413,9 @@ def test_the_drawn_menu_disables_each_unavailable_entry_and_says_why(
     """The reader sees the entry, greyed, with its reason as the tooltip."""
 
     container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
-    button = container.frame(AreaId(1)).menu
-    assert button is not None
-    button.fill()
-    menu = button.menu()
+    menu = container.frame(AreaId(1)).menu
+    assert menu is not None
+    menu.fill()
     # The Resize submenu, before Close Area, is `test_layout_keyboard.py`'s.
     top = {action.text(): action for action in menu.actions() if action.text() != RESIZE_LABEL}
 
@@ -1332,10 +1448,10 @@ def test_a_lone_areas_drawn_menu_shows_join_and_swap_unavailable(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
     container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
-    button = container.frame(AreaId(1)).menu
-    assert button is not None
-    button.fill()
-    top = {action.text(): action for action in button.menu().actions()}
+    menu = container.frame(AreaId(1)).menu
+    assert menu is not None
+    menu.fill()
+    top = {action.text(): action for action in menu.actions()}
 
     assert not top[JOIN_WITH_LABEL].isEnabled()
     assert not top[SWAP_WITH_LABEL].isEnabled()
@@ -1403,12 +1519,8 @@ def test_a_header_control_starts_after_the_corner_zone(
 
     container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
     frame = container.frame(AreaId(1))
-    assert frame.menu is not None
 
     assert frame.chooser.mapTo(frame, QPoint(0, 0)).x() >= AREA_CORNER_ZONE
-    assert frame.menu.mapTo(frame, QPoint(frame.menu.width(), 0)).x() <= (
-        frame.width() - AREA_CORNER_ZONE
-    )
 
 
 def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release(
@@ -1554,6 +1666,82 @@ def test_a_drag_through_the_zone_with_the_mouse_makes_the_split(
     application.processEvents()
 
     assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+
+
+def test_ctrl_and_a_corner_drag_into_another_area_previews_a_swap_and_makes_it_on_release(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-R5G4`: Blender's "Swapping Contents", driven through the corner zone with the mouse.
+
+    Area 1 fills the left half, and Areas 2 and 3 stack on the right. Area 1
+    and Area 3 change places, and each place keeps its size. The expected
+    tree is written by hand from that rule.
+    """
+
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    (zone,) = [
+        zone for zone in container.frame(AreaId(1)).corners if (zone.x(), zone.y()) == (0, 0)
+    ]
+    lower_right = zone.mapFrom(container, container.frame_rect(AreaId(3)).center())
+    ctrl = Qt.KeyboardModifier.ControlModifier
+
+    QTest.mousePress(zone, Qt.MouseButton.LeftButton, ctrl, QPoint(4, 4))
+    QTest.mouseMove(zone, lower_right)
+    application.processEvents()
+    preview = container.preview
+
+    assert isinstance(preview, SwapPreview)
+    assert (preview.start, preview.other) == (AreaId(1), AreaId(3))
+
+    QTest.mouseRelease(zone, Qt.MouseButton.LeftButton, ctrl, lower_right)
+    application.processEvents()
+
+    assert container.preview is None
+    assert container.model == _layout(
+        _row((0.5, 0.5), _area(3), _column((0.5, 0.5), _area(2), _area(1))), 4
+    )
+
+
+def test_ctrl_and_a_corner_drag_inside_its_own_area_neither_splits_nor_swaps(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    before = container.model
+    corner = container.frame_rect(AreaId(1)).topLeft() + QPoint(4, 4)
+    inside = container.frame_rect(AreaId(1)).center()
+
+    container.corner_pressed(AreaId(1), container.mapToGlobal(corner), swap=True)
+    container.corner_moved(container.mapToGlobal(inside))
+
+    assert container.preview is None
+
+    container.corner_released(container.mapToGlobal(inside))
+    application.processEvents()
+
+    assert container.model == before
+
+
+def test_the_overlay_outlines_both_areas_of_a_swap_in_primary(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
+    left = container.frame_rect(AreaId(1))
+    upper = container.frame_rect(AreaId(2))
+    lower = container.frame_rect(AreaId(3))
+
+    container.corner_pressed(
+        AreaId(1), container.mapToGlobal(left.topLeft() + QPoint(4, 4)), swap=True
+    )
+    container.corner_moved(container.mapToGlobal(lower.center()))
+    painted = container.grab().toImage()
+
+    def edge_colour(rect: QRect) -> str:
+        return painted.pixelColor(rect.left() + 1, rect.center().y()).name().upper()
+
+    assert edge_colour(left) == PRIMARY.upper()
+    assert edge_colour(lower) == PRIMARY.upper()
+    assert edge_colour(upper) != PRIMARY.upper()
+    container.corner_cancelled()
 
 
 def test_the_overlay_draws_the_split_line_in_primary_and_a_refused_one_in_warning(
