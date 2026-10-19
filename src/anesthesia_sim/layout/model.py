@@ -38,9 +38,11 @@ whole edge is taken, whichever splits they sit in (`PL-G60V`), because a
 reader sees the rectangles and never the tree.
 
 **What is not here yet.** Minimum sizes, the clamp on a drag and `too_small()`
-are `PL-K285`'s; closing an Area and taking one into its own window are later
-operations of `ROADMAP.md` item 34; what a Workspace carries beyond its layout
-is `PL-WV9K`'s; and the file is `PL-SSQW`'s.
+are `PL-K285`'s; taking an Area into its own window is a later operation of
+`ROADMAP.md` item 34. Closing an Area is a join that gives its place to a
+neighbour, which the adapter's Area menu asks `join` for (`PL-2KXB`). What a
+Workspace carries beyond its layout is `PL-WV9K`'s, and the file is
+`PL-SSQW`'s.
 """
 
 from __future__ import annotations
@@ -50,6 +52,7 @@ from bisect import bisect_left
 from collections.abc import Iterator, Mapping
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
+from enum import Enum
 from itertools import pairwise, product
 from typing import Final
 
@@ -68,7 +71,15 @@ from anesthesia_sim.layout.tree import (
     areas_in,
 )
 
-__all__ = ["BORDER_ALIGNMENT_TOLERANCE", "MAIN_WINDOW", "Handle", "LayoutModel"]
+__all__ = [
+    "BORDER_ALIGNMENT_TOLERANCE",
+    "MAIN_WINDOW",
+    "Handle",
+    "LayoutModel",
+    "Neighbour",
+    "Rectangle",
+    "Side",
+]
 
 # How far apart, as a fraction of the window, two borders may lie and still be
 # read as one line by `LayoutModel.borders()`. It absorbs the rounding of the
@@ -115,6 +126,44 @@ class Handle:
 
             if value < 0:
                 raise InvalidLayout(f"a handle's {name} counts from zero, not {shown(value)}")
+
+
+@dataclass(frozen=True, slots=True)
+class Rectangle:
+    """Where an Area lies in its window, in fractions of the window.
+
+    `left` and `right` are x positions from the window's left edge, and `top`
+    and `bottom` are y positions from its top edge.
+    """
+
+    window: int
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+
+class Side(Enum):
+    """Which side of an Area a neighbour lies on."""
+
+    LEFT = "left"
+    ABOVE = "above"
+    RIGHT = "right"
+    BELOW = "below"
+
+
+@dataclass(frozen=True, slots=True)
+class Neighbour:
+    """An Area beside another, the side of it that it lies on, and whether they could join.
+
+    `whole_edge` is true where the two share the whole of one edge, so that
+    together they make a rectangle, which is what `join` asks first. A join
+    that `whole_edge` allows can still be refused, as `join` says.
+    """
+
+    area_id: AreaId
+    side: Side
+    whole_edge: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +321,53 @@ class LayoutModel:
         """
 
         return self._locate(area_id)[1]
+
+    def rectangle(self, area_id: AreaId) -> Rectangle:
+        """Where the Area holding `area_id` lies in its window.
+
+        Raises:
+            TypeError: `area_id` was not built as an `AreaId`.
+            NotInLayout: no Area of this layout holds `area_id`.
+        """
+
+        place, _ = self._locate(area_id)
+        rect = _rect_at(self.windows[place.window].tree, place.path)
+
+        return Rectangle(place.window, rect.left, rect.top, rect.right, rect.bottom)
+
+    def neighbours(self, area_id: AreaId) -> tuple[Neighbour, ...]:
+        """The Areas whose edge meets an edge of this one for some length, by side.
+
+        Two Areas that touch only at a corner are not neighbours. The result
+        is ordered by side - left, above, right, below - and along each side
+        from the top or the left. A menu reads it to list the Areas an Area
+        can be joined with, and to show the ones it cannot (`PL-2KXB`).
+
+        Raises:
+            TypeError: `area_id` was not built as an `AreaId`.
+            NotInLayout: no Area of this layout holds `area_id`.
+        """
+
+        place, _ = self._locate(area_id)
+        tree = self.windows[place.window].tree
+        own = _rect_at(tree, place.path)
+        found: list[tuple[int, float, Neighbour]] = []
+
+        for path, area in _area_paths(tree, ()):
+            if area.id == area_id:
+                continue
+
+            other = _rect_at(tree, path)
+            side = _side_of(own, other)
+
+            if side is None:
+                continue
+
+            along = other.top if side in (Side.LEFT, Side.RIGHT) else other.left
+            whole = _share_a_whole_edge(own, other)
+            found.append((list(Side).index(side), along, Neighbour(area.id, side, whole)))
+
+        return tuple(neighbour for _, _, neighbour in sorted(found, key=lambda entry: entry[:2]))
 
     def handles(self) -> tuple[Handle, ...]:
         """Every handle: the windows in order, each window's splits depth first."""
@@ -541,7 +637,20 @@ class LayoutModel:
             f"{TREE_DEPTH_MAXIMUM} deep, the most a split sits in a window's tree"
         )
 
-    def resize(self, handle: Handle, position: float) -> LayoutModel:
+    def position(self, handle: Handle) -> float:
+        """Where `handle` lies across its axis, as a fraction of its window.
+
+        A row's border lies at an x and a column's at a y. A drag starts from
+        here, and `resize()` takes the place it moves to in the same units.
+
+        Raises:
+            TypeError: `handle` is not a `Handle`.
+            NotInLayout: `handle` is not a border of this layout.
+        """
+
+        return self._segments_of(handle)[handle].across
+
+    def resize(self, handle: Handle, position: float, *, alone: bool = False) -> LayoutModel:
         """Move a border, and every handle `borders()` joins to it, to `position`.
 
         `position` is a fraction of the window: an x for a row's border and a y
@@ -562,8 +671,15 @@ class LayoutModel:
         moved handle keeps its sizes exactly. A handle already at `position`
         is not moved, so a drag to where a border lies returns an equal layout.
 
+        **With `alone`, only `handle` moves**, and the other handles on its
+        line stay where they are. That is a drag with Shift held, which the
+        Blender Manual gives as moving only the border under the pointer
+        (`interface/window_system/areas.html` § "Resizing", read 2026-10-11),
+        and which `PL-RQT1` Q3 kept.
+
         Raises:
-            TypeError: `handle` is not a `Handle`, or `position` not a `float`.
+            TypeError: `handle` is not a `Handle`, `position` not a `float`,
+                or `alone` not a `bool`.
             NotInLayout: `handle` is not a border of this layout.
             LayoutRefused: `position` is not finite, or would leave an Area
                 beside the line with no size. That happens when `position`
@@ -578,6 +694,9 @@ class LayoutModel:
 
         _require_float("position", position)
 
+        if not isinstance(alone, bool):
+            raise TypeError(f"alone is a bool, not {type(alone).__name__}")
+
         segments = self._segments_of(handle)
         tree = self.windows[handle.window].tree
 
@@ -588,7 +707,7 @@ class LayoutModel:
         # hold two of them and every one is moved.
         moved: dict[tuple[int, ...], set[int]] = {}
 
-        for member in _chain(handle, segments):
+        for member in (handle,) if alone else _chain(handle, segments):
             if segments[member].across != position:
                 moved.setdefault(member.path, set()).add(member.index)
 
@@ -935,6 +1054,30 @@ def _share_a_whole_edge(first: _Rect, second: _Rect) -> bool:
             return True
 
     return False
+
+
+def _side_of(own: _Rect, other: _Rect) -> Side | None:
+    """Which side of `own` the rectangle `other` lies on, where their edges meet for some length."""
+
+    def overlap(first: tuple[float, float], second: tuple[float, float]) -> bool:
+        return min(first[1], second[1]) - max(first[0], second[0]) > BORDER_ALIGNMENT_TOLERANCE
+
+    across_rows = overlap((own.top, own.bottom), (other.top, other.bottom))
+    across_columns = overlap((own.left, own.right), (other.left, other.right))
+
+    if across_rows and _close(other.right, own.left):
+        return Side.LEFT
+
+    if across_rows and _close(other.left, own.right):
+        return Side.RIGHT
+
+    if across_columns and _close(other.bottom, own.top):
+        return Side.ABOVE
+
+    if across_columns and _close(other.top, own.bottom):
+        return Side.BELOW
+
+    return None
 
 
 def _pieces(
