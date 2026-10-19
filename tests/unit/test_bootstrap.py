@@ -1,5 +1,6 @@
 from importlib.metadata import distribution
 from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,7 +14,8 @@ from anesthesia_sim.app.controller import BranchedCase
 from anesthesia_sim.app.qt_widgets import WINDOW_SCREEN_FRACTION, initial_window_geometry
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import INK, PANEL
-from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_ORGANIZATION_NAME
+from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
 
 
 def test_import() -> None:
@@ -46,7 +48,7 @@ def test_console_script_points_to_application_launcher() -> None:
 
 
 def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
-    monkeypatch: Any,
+    monkeypatch: Any, tmp_path: Path
 ) -> None:
     """`main()` builds the window on the screen it is given and hands control to Qt.
 
@@ -79,6 +81,13 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     what is asserted is the flag Qt records and the normal geometry a reader
     gets back on un-maximizing, never the geometry the platform happens to
     have produced by the time the assertion runs.
+
+    **And it names the application before it asks where the reader's data
+    lives, then loads the saved Workspaces from there** (`PL-DWHG`). Qt files
+    the data directory under those names. The override points the load at a
+    temporary directory, which holds no file, so the shipped set opens,
+    "Save as default" is offered for a file in that directory, and nothing
+    has been written to it.
     """
 
     application = QApplication.instance() or QApplication([])
@@ -86,10 +95,18 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     windows: list[QMainWindow] = []
     declared: list[QPalette] = []
     timeline: list[str] = []
+    names: list[tuple[str, str]] = []
 
     class _RecordingApplication:
         def __init__(self, argv: list[str]) -> None:
             del argv
+
+        def setOrganizationName(self, name: str) -> None:  # Qt spells this in camelCase.
+            timeline.append("named")
+            names.append(("organization", name))
+
+        def setApplicationName(self, name: str) -> None:  # Qt spells this in camelCase.
+            names.append(("application", name))
 
         def palette(self) -> QPalette:
             return QApplication.palette()
@@ -118,6 +135,9 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     monkeypatch.setattr(app_main, "QApplication", _RecordingApplication)
     monkeypatch.setattr(app_main, "QMainWindow", _RecordingWindow)
     monkeypatch.setattr(app_main, "SimulationView", _recording_view)
+    # The saved Workspaces are read from a temporary directory, never from
+    # the user's own (`PL-DWHG`).
+    monkeypatch.setenv(USER_DIRECTORY_VARIABLE, str(tmp_path))
 
     with pytest.raises(SystemExit) as exit_info:
         app_main.main()
@@ -142,7 +162,15 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
             available, window.minimumSizeHint(), WINDOW_SCREEN_FRACTION
         )
 
-        assert timeline == ["declared", "built the first widget"]
+        assert timeline == ["named", "declared", "built the first widget"]
+        assert names == [
+            ("organization", APP_ORGANIZATION_NAME),
+            ("application", APP_DISPLAY_NAME),
+        ]
+        entry = view.tab_strip.save_entry()
+        assert entry.question is not None
+        assert str(tmp_path / WORKSPACES_FILE_NAME) in entry.question.text
+        assert list(tmp_path.iterdir()) == []
         (palette,) = declared
         surface = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Window)
         ink = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText)

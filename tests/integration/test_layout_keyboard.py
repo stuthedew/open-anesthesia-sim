@@ -21,11 +21,12 @@ not. So the tests activate the window themselves.
 
 from collections.abc import Iterator
 from functools import partial
+from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMenu, QSplitter, QToolButton, QWidget
+from PySide6.QtWidgets import QApplication, QDialog, QMenu, QSplitter, QToolButton, QWidget
 
 from anesthesia_sim.app.area_layout import (
     CLOSE_AREA_LABEL,
@@ -55,14 +56,19 @@ from anesthesia_sim.app.workspace_tabs import (
     NEXT_WORKSPACE_LABEL,
     PREVIOUS_WORKSPACE_LABEL,
     RENAME_LABEL,
+    RESET_ALL_LABEL,
+    RESTORE_SHIPPED_LABEL,
+    SAVE_AS_DEFAULT_LABEL,
     THIS_WORKSPACE_LABEL,
+    WorkspaceQuestionDialog,
     WorkspaceTabs,
     display_order,
 )
 from anesthesia_sim.layout.model import Handle, LayoutModel
-from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
+from anesthesia_sim.layout.store import WORKSPACES_FILE_NAME, Source, WorkspaceStore
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
-from anesthesia_sim.layout.workspace import WorkspaceSet
+from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
 
 _VIEW = ViewKind("test_view")
 _REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
@@ -157,8 +163,11 @@ def _container(application: QApplication, shown: list[QWidget], model: LayoutMod
     return container
 
 
-def _dashboard(application: QApplication, shown: list[QWidget]) -> SimulationView:
-    view = SimulationView((SimulationController(),))
+def _dashboard(
+    application: QApplication, shown: list[QWidget], store: WorkspaceStore | None = None
+) -> SimulationView:
+    workspaces = None if store is None else store.load(shipped_workspaces()).workspaces
+    view = SimulationView((SimulationController(),), workspaces=workspaces, store=store)
     view.resize(1400, 1000)
     view.show()
     shown.append(view)
@@ -243,6 +252,23 @@ def _choose_by_keys(
     _activate(application, window)
 
     assert reached == list(path)
+
+
+def _proceed_by_keys(application: QApplication, dialog: QDialog) -> None:
+    """Tab to the open question's proceed button, then press Space on it."""
+
+    assert isinstance(dialog, WorkspaceQuestionDialog)
+    _activate(application, dialog)
+
+    for _ in range(4):
+        if dialog.focusWidget() is dialog.proceed_button:
+            break
+
+        QTest.keyClick(dialog, Qt.Key.Key_Tab)
+
+    assert dialog.focusWidget() is dialog.proceed_button
+    QTest.keyClick(dialog.proceed_button, Qt.Key.Key_Space)
+    application.processEvents()
 
 
 def _menu(view: SimulationView, area_id: AreaId) -> AreaMenu:
@@ -499,8 +525,7 @@ def test_the_layout_menu_comes_last_in_the_strip_and_after_plus_in_the_tab_order
     application: QApplication,
 ) -> None:
     strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
-    row = strip.layout()
-    assert row is not None
+    row = strip.row
     last = row.itemAt(row.count() - 1)
     assert last is not None and last.widget() is strip.layout_menu
     assert strip.add_button.nextInFocusChain() is strip.layout_menu
@@ -755,7 +780,12 @@ def test_the_this_workspace_submenu_acts_on_the_current_workspace(
     made: list[WorkspaceSet] = []
     strip = WorkspaceTabs(workspaces, made.append, lambda: ())
     strip.layout_menu.fill()
-    submenu = strip.layout_menu.menu().actions()[-1].menu()
+    entry = next(
+        action
+        for action in strip.layout_menu.menu().actions()
+        if action.text() == THIS_WORKSPACE_LABEL
+    )
+    submenu = entry.menu()
     assert isinstance(submenu, QMenu)
     duplicate = next(action for action in submenu.actions() if action.text() == DUPLICATE_LABEL)
 
@@ -775,3 +805,64 @@ def test_the_only_areas_resize_submenu_is_shown_unavailable_with_its_reason(
 
     assert not resize.isEnabled()
     assert "only Area" in resize.toolTip()
+
+
+def test_save_restore_and_reset_all_are_reachable_from_the_keyboard(
+    application: QApplication, shown: list[QWidget], tmp_path: Path
+) -> None:
+    """Restore shipped Workspaces, Save as default and Reset all layouts, by key alone.
+
+    The store's directory is `tmp_path`, so the save writes there and nowhere
+    else (`PL-DWHG`).
+    """
+
+    view = _dashboard(application, shown, WorkspaceStore(tmp_path))
+    strip = view.tab_strip
+
+    def names() -> list[str]:
+        return [workspace.name for workspace in view.workspaces.workspaces]
+
+    # Delete the shipped Induction Workspace, which asks first.
+    strip.activate(view.workspaces.position_of(WorkspaceName("Induction")))
+    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DELETE_LABEL))
+    dialog = strip.question
+    assert dialog is not None
+    _proceed_by_keys(application, dialog)
+    assert names() == ["Default", "Maintenance"]
+    assert view.workspaces.current.name == "Maintenance"
+
+    # Restore puts it back where it was shipped, and keeps the current tab.
+    _choose_by_keys(application, view, strip.layout_menu, (RESTORE_SHIPPED_LABEL,))
+    assert names() == ["Default", "Induction", "Maintenance"]
+    assert view.workspaces.current.name == "Maintenance"
+    assert view.workspaces.workspaces[1] == shipped_workspace(ShippedWorkspaceId("induction"))
+
+    # Duplicate the current Workspace, then save the four as the default.
+    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DUPLICATE_LABEL))
+    if strip.editor is not None:
+        QTest.keyClick(strip.editor, Qt.Key.Key_Escape)
+    assert names() == ["Default", "Induction", "Maintenance", "Maintenance (copy)"]
+    saved = view.workspaces
+    _choose_by_keys(application, view, strip.layout_menu, (SAVE_AS_DEFAULT_LABEL,))
+    dialog = strip.question
+    assert dialog is not None
+    _proceed_by_keys(application, dialog)
+    reloaded = WorkspaceStore(tmp_path).load(shipped_workspaces())
+    assert reloaded.source is Source.FILE
+    assert reloaded.workspaces == saved
+    written = (tmp_path / WORKSPACES_FILE_NAME).read_bytes()
+
+    # Reset all layouts asks first. Escape keeps the set, and the button resets it.
+    _choose_by_keys(application, view, strip.layout_menu, (RESET_ALL_LABEL,))
+    dialog = strip.question
+    assert dialog is not None
+    _activate(application, dialog)
+    QTest.keyClick(dialog, Qt.Key.Key_Escape)
+    application.processEvents()
+    assert names() == ["Default", "Induction", "Maintenance", "Maintenance (copy)"]
+    _choose_by_keys(application, view, strip.layout_menu, (RESET_ALL_LABEL,))
+    dialog = strip.question
+    assert dialog is not None
+    _proceed_by_keys(application, dialog)
+    assert strip.workspaces == shipped_workspaces()
+    assert (tmp_path / WORKSPACES_FILE_NAME).read_bytes() == written

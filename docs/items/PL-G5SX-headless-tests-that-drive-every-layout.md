@@ -1,14 +1,16 @@
 ---
 id: PL-G5SX
 title: Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: interface-areas
 touches: tests/integration
 blocked-by: PL-DWHG
 added: 2026-09-16
+payoff: every layout operation a learner can perform, saving and reloading included, is checked never to take a required clinical value off the screen
+verify: grep -q 'def test_every_layout_operation_leaves_the_unconditional_set_on_screen' tests/integration/test_layout_safety.py
 ---
 
 **Problem.** Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it

@@ -98,7 +98,7 @@ src/anesthesia_sim/
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection and the time base every View is shown, the one chart frame a tick assembles, the case section of bookmarks and branching under the Areas, the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); each Area's header ends in an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it with a preview drawn over the Areas (PL-2KXB); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no View is drawn below its need, and an Area that cannot be given it shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in every Area's header, or stated absent in place of each View (PL-2KXB)
-│   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu at the strip's end lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352)
+│   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu at the strip's end lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352); the menu ends with Save as default, Restore shipped Workspaces and Reset all layouts, and a line under the tabs shows what the store reported (PL-DWHG)
 │   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the ViewTick it is drawn from, ViewRequests for a change to shared state, and the saved-state version check (PL-TH35)
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
@@ -116,7 +116,7 @@ src/anesthesia_sim/
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
 │   ├── stylesheets.py              # every stylesheet a widget is given, composed from theme.py's tokens, so each visual decision is written once; toolkit-independent
-│   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
+│   └── main.py                     # PySide6 entry point; loads the reader's saved Workspaces from their data directory (PL-DWHG), builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 ├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
 │   ├── sizing.py                   # how a layout is drawn in whole pixels: each Area held at its View's need, its siblings giving way, and which Areas are too small and held at their header instead (PL-K285); pure functions of a tree and an extent
@@ -788,14 +788,16 @@ disk; that was true until this store landed.
 
 - **Where.** The directory Qt reports for `QStandardPaths.AppDataLocation` once
   the entry point has set the organization and application names, which
-  `app/main.py` does not yet do: macOS `~/Library/Application Support/<App>`,
-  Windows `%APPDATA%\<Org>\<App>` (Roaming, since the file holds no window
-  geometry and sizes are fractions), Linux `~/.local/share/<App>`. The store
-  takes a directory and resolves none; `store.user_data_directory` applies the
-  one override, the `ANESTHESIA_SIM_USER_DIR` environment variable, for a
-  headless or portable run, and a test passes `tmp_path`. Wiring it into the
-  application is the adapter's (`PL-W9P6`): nothing under `app/` calls the
-  store yet.
+  `app/main.py` does before it asks (`PL-DWHG`): macOS
+  `~/Library/Application Support/<App>`, Windows `%APPDATA%\<Org>\<App>`
+  (Roaming, since the file holds no window geometry and sizes are fractions),
+  Linux `~/.local/share/<App>`, where `<Org>` is `app_metadata`'s
+  `APP_ORGANIZATION_NAME` and `<App>` its `APP_DISPLAY_NAME`. The store takes a
+  directory and resolves none; `store.user_data_directory` applies the one
+  override, the `ANESTHESIA_SIM_USER_DIR` environment variable, for a headless
+  or portable run, and a test passes `tmp_path`. `app/main.py`'s
+  `open_workspaces` loads the set at launch, and a platform that reports no
+  directory gives a session that saves nothing and says so.
 - **When.** Only on the reader's "Save as default", like Blender's startup
   file; nothing is written on a change, nothing before the first save, and a
   first run leaves no trace. The save writes a temporary file beside the
@@ -803,9 +805,13 @@ disk; that was true until this store landed.
   so one prior generation survives, and `os.replace`s the target, so a torn
   current file arrives only through a crash mid-replace. A failed save raises
   `WorkspaceFileError` naming the path and the reason, reported where the
-  action was invoked.
+  action was invoked: the line under the Workspace tabs. "Save as default" is
+  an entry in the Layout menu, after a question naming the file it writes,
+  beside "Restore shipped Workspaces" and "Reset all layouts", neither of
+  which writes anything (`PL-DWHG`).
 - **What a launch does with the file**, by its `schema_version` and whether it
-  reads, all of it returned in `store.Loaded` for the interface to show:
+  reads, all of it returned in `store.Loaded` for the interface to show on the
+  line under the Workspace tabs:
   *none* - the shipped set, nothing said; *older* - migrated in memory by
   `layout/migrations.py`, one step per version, the reader told only where a
   step was lossy, the pre-migration file kept once as `workspaces.v<N>.json`

@@ -1,9 +1,17 @@
 ---
 id: PL-DWHG
 title: Nothing loads the reader's saved Workspaces at launch or writes them: app/main.py never calls layout/store.py's WorkspaceStore, so Save as default, Restore shipped Workspaces and Reset all layouts from PL-WV9K have no home
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: feature
 feature: interface-areas
+touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/layout/store.py, tests/integration, tests/unit/test_bootstrap.py, docs/ARCHITECTURE.md
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1661
+payoff: a learner's arranged Workspaces survive a restart once saved, and a deleted or broken layout can be put back from the Layout menu
+verify: grep -q 'def test_save_restore_and_reset_all_are_reachable_from_the_keyboard' tests/integration/test_layout_keyboard.py
 ---
 
 **Problem.** Nothing loads the reader's saved Workspaces at launch or writes them: app/main.py never calls layout/store.py's WorkspaceStore, so Save as default, Restore shipped Workspaces and Reset all layouts from PL-WV9K have no home
@@ -48,3 +56,28 @@ The next session should do three things in order:
 3. Drive each entry with keys in a test under `tests/integration/`, as
    `tests/integration/test_layout_keyboard.py`'s `_choose_by_keys` does, and
    use `tmp_path` for the store's directory.
+
+**Built 2026-10-19 (#1661).** `app/main.py`'s `open_workspaces` resolves the
+directory and loads the set, and the dashboard hands the store and its notice
+to the tab strip. The Layout menu ends with the three entries behind a
+separator. These calls were taken in the build, as placeholders where they
+are look, wording or placement (project owner's rule of 2026-10-18):
+
+- The store's notice, a failed save and a finished save each show on one
+  wrapped line under the tabs, with a Dismiss button. Failures are in
+  `WARNING`, a finished save in `INK`.
+- "Save as default" asks first, naming the file it writes or replaces, with
+  Save and Cancel. Without a store, or where the load turned saving off, the
+  entry is disabled and its tooltip is the reason.
+- "Restore shipped Workspaces" puts back only the shipped Workspaces whose
+  origin is gone from the set, as their files hold them, each after the
+  nearest earlier shipped one the set holds. It keeps the current Workspace
+  current and asks nothing, since it removes nothing. Where one of the
+  reader's Workspaces already has a shipped name, the entry is unavailable
+  and says which name. It is not renamed on the reader's behalf.
+- "Reset all layouts" asks first and writes nothing, as Blender's Load
+  Factory Settings does not save.
+- Qt is given the organization name `OpenAnesthesia` and the application
+  name `Open Anesthesia Simulator`. On Linux the file is
+  `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/workspaces.json`,
+  measured with PySide6's `QStandardPaths` on 2026-10-19.

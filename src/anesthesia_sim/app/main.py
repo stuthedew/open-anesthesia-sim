@@ -31,10 +31,25 @@ around a light window. `qt_widgets.declare_application_colours` is what that
 declaration is and why it is a palette rather than a colour-scheme hint; the
 ordering here is the part that belongs to this module, since a widget built
 before the call would be laid out under the host's palette.
+
+**The reader's saved Workspaces are loaded here, once** (`PL-DWHG`). `main()`
+gives Qt the organization and application names, then asks it for
+`QStandardPaths.AppDataLocation`, the directory `layout/store.py`'s module
+docstring names for each platform. `open_workspaces` applies the one
+override, `ANESTHESIA_SIM_USER_DIR`, and loads `workspaces.json` from that
+directory, or the shipped set where there is no file. What the store found
+reaches the dashboard with the set: the store itself, so the Layout menu's
+"Save as default" can write to it, and the store's notice, which the tab
+strip shows. A platform that reports no directory gives a session with no
+store and a notice that says why, so nothing is saved and the reader is told.
 """
 
+import os
 import sys
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 
+from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -44,7 +59,68 @@ from anesthesia_sim.app.qt_widgets import (
     initial_window_geometry,
 )
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.app_metadata import APP_DISPLAY_NAME, APP_ORGANIZATION_NAME
+from anesthesia_sim.layout.exceptions import LayoutRefused
+from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.store import WorkspaceStore, user_data_directory
+from anesthesia_sim.layout.workspace import WorkspaceSet
+
+
+@dataclass(frozen=True, slots=True)
+class LaunchWorkspaces:
+    """The Workspaces a launch opens on, and where they can be saved.
+
+    Attributes:
+        workspaces: The set the dashboard opens on.
+        store: The store the set was loaded from, which "Save as default"
+            writes to, or `None` where there is no directory to save in.
+        notice: What the reader is told about the load, or `None` where
+            nothing happened that they should know.
+    """
+
+    workspaces: WorkspaceSet
+    store: WorkspaceStore | None
+    notice: str | None
+
+
+def open_workspaces(
+    standard_location: str,
+    environment: Mapping[str, str],
+    shipped: Callable[[], WorkspaceSet] = shipped_workspaces,
+) -> LaunchWorkspaces:
+    """Load the reader's Workspaces from their data directory, by `layout/store.py`'s policy.
+
+    Args:
+        standard_location: The directory Qt reports for
+            `QStandardPaths.AppDataLocation`, or an empty string where the
+            platform reports none.
+        environment: The process environment, read for the override that
+            `user_data_directory` applies.
+        shipped: Returns the shipped set, shown where no file can be used.
+
+    Returns:
+        The loaded set with its store and notice. Where neither the override
+        nor the platform names a directory, the shipped set, no store, and a
+        notice saying that nothing will be saved this session.
+
+    Raises:
+        ShippedWorkspaceError: the shipped set does not read, which is a
+            defect of the build rather than anything the reader did.
+    """
+
+    try:
+        directory = user_data_directory(standard_location, environment)
+    except LayoutRefused as refusal:
+        return LaunchWorkspaces(
+            shipped(),
+            None,
+            f"{refusal}. The shipped Workspaces are shown and nothing will be saved this session",
+        )
+
+    store = WorkspaceStore(directory)
+    loaded = store.load(shipped())
+
+    return LaunchWorkspaces(loaded.workspaces, store, loaded.notice)
 
 
 def main() -> None:
@@ -57,9 +133,20 @@ def main() -> None:
     """
 
     app = QApplication(sys.argv[:1])
+    app.setOrganizationName(APP_ORGANIZATION_NAME)
+    app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
+    launch = open_workspaces(
+        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation), os.environ
+    )
     case = BranchedCase(SimulationController())
-    view = SimulationView((case.trunk,), case=case)
+    view = SimulationView(
+        (case.trunk,),
+        case=case,
+        workspaces=launch.workspaces,
+        store=launch.store,
+        notice=launch.notice,
+    )
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)
     window.setCentralWidget(view)
