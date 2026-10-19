@@ -28,14 +28,15 @@ presents the same contract they all do (project owner, 2026-09-16: "modular
 system where each widget ... has core common features that make them
 interchangeable in any blender-style area section").
 
-That contract is not designed yet and is not yours to invent mid-change —
-`ROADMAP.md` item 34 builds the area system and item 36 catalogues the views,
-and the roadmap already records why the layout comes first: a view's contract is
-whatever the area system requires of its contents, so a contract written against
-today's fixed layout is rewritten. `PL-TH35` is where it gets defined.
+That contract is `app/view_contract.py`'s `View` protocol (`PL-TH35`). Its
+module docstring states what a View is given, what it saves and what it owes
+when there is nothing to draw. `docs/ARCHITECTURE.md` § "Where new code
+belongs" has the route for a new View. Do not widen the contract in passing.
+A member that `app/area_layout.py` never calls is deleted, and
+`tests/integration/test_view_contract.py` fails on such a member.
 
-What that means for a change landing before then: **do not add a capability to
-one view in a shape only that view could have.** A heading, a caption, a
+What that means for a change to a View: **do not add a capability to one view
+in a shape only that view could have.** A heading, a caption, a
 per-view control, a way of saying "there is nothing to show yet" — ask whether
 the next view needs the same thing, and give it a name and a shape the next view
 could take, even while only one view uses it. A feature that is interchangeable
