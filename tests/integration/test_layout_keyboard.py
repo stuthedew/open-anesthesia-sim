@@ -1,0 +1,777 @@
+"""Headless tests that every layout operation is reachable without a drag.
+
+`PL-M352` asks that split, join, resize, swap, close, Workspace switch,
+rename, duplicate and delete each be reachable from a menu and from the
+keyboard. Split, join, swap and close are in each Area's menu. Resize uses the
+"Resize" submenu, which gives a border the keyboard focus. The arrow keys then
+move the border. Switching Workspace uses the Layout menu at the end of the
+tab strip, or Ctrl+PageUp and Ctrl+PageDown. Rename, duplicate and delete are
+in each tab's menu, and again in the Layout menu's "This Workspace" submenu.
+
+The first test drives the whole set with key presses. It gives each control
+the focus in code, as the Tab key would. The tab-order tests check that each
+control is in the tab order. No test here presses, moves or releases the
+mouse, so none synthesises a drag. Each test works out its expected layout or
+size from pixel measurements or from the operation itself. It never reads its
+expected values back from `AreaLayout`, the code under test. The tests render
+under the `offscreen` platform that `tests/conftest.py` selects. A desktop
+makes the window active again when a popup menu closes, but that platform does
+not. So the tests activate the window themselves.
+"""
+
+from collections.abc import Iterator
+from functools import partial
+
+import pytest
+from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QMenu, QSplitter, QToolButton, QWidget
+
+from anesthesia_sim.app.area_layout import (
+    CLOSE_AREA_LABEL,
+    JOIN_WITH_LABEL,
+    RESIZE_LABEL,
+    SPLIT_SIDE_BY_SIDE_LABEL,
+    SPLIT_STACKED_LABEL,
+    SWAP_WITH_LABEL,
+    AreaLayout,
+    AreaMenu,
+    _AreaHandle,
+)
+from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.theme import AREA_HANDLE_WIDTH, AREA_KEYBOARD_STEP
+from anesthesia_sim.app.view_contract import (
+    STATE_VERSION_KEY,
+    SavedState,
+    ViewContext,
+    ViewRequests,
+    ViewTick,
+)
+from anesthesia_sim.app.view_registry import RegisteredView, registry
+from anesthesia_sim.app.workspace_tabs import (
+    DELETE_LABEL,
+    DUPLICATE_LABEL,
+    NEXT_WORKSPACE_LABEL,
+    PREVIOUS_WORKSPACE_LABEL,
+    RENAME_LABEL,
+    THIS_WORKSPACE_LABEL,
+    WorkspaceTabs,
+    display_order,
+)
+from anesthesia_sim.layout.model import Handle, LayoutModel
+from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
+from anesthesia_sim.layout.workspace import WorkspaceSet
+
+_VIEW = ViewKind("test_view")
+_REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
+
+# A container this size leaves 800 px for the children of a split of two once
+# the handle is taken out, so a step reads straight off as pixels.
+_SIDE_PX = 800 + AREA_HANDLE_WIDTH
+
+
+class _BlankView(QWidget):
+    """A View that draws nothing and is small enough never to stop a border."""
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__()
+        self.setMinimumSize(10, 10)
+
+    def refresh(self, tick: ViewTick) -> None:
+        pass
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return False
+
+    def frame_width_px(self) -> float | None:
+        return None
+
+    def save_state(self) -> SavedState:
+        return {STATE_VERSION_KEY: 1}
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return ()
+
+
+_REGISTERED = registry(RegisteredView(_VIEW, "Blank view", _BlankView))
+
+
+def _area(number: int) -> Area:
+    return Area(AreaId(number), _VIEW)
+
+
+def _row(sizes: tuple[float, ...], *children: Node) -> Split:
+    return Split(Orientation.ROW, sizes, children)
+
+
+def _column(sizes: tuple[float, ...], *children: Node) -> Split:
+    return Split(Orientation.COLUMN, sizes, children)
+
+
+def _layout(tree: Node, next_id: int) -> LayoutModel:
+    return LayoutModel((Window(tree),), AreaId(next_id))
+
+
+@pytest.fixture(scope="module")
+def application() -> Iterator[QApplication]:
+    existing = QApplication.instance()
+
+    yield existing if isinstance(existing, QApplication) else QApplication([])
+
+
+@pytest.fixture
+def shown(application: QApplication) -> Iterator[list[QWidget]]:
+    """Every window a test shows, closed after it."""
+
+    windows: list[QWidget] = []
+    yield windows
+
+    for window in windows:
+        if isinstance(window, SimulationView):
+            window.stop_timers()
+
+        window.close()
+        window.deleteLater()
+
+    application.processEvents()
+
+
+def _activate(application: QApplication, window: QWidget) -> None:
+    """Make `window` the active window, as a desktop does when a popup menu closes."""
+
+    window.activateWindow()
+    assert QTest.qWaitForWindowActive(window, 2000)
+    application.processEvents()
+
+
+def _container(application: QApplication, shown: list[QWidget], model: LayoutModel) -> AreaLayout:
+    container = AreaLayout(model, _REQUESTS, registered=_REGISTERED)
+    container.resize(_SIDE_PX, _SIDE_PX)
+    container.show()
+    shown.append(container)
+    _activate(application, container)
+
+    return container
+
+
+def _dashboard(application: QApplication, shown: list[QWidget]) -> SimulationView:
+    view = SimulationView((SimulationController(),))
+    view.resize(1400, 1000)
+    view.show()
+    shown.append(view)
+    _activate(application, view)
+    view.present(False)
+
+    return view
+
+
+def _handle(container: AreaLayout, handle: Handle) -> _AreaHandle:
+    """The widget drawing `handle`, found through the splitters rather than the adapter."""
+
+    splitters = [
+        splitter
+        for splitter in container.findChildren(QSplitter)
+        if getattr(splitter, "path", None) == handle.path
+    ]
+    assert len(splitters) == 1
+    widget = splitters[0].handle(handle.index + 1)
+    assert isinstance(widget, _AreaHandle)
+
+    return widget
+
+
+def _choose_by_keys(
+    application: QApplication, window: QWidget, button: QToolButton, path: tuple[str, ...]
+) -> None:
+    """Open `button`'s menu with Space, and walk `path` with Down, Right and Return.
+
+    The menu runs its own event loop, so the walk is queued before Space is
+    pressed. The queued walk then waits until the menu is open. At the end of
+    the walk, every popup is closed, whatever the walk found. So a missing
+    entry fails the test instead of leaving the test waiting on a menu.
+    """
+
+    reached: list[str] = []
+    finished = False
+
+    def walk(tries: int) -> None:
+        popup = QApplication.activePopupWidget()
+
+        if finished:
+            return
+
+        if popup is None and tries > 0:
+            QTimer.singleShot(10, partial(walk, tries - 1))
+            return
+
+        try:
+            for depth, label in enumerate(path):
+                if not isinstance(popup, QMenu):
+                    return
+
+                for _ in range(len(popup.actions()) + 1):
+                    active = popup.activeAction()
+
+                    if active is not None and active.text() == label:
+                        break
+
+                    QTest.keyClick(popup, Qt.Key.Key_Down)
+                else:
+                    return
+
+                reached.append(label)
+
+                if depth < len(path) - 1:
+                    QTest.keyClick(popup, Qt.Key.Key_Right)
+                    popup = QApplication.activePopupWidget()
+                else:
+                    QTest.keyClick(popup, Qt.Key.Key_Return)
+        finally:
+            while (left_open := QApplication.activePopupWidget()) is not None:
+                left_open.close()
+
+    assert button.focusPolicy() & Qt.FocusPolicy.TabFocus
+    button.setFocus(Qt.FocusReason.TabFocusReason)
+    application.processEvents()
+    QTimer.singleShot(0, partial(walk, 100))
+    QTest.keyClick(button, Qt.Key.Key_Space)
+    application.processEvents()
+    finished = True
+    _activate(application, window)
+
+    assert reached == list(path)
+
+
+def _menu(view: SimulationView, area_id: AreaId) -> AreaMenu:
+    menu = view.layout_container.frame(area_id).menu
+    assert menu is not None
+
+    return menu
+
+
+def _entry(view: SimulationView, area_id: AreaId, group: str) -> str:
+    """The label of the first available entry of `group` in the Area's menu."""
+
+    return next(
+        operation.label
+        for operation in view.layout_container.operations(area_id)
+        if operation.group == group and operation.available
+    )
+
+
+def test_every_layout_operation_is_reachable_from_the_keyboard(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Resize, split, swap, join, close, switch, rename, duplicate and delete, by key alone."""
+
+    view = _dashboard(application, shown)
+    areas = view.layout_container
+    strip = view.tab_strip
+    first = areas.model.areas()[0].id
+    kinds = {area.id: area.view for area in areas.model.areas()}
+
+    # Resize. The Resize submenu gives the first Area's right border the focus.
+    # Left then moves the border one step. The root split spans the window, so
+    # one step moves the border by AREA_KEYBOARD_STEP as a fraction of the
+    # split's width less its handle.
+    before = areas.model.rectangle(first)
+    _choose_by_keys(application, view, _menu(view, first), (RESIZE_LABEL, "Right border"))
+    border = QApplication.focusWidget()
+    assert isinstance(border, _AreaHandle)
+    splitter = border.owner
+    drawable_px = splitter.width() - splitter.handleWidth() * (splitter.count() - 1)
+    QTest.keyClick(border, Qt.Key.Key_Left)
+    application.processEvents()
+    assert areas.model.rectangle(first).right == pytest.approx(
+        before.right - AREA_KEYBOARD_STEP / drawable_px
+    )
+
+    # Split: the first Area becomes two side by side, both showing its View.
+    _choose_by_keys(application, view, _menu(view, first), (SPLIT_SIDE_BY_SIDE_LABEL,))
+    assert len(areas.model.areas()) == 3
+    made = next(area.id for area in areas.model.areas() if area.id not in kinds)
+    assert areas.model.area(made).view == kinds[first]
+
+    # Swap: the first Area and another exchange their places.
+    label = _entry(view, first, SWAP_WITH_LABEL)
+    place = areas.model.rectangle(first)
+    _choose_by_keys(application, view, _menu(view, first), (SWAP_WITH_LABEL, label))
+    assert areas.model.rectangle(first) != place
+    assert len(areas.model.areas()) == 3
+
+    # Join: the first Area takes a neighbour's place, so one Area fewer.
+    label = _entry(view, first, JOIN_WITH_LABEL)
+    _choose_by_keys(application, view, _menu(view, first), (JOIN_WITH_LABEL, label))
+    assert len(areas.model.areas()) == 2
+
+    # Close: a neighbour takes the closed Area's place, leaving one.
+    survivor = next(area.id for area in areas.model.areas() if area.id != first)
+    _choose_by_keys(application, view, _menu(view, survivor), (CLOSE_AREA_LABEL,))
+    assert len(areas.model.areas()) == 1
+
+    # Switch Workspace: Ctrl+PageDown and Ctrl+PageUp, then the Layout menu.
+    order = display_order(view.workspaces)
+    names = [view.workspaces.workspaces[index].name for index in order]
+    QTest.keyClick(strip.layout_menu, Qt.Key.Key_PageDown, Qt.KeyboardModifier.ControlModifier)
+    assert view.workspaces.active == order[1]
+    QTest.keyClick(strip.layout_menu, Qt.Key.Key_PageUp, Qt.KeyboardModifier.ControlModifier)
+    assert view.workspaces.active == order[0]
+    # A shortcut consumes its key press, and QTest then leaves Ctrl held in
+    # the application's modifier state, so Ctrl is let go here by hand.
+    QTest.keyClick(strip.layout_menu, Qt.Key.Key_Control)
+    _choose_by_keys(application, view, strip.layout_menu, (names[2],))
+    assert view.workspaces.active == order[2]
+
+    # Rename: F2 on the focused tab, a new name, Return.
+    tab = strip.tab_at(view.workspaces.active)
+    tab.setFocus(Qt.FocusReason.TabFocusReason)
+    QTest.keyClick(tab, Qt.Key.Key_F2)
+    editor = strip.editor
+    assert editor is not None
+    QTest.keyClicks(editor, "Mine")
+    QTest.keyClick(editor, Qt.Key.Key_Return)
+    assert view.workspaces.current.name == "Mine"
+
+    # Duplicate, from the Layout menu's "This Workspace" submenu.
+    count = len(view.workspaces.workspaces)
+    path = (THIS_WORKSPACE_LABEL, DUPLICATE_LABEL)
+    _choose_by_keys(application, view, strip.layout_menu, path)
+    assert len(view.workspaces.workspaces) == count + 1
+
+    # Delete, which asks first: Tab to the dialog's Delete button, then Space.
+    if strip.editor is not None:
+        QTest.keyClick(strip.editor, Qt.Key.Key_Escape)
+    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DELETE_LABEL))
+    dialog = strip.question
+    assert dialog is not None
+    _activate(application, dialog)
+
+    for _ in range(4):
+        if dialog.focusWidget() is dialog.proceed_button:
+            break
+
+        QTest.keyClick(dialog, Qt.Key.Key_Tab)
+
+    assert dialog.focusWidget() is dialog.proceed_button
+    QTest.keyClick(dialog.proceed_button, Qt.Key.Key_Space)
+    application.processEvents()
+    assert len(view.workspaces.workspaces) == count
+
+
+def test_every_layout_operation_is_reachable_from_a_menu(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Each operation is an entry in the Area menu, the Layout menu or a tab's menu."""
+
+    view = _dashboard(application, shown)
+    first = view.layout_container.model.areas()[0].id
+    area_menu = _menu(view, first)
+    area_menu.fill()
+    area_entries = [action.text() for action in area_menu.menu().actions()]
+
+    for label in (
+        SPLIT_SIDE_BY_SIDE_LABEL,
+        SPLIT_STACKED_LABEL,
+        JOIN_WITH_LABEL,
+        SWAP_WITH_LABEL,
+        RESIZE_LABEL,
+        CLOSE_AREA_LABEL,
+    ):
+        assert label in area_entries
+
+    strip = view.tab_strip
+    strip.layout_menu.fill()
+    layout_actions = {action.text(): action for action in strip.layout_menu.menu().actions()}
+    names = [strip.workspaces.workspaces[index].name for index in display_order(strip.workspaces)]
+
+    for label in (*names, PREVIOUS_WORKSPACE_LABEL, NEXT_WORKSPACE_LABEL, THIS_WORKSPACE_LABEL):
+        assert label in layout_actions
+
+    this_workspace = layout_actions[THIS_WORKSPACE_LABEL].menu()
+    assert isinstance(this_workspace, QMenu)
+    entries = [action.text() for action in this_workspace.actions()]
+
+    for label in (RENAME_LABEL, DUPLICATE_LABEL, DELETE_LABEL):
+        assert label in entries
+
+    tab_entries = [action.text() for action in strip.menu_for(strip.workspaces.active).actions()]
+    assert entries == tab_entries
+
+    layout_actions[names[1]].trigger()
+    assert view.workspaces.active == display_order(view.workspaces)[1]
+
+
+def test_the_layout_menu_lists_every_workspace_in_tab_order_with_the_current_checked(
+    application: QApplication,
+) -> None:
+    workspaces = shipped_workspaces().duplicate(0).activate(2)
+    strip = WorkspaceTabs(workspaces, lambda _set: None, lambda: ())
+    strip.layout_menu.fill()
+    actions = strip.layout_menu.menu().actions()
+    names = [workspaces.workspaces[index].name for index in display_order(workspaces)]
+
+    assert [action.text() for action in actions[: len(names)]] == names
+    assert [action.isChecked() for action in actions[: len(names)]] == [
+        index == 2 for index in display_order(workspaces)
+    ]
+    assert strip.previous_action.shortcut().toString() == "Ctrl+PgUp"
+    assert strip.next_action.shortcut().toString() == "Ctrl+PgDown"
+
+
+def test_next_and_previous_workspace_follow_the_tabs_and_wrap_round(
+    application: QApplication,
+) -> None:
+    """Shipped tabs first, then the reader's own; past either end comes the other, as in Blender."""
+
+    workspaces = shipped_workspaces().duplicate(0).activate(0)
+    order = display_order(workspaces)
+    assert len(order) >= 3
+
+    def change(made: WorkspaceSet) -> None:
+        strip.show_set(made)
+
+    strip = WorkspaceTabs(workspaces, change, lambda: ())
+
+    strip.next_action.trigger()
+    assert strip.workspaces.active == order[1]
+    strip.previous_action.trigger()
+    strip.previous_action.trigger()
+    assert strip.workspaces.active == order[-1]
+    strip.next_action.trigger()
+    assert strip.workspaces.active == order[0]
+
+
+def test_next_workspace_during_a_rename_takes_the_typed_name_before_it_switches(
+    application: QApplication,
+) -> None:
+    """Ctrl+PgDown reaches the window while a name is being typed, and kept the name from it."""
+
+    workspaces = shipped_workspaces().duplicate(0).activate(0)
+    order = display_order(workspaces)
+
+    def change(made: WorkspaceSet) -> None:
+        strip.show_set(made)
+
+    strip = WorkspaceTabs(workspaces, change, lambda: ())
+    strip.rename(order[0])
+    editor = strip.editor
+    assert editor is not None
+    editor.setText("Mine")
+
+    strip.next_action.trigger()
+
+    assert strip.editor is None
+    assert strip.workspaces.workspaces[order[0]].name == "Mine"
+    assert strip.workspaces.active == order[1]
+
+
+def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Three openings leave the submenus of one, not three, in each menu written on opening."""
+
+    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
+    container = _container(
+        application, shown, _layout(_row((1 / 3, 1 / 3, 1 / 3), _area(1), _area(2), _area(3)), 4)
+    )
+    area_menu = container.frame(AreaId(2)).menu
+
+    for _ in range(3):
+        strip.layout_menu.fill()
+        area_menu.fill()
+        QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    direct = Qt.FindChildOption.FindDirectChildrenOnly
+    layout_submenus = strip.layout_menu.menu().findChildren(QMenu, options=direct)
+    area_submenus = area_menu.menu().findChildren(QMenu, options=direct)
+    # The Layout menu has one submenu, "This Workspace". The Area menu has
+    # three: "Join with", "Swap with" and "Resize".
+    assert [submenu.title() for submenu in layout_submenus] == [THIS_WORKSPACE_LABEL]
+    assert sorted(submenu.title() for submenu in area_submenus) == sorted(
+        (JOIN_WITH_LABEL, SWAP_WITH_LABEL, RESIZE_LABEL)
+    )
+
+
+def test_the_layout_menu_comes_last_in_the_strip_and_after_plus_in_the_tab_order(
+    application: QApplication,
+) -> None:
+    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
+    row = strip.layout()
+    assert row is not None
+    last = row.itemAt(row.count() - 1)
+    assert last is not None and last.widget() is strip.layout_menu
+    assert strip.add_button.nextInFocusChain() is strip.layout_menu
+
+
+def test_an_arrow_key_moves_a_focused_border_one_step_and_escape_puts_it_back(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """In a row of two at 400 px each, Right makes it 420 and 380, and Left goes back."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _container(application, shown, model)
+    changed: list[LayoutModel] = []
+    container.layout_changed.connect(changed.append)
+    border = _handle(container, Handle(0, (), 0))
+
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    assert border.hasFocus() and border.lit and not border.warning
+
+    QTest.keyClick(border, Qt.Key.Key_Right)
+    QTest.keyClick(border, Qt.Key.Key_Right)
+    assert border.owner.sizes() == [400 + 2 * AREA_KEYBOARD_STEP, 400 - 2 * AREA_KEYBOARD_STEP]
+
+    QTest.keyClick(border, Qt.Key.Key_Left)
+    assert border.owner.sizes() == [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
+
+    # Up and Down move a border between Areas stacked, not this one.
+    QTest.keyClick(border, Qt.Key.Key_Down)
+    assert border.owner.sizes() == [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
+
+    QTest.keyClick(border, Qt.Key.Key_Escape)
+    assert container.model == model
+    assert border.owner.sizes() == [400, 400]
+    assert changed[-1] == model and len(changed) == 4
+
+
+def test_shift_moves_a_focused_border_alone_and_without_it_its_whole_line_moves(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Two columns side by side, each cut at half its height, have one horizontal line."""
+
+    model = _layout(
+        _row(
+            (0.5, 0.5),
+            _column((0.5, 0.5), _area(1), _area(2)),
+            _column((0.5, 0.5), _area(3), _area(4)),
+        ),
+        5,
+    )
+    container = _container(application, shown, model)
+    left, right = _handle(container, Handle(0, (0,), 0)), _handle(container, Handle(0, (1,), 0))
+    container.focus_border(Handle(0, (0,), 0))
+    application.processEvents()
+    assert left.lit and right.lit
+
+    QTest.keyClick(left, Qt.Key.Key_Down)
+    step = [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
+    assert left.owner.sizes() == step
+    assert right.owner.sizes() == step
+
+    QTest.keyClick(left, Qt.Key.Key_Down, Qt.KeyboardModifier.ShiftModifier)
+    assert left.owner.sizes() == [400 + 2 * AREA_KEYBOARD_STEP, 400 - 2 * AREA_KEYBOARD_STEP]
+    assert right.owner.sizes() == step
+    assert left.lit and not right.lit
+
+
+def test_a_focused_border_stops_where_an_area_reaches_its_least_size_and_turns_warning(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Forty steps to the right would be 800 px, and the right Area keeps at least its header."""
+
+    container = _container(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    border = _handle(container, Handle(0, (), 0))
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+
+    for _ in range(40):
+        QTest.keyClick(border, Qt.Key.Key_Right)
+
+    least = container.frame(AreaId(2)).minimumSizeHint().width()
+    assert border.warning
+    assert border.owner.sizes()[1] >= min(least, 400)
+    assert container.model.rectangle(AreaId(2)).left < 1.0
+
+    QTest.keyClick(border, Qt.Key.Key_Left)
+    assert not border.warning
+
+
+def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """The last step stops at the minimum size, as a drag does, not one step short of it.
+
+    From 400 px, ten whole steps leave the right Area 200 px wide. An eleventh step would
+    leave 180 px, which is less than the minimum width that its frame declares. So the
+    border stops part of the way through the eleventh step.
+    """
+
+    container = _container(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    border = _handle(container, Handle(0, (), 0))
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    least = container.frame(AreaId(2)).minimumWidth()
+    assert 400 - 11 * AREA_KEYBOARD_STEP < least < 400 - 10 * AREA_KEYBOARD_STEP
+
+    for _ in range(11):
+        QTest.keyClick(border, Qt.Key.Key_Right)
+
+    assert border.warning
+    assert least <= border.owner.sizes()[1] < 400 - 10 * AREA_KEYBOARD_STEP
+
+
+def test_a_focused_border_keeps_its_starting_layout_while_another_window_is_active(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """The window losing and regaining the focus does not move where Escape returns to."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _container(application, shown, model)
+    border = _handle(container, Handle(0, (), 0))
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    QTest.keyClick(border, Qt.Key.Key_Right)
+    assert border.owner.sizes() == [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
+
+    other = QWidget()
+    shown.append(other)
+    other.show()
+    _activate(application, other)
+    _activate(application, container)
+    assert border.hasFocus()
+
+    QTest.keyClick(border, Qt.Key.Key_Escape)
+    assert container.model == model
+    assert border.owner.sizes() == [400, 400]
+
+
+def test_a_border_is_in_the_tab_order_and_loses_its_line_with_the_focus(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    container = _container(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
+    border = _handle(container, Handle(0, (), 0))
+
+    assert border.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert border.accessibleName()
+
+    container.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    assert border.lit
+
+    container.frame(AreaId(1)).chooser.setFocus(Qt.FocusReason.TabFocusReason)
+    application.processEvents()
+    assert not border.lit
+
+
+def test_the_resize_submenu_names_each_border_and_its_entry_gives_that_border_the_focus(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """In row[1, column[2, 3]], Area 2 has a left and a bottom border, and Area 1 a right one."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _column((0.5, 0.5), _area(2), _area(3))), 4)
+    container = _container(application, shown, model)
+
+    assert [(border.label, border.handle) for border in container.borders(AreaId(1))] == [
+        ("Right border", Handle(0, (), 0))
+    ]
+    assert [(border.label, border.handle) for border in container.borders(AreaId(2))] == [
+        ("Left border", Handle(0, (), 0)),
+        ("Bottom border", Handle(0, (1,), 0)),
+    ]
+
+    button = container.frame(AreaId(2)).menu
+    assert button is not None
+    button.fill()
+    top = {action.text(): action for action in button.menu().actions()}
+    assert list(top)[-2:] == [RESIZE_LABEL, CLOSE_AREA_LABEL]
+    resize = top[RESIZE_LABEL].menu()
+    assert isinstance(resize, QMenu)
+    entries = {action.text(): action for action in resize.actions()}
+    assert list(entries) == ["Left border", "Bottom border"]
+
+    entries["Bottom border"].trigger()
+    application.processEvents()
+    assert _handle(container, Handle(0, (1,), 0)).hasFocus()
+
+
+def test_an_area_bordered_on_four_sides_lists_four_resize_entries_each_moving_its_own_side(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """In row[1, column[2, 3, 4], 5], Area 3 has a border on each side, named for that side."""
+
+    model = _layout(
+        _row(
+            (0.25, 0.5, 0.25),
+            _area(1),
+            _column((1 / 3, 1 / 3, 1 / 3), _area(2), _area(3), _area(4)),
+            _area(5),
+        ),
+        6,
+    )
+    container = _container(application, shown, model)
+    entries = container.borders(AreaId(3))
+
+    assert [entry.label for entry in entries] == [
+        "Left border",
+        "Top border",
+        "Right border",
+        "Bottom border",
+    ]
+    # The column's two borders are its own handles 0 and 1, and the row's
+    # are the root's handles 0 and 1.
+    assert [entry.handle for entry in entries] == [
+        Handle(0, (), 0),
+        Handle(0, (1,), 0),
+        Handle(0, (), 1),
+        Handle(0, (1,), 1),
+    ]
+
+    # Each entry's border, moved one step down or right, moves that side of
+    # Area 3 and leaves the opposite side where it was.
+    before = model.rectangle(AreaId(3))
+
+    for entry, side in zip(entries, ("left", "top", "right", "bottom"), strict=True):
+        container.focus_border(entry.handle)
+        application.processEvents()
+        border = QApplication.focusWidget()
+        assert isinstance(border, _AreaHandle)
+        assert border.lit and border.accessibleDescription()
+        key = Qt.Key.Key_Right if side in ("left", "right") else Qt.Key.Key_Down
+        QTest.keyClick(border, key)
+        after = container.model.rectangle(AreaId(3))
+        opposite = {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}[side]
+        assert getattr(after, side) > getattr(before, side)
+        assert getattr(after, opposite) == getattr(before, opposite)
+
+        # Escape puts the layout back and keeps the border's focus and its
+        # line, so a second step and a second Escape behave the same way.
+        QTest.keyClick(border, Qt.Key.Key_Escape)
+        assert container.model == model and border.hasFocus() and border.lit
+        QTest.keyClick(border, key)
+        QTest.keyClick(border, Qt.Key.Key_Escape)
+        assert container.model == model
+
+
+def test_the_this_workspace_submenu_acts_on_the_current_workspace(
+    application: QApplication,
+) -> None:
+    """With the third tab current, the submenu's Duplicate copies that Workspace."""
+
+    workspaces = shipped_workspaces().activate(2)
+    made: list[WorkspaceSet] = []
+    strip = WorkspaceTabs(workspaces, made.append, lambda: ())
+    strip.layout_menu.fill()
+    submenu = strip.layout_menu.menu().actions()[-1].menu()
+    assert isinstance(submenu, QMenu)
+    duplicate = next(action for action in submenu.actions() if action.text() == DUPLICATE_LABEL)
+
+    duplicate.trigger()
+
+    assert made == [workspaces.duplicate(2)]
+
+
+def test_the_only_areas_resize_submenu_is_shown_unavailable_with_its_reason(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    container = _container(application, shown, LayoutModel.single_area(_VIEW))
+    button = container.frame(AreaId(1)).menu
+    assert button is not None
+    button.fill()
+    resize = next(action for action in button.menu().actions() if action.text() == RESIZE_LABEL)
+
+    assert not resize.isEnabled()
+    assert "only Area" in resize.toolTip()

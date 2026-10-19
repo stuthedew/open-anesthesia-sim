@@ -112,6 +112,7 @@ from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QEnterEvent,
+    QFocusEvent,
     QFont,
     QFontMetrics,
     QKeyEvent,
@@ -156,6 +157,7 @@ from anesthesia_sim.app.theme import (
     AREA_GRIP_STROKES,
     AREA_HANDLE_LINE_WIDTH,
     AREA_HANDLE_WIDTH,
+    AREA_KEYBOARD_STEP,
     AREA_PREVIEW_LINE_WIDTH,
     GRIDLINE,
     INK,
@@ -213,9 +215,11 @@ __all__ = [
     "AREA_MENU_LABEL",
     "CLOSE_AREA_LABEL",
     "JOIN_WITH_LABEL",
+    "RESIZE_LABEL",
     "SPLIT_SIDE_BY_SIDE_LABEL",
     "SPLIT_STACKED_LABEL",
     "SWAP_WITH_LABEL",
+    "AreaBorder",
     "AreaFrame",
     "AreaLayout",
     "AreaMenu",
@@ -244,6 +248,16 @@ SPLIT_STACKED_LABEL: Final = "Split top and bottom"
 JOIN_WITH_LABEL: Final = "Join with"
 SWAP_WITH_LABEL: Final = "Swap with"
 CLOSE_AREA_LABEL: Final = "Close Area"
+RESIZE_LABEL: Final = "Resize"
+
+# How the "Resize" submenu names each border of the Area (`PL-M352`). The
+# wording is a placeholder, as above.
+_BORDER_WORDS: Final = {
+    Side.LEFT: "Left border",
+    Side.ABOVE: "Top border",
+    Side.RIGHT: "Right border",
+    Side.BELOW: "Bottom border",
+}
 
 # Where a split made from the menu falls: halfway across the Area.
 _MENU_SPLIT_AT: Final = 0.5
@@ -299,6 +313,23 @@ class AreaOperation:
     @property
     def available(self) -> bool:
         return self.result is not None
+
+
+@dataclass(frozen=True, slots=True)
+class AreaBorder:
+    """One entry of an Area menu's "Resize" submenu, holding a border of the Area and its name.
+
+    Choosing the entry gives the border the keyboard focus. The arrow keys
+    then move the border, as `_AreaHandle` describes (`PL-M352`).
+
+    Attributes:
+        label: The entry's text, which names the side of the Area.
+        handle: The border, identified by its place in the layout that was drawn
+            when the menu opened.
+    """
+
+    label: str
+    handle: Handle
 
 
 @dataclass(frozen=True, slots=True)
@@ -414,6 +445,8 @@ class AreaLayout(QWidget):
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
         self._border_drag: _BorderDrag | None = None
+        # The border that has the keyboard focus, and the layout it had then.
+        self._keyed: _KeyedBorder | None = None
         self._at_minimum = False
         self._corner_drag: tuple[AreaId, QPoint] | None = None
         self.preview: SplitPreview | JoinPreview | None = None
@@ -589,6 +622,51 @@ class AreaLayout(QWidget):
             raise ValueError(f"{operation.label!r} is unavailable: {operation.refusal}")
 
         self._apply(operation.result)
+
+    def borders(self, area_id: AreaId) -> tuple[AreaBorder, ...]:
+        """Return one "Resize" submenu entry for each border of the Area `area_id`.
+
+        A side that lies along the window's edge has no border, so that side
+        has no entry. The entries are in the order left, top, right, bottom
+        (`LayoutModel.edges`).
+
+        Raises:
+            TypeError: `area_id` is not an `AreaId`.
+            NotInLayout: the layout currently drawn has no Area `area_id`.
+        """
+
+        return tuple(
+            AreaBorder(_BORDER_WORDS[side], handle) for side, handle in self._model.edges(area_id)
+        )
+
+    def focus_border(self, handle: Handle) -> None:
+        """Give the border `handle` the keyboard focus, so that the arrow keys move it.
+
+        Choosing a "Resize" entry calls this method. While the border has the
+        focus, its line is drawn as it is when the pointer is over it.
+
+        Raises:
+            KeyError: `handle` is not a border of the layout currently drawn.
+        """
+
+        self._handle_widget(handle).setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def _handle_widget(self, handle: Handle) -> _AreaHandle:
+        """The widget that draws the border `handle`.
+
+        Raises:
+            KeyError: `handle` is not a border of the layout drawn now.
+        """
+
+        splitter = self._splitters.get(handle.path) if handle.window == MAIN_WINDOW else None
+
+        if splitter is None or not 0 <= handle.index < splitter.count() - 1:
+            raise KeyError(f"the layout drawn now has no border {handle}")
+
+        widget = splitter.handle(handle.index + 1)
+        assert isinstance(widget, _AreaHandle), "every handle of an Area splitter is an _AreaHandle"
+
+        return widget
 
     def _apply(self, moved: LayoutModel) -> None:
         """Draw `moved` and say so, unless it is the layout drawn now."""
@@ -921,8 +999,10 @@ class AreaLayout(QWidget):
         self._frames = {}
         self._splitters = {}
         self._hovered = None
-        # A drag addresses a handle of the splitters being replaced.
+        # A drag addresses a handle of the splitters being replaced, and so
+        # does the border that had the keyboard focus.
         self._border_drag = None
+        self._keyed = None
         self._at_minimum = False
         root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
 
@@ -961,7 +1041,13 @@ class AreaLayout(QWidget):
 
         if isinstance(node, Area):
             chooser = ViewChooser(node, self._registered, self.choose_view)
-            menu = AreaMenu(node.id, self.operations, self.perform)
+            menu = AreaMenu(
+                node.id,
+                self.operations,
+                self.perform,
+                borders=self.borders,
+                focus_border=self.focus_border,
+            )
             frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu, drags=self)
             self._frames[node.id] = frame
 
@@ -1120,12 +1206,7 @@ class AreaLayout(QWidget):
         if sizes is None:
             # The splitters are being built and nothing is settled yet.
             split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
-            extent = (
-                splitter.width()
-                if splitter.orientation() == Qt.Orientation.Horizontal
-                else splitter.height()
-            )
-            available = extent - splitter.handleWidth() * (splitter.count() - 1)
+            available = _drawable_px(splitter)
             sizes = pixel_sizes(split.sizes, max(available, len(split.sizes)))
 
         splitter.setSizes(list(sizes))
@@ -1140,6 +1221,9 @@ class AreaLayout(QWidget):
         """
 
         self._border_drag = _BorderDrag(self._handle_of(handle), alone, self._model, offset_px)
+        # A drag ends any keyboard resize, so Escape after the drag cannot go
+        # back past it to the layout drawn when the border took the focus.
+        self._keyed = None
         self._at_minimum = False
         self._relight()
 
@@ -1185,6 +1269,70 @@ class AreaLayout(QWidget):
         self._at_minimum = False
         self._resized(drag.start)
 
+    def border_focused(self, handle: _AreaHandle) -> None:
+        """Start a keyboard resize of the border `handle` draws, from the layout drawn now.
+
+        Escape returns the layout to the one drawn now, as it ends a drag
+        (`border_restored`).
+        """
+
+        self._keyed = _KeyedBorder(self._handle_of(handle), self._model)
+        self._at_minimum = False
+        self._relight()
+
+    def border_unfocused(self, handle: _AreaHandle) -> None:
+        """End the keyboard resize of the border `handle` draws, leaving the layout as it is."""
+
+        keyed = self._keyed
+
+        if keyed is not None and keyed.handle == self._handle_of(handle):
+            self._keyed = None
+            self._at_minimum = False
+            self._relight()
+
+    def border_stepped(self, handle: _AreaHandle, steps: int, *, alone: bool) -> None:
+        """Move the border that `handle` draws by `steps` keyboard steps, and redo the layout.
+
+        A step is `AREA_KEYBOARD_STEP` pixels. A negative count moves the border
+        left or up. The border stops where a drag would stop. That is where an
+        Area beside a moved line reaches its minimum drawable size, or where the
+        model refuses the move. The border's line is then drawn in WARNING. When
+        `alone` is true, the reader held Shift. Then only this border moves, not
+        the rest of its line, as in a drag with Shift.
+        """
+
+        address = self._handle_of(handle)
+        keyed = self._keyed
+
+        if keyed is None or keyed.handle != address:
+            keyed = _KeyedBorder(address, self._model)
+
+        self._keyed = _KeyedBorder(address, keyed.start, alone)
+        # A step is drawn pixels of the split being moved, turned into a
+        # fraction of the window as `_position_at` turns a drag's.
+        total = _drawable_px(handle.owner)
+
+        if total <= 0:
+            return
+
+        low, high = self._model.span(address)
+        target = self._model.position(address) + steps * AREA_KEYBOARD_STEP * (high - low) / total
+        step = _BorderDrag(address, alone, self._model, 0)
+        moved, self._at_minimum = self._farthest(step, target)
+        self._resized(moved)
+
+    def border_restored(self, handle: _AreaHandle) -> None:
+        """Return the layout to the one drawn when the border `handle` draws took the focus."""
+
+        keyed = self._keyed
+
+        if keyed is None or keyed.handle != self._handle_of(handle):
+            return
+
+        self._keyed = _KeyedBorder(keyed.handle, keyed.start)
+        self._at_minimum = False
+        self._resized(keyed.start)
+
     def _resized(self, moved: LayoutModel) -> None:
         """Give the splitters `moved`'s sizes, and say so if it is a new layout.
 
@@ -1229,8 +1377,7 @@ class AreaLayout(QWidget):
         local = splitter.mapFromGlobal(at)
         horizontal = splitter.orientation() == Qt.Orientation.Horizontal
         edge = (local.x() if horizontal else local.y()) - drag.offset_px
-        extent = splitter.width() if horizontal else splitter.height()
-        total = extent - splitter.handleWidth() * (splitter.count() - 1)
+        total = _drawable_px(splitter)
 
         if total <= 0:
             return None
@@ -1315,26 +1462,32 @@ class AreaLayout(QWidget):
         self._relight()
 
     def _relight(self) -> None:
-        """Light every handle a drag moves, or would move, and only those.
+        """Highlight every handle that a drag moves or would move, and no others.
 
-        During a drag these are the handles it moves: the dragged one alone
-        with Shift, and its whole line otherwise, read from the layout the
-        drag started from. They are lit in WARNING while the drag is stopped
-        at a minimum. With no drag, they are the handles on the hovered
-        handle's line.
+        During a drag, these are the handles that the drag moves. With Shift,
+        that is the dragged handle alone. Without Shift, it is the dragged
+        handle's whole line, read from the layout at the start of the drag.
+        While the drag is stopped at a minimum size, they are drawn in WARNING.
+        With no drag, a border that has the keyboard focus is highlighted in the
+        same way. After a step with Shift, it is highlighted alone. Otherwise its
+        whole line is highlighted. With neither a drag nor a focused border, the
+        highlighted handles are those on the line of the handle under the pointer.
         """
 
         members: tuple[Handle, ...] = ()
         drag = self._border_drag
+        keyed = self._keyed
         hovered = self._hovered
 
         if drag is not None:
             members = (drag.handle,) if drag.alone else drag.start.borders(drag.handle)
+        elif keyed is not None:
+            members = (keyed.handle,) if keyed.alone else self._model.borders(keyed.handle)
         elif hovered is not None and self._splitters.get(hovered.owner.path) is hovered.owner:
             members = self._model.borders(self._handle_of(hovered))
 
         lit = [self._splitters[member.path].handle(member.index + 1) for member in members]
-        warning = drag is not None and self._at_minimum
+        warning = (drag is not None or keyed is not None) and self._at_minimum
 
         for splitter in self._splitters.values():
             for index in range(1, splitter.count()):
@@ -1397,20 +1550,30 @@ class ViewChooser(QToolButton):
 
 
 class AreaMenu(QToolButton):
-    """The last control of an Area's header: the operations on the Area's place.
+    """The last control in an Area's header, a menu of layout operations on that Area.
 
-    `PL-MS34` Q2 placed it, a flat button labelled "Area" with a chevron, and
-    `PL-2KXB` fills it. Its menu holds the two splits, a "Join with" submenu,
-    a "Swap with" submenu and Close Area. The entries are worked out each
-    time the menu opens, from the layout drawn then. An unavailable entry is
-    shown, disabled, with the reason as its tooltip, so the reader sees an
-    operation the layout cannot make rather than not finding it. The button
-    has the chooser's look and keyboard reach.
+    `PL-MS34` Q2 placed it there as a flat button labelled "Area" with a
+    chevron, and `PL-2KXB` fills its menu. The menu holds the two splits, a
+    "Join with" submenu, a "Swap with" submenu and Close Area. The menu works
+    out its entries each time it opens, from the layout drawn at that moment.
+    An unavailable entry is still shown, but disabled, with the reason as its
+    tooltip. So the reader sees an operation that the layout cannot make,
+    rather than not finding it at all. The button looks like the chooser and
+    is reached from the keyboard in the same way.
+
+    A "Resize" submenu sits before Close Area. It lists each border of the
+    Area. Choosing a border gives it the keyboard focus, so that the arrow keys
+    move it (`PL-M352`). An Area that is alone in the window has no border, so
+    its menu shows the submenu as unavailable, with the reason.
 
     Args:
         area_id: The Area whose header holds this menu.
-        operations: Gives the Area's entries, as `AreaLayout.operations` does.
-        perform: Draws the layout an available entry makes.
+        operations: Returns the Area's entries, as `AreaLayout.operations` does.
+        perform: Draws the layout that an available entry produces.
+        borders: Returns the Area's borders, as `AreaLayout.borders` does. By
+            default the Area has none.
+        focus_border: Gives a border the keyboard focus, as
+            `AreaLayout.focus_border` does.
     """
 
     def __init__(
@@ -1419,14 +1582,19 @@ class AreaMenu(QToolButton):
         operations: Callable[[AreaId], tuple[AreaOperation, ...]],
         perform: Callable[[AreaOperation], None],
         parent: QWidget | None = None,
+        *,
+        borders: Callable[[AreaId], tuple[AreaBorder, ...]] = lambda _: (),
+        focus_border: Callable[[Handle], None] = lambda _: None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("areaMenu")
         self.area_id = area_id
         self._operations = operations
         self._perform = perform
+        self._borders = borders
+        self._focus_border = focus_border
         self.setText(AREA_MENU_LABEL)
-        self.setAccessibleDescription("Split, join, swap or close this Area")
+        self.setAccessibleDescription("Split, join, swap, resize or close this Area")
         self.setStyleSheet(view_chooser_stylesheet())
         self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -1445,11 +1613,20 @@ class AreaMenu(QToolButton):
         """Write the menu's entries from the layout drawn now."""
 
         menu = self.menu()
+
+        # `QMenu.clear` keeps each submenu as a child of the menu, so the
+        # submenus written at the last opening are deleted here.
+        for old in menu.findChildren(QMenu, options=Qt.FindChildOption.FindDirectChildrenOnly):
+            old.deleteLater()
+
         menu.clear()
         submenus: dict[str, QMenu] = {}
 
         for operation in self._operations(self.area_id):
             holder = menu
+
+            if operation.label == CLOSE_AREA_LABEL and operation.group is None:
+                self._add_resize(menu)
 
             if operation.group is not None:
                 if operation.group not in submenus:
@@ -1472,6 +1649,21 @@ class AreaMenu(QToolButton):
                 empty = menu.addMenu(group)
                 empty.setEnabled(False)
                 empty.menuAction().setToolTip(_ONLY_AREA_TEXT)
+
+    def _add_resize(self, menu: QMenu) -> None:
+        """Add the "Resize" submenu: one entry per border, or the submenu shown unavailable."""
+
+        submenu = menu.addMenu(RESIZE_LABEL)
+        submenu.setStyleSheet(menu_stylesheet())
+        borders = self._borders(self.area_id)
+
+        if not borders:
+            submenu.setEnabled(False)
+            submenu.menuAction().setToolTip(_ONLY_AREA_TEXT)
+
+        for border in borders:
+            action = submenu.addAction(border.label)
+            action.triggered.connect(partial(self._focus_border, border.handle))
 
 
 class AreaFrame(QFrame):
@@ -1737,6 +1929,12 @@ class AreaNotice(QFrame):
 # than a pixel on any screen.
 _BORDER_BISECTIONS: Final = 20
 
+# What assistive technology says a border is, and how the keyboard moves it.
+_BORDER_ACCESSIBLE_NAME: Final = "Area border"
+_BORDER_ACCESSIBLE_DESCRIPTION: Final = (
+    "The arrow keys move it. Shift moves it alone. Escape puts it back."
+)
+
 
 @dataclass(frozen=True)
 class _BorderDrag:
@@ -1746,6 +1944,21 @@ class _BorderDrag:
     alone: bool
     start: LayoutModel
     offset_px: int
+
+
+@dataclass(frozen=True)
+class _KeyedBorder:
+    """The state of a border that has the keyboard focus.
+
+    It holds the border, the layout drawn when the border took the focus, and
+    how the border last moved. `alone` records whether the last step was taken
+    with Shift, so that the highlighted line shows what the next step of the
+    same kind moves.
+    """
+
+    handle: Handle
+    start: LayoutModel
+    alone: bool = False
 
 
 class _AreaSplitter(QSplitter):
@@ -1768,19 +1981,48 @@ class _AreaSplitter(QSplitter):
         self.layout_owner._lay_out(self)
 
 
+def _drawable_px(splitter: QSplitter) -> int:
+    """The length along `splitter`'s axis that its Areas share, in px: its own, less its handles."""
+
+    horizontal = splitter.orientation() == Qt.Orientation.Horizontal
+    extent = splitter.width() if horizontal else splitter.height()
+
+    return extent - splitter.handleWidth() * (splitter.count() - 1)
+
+
+# The focus reasons that leave a border's focus in place: its window was
+# deactivated or activated again, or a popup took the focus and gave it back.
+_FOCUS_KEPT = (Qt.FocusReason.ActiveWindowFocusReason, Qt.FocusReason.PopupFocusReason)
+
+
 class _AreaHandle(QSplitterHandle):
-    """A border a reader drags: nothing at rest, a line when a drag of it is one move away.
+    """A border between Areas that a reader can drag.
 
     `PL-RQT1` decided the look. At rest the handle is a gap that draws
-    nothing, so the page shows through between two Areas. With the pointer
-    over it, it and every handle on its line show a `PRIMARY` line down the
-    middle, because a drag moves all of them. The cursor is the platform's
-    double-headed split arrow, which Qt gives a handle by its orientation.
+    nothing, so the page shows through between two Areas. The handle draws a
+    line only when a drag of it is one move away. When the pointer is over the
+    handle, the handle and every other handle on its line show a `PRIMARY`
+    line down the middle. They all show it because a drag moves all of them.
+    The cursor is the platform's double-headed split arrow. Qt chooses that
+    arrow from the handle's orientation.
 
-    A press starts a drag that `AreaLayout` works out (`border_moved`), with
-    Shift held to move this handle alone. The line turns `WARNING` while the
-    drag is stopped at a minimum, and Escape returns the layout to where the
-    drag started (`PL-RQT1` Q3).
+    A press starts a drag, and `AreaLayout` works out the drag's effect
+    (`border_moved`). Holding Shift moves this handle alone. The line turns
+    `WARNING` while the drag is stopped at a minimum size. Escape returns the
+    layout to where it was when the drag started (`PL-RQT1` Q3).
+
+    **The keyboard can move the handle too** (`PL-M352`). The handle is in the
+    tab order, and an Area menu's "Resize" entry gives it the focus. While the
+    handle has the focus, its line is drawn as it is when the pointer is over
+    it. The arrow keys along the handle's axis move it by one
+    `AREA_KEYBOARD_STEP` at a time. Left and Right move a border between Areas
+    that sit side by side. Up and Down move a border between stacked Areas.
+    This follows the keyboard interaction of the "Window Splitter" pattern in
+    the W3C WAI-ARIA Authoring Practices. Shift moves this handle alone, as in
+    a drag. The handle stops at a minimum size, as a drag does. Escape returns
+    the layout to the one drawn when the handle took the focus. The pattern
+    also uses Enter to collapse a pane. This handle does not offer Enter,
+    because no Area is ever collapsed to nothing.
     """
 
     def __init__(self, splitter: _AreaSplitter) -> None:
@@ -1789,9 +2031,10 @@ class _AreaHandle(QSplitterHandle):
         self._lit = False
         self._warning = False
         self._pressed = False
-        # Escape reaches the handle only while it has the keyboard focus,
-        # which a press gives it. It is not in the tab order.
-        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        # In the tab order, so the keyboard reaches every border (`PL-M352`).
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setAccessibleName(_BORDER_ACCESSIBLE_NAME)
+        self.setAccessibleDescription(_BORDER_ACCESSIBLE_DESCRIPTION)
 
     @property
     def lit(self) -> bool:
@@ -1846,13 +2089,50 @@ class _AreaHandle(QSplitterHandle):
         event.accept()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if self._pressed and event.key() == Qt.Key.Key_Escape:
+        key = event.key()
+        layout = self.owner.layout_owner
+
+        if self._pressed and key == Qt.Key.Key_Escape:
             self._pressed = False
-            self.owner.layout_owner.border_cancelled()
+            layout.border_cancelled()
+            event.accept()
+            return
+
+        horizontal = self.orientation() == Qt.Orientation.Horizontal
+        back, forward = (
+            (Qt.Key.Key_Left, Qt.Key.Key_Right) if horizontal else (Qt.Key.Key_Up, Qt.Key.Key_Down)
+        )
+
+        if not self._pressed and key in (back, forward):
+            alone = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+            layout.border_stepped(self, -1 if key == back else 1, alone=alone)
+            event.accept()
+            return
+
+        if not self._pressed and key == Qt.Key.Key_Escape:
+            layout.border_restored(self)
             event.accept()
             return
 
         super().keyPressEvent(event)
+
+    def focusInEvent(self, event: QFocusEvent) -> None:
+        super().focusInEvent(event)
+
+        # Focus that comes from a mouse press does not start a keyboard resize,
+        # because the press starts a drag of its own. Focus that returns when the
+        # window is activated again, or when a popup closes, keeps the keyboard
+        # resize that was already under way.
+        if event.reason() not in _FOCUS_KEPT and event.reason() != Qt.FocusReason.MouseFocusReason:
+            self.owner.layout_owner.border_focused(self)
+
+    def focusOutEvent(self, event: QFocusEvent) -> None:
+        super().focusOutEvent(event)
+
+        # The window losing the focus, or a popup taking it, leaves the
+        # border's focus in place, so Escape can still restore the layout.
+        if event.reason() not in _FOCUS_KEPT:
+            self.owner.layout_owner.border_unfocused(self)
 
     def enterEvent(self, event: QEnterEvent) -> None:
         super().enterEvent(event)

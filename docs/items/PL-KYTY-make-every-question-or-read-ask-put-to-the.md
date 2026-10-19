@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: owner-attention
+milestone: v0.5.41
 touches: .claude/rules/instruction-writing.md, .claude/skills/run-the-app/SKILL.md, docs/maintainer.md, docs/resident-instructions.md, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-10-19
 closed: 2026-10-19

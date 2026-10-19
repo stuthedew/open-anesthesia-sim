@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: feature, ux
 feature: interface-areas
+milestone: v0.5.41
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tools/contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-10-19
