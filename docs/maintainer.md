@@ -292,8 +292,13 @@ refresh has three steps:
   its parent's model (`PL-KLN5`, `PL-2D28`). In a local session whose folder
   is trusted it would have put every `general-purpose` subagent on Haiku with
   no per-item judgment, which § "Which model each flag means" refuses. So a
-  subagent that names no model runs on the session's own model, and a cheaper
-  one is asked for per call.
+  subagent that names no model runs on the session's own model. A session
+  does not ask for a cheaper model for any subagent unless the owner approves
+  it for that task (project owner, 2026-10-19, reached by challenging a
+  session's recommendation of cheaper agents, `PL-2D28`, `PL-48DB`). This
+  covers subagents that copy values as well as those that search: on
+  2026-10-19 a session put Sonnet runners on the session ledger's values on
+  the strength of the old wording here, and the owner stopped it.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
   new session, `PL-YJG1`). It pushes everything first, so what the summary

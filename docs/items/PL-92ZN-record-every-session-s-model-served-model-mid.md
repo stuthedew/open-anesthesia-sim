@@ -70,3 +70,33 @@ the owner's constraint is that this costs working sessions nothing.
 workflow-mechanism pause for this feature. Not an instance of a head: the fact
 nothing records is the harness's own session metadata, an external record no
 reader here has misread.
+
+**Progress, 2026-10-19.** The first commit holds 888 rows: every session
+`list_sessions` returns for this repository, back to 2026-08-22. A script
+parsed them from the saved tool output, so no model retyped a value. 271
+sessions named on `main` were missing, and one probe showed why: they are
+Projects threads, which `list_sessions` leaves out and `get_session` still
+returns. 299 session ids named in `Claude-Session:` trailers and
+`docs/pr-bodies/` have no row yet. They are split into six lists in the
+session's scratchpad, `ledger/threads/ids_1.txt` to `ids_6.txt`.
+
+**Next steps, for this session after `/compact` or a fresh one.**
+1. Wait for the six Opus 5.5 runners, which write `ledger/threads/opus_K.jsonl`
+   from `ledger/threads/prompt_opus.txt`. If the scratchpad is gone, rerun
+   them from that prompt, on the session's own model.
+2. The record is the Opus copy (project owner, 2026-10-19). Compare it field
+   by field with the Sonnet copy in `rows_K.jsonl` by script. Fetch any
+   disagreeing row a third time with `get_session` and keep the value that
+   two of the three copies agree on.
+3. Add the thread rows to `docs/session-ledger.tsv` with the same columns
+   and sort by `created_at`. The builder is `ledger/build.py` in the
+   scratchpad.
+4. Count closed items that still join to no ledger row, write that count
+   here, set this item `done`, and open the pull request with `PL-92ZN` and
+   `PL-4SFQ` leading the title.
+5. `PL-4SFQ`'s CI snapshot: `ci_snapshot.py` in the scratchpad writes
+   `ci/runs.jsonl` from the GitHub REST API, 11,664 runs on 2026-10-19.
+   Turn it into `docs/ci-runs.tsv` and commit it under `PL-4SFQ`. That item
+   stays open for its outcome-measure definitions, which need the
+   model-review skill (`PL-63CB`).
+
