@@ -13,9 +13,13 @@ from dataclasses import dataclass, field, fields
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from .model import SAFETY_CLASSES
+from .model import SAFETY_CLASSES, ModelEvidence, parse_model_evidence
 
 CONFIG_NAME = "docket.toml"
+#: The model review's evidence table, beside `docket.toml`. Its own file
+#: because the review writes it and a session never edits it by hand, and so
+#: that a change to it is not a change to `docket.toml`, which is a gate path.
+MODEL_EVIDENCE_NAME = "model-evidence.toml"
 
 #: Classes `checks.py` branches on that no setting above names. `anticipated`
 #: claims the safety-band exemption for a concern whose feature does not exist
@@ -362,6 +366,11 @@ class Config:
     #: a distinction no class label can carry, and one this tool must not
     #: guess at, because a plausible wrong version is a provenance error.
     version_policy: str = "infer"
+    #: The rows of `model-evidence.toml`, which `next` and `show` print beside
+    #: `Item.model_guidance`. Read from that file and never from `docket.toml`.
+    #: Empty where the file is absent or holds no entry, and then nothing a
+    #: session sees changes (`PL-3R6L`).
+    model_evidence: tuple[ModelEvidence, ...] = ()
     extra: dict[str, object] = field(default_factory=dict)
 
     def vocabulary(self) -> frozenset[str]:
@@ -447,9 +456,19 @@ def _int(value: object, fallback: int, name: str) -> int:
     raise ValueError(f"{name}: {value!r} is not a whole number")
 
 
-#: The keys `load` reads, which are the fields of `Config` but `extra`: a
-#: project sets that one in code, never in the file.
-SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra"}
+#: The keys `load` reads, which are the fields of `Config` but `extra` and
+#: `model_evidence`: a project sets the first in code, and the second comes
+#: from `MODEL_EVIDENCE_NAME`, never from `docket.toml`.
+SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra", "model_evidence"}
+
+
+def load_model_evidence(root: Path) -> tuple[ModelEvidence, ...]:
+    """Read `model-evidence.toml` from the project root, or the empty table where it is absent."""
+    path = root / MODEL_EVIDENCE_NAME
+    if not path.is_file():
+        return ()
+    with path.open("rb") as handle:
+        return parse_model_evidence(tomllib.load(handle), MODEL_EVIDENCE_NAME)
 
 
 def load(root: Path) -> Config:
@@ -460,8 +479,9 @@ def load(root: Path) -> Config:
     one that was never written.
     """
     path = root / CONFIG_NAME
+    evidence = load_model_evidence(root)
     if not path.is_file():
-        return Config()
+        return Config(model_evidence=evidence)
     with path.open("rb") as handle:
         data = tomllib.load(handle)
     section = data.get("docket", data)
@@ -580,4 +600,5 @@ def load(root: Path) -> Config:
         version_policy=_str(
             section.get("version_policy"), defaults.version_policy, "version_policy"
         ),
+        model_evidence=evidence,
     )
