@@ -54,3 +54,5 @@ changed by hand to hide the delivered concentration after each operation.
 The test then failed with "after a split, these are not on screen:
 [<UnconditionalValue.DELIVERED_CONCENTRATION: 'delivered_concentration'>]".
 The widening drag is shorter than the narrowing one because of `PL-4L8B`.
+It still passes after `PL-L59K` gave each chart its own time window, merged
+from `main` on 2026-10-19.
