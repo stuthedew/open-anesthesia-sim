@@ -401,7 +401,12 @@ fails, the boxes go on naming the curves on the plot (`PL-G3K7`); and
 `SimulationView._halt_every_run` restates the branch controls from the case,
 so a failed trunk offers no branch where it stands (`PL-MMNX`). It also
 restates the bookmark standings from each run's controller, so a mark the
-failed run will never reach is not listed as still to come (`PL-YHR3`). The trunk
+failed run will never reach is not listed as still to come (`PL-YHR3`). Both
+panels, and the marks editor with the bookmark panel, are restated from one
+list, `SimulationView.halt_restatements`, and
+`test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
+control that no run, no listed panel and no named exemption holds, so a panel
+added later is checked without being remembered (`PL-5JTH`). The trunk
 records that its frame failed, so it then offers no keyframe and no passed
 mark either: a branch opened there would be drawn by the same failing frame
 (`SimulationController.record_failed_frame`, `PL-T2Q2`). A run that

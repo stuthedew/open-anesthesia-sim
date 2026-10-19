@@ -115,6 +115,8 @@ class Run:
     subtype: str | None
     turns: int | None
     denials: int | None
+    #: Why a run failed, in Claude Code's words or its last line of stderr.
+    reason: str | None = None
 
     def line(self) -> str:
         """The run as one JSON line of the ledger."""
@@ -340,8 +342,11 @@ def work(
         )
         exit_code: int | None = process.returncode
         result = read_result(process.stdout)
+        stdout, stderr = process.stdout, process.stderr
     except subprocess.TimeoutExpired:
-        exit_code, result = None, None
+        exit_code, result, stdout, stderr = None, None, b"", b"stopped at the run's time limit"
+    # The whole output is kept beside the clone, so a failure can be read in full (PL-MZCN).
+    clone.with_name(clone.name + ".log").write_bytes(stdout + b"\n--- stderr ---\n" + stderr)
     result = result or {}
     denials = result.get("permission_denials")
     turns = number(result.get("num_turns"))
@@ -361,7 +366,21 @@ def work(
         subtype=subtype if isinstance(subtype, str) else None,
         turns=None if turns is None else int(turns),
         denials=len(denials) if isinstance(denials, list) else None,
+        reason=failure_reason(result, exit_code, stderr),
     )
+
+
+def failure_reason(
+    result: Mapping[str, object], exit_code: int | None, stderr: bytes
+) -> str | None:
+    """Why a run failed, shortened to one line, or `None` for a run that succeeded."""
+    if result.get("is_error") is not True and exit_code == 0:
+        return None
+    text = result.get("result")
+    if not isinstance(text, str) or not text.strip():
+        lines = [line for line in split_lines(stderr.decode("utf-8", "replace")) if line.strip()]
+        text = lines[-1] if lines else f"exit status {exit_code}, and nothing on stderr"
+    return " ".join(text.split())[:300]
 
 
 def describe(run: Run) -> str:
@@ -369,7 +388,8 @@ def describe(run: Run) -> str:
     cost = "cost unknown" if run.cost_usd is None else f"${run.cost_usd:.2f}"
     where = "pushed" if run.pushed else "not pushed"
     outcome = "error" if run.is_error or run.exit_code != 0 else "finished"
-    return f"{run.item} on {run.model}: {outcome}, {cost}, {where}, {run.branch}, in {run.clone}"
+    line = f"{run.item} on {run.model}: {outcome}, {cost}, {where}, {run.branch}, in {run.clone}"
+    return f"{line}\n  why: {run.reason}" if run.reason else line
 
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
