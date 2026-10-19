@@ -376,13 +376,16 @@ class AreaLayout(QWidget):
         retired: Mapping[str, RetiredTag] = RETIRED_TAGS,
         states: Mapping[AreaId, Mapping[ViewKind, SavedState]] | None = None,
     ) -> None:
+        # Refuse an undrawable layout before any widget exists, so the refusal
+        # needs no QApplication and leaves nothing half-built behind it.
+        drawable = _drawable(model)
         super().__init__(parent)
         self._requests = requests
         self._registered = registered
         self._retired = retired
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
-        self._model = _drawable(model)
+        self._model = drawable
         self._previous_views: dict[AreaId, tuple[ViewKind, View]] = {}
         self._root: QWidget | None = None
         # Each Area's View, with the kind it was built for, in reading order.
