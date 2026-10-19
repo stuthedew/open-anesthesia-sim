@@ -3811,10 +3811,12 @@ def check_tags(root: Path, report: Report) -> None:
     than that depth reads as never tagged. That fired on `main` in every web
     session container, eight false errors at a time.
 
-    The guard is deliberately narrower than "this clone is shallow". Both the
-    session containers and `actions/checkout` clone shallow, so declining on
-    that alone would retire the check everywhere it runs - including in a
-    checkout that has since fetched its tags and can answer exactly. So the
+    The guard is deliberately narrower than "this clone is shallow". A clone
+    can be shallow and still answer: one made with `--depth` that has since
+    fetched its tags can answer exactly, so declining on depth alone would
+    retire the check where it works. A session's container is shallow only
+    where its session-start unshallow failed, and every workflow here that
+    runs this script checks out with `fetch-depth: 0` (`PL-2H0K`). So the
     findings are computed first, and only withheld when there is something to
     withhold *and* truncation could account for it. A tag being **present** is
     never in doubt, so those inferences are untouched.
@@ -3930,10 +3932,9 @@ def check_tags(root: Path, report: Report) -> None:
         )
 
     # Only a finding that a truncated checkout could have invented is withheld,
-    # and only when there is one. Declining on `is_shallow` alone would silence
-    # this check in every environment that matters - a web session's container
-    # and `actions/checkout` both clone shallow - including the ones that have
-    # since run `git fetch --tags` and can answer perfectly well.
+    # and only when there is one. Declining on `is_shallow` alone would also
+    # silence the check in a shallow clone that has since run `git fetch
+    # --tags` and can answer perfectly well.
     truncated = is_shallow(root)
     if absent and truncated is not False:
         report.declined.append(

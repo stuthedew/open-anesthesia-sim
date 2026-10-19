@@ -3474,8 +3474,9 @@ reported:
 - **Anything at all, in a shallow clone.** `git log` in a truncated history
   answers confidently and wrongly, and the commits it is missing are the
   oldest ones — so the best-established provenance in the store is what would
-  be reported as broken. This matters more than it looks: the container an
-  agent session runs in is normally shallow.
+  be reported as broken. A session's container is provisioned at depth 50
+  and unshallowed by the session-start hook, so it is shallow only where that
+  fetch failed, and the hook fails silently (`PL-2H0K`).
 
 A shallow checkout is a worse condition than a bare one, and the difference
 shapes how it is reported. In a bare checkout git cannot answer and every read

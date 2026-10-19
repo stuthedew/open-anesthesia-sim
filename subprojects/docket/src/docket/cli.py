@@ -545,10 +545,10 @@ def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
     reader tells the two apart. No fetch, no listing - under `--no-fetch`, a
     fetch that failed, or `refresh=False`, the refs are read as they are.
 
-    `refresh=False` is `check`'s: it validates the store, runs in CI's shallow
-    checkout and in every `make check`, and its one ref read is the in-flight
-    exclusion behind an advisory, so it reads the refs as they are and is the
-    one read command that does not say so - `NO_FETCH_COMMANDS` in the tests
+    `refresh=False` is `check`'s: it validates the store, runs in CI and in
+    every `make check`, and its one ref read is the in-flight exclusion behind
+    an advisory, so it reads the refs as they are and is the one read command
+    that does not say so - `NO_FETCH_COMMANDS` in the tests
     holds that exemption by name. It takes effect only where this is the first
     ask; a snapshot already made is what it is.
 

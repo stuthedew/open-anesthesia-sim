@@ -675,10 +675,10 @@ the diagnosis and the measurements.
 
 It does a second thing for the same reason, and the two are one job: counting
 commits held by no remote ref only works if this checkout *has* such refs. The
-harness clones with `git clone --depth 1`, which implies `--single-branch`, so
-`remote.origin.fetch` names the default branch alone and `git push` never
-writes `refs/remotes/origin/<branch>` — every commit on a pushed branch then
-reads as unpushed however many times it has been pushed. The hook widens that
+harness provisions the clone by fetching the default branch alone at depth 50
+(`PL-2H0K`), so `remote.origin.fetch` names the default branch alone and
+`git push` never writes `refs/remotes/origin/<branch>` — every commit on a
+pushed branch then reads as unpushed however many times it has been pushed. The hook widens that
 refspec, which repairs the clone rather than the test and keeps the stop check
 offline instead of trading it for a network call at every `Stop`. It only ever
 widens, and it neither fetches nor prunes, so it cannot destroy a ref
