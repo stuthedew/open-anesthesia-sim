@@ -12539,6 +12539,45 @@ def test_show_reads_an_item_from_origin_main_where_its_copy_is_newer(
     assert "re-confirm" not in out
 
 
+def test_digest_reads_the_base_s_copy_behind_main(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-KS01`: the digest, `list`, `status` and `concurrent` answer from the copy `next` ranks.
+
+    They read the working tree's copy while `next` read origin/main's newer
+    one. Behind a closure, the digest's `Top:` line named PL-B1B1, `list` and
+    `status` showed it ready, and `concurrent` put it in the batch, although
+    `next` no longer offered it. Each now reads through `cli._load_to_read`
+    and says which copy it took. A command that writes the store still writes
+    the working tree's copy and never the base's.
+    """
+    work = _behind_a_closure(tmp_path)
+    store = str(work / "docs" / "items")
+    said = (
+        "This working tree is 1 commit behind origin/main, where 1 item has changed status "
+        "since; its copy was read from there, and it is closed: PL-B1B1 (`done`)."
+    )
+    offered = {
+        "digest": "Top: PL-B1B1",
+        "list": "PL-B1B1 A ready item",
+        "status": "PL-B1B1 A ready item",
+        "concurrent": "PL-B1B1 A ready item",
+    }
+    for command, stale in offered.items():
+        assert main([command, "--items", store, "--now", NOW]) == 0
+        out = capsys.readouterr().out
+        assert stale not in out, f"{command} answered from the working tree's copy"
+        assert said in out, f"{command} did not say it read the base's copy"
+
+    item = work / "docs" / "items" / "PL-B1B1-ready.md"
+    argv = ["set", "PL-B1B1", "--effort", "M", "--overwrite", "--items", store, "--now", NOW]
+    assert main(argv) == 0
+    capsys.readouterr()
+    written = item.read_text(encoding="utf-8")
+    assert "effort: M\n" in written
+    assert "status: ready\n" in written, "set wrote the base's copy over the working tree's"
+
+
 def test_a_forge_command_is_split_as_bash_splits_it(tmp_path: Path) -> None:
     """`PL-RHPK`: a configured command's words are the ones `docket.shell` reads.
 
