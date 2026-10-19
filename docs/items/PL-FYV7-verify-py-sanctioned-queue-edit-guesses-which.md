@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: recorded-not-inferred
+milestone: v0.5.34
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
