@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, sub
 deferred-from: v0.6.0 - a workflow-lane defect in docket's read commands, which the layout milestone does not reach
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1647
 payoff: every read command answers from the same copy of each item, so delegable cannot hand a worker an item main has closed and triage cannot offer one main has triaged
 verify: grep -q 'def test_every_other_read_command_reads_the_base_s_copy_behind_main' subprojects/docket/tests/test_cli.py && ! grep -q 'also still read the working tree' subprojects/docket/README.md
 ---
