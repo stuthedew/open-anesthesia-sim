@@ -3,11 +3,12 @@ id: PL-6XZG
 title: Record the owner's 2026-10-19 decision to keep apparatus sessions at high effort as their own judgement, replacing the ratified 2026-10-17 record whose reason was cost
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost
 feature: model-evidence
 touches: docs/maintainer.md, .claude/rules/apparatus-standard.md
 added: 2026-10-19
+closed: 2026-10-19
 pr: 1672
 payoff: a later session reads apparatus effort as the owner's own call, not a cost trade it should reopen or copy
 verify: grep -q 'PL-6XZG' docs/maintainer.md && grep -q 'PL-6XZG' .claude/rules/apparatus-standard.md
