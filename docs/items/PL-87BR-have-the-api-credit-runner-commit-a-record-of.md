@@ -3,11 +3,13 @@ id: PL-87BR
 title: Have the API-credit runner commit a record of each headless run to the worker's branch, and refuse the branch's merge until the reviewing session adds the review's outcome, so headless work can be compared with chat sessions
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 touches: tools/worker_runs.py, tools/headless_worker.py, tests/unit/test_worker_runs.py, tests/unit/test_headless_worker.py, docs/worker-runs, docket.toml, tools/rules_paths_check.py, Makefile, .github/workflows/quality.yml, docs/apparatus.md, docs/maintainer.md
 deferred-from: v0.6.0 - a workflow-lane runner feature outside the layout release
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1692
 payoff: every headless worker run leaves a record in the repository of its model, effort, cost and review outcome, so headless and chat work can be compared
 verify: grep -q 'worker_runs.py check' Makefile && grep -q 'worker_runs' tools/headless_worker.py
 ---
