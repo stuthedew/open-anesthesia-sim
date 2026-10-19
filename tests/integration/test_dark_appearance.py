@@ -554,6 +554,8 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     popups = [box.view() for box in view.findChildren(QComboBox)]
 
+    # The shipped Default Workspace draws one chart, so it holds one
+    # time-base selector (`PL-L59K`).
     assert len(popups) == 4
 
     for popup in popups:

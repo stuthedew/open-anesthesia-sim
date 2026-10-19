@@ -279,8 +279,13 @@ CONTROL_TIMELINE_CAPTION: Final = (
     "What was changed during this run, most recent first. Settings only — not a measurement."
 )
 UNLISTED_CHANGES_TEMPLATE: Final = "{count} earlier change(s) not listed"
-UNMARKED_CHANGES_TEMPLATE: Final = "{count} not marked on the chart"
 TIMELINE_OVERFLOW_JOINER: Final = "; "
+
+# Shown on a chart whose pool of marks could not mark every control change
+# inside its window. Each chart has its own window (`PL-L59K`), so the count
+# belongs to the chart. It used to appear in the run's control-change panel,
+# when every chart drew the same window. The wording is a placeholder.
+UNMARKED_CHANGES_TEMPLATE: Final = "{count} control change(s) in this window not marked"
 
 # The bookmark panel. Two headings and two empty lines rather than one of
 # each, because the two collections are listed apart (`PL-LPLD`) and a shared
@@ -1603,17 +1608,17 @@ class TimelinePanel:
     overflow: str
 
 
-def timeline_panel(
-    adjustments: Sequence[ControlAdjustment], undrawn_control_marks: int
-) -> TimelinePanel:
+def timeline_panel(adjustments: Sequence[ControlAdjustment]) -> TimelinePanel:
     """The control-change panel for one run's adjustments.
+
+    The panel lists changes and says how many it left out. The count of
+    changes that a chart left unmarked appears on that chart instead, from
+    `unmarked_changes_lines`, because each chart has its own window
+    (`PL-L59K`).
 
     Args:
         adjustments: The run's adjustments, oldest first, as
             `control_timeline.AdjustmentGrouping` groups them.
-        undrawn_control_marks: How many adjustments inside the chart's
-            window its mark pool could not draw, from
-            `RunFrame.undrawn_control_marks` of the same tick.
 
     Returns:
         The panel's two parts.
@@ -1630,9 +1635,6 @@ def timeline_panel(
 
     if unlisted:
         notes.append(UNLISTED_CHANGES_TEMPLATE.format(count=unlisted))
-
-    if undrawn_control_marks:
-        notes.append(UNMARKED_CHANGES_TEMPLATE.format(count=undrawn_control_marks))
 
     return TimelinePanel(entries, TIMELINE_OVERFLOW_JOINER.join(notes))
 
@@ -2212,28 +2214,26 @@ def run_statement(
     record: RunRecord,
     adjustments: Sequence[ControlAdjustment],
     *,
-    undrawn_control_marks: int,
     is_branch: bool,
     comparing: bool,
     banner: str | None,
 ) -> RunStatement:
-    """Everything a run's screen states from its record alone, for `RunView._write_statement`.
+    """Return what a run's screen shows from its record alone, for `RunView._write_statement`.
 
-    Builds no compartment value, so a halt stated from it cannot raise for
-    the value it halted on (`PL-7DJK`).
+    This function builds no compartment value. So when a run halts because of
+    a compartment value, stating that halt cannot raise the same error again
+    (`PL-7DJK`).
 
     Args:
-        record: The run's record: the snapshot a frame drew from, or
-            `SimulationController.record()` where none draws.
+        record: The run's record. This is the snapshot that a frame drew
+            from, or `SimulationController.record()` when no frame draws.
         adjustments: `record.control_timeline` grouped into acts, as
             `RunView.adjustments` groups it.
-        undrawn_control_marks: As `timeline_panel` takes it: the drawn
-            frame's count, or zero where no frame drew.
         is_branch: As `transport` takes it.
         comparing: As `transport` takes it.
-        banner: `notice`'s text where a frame drew, or `halt_notice`'s where
-            none has. The caller chooses, because only the caller knows
-            whether a frame drew.
+        banner: The text from `notice` when a frame drew, or from
+            `halt_notice` when none has. The caller chooses, because only the
+            caller knows whether a frame drew.
 
     Returns:
         The statement.
@@ -2246,7 +2246,7 @@ def run_statement(
         substance_heading=substance_heading(record),
         status=status_word(record),
         transport=transport(record, is_branch=is_branch, comparing=comparing),
-        timeline=timeline_panel(adjustments, undrawn_control_marks),
+        timeline=timeline_panel(adjustments),
         banner=banner,
     )
 
@@ -2387,6 +2387,76 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     return OFF_SCALE_NOTICE_TEMPLATE.format(
         compartments=", ".join(off_scale),
         top=format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent),
+    )
+
+
+def off_scale_lines(frame: ChartFrame) -> tuple[str | None, ...]:
+    """Each drawn run's off-scale notice, for the concentration chart that drew `frame`.
+
+    The result has one entry for each run in `frame.runs`, in the same order.
+    An entry is the run's `off_scale_notice`. While more than one run is drawn,
+    `compared_run_line` labels it with its run. An entry is None when every
+    trace of that run is inside the axis. Each chart writes these lines from
+    its own frame, because which points are off scale depends on the window
+    that the chart shows (`PL-L59K`).
+    """
+
+    lines: list[str | None] = []
+
+    for index in range(len(frame.runs)):
+        notice = off_scale_notice(frame, index)
+        lines.append(None if notice is None else compared_run_line(notice, frame, index))
+
+    return tuple(lines)
+
+
+def wash_in_state_lines(
+    frame: ChartFrame, snapshots: Sequence[SimulationSnapshot]
+) -> tuple[str, ...]:
+    """Each drawn run's wash-in state line, for the F_A/F_I plot that drew `frame`.
+
+    The result has one entry for each run, in order. Each entry is the run's
+    `wash_in_state`, with the count of stretches that this plot's window left
+    undrawn. While more than one run is drawn, `compared_run_line` labels each
+    entry with its run.
+
+    Args:
+        frame: The frame the plot drew.
+        snapshots: The snapshot each of the frame's runs was read from, in
+            the same order.
+
+    Raises:
+        ValueError: If there is not one snapshot for each of the frame's runs.
+    """
+
+    if len(snapshots) != len(frame.runs):
+        raise ValueError(
+            f"{len(snapshots)} snapshot(s) were given for a frame of {len(frame.runs)} run(s)"
+        )
+
+    return tuple(
+        compared_run_line(wash_in_state(snapshot, run.undrawn_wash_in_stretches), frame, index)
+        for index, (run, snapshot) in enumerate(zip(frame.runs, snapshots, strict=True))
+    )
+
+
+def unmarked_changes_lines(frame: ChartFrame) -> tuple[str | None, ...]:
+    """Return, for each drawn run, how many of its control changes in the window went unmarked.
+
+    The result has one entry for each run in `frame.runs`, in order. While more
+    than one run is drawn, `compared_run_line` labels each entry with its run.
+    An entry is None when every change inside the window is marked. Both plots
+    draw the frame's marks, so each plot reports this count for its own window
+    (`PL-L59K`).
+    """
+
+    return tuple(
+        None
+        if not run.undrawn_control_marks
+        else compared_run_line(
+            UNMARKED_CHANGES_TEMPLATE.format(count=run.undrawn_control_marks), frame, index
+        )
+        for index, run in enumerate(frame.runs)
     )
 
 

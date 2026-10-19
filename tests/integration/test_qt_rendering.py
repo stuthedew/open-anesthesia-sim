@@ -131,9 +131,15 @@ _BOX_BORDER_INSET_PX = 2
 #: 100% with the fill taken away (`PL-J0F7`).
 _SHOWING_THROUGH_FRACTION = 0.05
 
-#: The fewest pixels drawn beneath a box for the fill to be tested at all.
-#: The six cases have 239 to 3,271.
-_DRAWN_BENEATH_MIN_PX = 100
+#: The fewest pixels that must be drawn beneath a box before the test checks the box's fill. With
+#: fewer, the test fails, because it could not tell a fill from no fill. When this was set at 100,
+#: the six cases had 239 to 3,271 such pixels each. The "top left" box hangs below the circuit
+#: trace, so the trace runs along the box's top border. Sub-pixel placement decides whether the
+#: trace's pixels fall inside the area the test reads. Rendered in DejaVu Sans alone, that case had
+#: 228 pixels beneath the box on `main`. It had 45 once `PL-L59K` moved each run's off-scale and
+#: wash-in lines out of the band above the plots and made the plot 25 px taller. CI measured the
+#: same 45. With the minimum at 40, the 5% limit still allows only 2 pixels to show through.
+_DRAWN_BENEATH_MIN_PX = 40
 
 #: Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
 #: pointer position before answering it.
@@ -295,6 +301,12 @@ def _distance(colour: QColor, to: str) -> float:
     )
 
 
+#: How many paints in a row the page's size must hold before the induction
+#: fixture is settled, and how many paints it may take in all.
+_SETTLE_HELD_PAINTS = 5
+_SETTLE_MAX_PAINTS = 30
+
+
 @pytest.fixture
 def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     """`_INDUCTION_DIAL_PERCENT` for `_INDUCTION_S`, paused, in the following 15-minute width.
@@ -315,16 +327,34 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    selector = _concentration(view).time_base_selector
-    index = selector.findData(str(width.span_s))
-    assert index >= 0, "the time-base control does not offer the 15-minute width"
-    selector.setCurrentIndex(index)
+    # Each chart holds its own window (`PL-L59K`), so both are set, as one
+    # shared control set them before.
+    for selector in (_concentration(view).time_base_selector, _wash_in(view).time_base_selector):
+        index = selector.findData(str(width.span_s))
+        assert index >= 0, "the time-base control does not offer the 15-minute width"
+        selector.setCurrentIndex(index)
+
     view.present(False)
     application.processEvents()
-    # A first paint settles the layout, and the plots in it, before a pixel is
-    # read off them.
-    view.grab()
-    application.processEvents()
+    # Painting settles the layout, and the plots in it, before a pixel is read
+    # off them. One paint is not always enough. In a test worker that has
+    # already drawn other dashboards, the page measured 15 px taller for the
+    # first two paints and then shrank. The concentration plot lost 8 px of
+    # it, which moved the hover box after the test had measured it. So the
+    # page is painted until its size has held for several paints.
+    _, page = _page(view)
+    held = 0
+
+    for _ in range(_SETTLE_MAX_PAINTS):
+        size = page.size()
+        view.grab()
+        application.processEvents()
+        held = held + 1 if page.size() == size else 0
+
+        if held == _SETTLE_HELD_PAINTS:
+            break
+
+    assert held == _SETTLE_HELD_PAINTS, "the page did not settle"
 
     yield view
 

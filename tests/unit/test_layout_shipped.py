@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from anesthesia_sim.app.chart_time_base import saved_time_base, time_base_for_span
 from anesthesia_sim.layout import shipped as shipped_module
 from anesthesia_sim.layout.exceptions import ShippedWorkspaceError
 from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION
@@ -112,6 +113,31 @@ def test_induction_and_maintenance_show_the_wash_in_chart() -> None:
         kinds = [area.view for area in shipped_workspace(shipped_id).layout.areas()]
 
         assert kinds == [CHART, WASH_IN, PARAMETERS]
+
+
+def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:
+    """The induction chart's zoom is its own saved window, the 15-minute time base (`PL-L59K`).
+
+    The 15-minute window follows the run. So the first 15 minutes fill the
+    chart, and the current values stay on it afterwards.
+    `tests/integration/test_view_contract.py` builds the chart from this state.
+    """
+
+    induction = shipped_workspace(ShippedWorkspaceId("induction"))
+    chart_area = next(area.id for area in induction.layout.areas() if area.view == CHART)
+
+    assert dict(induction.view_state) == {
+        chart_area: {CHART: {"state_version": 2, "time_base_s": 900.0}}
+    }
+    assert saved_time_base(induction.view_state[chart_area][CHART]["time_base_s"]) == (
+        time_base_for_span(15 * 60.0)
+    )
+
+
+def test_only_induction_ships_a_saved_view_state() -> None:
+    for shipped_id in SHIPPED_WORKSPACE_IDS:
+        if shipped_id != ShippedWorkspaceId("induction"):
+            assert dict(shipped_workspace(shipped_id).view_state) == {}, shipped_id
 
 
 def test_a_first_run_shows_the_shipped_set_and_it_survives_a_save_and_a_reload(
