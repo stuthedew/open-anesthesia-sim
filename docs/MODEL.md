@@ -7111,7 +7111,9 @@ alone, in a bounded number of steps, without a drag or a file edit. Two parts
 of the build make that true for every Workspace at once. Every Area's header
 carries a View chooser whose menu lists every View kind the build registers,
 whatever the Workspace names, and choosing one shows it in that Area
-(`app/area_layout.py`). The registry, `app/view_registry.py`, marks the
+(`app/area_layout.py`). The dashboard's page grows to give a chosen View the
+size it needs, so the choice shows the View itself and never only the notice
+of an Area too small for it (`PL-K285`). The registry, `app/view_registry.py`, marks the
 accounting View `required_reachable`, and a build that does not register it
 fails when the module is imported. A layout always holds at least one Area,
 so there is always a chooser to use. None of the shipped Workspaces names the
