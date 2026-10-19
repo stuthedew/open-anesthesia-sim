@@ -544,9 +544,9 @@ deviating from a described deliverable, not acting without one.
   2. **A skill**, for a multi-step procedure whose trigger is the skill's own
      trigger. It loads only when relevant; the queue workflows are the example.
   3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
-     which loads when a session *reads* a matching file. Right for a rule that
-     matters only in part of the tree; wrong for one that must fire before a
-     first write, which no read precedes.
+     which loads when a session reads, writes or edits a matching file. Right
+     for a rule that matters only in part of the tree; wrong for one that must
+     fire before a first write, which it reaches only after that write.
   4. **Resident here**, only for what a session could violate before it would
      think to look anything up.
 
