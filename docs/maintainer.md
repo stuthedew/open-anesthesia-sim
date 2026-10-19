@@ -209,6 +209,47 @@ every turn re-reads the whole conversation, those multiply. And each effort
 level keeps its own cache, so changing effort mid-session starts a cold one:
 set it when the session opens rather than toggling it.
 
+## The session ledger records what model and effort worked each item
+
+`docs/session-ledger.tsv` has one row per session in this repository. Each row
+gives the session's configured model, the model its session context names, the
+model that served its last turn, any model the owner switched to, its effort
+level, its tokens by kind, its cost in USD as the harness reports it, and the
+date the row was written. A closed item reaches its sessions through its `pr:`
+field. The squash commit for that pull request carries the session's
+`Claude-Session:` trailer, and `docs/pr-bodies/` is the fallback.
+
+**Only the model review writes the ledger, from the harness's own record**
+(project owner, 2026-10-17, ratified, over a field or trailer that each working
+session writes about itself, `PL-92ZN`). A working session writes nothing about
+itself, so the ledger costs working sessions nothing. A self-report would also
+name the configured model, while a fallback can serve another one. The facts
+belong to a session rather than an item: about two closed items share each
+session, and a session keeps spending after it closes its item. So the ledger
+stores each session once, and an item is joined to it when it is read (project
+owner, 2026-10-19, ratified, over model and effort fields on each closed item,
+`PL-70M6`).
+
+**The model review refreshes it monthly**, and after any generator or cluster
+appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
+cadence, `PL-63CB`). Until `.claude/skills/model-review/SKILL.md` exists, a
+refresh has three steps:
+
+1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
+   `claude-code-remote` MCP server. A page is too large to show inline, so the
+   harness saves it to a file. Copy each file unchanged and parse it with a
+   script, so that no model retypes a value.
+2. Fetch every Projects thread with `get_session`. `list_sessions` leaves
+   threads out, because they carry the `hearth-thread` tag, and a session
+   cannot pass the `tags` filter. Find them as the session ids in
+   `Claude-Session:` trailers on `main` and in `docs/pr-bodies/` that have no
+   ledger row yet.
+3. Rewrite the file, sorted by creation time, and keep any row whose session
+   the harness no longer returns. The harness's retention is unknown, and the
+   ledger exists so that this record outlives it.
+
+<!-- absent: .claude/skills/model-review/SKILL.md -->
+
 ## Settings that make sessions cheaper
 
 - `subagentPromptCacheTtl` is set to `1h` in `.claude/settings.json`. On a Max

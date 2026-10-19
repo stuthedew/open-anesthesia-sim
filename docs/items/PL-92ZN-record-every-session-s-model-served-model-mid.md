@@ -6,10 +6,11 @@ effort: M
 status: ready
 classes: session-cost, infra
 feature: model-evidence
-touches: docs/session-ledger.tsv, docs/maintainer.md, .claude/skills/model-review
+touches: docs/session-ledger.tsv, docs/maintainer.md, .claude/skills/model-review, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-17
 payoff: what model and effort worked every closed item is a durable record in the tree, so the model review has data on its first run instead of in a year
 verify: grep -q 'session-ledger' docs/maintainer.md && grep -q 'last_served_model' docs/session-ledger.tsv
+recurrences: 2026-10-19 PL-70M6
 ---
 
 **Problem.** Record every session's model, served model, mid-session switch, effort, tokens and cost in a per-session ledger written from the harness record by the model review, not by the working session, and backfill it for the sessions behind the 1,759 closed items
