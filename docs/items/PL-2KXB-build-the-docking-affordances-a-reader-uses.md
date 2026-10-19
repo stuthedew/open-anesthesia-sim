@@ -3,11 +3,12 @@ id: PL-2KXB
 title: Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
 priority: P2
 effort: L
-status: ready
+status: done
 classes: feature, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tools/contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-16
+closed: 2026-10-19
 payoff: a reader can split, join and swap Areas and switch Workspaces with the mouse, and a join the layout cannot make is shown as unavailable rather than approximated
 verify: grep -q 'def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_nothing' tests/integration/test_layout_adapter.py && grep -q 'def test_a_tab_switches_the_layout_and_leaves_the_run' tests/integration/test_workspace_tabs.py
 ---
@@ -101,3 +102,43 @@ it does not open the dashboard on them. The tab strip waits on `PL-7Z84`
 (`#1614`), which gives a Workspace its pinned run. The fourth part also wires a
 `WorkspaceSet` into the dashboard, since nothing holds one yet. The rewritten
 `verify:` names that part's test.
+
+## Built 2026-10-19: the Workspace tab strip and pins
+
+**The dashboard opens on the shipped Workspaces.** `SimulationView` holds a
+`WorkspaceSet`, the shipped one unless a caller passes another, and draws its
+current Workspace's layout with each View built from the state it kept. The tab
+strip, `app/workspace_tabs.py`, sits directly above the Areas, as `PL-QW1Z`
+ratified. A tab switches the layout and leaves every run as it was. A Workspace
+left and come back to shows its Views as they were left, because
+`AreaLayout.view_states` hands the current Views' state back into the set
+before the switch. "+" copies the current Workspace as the reader sees it.
+Each tab's menu holds Rename, Duplicate, Move left, Move right, a pin entry per
+open run, Reset (shipped Workspaces only) and Delete, in `PL-QW1Z` Q3's order.
+Delete and Reset ask first. Each entry that cannot run is shown disabled with
+its reason, so the last Workspace's Delete says there is always one.
+
+**A pinned Workspace draws its run alone.** Its Views are handed a frame
+assembled from the pinned run only, and the run's name is in the header of
+every Area. That is how this version meets `docs/MODEL.md`'s rule that a view
+names its run while it is pinned to one. Where the pinned run is not open, every Area states that in place of
+its View, and no other run is shown. The unconditional region still shows
+every open run, so a pin never changes a readout.
+
+**The settings column is gone.** Every shipped Workspace holds the setting
+controls as a View, and every View is reachable from every Area's chooser, so a
+second copy above the Areas would only duplicate them.
+
+**Placeholders decided here** (look, wording and placement, project owner
+2026-10-18). The rule between the shipped and the reader's tabs is drawn in
+MUTED rather than GRIDLINE, because GRIDLINE measures less than 3:1 on
+BACKGROUND and the rule is the only cue that separates the two groups. The pin
+entries read "Pin Run N", one per open run, or "Unpin Run N". The absent state
+reads "Run N is not open." over a sentence naming the pin and how to remove
+it. The dashboard opens on the shipped Default Workspace.
+
+**Left to other items.** Nothing loads the reader's saved Workspaces at launch
+or saves them, and no menu restores the shipped ones: `PL-DWHG`. Two defects
+found while the tests were moved to the new page are filed: the hover box runs
+off a short plot (`PL-9BVQ`), and the page lays the Areas out at a stale size
+hint (`PL-PHPZ`).

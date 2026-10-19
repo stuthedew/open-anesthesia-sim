@@ -5,8 +5,11 @@ does not own, and hands every change a reader makes back as a new set
 (`PL-2KXB`). These tests check `PL-QW1Z`'s decisions: the shipped tabs come
 first and a rule follows them, the current tab is the checked one, each menu
 entry is worked out before it is shown, Delete and Reset ask first, and a tab
-is renamed in place. The tests render under the `offscreen` platform that
-`tests/conftest.py` selects.
+is renamed in place. The dashboard tests check what the strip does to the
+page: a tab switches the Areas and never a run, a Workspace left and come back
+to is as it was left, and a pinned Workspace draws its run alone or says that
+it is not open (`PL-WV9K` Q6). The tests render under the `offscreen` platform
+that `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
@@ -17,6 +20,11 @@ from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
+from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.view_registry import WASH_IN
+from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.app.workspace_tabs import (
     DELETE_LABEL,
     DUPLICATE_LABEL,
@@ -30,7 +38,7 @@ from anesthesia_sim.app.workspace_tabs import (
     tab_operations,
 )
 from anesthesia_sim.layout.exceptions import ShippedWorkspaceError
-from anesthesia_sim.layout.run_identity import RunId, SessionToken
+from anesthesia_sim.layout.run_identity import RunId, RunIdentities, SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import (
@@ -379,3 +387,205 @@ def test_shift_f10_and_the_menu_key_open_the_tabs_menu(
     QApplication.sendEvent(tab, QContextMenuEvent(keyboard, at, tab.mapToGlobal(at)))
 
     assert opened == [2, 2]
+
+
+# --------------------------------------------------------------- the dashboard
+
+
+@pytest.fixture
+def shown(application: QApplication) -> Iterator[list[SimulationView]]:
+    """Every dashboard a test shows, closed after it."""
+
+    views: list[SimulationView] = []
+    yield views
+
+    for view in views:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+
+    application.processEvents()
+
+
+def _dashboard(
+    application: QApplication,
+    shown: list[SimulationView],
+    *controllers: SimulationController,
+    workspaces: WorkspaceSet | None = None,
+) -> SimulationView:
+    """A dashboard over these runs, numbered from 1 in session `_SESSION`, shown and drawn once."""
+
+    view = SimulationView(
+        controllers, run_identities=RunIdentities(_SESSION), workspaces=workspaces
+    )
+    shown.append(view)
+    view.resize(1400, 1000)
+    view.show()
+    application.processEvents()
+    view.present(False)
+
+    return view
+
+
+def _ran(seconds: float) -> SimulationController:
+    controller = SimulationController()
+
+    for _ in range(round(seconds / SIMULATION_STEP_S)):
+        controller.advance(SIMULATION_STEP_S)
+
+    return controller
+
+
+def _concentration(view: SimulationView) -> ConcentrationView:
+    return next(v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
+
+
+def test_the_dashboard_opens_on_the_shipped_default_with_the_strip_over_the_areas(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-QW1Z` Q1: the strip sits under the region and directly above the Areas."""
+
+    view = _dashboard(application, shown, SimulationController())
+
+    assert view.workspaces.current.name == "Default"
+    assert view.layout_container.model == shipped_workspace(ShippedWorkspaceId("default")).layout
+    strip, areas = view.tab_strip, view.layout_container
+    assert strip.parentWidget() is areas.parentWidget()
+    assert strip.mapTo(view, QPoint(0, strip.height())).y() <= areas.mapTo(view, QPoint()).y()
+    region = view.unconditional_region
+    assert region.mapTo(view, QPoint(0, region.height())).y() <= strip.mapTo(view, QPoint()).y()
+    assert [tab.text() for tab in strip.tabs] == ["Default", "Induction", "Maintenance"]
+
+
+def test_a_tab_switches_the_layout_and_leaves_the_run(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-WV9K` Q6: a switch changes which Views are drawn, and the run is not touched."""
+
+    controller = _ran(30.0)
+    before = controller.snapshot()
+    view = _dashboard(application, shown, controller)
+    run = view.runs[0]
+    readouts = run.unconditional_widgets()
+    # The notice banner is hidden while it has nothing to say, so what is
+    # held is that each widget is shown as it was before the switch.
+    visible = {value: widget.isVisibleTo(view) for value, widget in readouts.items()}
+
+    QTest.mouseClick(view.tab_strip.tab_at(1), Qt.MouseButton.LeftButton)
+
+    induction = shipped_workspace(ShippedWorkspaceId("induction"))
+    assert view.workspaces.current.name == "Induction"
+    assert view.layout_container.model == induction.layout
+    assert [type(v).__name__ for v in view.layout_container.views()] == [
+        "ConcentrationView",
+        "WashInView",
+        "ParameterControlsView",
+    ]
+    # The same run, at the same instant, with the same readouts in the region.
+    assert view.runs == (run,)
+    assert run.controller is controller
+    assert controller.snapshot().elapsed_s == before.elapsed_s
+    assert run.unconditional_widgets() == readouts
+
+    for widget in readouts.values():
+        assert widget is not None
+        assert not view.layout_container.isAncestorOf(widget)
+
+    assert {value: widget.isVisibleTo(view) for value, widget in readouts.items()} == visible
+
+
+def test_a_workspace_left_and_come_back_to_is_as_it_was_left(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    view = _dashboard(application, shown, SimulationController())
+    view.layout_container.choose_view(AreaId(2), WASH_IN)
+    left = view.layout_container.model
+
+    QTest.mouseClick(view.tab_strip.tab_at(2), Qt.MouseButton.LeftButton)
+    assert view.workspaces.current.name == "Maintenance"
+    QTest.mouseClick(view.tab_strip.tab_at(0), Qt.MouseButton.LeftButton)
+
+    assert view.layout_container.model == left
+    assert view.workspaces.workspaces[0].layout == left
+
+
+def test_plus_copies_the_layout_the_reader_sees(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The copy is of the Workspace as drawn, after the reader's change, not as it was opened."""
+
+    view = _dashboard(application, shown, SimulationController())
+    view.layout_container.choose_view(AreaId(2), WASH_IN)
+    seen = view.layout_container.model
+    view.tab_strip.add_button.click()
+
+    assert view.workspaces.current.name == "Default (copy)"
+    assert view.workspaces.current.layout == seen
+    assert view.layout_container.model == seen
+    assert view.tab_strip.editor is not None
+
+
+def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    view = _dashboard(application, shown, SimulationController(), SimulationController())
+    assert _concentration(view).legend._run_names == ("Run 1", "Run 2")
+
+    pin = _named(view.tab_strip.operations(0), "Pin Run 2")
+    view.tab_strip.choose(pin)
+
+    assert view.workspaces.current.pinned_run == _RUN_2
+    assert _concentration(view).legend._run_names == ("Run 2",)
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+        assert frame.pin_label.isVisible()
+        assert frame.pin_label.text() == "Run 2"
+        assert frame.content.isVisible()
+
+    # Both runs are still open, and the region still reads both.
+    assert len(view.runs) == 2
+
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Unpin Run 2"))
+
+    assert _concentration(view).legend._run_names == ("Run 1", "Run 2")
+    assert not view.layout_container.frame(AreaId(1)).pin_label.isVisible()
+
+
+def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A run of an earlier session, numbered alike, is a different run (`PL-7Z84`)."""
+
+    earlier = RunId(SessionToken("f" * 32), 1)
+    shipped = shipped_workspaces()
+    pinned = shipped.replace(0, shipped.current.pinned_to(earlier))
+    view = _dashboard(application, shown, SimulationController(), workspaces=pinned)
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+        notice = frame.absent_notice
+        assert notice is not None
+        assert notice.isVisible()
+        assert notice.title_label.text() == "Run 1 is not open."
+        assert not frame.content.isVisible()
+
+    # The region still shows the open run, which the pin never touches.
+    assert view.runs[0].run_id == _RUN_1
+    unpinned = _dashboard(application, shown, SimulationController())
+    assert {
+        value: widget.isVisibleTo(view)
+        for value, widget in view.runs[0].unconditional_widgets().items()
+    } == {
+        value: widget.isVisibleTo(unpinned)
+        for value, widget in unpinned.runs[0].unconditional_widgets().items()
+    }
+
+    QTest.mouseClick(view.tab_strip.tab_at(1), Qt.MouseButton.LeftButton)
+    # A widget added to a shown layout is shown on the next pass of the loop.
+    application.processEvents()
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+        assert frame.absent_notice is None or not frame.absent_notice.isVisible()
+        assert frame.content.isVisible()

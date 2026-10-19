@@ -165,6 +165,8 @@ from anesthesia_sim.app.view_registry import (
     RegisteredView,
     RetiredTag,
     missing_view_text,
+    pinned_run_absent_text,
+    pinned_run_absent_title,
     rename_offer_text,
     too_small_text,
     too_small_title,
@@ -349,6 +351,8 @@ class AreaLayout(QWidget):
             Area's chooser lists them. A test passes a registry of its own.
         retired: The tags no View has any more, which the failure notice
             reads. A test passes a table of its own.
+        states: The state each View is built from, by its Area and kind, as
+            a Workspace keeps it. By default, none.
 
     A factory that raises, or that returns something other than a
     `QWidget` satisfying `View`, leaves its Area showing a notice that names
@@ -370,6 +374,7 @@ class AreaLayout(QWidget):
         *,
         registered: Mapping[str, RegisteredView] = REGISTERED,
         retired: Mapping[str, RetiredTag] = RETIRED_TAGS,
+        states: Mapping[AreaId, Mapping[ViewKind, SavedState]] | None = None,
     ) -> None:
         super().__init__(parent)
         self._requests = requests
@@ -383,7 +388,7 @@ class AreaLayout(QWidget):
         # Each Area's View, with the kind it was built for, in reading order.
         self._views: dict[AreaId, tuple[ViewKind, View]] = {}
         # The state of each View the reader replaced, by its Area and kind.
-        self._saved: dict[tuple[AreaId, ViewKind], SavedState] = {}
+        self._saved: dict[tuple[AreaId, ViewKind], SavedState] = _flattened(states or {})
         self._notices: list[AreaNotice] = []
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
@@ -397,6 +402,8 @@ class AreaLayout(QWidget):
         # too small for their View (`layout/sizing.py`).
         self._fit: Fit | None = None
         self._drawn: frozenset[AreaId] = frozenset()
+        # The pinned run's name, and whether it is absent (`show_pin`).
+        self._pin: tuple[str | None, bool] = (None, False)
         self._settling = False
         self._least: PixelSize | None = None
         self._build(frozenset())
@@ -797,6 +804,62 @@ class AreaLayout(QWidget):
         else:
             self._build(kept)
 
+    def show_pin(self, run_name: str | None, *, absent: bool) -> None:
+        """Name the Workspace's pinned run on every Area, and state on each whether it is absent.
+
+        Held across rebuilds, so an Area made by a split shows it too. See
+        `AreaFrame.show_pin`.
+        """
+
+        if self._pin == (run_name, absent):
+            return
+
+        self._pin = (run_name, absent)
+
+        for frame in self._frames.values():
+            frame.show_pin(run_name, absent=absent)
+
+    def view_states(self) -> dict[AreaId, dict[ViewKind, SavedState]]:
+        """Each View's state by its Area and kind, as a Workspace keeps it.
+
+        That is the state of every View drawn now, and the state kept for
+        each View the reader replaced in an Area the layout still holds. So a
+        Workspace left and come back to shows each View as it was left
+        (`PL-2KXB`).
+        """
+
+        held = {area.id for area in self._model.areas()}
+        states: dict[AreaId, dict[ViewKind, SavedState]] = {}
+
+        for (area_id, kind), state in self._saved.items():
+            if area_id in held:
+                states.setdefault(area_id, {})[kind] = state
+
+        for area_id, (kind, view) in self._views.items():
+            states.setdefault(area_id, {})[kind] = view.save_state()
+
+        return states
+
+    def load(
+        self, model: LayoutModel, states: Mapping[AreaId, Mapping[ViewKind, SavedState]]
+    ) -> None:
+        """Draw another Workspace: `model`, with every View built again from `states`.
+
+        No View drawn now is carried over, even in an Area of the same id and
+        kind, because each Workspace holds its Views' state apart. A switch
+        to a Workspace and back therefore shows what that Workspace held.
+
+        Raises:
+            TypeError: `model` is not a `LayoutModel`.
+            ValueError: `model` holds more than one window.
+        """
+
+        self._model = _drawable(model)
+        self._saved = _flattened(states)
+        # The Views go with the splitters `_build` replaces, unsaved.
+        self._views = {}
+        self._build(frozenset())
+
     def _build(self, kept: AbstractSet[AreaId]) -> None:
         """Build the splitters for the model and put each Area's View in its place.
 
@@ -839,6 +902,10 @@ class AreaLayout(QWidget):
 
         self._column.addWidget(root)
         self._root = root
+
+        for frame in self._frames.values():
+            frame.show_pin(self._pin[0], absent=self._pin[1])
+
         self._settle(kept)
         self._overlay.raise_()
         self.views_changed.emit()
@@ -1367,9 +1434,15 @@ class AreaFrame(QFrame):
     `PL-MS34` decided the header. It is one text row, as tall as the chooser
     in it, on the panel surface, with a 1px `GRIDLINE` rule under it. The
     chooser is its first control, a stretch follows it, and the Area menu
-    ends it (`PL-2KXB`). The run's name, where `docs/MODEL.md` puts one on the
-    Area, comes with pinning (`PL-7Z84`). The header never gets shorter than
-    its row.
+    ends it (`PL-2KXB`). While the Workspace is pinned to a run, the run's
+    name follows the chooser, because `docs/MODEL.md` asks a View to name its
+    run while it is pinned to one (`PL-7Z84`). The header never gets shorter
+    than its row.
+
+    **An Area of a Workspace whose pinned run is not open shows a notice in
+    place of its View** (`PL-WV9K` Q6). The View is hidden, not deleted, and
+    no other run is shown in its place. That notice takes precedence over the
+    too-small one.
 
     **An Area too small for its View shows a notice in its place** (`PL-K285`,
     `PL-DB5G` Q3). The View is hidden, not deleted, so it keeps its state and
@@ -1388,6 +1461,10 @@ class AreaFrame(QFrame):
         content: The View or the notice under the header.
         too_small_notice: The notice shown in place of the View while the
             Area is too small for it, or None where it has never been.
+        pin_label: The pinned run's name in the header, hidden while the
+            Workspace pins no run.
+        absent_notice: The notice shown in place of the View while the
+            pinned run is not open, or None where it has never been.
     """
 
     def __init__(
@@ -1417,6 +1494,9 @@ class AreaFrame(QFrame):
         row = QHBoxLayout(self.header)
         row.setContentsMargins(_HEADER_MARGIN_PX, 0, _HEADER_MARGIN_PX, 0)
         row.addWidget(chooser)
+        self.pin_label = styled_label("", color=INK, size_px=METRIC_NAME_SIZE)
+        self.pin_label.hide()
+        row.addWidget(self.pin_label)
         row.addStretch(1)
 
         if menu is not None:
@@ -1438,6 +1518,8 @@ class AreaFrame(QFrame):
         content.show()
         self.too_small_notice: AreaNotice | None = None
         self._needed: PixelSize | None = None
+        self.absent_notice: AreaNotice | None = None
+        self._absent = False
 
         self.corners: tuple[_CornerZone, ...] = ()
 
@@ -1452,7 +1534,7 @@ class AreaFrame(QFrame):
         if self.too_small_notice is not None:
             self.too_small_notice.hide()
 
-        self.content.show()
+        self.content.setHidden(self._absent)
 
     def show_too_small(self, title: str, needed: PixelSize) -> None:
         """Hide the View, and state that it needs `needed` under the header, which it lacks.
@@ -1473,8 +1555,40 @@ class AreaFrame(QFrame):
 
         self._needed = needed
         self.content.hide()
-        notice.show()
+        notice.setHidden(self._absent)
         self._restate()
+
+    def show_pin(self, run_name: str | None, *, absent: bool) -> None:
+        """Name the pinned run in the header, and state in place of the View whether it is absent.
+
+        Args:
+            run_name: The pinned run's name, or None where the Workspace pins
+                no run.
+            absent: Whether the pinned run is not open. Only a pinned run can
+                be absent.
+        """
+
+        self.pin_label.setText(run_name or "")
+        self.pin_label.setVisible(run_name is not None)
+        self._absent = absent and run_name is not None
+        notice = self.absent_notice
+
+        if self._absent and run_name is not None:
+            if notice is None:
+                notice = AreaNotice("", "")
+                self.absent_notice = notice
+                self._column.addWidget(notice, 1)
+
+            notice.title_label.setText(pinned_run_absent_title(run_name))
+            notice.body_label.setText(pinned_run_absent_text(run_name))
+            notice.show()
+        elif notice is not None:
+            notice.hide()
+
+        self.content.setHidden(self._absent or self._needed is not None)
+
+        if self.too_small_notice is not None:
+            self.too_small_notice.setHidden(self._absent or self._needed is None)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -1908,6 +2022,16 @@ def _widget(view: View) -> QWidget:
     """`view` as the widget it is: `_checked_view` admitted only a `QWidget`."""
 
     return cast(QWidget, view)
+
+
+def _flattened(
+    states: Mapping[AreaId, Mapping[ViewKind, SavedState]],
+) -> dict[tuple[AreaId, ViewKind], SavedState]:
+    """A Workspace's View states, keyed by Area and kind as the adapter keeps them."""
+
+    return {
+        (area_id, kind): state for area_id, kinds in states.items() for kind, state in kinds.items()
+    }
 
 
 def _drawable(model: LayoutModel) -> LayoutModel:

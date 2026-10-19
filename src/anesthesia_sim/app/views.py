@@ -414,7 +414,7 @@ class ParameterControlsView(_RunSurfaceView):
     """Every displayed run's setting controls, one row of four per run.
 
     A slider moved here sets the run. The run then shows the setting in force
-    on every copy, including the copy above the Areas.
+    on every copy, in whichever Areas show this View.
 
     Args:
         context: What the View is built from.

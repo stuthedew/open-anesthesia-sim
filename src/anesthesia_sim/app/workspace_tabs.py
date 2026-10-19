@@ -413,6 +413,10 @@ class WorkspaceTabs(QWidget):
         change: Called with each set a reader's action makes. The owner
             applies it and calls `show_set` with it.
         open_runs: Gives the runs open now, for the pin entries.
+        live: Gives the set as it stands now, where the owner's current
+            Workspace has moved on since it was drawn: a dragged border, or
+            a View's own settings. Every entry is worked out from it, so a
+            duplicate copies what the reader sees. By default, the set drawn.
 
     Attributes:
         question: The question dialog open now, or `None`.
@@ -424,11 +428,14 @@ class WorkspaceTabs(QWidget):
         change: Callable[[WorkspaceSet], None],
         open_runs: Callable[[], tuple[RunId, ...]],
         parent: QWidget | None = None,
+        *,
+        live: Callable[[], WorkspaceSet] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("workspaceTabs")
         self._change = change
         self._open_runs = open_runs
+        self._live = live
         self._workspaces = workspaces
         self._tabs: list[WorkspaceTab] = []
         self._editor: _NameEditor | None = None
@@ -459,6 +466,11 @@ class WorkspaceTabs(QWidget):
         """The set the strip is drawn from now."""
 
         return self._workspaces
+
+    def _now(self) -> WorkspaceSet:
+        """The set every entry is worked out from: the owner's live one, or the one drawn."""
+
+        return self._workspaces if self._live is None else self._live()
 
     @property
     def tabs(self) -> tuple[WorkspaceTab, ...]:
@@ -524,19 +536,20 @@ class WorkspaceTabs(QWidget):
         self.tab_at(index).setChecked(index == self._workspaces.active)
 
         if index != self._workspaces.active:
-            self._change(self._workspaces.activate(index))
+            self._change(self._now().activate(index))
 
     def add(self) -> None:
         """Duplicate the current Workspace, make the copy current, and rename it in place."""
 
-        made = self._workspaces.duplicate(self._workspaces.active)
+        now = self._now()
+        made = now.duplicate(now.active)
         self._change(made)
         self.rename(made.active)
 
     def operations(self, index: int) -> tuple[TabOperation, ...]:
         """The menu entries after Rename for the tab at `index`, from the set drawn now."""
 
-        return tab_operations(self._workspaces, index, self._open_runs())
+        return tab_operations(self._now(), index, self._open_runs())
 
     def menu_for(self, index: int) -> QMenu:
         """The context menu of the tab at `index`, built from the set drawn now."""
@@ -606,8 +619,10 @@ class WorkspaceTabs(QWidget):
         if editor is None:
             return
 
+        now = self._now()
+
         try:
-            renamed = self._workspaces.rename(editor.index, WorkspaceName(editor.text()))
+            renamed = now.rename(editor.index, WorkspaceName(editor.text()))
         except (InvalidLayout, LayoutRefused) as refusal:
             self.refusal_label.setText(str(refusal))
             self.refusal_label.show()
@@ -620,7 +635,7 @@ class WorkspaceTabs(QWidget):
         self.refusal_label.hide()
         self._close_editor()
 
-        if renamed != self._workspaces:
+        if renamed.workspaces[editor.index].name != now.workspaces[editor.index].name:
             self._change(renamed)
 
     def cancel_rename(self, *, keep_refusal: bool = False) -> None:

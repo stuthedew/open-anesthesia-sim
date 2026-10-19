@@ -27,7 +27,7 @@ import re
 import time
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import replace
-from typing import NoReturn
+from typing import Any, NoReturn
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
@@ -57,6 +57,7 @@ from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import theme
+from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
@@ -162,8 +163,18 @@ from anesthesia_sim.app.unconditional_set import (
     UnconditionalValue,
     unconditional_set,
 )
-from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
-from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
+from anesthesia_sim.app.view_registry import (
+    AGENT_ACCOUNTING,
+    CONCENTRATION_CHART,
+    PARAMETER_CONTROLS,
+    WASH_IN,
+)
+from anesthesia_sim.app.views import (
+    AccountingView,
+    ConcentrationView,
+    ParameterControlsView,
+    WashInView,
+)
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
@@ -194,8 +205,54 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
-from anesthesia_sim.layout.tree import AreaId, Split
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
+
+#: Every View this build registers, in one Workspace, so each test finds the
+#: View it reads whichever Workspace ships first. The parameter controls run
+#: across the top, over the concentration chart and the F_A/F_I plot beside
+#: the accounting. That is the dashboard as it stood before it opened on the
+#: shipped Workspaces (`PL-2KXB`).
+_EVERY_VIEW = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Every View"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.COLUMN,
+                            (0.25, 0.75),
+                            (
+                                Area(AreaId(4), PARAMETER_CONTROLS),
+                                Split(
+                                    Orientation.ROW,
+                                    (0.82, 0.18),
+                                    (
+                                        Split(
+                                            Orientation.COLUMN,
+                                            (0.55, 0.45),
+                                            (
+                                                Area(AreaId(1), CONCENTRATION_CHART),
+                                                Area(AreaId(3), WASH_IN),
+                                            ),
+                                        ),
+                                        Area(AreaId(2), AGENT_ACCOUNTING),
+                                    ),
+                                ),
+                            ),
+                        )
+                    ),
+                ),
+                AreaId(5),
+            ),
+        ),
+    ),
+    0,
+)
 
 # The identities a dashboard gives the first runs it places, in order, which
 # render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
@@ -305,7 +362,7 @@ def _shown_view(
     """
 
     _delete_shown_views(application)
-    view = SimulationView(controllers, case=case)
+    view = SimulationView(controllers, case=case, workspaces=_EVERY_VIEW)
     _SHOWN_VIEWS.append(view)
     view.resize(width_px, _WINDOW_HEIGHT_PX)
     view.show()
@@ -366,13 +423,13 @@ def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
 
 
 def _setting_sections(view: SimulationView) -> list[QWidget]:
-    """Each run's setting controls, in the column between the unconditional region and the Areas."""
+    """Each run's setting controls, in the first Area that shows the parameter controls."""
 
-    column = view._settings_column
-    sections = [column.itemAt(index).widget() for index in range(column.count())]
-    assert all(section is not None for section in sections), "the column holds a bare layout"
+    controls = next(
+        v for v in view.layout_container.views() if isinstance(v, ParameterControlsView)
+    )
 
-    return [section for section in sections if section is not None]
+    return list(controls.copies)
 
 
 def _steps(run: RunView, ticks: int) -> None:
@@ -4906,26 +4963,25 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
-    """The region and the setting section stand at their own height; the chart row takes the rest.
+    """The region stands at its own height, and the Areas take the rest.
 
     At the fixed test size the page is taller than the window and there is
-    no spare; a window taller than the page's own hint has some, and every
-    pixel of it lengthens the chart row while the region holding the
-    readouts and the setting row above the charts do not move. The readout
-    section is measured inside the region, where it has been since
-    `PL-NWTM`.
+    no spare, so the Areas stand at the least size that gives every View its
+    need. A window taller than the page's own hint has some spare, and every
+    pixel of it lengthens the Areas while the region holding the readouts
+    does not move. The readout section is measured inside the region, where
+    it has been since `PL-NWTM`. The setting controls are a View in an Area
+    since `PL-2KXB`, so they take their share of the Areas' height.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    (settings,) = _setting_sections(view)
     chart_row = view.layout_container
     readout_section = view.unconditional_region
     page = _page_of(view)
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
-    assert abs(settings.height() - settings.sizeHint().height()) <= 2
-    assert chart_row.height() >= chart_row.sizeHint().height() - 2
+    assert chart_row.height() >= chart_row.minimumSizeHint().height()
 
     settled_chart_row_height = chart_row.height()
     spare = 400
@@ -4933,7 +4989,6 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
     application.processEvents()
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
-    assert abs(settings.height() - settings.sizeHint().height()) <= 2
     assert chart_row.height() >= settled_chart_row_height + spare - 2
     assert chart_row.height() > chart_row.sizeHint().height()
 
@@ -6324,12 +6379,18 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
     """The declaration decides what the region holds, so a run short of a value is not shown.
 
     Built with the 1 MAC statement taken out of the run's mapping, and with
-    it pointed at a setting slider inside the splitter tree: a dashboard
+    it pointed at the first View inside the splitter tree: a dashboard
     built either way would draw ×MAC numbers whose divisor a reader could
     close away.
     """
 
     original = RunView.unconditional_widgets
+    build_areas = AreaLayout.__init__
+    built: list[AreaLayout] = []
+
+    def recorded(areas: AreaLayout, *args: Any, **kwargs: Any) -> None:
+        build_areas(areas, *args, **kwargs)
+        built.append(areas)
 
     def short_of_one_mac(run: RunView) -> dict[UnconditionalValue, QWidget]:
         widgets = dict(original(run))
@@ -6337,10 +6398,11 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
         if misplaced == "missing":
             del widgets[UnconditionalValue.ONE_MAC]
         else:
-            widgets[UnconditionalValue.ONE_MAC] = run._setting_controls[0]._fresh_gas_flow_slider
+            widgets[UnconditionalValue.ONE_MAC] = built[-1].views()[0]
 
         return widgets
 
+    monkeypatch.setattr(AreaLayout, "__init__", recorded)
     monkeypatch.setattr(RunView, "unconditional_widgets", short_of_one_mac)
 
     with pytest.raises(RuntimeError, match="does not hold one_mac"):
@@ -6370,17 +6432,17 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
 def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     application: QApplication,
 ) -> None:
-    """A reader's drag of the one live border reaches the layout model, not only the widgets.
+    """A reader's drag of a border reaches the layout model, not only the widgets.
 
-    The dashboard draws the chart panel and the sidebar as two Areas of one
-    row (`PL-W9P6`). Dragging the border between them 100 px to the left
-    leaves the chart panel's share of the row at its new width over the
-    row's, as the pixels give it, and the sidebar wider by the same 100 px.
+    `_EVERY_VIEW` draws the chart panel and the sidebar as two Areas of one
+    row (`PL-W9P6`), under the parameter controls' Area. Dragging the
+    border between them 100 px to the left leaves the chart panel's share
+    of the row at its new width over the row's, as the pixels give it, and
+    the sidebar wider by the same 100 px.
     """
 
     view = _shown_view(application, SimulationController())
-    splitter = view.layout_container.findChild(QSplitter)
-    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    splitter = _sidebar_splitter(view)
     chart_px, sidebar_px = splitter.sizes()
     handle = splitter.handle(1)
     start = handle.rect().center()
@@ -6391,7 +6453,9 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     QTest.mouseRelease(handle, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end)
     application.processEvents()
 
-    tree = view.layout_container.model.windows[0].tree
+    column = view.layout_container.model.windows[0].tree
+    assert isinstance(column, Split)
+    tree = column.children[1]
     assert isinstance(tree, Split)
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
@@ -6437,11 +6501,25 @@ def test_splitting_and_closing_the_chart_area_leaves_the_unconditional_values_wh
     assert _visible_strings(view) == shown_before
 
 
+def _sidebar_splitter(view: SimulationView) -> QSplitter:
+    """The splitter whose one border lies between the chart panel and the sidebar.
+
+    It is the only row in `_EVERY_VIEW`, under the parameter controls' Area.
+    """
+
+    (splitter,) = (
+        splitter
+        for splitter in view.layout_container.findChildren(QSplitter)
+        if splitter.orientation() == Qt.Orientation.Horizontal
+    )
+
+    return splitter
+
+
 def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
     """Drag the border between the chart panel and the sidebar by `by_px`, as a mouse does."""
 
-    splitter = view.layout_container.findChild(QSplitter)
-    assert splitter is not None, "the dashboard's Areas are not in a splitter"
+    splitter = _sidebar_splitter(view)
     handle = splitter.handle(1)
     start = handle.rect().center()
     end = QPoint(start.x() + by_px, start.y())

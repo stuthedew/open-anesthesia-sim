@@ -30,9 +30,62 @@ from anesthesia_sim.app.view_contract import (
     ViewRequests,
     unreadable_state_text,
 )
-from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, REGISTERED, RegisteredView
+from anesthesia_sim.app.view_registry import (
+    AGENT_ACCOUNTING,
+    CONCENTRATION_CHART,
+    PARAMETER_CONTROLS,
+    REGISTERED,
+    WASH_IN,
+    RegisteredView,
+)
 from anesthesia_sim.app.views import ConcentrationView
-from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
+
+#: Every View this build registers, in one Workspace, so each test finds the
+#: View it reads whichever Workspace ships first. The parameter controls run
+#: across the top, over the concentration chart and the F_A/F_I plot beside
+#: the accounting. That is the dashboard as it stood before it opened on the
+#: shipped Workspaces (`PL-2KXB`).
+_EVERY_VIEW = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Every View"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.COLUMN,
+                            (0.25, 0.75),
+                            (
+                                Area(AreaId(4), PARAMETER_CONTROLS),
+                                Split(
+                                    Orientation.ROW,
+                                    (0.82, 0.18),
+                                    (
+                                        Split(
+                                            Orientation.COLUMN,
+                                            (0.55, 0.45),
+                                            (
+                                                Area(AreaId(1), CONCENTRATION_CHART),
+                                                Area(AreaId(3), WASH_IN),
+                                            ),
+                                        ),
+                                        Area(AreaId(2), AGENT_ACCOUNTING),
+                                    ),
+                                ),
+                            ),
+                        )
+                    ),
+                ),
+                AreaId(5),
+            ),
+        ),
+    ),
+    0,
+)
 
 # The notice, written out here rather than read from the module that writes it.
 _NOTICE = "This View's saved settings could not be read, so it shows its default settings."
@@ -51,7 +104,7 @@ def application() -> Iterator[QApplication]:
 
 @pytest.fixture
 def dashboard(application: QApplication) -> Iterator[SimulationView]:
-    view = SimulationView((SimulationController(),))
+    view = SimulationView((SimulationController(),), workspaces=_EVERY_VIEW)
     view.resize(1600, 1000)
     view.show()
     application.processEvents()
