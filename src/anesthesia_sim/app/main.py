@@ -33,15 +33,16 @@ ordering here is the part that belongs to this module, since a widget built
 before the call would be laid out under the host's palette.
 
 **The reader's saved Workspaces are loaded here, once** (`PL-DWHG`). `main()`
-gives Qt the organization and application names, then asks it for
-`QStandardPaths.AppDataLocation`, the directory `layout/store.py`'s module
-docstring names for each platform. `open_workspaces` applies the one
-override, `ANESTHESIA_SIM_USER_DIR`, and loads `workspaces.json` from that
-directory, or the shipped set where there is no file. What the store found
-reaches the dashboard with the set: the store itself, so the Layout menu's
-"Save as default" can write to it, and the store's notice, which the tab
-strip shows. A platform that reports no directory gives a session with no
-store and a notice that says why, so nothing is saved and the reader is told.
+gives Qt the organization and application names. It then asks Qt for the
+`QStandardPaths.AppDataLocation` directory, which the module docstring of
+`layout/store.py` lists for each platform. `open_workspaces` applies the one
+override, the `ANESTHESIA_SIM_USER_DIR` environment variable. It loads
+`workspaces.json` from the resulting directory, or the shipped set where
+there is no file. The dashboard receives the loaded set and two more things.
+One is the store itself, so that the Layout menu's "Save as default" can
+write to it. The other is the store's notice, which the tab strip shows.
+Where the platform reports no directory, the session has no store, so
+nothing is saved, and a notice tells the reader why.
 """
 
 import os
@@ -100,11 +101,11 @@ def open_workspaces(
 
     Returns:
         The loaded set with its store and notice. Where neither the override
-        nor the platform names a directory, the shipped set, no store, and a
-        notice saying that nothing will be saved this session.
+        nor the platform names a directory, the result holds the shipped set,
+        no store, and a notice saying that nothing will be saved this session.
 
     Raises:
-        ShippedWorkspaceError: the shipped set does not read, which is a
+        ShippedWorkspaceError: The shipped set cannot be read. That is a
             defect of the build rather than anything the reader did.
     """
 

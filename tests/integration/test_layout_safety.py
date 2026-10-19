@@ -1,23 +1,24 @@
-"""Every layout operation a reader can perform keeps the required values on screen, run headless.
+"""Every layout operation a reader can perform keeps the required values on screen.
 
 `docs/MODEL.md` § "Minimum displayed outputs" divides the display into an
 unconditional set that no Workspace may remove, an agent accounting that must
 stay reachable from every layout, and a conditional remainder. The
 unconditional set is drawn in its own region outside the Areas (`PL-NWTM`), so
 no operation on an Area should be able to take one of its values away. These
-tests drive each operation on a real dashboard and check, after every one,
-that this is still so (`PL-G5SX`).
+tests run headless. They drive each operation on a real dashboard, and after
+every one they check that no value has been taken away (`PL-G5SX`).
 
 After each operation the test checks three things:
 
-- Every value of the unconditional set is on screen. "On screen" is
-  `SimulationView.visible_strings`, the one predicate the whole-interface
-  tests share (`PL-904Y`). Each value's widget must also be shown, and its
-  text must be among the strings a reader can see.
+- Every value of the unconditional set is on screen. "On screen" is decided
+  by `SimulationView.visible_strings`, the one predicate that all the
+  whole-interface tests share (`PL-904Y`). Each value's widget must also be
+  shown, and its text must be among the strings a reader can see.
 - No value of the set is drawn inside the Area container, so closing or
   replacing an Area cannot take one away with the surface that drew it.
-- Every Area's View chooser offers the agent accounting, which is the route
-  `tests/integration/test_view_chooser.py` holds to reach it.
+- Every Area's View chooser offers the agent accounting. The chooser is the
+  route to the accounting that `tests/integration/test_view_chooser.py`
+  checks.
 
 The expected set is read from the declaration in `app/unconditional_set.py`,
 not from the dashboard under test. The halt reason is left out of it, because
@@ -65,14 +66,14 @@ _CLOSE_LABEL = "Close Area"
 
 # The values every operation must leave on screen for a run that has not
 # halted. The declaration is the source, so a value added to it is checked
-# here without an edit.
+# here without any edit to this file.
 _REQUIRED = frozenset(unconditional_set(INHALED_AGENT).values) - {UnconditionalValue.HALT_REASON}
 
 _WINDOW_PX = (1400, 1000)
 
-# Thirty minutes of history, so that a frame holds more instants than a
-# narrowed plot has pixels and its chord width is set by the plot's columns
-# rather than by the run, as in `PL-9LNF`'s own test.
+# Thirty minutes of history. With that much, a frame holds more instants
+# than a narrowed plot has pixels, so its chord width is set by the plot's
+# columns rather than by the run. `PL-9LNF`'s own test does the same.
 _HISTORY_S = 1800.0
 
 
@@ -234,9 +235,9 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
     """Resize, split, swap, join, close, switch, save and reload each keep the required values.
 
     The run is paused throughout, so nothing but the layout changes between
-    two checks. The resize step also holds `PL-9LNF`'s redraw: widening the
+    two checks. The resize step also checks `PL-9LNF`'s redraw. Widening the
     chart's Area while paused leaves a frame sampled for the narrower plot,
-    and the next tick draws it again for the new width.
+    and the next tick draws that frame again for the new width.
     """
 
     controller = _paused_run()
@@ -246,11 +247,11 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
         assert view.workspaces.current.name == WorkspaceName("Default")
         seen = _check(application, view, "launch", frozenset())
 
-        # Narrow the chart to its least width, then widen it by less than the
-        # narrowing. Once the border has moved, the splitter holds the controls
-        # Area at its size hint, which is wider than the width it opened at
-        # (`PL-4L8B`), and that hint depends on the platform's fonts. A short
-        # widening from the least width stays clear of it.
+        # Narrow the chart to its least width, then widen it by less than it
+        # was narrowed. Once the border has moved, the splitter keeps the
+        # controls Area at its size hint, which is wider than the width the
+        # Area opened at (`PL-4L8B`). That hint depends on the platform's
+        # fonts. A short widening from the least width stays clear of it.
         _drag_only_border(application, view, -800)
         view.present(False)
         narrowed_px = _chart(view).chart.plot_width_px()

@@ -84,10 +84,10 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
 
     **And it names the application before it asks where the reader's data
     lives, then loads the saved Workspaces from there** (`PL-DWHG`). Qt files
-    the data directory under those names. The override points the load at a
-    temporary directory, which holds no file, so the shipped set opens,
-    "Save as default" is offered for a file in that directory, and nothing
-    has been written to it.
+    the data directory under those two names. The test sets the override to
+    an empty temporary directory. So the shipped set opens, "Save as default"
+    offers to save a file in that directory, and nothing has been written to
+    it.
     """
 
     application = QApplication.instance() or QApplication([])

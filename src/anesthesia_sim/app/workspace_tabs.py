@@ -41,27 +41,27 @@ button is in the tab order after "+". Its place and its wording are
 placeholders, chosen under the project owner's rule of 2026-10-18.
 
 **The Layout menu ends with the three entries that keep or undo a session's
-changes** (`PL-DWHG`), behind a separator, as `PL-WV9K` § "Answers
-2026-09-27" decided them on Blender's Save Startup File and Load Factory
-Settings:
+changes** (`PL-DWHG`). A separator sets them apart. `PL-WV9K` § "Answers
+2026-09-27" decided them, modelled on Blender's Save Startup File and Load
+Factory Settings. The three entries are these.
 
 - "Save as default" writes every Workspace, their order and the current one
-  to `workspaces.json` through `layout/store.py`, after a question naming the
-  file it writes. The next launch opens on what it saved. Nothing else
-  writes the file, so a change not saved is gone at quit. The entry is shown
-  unavailable, with the reason as its tooltip, where the store refuses to
-  save this session or there is no store.
-- "Restore shipped Workspaces" puts back each shipped Workspace the reader
-  deleted, as its file holds it, and changes nothing else.
-- "Reset all layouts" replaces every Workspace with the shipped set, after a
-  question, since a session's Workspaces have no undo. It writes nothing:
-  the saved default stays until the reader saves again.
+  to `workspaces.json` through `layout/store.py`. It first asks a question
+  that names the file it will write. The next launch opens on what it saved.
+  Nothing else writes the file, so a change that is not saved is lost at
+  quit. The entry is shown as unavailable, with the reason as its tooltip,
+  when there is no store or the store refuses to save in this session.
+- "Restore shipped Workspaces" puts back each shipped Workspace that the
+  reader deleted, as its shipped file holds it, and changes nothing else.
+- "Reset all layouts" replaces every Workspace with the shipped set. It asks
+  a question first, because a session's Workspaces have no undo. It writes
+  no file, so the saved default stays until the reader saves again.
 
-**What the store reports is shown, never kept quiet** (`PL-WV9K` Q5). A notice
-from the load, a save the operating system refused, and a save that worked
-are each shown on a line under the tabs, until the reader dismisses it or
-the next one replaces it. A notice is conditional text, so it costs nothing
-when there is none.
+**What the store reports is shown, never kept quiet** (`PL-WV9K` Q5). Three
+kinds of message are shown on a line under the tabs: a notice from the load,
+a save that the operating system refused, and a save that worked. Each one
+stays until the reader dismisses it or the next one replaces it. A notice is
+conditional text, so the line is not shown when there is no notice.
 """
 
 from __future__ import annotations
@@ -410,7 +410,8 @@ def save_entry(
             none.
         workspaces: The set the entry would save.
         missing_store: Why there is no store, shown as the reason where
-            `store` is `None`. A generic reason is shown otherwise.
+            `store` is `None`. Where both are `None`, a generic reason is
+            shown instead.
     """
 
     if store is None:
@@ -441,21 +442,23 @@ def save_entry(
 def restore_shipped(workspaces: WorkspaceSet, shipped: WorkspaceSet) -> WorkspaceSet:
     """Return `workspaces` with each shipped Workspace it no longer holds put back.
 
-    A shipped Workspace counts as held while a Workspace with its origin is in
-    the set, whatever it has been renamed to or changed into. So only a
-    deleted one comes back, and it comes back as its shipped file holds it.
-    Each goes back after the nearest Workspace before it in the shipped
-    order that the set holds, or before the first shipped one where none
-    comes before it. The current Workspace stays current, so the Areas do
-    not change.
+    A shipped Workspace counts as still in the set while some Workspace in
+    the set has it as its origin, whatever that Workspace has been renamed to
+    or changed into. So only a deleted one comes back, and it comes back as
+    its shipped file holds it. Each one goes back after the nearest Workspace
+    that comes before it in the shipped order and is still in the set. Where
+    no such Workspace exists, it goes back before the first shipped Workspace
+    in the set. The current Workspace stays current, so the Areas do not
+    change.
 
     Args:
         workspaces: The reader's set.
         shipped: The shipped set, in its shipped order.
 
     Raises:
-        LayoutRefused: a Workspace in `workspaces` already has the name of a
-            shipped one to put back. The message names it.
+        LayoutRefused: A Workspace in `workspaces` already has the name of
+            a shipped Workspace that would be put back. The message names
+            that Workspace.
     """
 
     order = [workspace.origin.shipped_id for workspace in shipped.workspaces]
@@ -489,7 +492,7 @@ def default_operations(
 ) -> tuple[TabOperation, TabOperation]:
     """Return the Restore shipped Workspaces and Reset all layouts entries for `workspaces`.
 
-    Where the shipped set does not read, both entries are unavailable and
+    Where the shipped set cannot be read, both entries are unavailable, and
     the reason names the file.
 
     Args:
@@ -740,8 +743,8 @@ class WorkspaceTabs(QWidget):
             a View's own settings. Every entry is worked out from this set, so
             a duplicate copies what the reader sees, and "Save as default"
             saves it. By default, the set that was drawn.
-        store: Where "Save as default" writes, or `None`, which shows that
-            entry unavailable.
+        store: The store that "Save as default" writes to, or `None`. With
+            `None`, that entry is shown as unavailable.
         notice: What the reader is told about the load, shown under the tabs
             from the start, or `None`. Where `store` is `None` it is also the
             reason "Save as default" is unavailable.
@@ -1022,8 +1025,9 @@ class WorkspaceTabs(QWidget):
     def _save(self) -> None:
         """Save the set as it stands now, and say what happened under the tabs.
 
-        A save the store refuses or the operating system fails is reported
-        here, at the action, and the session carries on (`PL-SSQW` Q6).
+        When the store refuses a save, or the operating system makes it fail,
+        the failure is reported here, at the action the reader chose, and the
+        session carries on (`PL-SSQW` Q6).
         """
 
         store = self._store

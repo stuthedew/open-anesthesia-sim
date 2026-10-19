@@ -256,10 +256,10 @@ class WorkspaceStore:
 
     @property
     def loaded(self) -> Loaded | None:
-        """What the last `load` or `save` left, or `None` before the first `load`.
+        """The `Loaded` result of the last `load` or `save`, or `None` before the first `load`.
 
-        The interface reads `writable` and `notice` from it to decide whether
-        "Save as default" is offered, and why not.
+        The interface reads its `writable` and `notice` fields. They decide
+        whether "Save as default" is offered, and give the reason when it is not.
         """
 
         return self._loaded

@@ -143,9 +143,9 @@ APP_BUILD_VERSION = APP_VERSION if APP_BUILD is None else f"{APP_VERSION}+{APP_B
 
 APP_BUNDLE_ID = "org.openanesthesia.simulator"
 
-#: The organization name `main()` gives Qt, which files the reader's data
-#: under it and under `APP_DISPLAY_NAME`: on Linux the saved Workspaces are in
-#: `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/`. It is the
+#: The organization name that `main()` gives Qt. Qt files the reader's data
+#: under this name and under `APP_DISPLAY_NAME`. On Linux the saved Workspaces
+#: are in `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/`. It is the
 #: organization part of `APP_BUNDLE_ID`. Changing either name moves that
 #: directory, so a reader's saved Workspaces would no longer be found
 #: (`PL-DWHG`).
