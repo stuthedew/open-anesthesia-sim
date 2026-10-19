@@ -618,7 +618,7 @@ class SimulationView(QWidget):
         # Each run's notice banner goes straight into the run column, between
         # the transport rows and the readouts, rather than into a column and a
         # holder of its own. A layout gives a hidden widget no height and no
-        # spacing, so a banner with nothing to say takes no room, and a shown
+        # spacing. So a banner with nothing to say takes no room, and a shown
         # banner sits in the same place whichever run it belongs to (`PL-T91K`).
         self._run_column = run_column
 

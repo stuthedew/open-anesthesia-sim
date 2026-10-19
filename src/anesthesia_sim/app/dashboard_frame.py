@@ -508,10 +508,10 @@ HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 # name), so a rewrite is put to them rather than made.
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
 
-# The parts a clock reading inside the supported run can carry, each with
-# every value it can take: hours below the run length, minutes and whole
-# seconds below 60, and a nonzero tenth. Each range starts at 1 so that a
-# reading built from them carries every part (`PL-NC0D`).
+# Each range below holds one part of a clock reading within the supported run, with every
+# value that part can take. Hours run below the run length, minutes and whole seconds run
+# below 60, and the tenth is nonzero. Each range starts at 1 so that a reading built from
+# them includes every part (`PL-NC0D`).
 _CLOCK_HOURS: Final = range(1, int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // SECONDS_PER_HOUR))
 _CLOCK_MINUTES: Final = range(1, int(MINUTES_PER_HOUR))
 _CLOCK_WHOLE_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
@@ -523,21 +523,22 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     """Return the branch selector's widest possible entry, as `advance_px` measures it.
 
     The selector has a fixed width, so it reserves the width of its widest
-    entry once, when it is built (`PL-NC0D`). A passed mark's entry is the
-    widest kind, because it is a control event's clock reading with the words
-    of `MARK_FORK_LABEL_TEMPLATE` after it. The widest clock reading is found
-    by measuring, not by counting characters. A proportional face gives its
-    digits different widths, so the last step's 23h59m59.9s is not the
-    widest. Hours, minutes and seconds vary independently, so the widest of
-    each, put together, is the widest reading `format_elapsed` writes inside
-    the supported run.
+    entry once, when it is built (`PL-NC0D`). The entry for a mark that the
+    run has passed is the widest kind of entry. It is the clock reading of a
+    control event, followed by the words of `MARK_FORK_LABEL_TEMPLATE`. The
+    widest clock reading is found by measuring, not by counting characters.
+    A proportional font gives its digits different widths, so 23h59m59.9s,
+    the reading at the last step, is not the widest. Hours, minutes and
+    seconds vary independently. So the widest value of each, put together,
+    is the widest reading that `format_elapsed` writes within the supported
+    run.
 
     Args:
         advance_px: How wide a string draws in the selector's font, in
             pixels.
 
     Returns:
-        The entry for a mark passed at the instant whose reading is widest.
+        The entry for a mark passed at the instant with the widest reading.
     """
 
     hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(f"{hour}h"))

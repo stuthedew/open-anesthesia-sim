@@ -447,12 +447,12 @@ def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> 
 
 
 def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationView) -> None:
-    """`PL-TZNM`: the agent-accounting panel gets its whole height once a run is going.
+    """The agent-accounting panel gets its whole height once a run is going (`PL-TZNM`).
 
-    A running case writes the litres readout's lines into the panel, so a
-    panel laid out from a hint taken before they arrived would cut its last
-    line off. The expected heights are the panel's and the readout's own
-    size hints, not values read from the layout under test.
+    A running case writes the lines of the litres readout into the panel. A
+    panel laid out from a size hint taken before those lines arrived would
+    cut off its last line. The expected heights are the panel's and the
+    readout's own size hints, not values read from the layout under test.
     """
 
     panels = dashboard.runs[0]._accounting_panels

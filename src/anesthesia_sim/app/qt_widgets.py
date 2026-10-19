@@ -215,12 +215,13 @@ def _advance_px(label: QLabel, text: str) -> int:
 
 
 def _fix_width_to_entry(selector: QComboBox, entry: str) -> None:
-    """Fix `selector`'s width so that `entry` fits its text field whole, in its own font.
+    """Fix `selector`'s width so that `entry` fits whole in its text field.
 
-    The width is the entry's advance plus whatever the style draws around the
-    text field: the frame, the padding and the arrow. That margin is read
-    from the style for a field exactly as wide as the entry, so the result
-    holds in whatever face and size the selector is drawn in (`PL-NC0D`).
+    The width is the entry's advance, its drawn width in the selector's
+    font, plus whatever the style draws around the text field: the frame,
+    the padding and the arrow. The code asks the style for that margin
+    around a field exactly as wide as the entry. So the width stays correct
+    in whatever font face and size the selector is drawn in (`PL-NC0D`).
 
     Args:
         selector: The selector, with its stylesheet already set.
@@ -1296,11 +1297,11 @@ class ForkPanel(QWidget):
         self.heading_label = styled_label(FORK_HEADING, color=INK, bold=True)
         self.point_selector = QComboBox()
         self.point_selector.setStyleSheet(selector_stylesheet())
-        # A fixed width, because the entries grow as the trunk runs: a
-        # selector that widened as it filled would move the button beside it
-        # under the reader's pointer. The width is measured from the widest
-        # entry in the selector's own font, because an entry cut short would
-        # lose the words that say it is a mark (`PL-NC0D`).
+        # The selector has a fixed width because its entries grow as the trunk runs. A
+        # selector that widened as it filled would move the button beside it under the
+        # reader's pointer. The width is measured from the widest entry in the selector's
+        # own font, because an entry cut short would lose the words that say it is a mark
+        # (`PL-NC0D`).
         _fix_width_to_entry(
             self.point_selector,
             widest_fork_point_label(self.point_selector.fontMetrics().horizontalAdvance),

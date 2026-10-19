@@ -6298,13 +6298,14 @@ def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) 
 def test_hidden_notice_banners_take_no_height(application: QApplication, compared: bool) -> None:
     """A banner with nothing to say takes no room, and a shown one sits under the transport rows.
 
-    The unconditional region is short of height on a laptop screen, so every
+    The unconditional region, the band of required values that no Workspace
+    can remove, has little height to spare on a laptop screen. So every
     pixel it spends on a hidden banner is a pixel the concentration chart
-    loses (`PL-T91K`). The expected gaps are the theme's page spacing, not
-    a value read from the layout under test. With two runs only the
-    branch's banner is shown, and the hidden trunk banner ahead of it must
-    not push it down: it sits where the trunk's would, so only its words say
-    whose it is (`PL-TSZM`).
+    loses (`PL-T91K`). The expected gaps are the theme's page spacing, not a
+    value read from the layout under test. With two runs, only the branch's
+    banner is shown. The hidden trunk banner ahead of it must not push it
+    down. The branch's banner sits where the trunk's banner would, so only
+    its words say which run it belongs to (`PL-TSZM`).
     """
 
     if compared:
@@ -8484,19 +8485,21 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
 
 
 def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
-    """Offer a dashboard's selector its widest mark entry, and measure it against the field.
+    """Give a dashboard's selector its widest mark entry and measure that entry against the field.
 
     The widest entry is found here rather than taken from
-    `widest_fork_point_label`, so the test does not grade the function with
-    itself. The face spaces its digits proportionally, so the last step's
-    23h59m59.9s is not the widest reading. Hours, minutes and seconds vary
-    independently, so the widest of each together is the widest clock
-    `format_elapsed` can write. It is offered through `fork_offer` and read
-    back off the selector rather than measured as a bare string.
+    `widest_fork_point_label`, so the test does not check that function
+    against its own result. The font spaces its digits proportionally, so
+    23h59m59.9s, the reading at the last step, is not the widest reading.
+    Hours, minutes and seconds vary independently, so the widest value of
+    each, put together, is the widest clock reading that `format_elapsed`
+    can write. The test passes the entry through `fork_offer` and reads it
+    back from the selector, rather than measuring it as a bare string.
 
     Returns:
-        The entry's advance and the width of the selector's text field, in
-        pixels, in the font the selector is drawn in.
+        The entry's advance, its drawn width, and the width of the
+        selector's text field. Both are in pixels, in the font the selector
+        is drawn in.
     """
 
     view = _case_view(application, _branched_case())
@@ -8541,9 +8544,9 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
 def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplication) -> None:
     """A mark's entry cut short would lose the words that say it is a mark.
 
-    The selector is fixed in width, and its widest entry is a mark's late in
-    the supported run, so the width is held against that entry in the font
-    it is drawn in.
+    The selector has a fixed width. Its widest entry is the entry for a mark
+    late in the supported run. So the test checks that the width fits that
+    entry, in the font the selector is drawn in.
     """
 
     entry_px, field_px = _widest_mark_entry_fits(application)
@@ -8554,13 +8557,13 @@ def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplicat
 def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face(
     application: QApplication,
 ) -> None:
-    """The width holds in a face and size the container does not draw in (`PL-NC0D`).
+    """The width still fits in a face and size that the container does not draw in (`PL-NC0D`).
 
     The application sets no font of its own, so the selector draws in the
-    platform's default face and size. DejaVu Sans at 16 px needs 228 px for
-    the widest entry, and the fixed 230 px width that this replaced left the
-    text field 196 px, so the words "on your mark" were cut. The width is
-    now measured from the selector's own font when it is built.
+    platform's default face and size. In DejaVu Sans at 16 px, the widest
+    entry needs 228 px. The fixed 230 px width that this replaced left a
+    text field of only 196 px, so the words "on your mark" were cut. The
+    width is now measured from the selector's own font when it is built.
     """
 
     previous = application.font()
