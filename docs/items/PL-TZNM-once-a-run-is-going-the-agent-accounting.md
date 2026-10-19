@@ -3,12 +3,13 @@ id: PL-TZNM
 title: Once a run is going, the agent accounting validation panel is laid out at its 188 px minimum, below its 202 px size hint, so the five-line litres readout gets 56 of the 70 px it needs and its Absolute error line is cut off
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_qt_rendering.py
+touches: tests/integration/test_qt_rendering.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-19
 payoff: the accounting panel shows every line of its readout while a run is going, so the error figure the Valid verdict rests on can be read
 verify: grep -q 'def test_no_readout_value_is_clipped_once_a_run_is_going' tests/integration/test_qt_rendering.py
 ---
@@ -42,3 +43,5 @@ gives the panel less than its own size hint asks for.
 **Why it matters.** The panel's Absolute error line is the figure the Valid verdict is checked against, and once a run is going it is cut off and the Delivered line is overprinted by the caption above it - a value hidden or overdrawn, which `CLAUDE.md` counts as a presentation failure. The squeeze is the layout giving the panel less than its own size hint, which does not depend on the font.
 
 **Done when.** Once a run is going the panel gets at least its size hint, and a rendering test over a run in progress, built as `main()` builds the page, finds no line of the litres readout clipped.
+
+**Checked 2026-10-19.** No longer reproduced: the accounting panel now lives in an Area, and at 1600 by 1000 and 1366 by 768, at 0 s and 120 s, it gets its whole 212 px hint and the litres readout its 75 px. `test_no_readout_value_is_clipped_once_a_run_is_going` pins the panel and the readout to their size hints on a running case; it passes on the code before this change (the `src/` of b1240300, the head of #1675) too, so it is a pinning test rather than a regression test.

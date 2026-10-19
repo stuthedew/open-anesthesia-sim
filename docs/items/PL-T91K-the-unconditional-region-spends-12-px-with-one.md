@@ -3,12 +3,13 @@ id: PL-T91K
 title: The unconditional region spends 12 px with one run and 24 px with two on notice banners that are hidden, because each run's banner sits in a holder that stays visible and the notice column stays in the run column with its spacing on both sides
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
+closed: 2026-10-19
 payoff: Compare mode gives the concentration chart back 24 px on a laptop screen where it is already below its minimum height, without hiding any halt or refusal banner
 verify: grep -q 'def test_hidden_notice_banners_take_no_height' tests/integration/test_simulation_view.py
 ---
@@ -43,3 +44,5 @@ adds no spacing, for one run and for two. With a banner showing, it appears
 where it does today. A test in `tests/integration/test_simulation_view.py`
 pins both cases. The hazard-table row in `docs/MODEL.md` that describes the
 notice column is reread and corrected if it no longer holds.
+
+**Regression check 2026-10-19.** Each run's banner now goes straight into the run column, between the transport rows and the readouts, so a hidden banner takes no height and no spacing. `test_hidden_notice_banners_take_no_height` fails on the code before this change (the `src/` of b1240300, the head of #1675) at `assert readouts.y() == transports.geometry().bottom() + 1 + PAGE_SPACING`: `assert 53 == ((28 + 1) + 12)` for one run (12 px spare) and `assert 102 == ((65 + 1) + 12)` for two (24 px spare). The hazard-table row in `docs/MODEL.md` now says a shown banner stands in the same place whichever run it belongs to.

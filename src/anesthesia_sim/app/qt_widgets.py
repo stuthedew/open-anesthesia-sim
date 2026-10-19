@@ -60,6 +60,8 @@ from PySide6.QtWidgets import (
     QListWidget,
     QPushButton,
     QSlider,
+    QStyle,
+    QStyleOptionComboBox,
     QVBoxLayout,
     QWidget,
 )
@@ -97,6 +99,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     slider_position,
     slider_value,
+    widest_fork_point_label,
 )
 from anesthesia_sim.app.formatting import (
     MAC_DISPLAY_DECIMALS,
@@ -118,7 +121,6 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
-    FORK_POINT_SELECTOR_WIDTH,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -210,6 +212,30 @@ def _advance_px(label: QLabel, text: str) -> int:
     """How wide `text` is in `label`'s font, in logical pixels."""
 
     return QFontMetrics(label.font()).horizontalAdvance(text)
+
+
+def _fix_width_to_entry(selector: QComboBox, entry: str) -> None:
+    """Fix `selector`'s width so that `entry` fits its text field whole, in its own font.
+
+    The width is the entry's advance plus whatever the style draws around the
+    text field: the frame, the padding and the arrow. That margin is read
+    from the style for a field exactly as wide as the entry, so the result
+    holds in whatever face and size the selector is drawn in (`PL-NC0D`).
+
+    Args:
+        selector: The selector, with its stylesheet already set.
+        entry: The widest entry it must show whole.
+    """
+
+    selector.ensurePolished()
+    entry_px = selector.fontMetrics().horizontalAdvance(entry)
+    option = QStyleOptionComboBox()
+    selector.initStyleOption(option)
+    option.rect = QRect(0, 0, entry_px, selector.sizeHint().height())
+    field = selector.style().subControlRect(
+        QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxEditField, selector
+    )
+    selector.setFixedWidth(entry_px + entry_px - field.width())
 
 
 #: The palette roles this interface declares, and the `app/theme.py` colour
@@ -1269,8 +1295,16 @@ class ForkPanel(QWidget):
         super().__init__(parent)
         self.heading_label = styled_label(FORK_HEADING, color=INK, bold=True)
         self.point_selector = QComboBox()
-        self.point_selector.setFixedWidth(FORK_POINT_SELECTOR_WIDTH)
         self.point_selector.setStyleSheet(selector_stylesheet())
+        # A fixed width, because the entries grow as the trunk runs: a
+        # selector that widened as it filled would move the button beside it
+        # under the reader's pointer. The width is measured from the widest
+        # entry in the selector's own font, because an entry cut short would
+        # lose the words that say it is a mark (`PL-NC0D`).
+        _fix_width_to_entry(
+            self.point_selector,
+            widest_fork_point_label(self.point_selector.fontMetrics().horizontalAdvance),
+        )
         self.take_button = QPushButton(TAKE_FORK_LABEL)
         self.take_button.setStyleSheet(outlined_button_stylesheet())
         # The same outline as the button above, because it is the same kind of

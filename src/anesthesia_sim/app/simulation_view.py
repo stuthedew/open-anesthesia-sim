@@ -615,13 +615,17 @@ class SimulationView(QWidget):
         self._transport_column = _spaced_column(transport_rows, PAGE_SPACING)
         run_column.addWidget(transport_rows)
 
-        notices = QWidget()
-        self._notice_column = _spaced_column(notices, PAGE_SPACING)
-        run_column.addWidget(notices)
+        # Each run's notice banner goes straight into the run column, between
+        # the transport rows and the readouts, rather than into a column and a
+        # holder of its own. A layout gives a hidden widget no height and no
+        # spacing, so a banner with nothing to say takes no room, and a shown
+        # banner sits in the same place whichever run it belongs to (`PL-T91K`).
+        self._run_column = run_column
 
         readouts = QWidget()
         self._readout_column = _spaced_column(readouts, PAGE_SPACING)
         run_column.addWidget(readouts)
+        self._readout_rows = readouts
 
         records = QWidget()
         records.setObjectName(_RECORD_COLUMN_NAME)
@@ -782,9 +786,11 @@ class SimulationView(QWidget):
 
         run.presentation_requested.connect(self.present)
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
+        notice = run.build_notice()
+        self._run_column.insertWidget(self._run_column.indexOf(self._readout_rows), notice)
         placed: tuple[QWidget, ...] = (
             _holder(self._transport_column, (run.build_transport_row(),)),
-            _holder(self._notice_column, (run.build_notice(),)),
+            notice,
             readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
         )
