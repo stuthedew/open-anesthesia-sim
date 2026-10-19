@@ -39,7 +39,7 @@ The first runs measure it; `PL-6FX6` is that trial.
 with an `Owner-read:` record, so each product pull request may wait on the
 project owner. Size each month's batch to what they will read.
 
-**Decision needed (2026-10-19): which model the workers run.** This brief
+**Decided (project owner, 2026-10-19, ratified, over Sonnet 5.5 workers): the workers run on Opus 5.5.** The question as it was put follows. This brief
 first named Sonnet 5.5, the `delegable` tier in `docs/maintainer.md`. That
 tier rests on the owner's 2026-09-19 asymmetry: default to Opus whenever in
 doubt. `PL-2D28` then kept Explore subagents on Opus and cheapened no search
@@ -51,3 +51,15 @@ side is unchanged. **Recommended:** run the workers on Opus 5.5 and accept
 roughly half the items per month, about 25 to 50 `S` items by the estimate
 above. That keeps the asymmetry and the `PL-2D28` decision intact. Keep Sonnet
 5.5 out unless `PL-6FX6` measures it as safe.
+
+**Next step, written 2026-10-19 before a context reset.** Build the runner.
+Read `docs/worker.md` in full first, because its loop, its claim and its
+closing note are what each headless run must follow. Then settle one open
+mechanism and record the answer here. With `--bare`, billing is certain to go
+to the API key, but `CLAUDE.md`, the hooks and the skills do not load. Without
+`--bare`, they load, but a missing key would bill the subscription instead.
+Check the authentication docs for which applies when `ANTHROPIC_API_KEY` is
+set under `-p`. The runner also needs a `--model` option and a no-push mode,
+because `PL-6FX6`'s trial runs Sonnet and Haiku copies that must never be
+pushed. Its plumbing is tested with a fake `claude` executable, because no
+session holds the key.
