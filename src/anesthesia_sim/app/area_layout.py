@@ -63,11 +63,20 @@ worked out by asking the model for the layout it makes, and an entry the model
 or the Area's size refuses is shown disabled with the reason beside it. So a
 join the layout cannot make is visibly unavailable, and never approximated.
 
+**A reader also splits and joins by dragging** (`PL-30L5`, `PL-RQT1`). Each
+corner of an Area is a 16 px zone with a cross cursor. A drag inside the Area
+previews a split through the pointer, and a drag into a neighbour previews a
+join. The preview is drawn over the Areas, and nothing changes until release.
+A border drag re-lays out the Areas live and stops, in WARNING, where an Area
+beside the moved line reaches its least size. Shift moves one border alone,
+and Escape undoes either drag.
+
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
 View to its own minimum size hint, so a split narrower than that in the model
 is drawn at the minimum instead, and a border drag stops where an Area
-would go below that hint. Only the main window is drawn,
+would go below that hint. The Workspace tab strip is `PL-2KXB`'s still, once
+the shipped Workspaces' Views exist (`PL-TH35`). Only the main window is drawn,
 because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 - the layout is the
 reader's", "Explicitly out of scope for v0.6.0").
 """
