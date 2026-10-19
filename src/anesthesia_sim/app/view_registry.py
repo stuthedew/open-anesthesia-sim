@@ -90,6 +90,8 @@ __all__ = [
     "rename_offer_text",
     "required_kinds",
     "retirements",
+    "too_small_text",
+    "too_small_title",
     "unbuilt_view_text",
 ]
 
@@ -133,7 +135,9 @@ class RegisteredView:
             reachable in every layout. `required_kinds` checks this field
             against `REQUIRED_REACHABLE`.
         minimum: The least size the View is drawn at, in logical pixels,
-            under its widget's own minimum size hint (`PL-K285`).
+            below the Area's header. The adapter holds the View at the
+            larger of this and the least size Qt would hold its widget to
+            (`PL-K285`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
@@ -376,6 +380,38 @@ def unbuilt_view_text(
     title = registered[kind].title
 
     return f"Building '{title}' failed: {type(error).__name__}: {error}. {CHOOSE_A_VIEW}"
+
+
+def too_small_title(title: str) -> str:
+    """The title of the notice an Area shows while it is too small for the View `title`.
+
+    The wording is `PL-DB5G` Q3's.
+    """
+
+    return f"Too small for {title}."
+
+
+def too_small_text(needed: PixelSize, available: PixelSize) -> str:
+    """The body of the notice an Area shows while it is too small for its View.
+
+    `needed` is the least size the View is drawn at, and `available` is the
+    size the Area has under its header. Both are sizes on screen, in whole
+    logical pixels, and neither is a value from a run. The wording is
+    `PL-DB5G` Q3's.
+
+    Raises:
+        TypeError: `needed` or `available` is not a `PixelSize`.
+    """
+
+    for size in (needed, available):
+        if not isinstance(size, PixelSize):
+            raise TypeError(f"a size on screen is a PixelSize, not {type(size).__name__}")
+
+    return (
+        f"It needs at least {needed.width_px} by {needed.height_px} px; this Area is "
+        f"{available.width_px} by {available.height_px}. Drag a border to enlarge it, "
+        "or choose a smaller View from the menu above."
+    )
 
 
 def missing_view_text(

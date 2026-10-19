@@ -29,8 +29,11 @@ from anesthesia_sim.app.view_registry import (
     rename_offer_text,
     required_kinds,
     retirements,
+    too_small_text,
+    too_small_title,
 )
 from anesthesia_sim.layout.shipped import SHIPPED_WORKSPACE_IDS, shipped_workspace
+from anesthesia_sim.layout.sizing import PixelSize
 from anesthesia_sim.layout.tree import ViewKind
 
 OLD = ViewKind("old_view")
@@ -288,3 +291,21 @@ def test_a_removed_or_unknown_kind_is_offered_nothing() -> None:
 def test_a_registered_kind_is_offered_nothing_to_rename_to() -> None:
     with pytest.raises(ValueError, match="'wash_in' is registered"):
         rename_offer_text(WASH_IN)
+
+
+# --- The too-small notice ------------------------------------------------------------
+
+
+def test_the_too_small_notice_names_the_view_and_both_sizes() -> None:
+    """`PL-DB5G` Q3's wording, with the need first and the Area's size second."""
+
+    assert too_small_title("Wash-in") == "Too small for Wash-in."
+    assert too_small_text(PixelSize(300, 246), PixelSize(212, 97)) == (
+        "It needs at least 300 by 246 px; this Area is 212 by 97. Drag a border to enlarge it, "
+        "or choose a smaller View from the menu above."
+    )
+
+
+def test_the_too_small_notice_refuses_a_size_that_is_not_a_pixel_size() -> None:
+    with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
+        too_small_text((300, 246), PixelSize(212, 97))  # type: ignore[arg-type]
