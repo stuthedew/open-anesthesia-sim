@@ -2634,13 +2634,13 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
 def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A maximum edited between a trunk and its branch is one difference, named once.
+    """A vaporizer maximum edited between a trunk and its branch is named once, as one difference.
 
     The equation settings carry the circuit's vaporizer maximum (`PL-BBMG`).
-    The controller used to keep a second copy read from the same file, and
-    compared that copy as a displayed reference, so the one edit appeared
-    twice in the refusal and sent its reader looking for a second edit
-    (`PL-1MGB`).
+    The controller used to keep a second copy, read from the same file, and
+    compared that copy as a displayed reference. So the one edit appeared twice
+    in the message that refused the branch, and sent its reader looking for a
+    second edit (`PL-1MGB`).
     """
 
     trunk = _trunk_with_two_changes()
