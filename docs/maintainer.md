@@ -697,8 +697,10 @@ billing cycle (https://support.claude.com/en/articles/17154008, read
 works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
 `claude/<id>-worker`, and adds its reported cost to a ledger in
 `~/.local/state/open-anesthesia-sim/`. It stops before a run that the
-credit left cannot cover. Run it on your Mac, from a checkout of `main`,
-with `claude` and `uv` installed. Start it through `uv run python`, never a
+credit left cannot cover. A run on an item that reaches the simulator uses
+`max` effort, and a run on apparatus work uses `high`, as § "Match effort to
+the standard the work is held to" sets for sessions (`PL-KFJY`). Run it on
+your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it through `uv run python`, never a
 bare `python3`: macOS's own `python3` is Xcode's 3.9, older than the 3.11
 the tools need, and `uv run` also puts the project's Python first on `PATH`
 for the workers (`PL-W38C`).
@@ -712,7 +714,8 @@ for the workers (`PL-W38C`).
 4. `uv run python tools/headless_worker.py --dry-run --runs 3` prints the items it
    would run and the credit left, and starts nothing.
 5. `uv run python tools/headless_worker.py --runs 3` runs them, one after another.
-   Each prints one line: the item, the cost, and the branch it pushed.
+   Each prints one line: the item, its effort, the cost, and the branch it
+   pushed.
    A run that pushed everything it made removes its clone and keeps its log
    in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
    `--no-push` one, keeps both, and its line names the clone to read

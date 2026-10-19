@@ -590,9 +590,6 @@ class SimulationController:
 
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
-        self._max_delivered_concentration_percent = (
-            agent_parameters.max_delivered_concentration_percent
-        )
         self._agent_mac_percent = agent_parameters.mac_percent
         self._agent_mac_awake = agent_parameters.mac_awake
         self._state = SimulationState(uptake_system=uptake_system)
@@ -900,12 +897,12 @@ class SimulationController:
     def settings(self) -> RunSettings:
         """The agent and the four settings in force, built from no compartment value.
 
-        Read where a setting control is written on a run whose `snapshot()`
-        refuses (`RunView.present_halt`): the setting a drag applied is what
-        the run holds, and the control is written from here rather than left
-        on the value before the drag (`PL-85LJ`). The agent, its MAC and its
-        vaporizer maximum are the controller's own; the four settings are the
-        compartments', each a checked type built when it was set.
+        `RunView.present_halt` calls this when it writes a setting control on a run whose
+        `snapshot()` refuses. The run holds the setting that a drag applied. So the control is
+        written from this value, not left on the value from before the drag (`PL-85LJ`). The
+        controller holds the agent and its MAC itself. The vaporizer maximum comes from the
+        circuit, and it is the value the core enforces (`PL-1MGB`). The four settings come from
+        the compartments. Each one is a checked type, built when it was set.
         """
 
         system = self._state.uptake_system
@@ -917,7 +914,7 @@ class SimulationController:
             failure_reason=self._failure_reason,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
-            max_delivered_concentration_percent=self._max_delivered_concentration_percent,
+            max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
             agent_mac_percent=self._agent_mac_percent,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             accepted_fresh_gas_flow_range_l_min=circuit.accepted_fresh_gas_flow_range_l_min,
@@ -970,7 +967,7 @@ class SimulationController:
             began_at_s=self.began_at_s,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
-            max_delivered_concentration_percent=self._max_delivered_concentration_percent,
+            max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
             agent_mac_percent=self._agent_mac_percent,
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
@@ -1529,27 +1526,28 @@ class SimulationController:
     def _disagreements_with(
         self, branch: SimulationController, settings_at_fork: UptakeEquationSettings
     ) -> tuple[str, ...]:
-        """Each value `branch` was rebuilt with that this run did not hold at the fork.
+        """Return each value that `branch` was rebuilt with but this run did not have at the fork.
 
-        A branch is rebuilt rather than copied: its live controls are replayed
-        from the recorded timeline, and its agent, patient and circuit are
-        re-read from the data files. So this names every value that came out
-        different, with both of its values, and no cause: a data file edited
-        between the two builds fails the check with the timeline blameless, and
-        a message blaming the timeline would send its reader into the one part
-        that worked (`PL-NC62`).
+        A branch is rebuilt rather than copied. Its live controls are replayed from the
+        recorded timeline, and its agent, patient and circuit are read again from the data
+        files. So this method names every value that came out different, with both of its
+        values, and does not name a cause. A data file edited between the two builds fails
+        the check even though the timeline is correct. A message that blamed the timeline
+        would send its reader into the one part that worked (`PL-NC62`).
 
-        Two groups are compared. The equation settings, every field of them and
-        of each tissue group, which is everything their equality compares, so a
-        setting added to either class is named here without an edit. And the
-        agent's four displayed references, which no equation reads: the MAC is
-        the divisor of every MAC multiple on screen, so a branch rebuilt under
-        another would show one concentration as two multiples beside its parent.
+        Two groups are compared. The first is the equation settings: every field of them and
+        of each tissue group. Those fields are everything that their equality compares, so a
+        setting added to either class is named here without an edit. The second is the
+        agent's three displayed references, which no equation reads: its name, its MAC and
+        its MAC-awake. The MAC is the divisor of every MAC multiple on screen. A branch
+        rebuilt under another MAC would show one concentration as two different multiples
+        beside its parent. The vaporizer maximum is not compared as a displayed reference.
+        The equation settings already carry it, and it is read from the circuit (`PL-1MGB`).
 
-        Each value is written by its `repr` - for a float the shortest text that
-        reads back as the same float, for a string the string in quotes - so two
-        values that differ never read alike, a difference in the last bit
-        included, which any rounding would print identically on both sides.
+        Each value is written by its `repr`. For a float, that is the shortest text that
+        reads back as the same float. For a string, it is the string in quotes. So two
+        values that differ never print alike, even when they differ only in the last bit.
+        Any rounding would print two such values identically.
         """
 
         replayed = branch._state.uptake_system.equation_settings()
@@ -1571,11 +1569,6 @@ class SimulationController:
                 for field in fields(TissueGroupEquationSettings)
             ),
             ("agent_display_name", self._agent_display_name, branch._agent_display_name),
-            (
-                "max_delivered_concentration_percent",
-                self._max_delivered_concentration_percent,
-                branch._max_delivered_concentration_percent,
-            ),
             ("agent_mac_percent", self._agent_mac_percent, branch._agent_mac_percent),
             *(
                 (
