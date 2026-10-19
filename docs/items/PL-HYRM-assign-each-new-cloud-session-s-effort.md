@@ -157,6 +157,23 @@ above the arm. The start is unchanged: nothing is written before Friday
 resets. Still unanswered: whether the app keeps the picker's last level for
 new sessions.
 
+**Open question for the owner (asked 2026-10-19): should a session tell the
+owner its arm?** The picker will read `xhigh` in every session, so nothing on
+screen shows a capped one. A session can announce its level cheaply. The
+`SessionStart` hook already prints the digest. It could add one line built
+from `CLAUDE_EFFORT`, such as "Effort: high (trial arm)", and the session
+would repeat it in its first reply.
+*Recommendation: do not announce it during the trial.* The owner reviews the
+work and files most of the outcomes the analysis counts: rework items, review
+findings and reopenings. Knowing which sessions ran at `high` can change how
+closely the owner reviews them and how often the owner raises their level.
+That biases the comparison in a way the analysis cannot remove. This is why
+trials blind whoever assesses the outcomes (Schulz KF, Grimes DA, "Blinding in
+randomised trials: hiding who got what", *Lancet* 2002;359:696-700). The arm
+is still recorded and shown in the monthly model review, so nothing is lost.
+If the owner wants it shown anyway, build the hook line, and have the analysis
+say that the trial was not blinded.
+
 **Next steps for the session that builds it.**
 1. Write `tools/effort_trial.py`, standard library only, with tests. It
    reads `CLAUDE_CODE_REMOTE_SESSION_ID`, strips the `cse_` prefix, and
