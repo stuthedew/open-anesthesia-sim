@@ -3969,6 +3969,43 @@ suppression, an edit to the check itself. What makes the pair trustworthy is
 the check *plus* the declared scope, which is why an item naming a `verify`
 command and no `touches` is a validation error rather than a delegable item.
 
+### The model evidence table
+
+`Item.model_guidance` is a fixed rule. A `safety` or `science` class, or an
+open decision, warrants the strongest model, and every other item gets no
+advice. `model-evidence.toml`, at the project root beside `docket.toml`, adds
+advice that comes from measurement. The model review writes it, and `docket`
+only reads it. `docket` never derives an entry from its own data, because
+deciding which trial met its bar is a judgment. An item type appears in the
+table only when its pre-registered trial met its bar, so a file with no
+entries, or no file at all, changes nothing a session sees.
+
+```toml
+[[evidence]]
+match = { class = "defect", lane = "workflow", effort = "S" }
+model = "claude-sonnet-5-5"
+effort = "high"          # the reasoning effort level, not the item's size
+date = 2026-10-17        # when the evidence was recorded
+trial = "PL-XXXX"        # the trial's id in the review's register
+n = 24                   # how many sessions it measured
+```
+
+`match` names one or more of `class`, `lane`, `effort` (the item's `S`, `M`
+or `L` size) and `status`. An item matches an entry when it has every
+attribute the entry names. For `class`, that means the item carries that class
+among its others. The first matching entry in the file wins. `docket next`
+adds the entry to a pick's marks, and `docket show` prints it on a `model:`
+line. Both print it beside the `model_guidance` flag rather than instead of
+it, so a reader sees both when they disagree. `docket delegable` does not
+read the table.
+
+`config.load` reads the file into `Config.model_evidence`. A malformed entry
+is refused, as a malformed `docket.toml` is. That covers a missing or unknown
+key, an attribute outside the four, a value outside its fixed set, a `date`
+that is not a TOML date, and an `n` below 1. An entry that matched nothing
+while looking applied would hide the recommendation it holds. The table is
+not a `docket.toml` setting, so it has one home.
+
 ### Verification is scoped, not just green
 
 `docket verify <id>` answers a narrower question than "do the tests pass":

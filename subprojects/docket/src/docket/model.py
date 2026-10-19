@@ -1146,6 +1146,146 @@ class Item:
         effort = EFFORTS.index(self.effort) if self.effort in EFFORTS else len(EFFORTS)
         return (band, effort, self.identifier)
 
+    def model_evidence(
+        self, table: tuple[ModelEvidence, ...], workflow_paths: tuple[str, ...]
+    ) -> ModelEvidence | None:
+        """The first entry of the model review's evidence table that this item matches.
+
+        First in file order, so the review decides precedence by where it
+        writes an entry. `None` where nothing matches, which includes the empty
+        table: an item type with no trial that met its bar gets no
+        recommendation, and `model_guidance` above is all a session sees.
+        """
+        return next((entry for entry in table if entry.matches(self, workflow_paths)), None)
+
+
+#: The item attributes an evidence entry may match on, and how each is read
+#: from an item. `class` matches when the item carries that class among
+#: others; the rest compare one value. A review that finds another attribute
+#: predictive adds it here, because an entry naming an attribute this package
+#: cannot read would match nothing while looking applied.
+EVIDENCE_ATTRIBUTES = ("class", "lane", "effort", "status")
+
+
+@dataclass(frozen=True)
+class ModelEvidence:
+    """One row of `model-evidence.toml`: a model and effort the review found for a type of item.
+
+    The model review (`PL-63CB`) writes the table and `docket` only reads it,
+    so no recommendation here is derived by this package. The judgment of
+    which trial met its bar is the review's (`PL-3R6L`, project owner,
+    2026-10-17, ratified, over docket computing recommendations from the
+    session ledger itself).
+    """
+
+    #: The attributes an item must have, as pairs from `EVIDENCE_ATTRIBUTES`.
+    match: tuple[tuple[str, str], ...]
+    model: str
+    #: The reasoning effort level, such as `high`. Not the item's `effort:`
+    #: size, which `match` may name as `effort`.
+    effort: str
+    #: The day the evidence was recorded.
+    evidence_date: date
+    #: The trial's id in the review's register.
+    trial: str
+    #: How many sessions the trial measured.
+    n: int
+
+    def matches(self, item: Item, workflow_paths: tuple[str, ...]) -> bool:
+        """Whether `item` has every attribute this entry names."""
+        for attribute, value in self.match:
+            if attribute == "class":
+                if value not in item.classes:
+                    return False
+            elif attribute == "lane":
+                if item.lane(workflow_paths) != value:
+                    return False
+            elif getattr(item, attribute) != value:
+                return False
+        return True
+
+    def describe(self) -> str:
+        """The recommendation as `next` and `show` print it, with its evidence."""
+        return (
+            f"evidence: {self.model} at {self.effort} effort "
+            f"(trial {self.trial}, n={self.n}, {self.evidence_date.isoformat()})"
+        )
+
+
+#: The keys one entry of `model-evidence.toml` must carry.
+EVIDENCE_KEYS = ("match", "model", "effort", "date", "trial", "n")
+
+#: The values each matched attribute may take, where the format fixes them. A
+#: misspelt value would otherwise match nothing and change nothing a session
+#: sees, which is the empty table's answer given for a table that is not empty.
+_EVIDENCE_VALUES: dict[str, tuple[str, ...]] = {
+    "lane": (LANE_PRODUCT, LANE_WORKFLOW, LANE_CROSSING, LANE_UNPLACED),
+    "effort": EFFORTS,
+    "status": STATUSES,
+}
+
+
+def parse_model_evidence(data: Mapping[str, object], source: str) -> tuple[ModelEvidence, ...]:
+    """Read the `[[evidence]]` entries of a parsed `model-evidence.toml`.
+
+    A malformed entry is refused rather than skipped, for the reason a
+    malformed `docket.toml` is: an entry that looks applied but is not is worse
+    than none. A file with no entries is the empty table and changes nothing.
+    """
+    unknown = sorted(set(data) - {"evidence"})
+    if unknown:
+        raise ValueError(f"{source}: no table is named {', '.join(unknown)}")
+    rows = data.get("evidence", [])
+    if not isinstance(rows, list):
+        raise ValueError(f"{source}: `evidence` must be an array of tables, `[[evidence]]`")
+    return tuple(_evidence_entry(row, f"{source}: entry {n}") for n, row in enumerate(rows, 1))
+
+
+def _evidence_entry(row: object, where: str) -> ModelEvidence:
+    if not isinstance(row, dict):
+        raise ValueError(f"{where} is not a table")
+    keys = set(row)
+    if keys != set(EVIDENCE_KEYS):
+        missing = sorted(set(EVIDENCE_KEYS) - keys)
+        extra = sorted(keys - set(EVIDENCE_KEYS))
+        said = [f"missing {', '.join(missing)}"] if missing else []
+        said += [f"no key is named {', '.join(extra)}"] if extra else []
+        raise ValueError(f"{where}: {'; '.join(said)}")
+    match = row["match"]
+    if not isinstance(match, dict) or not match:
+        raise ValueError(f"{where}: `match` must be a table naming at least one attribute")
+    pairs: list[tuple[str, str]] = []
+    for attribute, value in match.items():
+        if attribute not in EVIDENCE_ATTRIBUTES:
+            raise ValueError(
+                f"{where}: `match` names {attribute}, which is not one of "
+                f"{', '.join(EVIDENCE_ATTRIBUTES)}"
+            )
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{where}: `match.{attribute}` must be a non-empty string")
+        allowed = _EVIDENCE_VALUES.get(attribute)
+        if allowed is not None and value not in allowed:
+            raise ValueError(
+                f"{where}: `match.{attribute}` is {value!r}, not one of {', '.join(allowed)}"
+            )
+        pairs.append((attribute, value))
+    for key in ("model", "effort", "trial"):
+        if not isinstance(row[key], str) or not row[key].strip():
+            raise ValueError(f"{where}: `{key}` must be a non-empty string")
+    if not isinstance(row["date"], date):
+        raise ValueError(f"{where}: `date` must be a TOML date, such as 2026-10-17")
+    n = row["n"]
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raise ValueError(f"{where}: `n` must be a whole number of at least 1")
+    return ModelEvidence(
+        match=tuple(pairs),
+        model=row["model"],
+        effort=row["effort"],
+        evidence_date=row["date"],
+        trial=row["trial"],
+        n=n,
+    )
+
 
 def root_cause_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     """Why an item's `root-cause-of:` is not a generator claim, or `()`.

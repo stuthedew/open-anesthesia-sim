@@ -13,7 +13,7 @@ from datetime import date
 
 import pytest
 
-from docket.model import Item
+from docket.model import Item, ModelEvidence
 from docket.plan import (
     HELD,
     NOWHERE,
@@ -2162,3 +2162,43 @@ def test_pairs_are_ordered_by_their_first_then_second_id() -> None:
         ("PL-H1H1", "PL-H3H3"),
         ("PL-H2H2", "PL-H3H3"),
     ]
+
+
+def _evidence(**match: str) -> ModelEvidence:
+    return ModelEvidence(
+        match=tuple(match.items()),
+        model="claude-sonnet-5-5",
+        effort="high",
+        evidence_date=date(2026, 10, 17),
+        trial="PL-T1T1",
+        n=24,
+    )
+
+
+def test_a_recommendation_prints_the_evidence_entry_its_item_matches() -> None:
+    """`PL-3R6L`: beside the fixed flag, never instead of it."""
+    table = (_evidence(**{"class": "defect"}), _evidence(effort="S", status="ready"))
+    (pick,) = recommend(
+        [_item("PL-1111", classes=("safety",), priority="P1")], limit=1, model_evidence=table
+    )
+
+    said = pick.describe()
+    assert "strongest model" in said
+    assert "evidence: claude-sonnet-5-5 at high effort (trial PL-T1T1, n=24, 2026-10-17)" in said
+
+
+def test_an_item_matching_no_entry_prints_what_it_printed_before() -> None:
+    items = [_item("PL-1111", effort="M")]
+    unmatched = recommend(items, model_evidence=(_evidence(effort="S"),))
+
+    assert [p.describe() for p in unmatched] == [p.describe() for p in recommend(items)]
+    assert "evidence:" not in unmatched[0].describe()
+
+
+def test_the_first_matching_entry_wins_and_lane_reads_workflow_paths() -> None:
+    first = _evidence(lane="workflow")
+    second = _evidence(**{"class": "perf"})
+    item = _item("PL-1111", touches=("tools/x.py",))
+
+    assert item.model_evidence((first, second), ("tools",)) is first
+    assert item.model_evidence((first, second), ()) is second
