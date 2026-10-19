@@ -127,6 +127,21 @@ level the app sends. Neither session saw any message saying the level was
 capped. A capped session runs at `high` without saying so, which is what the
 trial needs.
 
+**Subagents follow their session's arm (docs, not measured).** A subagent's
+`effort` frontmatter "Overrides the session effort level", and the Agent
+tool's per-call `effort` parameter overrides that (*Subagents*, "Supported
+frontmatter fields" and "Choose an effort level",
+https://code.claude.com/docs/en/sub-agents.md, read 2026-10-19). So a subagent
+with neither runs at its session's level. The docs imply that rather than
+state it. A cap "still limits the level the skill or subagent runs at"
+(*Model configuration*, "Adjust effort level"). This repository's one
+subagent definition, `.claude/agents/Explore.md`, sets no `effort`, and
+`docs/maintainer.md` keeps sessions from passing one. So a capped session's
+subagents run at `high`, and an uncapped session's subagents run at `xhigh`.
+The unit stays the session together with its subagents. A subagent's level
+cannot be read from `CLAUDE_EFFORT`: the variable belongs to the session's
+process, and a subagent runs inside that process.
+
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
 when the hash falls in the lowest quarter. The ledger already holds every
