@@ -30,6 +30,7 @@ from .model import (
     PRIORITIES,
     SELECTABLE_LANES,
     Item,
+    ModelEvidence,
     impairs_generators_soundly,
     is_generator,
     live_recurrences,
@@ -482,6 +483,10 @@ class Recommendation:
     #: offers nothing - the same fail-closed reading `delegability` gives an
     #: empty `protected_paths`, arrived at from the other end.
     delegable: bool = False
+    #: The row of `model-evidence.toml` this item matches, from
+    #: `Item.model_evidence`, or `None`. Carried for the reason `delegable` is:
+    #: the table lives in the configuration, which `describe` cannot reach.
+    evidence: ModelEvidence | None = None
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
@@ -495,6 +500,11 @@ class Recommendation:
             # Which model is cheaper is deliberately not named here: the answer
             # dates, and `docs/maintainer.md` is where a dated instance lives.
             marks.append("delegable - a cheaper model may take this")
+        # Beside the fixed flag rather than instead of it: the flag is a rule
+        # and this is a measurement, and a reader should see both when they
+        # disagree.
+        if self.evidence is not None:
+            marks.append(self.evidence.describe())
         if self.generator:
             marks.append(f"root cause of {self.generator} items")
         if self.impairs_generators:
@@ -1482,6 +1492,7 @@ def recommend(
     generator_paths: tuple[str, ...] = (),
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
+    model_evidence: tuple[ModelEvidence, ...] = (),
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -1759,6 +1770,7 @@ def recommend(
                     unblocking.get(item.identifier, ()), standings, heads=False
                 ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
+                evidence=item.model_evidence(model_evidence, workflow_paths),
             )
         )
 
@@ -1815,6 +1827,7 @@ def longest_waiting(
     generator_paths: tuple[str, ...] = (),
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
+    model_evidence: tuple[ModelEvidence, ...] = (),
 ) -> Waiting:
     """Owed work in the order it has waited, for `docket next --oldest`.
 
@@ -1884,6 +1897,7 @@ def longest_waiting(
                     unblocking.get(item.identifier, ()), standings, heads=False
                 ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
+                evidence=item.model_evidence(model_evidence, workflow_paths),
             )
         )
     # No new-work filter: `is_debt` keeps every `needs-decision` item owed.
