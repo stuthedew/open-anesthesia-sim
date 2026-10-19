@@ -8,6 +8,7 @@ classes: docs
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py, docs/apparatus.md, tools/doc_check.py
 added: 2026-09-23
 closed: 2026-10-19
+pr: 1637
 payoff: a reader designing a git fallback is told which clone a session actually has
 verify: ! grep -qF 'is normally shallow' subprojects/docket/src/docket/vcs.py
 ---

@@ -8,6 +8,7 @@ classes: docs
 touches: docs/apparatus.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, .claude/hooks/webfetch-quote-note.sh, docs/items
 added: 2026-10-01
 closed: 2026-10-19
+pr: 1637
 payoff: the rules resting on Claude Code's documentation rest on what its pages say, not on a summarizing model's paraphrase
 verify: grep -qE '^\*\*Compared [0-9]{4}-[0-9]{2}-[0-9]{2}\.\*\*' docs/items/PL-124X*.md
 ---
