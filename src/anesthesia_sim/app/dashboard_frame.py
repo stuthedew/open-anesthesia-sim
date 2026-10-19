@@ -281,10 +281,10 @@ CONTROL_TIMELINE_CAPTION: Final = (
 UNLISTED_CHANGES_TEMPLATE: Final = "{count} earlier change(s) not listed"
 TIMELINE_OVERFLOW_JOINER: Final = "; "
 
-# Said on a chart whose mark pool could not draw every control change inside
-# its window. Each chart has a window of its own (`PL-L59K`), so the count
-# belongs to the chart and not to the run's control-change panel, where it
-# stood while every chart drew one window. A placeholder wording.
+# Shown on a chart whose pool of marks could not mark every control change
+# inside its window. Each chart has its own window (`PL-L59K`), so the count
+# belongs to the chart. It used to appear in the run's control-change panel,
+# when every chart drew the same window. The wording is a placeholder.
 UNMARKED_CHANGES_TEMPLATE: Final = "{count} control change(s) in this window not marked"
 
 # The bookmark panel. Two headings and two empty lines rather than one of
@@ -1611,9 +1611,10 @@ class TimelinePanel:
 def timeline_panel(adjustments: Sequence[ControlAdjustment]) -> TimelinePanel:
     """The control-change panel for one run's adjustments.
 
-    The panel lists changes and says how many it left out. How many a chart
-    left unmarked is said on that chart, by `unmarked_changes_lines`, because
-    each chart has a window of its own (`PL-L59K`).
+    The panel lists changes and says how many it left out. The count of
+    changes that a chart left unmarked appears on that chart instead, from
+    `unmarked_changes_lines`, because each chart has its own window
+    (`PL-L59K`).
 
     Args:
         adjustments: The run's adjustments, oldest first, as
@@ -2217,21 +2218,22 @@ def run_statement(
     comparing: bool,
     banner: str | None,
 ) -> RunStatement:
-    """Everything a run's screen states from its record alone, for `RunView._write_statement`.
+    """Return what a run's screen shows from its record alone, for `RunView._write_statement`.
 
-    Builds no compartment value, so a halt stated from it cannot raise for
-    the value it halted on (`PL-7DJK`).
+    This function builds no compartment value. So when a run halts because of
+    a compartment value, stating that halt cannot raise the same error again
+    (`PL-7DJK`).
 
     Args:
-        record: The run's record: the snapshot a frame drew from, or
-            `SimulationController.record()` where none draws.
+        record: The run's record. This is the snapshot that a frame drew
+            from, or `SimulationController.record()` when no frame draws.
         adjustments: `record.control_timeline` grouped into acts, as
             `RunView.adjustments` groups it.
         is_branch: As `transport` takes it.
         comparing: As `transport` takes it.
-        banner: `notice`'s text where a frame drew, or `halt_notice`'s where
-            none has. The caller chooses, because only the caller knows
-            whether a frame drew.
+        banner: The text from `notice` when a frame drew, or from
+            `halt_notice` when none has. The caller chooses, because only the
+            caller knows whether a frame drew.
 
     Returns:
         The statement.
@@ -2391,11 +2393,12 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
 def off_scale_lines(frame: ChartFrame) -> tuple[str | None, ...]:
     """Each drawn run's off-scale notice, for the concentration chart that drew `frame`.
 
-    One entry per run in `frame.runs`, in order: `off_scale_notice`, named by
-    `compared_run_line` while more than one run is drawn, or None where every
-    trace of that run is inside the axis. A chart writes these from its own
-    frame, because which points are off scale depends on the window it shows
-    (`PL-L59K`).
+    The result has one entry for each run in `frame.runs`, in the same order.
+    An entry is the run's `off_scale_notice`. While more than one run is drawn,
+    `compared_run_line` labels it with its run. An entry is None when every
+    trace of that run is inside the axis. Each chart writes these lines from
+    its own frame, because which points are off scale depends on the window
+    that the chart shows (`PL-L59K`).
     """
 
     lines: list[str | None] = []
@@ -2412,9 +2415,10 @@ def wash_in_state_lines(
 ) -> tuple[str, ...]:
     """Each drawn run's wash-in state line, for the F_A/F_I plot that drew `frame`.
 
-    One entry per run, in order: `wash_in_state` with the count of stretches
-    that this plot's window left undrawn, named by `compared_run_line` while
-    more than one run is drawn.
+    The result has one entry for each run, in order. Each entry is the run's
+    `wash_in_state`, with the count of stretches that this plot's window left
+    undrawn. While more than one run is drawn, `compared_run_line` labels each
+    entry with its run.
 
     Args:
         frame: The frame the plot drew.
@@ -2437,12 +2441,13 @@ def wash_in_state_lines(
 
 
 def unmarked_changes_lines(frame: ChartFrame) -> tuple[str | None, ...]:
-    """For each drawn run, how many of its control changes in the window the chart left unmarked.
+    """Return, for each drawn run, how many of its control changes in the window went unmarked.
 
-    One entry per run in `frame.runs`, in order, named by `compared_run_line`
-    while more than one run is drawn, or None where every change inside the
-    window is marked. Both plots draw the frame's marks, so each says this of
-    its own window (`PL-L59K`).
+    The result has one entry for each run in `frame.runs`, in order. While more
+    than one run is drawn, `compared_run_line` labels each entry with its run.
+    An entry is None when every change inside the window is marked. Both plots
+    draw the frame's marks, so each plot reports this count for its own window
+    (`PL-L59K`).
     """
 
     return tuple(

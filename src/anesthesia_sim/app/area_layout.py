@@ -11,7 +11,7 @@ store its own geometry.
 
 **A drag changes the model, and the widgets follow the model.** When a reader
 drags a handle, Qt reports the new position as a fraction of the one splitter
-that was dragged. The adapter turns that fraction into a position in the
+that was dragged. This module turns that fraction into a position in the
 window and asks `LayoutModel.resize()` for the layout that results. It then
 lays every splitter out again from that layout. `LayoutModel.borders()` gives
 the handles that are joined to the dragged one, and `resize()` moves all of
@@ -48,45 +48,49 @@ sampled for. It saves a View's state when the reader replaces that View
 through the chooser. When that kind returns to that Area, its View is built
 from the saved state. A View that the layout still draws in the same Area
 keeps its instance across a rebuild. An Area whose kind is not registered
-draws the failure notice instead of a View, and no factory is called for it.
-An Area whose factory raises, or returns something that is not a View, draws a
-notice that names the error, and the other Areas are built as usual.
-The missing-kind notice names the saved kind, says what became of it, and tells the reader
-to choose a View from the chooser above it. Where the View was renamed, the
-notice also offers a button that shows the View under its new tag. The button
-is there because a renamed tag is never mapped silently (`PL-R1WQ` Q3). The
-notice shows no value from any run. The model keeps the kind, so the Area's
-neighbours draw as usual and a later save writes back the kind that was read.
-The notice uses the look that `PL-DB5G` set: a bold title in `WARNING` over a
-body in `INK`, on the panel surface, with no fill, border or icon.
+draws a notice instead of a View, and no factory is called for it. An Area
+whose factory raises, or returns something that is not a View, draws a notice
+that names the error, and the other Areas are built as usual. The
+missing-kind notice names the saved kind, says what became of it, and tells
+the reader to choose a View from the chooser above it. Where the View was
+renamed, the notice also offers a button that shows the View under its new
+tag. The button is there because a renamed tag is never mapped silently
+(`PL-R1WQ` Q3). The notice shows no value from any run. The model keeps the
+kind, so the Area's neighbours draw as usual and a later save writes back the
+kind that was read. The notice uses the look that `PL-DB5G` set: a bold title
+in `WARNING` over a body in `INK`, on the panel surface, with no fill, border
+or icon.
 
 **Every Area has a menu at the end of its header** (`PL-MS34` Q2,
-`PL-2KXB`). It holds the operations on the Area's place: a split left and
-right or top and bottom, a join with each neighbour, a swap with every other
-Area, and Close Area, which gives the place to a neighbour. Each entry is
-worked out by asking the model for the layout it makes, and an entry the model
-or the Area's size refuses is shown disabled with the reason beside it. So a
-join the layout cannot make is visibly unavailable, and never approximated.
+`PL-2KXB`). The menu holds the operations on the Area's place: a split left
+and right or top and bottom, a join with each neighbour, a swap with every
+other Area, and Close Area, which gives the Area's place to a neighbour. The
+menu works out each entry by asking the model for the layout that the entry
+would make. When the model or the Area's size rejects an entry, the menu shows
+it disabled, with the reason beside it. So a join that the layout cannot make
+is visibly unavailable, and is never approximated.
 
 **A reader also splits and joins by dragging** (`PL-30L5`, `PL-RQT1`). Each
 corner of an Area is a 16 px zone with a cross cursor. A drag inside the Area
 previews a split through the pointer, and a drag into a neighbour previews a
-join. The preview is drawn over the Areas, and nothing changes until release.
-A border drag re-lays out the Areas live and stops, in WARNING, where an Area
-beside the moved line reaches its least size. Shift moves one border alone,
-and Escape undoes either drag.
+join. The preview is drawn over the Areas, and nothing changes until the
+reader releases the drag. A border drag lays the Areas out again as it moves.
+It stops where an Area beside the moved line reaches its minimum size, and the
+stop is drawn in WARNING. Holding Shift moves the dragged border alone, and
+Escape undoes either drag.
 
-**No View is drawn below the size it needs** (`PL-K285`). Each Area's need is
-its View's, the larger of the minimum its registry entry declares and the
-least size Qt would hold the View widget to, with the header above it.
-`layout/sizing.py`'s `settle` works out the sizes at this widget's size, and
-each frame is held at the size it was given, so a border drag stops at a
-neighbour's need. This widget's minimum size hint is every need added up, so a
-host that can grow, as the dashboard's scrolling page does, always gives every
-View its size. Where the host cannot, an Area that the latest change did not
-leave in place gives way first. It is held at its header and shows the size
-its View needs against the size it has, until a later change can give it
-that.
+**No View is drawn below the size it needs** (`PL-K285`). An Area needs the
+size that its View needs, plus its header. A View needs the larger of two
+sizes: the minimum that its registry entry declares, and the minimum size that
+Qt would hold the View widget to. `settle`, in `layout/sizing.py`, works out
+the sizes from this widget's size. Each frame is held at the size it was
+given, so a border drag stops before a neighbour gets less than it needs. This
+widget's minimum size hint is the sum of every Area's need. So a host that can
+grow, as the dashboard's scrolling page does, always gives every View its
+size. Where the host cannot grow, an Area that the latest change did not leave
+in place gives way first. That Area shrinks to its header and shows the size
+its View needs beside the size it has. It stays that way until a later change
+can give it the size it needs.
 
 **What is not here yet.** The Workspace tab strip is left to `PL-2KXB`. Only
 the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
@@ -458,12 +462,13 @@ class AreaLayout(QWidget):
         return any(view.owes_a_frame for _, view in self._views.values())
 
     def frame_requests(self) -> dict[ChartTimeBase | None, float]:
-        """Each window a View asks for, with the widest plot that asks for it.
+        """Map each window that a View asks for to the width of the widest plot showing it.
 
-        The caller assembles one frame per window, sampled at that width, so
-        no plot draws a chord wider than a pixel (`PL-GS3R`), and Views at
-        one window draw the same instants (`PL-9LNF`). Empty where no View
-        draws a frame.
+        The caller assembles one frame for each window, sampled at that width.
+        So no plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
+        straight line between two neighbouring samples. Views at the same
+        window also draw the same instants (`PL-9LNF`). The result is empty
+        when no View draws a frame.
         """
 
         widths: dict[ChartTimeBase | None, float] = {}

@@ -116,11 +116,11 @@ def test_induction_and_maintenance_show_the_wash_in_chart() -> None:
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:
-    """`PL-L59K`: the zoom is the chart's own saved window, the ladder's 15-minute rung.
+    """The induction chart's zoom is its own saved window, the 15-minute time base (`PL-L59K`).
 
-    The rung follows the run, so the first 15 minutes fill the chart and the
-    current values stay on it afterwards. `tests/integration/test_view_contract.py`
-    builds the chart from this state.
+    The 15-minute window follows the run. So the first 15 minutes fill the
+    chart, and the current values stay on it afterwards.
+    `tests/integration/test_view_contract.py` builds the chart from this state.
     """
 
     induction = shipped_workspace(ShippedWorkspaceId("induction"))

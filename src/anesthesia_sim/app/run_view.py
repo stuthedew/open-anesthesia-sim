@@ -1,57 +1,64 @@
-"""One run on the dashboard: its controller, its controls and its readouts, in PySide6.
+"""One run on the dashboard, with its controller, controls and readouts, in PySide6.
 
-`RunView` is the per-run half of the dashboard along `PL-B9PY`'s seam: what
-two displayed runs cannot share - a controller, seven readouts, four
-settings, the transport, the agent identity, the notices, the accounting
-and control-change panels - lives here, and `SimulationView` holds what
-they do share. It is instantiable twice, and nothing in it reaches another
-run.
+`PL-B9PY` divided the dashboard into a part that all runs share and a part
+for each run. `RunView` is the part for each run. It holds what two displayed
+runs cannot share: a controller, seven readouts, four settings, the
+transport, the agent identity, the notices, and the accounting and
+control-change panels. `SimulationView` holds what the runs do share. The
+class can be instantiated twice, and nothing in one instance refers to
+another run.
 
-Every claim it displays is settled by `app/dashboard_frame.py` without a
-toolkit; this class calls those functions once per tick, in the order
-`refresh` fixes, and writes the results into widgets that decide nothing
-(`PL-25KS`, decision D2). No number is formatted here and no colour is
-declared here: colours are `app/theme.py`'s and reach a widget through
-`app/stylesheets.py`'s composers (decision D10, `PL-Y4YX`).
+`app/dashboard_frame.py` decides every claim that this class displays, and
+does so without a GUI toolkit. This class calls those functions once per
+tick, in the order that `refresh` sets. It writes the results into widgets
+that decide nothing (`PL-25KS`, decision D2). No number is formatted here and
+no colour is declared here. Colours come from `app/theme.py`, and they reach a
+widget through the composers in `app/stylesheets.py` (decision D10,
+`PL-Y4YX`).
 
 **Agent colour has one writer.** `_apply_agent_color_scheme` is the only
-method under `app/` that writes the ISO 5360 identity pair, and it writes
-it on every tick to exactly six controls, whether or not each is on screen,
-so the chip that replaces the selector when a run starts is already the
-right colour the frame it appears (`PL-61WW`). `tools/agent_identity_check.py`
-reads that method to learn the identity set and holds every member to the
-rule that nothing carrying agent colour is rendered disabled: the selector
-is written `setDisabled(locked)` beside `setHidden(locked)` with the same
-operand, so it draws nothing while it cannot be used.
+method under `app/` that writes the ISO 5360 identity pair. It writes the pair
+on every tick to exactly six controls, whether or not each is on screen. So
+the chip that replaces the selector when a run starts already has the right
+colour on the frame where it appears (`PL-61WW`).
+`tools/agent_identity_check.py` reads that method to learn which controls
+carry the identity. It enforces one rule on each of them: nothing that carries
+agent colour is drawn disabled. So the selector's `setDisabled(locked)` call
+sits beside a `setHidden(locked)` call with the same operand, and the selector
+draws nothing while it cannot be used.
 
-**A refusal is a notice; a raise is a halt.** `_apply_setting` is the one
-gate every forwarded setting passes through. `SimulationConfigurationError`
-means the core rejected the value and changed nothing, so the run goes on
-under a "Setting refused" banner. Any other exception stops the run:
-`SimulationDomainLimitError` as the supported run length, everything else as
-a failure, per `dashboard_frame.halt_disposition` (`PL-V6M0`, `PL-Y5WR`,
-`PL-YK2V`). A halted run states itself from its controller's record, which
-no compartment value is built for, through `present_halt`, before any frame
-is attempted: the frame is the shared render path, and when that is what
-raised, a halt reported only through it would leave every status word
-reading "Paused" over a failed controller (`PL-25KS`); and a halt stated
-from a fresh snapshot was not stated at all when the snapshot's own values
-were what refused (`PL-7DJK`).
+**A rejected setting shows a notice, and any other exception halts the run.**
+Every setting forwarded to the run passes through `_apply_setting`.
+`SimulationConfigurationError` means that the core rejected the value and
+changed nothing, so the run goes on under a "Setting refused" banner. Any
+other exception stops the run. `dashboard_frame.halt_disposition` decides how
+the stop is reported. A `SimulationDomainLimitError` is reported as reaching
+the supported run length, and anything else as a failure (`PL-V6M0`,
+`PL-Y5WR`, `PL-YK2V`). `present_halt` shows a halted run before any frame is
+attempted. It works from the controller's record, for which no compartment
+value is built. There are two reasons. First, the frame is the shared render
+path, and that path may be what raised. A halt reported only through the
+frame would then leave every status word reading "Paused" over a failed
+controller (`PL-25KS`). Second, a fresh snapshot builds compartment values.
+When building one of those values was what raised, a halt stated from the
+snapshot was never shown at all (`PL-7DJK`).
 
-**The run-state widgets have one writer.** Every widget a run shows is
-either stated from what the run holds - the status word, the transport, the
-agent identity, the dials, the control-change panel and the banner - or from
-the snapshot the frames were drawn from - the readouts and their clock and
-the accounting panel. `_write_statement` writes the first group, from
-`dashboard_frame.run_statement`, for `refresh` and `present_halt` alike, so a
-halted run reads as a drawn one in the same state would. A halt that wrote a
-list of widgets chosen by hand left each widget the list missed stating the
-last frame's run (`PL-X7D5`).
+**The run-state widgets have one writer.** Every widget that a run shows is
+written from one of two sources. The run-state widgets show what the run
+holds: the status word, the transport, the agent identity, the dials, the
+control-change panel and the banner. The snapshot widgets show the snapshot
+that the frames were drawn from: the readouts, their clock and the accounting
+panel. `_write_statement` writes the run-state widgets from
+`dashboard_frame.run_statement`. Both `refresh` and `present_halt` call it, so
+a halted run looks the same as a drawn run in the same state. An earlier halt
+wrote a list of widgets chosen by hand. Each widget that the list missed went
+on showing the run as it was at the last frame (`PL-X7D5`).
 
-**Timers move the run and nothing else** (decision D7). One `QTimer` per
-run drives `step_tick`, which advances the controller by the playback
-rate's steps and never presents; the dashboard's own render timer draws.
-No wall clock is read: simulation time is a count of steps taken.
+**Timers move the run and nothing else** (decision D7). Each run has one
+`QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
+number of steps that the playback rate sets, and it never draws. The
+dashboard's own render timer does the drawing. No wall clock is read.
+Simulation time is a count of the steps taken.
 """
 
 from __future__ import annotations
@@ -224,46 +231,48 @@ _RUNNING_AGENT_DISPLAY_NAME: Final = "runningAgentDisplay"
 class RunView(QWidget):
     """One run's widgets, controller, handlers, refresh and halt.
 
-    Built with nothing drawn: the dashboard presents every run once its
-    charts exist, so the first frame is drawn from one window and one
-    snapshot per run rather than from whatever each run built itself from.
-    The build methods return widgets for `SimulationView` to place, because
-    where a run's parts sit relative to another run's is the dashboard's
-    decision.
+    A new `RunView` draws nothing. The dashboard presents every run once its
+    charts exist. So the first frame is drawn from one window and one
+    snapshot per run, not from whatever state each run was built from. The
+    build methods return widgets for `SimulationView` to place, because the
+    dashboard decides where one run's parts sit relative to another run's.
 
-    The two surfaces that may sit in an Area - the setting controls and the
-    accounting panel - are built anew on every call, from what the copies already built show. Each
-    copy is a class in `app/run_surfaces.py`, and every writer here writes
-    every copy Qt has not destroyed, so two Areas can show one run
-    (`PL-9LNF`). The rest are content of the unconditional region and stay
-    one per run, so their methods return the same widgets on every call,
-    laid out once as the run was built. A layout takes a widget from
-    wherever it sits, so a container built anew on a call took the run's
-    live widgets off the screen, and deleted them once it was dropped
-    (`PL-N67T`, `PL-KZR1`).
+    Two surfaces may sit in an Area: the setting controls and the accounting
+    panel. Their build methods build a new copy on every call, and the new
+    copy starts from what the existing copies show. Each copy is an instance
+    of a class in `app/run_surfaces.py`. Every writer here writes every copy
+    that Qt has not destroyed, so two Areas can show one run (`PL-9LNF`). The
+    other parts belong to the unconditional region, which is always on
+    screen, and stay one per run. Their build methods return the same widgets
+    on every call, laid out once when the run was built. A Qt layout takes a
+    widget from wherever it sits. So an earlier version, which built a new
+    container on each call, took the run's live widgets off the screen. It
+    then deleted them when the container was dropped (`PL-N67T`, `PL-KZR1`).
 
-    Refuses at construction only a first snapshot `setting_readouts` cannot
-    draw controls for, raising its `ValueError`; no shipped profile produces
-    one (`PL-7CRY`). What it refuses per tick is decided by
-    `dashboard_frame`: which setting values the core rejects, and how a
-    raise is reported, are read from the exception and never guessed at
-    (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the module docstring).
+    At construction, it rejects only a first snapshot that `setting_readouts`
+    cannot draw controls for, by raising that function's `ValueError`. No
+    shipped profile produces such a snapshot (`PL-7CRY`). `dashboard_frame`
+    decides what is rejected on each tick. Which setting values the core
+    rejects, and how a raise is reported, are read from the exception and
+    never guessed (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the module docstring).
 
     Attributes:
         controller: The run.
-        run_id: The run's identity, which its name renders (`PL-7Z84`). It
-            lasts as long as this view: through the run's own Reset and a
-            change of agent, which begin a new run definition in the same
-            place, and until the dashboard drops the run.
-        presentation_requested: Emitted with the coalesce flag when this
-            run's action owes the dashboard a frame. `True` leaves the frame
-            to the render tick - a slider drag - and `False` asks for one
-            now; `SimulationView.present` is what answers (`PL-R2YM`).
+        run_id: The run's identity, which the run's name displays
+            (`PL-7Z84`). It lasts as long as this view. It survives the run's
+            own Reset and a change of agent, which each begin a new run
+            definition in the same place. It ends when the dashboard drops
+            the run.
+        presentation_requested: Emitted with the coalesce flag when an action
+            on this run means the dashboard must draw a frame. `True`, as for
+            a slider drag, leaves the frame to the next render tick. `False`
+            asks for a frame now. `SimulationView.present` handles the signal
+            (`PL-R2YM`).
         case_restarted: Emitted when this run has started over from
-            induction. On a trunk that is a new case, so every branch taken
-            from the run that no longer exists stops being a comparison of
-            anything; the dashboard is what acts on it, because which other
-            runs are on screen is not this view's to know.
+            induction. On a trunk run, that starts a new case, so every branch
+            taken from the old run no longer compares with anything. The
+            dashboard acts on the signal, because this view does not know
+            which other runs are on screen.
     """
 
     presentation_requested = Signal(bool)
@@ -464,10 +473,10 @@ class RunView(QWidget):
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
 
-        # What this run's two surfaces that may sit in an Area last showed,
-        # and the copies of each that Qt has not destroyed. A copy built
-        # later is drawn from these, so it shows what the copies already on
-        # screen show, and every writer writes every copy (`PL-9LNF`).
+        # The values last shown by this run's two surfaces that may sit in an
+        # Area, and the copies of each surface that Qt has not destroyed. A
+        # copy built later starts from these values, so it matches the copies
+        # already on screen. Every writer writes every copy (`PL-9LNF`).
         self._settings_shown = setting_readouts(snapshot)
         self._setting_controls: list[ParameterControls] = []
         self._accounting_shown = replace(
@@ -573,20 +582,21 @@ class RunView(QWidget):
     def refresh(self, snapshot: SimulationSnapshot) -> None:
         """Write every widget of this run from the snapshot the tick's frames were drawn from.
 
-        The snapshot widgets first: the readouts and their clock, and the
-        accounting panel. Then the run-state widgets, through
-        `_write_statement`, which `present_halt` calls too, with the banner
-        `dashboard_frame.notice` words for a frame that drew. The lines that
-        depend on a chart's window, such as which traces are above the axis,
-        are written by each chart from its own frame (`PL-L59K`).
+        The snapshot widgets are written first: the readouts, their clock and
+        the accounting panel. The run-state widgets follow, through
+        `_write_statement`, which `present_halt` also calls. Here the banner is
+        the text that `dashboard_frame.notice` gives for a frame that drew.
+        Each chart writes the lines that depend on its window, such as which
+        traces are above the axis, from its own frame (`PL-L59K`).
 
         Args:
             snapshot: The run's state this tick, read once by the caller.
 
         Raises:
-            ValueError: If `setting_readouts` refuses the snapshot: a
-                control with no step of its resolution inside the range the
-                run accepts (`PL-7CRY`), or a MAC that is not positive.
+            ValueError: If `setting_readouts` rejects the snapshot. That
+                happens for a control with no step of its resolution inside
+                the range the run accepts (`PL-7CRY`), or for a MAC that is
+                not positive.
         """
 
         self._presented = True
@@ -605,34 +615,35 @@ class RunView(QWidget):
         )
 
     def _write_statement(self, record: RunRecord, *, banner: str | None) -> None:
-        """Write every run-state widget from one record: the one writer of them (`PL-X7D5`).
+        """Write every run-state widget from one record, as their only writer (`PL-X7D5`).
 
-        `refresh` calls it with the snapshot a frame drew from, and
-        `present_halt` with the controller's record, so the halt states the
-        run on every widget a frame would, and a widget added to the
+        `refresh` calls it with the snapshot that a frame drew from.
+        `present_halt` calls it with the controller's record. So a halt shows
+        the run on every widget that a frame would. A widget added to the
         statement is written on both paths or on neither.
 
-        One order serves both. The agent colour is first, before anything
-        that shows it. The dials are last, because `setting_readouts` can
-        raise, for a control that can offer no setting, and the status word,
-        the transport and the banner have to be on screen before it does
-        (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
+        Both paths write in one order. The agent colour comes first, before
+        anything that shows it. The dials come last, because
+        `setting_readouts` can raise for a control that can offer no setting.
+        The status word, the transport and the banner must be on screen
+        before that can happen (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
 
-        The record is stored as the one this view last wrote before anything
-        is written, so the render tick, which draws whenever a run's record
-        differs from it (`owes_a_frame`), does not retry every tick a frame
-        that failed for a cause that is still there.
+        Before writing anything, the method stores the record as the one this
+        view last wrote. The render tick draws whenever a run's record differs
+        from the stored one (`owes_a_frame`). So when a frame fails for a
+        cause that is still there, the render tick does not retry it on every
+        tick.
 
         Args:
             record: The snapshot a frame drew from, or
-                `SimulationController.record()` where none draws.
-            banner: The banner the caller's path words: `notice` for a frame
-                that drew, `halt_notice` for a halt no frame has been drawn
-                for.
+                `SimulationController.record()` when no frame draws.
+            banner: The banner text for the caller's path. It comes from
+                `notice` for a frame that drew, and from `halt_notice` for a
+                halt that no frame has been drawn for.
 
         Raises:
-            ValueError: If `setting_readouts` refuses the record, as
-                `refresh` states.
+            ValueError: If `setting_readouts` rejects the record, as
+                described under `refresh`.
         """
 
         self._written_record = record.run_record()
@@ -707,11 +718,11 @@ class RunView(QWidget):
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
 
-        What a coalesced slider change owes at once is the view beside the
-        dial, which has to agree with the snapshot the moment the setting is
-        applied (`PL-018`); the frame itself waits for the render tick
-        (`PL-R2YM`). Before the first presentation nothing is rewritten here,
-        and the first presentation writes everything.
+        After a coalesced slider change, what is shown beside the dial must
+        be updated at once. It has to agree with the snapshot from the moment
+        the setting is applied (`PL-018`). The frame itself waits for the
+        render tick (`PL-R2YM`). Before the first presentation this method
+        rewrites nothing, because the first presentation writes everything.
 
         Args:
             snapshot: This run's state, read by `_snapshot_for_a_control`.
@@ -723,34 +734,36 @@ class RunView(QWidget):
     def present_halt(self) -> None:
         """Say this run has stopped, from its controller's record alone, with no frame drawn.
 
-        Every run-state widget is written here, through `_write_statement`,
-        before any frame is attempted, because the frame is what may be
-        failing: a halt for a raise out of the shared render path presented
-        only through that path would leave every status word reading "Paused"
-        over a failed controller, and no banner naming the exception
-        (`PL-25KS`). The frame widgets are left as the last frame drew them,
-        since they state compartment values and the first frame that draws
-        rewrites them.
+        This method writes every run-state widget, through `_write_statement`,
+        before any frame is attempted, because the frame may be what is
+        failing. Suppose the shared render path raised, and the halt were shown
+        only through that path. Every status word would then read "Paused"
+        over a failed controller, and no banner would name the exception
+        (`PL-25KS`). The frame widgets keep what the last frame drew. They show
+        compartment values, and the first frame that draws rewrites them.
 
-        It writes what a frame would. A dial dragged into a halt has changed
-        what the run holds (`PL-85LJ`), an agent changed just before one has
-        changed what every identity widget names (`PL-1YDD`), and a drag that
-        returns a dial to where it started has taken a change off the record
-        (`PL-DTJQ`); a halt that wrote a hand-picked subset left each of those
-        stating the run before the change, with no frame to follow.
+        It writes every widget that a frame would write, because a halt can
+        follow a change that no frame has shown. A dial dragged into a halt
+        has changed what the run holds (`PL-85LJ`). An agent changed just
+        before a halt has changed what every identity widget names
+        (`PL-1YDD`). A drag that returns a dial to where it started has taken
+        a change off the record (`PL-DTJQ`). A halt that wrote only a
+        hand-picked set of widgets left each of these showing the run as it
+        was before the change, with no frame to follow.
 
-        All of it is read once, from `SimulationController.record()` and not
-        from a snapshot, because the snapshot builds every compartment's
-        fraction and a refusal of one of those is among the halts presented
-        here: stated from a fresh snapshot, that halt raised out of this
-        method and was never stated, leaving the screen reading "Running"
-        with Pause offered over a failed controller (`PL-7DJK`). The banner
-        is `dashboard_frame.halt_notice`'s, which says no frame of the
-        stopped run has been drawn; the first frame that draws replaces it.
+        Everything is read once, from `SimulationController.record()` and not
+        from a snapshot. A snapshot builds every compartment's fraction, and
+        one of the halts shown here is the rejection of one of those
+        fractions. When this method read a fresh snapshot, that halt raised
+        out of the method and was never shown. The screen went on reading
+        "Running", with Pause offered, over a failed controller (`PL-7DJK`).
+        The banner comes from `dashboard_frame.halt_notice`. It says that no
+        frame of the stopped run has been drawn, and the first frame that
+        draws replaces it.
 
         Raises:
-            ValueError: If `setting_readouts` refuses the record. Everything
-                else is on screen by then (`_write_statement`).
+            ValueError: If `setting_readouts` rejects the record. By then
+                `_write_statement` has put everything else on screen.
         """
 
         record = self.controller.record()

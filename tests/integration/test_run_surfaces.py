@@ -3,13 +3,14 @@
 `app/run_surfaces.py` holds two of a run's surfaces that sit in an Area: the
 setting controls and the accounting panel (`PL-9LNF`). An Area can be split,
 so a second Area can show the same surface of the same run. These tests build
-a second copy of each through `RunView`'s own build methods and hold both
-copies to drawing the run. Each expected value is built from
+a second copy of each through `RunView`'s own build methods, and check that
+both copies draw the run. Each expected value is built from
 `app/dashboard_frame.py` or `app/formatting.py` and the controller, never read
 off a copy.
 
-The lines that depend on a chart's window are each chart's own (`PL-L59K`).
-The last test holds two charts at different windows to their own lines.
+The lines that depend on a chart's window belong to each chart (`PL-L59K`).
+The last test checks that two charts at different windows each show their own
+lines.
 """
 
 from __future__ import annotations
@@ -187,14 +188,14 @@ def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -
 def test_each_chart_names_only_the_clipped_traces_its_own_window_shows(
     application: QApplication,
 ) -> None:
-    """`PL-L59K`: the off-scale line belongs to the chart, and is written from its window.
+    """The off-scale line belongs to the chart and is written from its window (`PL-L59K`).
 
-    Sevoflurane's 8% dial is 4 MAC against a 3 MAC ceiling, so ten minutes at
-    it carries the circuit trace above the plot. Twenty-five minutes at 0%
-    then bring every trace back under the ceiling. A chart that fits the run
-    still draws the excursion and says so. A 15-minute chart has moved past
-    the excursion, and a notice there would name a clipped trace that the
-    chart does not draw.
+    A sevoflurane dial setting of 8% is 4 MAC, and the plot's ceiling is
+    3 MAC. So ten minutes at 8% carries the circuit trace above the plot.
+    Twenty-five minutes at 0% then bring every trace back below the ceiling.
+    A chart that fits the run still draws the excursion and says so. A
+    15-minute chart has moved past the excursion, and a notice there would
+    name a clipped trace that the chart does not draw.
     """
 
     controller = SimulationController()

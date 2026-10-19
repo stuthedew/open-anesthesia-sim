@@ -223,23 +223,23 @@ def time_base_for_span(span_s: float) -> ChartTimeBase:
 
 
 def saved_time_base(saved: object) -> ChartTimeBase | None:
-    """The time base a chart saved as `saved`: None for "Fit run", or a width the selector offers.
+    """Return the time base that a chart saved as `saved`, or None for "Fit run".
 
-    What a chart View's saved state is read through (`app/views.py`). The
-    saved form is `FIT_RUN_KEY` for "Fit run" or the width in seconds, as
-    `saved_time_base_value` writes it. Only a width the selector offers is
-    read, because a chart can be set only to what its control can show.
+    `app/views.py` reads a chart View's saved state through this function. The
+    saved form is `FIT_RUN_KEY` for "Fit run", or the width in seconds, as
+    `saved_time_base_value` writes it. Only a width that the selector offers is
+    accepted, because a chart can be set only to a width its control can show.
 
     Args:
         saved: The value read from the saved state.
 
     Returns:
-        The rung of that width, or None for "Fit run".
+        The `ChartTimeBase` of that width, or None for "Fit run".
 
     Raises:
         ValueError: If `saved` is neither `FIT_RUN_KEY` nor the width in
-            seconds of one of `SELECTABLE_TIME_BASES`. A `bool` is refused,
-            although Python counts True as 1.
+            seconds of one of `SELECTABLE_TIME_BASES`. A `bool` is rejected,
+            even though Python treats True as 1.
     """
 
     if isinstance(saved, str) and saved == FIT_RUN_KEY:

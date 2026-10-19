@@ -228,9 +228,10 @@ class View(Protocol):
     def owes_a_frame(self) -> bool:
         """Whether this View needs a frame although nothing in the runs changed.
 
-        True before the View's first frame, for a chart that has grown wider
-        than the frame it drew was sampled for (`PL-9LNF`), and for a chart
-        whose window was changed since it last drew (`PL-L59K`).
+        It is True before the View's first frame. It is also True for a chart
+        that is now wider than the width its last frame was sampled for
+        (`PL-9LNF`), and for a chart whose window has changed since it last
+        drew (`PL-L59K`).
         """
         ...
 

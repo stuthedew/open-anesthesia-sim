@@ -788,11 +788,11 @@ def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends(
 
 
 def test_a_run_statement_carries_the_locks_and_the_banner_it_is_given() -> None:
-    """What only the caller knows reaches the statement as given, and nothing is guessed for it.
+    """The statement carries what only the caller knows, exactly as given, and guesses nothing.
 
-    Whether the run is a branch and whether a second run is drawn are the
-    view's facts, and which banner wording applies turns on whether a frame
-    drew, which only the caller knows (`halt_notice`, `notice`).
+    Whether the run is a branch, and whether a second run is drawn, are facts
+    that only the view holds. Which banner wording applies depends on whether
+    a frame drew, and only the caller knows that (`halt_notice`, `notice`).
     """
 
     record = _paused_run_with_history().record()
@@ -2012,11 +2012,12 @@ def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None
 
 
 def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None:
-    """Same rule for the plot: a chart that stops annotating is a claim.
+    """The plot follows the panel's rule: changes it cannot mark are counted, not dropped.
 
-    The count is said on the chart whose window it is, not in the run's
-    control-change panel, because each chart has a window of its own
-    (`PL-L59K`).
+    A chart that stops marking changes without saying so implies that no more
+    changes happened. The count appears on the chart whose window it covers,
+    not in the run's control-change panel, because each chart has its own
+    window (`PL-L59K`).
     """
 
     timeline = tuple(

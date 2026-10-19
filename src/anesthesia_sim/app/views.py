@@ -3,8 +3,8 @@
 Each class here satisfies `app/view_contract.py`'s `View`, and its registry
 entry in `app/view_registry.py` names the class as its factory. So any of them
 can be built in any Area, any number of times, from a `ViewContext` alone.
-Each one is drawn from the `ViewTick` the adapter hands it on every frame
-(`PL-TH35`).
+Each one is drawn from the `ViewTick` that the adapter, `app/area_layout.py`,
+hands it on every frame (`PL-TH35`).
 
 - `ConcentrationView` is the concentration chart with its time-base control,
   captions, reference values, legend and advisories.
@@ -23,7 +23,8 @@ with it.
 Each chart View holds its own time window, set from its own control and
 saved in its state (project owner, 2026-10-19, `PL-L59K`). So a chart writes
 the lines that depend on its window, such as which traces are above the axis,
-from its own frame, one line per run, rather than showing a copy from the run.
+from its own frame. It writes one line per run, rather than showing a copy
+from the run.
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, and every drawn value comes from the frame.
@@ -89,14 +90,14 @@ from anesthesia_sim.app.view_contract import (
 
 __all__ = ["AccountingView", "ConcentrationView", "ParameterControlsView", "WashInView"]
 
-#: The version of the saved state of the Views here that have no setting of
-#: their own: the accounting and the setting controls. Each saves its version
-#: and nothing else.
+#: The saved-state version for the Views here that have no setting of their
+#: own, which are the accounting View and the setting controls View. Each of
+#: them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
 
 #: The version of a chart View's saved state. Version 2 added the chart's
 #: time window under `_TIME_BASE_KEY` (`PL-L59K`). Version 1 held no setting,
-#: so a chart reads it as the default window and loses nothing.
+#: so a chart treats a version 1 state as the default window and loses nothing.
 _CHART_STATE_VERSION: Final = 2
 _SETTINGLESS_CHART_STATE_VERSION: Final = 1
 
@@ -182,11 +183,12 @@ class _RunCopies[W: QWidget]:
 class _RunLines:
     """One conditional line per displayed run, written from a chart's own frame.
 
-    The lines a chart writes from its frame, such as which traces are above
-    the axis. `show` takes the tick's runs and one entry per run, and an entry
-    of None hides that run's line. Each line is a `_RunCopies` copy, so it is
-    deleted with its run even while no frame can be drawn, and a dropped run's
-    line never stays beside the runs still displayed.
+    These are the lines that a chart writes from its frame, such as which
+    traces are above the axis. `show` takes the tick's runs and one entry for
+    each run, and an entry of None hides that run's line. Each line is a copy
+    held by `_RunCopies`, so it is deleted with its run, even while no frame
+    can be drawn. So a dropped run's line never stays beside the runs still
+    displayed.
     """
 
     def __init__(self, color: str, *, italic: bool) -> None:
@@ -224,11 +226,11 @@ class _RunLines:
 def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
     """The window a chart's saved state holds, and the notice to show if it could not be read.
 
-    None saved, or a version 1 state, which held no setting, is the default
-    window, "Fit run". A version 2 state holds its window under
-    `_TIME_BASE_KEY`. Anything else starts the chart from the default window
-    and returns `UNREADABLE_STATE_TEXT`, so the chart says it is not showing
-    what was saved (Q4).
+    When nothing was saved, or the state is version 1, which held no setting,
+    the result is the default window, "Fit run". A version 2 state holds its
+    window under `_TIME_BASE_KEY`. For anything else, the function returns the
+    default window with `UNREADABLE_STATE_TEXT`, so the chart says that it is
+    not showing what was saved (Q4).
     """
 
     if (
@@ -251,7 +253,7 @@ def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
 
 
 class _TimeWindow:
-    """A chart View's own time window: the control that sets it, and its saved form.
+    """A chart View's own time window, with the control that sets it and its saved form.
 
     Each chart holds its window (project owner, 2026-10-19, `PL-L59K`). The
     window starts from the saved state, or from "Fit run" where none was
@@ -264,7 +266,7 @@ class _TimeWindow:
 
     Attributes:
         selector: The control that sets the window.
-        time_base: The window the chart draws next, None for "Fit run".
+        time_base: The window the chart draws next, or None for "Fit run".
         notice_text: The notice to show because the saved state could not be
             read, or None.
     """
@@ -555,7 +557,7 @@ class WashInView(QWidget):
 
 
 def _frame_of(tick: ViewTick) -> ChartFrame:
-    """The frame a chart View asked for, which every tick handed to it carries.
+    """Return the frame that a chart View asked for. Every tick handed to the View carries it.
 
     Raises:
         ValueError: If the tick carries no frame. The adapter hands a frame

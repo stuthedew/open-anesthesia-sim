@@ -1,23 +1,24 @@
 """The parts of one run that a reader may place in an Area, any number of times, in PySide6.
 
 Two of a run's surfaces sit in an Area rather than in the unconditional
-region: the setting controls and the accounting panel (`PL-9LNF`). The lines
-that depend on a chart's time window, such as which traces are above the
-axis, are each chart's own, and `app/views.py` writes them from the chart's
+region, which is the part of the page that is always on screen. These two
+surfaces are the setting controls and the accounting panel (`PL-9LNF`). The
+lines that depend on a chart's time window, such as which traces are above
+the axis, belong to each chart. `app/views.py` writes them from the chart's
 frame (`PL-L59K`). An Area can be split, so two Areas can show the same
 surface of the same run. Each class here is therefore built from nothing but
 the values it draws. It holds no controller and no run state, and a second
 instance of it draws the same values as the first
 (`.claude/rules/ui-areas.md`, rules 1 to 3; `PL-TH35` Q8).
 
-`RunView` keeps the run's state and a list of the live copies of each kind,
-which `keep_until_destroyed` keeps. Its `build_*` methods return a new
-instance each time, and its writers write every live instance on the list.
-A control moved in one copy forwards its value to the run, and the next
-write shows the value in force on every copy.
+`RunView` keeps the run's state. It also keeps a list of the live copies of
+each kind, which `keep_until_destroyed` maintains. Its `build_*` methods
+return a new instance each time, and its writers write every live instance on
+the list. When a reader moves a control in one copy, that copy forwards the
+value to the run. The next write then shows the value in force on every copy.
 
-These classes decide nothing and format nothing: each value they are given
-is already text, from `app/dashboard_frame.py`.
+These classes decide nothing and format nothing. Each value they are given is
+already text, from `app/dashboard_frame.py`.
 """
 
 from __future__ import annotations

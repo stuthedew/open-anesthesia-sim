@@ -4092,11 +4092,12 @@ def test_a_window_pick_whose_frame_fails_leaves_the_control_on_the_window_drawn(
 def test_a_frame_is_assembled_and_checked_with_no_chart_shown(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Assembling a frame checks the runs, so it runs whatever the Areas hold (`PL-L59K`).
+    """Assembling a frame checks the runs, so a frame is assembled whatever the Areas hold.
 
-    With every chart replaced, no View asks for a window. A frame is still
-    assembled at "Fit run", so a run state the assembly refuses still halts
-    every run rather than going unnoticed until a chart is shown again.
+    This is `PL-L59K`. With every chart replaced, no View asks for a window. A
+    frame is still assembled at "Fit run". So a run state that the assembly
+    rejects still halts every run, rather than going unnoticed until a chart
+    is shown again.
     """
 
     view = _shown_view(application, _paused_run_with_history(60.0))
@@ -4118,10 +4119,10 @@ def test_a_chart_s_window_returns_with_the_chart_after_its_area_shows_another_vi
 ) -> None:
     """A chart's window is the View's own state, saved when the reader replaces it (`PL-L59K`).
 
-    The control sits in the chart View, so a reader closes it by choosing
-    another View for its Area. The F_A/F_I plot keeps its own window
-    meanwhile, and a concentration chart brought back to that Area shows the
-    window the reader chose.
+    The time-base control sits in the chart View. So a reader closes the
+    control only by choosing another View for the chart's Area. Meanwhile the
+    F_A/F_I plot keeps its own window. A concentration chart brought back to
+    that Area shows the window that the reader chose.
     """
 
     controller = _paused_run_with_history(1800.0)

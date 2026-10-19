@@ -27,11 +27,11 @@ inside an Area, so no split, join or close of an Area can affect the band.
 **One read, every View, then every run.** `_refresh_view` reads one
 snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`
 for each time window a View asks for. Each chart's window is its own
-(`PL-L59K`). It hands each View the frame for its window, and only then
-refreshes each run from the same snapshot. So the readouts, the traces and
-the sentences beside them all show one instant of one run (decision D2). Every claim in a
-caption comes from `app/dashboard_frame.py`. This class formats nothing, and
-it decides nothing that a reader interprets.
+(`PL-L59K`). `_refresh_view` hands each View the frame for its window, and
+only then refreshes each run from the same snapshot. So the readouts, the
+traces and the sentences beside them all show one instant of one run
+(decision D2). Every claim in a caption comes from `app/dashboard_frame.py`.
+This class formats nothing, and it decides nothing that a reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps that
 run. This view's render timer draws, but only while a run is running or a
@@ -422,9 +422,10 @@ class SimulationView(QWidget):
         # refusal written into the panel and then overwritten by the next
         # render tick would be gone before a reader could read it.
         self._fork_refusal: str | None = None
-        # Which compartments both runs are drawn with: this view's, handed to
-        # the legend and to every frame, so neither is read back from the
-        # other and closing the legend takes nothing with it (`PL-VN6M`).
+        # The compartments that both runs are drawn with. This view owns the
+        # selection and hands it to the legend and to every frame. So neither
+        # reads it back from the other, and closing the legend loses nothing
+        # (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._render_pending = False
         # How many runs the last frame attempted was drawn over; `render_tick`
@@ -1345,15 +1346,15 @@ class SimulationView(QWidget):
         assembles one frame for each distinct window, sampled for the widest
         plot that asks for it. So no plot draws a chord wider than a pixel
         (`PL-GS3R`). A chord is the straight line drawn between two
-        neighbouring samples. Charts at one window share a frame rather than
-        each having one at its own width. The two plots differ by about 53 px
-        at every window width measured, so a frame for each plot would mean
-        two assemblies on every tick, and two plots at the same window would
-        not draw the same instants (`PL-9LNF`). The adapter hands each View
-        the frame for its window in its `ViewTick` (`PL-TH35`).
-        Each legend is told what its plot drew only after the plot has drawn
-        it. So where the frame fails, the legend goes on naming the curves
-        still on the plot (`PL-G3K7`).
+        neighbouring samples. Charts at the same window share one frame,
+        rather than each having a frame at its own width. The two plots'
+        widths differ by about 53 px at every application-window width
+        measured. So a frame for each plot would mean two assemblies on every
+        tick, and two plots at the same window would not draw the same
+        instants (`PL-9LNF`). The adapter hands each View the frame for its
+        window in its `ViewTick` (`PL-TH35`). Each legend is told what its
+        plot drew only after the plot has drawn it. So where the frame fails,
+        the legend goes on naming the curves still on the plot (`PL-G3K7`).
 
         Raises:
             ValueError: If the runs have come to use different agents since
@@ -1372,9 +1373,10 @@ class SimulationView(QWidget):
             RunInput(run_label(run.run_id), run.controller, snapshot, run.adjustments(snapshot))
             for run, snapshot in zip(self._runs, snapshots, strict=True)
         )
-        # With no chart shown, one frame is still assembled at "Fit run" and
-        # the narrowest sampling, so its checks, such as runs that have come
-        # to use different agents, halt the runs whatever the Areas hold.
+        # With no chart shown, one frame is still assembled, at "Fit run" and
+        # the narrowest sampling. Its checks therefore still run, such as the
+        # check for runs that have come to use different agents, and they halt
+        # the runs whatever the Areas hold.
         requests = self._areas.frame_requests() or {None: 0.0}
         frames = {
             time_base: assemble_chart_frame(
@@ -1596,11 +1598,11 @@ class SimulationView(QWidget):
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
     def _handle_frame_request(self) -> None:
-        """Answer a View that changed its own drawing setting, such as its window: draw at once.
+        """Draw at once for a View that changed its own drawing setting, such as its window.
 
-        A chart's window is the chart's own (`PL-L59K`). It touches no
-        simulation state: the time base is a view control, never disabled,
-        and Reset leaves it alone (`PL-012`).
+        A chart's window is the chart's own (`PL-L59K`). Changing it touches
+        no simulation state. The time base is a view control. It is never
+        disabled, and Reset leaves it alone (`PL-012`).
         """
 
         self.present(False)
