@@ -161,6 +161,8 @@ from anesthesia_sim.app.unconditional_set import (
     UnconditionalValue,
     unconditional_set,
 )
+from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
+from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
@@ -251,6 +253,24 @@ def _torn_down_views(application: QApplication) -> Iterator[None]:
 # ------------------------------------------------------------------ helpers
 
 
+def _concentration(view: SimulationView) -> ConcentrationView:
+    """The concentration chart View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
+
+
+def _accounting(view: SimulationView) -> AccountingView:
+    """The agent accounting View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, AccountingView))
+
+
+def _wash_in(view: SimulationView) -> WashInView:
+    """The F_A/F_I View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, WashInView))
+
+
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
         controller.advance(SIMULATION_STEP_S)
@@ -294,7 +314,7 @@ def _settle(application: QApplication) -> None:
 def _widest_chord_px(view: SimulationView) -> int:
     """The widest gap, in plot pixels, between two consecutive drawn alveolar instants."""
 
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     times, percents = chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
     xs = [
         chart.plot_pixel(time_s, percent)[0]
@@ -404,7 +424,7 @@ def _select_playback_rate(run: RunView, multiplier: int) -> None:
 
 
 def _select_time_base(view: SimulationView, key: str) -> None:
-    combo = view._time_base_selector
+    combo = _concentration(view).time_base_selector
     index = combo.findData(key)
     assert index >= 0, f"the time-base control does not offer {key!r}"
     combo.setCurrentIndex(index)
@@ -421,7 +441,7 @@ def _set_trace_shown(
     what was just asked for and drops the longest-standing selection.
     """
 
-    view._legend.set_compartment_shown(quantity, shown)
+    _concentration(view).legend.set_compartment_shown(quantity, shown)
     application.processEvents()
 
 
@@ -1086,8 +1106,8 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     view.present(False)
 
     assert len(run._control_timeline_text.text().splitlines()) == 1
-    assert view._concentration_chart.control_mark_times(0) == (pytest.approx(10.0),)
-    assert view._wash_in_chart.control_mark_times(0) == (pytest.approx(10.0),)
+    assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(10.0),)
+    assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(10.0),)
 
 
 # ---------------------------------------------- refusals, and the halt
@@ -2826,7 +2846,7 @@ def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplica
     for _ in range(50):
         controller.advance(SIMULATION_STEP_S)
     view.render_tick()
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
 
     _refusing_a_drawn_column(controller, RecordedQuantity.MUSCLE, 1.0000000000001568)
@@ -3584,7 +3604,7 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     controller.start()
     _advance(controller, 300.0)
     view = _shown_view(application, controller)
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     frame = chart.frame
     assert frame is not None
     run = frame.runs[0]
@@ -3614,7 +3634,7 @@ def test_hiding_a_trace_changes_only_what_is_drawn(application: QApplication) ->
     _advance(controller, 120.0)
     view = _shown_view(application, controller)
     run = view.runs[0]
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     snapshot = controller.snapshot()
     before = {
         quantity: chart.drawn_points(0, quantity)
@@ -3650,39 +3670,41 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
 
     view = _shown_view(application, SimulationController())
 
-    assert view._hidden_traces_text.isHidden() is True
+    assert _concentration(view).hidden_traces_text.isHidden() is True
     assert NO_TRACES_SHOWN_TEXT in _interface_strings(view)
 
     for quantity in COMPARTMENT_QUANTITIES:
         _set_trace_shown(application, view, quantity, False)
 
-    assert view._hidden_traces_text.isHidden() is False
-    frame = view._concentration_chart.frame
+    assert _concentration(view).hidden_traces_text.isHidden() is False
+    frame = _concentration(view).chart.frame
     assert frame is not None
     assert frame.visible == ()
 
     _set_trace_shown(application, view, RecordedQuantity.ALVEOLAR, True)
 
-    assert view._hidden_traces_text.isHidden() is True
+    assert _concentration(view).hidden_traces_text.isHidden() is True
 
 
 def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     application: QApplication,
 ) -> None:
-    """The selection is the dashboard's, so the legend can go without taking it (`PL-VN6M`).
+    """The dashboard owns the selection, so the legend can go without taking it (`PL-VN6M`).
 
-    An Area holding the legend is a thing a reader will be able to close
-    (`.claude/rules/ui-areas.md`, test 2). While the boxes were the
-    selection, the dashboard read it back from them, so a deleted legend
-    left no selection to assemble the next frame from. Here the legend is
-    deleted outright, and the dashboard still draws the reader's choice -
-    and still takes a branch and a Reset, each of which holds the selection
-    to the new run count with no legend left to show it to. A legend
-    connected afterwards follows the selection like the first.
+    The legend sits in the concentration chart's View. A reader closes the
+    legend by choosing another View for its Area (`.claude/rules/ui-areas.md`,
+    test 2). When the legend's boxes held the selection, the dashboard read
+    the selection back from them. So a deleted legend left no selection from
+    which to assemble the next frame. Here the chart's View is replaced, which
+    deletes the legend. The dashboard still draws the reader's choice on the
+    F_A/F_I plot's frame. It also still takes a branch and a Reset. Each of
+    those fits the selection to the new run count, with no legend left to
+    show the selection to. A chart View brought back, and a legend connected
+    afterwards, follow the selection as the first ones did.
     """
 
     view = _case_view(application, _branched_case())
-    legend = view._legend
+    legend = _concentration(view).legend
 
     _set_trace_shown(application, view, RecordedQuantity.FAT, False)
     _set_trace_shown(application, view, RecordedQuantity.MUSCLE, False)
@@ -3694,7 +3716,7 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
 
     deleted: list[bool] = []
     legend.destroyed.connect(lambda: deleted.append(True))
-    legend.deleteLater()
+    view.layout_container.choose_view(AreaId(1), PARAMETER_CONTROLS)
     _settle(application)
 
     assert deleted, "the legend was not deleted, so nothing here outlived it"
@@ -3707,11 +3729,10 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     assert view.presented_frames == presented + 1, "no frame could be drawn without the legend"
     assert view.compartment_selection == chosen
 
-    frame = view._concentration_chart.frame
+    frame = _wash_in(view).chart.frame
 
     assert frame is not None
     assert frame.visible == chosen.shown
-    assert view._concentration_chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
 
     _take_fork(view, 60.0)
 
@@ -3719,7 +3740,7 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     assert view.runs[1]._run_name_text.isHidden() is False, "the fork stopped part way"
     assert view.compartment_selection == chosen.with_run_count(2)
 
-    compared = view._concentration_chart.frame
+    compared = _wash_in(view).chart.frame
 
     assert compared is not None
     assert compared.visible == view.compartment_selection.shown
@@ -3729,6 +3750,12 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
 
     assert len(view.runs) == 1
     assert view.compartment_selection == chosen.with_run_count(2).with_run_count(1)
+
+    view.layout_container.choose_view(AreaId(1), CONCENTRATION_CHART)
+    view.present(False)
+
+    assert _concentration(view).legend.shown == view.compartment_selection.shown
+    assert _concentration(view).chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
 
     renderer = TraceLegend()
     renderer.show_selection(view.compartment_selection)
@@ -3743,7 +3770,7 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     assert RecordedQuantity.FAT in view.compartment_selection.shown
     assert renderer.shown == view.compartment_selection.shown
 
-    drawn = view._concentration_chart.frame
+    drawn = _concentration(view).chart.frame
 
     assert drawn is not None
     assert drawn.visible == renderer.shown
@@ -3774,7 +3801,7 @@ def test_a_legend_click_draws_one_frame_over_the_cap_too(application: QApplicati
     assert view.presented_frames == presented + 1
     assert view.compartment_selection == before.with_compartment(RecordedQuantity.FAT, True)
 
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
 
     assert frame is not None
     assert frame.visible == view.compartment_selection.shown
@@ -3797,7 +3824,7 @@ def test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn(
     controller = SimulationController()
     controller.start()
     view = _shown_view(application, controller)
-    drawn = view._concentration_chart.frame
+    drawn = _concentration(view).chart.frame
     assert drawn is not None
     assert RecordedQuantity.FAT in drawn.visible
     presented = view.presented_frames
@@ -3807,8 +3834,8 @@ def test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn(
 
     assert controller.has_failed is True
     assert view.presented_frames == presented
-    assert view._concentration_chart.frame is drawn
-    assert view._legend.shown == drawn.visible
+    assert _concentration(view).chart.frame is drawn
+    assert _concentration(view).legend.shown == drawn.visible
 
 
 def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
@@ -3881,9 +3908,9 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
     controller.start()
     _advance(controller, 1200.0)
     view = _shown_view(application, controller)
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
 
-    assert view._time_base_selector.currentData() == FIT_RUN_KEY
+    assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
     assert view._time_base is None
     assert frame is not None
     assert frame.fitted is True
@@ -3894,7 +3921,7 @@ def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) 
 def test_the_time_base_selector_offers_fit_run_and_the_settled_widths(
     application: QApplication,
 ) -> None:
-    combo = _shown_view(application, SimulationController())._time_base_selector
+    combo = _concentration(_shown_view(application, SimulationController())).time_base_selector
 
     assert [combo.itemData(index) for index in range(combo.count())] == [
         FIT_RUN_KEY,
@@ -3916,7 +3943,7 @@ def test_selecting_a_time_base_makes_the_window_exactly_that_wide(
 
     for time_base in SELECTABLE_TIME_BASES:
         _select_time_base(view, str(time_base.span_s))
-        frame = view._concentration_chart.frame
+        frame = _concentration(view).chart.frame
 
         assert frame is not None
         assert frame.fitted is False
@@ -3933,12 +3960,12 @@ def test_a_run_shorter_than_the_selected_time_base_shows_whole(application: QApp
     view = _shown_view(application, controller)
 
     _select_time_base(view, "900.0")
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
 
     assert frame is not None
     assert frame.start_s == 0.0
     assert frame.stop_s == 900.0
-    assert view._concentration_chart.drawn_points(0, RecordedQuantity.ALVEOLAR)[0][0] == (
+    assert _concentration(view).chart.drawn_points(0, RecordedQuantity.ALVEOLAR)[0][0] == (
         pytest.approx(0.0)
     )
 
@@ -3951,8 +3978,8 @@ def test_both_plots_are_labelled_from_the_same_ticks(application: QApplication) 
     _advance(controller, 1800.0)
     view = _shown_view(application, controller)
 
-    assert view._wash_in_chart.frame is view._concentration_chart.frame
-    assert view._wash_in_chart.axis_ticks("bottom") == view._concentration_chart.axis_ticks(
+    assert _wash_in(view).chart.frame is _concentration(view).chart.frame
+    assert _wash_in(view).chart.axis_ticks("bottom") == _concentration(view).chart.axis_ticks(
         "bottom"
     )
 
@@ -3968,7 +3995,7 @@ def test_the_wash_in_plot_spans_the_same_window_as_the_chart_above_it(
     for key in (FIT_RUN_KEY, "900.0", "43200.0"):
         _select_time_base(view, key)
 
-        assert view._wash_in_chart.frame is view._concentration_chart.frame
+        assert _wash_in(view).chart.frame is _concentration(view).chart.frame
 
 
 def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
@@ -3980,16 +4007,19 @@ def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
     controller.start()
     _advance(controller, 7200.0)
     view = _shown_view(application, controller)
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
     assert frame is not None
 
-    assert "whole run so far" in view._time_axis_caption.text()
-    assert f"{format_time_base(frame.time_base.span_s)} shown" in view._time_axis_caption.text()
-    assert "simulated seconds" not in view._time_axis_caption.text()
+    assert "whole run so far" in _concentration(view).time_axis_caption.text()
+    assert (
+        f"{format_time_base(frame.time_base.span_s)} shown"
+        in _concentration(view).time_axis_caption.text()
+    )
+    assert "simulated seconds" not in _concentration(view).time_axis_caption.text()
 
     _select_time_base(view, "7200.0")
 
-    assert view._time_axis_caption.text() == "2 hours shown"
+    assert _concentration(view).time_axis_caption.text() == "2 hours shown"
 
 
 def test_choosing_a_time_base_changes_nothing_the_run_recorded(application: QApplication) -> None:
@@ -4012,31 +4042,37 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
     view.present(False)
 
     assert view.runs[0]._agent_dropdown.isEnabled() is False
-    assert view._time_base_selector.isEnabled() is True
+    assert _concentration(view).time_base_selector.isEnabled() is True
 
 
 def test_the_chosen_time_base_survives_its_selector_being_closed(application: QApplication) -> None:
-    """`PL-9LNF`: the dashboard owns the width both plots are drawn at, not the control.
+    """The dashboard, not the control, owns the width that both plots are drawn at (`PL-9LNF`).
 
-    Before, the dropdown was the state: the handler read the width back out
-    of it. Closing the control must leave the next frame at the width the
-    reader chose, and the caption beside the plots must still state it.
+    Before this change, the dropdown held the state, and the handler read the
+    width back out of it. The control sits in the concentration chart's View,
+    so a reader closes it by choosing another View for its Area. The next
+    frame must stay at the width the reader chose, and a chart View brought
+    back must show that width.
     """
 
     controller = _paused_run_with_history(1800.0)
     view = _shown_view(application, controller)
     _select_time_base(view, "1800.0")
 
-    view._time_base_selector.deleteLater()
+    view.layout_container.choose_view(AreaId(1), PARAMETER_CONTROLS)
     _settle(application)
     view.present(False)
 
-    frame = view._concentration_chart.frame
+    frame = _wash_in(view).chart.frame
     assert frame is not None
     assert frame.fitted is False
     assert frame.time_base == time_base_for_span(1800.0)
-    assert view._wash_in_chart.frame is frame
-    assert format_time_base(1800.0) in view._time_axis_caption.text()
+
+    view.layout_container.choose_view(AreaId(1), CONCENTRATION_CHART)
+    view.present(False)
+
+    assert _concentration(view).chart.frame is _wash_in(view).chart.frame
+    assert format_time_base(1800.0) in _concentration(view).time_axis_caption.text()
 
 
 def test_a_second_time_base_selector_shows_the_width_a_first_one_chose(
@@ -4061,8 +4097,8 @@ def test_a_second_time_base_selector_shows_the_width_a_first_one_chose(
     second.setCurrentIndex(second.findData(FIT_RUN_KEY))
 
     assert view._time_base is None
-    assert view._time_base_selector.currentData() == FIT_RUN_KEY
-    frame = view._concentration_chart.frame
+    assert _concentration(view).time_base_selector.currentData() == FIT_RUN_KEY
+    frame = _concentration(view).chart.frame
     assert frame is not None
     assert frame.fitted is True
 
@@ -4074,7 +4110,7 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
     view.runs[0]._reset_button.click()
 
     assert view._time_base == time_base_for_span(1800.0)
-    assert view._time_base_selector.currentData() == "1800.0"
+    assert _concentration(view).time_base_selector.currentData() == "1800.0"
 
 
 def test_the_mac_axis_and_references_follow_the_agent(application: QApplication) -> None:
@@ -4082,9 +4118,11 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
 
-    assert view._mac_reference_text.text() == format_mac_reference("Sevoflurane", 2.0)
+    assert _concentration(view).mac_reference_text.text() == format_mac_reference(
+        "Sevoflurane", 2.0
+    )
     assert chart.one_mac_line() == 2.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
     assert chart.axis_ticks("right")[-1][0] == pytest.approx(6.0)
@@ -4094,8 +4132,8 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     # which would agree with a band the switch failed to rebuild (`PL-JPS2`).
     mac_awake = load_agent_parameters("desflurane").mac_awake
 
-    assert view._mac_reference_text.text() == format_mac_reference("Desflurane", 6.0)
-    assert view._mac_awake_reference_text.text() == format_mac_awake_reference(
+    assert _concentration(view).mac_reference_text.text() == format_mac_reference("Desflurane", 6.0)
+    assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
         "Desflurane",
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
@@ -4135,10 +4173,10 @@ def test_the_mac_awake_band_after_a_switch_is_the_new_agents_own(
     spread = own.mac_awake.standard_deviation_fraction_of_mac
 
     assert view.runs[0].controller.agent_id == agent_id
-    assert view._concentration_chart.mac_awake_band() == pytest.approx(
+    assert _concentration(view).chart.mac_awake_band() == pytest.approx(
         ((fraction - spread) * own.mac_percent, (fraction + spread) * own.mac_percent)
     )
-    assert view._mac_awake_reference_text.text() == format_mac_awake_reference(
+    assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
         own.display_name,
         fraction_of_mac=fraction,
         standard_deviation_fraction_of_mac=spread,
@@ -4159,8 +4197,8 @@ def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time(
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
 
-    assert view._concentration_chart.control_mark_times(0) == (pytest.approx(600.0),)
-    assert view._wash_in_chart.control_mark_times(0) == (pytest.approx(600.0),)
+    assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(600.0),)
+    assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(600.0),)
     assert view.runs[0]._control_timeline_text.text().startswith(format_elapsed(600.0))
 
 
@@ -4177,7 +4215,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
     )
     assert reading.plotted_ratio is not None
 
-    stretches = view._wash_in_chart.drawn_stretches(0)
+    stretches = _wash_in(view).chart.drawn_stretches(0)
     assert stretches
     last_time, last_ratio = stretches[-1][-1]
 
@@ -4276,8 +4314,8 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
     view = _shown_view(application, SimulationController())
     strings = _strings_between(
         None,
-        view._concentration_chart,
-        skip=(view._hidden_traces_text, view.runs[0]._off_scale_lines[0]),
+        _concentration(view).chart,
+        skip=(_concentration(view).hidden_traces_text, view.runs[0]._off_scale_lines[0]),
     )
 
     for value in strings:
@@ -4301,7 +4339,7 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
 
     view = _shown_view(application, SimulationController())
     strings = _strings_between(
-        view._concentration_chart, view._wash_in_chart, skip=(view.runs[0]._wash_in_state_lines[0],)
+        None, _wash_in(view).chart, skip=(view.runs[0]._wash_in_state_lines[0],)
     )
 
     for value in strings:
@@ -4706,7 +4744,7 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     assert page.minimumSizeHint().width() <= scroll.viewport().width()
     assert page.width() == scroll.viewport().width()
     assert scroll.horizontalScrollBar().maximum() == 0
-    assert view._chart_column.minimumSizeHint().width() < 1000
+    assert _concentration(view).minimumSizeHint().width() < 1000
 
     for slider in view.runs[0]._setting_controls[0].sliders:
         right_edge = slider.mapTo(page, slider.rect().bottomRight()).x()
@@ -4760,7 +4798,7 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
 
     view = _shown_view(application, SimulationController())
     run = view.runs[0]
-    sidebar = view._sidebar_column.parentWidget()
+    sidebar = _accounting(view)
     records = view._record_column.parentWidget()
     placed = _record_panels(run)
     shown = (
@@ -4915,7 +4953,7 @@ def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
     assert lean_run._elapsed_time_text.text() == format_elapsed(120.0)
     assert generous_run._elapsed_time_text.text() == format_elapsed(60.0)
 
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     lean_times, lean_percents = chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
     generous_times, generous_percents = chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
 
@@ -4942,7 +4980,7 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
     _advance(single, 60.0)
     _advance(double, 60.0)
     view = _shown_view(application, single, double)
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
 
     frame = chart.frame
     assert frame is not None
@@ -4969,7 +5007,7 @@ def test_one_compartment_selection_applies_to_every_run(application: QApplicatio
     _advance(first, 60.0)
     _advance(second, 60.0)
     view = _shown_view(application, first, second)
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     # One of the two the cap leaves drawn, so what is being tested is the
     # selection reaching both runs rather than the cap removing a trace.
     quantity = RecordedQuantity.ALVEOLAR
@@ -5002,33 +5040,36 @@ def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApp
     _advance(second, 60.0)
     single = _shown_view(application, first)
 
-    assert single._legend.shown == COMPARTMENT_QUANTITIES
-    assert single._capped_traces_text.isHidden() is True
+    assert _concentration(single).legend.shown == COMPARTMENT_QUANTITIES
+    assert _concentration(single).capped_traces_text.isHidden() is True
 
     view = _shown_view(application, first, second)
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     frame = chart.frame
 
     assert frame is not None
     # Reduced from six on the way in, to the top of the compartment table.
-    assert view._legend.shown == (RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR)
+    assert _concentration(view).legend.shown == (
+        RecordedQuantity.CIRCUIT,
+        RecordedQuantity.ALVEOLAR,
+    )
     assert frame.visible == (RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR)
-    assert view._capped_traces_text.isHidden() is False
-    assert str(COMPARED_COMPARTMENT_CAP) in view._capped_traces_text.text()
+    assert _concentration(view).capped_traces_text.isHidden() is False
+    assert str(COMPARED_COMPARTMENT_CAP) in _concentration(view).capped_traces_text.text()
 
     _set_trace_shown(application, view, RecordedQuantity.FAT, True)
 
     # The third check is honoured and the oldest selection makes room for it,
     # so the boxes never name more curves than the plot draws.
-    assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP
-    assert RecordedQuantity.FAT in view._legend.shown
-    assert view._concentration_chart.frame is not None
-    assert view._concentration_chart.frame.visible == view._legend.shown
+    assert len(_concentration(view).legend.shown) == COMPARED_COMPARTMENT_CAP
+    assert RecordedQuantity.FAT in _concentration(view).legend.shown
+    assert _concentration(view).chart.frame is not None
+    assert _concentration(view).chart.frame.visible == _concentration(view).legend.shown
 
     for quantity in COMPARTMENT_QUANTITIES:
         drawn = bool(chart.drawn_points(0, quantity)[0])
 
-        assert drawn is (quantity in view._legend.shown)
+        assert drawn is (quantity in _concentration(view).legend.shown)
 
 
 def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> None:
@@ -5041,12 +5082,12 @@ def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> No
     _advance_to(short, 60.0)
     _advance_to(long, 600.0)
     view = _shown_view(application, short, long)
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
 
     assert frame is not None
     assert frame.stop_s >= 600.0
-    assert view._wash_in_chart.frame is frame
-    assert view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)[0][-1] == (
+    assert _wash_in(view).chart.frame is frame
+    assert _concentration(view).chart.drawn_points(1, RecordedQuantity.ALVEOLAR)[0][-1] == (
         pytest.approx(600.0)
     )
 
@@ -5131,32 +5172,45 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
 
 
 def test_a_value_hidden_from_the_reader_is_not_counted_as_shown(application: QApplication) -> None:
-    """A View no Area draws is held but not shown, and both questions still reach it.
+    """A View the reader cannot see is not counted as shown, and a replaced one is gone.
 
-    Choosing another View for the chart's Area takes the chart panel out of
-    the window (`PL-50PZ`). The walk used to count the plots' axis titles as
-    on screen all the same, and it lost every label in the panel, so a test
-    that nothing says something would pass because the string had moved out
-    of reach (`PL-904Y`). The disclaimer is outside the Areas, so it stays
-    visible. The expected strings are the plots' axis titles and a caption,
-    written out here rather than read from the panel.
+    A plot paints its axis titles itself, so they reach the walk through
+    `View.painted_strings` rather than through a label (`PL-TH35`). Each title
+    is visible only while the View that paints it is. The walk once counted
+    the axis titles as on screen whatever happened to the plot (`PL-904Y`).
+    Choosing another View for the chart's Area deletes the chart's View and
+    keeps only its saved state, so its strings are no longer held at all, and
+    a test that nothing says something still reaches every View that exists.
+    The disclaimer is outside the Areas, so it stays visible. The expected
+    strings are the concentration plot's axis title and a caption, written
+    out here rather than read from the View.
     """
 
     from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
     from anesthesia_sim.app.view_registry import WASH_IN
 
     view = _shown_view(application, SimulationController())
-    in_the_panel = {"% of 1 atm", "F_A/F_I", "Clinical references:"}
+    in_the_chart = {"% of 1 atm", "Clinical references:"}
 
-    assert in_the_panel <= _visible_strings(view)
+    assert in_the_chart <= _visible_strings(view)
 
+    chart = _concentration(view)
+    chart.hide()
+
+    assert in_the_chart.isdisjoint(_visible_strings(view))
+    assert in_the_chart <= _interface_strings(view)
+
+    chart.show()
     view.layout_container.choose_view(AreaId(1), WASH_IN)
     _settle(application)
 
-    assert not view._chart_column.isVisible()
-    assert in_the_panel.isdisjoint(_visible_strings(view))
-    assert in_the_panel <= _interface_strings(view)
+    assert in_the_chart.isdisjoint(_interface_strings(view))
     assert USE_DISCLAIMER_TEXT in _visible_strings(view)
+
+    view.layout_container.choose_view(AreaId(1), CONCENTRATION_CHART)
+    _settle(application)
+
+    assert in_the_chart <= _visible_strings(view)
 
 
 def test_a_hidden_advisory_and_a_closed_combo_entry_are_held_but_not_shown(
@@ -5670,11 +5724,18 @@ def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
 ) -> None:
     # `PL-F9TQ` governs what may stand between a chart heading and its plot.
     # The marks are the case's rather than either plot's, so they are a
-    # section of their own below both.
+    # section of their own below the Areas, in no View.
     view = _shown_view(application, SimulationController())
-    children = view._chart_column.findChildren(QWidget)
+    page = _page_of(view)
+    areas = view.layout_container
+    marks = view._bookmarks_panel
 
-    assert children.index(view._bookmarks_panel) > children.index(view._wash_in_chart)
+    assert not areas.isAncestorOf(marks), "the marks sit inside an Area"
+    assert page.isAncestorOf(marks)
+    assert (
+        marks.mapTo(page, marks.rect().topLeft()).y()
+        >= areas.mapTo(page, areas.rect().bottomLeft()).y()
+    ), "the marks are not below the Areas"
 
 
 # ------------------------------------------------------------------ branching
@@ -5783,8 +5844,8 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
     case = _branched_case()
     view = _case_view(application, case)
 
-    for quantity in view._legend.shown[COMPARED_COMPARTMENT_CAP:]:
-        view._legend.set_compartment_shown(quantity, False)
+    for quantity in _concentration(view).legend.shown[COMPARED_COMPARTMENT_CAP:]:
+        _concentration(view).legend.set_compartment_shown(quantity, False)
 
     presented = view.presented_frames
 
@@ -5796,7 +5857,7 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
     assert frame is not None
     assert len(frame.runs) == 2
 
-    branch_times, _ = view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
+    branch_times, _ = _concentration(view).chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
 
     assert branch_times, "the chart holds no curve for the branch"
     assert min(branch_times) == pytest.approx(60.0)
@@ -5819,8 +5880,8 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
     assert frame is not None
     assert len(frame.runs) == 2
 
-    trunk_times, _ = view._concentration_chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
-    branch_times, _ = view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
+    trunk_times, _ = _concentration(view).chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
+    branch_times, _ = _concentration(view).chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
 
     assert min(trunk_times) == pytest.approx(0.0)
     assert min(branch_times) == pytest.approx(60.0)
@@ -5855,7 +5916,7 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     else:
         view = _case_view(application, _branched_case())
 
-    assert len(view._legend.shown) > COMPARED_COMPARTMENT_CAP, (
+    assert len(_concentration(view).legend.shown) > COMPARED_COMPARTMENT_CAP, (
         "the default selection is inside the cap, so the press has nothing to reduce"
     )
 
@@ -5878,12 +5939,14 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
         _take_fork(view, 60.0)
 
     assert len(view.runs) == 2
-    assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP, "the cap reduced nothing"
+    assert len(_concentration(view).legend.shown) == COMPARED_COMPARTMENT_CAP, (
+        "the cap reduced nothing"
+    )
     assert view.presented_frames == presented + 1, "one press drew other than one frame"
     assert told == [(run_label(0), run_label(1))], (
         "the frame was assembled before the run set had been told it had grown"
     )
-    assert view._wash_in_legend._run_count == 2, "the frame did not tell the wash-in legend"
+    assert _wash_in(view).legend._run_count == 2, "the frame did not tell the wash-in legend"
 
 
 def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
@@ -5905,8 +5968,8 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 
     assert len(_setting_sections(view)) == sections_before + 1
     assert view.unconditional_region.isAncestorOf(view.runs[1]._readout_row)
-    assert view._legend._run_count == 2
-    assert view._wash_in_legend._run_count == 2
+    assert _concentration(view).legend._run_count == 2
+    assert _wash_in(view).legend._run_count == 2
     assert view.runs[0]._run_name_text.text() == run_label(0)
     assert view.runs[1]._run_name_text.text() == run_label(1)
     assert view.runs[1]._run_name_text.isHidden() is False
@@ -6142,7 +6205,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     branch = view.runs[1]
     branch.controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     view.present(False)
-    columns = (view._sidebar_column.parentWidget(), view._record_column.parentWidget())
+    columns = (_accounting(view), view._record_column.parentWidget())
 
     for index, run in enumerate(view.runs):
         name = run_label(index)
@@ -6306,7 +6369,7 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert isinstance(tree, Split)
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
-    assert view.layout_container.frame(AreaId(1)).content is view._chart_column
+    assert view.layout_container.frame(AreaId(1)).content is _concentration(view)
 
 
 def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
@@ -6341,13 +6404,13 @@ def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplicatio
     window_px = view.width()
     _drag_area_border(application, view, -400)
     view.present(False)
-    narrowed_px = view._concentration_chart.plot_width_px()
+    narrowed_px = _concentration(view).chart.plot_width_px()
     presented = view.presented_frames
 
     _drag_area_border(application, view, 400)
 
     assert view.width() == window_px, "the drag resized the dashboard, not only the Area"
-    assert view._concentration_chart.plot_width_px() > narrowed_px + 300
+    assert _concentration(view).chart.plot_width_px() > narrowed_px + 300
     assert _widest_chord_px(view) > 1, "the drag did not widen the plot under the old frame"
 
     view.render_tick()
@@ -6980,7 +7043,7 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
     assert view.case is not case
     assert view.case.trunk is view.runs[0].controller
     assert view.case.branches == ()
-    assert view._legend._run_count == 1
+    assert _concentration(view).legend._run_count == 1
     assert view.runs[0]._run_name_text.isHidden() is True
     assert view._fork_panel.take_button.isHidden() is False
     assert view._fork_panel.lock_text.isHidden() is True
@@ -7198,7 +7261,7 @@ def _chart_span_in_viewport(view: SimulationView) -> tuple[int, int, int]:
     scroll = view.findChild(QScrollArea)
     assert scroll is not None, "the dashboard has no scroll area"
     viewport = scroll.viewport()
-    chart = view._concentration_chart
+    chart = _concentration(view).chart
     top = chart.mapTo(viewport, QPoint(0, 0)).y()
 
     return top, top + chart.height(), viewport.height()
@@ -7354,7 +7417,7 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
     assert view.presented_frames == presented + 1
     assert view._frame is not None
     assert len(view._frame.runs) == 2
-    assert view._concentration_chart.drawn_points(BRANCH_RUN_INDEX, RecordedQuantity.ALVEOLAR)[0]
+    assert _concentration(view).chart.drawn_points(BRANCH_RUN_INDEX, RecordedQuantity.ALVEOLAR)[0]
 
     view.render_tick()
 
@@ -7905,3 +7968,98 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 
     for value in (UnconditionalValue.ADMINISTERED_SUBSTANCE, UnconditionalValue.ONE_MAC):
         assert branch.unconditional_widgets()[value] is trunk.unconditional_widgets()[value]
+
+
+# ------------------------------------------------- Views in the dashboard
+
+
+def _copies_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
+    """Each View that shows a run's surfaces, with the View and the copies it shows."""
+
+    accounting = _accounting(view)
+    concentration = _concentration(view)
+    wash_in = _wash_in(view)
+
+    return {
+        "accounting": (accounting, accounting.copies),
+        "off-scale": (concentration, concentration._off_scale.copies),
+        "wash-in state": (wash_in, wash_in._states.copies),
+    }
+
+
+def test_each_view_places_one_copy_per_run_inside_itself(application: QApplication) -> None:
+    """`PL-TH35`: a View shows its copies of the runs' surfaces in its own rectangle.
+
+    Each run's line names the run (`PL-C3GS`), which another test reads off
+    the run's own list of copies. That list cannot tell a copy placed in its
+    View from one built and never placed, so this holds each copy to its View.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert len(view.runs) == 2
+
+    for name, (shown_in, copies) in _copies_by_view(view).items():
+        assert len(copies) == 2, f"{name}: {len(copies)} copies for 2 runs"
+
+        for copy in copies:
+            assert shown_in.isAncestorOf(copy), f"{name}: a copy is outside its View"
+
+    for panel in _accounting(view).copies:
+        assert panel.isVisible(), "an accounting panel is not shown"
+
+
+def test_a_branch_dropped_while_frames_fail_leaves_no_copy_in_any_view(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Reset that drops the branch takes its copies away even when no frame can be drawn.
+
+    A View drops a run's copy when it is next refreshed, and with every frame
+    failing it never is. The branch's accounting panel then stayed on screen
+    with the status "Valid", beside the halted trunk, after the branch was
+    gone. Each copy is now deleted with its run.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view.runs[0].controller.has_failed is True
+
+    for name, (_, copies) in _copies_by_view(view).items():
+        assert len(copies) == 1, f"{name}: the dropped branch's copy is still shown"
+
+
+def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed frame is not retried on every render tick, for a View chosen after it either.
+
+    A new View owed its first frame until one drew, so with every frame
+    failing, each idle render tick assembled the frame again and halted every
+    run again. The dashboard now records that the frame failed for these
+    Views, and a View owes one again only once the Views change.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    view = _shown_view(application, controller)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    halts: list[Exception] = []
+    halt = view._halt_every_run
+    monkeypatch.setattr(view, "_halt_every_run", lambda error: (halts.append(error), halt(error)))
+
+    view.layout_container.choose_view(AreaId(3), CONCENTRATION_CHART)
+    chosen = len(halts)
+
+    for _ in range(5):
+        view.render_tick()
+
+    assert chosen == 1, "the chosen View was not offered a frame at once"
+    assert len(halts) == chosen, f"{len(halts) - chosen} idle ticks retried the failed frame"
