@@ -370,6 +370,66 @@ def trace_style(quantity: RecordedQuantity) -> TraceStyle:
     return _TRACE_STYLE_BY_QUANTITY[quantity]
 
 
+class RunCount(int):
+    """The number of runs a chart draws, checked when built to be a whole number of at least one.
+
+    A chart that draws no run has no trace, hover or legend entry to style,
+    so code that uses the count may assume there is at least one run. That
+    is the only property a count can be checked for on its own.
+    `CompartmentSelection` checks how many runs the dashboard may draw at
+    once, against `MAX_DISPLAYED_RUNS`. Arithmetic on a `RunCount` returns a
+    plain `int`, as it does on any `int` subclass. So code that derives a new
+    count builds it as a `RunCount` again where it uses it.
+
+    Raises:
+        TypeError: `run_count` is not an `int`, or is a `bool`. A `float` or
+            a `bool` passed as a count is a programming error in the caller,
+            not a count to reject.
+        ValueError: `run_count` is less than one.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, run_count: int) -> RunCount:
+        if isinstance(run_count, bool) or not isinstance(run_count, int):
+            raise TypeError(f"a run count is an int, not {type(run_count).__name__}")
+
+        if run_count < 1:
+            raise ValueError(f"a chart draws at least one run, not {run_count}")
+
+        return super().__new__(cls, run_count)
+
+
+class RunIndex(int):
+    """The position of one run among a frame's runs, checked to be a whole number of zero or more.
+
+    This type exists to reject a negative position. Python treats `-1` as
+    the last run, so an unchecked negative index would draw the last run's
+    values under the name of the run the caller meant. `CLAUDE.md`'s
+    safety-critical standard counts that as a presentation failure
+    (`PL-7694`). This type cannot check that the index names one of the
+    runs, because that depends on the run count or the frame. The function
+    that holds both makes that check.
+
+    Raises:
+        TypeError: `run_index` is not an `int`, or is a `bool`.
+        ValueError: `run_index` is negative.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, run_index: int) -> RunIndex:
+        if isinstance(run_index, bool) or not isinstance(run_index, int):
+            raise TypeError(f"a run index is an int, not {type(run_index).__name__}")
+
+        if run_index < 0:
+            raise ValueError(
+                f"a run index is a position among the chart's runs, counted from 0, not {run_index}"
+            )
+
+        return super().__new__(cls, run_index)
+
+
 def run_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) -> TraceStyle:
     """The trace one run draws a compartment with: its own style, at its run's width.
 
@@ -400,19 +460,28 @@ def run_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) 
 
     Raises:
         KeyError: If no trace draws `quantity` (see `trace_style`).
+        TypeError: If `run_index` or `run_count` is not an `int` (`RunIndex`,
+            `RunCount`).
         ValueError: If `run_index` does not address one of `run_count` runs.
             A style asked for a run the chart is not drawing would answer
             with a width nothing on screen carries.
     """
 
-    if run_count < 1 or not 0 <= run_index < run_count:
-        raise ValueError(
-            f"run {run_index} is not one of the {run_count} runs on the chart; a trace "
-            "is drawn at the width of a run that is being drawn"
-        )
+    not_drawn = ValueError(
+        f"run {run_index} is not one of the {run_count} runs on the chart; a trace "
+        "is drawn at the width of a run that is being drawn"
+    )
+
+    try:
+        index, count = RunIndex(run_index), RunCount(run_count)
+    except ValueError as error:
+        raise not_drawn from error
+
+    if index >= count:
+        raise not_drawn
 
     style = trace_style(quantity)
-    widened = run_count > 1 and run_index == 0
+    widened = count > 1 and index == 0
 
     if not widened:
         return style
@@ -665,6 +734,16 @@ class ChartFrame:
     visible: tuple[RecordedQuantity, ...]
     undrawn_compartments: int
     runs: tuple[RunFrame, ...]
+
+    @property
+    def run_count(self) -> RunCount:
+        """How many runs the frame draws, as the checked count that its users take.
+
+        `assemble_chart_frame` rejects a frame with no run, so building the
+        count cannot fail.
+        """
+
+        return RunCount(len(self.runs))
 
 
 @dataclass(frozen=True, slots=True)
@@ -1114,8 +1193,10 @@ def format_trace_hover(
         run: The run the point belongs to.
         quantity: The compartment the trace draws.
         index: Which drawn point, as a position in `run.times_s`.
-        run_count: How many runs are on the chart. The first line names the
-            run while more than one is drawn; `_hover_context` carries why.
+        run_count: How many runs are on the chart. This function builds it
+            as a `RunCount`, which checks it. The first line names the run
+            only when more than one run is drawn. `_hover_context` explains
+            why.
 
     Returns:
         The readout, three lines joined by newlines.
@@ -1123,12 +1204,13 @@ def format_trace_hover(
     Raises:
         KeyError: If `quantity` is not a compartment on this chart.
         IndexError: If `index` is outside the drawn points.
-        ValueError: If `run_count` is less than one.
+        TypeError: If `run_count` is not an `int` (`RunCount`).
+        ValueError: If `run_count` is less than one (`RunCount`).
     """
 
     return "\n".join(
         (
-            _hover_context(run, run.times_s[index], run_count),
+            _hover_context(run, run.times_s[index], RunCount(run_count)),
             _hover_subject(quantity),
             _hover_value(run, quantity, index),
         )
@@ -1154,19 +1236,20 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
 
     Raises:
         IndexError: If `index` is outside the stretch's points.
-        ValueError: If `run_count` is less than one.
+        TypeError: If `run_count` is not an `int` (`RunCount`).
+        ValueError: If `run_count` is less than one (`RunCount`).
     """
 
     return "\n".join(
         (
-            _hover_context(run, stretch.times_s[index], run_count),
+            _hover_context(run, stretch.times_s[index], RunCount(run_count)),
             WASH_IN_HOVER_LABEL,
             format_wash_in_ratio(stretch.ratios[index]),
         )
     )
 
 
-def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
+def _hover_context(run: RunFrame, time_s: float, run_count: RunCount) -> str:
     """The first line of every hover: the modelled marker, the agent, the run, the instant.
 
     The run is named while more than one is drawn and omitted while one is
@@ -1192,18 +1275,7 @@ def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
     Returns:
         The run-context line: three tokens while one run is drawn, four while
         more than one is.
-
-    Raises:
-        ValueError: If `run_count` is less than one. A hover is answered from
-            a chart that is drawing something, and a readout that named no
-            run while claiming to compare would be the failure this names the
-            run to prevent.
     """
-
-    if run_count < 1:
-        raise ValueError(
-            f"a chart draws at least one run; a hover cannot be answered for {run_count}"
-        )
 
     tokens = [_hover_agent(run)]
 
@@ -1269,8 +1341,9 @@ def format_compared_trace_hover(
     Raises:
         KeyError: If a quantity is not a compartment on this chart.
         IndexError: If an index is outside its run's drawn points.
-        ValueError: If no reading is given, if `run_count` is less than the
-            readings' own runs need, or if the runs are not all on one agent.
+        TypeError: If `run_count` is not an `int` (`RunCount`).
+        ValueError: If no reading is given, if `run_count` is less than one
+            (`RunCount`), or if the runs are not all on one agent.
             The agent is named once, above the values, because
             `assemble_chart_frame` refuses a frame whose runs differ on it;
             naming one run's agent over another run's concentration would be
@@ -1280,10 +1353,7 @@ def format_compared_trace_hover(
     if not answering:
         raise ValueError("a hover is answered for at least one drawn point; none was given")
 
-    if run_count < 1:
-        raise ValueError(
-            f"a chart draws at least one run; a hover cannot be answered for {run_count}"
-        )
+    count = RunCount(run_count)
 
     agents = {run.agent_display_name for run, _, _ in answering}
 
@@ -1313,7 +1383,7 @@ def format_compared_trace_hover(
         (
             _hover_agent(answering[0][0]),
             *(
-                _hover_contended_value(run, quantity, index, run_count)
+                _hover_contended_value(run, quantity, index, count)
                 for run, quantity, index in answering
             ),
         )
@@ -1415,7 +1485,7 @@ def _hover_compared_value(run: RunFrame, time_s: float, value: str) -> str:
 
 
 def _hover_contended_value(
-    run: RunFrame, quantity: RecordedQuantity, index: int, run_count: int
+    run: RunFrame, quantity: RecordedQuantity, index: int, run_count: RunCount
 ) -> str:
     """One line of a readout whose pointer is in reach of more than one compartment.
 
@@ -1636,10 +1706,10 @@ def nearest_trace_point(
             for run_index, run, quantity, column in answering
         ),
         readout=(
-            format_trace_hover(first_run, first_quantity, first_column, len(frame.runs))
+            format_trace_hover(first_run, first_quantity, first_column, frame.run_count)
             if len(answering) == 1
             else format_compared_trace_hover(
-                [(run, quantity, column) for _, run, quantity, column in answering], len(frame.runs)
+                [(run, quantity, column) for _, run, quantity, column in answering], frame.run_count
             )
         ),
     )
@@ -1717,7 +1787,7 @@ def nearest_wash_in_point(
             for run_index, _, stretch, column in answering
         ),
         readout=(
-            format_wash_in_hover(answering[0][1], answering[0][2], answering[0][3], len(frame.runs))
+            format_wash_in_hover(answering[0][1], answering[0][2], answering[0][3], frame.run_count)
             if len(answering) == 1
             else format_compared_wash_in_hover(
                 [(run, stretch, column) for _, run, stretch, column in answering]
