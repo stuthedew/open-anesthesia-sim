@@ -3,11 +3,13 @@ id: PL-40PL
 title: PL-SZ56's readout 2 names no command and its t=0 figures cannot be reproduced by any counting method
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: planning-cadence
 touches: docs/releases/v0.3.0.md, docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 added: 2026-09-02
+closed: 2026-10-19
+pr: 1662
 verify: grep -qF 'How readout 2 is counted' docs/releases/v0.3.0.md && python3 tools/doc_check.py check
 ---
 
