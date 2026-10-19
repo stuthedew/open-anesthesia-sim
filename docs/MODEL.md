@@ -1185,10 +1185,11 @@ A positive value represents net uptake from alveolar gas into blood. A negative 
 
 **The alveolar volume is held constant, and that is what excludes nitrous
 oxide** (`PL-L2F2`). The substitution $`M_A = V_AF_A`$ above treats $`V_A`$ as
-a constant and divides through by it, and `core/alveolar.py` implements
-exactly that: `apply_blood_uptake` subtracts the transferred volume from the
-compartment's agent amount and leaves its gas volume untouched, with nothing
-augmenting inspired flow to replace what left. For the agents this model ships
+a constant and divides through by it, and `core/governing_equations.py`
+implements exactly that. The alveolar row of `build_system_matrix` divides each
+of its terms by `alveolar_volume_l`, which the equation settings hold fixed for
+the whole step. Ventilation carries the same volume in and out, and no term
+adds inspired gas to replace the agent that blood takes up. For the agents this model ships
 that is correct rather than merely convenient. For nitrous oxide it is not,
 and the difference is arithmetic rather than a matter of degree.
 

@@ -3,11 +3,13 @@ id: PL-1QL6
 title: docs/MODEL.md's paragraph 'The alveolar volume is held constant, and that is what excludes nitrous oxide' (PL-L2F2) names core/alveolar.py's apply_blood_uptake as the code that holds the alveolar volume constant, but PL-GS5X removed that method with the operator split, so the sentence should name what implements the constant volume now (found in PL-19Y0's docs sweep)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17
+closed: 2026-10-19
+pr: 1683
 payoff: docs/MODEL.md points a reader at the code that actually keeps the alveolar volume constant, so the assumption that excludes nitrous oxide can be checked against the source
 verify: ! grep -qF 'apply_blood_uptake' docs/MODEL.md
 ---
@@ -26,3 +28,8 @@ nitrous oxide.
 
 **Done when.** The paragraph names the code that holds the alveolar volume
 constant after the operator split, and no longer names `apply_blood_uptake`.
+
+**Fixed 2026-10-19.** The paragraph now names
+`core/governing_equations.py`'s `build_system_matrix`. Its alveolar row
+divides each term by `alveolar_volume_l`, which the equation settings hold
+fixed, and has no term that adds inspired gas to replace what blood takes up.
