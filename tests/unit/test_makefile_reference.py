@@ -68,11 +68,19 @@ from hypothesis import strategies as st
 
 @cache
 def _gnu_make() -> str:
-    """The GNU make the comparison runs, found on `PATH`."""
+    """The GNU make the comparison runs, found on `PATH`.
+
+    It must be version 4 or newer. macOS ships GNU Make 3.81, which words its
+    messages differently, so every comparison failed there (`PL-TSH9`).
+    """
     path = shutil.which("make")
     assert path is not None, "the comparison runs GNU make, and no make is on PATH"
     version = subprocess.run([path, "--version"], capture_output=True, text=True, check=True)
     assert version.stdout.startswith("GNU Make"), f"{path} is not GNU make"
+    number = version.stdout.split()[2]
+    assert int(number.split(".")[0]) >= 4, (
+        f"{path} is GNU Make {number}; the comparison needs version 4 or newer"
+    )
     return path
 
 
