@@ -2733,7 +2733,7 @@ def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterato
     """
     end = _subsection_end(lines, section.gate_line)
     subsection = "\n".join(lines[section.gate_line : end])
-    for match in _statement_matches(NOT_DELEGABLE_COUNT_RE, subsection):
+    for match in _statement_matches(NOT_DELEGABLE_COUNT_RE, subsection, PROSE):
         stated = _count_word(match.group("count"))
         if stated is not None:
             yield section.gate_line + _line_of(subsection, match.start()), stated
@@ -3357,7 +3357,7 @@ def check_bound_families(root: Path, report: Report) -> None:
             where = f'{family.document}:{line}: § "{family.heading}"'
             if family.kind.names(member):
                 continue
-            declared = next(_statement_matches(family.kind.declares_none, member), None)
+            declared = next(_statement_matches(family.kind.declares_none, member, PROSE), None)
             if declared is None:
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
@@ -3763,7 +3763,7 @@ def _version_claim(
     to the `**Tags.**` statement take this one form, and `said` is how an error
     quotes the sentence back.
     """
-    match = next(_statement_matches(claim, body), None)
+    match = next(_statement_matches(claim, body, PROSE), None)
     if match is None:
         return frozenset(), [], 0
     line = first_line + body[: match.start()].count("\n")
@@ -5623,7 +5623,9 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
     for path, offset, raw in sources:
         # A fence holds a literal, and read as a claim it made an item that
         # documents a stale citation an error for quoting the one it reports.
-        for match in LINE_CITATION_RE.finditer(without_fences(raw)):
+        # So do an indented code block and an HTML block, which no page shows
+        # as a claim, so only the blocks `PROSE` names are read (`PL-2B0B`).
+        for match in _statement_matches(LINE_CITATION_RE, raw, PROSE):
             token, first, last = match.group(1), int(match.group(2)), match.group(3)
             if not _is_path_citation(token):
                 continue
@@ -5805,7 +5807,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
         prose = without_fences(text)
-        for match in _statement_matches(QUOTED_SOURCE_RE, prose):
+        # A Markdown source is read in the blocks `PROSE` names, so a quotation
+        # in an indented code block or an HTML comment, which no page shows as
+        # a claim, is not held (`PL-2B0B`). A docstring is no Markdown: its
+        # lines after the first are indented, so read as Markdown a paragraph
+        # after a blank line is code, and the whole of it is read.
+        kinds = None if path.suffix == ".py" else PROSE
+        for match in _statement_matches(QUOTED_SOURCE_RE, prose, kinds):
             cited = match.group("document")
             line = offset + _line_of(text, match.start()) - 1
             claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
@@ -5836,7 +5844,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     "the file holds the words)"
                 )
 
-        for match in _statement_matches(ITEM_SECTION_RE, prose):
+        for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")
             line = offset + _line_of(text, match.start()) - 1
             if match["unclosed"] is not None:
@@ -7838,9 +7846,13 @@ def check_math_delimiters(root: Path, report: Report) -> None:
         # a working shell command (`PL-WTQ1`, hit on `PL-6194`). The body of
         # the same document is still scanned: the skip is the frontmatter's
         # line span and nothing else.
+        # An HTML block renders no math, a comment least of all, so only the
+        # blocks `PROSE` names are read (`PL-2B0B`). `_without_code` still
+        # blanks the code spans inside them.
         skip_to = _frontmatter_end(text)
+        prose = block_lines(_body_lines(split_lines(text)), PROSE)
         for number, line in enumerate(_without_code(text), 1):
-            if number <= skip_to:
+            if number <= skip_to or number - 1 not in prose:
                 continue
             for match in TEX_DELIMITER_RE.finditer(line):
                 report.errors.append(

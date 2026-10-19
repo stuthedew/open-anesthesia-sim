@@ -3,11 +3,13 @@ id: PL-2B0B
 title: doc_check reads code spans, citations, markers and TeX inside indented code blocks and HTML blocks - _statement_spans and _code_spans call statement_lines with no kinds, _statement_matches without kinds reads citations and the Tags claims in comments, _absent_paths takes a marker inside indented code, _without_code checks TeX inside a comment, and LINE_CITATION_RE ignores both - so a test name, path or claim on no rendered page is checked; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-10
+closed: 2026-10-19
+pr: 1631
 payoff: a marker, a line citation, a TeX delimiter or a claim written inside an indented code block or an HTML comment no longer fails make check for a page nobody renders
 verify: grep -q 'def test_a_marker_in_an_indented_code_block_marks_nothing' tests/unit/test_doc_check.py && grep -q 'def test_a_line_citation_in_an_indented_code_block_or_a_comment_is_not_held' tests/unit/test_doc_check.py && grep -q 'def test_tex_in_an_html_block_is_quiet' tests/unit/test_doc_check.py && grep -q 'def test_a_claim_in_an_indented_code_block_or_a_comment_is_not_read' tests/unit/test_doc_check.py
 ---
@@ -109,3 +111,14 @@ literal, named in the reproduction above, is `PL-PSQN`'s, filed by this batch.
 A reader's own stated choice settles which side it is on, so this was decided
 in the round under rule 14 of `.claude/rules/instruction-writing.md` and not
 offered; the Done-when above is rewritten to the four.
+
+**Closed 2026-10-19.** `check_line_citations`, `check_math_delimiters`, and
+the claim readers (`_withheld_counts`, `_version_claim`, `check_bound_families`'
+`declares_none`, and `check_quoted_sources` for a Markdown source) now read
+only the blocks `markdown.PROSE` names. A docstring source keeps the whole
+read, because its lines after the first are indented and Markdown would read a
+later paragraph as code. On the tree the change dropped none of the 78 line
+citations or the 551 quotation matches read before it. `_absent_paths` needed
+no change: `PL-7454` (#1444) had already made `_marker_lines` read a marker
+only where it opens an HTML block, so the marker test pins that reading. The
+span and path-citation readers are unchanged, as decided on 2026-10-12.
