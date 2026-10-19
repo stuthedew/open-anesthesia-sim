@@ -135,6 +135,7 @@ LANE_ONLY = (
     "docs/session-ledger.tsv",
     "docs/ci-runs.tsv",
     "model-evidence.toml",
+    "docs/worker-runs",
     # Configuration, which carries no prose a standard could apply to.
     ".gitattributes",
     ".gitignore",

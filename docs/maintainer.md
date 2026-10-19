@@ -726,14 +726,21 @@ read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
    would run and the credit left, and starts nothing.
 5. `uv run python tools/headless_worker.py --runs 3` runs them, one after another.
    Each prints one line: the item, its effort, the cost, and the branch it
-   pushed.
+   pushed. A pushed run adds a line naming its record.
    A run that pushed everything it made removes its clone and keeps its log
    in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
    `--no-push` one, keeps both, and its line names the clone to read
    (`PL-TX7K`).
 
 Each branch is a worker's, so review it as delegated work: `bin/docket verify
-<id>` on the branch, then open its pull request. `--item <id>` runs one named
+<id>` on the branch, then open its pull request. A pushed run also commits its
+record to the branch, as `docs/worker-runs/<branch>-<started>.json`, and its
+line names the file. Before opening the pull request, the reviewing session
+runs `python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back
+--note "<one line>"`, and `make check` fails until it does (`PL-87BR`). The
+records are how headless work is compared with chat-session work, so a
+sent-back branch's record still belongs on `main`: carry its two record commits
+to a branch of their own. `--item <id>` runs one named
 item, `--per-run-usd` caps a run (default $15), and `--cycle-day` sets the day
 your billing cycle starts. `--no-push --model claude-sonnet-5-5` is
 `PL-6FX6`'s trial form: the clone cannot push, so the work stays on your

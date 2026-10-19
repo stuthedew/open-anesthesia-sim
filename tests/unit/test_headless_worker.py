@@ -40,6 +40,8 @@ head = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 branch = subprocess.run(head, capture_output=True, text=True).stdout.strip()
 subprocess.run(["git", "commit", "--allow-empty", "-qm", "work"], check=True)
 subprocess.run(["git", "push", "-q", "-u", "origin", branch], capture_output=True)
+if os.environ.get("FAKE_OUTPUT") == "unpushed":
+    subprocess.run(["git", "commit", "--allow-empty", "-qm", "later"], check=True)
 if os.environ.get("FAKE_OUTPUT") == "dirty":
     open("left-behind.txt", "w").write("not committed")
 if os.environ.get("FAKE_OUTPUT") == "refused":
@@ -50,7 +52,9 @@ if os.environ.get("FAKE_OUTPUT") == "junk":
     print("not json")
 else:
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
-                      "num_turns": 12, "total_cost_usd": 3.25, "permission_denials": []}))
+                      "num_turns": 12, "total_cost_usd": 3.25, "permission_denials": [],
+                      "usage": {"input_tokens": 40, "cache_read_input_tokens": 9000,
+                                "cache_creation_input_tokens": 700, "output_tokens": 1200}}))
 """
 
 
@@ -189,6 +193,37 @@ def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it(
     line = headless_worker.describe(run)
     kept = f"in {run.clone}, log in {run.clone}.log"
     assert ("clone removed, log in" in line, kept in line) == (removed, not removed)
+
+
+def test_a_pushed_run_commits_its_record_to_its_branch_for_review(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    """Nothing in the repository said which items a headless worker did (`PL-87BR`)."""
+    run = _work(origin, fake_claude, tmp_path, no_push=False)
+    stamp = run.started[:19].replace("-", "").replace(":", "")
+    assert run.record == f"docs/worker-runs/pl-b7k2-worker-{stamp}.json"
+    checkout = tmp_path / "checkout"
+    _git("clone", "-q", "-b", run.branch, str(origin), str(checkout), cwd=tmp_path)
+    subject = _git("log", "-1", "--format=%s", cwd=checkout).strip()
+    assert subject == "PL-B7K2: record the headless run"
+    record = json.loads((checkout / run.record).read_text(encoding="utf-8"))
+    assert record["review"] is None
+    assert "clone" not in record
+    assert (record["cost_usd"], record["effort"], record["turns"]) == (3.25, "high", 12)
+    tokens = ("input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens")
+    assert [record[name] for name in tokens] == [40, 9000, 700, 1200]
+    assert f"record: {run.record}" in headless_worker.describe(run)
+
+
+def test_a_record_is_not_committed_over_work_the_worker_left_unpushed(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    """Pushing the record would also have published the worker's unpushed commit."""
+    run = _work(origin, fake_claude, tmp_path, no_push=False, output="unpushed")
+    assert run.record is None
+    assert run.record_failure == "the clone's HEAD is not the branch it pushed"
+    assert not run.removed
+    assert "no record committed" in headless_worker.describe(run)
 
 
 def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
