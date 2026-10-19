@@ -3,12 +3,14 @@ id: PL-M3M2
 title: dashboard_frame.setting_readouts' ValueError for a control that can offer no setting, raised inside _apply_setting's deferred refresh, escapes the slot with no halt stated, since only apply() is inside the try; unreachable with shipped loaders, which refuse such a range at build (found reviewing PL-85LJ)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-19
+pr: 1675
 payoff: A dial whose readouts cannot be built stops the run and says so on screen, instead of leaving it reading Paused with only a console traceback.
 verify: grep -q 'def test_a_drag_whose_readouts_refuse_halts_the_run' tests/integration/test_simulation_view.py
 ---
@@ -47,3 +49,5 @@ already accepts. A test, `test_a_drag_whose_readouts_refuse_halts_the_run` in
 `tests/integration/test_simulation_view.py`, drags a dial with
 `setting_readouts` refusing and asserts "Stopped - simulation error", a
 failed controller and a banner naming the `ValueError`.
+
+**Regression check 2026-10-19.** Run with `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest tests/integration/test_simulation_view.py -k <test>` against `src/` as `origin/main` 6fd84bd5 held it. `test_a_drag_whose_readouts_refuse_halts_the_run` fails on the code before the fix at `assert controller.has_failed is True`.

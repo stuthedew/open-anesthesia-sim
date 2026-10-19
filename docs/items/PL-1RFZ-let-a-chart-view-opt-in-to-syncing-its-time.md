@@ -1,9 +1,15 @@
 ---
 id: PL-1RFZ
 title: Let a chart View opt in to syncing its time window with every other opted-in chart in the Workspace, as Blender's Sync Visible Range does for its time-based editors
-status: untriaged
+priority: P3
+effort: M
+status: dropped
+classes: feature, ux
 feature: interface-areas
+touches: src/anesthesia_sim/app/, tests/integration
 added: 2026-10-19
+closed: 2026-10-19
+reason: Wanted later, not in any release (project owner, 2026-10-19). A feature wanted but not ready to build is one line of intent in ROADMAP.md planned milestones rather than a queue item nobody can start, so it is planned-milestone item 41, which cites this brief for the Blender source read and the Done-when.
 ---
 
 **Problem.** Once `PL-L59K` lands, each chart View owns its own time window,

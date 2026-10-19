@@ -955,27 +955,31 @@ class RunView(QWidget):
     def _apply_setting(self, apply: Callable[[], None], *, coalesce: bool = False) -> None:
         """Forward one setting to the run, and report how it was received.
 
-        A `SimulationConfigurationError` is a refusal: the core rejected the
-        value and changed nothing, so the run goes on and the banner says
-        which setting was refused. Any other exception halts the run through
-        `_halt_run`; a raise from outside the project's hierarchy is still a
-        run that cannot continue (`PL-YK2V`). An accepted setting clears a
-        standing refusal, and the way out a refused Reset left on the banner.
-        The next Reset is then refused or not on the record as it then stands
-        (`PL-M4M0`). Until `PL-HQF5` a cardiac output change could repair
-        that record, because it recomputed the stored tissue flows.
+        A `SimulationConfigurationError` is a refusal. It means that the core rejected
+        the value and changed nothing, so the run goes on and the banner says which
+        setting was refused. Any other exception halts the run through `_halt_run`.
+        That includes an exception from outside the project's own exception classes,
+        because the run still cannot continue (`PL-YK2V`). An accepted setting clears
+        a refusal that is in effect. It also clears the way out that a refused Reset
+        left on the banner. Whether the next Reset is refused then depends on the
+        run's record as it is at that time (`PL-M4M0`). Until `PL-HQF5`, a change to
+        cardiac output could repair that record, because it recomputed the stored
+        tissue flows.
 
-        The frame is left to the render tick only when `coalesce` is set
-        and no refusal was standing before or is standing after: a refusal,
-        and the clearing of one, are the states in which the dial on screen
-        and the simulation disagree, and neither may wait a tick
-        (`PL-R2YM`). A coalesced change still rewrites this run's own
-        labels at once, from a snapshot read through
-        `_snapshot_for_a_control`: a run whose snapshot refuses is halted
-        and says so, where the raise used to escape the slot after the
-        setting had been applied (`PL-V2HC`), and has its dials written from
-        the settings the run holds, since no frame follows to write them
-        (`PL-85LJ`).
+        The method leaves drawing the frame to the render tick only when `coalesce` is
+        set and no refusal was in effect before the call or is in effect after it. A
+        refusal, and the clearing of one, are the states in which the dial on screen
+        and the simulation disagree, so neither may wait for a tick (`PL-R2YM`). A
+        coalesced change still rewrites this run's own labels at once, from a snapshot
+        read through `_snapshot_for_a_control`. If reading that snapshot raises, the
+        run is halted and shows the halt. Before `PL-V2HC`, the exception escaped the
+        slot after the setting had been applied. The halted run also has its dials
+        written from the settings it holds, because no frame follows to write them
+        (`PL-85LJ`). The rewrite of the labels is guarded too. It can raise, as
+        `setting_readouts` does for a control that can offer no setting. The run is
+        then halted through `_halt_run`. So the status word, the transport controls
+        and the banner show the halt before the dial write raises again and escapes
+        (`PL-M3M2`).
 
         Args:
             apply: The controller call that applies the setting.
@@ -1004,7 +1008,11 @@ class RunView(QWidget):
             if snapshot is None:
                 return
 
-            self._refresh_against_last_frame(snapshot)
+            try:
+                self._refresh_against_last_frame(snapshot)
+            except Exception as error:
+                self._halt_run(error)
+                return
 
         self.presentation_requested.emit(deferred)
 
