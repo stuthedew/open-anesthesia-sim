@@ -112,8 +112,20 @@ https://code.claude.com/docs/en/settings-reference.md, read 2026-10-19). So the
 trial can run with the picker left at `xhigh`. The setup script writes
 `"maxEffortLevel": "high"` in three sessions of four and no cap in the fourth.
 It also writes `effortLevel` to match, for sessions the app does not open.
-Whether a cap actually limits the app's level is still untested. The docs say
-it should, and the test needs an app-opened session with the file in place.
+**The cap route, measured 2026-10-19: the cap beats the app's picker.** Branch
+`claude/pl-hyrm-probe-cap` adds `.claude/settings.local.json` with
+`"effortLevel": "xhigh"` and `"maxEffortLevel": "high"` to `main`. Two
+sessions ran on it:
+
+| Session | Level asked for | `CLAUDE_EFFORT` |
+| --- | --- | --- |
+| Started with `create_session` (`session_01MtGAZv6FJkkDXfeTycw9yw`) | file `xhigh` | `high` |
+| Opened by the owner from the app | picker `xhigh` | `high` |
+
+So `CLAUDE_EFFORT` reports the level after the cap, and the cap limits a
+level the app sends. Neither session saw any message saying the level was
+capped. A capped session runs at `high` without saying so, which is what the
+trial needs.
 
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
