@@ -604,6 +604,39 @@ Success is `* [new branch]` on the last line. `git ls-remote origin
 'refs/archive/*'` lists every archived tip, if the log has expired. An archive
 ref is not shown on GitHub's Branches page and no clone fetches it unasked.
 
+## Spend the monthly API credit on delegable items
+
+Max 20x includes $200 a month of Claude Platform API credit. It pays for
+`claude -p` only with an API key from the Console organization linked to the
+credit, never for a cloud session, and it expires unused at the end of each
+billing cycle (https://support.claude.com/en/articles/17154008, read
+2026-10-19). `tools/headless_worker.py` spends it on the items
+`bin/docket delegable` lists (`PL-80R5`). Each run clones the repository,
+works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
+`claude/<id>-worker`, and adds its reported cost to a ledger in
+`~/.local/state/open-anesthesia-sim/`. It stops before a run that the
+credit left cannot cover. Run it on your Mac, from a checkout of `main`:
+
+1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
+   organization. This links one Console organization, and changing it later
+   needs support.
+2. Create a key in that organization: platform.claude.com, API keys, Create
+   key.
+3. `export ANTHROPIC_API_KEY=<the key>` in the shell you run from.
+4. `python3 tools/headless_worker.py --dry-run --runs 3` prints the items it
+   would run and the credit left, and starts nothing.
+5. `python3 tools/headless_worker.py --runs 3` runs them, one after another.
+   Each prints one line: the item, the cost, and the branch it pushed.
+
+Each branch is a worker's, so review it as delegated work: `bin/docket verify
+<id>` on the branch, then open its pull request. `--item <id>` runs one named
+item, `--per-run-usd` caps a run (default $15), and `--cycle-day` sets the day
+your billing cycle starts. `--no-push --model claude-sonnet-5-5` is
+`PL-6FX6`'s trial form: the clone cannot push, so the work stays on your
+machine. The cost is Claude Code's own estimate, which can differ from the
+bill, so compare the ledger with the Console's usage page after the first
+runs.
+
 ## Run tag-release yourself where a session cannot
 
 `.github/workflows/tag-release.yml` tags each release on the commit that cut

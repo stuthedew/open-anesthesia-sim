@@ -344,6 +344,25 @@ def format_list(
     return "\n".join(lines)
 
 
+def delegable_items(
+    report: Report,
+    in_flight: FlightReport,
+    protected_paths: tuple[str, ...],
+    gate_paths: tuple[str, ...],
+) -> list[Item]:
+    """The open items a worker may take, best-first, leaving out any in flight.
+
+    The one list behind both of `delegable`'s outputs: the reading list below,
+    and the bare ids that `tools/headless_worker.py` picks its next run from.
+    """
+    return [
+        item
+        for item in sorted(report.open_items, key=lambda i: i.sort_key())
+        if item.delegability(protected_paths, gate_paths) is None
+        and item.identifier not in in_flight.ids
+    ]
+
+
 def format_delegable(
     report: Report,
     in_flight: FlightReport,
@@ -358,12 +377,7 @@ def format_delegable(
     touch, with each item's proof command beside it, so a batch can be started
     without opening a single file first.
     """
-    candidates = [
-        item
-        for item in sorted(report.open_items, key=lambda i: i.sort_key())
-        if item.delegability(protected_paths, gate_paths) is None
-        and item.identifier not in in_flight.ids
-    ]
+    candidates = delegable_items(report, in_flight, protected_paths, gate_paths)
     unread = format_unread(in_flight)
     if not candidates:
         return "\n".join(
