@@ -55,12 +55,20 @@ places, so the second Area shows a notice instead and the first keeps the
 View. Both notices are `AreaNotice`s, so a reader meets one shape for every
 state in which an Area shows no View (`PL-DB5G`).
 
+**Every Area has a menu at the end of its header** (`PL-MS34` Q2,
+`PL-2KXB`). It holds the operations on the Area's place: a split left and
+right or top and bottom, a join with each neighbour, a swap with every other
+Area, and Close Area, which gives the place to a neighbour. Each entry is
+worked out by asking the model for the layout it makes, and an entry the model
+or the Area's size refuses is shown disabled with the reason beside it. So a
+join the layout cannot make is visibly unavailable, and never approximated.
+
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
 View to its own minimum size hint, so a split narrower than that in the model
 is drawn at the minimum instead. Shift to move one handle alone, Escape to
-cancel a drag and the warning line at a minimum are `PL-2KXB`'s, with the
-corner drag and the swap a reader performs. Only the main window is drawn,
+cancel a drag, the warning line at a minimum and the corner drag are
+`PL-2KXB`'s still. Only the main window is drawn,
 because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 - the layout is the
 reader's", "Explicitly out of scope for v0.6.0").
 """
@@ -69,11 +77,20 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QEvent, QRect, Qt, Signal
-from PySide6.QtGui import QColor, QEnterEvent, QFont, QPainter, QPaintEvent, QResizeEvent
+from PySide6.QtGui import (
+    QColor,
+    QEnterEvent,
+    QFont,
+    QFontMetrics,
+    QPainter,
+    QPaintEvent,
+    QResizeEvent,
+)
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -119,10 +136,24 @@ from anesthesia_sim.app.view_registry import (
     unplaced_view_text,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused
-from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel
+from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel, Neighbour, Rectangle, Side
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind
 
-__all__ = ["AreaFrame", "AreaLayout", "AreaNotice", "ViewChooser", "ViewFor"]
+__all__ = [
+    "AREA_MENU_LABEL",
+    "CLOSE_AREA_LABEL",
+    "JOIN_WITH_LABEL",
+    "SPLIT_SIDE_BY_SIDE_LABEL",
+    "SPLIT_STACKED_LABEL",
+    "SWAP_WITH_LABEL",
+    "AreaFrame",
+    "AreaLayout",
+    "AreaMenu",
+    "AreaNotice",
+    "AreaOperation",
+    "ViewChooser",
+    "ViewFor",
+]
 
 type ViewFor = Callable[[Area], QWidget | None]
 """What gives the adapter each Area's View: the widget to draw in that Area.
@@ -133,6 +164,77 @@ its own, and the Area then shows a notice that says so.
 
 # The height of the rule under an Area's header.
 _HEADER_RULE_PX: Final = 1
+
+# The space at each end of an Area's header row, before the chooser and after
+# the Area menu.
+_HEADER_MARGIN_PX: Final = PANEL_PADDING // 2
+
+# The Area menu and its entries (`PL-MS34` Q2, `PL-2KXB`). The wording is a
+# placeholder until the visual pass, planned-milestone item 33. A split names
+# where the two halves lie, since "horizontal" and "vertical" are read both
+# ways.
+AREA_MENU_LABEL: Final = "Area"
+SPLIT_SIDE_BY_SIDE_LABEL: Final = "Split left and right"
+SPLIT_STACKED_LABEL: Final = "Split top and bottom"
+JOIN_WITH_LABEL: Final = "Join with"
+SWAP_WITH_LABEL: Final = "Swap with"
+CLOSE_AREA_LABEL: Final = "Close Area"
+
+# Where a split made from the menu falls: halfway across the Area.
+_MENU_SPLIT_AT: Final = 0.5
+
+# How a neighbour's side is said in a menu entry.
+_SIDE_WORDS: Final = {
+    Side.LEFT: "on the left",
+    Side.ABOVE: "above",
+    Side.RIGHT: "on the right",
+    Side.BELOW: "below",
+}
+
+# Why an operation is unavailable, shown beside its entry. A refusal names no
+# Area id, since a reader never sees one.
+_ONLY_AREA_TEXT: Final = "Not available: this is the only Area."
+_NO_WHOLE_EDGE_TEXT: Final = (
+    "Not available: the two Areas do not share a whole edge, so together they would not "
+    "make a rectangle."
+)
+_NOT_EXPRESSIBLE_TEXT: Final = "Not available: the layout cannot be divided that way."
+_NOTHING_TAKES_ITS_PLACE_TEXT: Final = (
+    "Not available: no Area beside this one shares a whole edge with it, so none can take "
+    "its place."
+)
+_TOO_SMALL_TO_SPLIT_TEXT: Final = (
+    "Not available: each half would be too small to hold its header and one line of text."
+)
+
+
+@dataclass(frozen=True, slots=True)
+class AreaOperation:
+    """One entry of an Area's menu: what it is called, and the layout it would make.
+
+    The layout is worked out by asking the model for it, which is how the
+    model says whether an operation is available (`layout/model.py`). Where
+    the model or the Area's size refuses it, `result` is None and `refusal`
+    says why in the reader's words.
+
+    Attributes:
+        label: The entry's text.
+        group: The submenu holding the entry, `JOIN_WITH_LABEL` or
+            `SWAP_WITH_LABEL`, or None for the menu itself.
+        result: The layout choosing the entry makes, or None where it is
+            unavailable.
+        refusal: Why it is unavailable, or "" where it is available.
+    """
+
+    label: str
+    group: str | None
+    result: LayoutModel | None
+    refusal: str = ""
+
+    @property
+    def available(self) -> bool:
+        return self.result is not None
+
 
 # A row lays its children out left to right, which Qt calls horizontal, and a
 # column stacks them, which Qt calls vertical (`layout/tree.py` says why the
@@ -219,7 +321,69 @@ class AreaLayout(QWidget):
             NotInLayout: the layout drawn now holds no Area `area_id`.
         """
 
-        moved = self._model.set_view(area_id, view)
+        self._apply(self._model.set_view(area_id, view))
+
+    def operations(self, area_id: AreaId) -> tuple[AreaOperation, ...]:
+        """The entries of the Area `area_id`'s menu, each with the layout it would make.
+
+        In order: the two splits, a join with each neighbour, a swap with
+        every other Area, and Close Area. A split falls halfway across the
+        Area, and the new half shows the same View. "Join with" lists every
+        Area whose edge meets this one, and the Area keeps its View and takes
+        the other's place. A neighbour that does not share a whole edge with
+        it is listed and unavailable, so a join the layout cannot make is
+        shown as unavailable rather than left out. "Close Area" gives the
+        Area's place to the first neighbour, in the order `neighbours` gives,
+        that shares a whole edge with it. Each refused entry says why.
+
+        Raises:
+            TypeError: `area_id` is not an `AreaId`.
+            NotInLayout: the layout drawn now holds no Area `area_id`.
+        """
+
+        model = self._model
+        model.area(area_id)
+        entries = [
+            self._split_operation(area_id, Orientation.ROW, SPLIT_SIDE_BY_SIDE_LABEL),
+            self._split_operation(area_id, Orientation.COLUMN, SPLIT_STACKED_LABEL),
+        ]
+        neighbours = model.neighbours(area_id)
+
+        for neighbour in neighbours:
+            label = f"{self._title(neighbour.area_id)}, {_SIDE_WORDS[neighbour.side]}"
+            entries.append(
+                _attempt(label, JOIN_WITH_LABEL, partial(model.join, area_id, neighbour.area_id))
+                if neighbour.whole_edge
+                else AreaOperation(label, JOIN_WITH_LABEL, None, _NO_WHOLE_EDGE_TEXT)
+            )
+
+        own = model.rectangle(area_id)
+
+        for area in model.areas():
+            if area.id == area_id:
+                continue
+
+            label = f"{self._title(area.id)}, {_relative_place(own, model.rectangle(area.id))}"
+            entries.append(_attempt(label, SWAP_WITH_LABEL, partial(model.swap, area_id, area.id)))
+
+        entries.append(self._close_operation(area_id, neighbours))
+
+        return tuple(entries)
+
+    def perform(self, operation: AreaOperation) -> None:
+        """Draw the layout an available menu entry makes, as choosing it does.
+
+        Raises:
+            ValueError: `operation` is unavailable.
+        """
+
+        if operation.result is None:
+            raise ValueError(f"{operation.label!r} is unavailable: {operation.refusal}")
+
+        self._apply(operation.result)
+
+    def _apply(self, moved: LayoutModel) -> None:
+        """Draw `moved` and say so, unless it is the layout drawn now."""
 
         if moved == self._model:
             return
@@ -227,6 +391,49 @@ class AreaLayout(QWidget):
         self._model = moved
         self._build()
         self.layout_changed.emit(moved)
+
+    def _title(self, area_id: AreaId) -> str:
+        """The View an Area shows, by its registry title, or by its tag where none is held."""
+
+        view = self._model.area(area_id).view
+        entry = self._registered.get(view)
+
+        return view if entry is None else entry.title
+
+    def _split_operation(
+        self, area_id: AreaId, orientation: Orientation, label: str
+    ) -> AreaOperation:
+        """A split of the Area halfway across, refused where a half could not hold its header."""
+
+        frame = self._frames[area_id]
+        minimum = _structural_minimum(frame)
+
+        if orientation is Orientation.ROW:
+            half, needed = (frame.width() - AREA_HANDLE_WIDTH) / 2, minimum[0]
+        else:
+            half, needed = (frame.height() - AREA_HANDLE_WIDTH) / 2, minimum[1]
+
+        if half < needed:
+            return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+
+        return _attempt(label, None, partial(_split_layout, self._model, area_id, orientation))
+
+    def _close_operation(self, area_id: AreaId, neighbours: tuple[Neighbour, ...]) -> AreaOperation:
+        """Give the Area's place to the first neighbour sharing a whole edge with it."""
+
+        if len(self._model.areas()) == 1:
+            return AreaOperation(CLOSE_AREA_LABEL, None, None, _ONLY_AREA_TEXT)
+
+        for neighbour in neighbours:
+            if neighbour.whole_edge:
+                taken = _attempt(
+                    CLOSE_AREA_LABEL, None, partial(self._model.join, neighbour.area_id, area_id)
+                )
+
+                if taken.available:
+                    return taken
+
+        return AreaOperation(CLOSE_AREA_LABEL, None, None, _NOTHING_TAKES_ITS_PLACE_TEXT)
 
     def set_model(self, model: LayoutModel) -> None:
         """Draw `model` in place of the layout drawn now.
@@ -293,7 +500,8 @@ class AreaLayout(QWidget):
 
         if isinstance(node, Area):
             chooser = ViewChooser(node, self._registered, self.choose_view)
-            frame = AreaFrame(node.id, chooser, self._content_for(node))
+            menu = AreaMenu(node.id, self.operations, self.perform)
+            frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu)
             self._frames[node.id] = frame
 
             return frame
@@ -480,13 +688,92 @@ class ViewChooser(QToolButton):
         self.setMenu(menu)
 
 
+class AreaMenu(QToolButton):
+    """The last control of an Area's header: the operations on the Area's place.
+
+    `PL-MS34` Q2 placed it, a flat button labelled "Area" with a chevron, and
+    `PL-2KXB` fills it. Its menu holds the two splits, a "Join with" submenu,
+    a "Swap with" submenu and Close Area. The entries are worked out each
+    time the menu opens, from the layout drawn then. An unavailable entry is
+    shown, disabled, with the reason as its tooltip, so the reader sees an
+    operation the layout cannot make rather than not finding it. The button
+    has the chooser's look and keyboard reach.
+
+    Args:
+        area_id: The Area whose header holds this menu.
+        operations: Gives the Area's entries, as `AreaLayout.operations` does.
+        perform: Draws the layout an available entry makes.
+    """
+
+    def __init__(
+        self,
+        area_id: AreaId,
+        operations: Callable[[AreaId], tuple[AreaOperation, ...]],
+        perform: Callable[[AreaOperation], None],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("areaMenu")
+        self.area_id = area_id
+        self._operations = operations
+        self._perform = perform
+        self.setText(AREA_MENU_LABEL)
+        self.setAccessibleDescription("Split, join, swap or close this Area")
+        self.setStyleSheet(view_chooser_stylesheet())
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        font = QFont(self.font())
+        font.setPixelSize(METRIC_NAME_SIZE)
+        self.setFont(font)
+
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_stylesheet())
+        menu.setToolTipsVisible(True)
+        menu.aboutToShow.connect(self.fill)
+        self.setMenu(menu)
+
+    def fill(self) -> None:
+        """Write the menu's entries from the layout drawn now."""
+
+        menu = self.menu()
+        menu.clear()
+        submenus: dict[str, QMenu] = {}
+
+        for operation in self._operations(self.area_id):
+            holder = menu
+
+            if operation.group is not None:
+                if operation.group not in submenus:
+                    submenu = menu.addMenu(operation.group)
+                    submenu.setStyleSheet(menu_stylesheet())
+                    submenu.setToolTipsVisible(True)
+                    submenus[operation.group] = submenu
+
+                holder = submenus[operation.group]
+
+            action = holder.addAction(operation.label)
+            action.setEnabled(operation.available)
+            action.setToolTip(operation.refusal)
+            action.triggered.connect(partial(self._perform, operation))
+
+        for group in (JOIN_WITH_LABEL, SWAP_WITH_LABEL):
+            if group not in submenus:
+                # No Area to join with or to swap with: the submenu is shown,
+                # unavailable, rather than left out.
+                empty = menu.addMenu(group)
+                empty.setEnabled(False)
+                empty.menuAction().setToolTip(_ONLY_AREA_TEXT)
+
+
 class AreaFrame(QFrame):
     """One Area as drawn: its header, a rule, and its View or notice filling the rest.
 
     `PL-MS34` decided the header. It is one text row, as tall as the chooser
     in it, on the panel surface, with a 1px `GRIDLINE` rule under it. The
-    chooser is its first control and a stretch follows it. The run's name and
-    the Area menu are later items' (`PL-7Z84`, `PL-M352`). The header never
+    chooser is its first control, a stretch follows it, and the Area menu
+    ends it (`PL-2KXB`). The run's name, where `docs/MODEL.md` puts one on the
+    Area, comes with pinning (`PL-7Z84`). The header never
     gets shorter than its row: an Area too short for it is a refused size,
     which is `PL-K285`'s.
 
@@ -494,15 +781,24 @@ class AreaFrame(QFrame):
         area_id: The Area this frame draws.
         header: The header row.
         chooser: The View chooser in the header.
+        menu: The Area menu at the end of the header, or None where the
+            caller gave none.
         content: The View or the notice under the header.
     """
 
     def __init__(
-        self, area_id: AreaId, chooser: ViewChooser, content: QWidget, parent: QWidget | None = None
+        self,
+        area_id: AreaId,
+        chooser: ViewChooser,
+        content: QWidget,
+        parent: QWidget | None = None,
+        *,
+        menu: AreaMenu | None = None,
     ) -> None:
         super().__init__(parent)
         self.area_id = area_id
         self.chooser = chooser
+        self.menu = menu
         self.content = content
 
         self.header = QWidget()
@@ -514,9 +810,12 @@ class AreaFrame(QFrame):
         # rather than being held wider than its View needs.
         self.header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         row = QHBoxLayout(self.header)
-        row.setContentsMargins(PANEL_PADDING // 2, 0, PANEL_PADDING // 2, 0)
+        row.setContentsMargins(_HEADER_MARGIN_PX, 0, _HEADER_MARGIN_PX, 0)
         row.addWidget(chooser)
         row.addStretch(1)
+
+        if menu is not None:
+            row.addWidget(menu)
 
         rule = QFrame()
         rule.setFrameShape(QFrame.Shape.HLine)
@@ -736,3 +1035,62 @@ def _pixel_sizes(fractions: tuple[float, ...], available: int) -> list[int]:
         sizes[index] += 1
 
     return sizes
+
+
+def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]) -> AreaOperation:
+    """The entry for an operation the model may refuse, with the layout it makes if it does not."""
+
+    try:
+        return AreaOperation(label, group, operation())
+    except LayoutRefused:
+        return AreaOperation(label, group, None, _NOT_EXPRESSIBLE_TEXT)
+
+
+def _relative_place(own: Rectangle, other: Rectangle) -> str:
+    """Where `other` lies from `own`, in the words a menu entry uses, from their centres."""
+
+    across = (other.left + other.right) / 2 - (own.left + own.right) / 2
+    down = (other.top + other.bottom) / 2 - (own.top + own.bottom) / 2
+    words = []
+
+    if down < 0:
+        words.append(_SIDE_WORDS[Side.ABOVE])
+    elif down > 0:
+        words.append(_SIDE_WORDS[Side.BELOW])
+
+    if across < 0:
+        words.append(_SIDE_WORDS[Side.LEFT])
+    elif across > 0:
+        words.append(_SIDE_WORDS[Side.RIGHT])
+
+    return ", ".join(words)
+
+
+def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
+    """The least width and height an Area can be drawn at: its header, and one line of a notice.
+
+    `PL-30L5` Q2 set it. Below it a half could not hold its own header row
+    and the first line of `PL-DB5G`'s notice, so a split is refused there. A
+    half too small for the View it shows is allowed, and that is `PL-K285`'s
+    statement to make.
+    """
+
+    title_font = QFont(frame.font())
+    title_font.setPixelSize(METRIC_NAME_SIZE)
+    title_font.setBold(True)
+    line = QFontMetrics(title_font).lineSpacing()
+    header = frame.header.sizeHint()
+    controls = frame.chooser.sizeHint().width() + (
+        0 if frame.menu is None else frame.menu.sizeHint().width()
+    )
+
+    return (
+        controls + 2 * _HEADER_MARGIN_PX,
+        header.height() + _HEADER_RULE_PX + PANEL_PADDING + line,
+    )
+
+
+def _split_layout(model: LayoutModel, area_id: AreaId, orientation: Orientation) -> LayoutModel:
+    """The layout a split from the menu makes: the Area cut halfway across."""
+
+    return model.split(area_id, orientation, _MENU_SPLIT_AT)[0]

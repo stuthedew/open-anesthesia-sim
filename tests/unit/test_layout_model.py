@@ -28,7 +28,14 @@ import sys
 import pytest
 
 from anesthesia_sim.layout.exceptions import InvalidLayout, LayoutRefused, NotInLayout
-from anesthesia_sim.layout.model import BORDER_ALIGNMENT_TOLERANCE, Handle, LayoutModel
+from anesthesia_sim.layout.model import (
+    BORDER_ALIGNMENT_TOLERANCE,
+    Handle,
+    LayoutModel,
+    Neighbour,
+    Rectangle,
+    Side,
+)
 from anesthesia_sim.layout.serialization import (
     LAYOUT_SCHEMA_VERSION,
     layout_from_dict,
@@ -1554,3 +1561,52 @@ def test_a_layout_survives_the_round_trip_through_json_exactly() -> None:
     assert layout_from_json(layout_to_json(model)) == model
     assert layout_from_dict(layout_to_dict(model)) == model
     assert layout_to_json(layout_from_json(layout_to_json(model))) == layout_to_json(model)
+
+
+def test_rectangle_is_where_an_area_lies_in_its_window() -> None:
+    """Worked by hand: Area 3 takes the right 0.75 of the window and the lower 0.6 of that."""
+
+    model = layout(row((0.25, 0.75), area(1), column((0.4, 0.6), area(2), area(3))))
+
+    assert model.rectangle(AreaId(3)) == Rectangle(0, 0.25, pytest.approx(0.4), 1.0, 1.0)
+    assert model.rectangle(AreaId(1)) == Rectangle(0, 0.0, 0.0, 0.25, 1.0)
+
+    with pytest.raises(NotInLayout, match="no Area of this layout holds the id 9"):
+        model.rectangle(AreaId(9))
+
+
+def test_neighbours_lists_each_area_an_edge_meets_by_side_and_whether_it_could_join() -> None:
+    """In row[1, column[2, 3]], Area 1 meets both on its right, and neither along a whole edge."""
+
+    model = layout(row((0.5, 0.5), area(1), column((0.5, 0.5), area(2), area(3))))
+
+    assert model.neighbours(AreaId(1)) == (
+        Neighbour(AreaId(2), Side.RIGHT, whole_edge=False),
+        Neighbour(AreaId(3), Side.RIGHT, whole_edge=False),
+    )
+    assert model.neighbours(AreaId(2)) == (
+        Neighbour(AreaId(1), Side.LEFT, whole_edge=False),
+        Neighbour(AreaId(3), Side.BELOW, whole_edge=True),
+    )
+    assert model.neighbours(AreaId(3)) == (
+        Neighbour(AreaId(1), Side.LEFT, whole_edge=False),
+        Neighbour(AreaId(2), Side.ABOVE, whole_edge=True),
+    )
+
+
+def test_two_areas_that_meet_only_at_a_corner_are_not_neighbours() -> None:
+    """In a two by two grid, the diagonal Areas share a point and no edge."""
+
+    model = layout(
+        row((0.5, 0.5), column((0.5, 0.5), area(1), area(2)), column((0.5, 0.5), area(3), area(4)))
+    )
+
+    assert model.neighbours(AreaId(1)) == (
+        Neighbour(AreaId(3), Side.RIGHT, whole_edge=True),
+        Neighbour(AreaId(2), Side.BELOW, whole_edge=True),
+    )
+    assert AreaId(1) not in {neighbour.area_id for neighbour in model.neighbours(AreaId(4))}
+
+
+def test_a_lone_area_has_no_neighbours() -> None:
+    assert LayoutModel.single_area(CHART).neighbours(AreaId(1)) == ()

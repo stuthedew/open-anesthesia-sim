@@ -19,7 +19,20 @@ from PySide6.QtGui import QEnterEvent, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QSplitter, QWidget
 
-from anesthesia_sim.app.area_layout import AreaFrame, AreaLayout, AreaNotice, ViewChooser
+from anesthesia_sim.app.area_layout import (
+    AREA_MENU_LABEL,
+    CLOSE_AREA_LABEL,
+    JOIN_WITH_LABEL,
+    SPLIT_SIDE_BY_SIDE_LABEL,
+    SPLIT_STACKED_LABEL,
+    SWAP_WITH_LABEL,
+    AreaFrame,
+    AreaLayout,
+    AreaMenu,
+    AreaNotice,
+    AreaOperation,
+    ViewChooser,
+)
 from anesthesia_sim.app.theme import AREA_HANDLE_LINE_WIDTH, AREA_HANDLE_WIDTH, PRIMARY
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
@@ -775,3 +788,197 @@ def test_a_removed_or_unknown_kind_offers_no_button(
         notice = container.frame(AreaId(area_id)).content
         assert isinstance(notice, AreaNotice)
         assert notice.offer_button is None
+
+
+# ------------------------------------------------------------ the Area menu
+
+# Three Areas: Area 1 on the left half, and Areas 2 and 3 stacked on the right.
+# Area 1 meets both along part of its right edge, and 2 and 3 share a whole edge.
+_LEFT_AND_STACK = _layout(_row((0.5, 0.5), _area(1), _column((0.5, 0.5), _area(2), _area(3))), 4)
+
+
+def _operation(
+    container: AreaLayout, area_id: int, label: str, group: str | None = None
+) -> AreaOperation:
+    (found,) = [
+        operation
+        for operation in container.operations(AreaId(area_id))
+        if operation.label == label and operation.group == group
+    ]
+
+    return found
+
+
+def _labels(container: AreaLayout, area_id: int) -> list[tuple[str | None, str, bool]]:
+    return [
+        (operation.group, operation.label, operation.available)
+        for operation in container.operations(AreaId(area_id))
+    ]
+
+
+def test_every_header_ends_with_the_area_menu(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """`PL-MS34` Q2: chooser first, then a stretch, then the Area menu."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+
+    for number in (1, 2, 3):
+        frame = container.frame(AreaId(number))
+        row = frame.header.layout()
+        assert row is not None
+
+        assert isinstance(frame.menu, AreaMenu)
+        assert frame.menu.text() == AREA_MENU_LABEL
+        assert row.itemAt(0).widget() is frame.chooser
+        assert row.itemAt(row.count() - 1).widget() is frame.menu
+
+
+def test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """A neighbour along part of an edge is listed and unavailable, never left out (`PL-2KXB`)."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+
+    assert _labels(container, 1) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (JOIN_WITH_LABEL, "Test view, on the right", False),
+        (JOIN_WITH_LABEL, "Test view, on the right", False),
+        (SWAP_WITH_LABEL, "Test view, above, on the right", True),
+        (SWAP_WITH_LABEL, "Test view, below, on the right", True),
+        (None, CLOSE_AREA_LABEL, False),
+    ]
+    assert _labels(container, 2) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (JOIN_WITH_LABEL, "Test view, on the left", False),
+        (JOIN_WITH_LABEL, "Test view, below", True),
+        (SWAP_WITH_LABEL, "Test view, below, on the left", True),
+        (SWAP_WITH_LABEL, "Test view, below", True),
+        (None, CLOSE_AREA_LABEL, True),
+    ]
+
+    refused = container.operations(AreaId(1))[2]
+
+    assert "do not share a whole edge" in refused.refusal
+    assert "Area 1" not in refused.refusal
+    assert "only Area" not in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+    assert "none can take its place" in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+
+
+def test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """Each expected layout is built here, not read back from the model."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    changes: list[LayoutModel] = []
+    container.layout_changed.connect(changes.append)
+
+    container.perform(_operation(container, 2, "Test view, below", JOIN_WITH_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 4)
+    assert changes == [container.model]
+
+    container.perform(_operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.25, 0.25, 0.5), _area(1), _area(4), _area(2)), 5)
+
+    container.perform(_operation(container, 4, CLOSE_AREA_LABEL))
+    application.processEvents()
+
+    # Area 4's first neighbour sharing a whole edge is Area 1 on its left.
+    assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 5)
+
+    view_of_1 = _content(container.frame(AreaId(1)))
+    container.perform(_operation(container, 1, "Test view, on the right", SWAP_WITH_LABEL))
+    application.processEvents()
+
+    assert container.model == _layout(_row((0.5, 0.5), _area(2), _area(1)), 5)
+    assert _content(container.frame(AreaId(1))) is view_of_1
+    assert len(changes) == 4
+
+
+def test_a_split_is_refused_where_a_half_could_not_hold_its_header(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """`PL-30L5` Q2: below the header row and one line of a notice, a half is refused."""
+
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 40))
+    stacked = _operation(container, 1, SPLIT_STACKED_LABEL)
+
+    assert not stacked.available
+    assert "too small to hold its header" in stacked.refusal
+    assert _operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL).available
+
+    with pytest.raises(ValueError, match="unavailable"):
+        container.perform(stacked)
+
+    assert container.model == LayoutModel.single_area(_VIEW)
+
+
+def test_a_lone_area_can_be_split_and_nothing_else(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+
+    assert _labels(container, 1) == [
+        (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
+        (None, SPLIT_STACKED_LABEL, True),
+        (None, CLOSE_AREA_LABEL, False),
+    ]
+    assert "only Area" in _operation(container, 1, CLOSE_AREA_LABEL).refusal
+
+
+def test_the_drawn_menu_disables_each_unavailable_entry_and_says_why(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    """The reader sees the entry, greyed, with its reason as the tooltip."""
+
+    container = _show(application, shown, _LEFT_AND_STACK, views, size=(800, 600))
+    button = container.frame(AreaId(1)).menu
+    assert button is not None
+    button.fill()
+    menu = button.menu()
+    top = {action.text(): action for action in menu.actions()}
+
+    assert list(top) == [
+        SPLIT_SIDE_BY_SIDE_LABEL,
+        SPLIT_STACKED_LABEL,
+        JOIN_WITH_LABEL,
+        SWAP_WITH_LABEL,
+        CLOSE_AREA_LABEL,
+    ]
+    assert not top[CLOSE_AREA_LABEL].isEnabled()
+    assert "none can take its place" in top[CLOSE_AREA_LABEL].toolTip()
+
+    join = top[JOIN_WITH_LABEL].menu()
+    assert join is not None
+    assert [action.isEnabled() for action in join.actions()] == [False, False]
+    assert all("whole edge" in action.toolTip() for action in join.actions())
+
+    swap = top[SWAP_WITH_LABEL].menu()
+    assert swap is not None
+    swap.actions()[0].trigger()
+    application.processEvents()
+
+    assert container.model == _layout(
+        _row((0.5, 0.5), _area(2), _column((0.5, 0.5), _area(1), _area(3))), 4
+    )
+
+
+def test_a_lone_areas_drawn_menu_shows_join_and_swap_unavailable(
+    application: QApplication, shown: list[AreaLayout], views: _Views
+) -> None:
+    container = _show(application, shown, LayoutModel.single_area(_VIEW), views, size=(800, 600))
+    button = container.frame(AreaId(1)).menu
+    assert button is not None
+    button.fill()
+    top = {action.text(): action for action in button.menu().actions()}
+
+    assert not top[JOIN_WITH_LABEL].isEnabled()
+    assert not top[SWAP_WITH_LABEL].isEnabled()

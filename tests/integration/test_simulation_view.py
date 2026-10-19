@@ -57,6 +57,7 @@ from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import theme
+from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
@@ -6248,6 +6249,46 @@ def test_dragging_the_border_beside_the_sidebar_changes_the_layout_model(
     assert splitter.sizes() == [chart_px - 100, sidebar_px + 100]
     assert tree.sizes[0] == pytest.approx((chart_px - 100) / (chart_px + sidebar_px), abs=1e-2)
     assert view.layout_container.frame(AreaId(1)).content is view._chart_column
+
+
+def test_splitting_and_closing_the_chart_area_leaves_the_unconditional_values_where_they_were(
+    application: QApplication,
+) -> None:
+    """The Area menu changes only the Areas, so the region above them is untouched (`PL-2KXB`).
+
+    The dashboard builds one chart panel, so the new half of a split shows
+    the notice that the View is shown in another Area, and the chart stays
+    in the first. Closing the new half gives its place back.
+    """
+
+    from anesthesia_sim.app.area_layout import CLOSE_AREA_LABEL, SPLIT_STACKED_LABEL
+    from anesthesia_sim.app.view_registry import SHOWN_ELSEWHERE_TITLE
+
+    view = _shown_view(application, SimulationController())
+    areas = view.layout_container
+    before = areas.model
+    region = view.unconditional_region
+    shown_before = _interface_strings(view)
+
+    (split,) = [op for op in areas.operations(AreaId(1)) if op.label == SPLIT_STACKED_LABEL]
+    areas.perform(split)
+    _settle(application)
+    (new_area,) = [area.id for area in areas.model.areas() if area.id not in (1, 2)]
+
+    assert areas.frame(AreaId(1)).content is view._chart_column
+    notice = areas.frame(new_area).content
+    assert isinstance(notice, AreaNotice)
+    assert notice.title_label.text() == SHOWN_ELSEWHERE_TITLE
+    assert view.unconditional_region is region
+    assert not areas.isAncestorOf(region)
+
+    (close,) = [op for op in areas.operations(new_area) if op.label == CLOSE_AREA_LABEL]
+    areas.perform(close)
+    _settle(application)
+
+    assert [area.id for area in areas.model.areas()] == [AreaId(1), AreaId(2)]
+    assert areas.model.windows == before.windows
+    assert _interface_strings(view) == shown_before
 
 
 def _drag_area_border(application: QApplication, view: SimulationView, by_px: int) -> None:
