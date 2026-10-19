@@ -3,12 +3,14 @@ id: PL-FYV7
 title: verify.py sanctioned_queue_edit guesses which tool wrote a queue edit outside touches from the diff's shape and respells the pr:/recurrences: grammar in its own regexes, where a trailer that record and new stamp on their commits would be a record
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: recorded-not-inferred
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-19
+pr: 1629
 payoff: the audit reads which command wrote a queue edit from the commit that wrote it, so a new write shape costs no item
 verify: grep -q 'def test_a_recurrence_append_is_judged_by_the_models_grammar' subprojects/docket/tests/test_verify.py
 ---
@@ -41,3 +43,12 @@ re-scope itself, because its blast radius is one item's disposition.
 **Done when.** `verify.py`'s recurrence-append check judges each entry by the model's own reading (`recurrences_of` and `recurrence_faults`, or one strict predicate added beside them in `model.py`) instead of `RECURRENCE_ENTRY`, which is deleted. A test pins an append the model reads as a filing, a withdrawn entry followed by a new one, and an entry with an invented clause, which is still refused.
 
 **Generator check.** A one-off. No head's `misread:` states the fact (which command wrote a queue edit) and it has one reader; the mechanism, a reader deriving from diff shape what the writer knew, is `PL-MB2W`'s, but heads compare at the fact. It waited on `PL-KGYT` while that head was live, since the trailer is a new record, which `CLAUDE.md` § "What this project is" captures and does not build while any open item carries `generator: live`; `PL-KGYT` closed spent on 2026-10-01 with no other head live, so nothing holds it now.
+
+**Closed 2026-10-19.** `RECURRENCE_ENTRY` and `RECURRENCE_ENTRY_RE` are gone
+from `verify.py`. `_recurrences_grew` now asks `model.recurrence_entry_reads`
+of each entry. That predicate is true exactly where `recurrence_faults` raises
+neither of its two reading faults, and both now share the same two helpers in
+`model.py`. The model's reading is stricter than the old regex in one way
+that matters: the regex took `2026-13-45` as a date, which the store reads as
+unreadable. `cli.py` and `test_cli.py` were dropped from `touches`, since
+nothing there changed.
