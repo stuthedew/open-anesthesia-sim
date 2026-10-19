@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md, tests/unit/test_supported_range_edges.py, tests/integration/test_qt_rendering.py
 blocked-by: PL-TH35
 added: 2026-10-18
 closed: 2026-10-19

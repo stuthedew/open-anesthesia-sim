@@ -273,10 +273,13 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    selector = _concentration(view).time_base_selector
-    index = selector.findData(str(width.span_s))
-    assert index >= 0, "the time-base control does not offer the 15-minute width"
-    selector.setCurrentIndex(index)
+    # Each chart holds its own window (`PL-L59K`), so both are set, as one
+    # shared control set them before.
+    for selector in (_concentration(view).time_base_selector, _wash_in(view).time_base_selector):
+        index = selector.findData(str(width.span_s))
+        assert index >= 0, "the time-base control does not offer the 15-minute width"
+        selector.setCurrentIndex(index)
+
     view.present(False)
     application.processEvents()
     # A first paint settles the layout, and the plots in it, before a pixel is
