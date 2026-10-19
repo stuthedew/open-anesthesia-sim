@@ -31,15 +31,26 @@ unavailable, as for a model that does not support it, Claude Code starts in
 Manual instead and every prompt is denied; the ledger's `denials` count shows
 that (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
-**Effort follows the item's lane.** A worker on an item that reaches the
-simulator runs at `max`, and one on apparatus work at `high`, as the owner
-chose for sessions. Without `--effort` every run took Opus 5.5's default,
+**Effort is the project's own level.** Every run takes `effortLevel` from
+`.claude/settings.json`, the level an interactive session opens at, and passes
+it as `--effort`. The owner set `high` there for all work on 2026-10-19
+(`PL-6XZG`), so the runner keeps no level of its own to fall out of step
+with it (`PL-4N0K`). Without `--effort` every run took Opus 5.5's default,
 `medium` (`PL-KFJY`).
 
 **`--no-push` is enforced, not asked for.** `PL-6FX6`'s trial runs Sonnet and
 Haiku copies of an item whose work must never leave the machine. The clone's
 push URL is set to a name no remote answers to, so a push fails whatever the
 worker does.
+
+**A pushed run commits its record to its branch.** After a run whose branch
+reached the remote, the runner writes the run's record with
+`tools/worker_runs.py`, commits it as `<id>: record the headless run` and
+pushes it. The reviewing session adds the review's outcome, and `make check`
+fails until it does, so the repository says which items a headless worker did
+and how their reviews went (`PL-87BR`). The record is committed only where the
+clone's `HEAD` is the pushed branch, so nothing the worker left unpushed is
+published with it.
 
 **A clone is removed once nothing in it is only on this machine.** A run
 that succeeded and pushed its branch, where the remote's branch is the
@@ -69,33 +80,29 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket import cli as docket_cli  # noqa: E402
-from docket.config import load as load_docket_config  # noqa: E402
+import docket.cli as docket_cli  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.model import LANE_CROSSING, LANE_PRODUCT  # noqa: E402
-from docket.store import read_items  # noqa: E402
 from docket.vcs import call_git, default_base, read_git  # noqa: E402
+
+sys.path.insert(0, str(ROOT / "tools"))
+
+import worker_runs  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
 #: Sonnet 5.5 workers, `PL-80R5`).
 WORKER_MODEL = "claude-opus-5-5"
 
-#: The effort a worker runs at, by the lane of its item. Simulator work runs at
-#: `max` and apparatus work at `high` (project owner, 2026-09-19, ratified, over
-#: running every session at `max`; and 2026-10-17, ratified, over `xhigh` for
-#: apparatus work, `PL-SW0B`). `docs/maintainer.md` § "Match effort to the
-#: standard the work is held to" records both. A lane that reaches the
-#: simulator takes the simulator's level (`PL-KFJY`).
-SIMULATOR_EFFORT = "max"
-APPARATUS_EFFORT = "high"
-SIMULATOR_LANES = (LANE_PRODUCT, LANE_CROSSING)
+#: The project settings file whose `effortLevel` every run takes.
+#: `docs/maintainer.md` § "Match effort to the standard the work is held to"
+#: says what it is set to and why.
+PROJECT_SETTINGS = ROOT / ".claude" / "settings.json"
 
 #: Variables Claude Code ranks above `--effort`, so a run that inherited one
 #: would not run at the level chosen for it
@@ -151,6 +158,15 @@ class Run:
     removed: bool = False
     #: The effort level the run was started at.
     effort: str | None = None
+    #: The token counts from the result's `usage`, as Claude Code reported them.
+    input_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_write_tokens: int | None = None
+    output_tokens: int | None = None
+    #: The record committed to the branch, as a path in the repository.
+    record: str | None = None
+    #: Why a pushed run's record could not be committed and pushed.
+    record_failure: str | None = None
 
     def line(self) -> str:
         """The run as one JSON line of the ledger."""
@@ -228,16 +244,17 @@ def run_docket_delegable() -> str:
     return out.getvalue()
 
 
-def effort_for(lane: str) -> str:
-    """The effort level for a worker on an item in `lane`."""
-    return SIMULATOR_EFFORT if lane in SIMULATOR_LANES else APPARATUS_EFFORT
+def read_effort_level(settings: Path = PROJECT_SETTINGS) -> str:
+    """The `effortLevel` the project's settings file holds.
 
-
-def read_lanes() -> dict[str, str]:
-    """Each item's lane, as docket reads it from the item's `touches`."""
-    config = load_docket_config(ROOT)
-    items = read_items(ROOT / config.items_dir)
-    return {item.identifier: item.lane(config.workflow_paths) for item in items}
+    Raises:
+        Refused: the file sets no `effortLevel`, so no level is chosen and a
+            run would silently take the model's default.
+    """
+    level = json.loads(settings.read_text(encoding="utf-8")).get("effortLevel")
+    if not isinstance(level, str) or not level:
+        raise Refused(f"{settings} sets no effortLevel, so no effort is chosen.")
+    return level
 
 
 def check_tools(env: Mapping[str, str]) -> None:
@@ -433,11 +450,10 @@ def work(
     subtype = result.get("subtype")
     is_error = result.get("is_error")
     reason = failure_reason(result, exit_code, stderr)
+    usage = result.get("usage")
+    usage = usage if isinstance(usage, dict) else {}
     tip = None if no_push else remote_tip(clone, branch)
-    removed = reason is None and only_on_remote(clone, tip)
-    if removed:
-        shutil.rmtree(clone)
-    return Run(
+    run = Run(
         item=item,
         model=model,
         branch=branch,
@@ -452,9 +468,52 @@ def work(
         turns=None if turns is None else int(turns),
         denials=len(denials) if isinstance(denials, list) else None,
         reason=reason,
-        removed=removed,
         effort=effort,
+        input_tokens=whole(usage.get("input_tokens")),
+        cache_read_tokens=whole(usage.get("cache_read_input_tokens")),
+        cache_write_tokens=whole(usage.get("cache_creation_input_tokens")),
+        output_tokens=whole(usage.get("output_tokens")),
     )
+    if tip is not None:
+        run = commit_record(run, clone, tip)
+        tip = remote_tip(clone, branch)
+    removed = reason is None and only_on_remote(clone, tip)
+    if removed:
+        shutil.rmtree(clone)
+    return replace(run, removed=removed)
+
+
+def whole(value: object) -> int | None:
+    """A JSON whole number as an int, or `None` for anything else.
+
+    The token counts come from the result's `usage`, whose keys are the
+    Messages API's (https://platform.claude.com/docs/en/api/messages, `usage`).
+    """
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def commit_record(run: Run, clone: Path, tip: str) -> Run:
+    """Commit the run's record to its branch and push it, or say why that failed.
+
+    Only where the clone's `HEAD` is the pushed `tip`, so a commit the worker
+    left unpushed is never published by the runner.
+    """
+    head = call_git(["rev-parse", "HEAD"], clone)
+    if head.code != 0 or head.answer.strip() != tip:
+        return replace(run, record_failure="the clone's HEAD is not the branch it pushed")
+    path = worker_runs.write(clone, {name: getattr(run, name) for name in worker_runs.RUN_FIELDS})
+    relative = path.relative_to(clone).as_posix()
+    message = f"{run.item}: record the headless run"
+    for args in (
+        ["add", "--", relative],
+        ["commit", "-q", "-m", message, "--", relative],
+        ["push", "-q", "origin", f"HEAD:refs/heads/{run.branch}"],
+    ):
+        # The push goes to GitHub, which can take longer than git's local default.
+        call = call_git(args, clone, timeout=CLONE_TIMEOUT_S)
+        if call.code != 0:
+            return replace(run, record_failure=" ".join(call.reason.split())[:300])
+    return replace(run, record=relative)
 
 
 def failure_reason(
@@ -481,6 +540,10 @@ def describe(run: Run) -> str:
         f"{run.item} on {run.model} at {run.effort} effort: "
         f"{outcome}, {cost}, {where}, {run.branch}, {kept}"
     )
+    if run.record:
+        line += f"\n  record: {run.record}, to review before the branch merges"
+    elif run.record_failure:
+        line += f"\n  no record committed: {run.record_failure}"
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
 
@@ -508,7 +571,7 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     docket: Callable[[], str] = run_docket_delegable,
-    lanes: Callable[[], Mapping[str, str]] = read_lanes,
+    effort_level: Callable[[], str] = read_effort_level,
     tools: Callable[[Mapping[str, str]], None] = check_tools,
     today: Callable[[], date] = lambda: datetime.now(UTC).date(),
 ) -> int:
@@ -517,11 +580,8 @@ def main(
         env = child_environment(environ)
         tools(env)
         items = choose(delegable_ids(docket), args.item, args.runs)
-        lane = lanes()
-        unread = [item for item in items if item not in lane]
-        if unread:
-            raise Refused(f"docket gives no lane for {', '.join(unread)}, so no effort is chosen.")
-        efforts = {item: effort_for(lane[item]) for item in items}
+        level = effort_level()
+        efforts = {item: level for item in items}
         origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
         start = cycle_start(today(), args.cycle_day)
         if args.dry_run:

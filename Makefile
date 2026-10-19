@@ -262,6 +262,10 @@ check: sync
 # declared scope is the one it will actually get. Reads only the frontmatter of
 # `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
+# Each headless worker run's record on its branch needs the review's outcome
+# before the branch merges, so headless and chat work can be compared. Reads
+# only `docs/worker-runs/`, so it costs nothing (`PL-87BR`).
+	python3 tools/worker_runs.py check
 # Beside the two guards above, and the same category one level further out:
 # those ask whether this branch's work is visible and whether a rule's declared
 # scope is the one it gets, this asks whether the always-loaded context a

@@ -244,6 +244,9 @@ jobs:
       - run: python3 tools/possessive_section_check.py
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
+      # A headless worker's run record must carry its review before its branch
+      # merges (`PL-87BR`).
+      - run: python3 tools/worker_runs.py check
       # The recovered bodies' `commit:` anchors (`PL-73G8`), which a release now
       # adds (`PL-3PH2`). `make check` has run it since it landed; the merge
       # gate counted as running it only through `pr-title.yml`'s body step, a
