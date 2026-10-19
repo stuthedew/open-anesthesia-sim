@@ -17,12 +17,20 @@ disclaimer sits in a line across the foot of the page. `docs/MODEL.md`
 § "Minimum displayed outputs" requires those values on screen in every
 Workspace, and `app/unconditional_set.py` declares which values they are.
 `_place_run` rejects a run when the band does not hold every value that the
-run declares. Under the band, each run's setting controls keep their own
-height. Under the controls are the Areas: the concentration chart over the
-F_A/F_I plot, beside the accounting sidebar. `app/area_layout.py` draws the
-Areas from a layout model, so a reader can drag the borders between them
-(`PL-W9P6`). The Areas are the layout container. No widget in the band sits
-inside an Area, so no split, join or close of an Area can affect the band.
+run declares. Under the band is the Workspace tab strip, and under the strip
+are the Areas of the current Workspace (`PL-2KXB`). `app/area_layout.py`
+draws the Areas from that Workspace's layout model, so a reader can drag the
+borders between them (`PL-W9P6`). The Areas are the layout container. No
+widget in the band sits inside an Area, so no split, join or close of an Area
+and no Workspace switch can affect the band.
+
+**The dashboard owns the Workspaces** (`PL-2KXB`). It holds the
+`WorkspaceSet` and opens on its current Workspace. When the tab strip hands it
+a set whose current Workspace differs from the drawn one, it switches the
+Areas. A switch changes which Views are drawn and never touches a run
+(`PL-WV9K` Q6). A Workspace pinned to a run draws that run alone, with the
+run's name on every Area's header. If the pinned run is not open, every Area
+says so in place of its Views.
 
 **One read, every View, then every run.** `_refresh_view` reads one
 snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`
@@ -35,11 +43,11 @@ This class formats nothing, and it decides nothing that a reader interprets.
 
 **Two cadences, kept apart** (decision D7). Each run's own timer steps that
 run. This view's render timer draws, but only while a run is running or a
-frame is owed. A frame is owed after a coalesced slider change (`PL-R2YM`),
-after a change to the run set, or when a run's record differs from what its
-view last wrote (`PL-X7D5`). A frame that cannot be drawn halts every run,
-because an exception raised in the shared drawing path cannot be attributed
-to any one run. No wall clock is read anywhere.
+frame is owed, meaning a redraw is due. A frame is owed after a coalesced
+slider change (`PL-R2YM`), after a change to the run set, or when a run's
+record differs from what its view last wrote (`PL-X7D5`). A frame that cannot
+be drawn halts every run, because an exception raised in the shared drawing
+path cannot be attributed to any one run. No wall clock is read anywhere.
 
 **The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
@@ -54,7 +62,7 @@ or paused. The dashboard adds nothing to it.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from typing import Final
 
@@ -120,81 +128,31 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
 from anesthesia_sim.app.view_contract import ViewRequests
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
-from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
-from anesthesia_sim.layout.run_identity import RunIdentities
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.model import MAIN_WINDOW
+from anesthesia_sim.layout.run_identity import RunId, RunIdentities
+from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.workspace import PinnedRunAbsent, WorkspaceSet
 
-#: The fractions of the window's width that the two charts and the accounting
-#: sidebar take (`PL-W9P6`). In a 1366 px window, the sidebar's 0.18 gives it
-#: about 228 px. That is the width the sidebar had beside the charts before the
-#: row became an Area layout, when it stayed at its own minimum width at every
-#: window size. These values are a placeholder until the shipped Workspaces
-#: replace this layout.
-_CHART_PANEL_SHARE: Final = 0.82
-_SIDEBAR_SHARE: Final = 0.18
-
-#: The fractions of the charts' height that the concentration chart and the
-#: F_A/F_I plot take. The plot sits under the chart, as the two stood in one
-#: panel before each became a View of its own (`PL-TH35`). These values are a
-#: placeholder.
-_CONCENTRATION_SHARE: Final = 0.55
-_WASH_IN_SHARE: Final = 0.45
-
-#: The dashboard's Areas: the concentration chart over the F_A/F_I plot,
-#: beside the accounting sidebar.
-_DASHBOARD_LAYOUT: Final = LayoutModel(
-    (
-        Window(
-            Split(
-                Orientation.ROW,
-                (_CHART_PANEL_SHARE, _SIDEBAR_SHARE),
-                (
-                    Split(
-                        Orientation.COLUMN,
-                        (_CONCENTRATION_SHARE, _WASH_IN_SHARE),
-                        (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(3), WASH_IN)),
-                    ),
-                    Area(AreaId(2), AGENT_ACCOUNTING),
-                ),
-            )
-        ),
-    ),
-    AreaId(4),
-)
-
-#: The unconditional region divides its width as the Areas under it do. The
-#: run rows take the chart panel's share and the control-change records take
-#: the sidebar's, which is the width `PL-J8K2` Q3 gave the records. At a
-#: 1366 px window that leaves one run's readout row room for all seven panels
-#: (`PL-F2YS`). A box layout's stretch is a whole number, so each share is
-#: read in hundredths.
-_RUN_ROWS_STRETCH: Final = round(100 * _CHART_PANEL_SHARE)
-_RECORD_COLUMN_STRETCH: Final = round(100 * _SIDEBAR_SHARE)
-
-#: Spare height goes to the plots. The setting sections are held to their own
-#: height by a vertical policy that can shrink but not grow, so a taller
-#: window lengthens the traces rather than opening blank space under a row of
-#: sliders.
-_FIXED_SECTION_POLICY: Final = QSizePolicy.Policy.Maximum
+#: The fractions of the unconditional region's width that the run rows and
+#: the control-change records take. They match the shares that the charts and
+#: the accounting sidebar had before the dashboard opened on the shipped
+#: Workspaces, and that split is the width `PL-J8K2` Q3 gave the records. In a
+#: window 1366 px wide, the run rows' share of 0.82 leaves room for all seven
+#: panels in one run's readout row (`PL-F2YS`). A box layout's stretch factor
+#: is a whole number, so each share is given in hundredths.
+_RUN_ROWS_STRETCH: Final = 82
+_RECORD_COLUMN_STRETCH: Final = 18
 
 #: Object names the page and the case's controls are styled through.
 _PAGE_NAME: Final = "dashboardPage"
 _REGION_NAME: Final = "unconditionalRegion"
 _RECORD_COLUMN_NAME: Final = "controlRecordColumn"
 _CASE_SECTION_NAME: Final = "caseSection"
-
-
-def _fixed_height(section: QWidget) -> QWidget:
-    """Hold a section to its own height, so spare height goes to the plots."""
-
-    section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
-
-    return section
 
 
 def _within(widget: QWidget, ancestor: QWidget) -> bool:
@@ -311,18 +269,17 @@ def _holder(
 class _RunSlots:
     """Where one displayed run's widgets sit among the layouts that every run shares.
 
+    A run's setting controls are not among them. They are shown by the
+    `parameter_controls` View, which builds copies of its own in whichever
+    Areas show it (`PL-TH35`, `PL-2KXB`).
+
     Attributes:
-        parameters: The run's setting controls. They are a section of the
-            settings column above the Areas, kept at their own height. A
-            reader can also show them in any Area as the `parameter_controls`
-            View, which builds copies of its own (`PL-TH35`).
-        placed: Every widget that this run put into a shared layout, including
-            the section. For any run after the first, it also holds the
-            readings that the run put into the first run's readout panels.
-            Removing the run means deleting these widgets.
+        placed: Every widget that this run put into a shared layout. For any
+            run after the first, it also holds the readings that the run put
+            into the first run's readout panels. Removing the run means
+            deleting these widgets.
     """
 
-    parameters: QWidget
     placed: tuple[QWidget, ...]
 
 
@@ -353,36 +310,43 @@ class SimulationView(QWidget):
         *,
         case: BranchedCase | None = None,
         run_identities: RunIdentities | None = None,
+        workspaces: WorkspaceSet | None = None,
     ) -> None:
-        """Build the dashboard over `controllers`, one `RunView` each, drawing nothing yet.
+        """Build the dashboard with one `RunView` for each of `controllers`, and draw nothing yet.
 
-        The first presentation happens after `show()` and a settled layout,
-        because a frame is assembled from the plot's laid-out width:
+        The dashboard is first presented after `show()`, once the layout has
+        settled, because a frame is assembled from the plot's laid-out width.
         `main.py` calls `present(False)` after the window is shown.
 
         Args:
-            controllers: The runs, in drawing order; the first is the
+            controllers: The runs, in drawing order. The first is the
                 reference run for the MAC ruler and the clinical references.
             parent: The Qt parent.
-            case: The case the first run is the trunk of, where there is one.
-                It is what the branch control offers instants from and takes
-                branches through, and without it that control is not shown -
-                a dashboard handed loose controllers has no case to branch,
-                and a control that could only refuse is one presenting itself
-                as working. Given, it must be the case rooted in
-                `controllers[0]`: two runs drawn on one axis assert they are
-                one patient under two managements, and a case naming some
-                other trunk would put that assertion on the wrong run.
+            case: The case whose trunk is the first run, if there is one. The
+                branch control offers instants from this case and takes
+                branches through it. Without a case the branch control is not
+                shown. A dashboard given controllers that belong to no case
+                has nothing to branch, and a control that could only refuse
+                would present itself as working. When a case is given, it must
+                be the case rooted in `controllers[0]`. Two runs drawn on one
+                axis claim to be one patient under two managements. A case
+                with some other trunk would attach that claim to the wrong run.
+            run_identities: The source from which each placed run takes its
+                identity. A test passes its own to pin a run by an identity it
+                knows.
+            workspaces: The Workspaces the tab strip offers, opened on the
+                current one. By default, the shipped Workspaces.
 
         Raises:
             ValueError: If no run is given, if more than
                 `MAX_DISPLAYED_RUNS` are, if the runs are not all on one
-                agent, or if `case` is not rooted in the first of them. One
-                ×MAC ruler, one MAC-awake band and one 1 MAC line are drawn
-                across a chart every run shares, and all three are the
-                agent's own published values; two agents on one axis would
-                have one run's traces read against the other's divisor - a
-                correct number under the wrong label, which `CLAUDE.md`'s
+                agent, or if `case` is not rooted in the first of them. The
+                runs must share one agent because one ×MAC ruler, one
+                MAC-awake band and one 1 MAC line are drawn across the chart
+                that every run shares. All three are the agent's own published
+                values. With two agents on one axis, one run's traces would be
+                read against the other agent's divisor. That is a correct
+                number under the wrong label, which `CLAUDE.md`'s
                 safety-critical standard treats as a failure of the value.
         """
 
@@ -415,6 +379,11 @@ class SimulationView(QWidget):
         # number is given out twice in the session and a dropped branch's is
         # never a later branch's (`PL-7Z84`).
         self._run_identities = RunIdentities() if run_identities is None else run_identities
+        # The reader's Workspaces, including the current one that the Areas
+        # draw. Here the current Workspace's layout and View states are the
+        # ones it had when it was last drawn. The `workspaces` property reads
+        # the live ones from the Areas (`PL-2KXB`).
+        self._workspaces = shipped_workspaces() if workspaces is None else workspaces
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. Held across
@@ -505,20 +474,21 @@ class SimulationView(QWidget):
         control-change record sits in a column to their right (`PL-J8K2` Q1
         and Q3). The notice banners sit under the transport rows and above
         every displayed value. So a reader sees a halted run's notice before
-        the values that the notice explains. Under the region come the setting
-        controls of each run, each at its own height. Then come the Areas,
-        which take the spare height. The adapter draws the Areas from
-        `_DASHBOARD_LAYOUT` and builds each Area's View through the View
-        registry (`PL-TH35`). So a reader can drag the borders between the
-        Areas and choose any View for any Area. Under the Areas come the
-        case's controls, the marks and the branch control. The use disclaimer
-        is the page's last line.
+        the values that the notice explains. Under the region comes the
+        Workspace tab strip, directly above the Areas it switches (`PL-QW1Z`
+        Q1). Then come the Areas, which take the spare height.
+        `app/area_layout.py` draws them from the current Workspace's layout. It
+        builds each Area's View through the View registry, from the state the
+        Workspace keeps for it (`PL-TH35`). So a reader can drag the borders
+        between the Areas and choose any View for any Area. Under the Areas
+        come the case's controls, the marks and the branch control. The use
+        disclaimer is the page's last line.
 
-        No run is placed here. Every layout that a run contributes to is kept,
-        so that `_place_run` can fill the layouts in the same order at
-        construction and when a learner takes a branch. A page laid out for
-        the run set it was first built with could not gain a run without
-        being rebuilt.
+        No run is placed here. Instead, every layout that a run adds widgets
+        to is kept, so that `_place_run` can fill the layouts in the same
+        order at construction and when a learner takes a branch. A page laid
+        out for the run set it was first built with could not gain a run
+        without being rebuilt.
         """
 
         page = QWidget()
@@ -531,14 +501,20 @@ class SimulationView(QWidget):
 
         column.addWidget(self._build_unconditional_region())
 
-        settings = QWidget()
-        self._settings_column = _spaced_column(settings, PAGE_SPACING)
-        column.addWidget(settings)
-
+        self._tabs = WorkspaceTabs(
+            self._workspaces, self._change_workspaces, self._open_runs, live=lambda: self.workspaces
+        )
         requests = ViewRequests(self._handle_frame_request, self._handle_compartment_request)
-        self._areas = AreaLayout(_DASHBOARD_LAYOUT, requests)
+        current = self._workspaces.current
+        self._areas = AreaLayout(current.layout, requests, states=current.view_state)
         self._areas.views_changed.connect(partial(self.present, False))
-        column.addWidget(self._areas, 1)
+        # The strip and the Areas sit together, with no page spacing between
+        # them, so the strip reads as the Areas' own.
+        workspace = QWidget()
+        workspace_column = _spaced_column(workspace, 0)
+        workspace_column.addWidget(self._tabs)
+        workspace_column.addWidget(self._areas, 1)
+        column.addWidget(workspace, 1)
         column.addWidget(self._build_case_section())
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
 
@@ -638,6 +614,54 @@ class SimulationView(QWidget):
 
         return self._areas
 
+    @property
+    def tab_strip(self) -> WorkspaceTabs:
+        """The Workspace tab strip above the Areas."""
+
+        return self._tabs
+
+    @property
+    def workspaces(self) -> WorkspaceSet:
+        """The reader's Workspaces, with the current one as the Areas draw it now.
+
+        The current Workspace carries the layout after every drag and the
+        state of every View drawn. So when the reader duplicates, leaves or
+        saves a Workspace, the result matches what the reader sees
+        (`PL-2KXB`).
+        """
+
+        current = self._workspaces.current
+        drawn = replace(current, layout=self._areas.model, view_state=self._areas.view_states())
+
+        return self._workspaces.replace(self._workspaces.active, drawn)
+
+    def _open_runs(self) -> tuple[RunId, ...]:
+        """The identities of the runs open now, in drawing order."""
+
+        return tuple(run.run_id for run in self._runs)
+
+    def _change_workspaces(self, workspaces: WorkspaceSet) -> None:
+        """Take the tab strip's new set, and switch the Areas if its current Workspace differs.
+
+        A switch draws the incoming Workspace's layout, builds each View from
+        the state the Workspace kept for it, and leaves every run as it was
+        (`PL-WV9K` Q6). Some changes keep the current Workspace's layout and
+        Views, such as a rename or a pin. Such a change keeps the drawn Views
+        and only draws a new frame, because a pin changes which runs the Views
+        show.
+        """
+
+        drawn = self.workspaces.current
+        current = workspaces.current
+        self._workspaces = workspaces
+
+        if (current.layout, current.view_state) != (drawn.layout, drawn.view_state):
+            self._areas.load(current.layout, current.view_state)
+        else:
+            self.present(False)
+
+        self._tabs.show_set(workspaces)
+
     def _build_case_section(self) -> QWidget:
         """Build the case's controls under the Areas: first the marks, then the branch control.
 
@@ -709,14 +733,12 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
-        parameters = _fixed_height(run.build_parameter_controls())
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         placed: tuple[QWidget, ...] = (
             _holder(self._transport_column, (run.build_transport_row(),)),
             _holder(self._notice_column, (run.build_notice(),)),
             readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
-            parameters,
         )
         # A later run's readouts join the first run's panels, so two runs
         # read as one block of seven (`PL-F2YS`); they leave with the run.
@@ -728,10 +750,9 @@ class SimulationView(QWidget):
             placed = (*placed, *self._runs[0].show_readings_of(run))
             readout_section.setHidden(True)
 
-        self._settings_column.addWidget(parameters)
         self._require_unconditional_values(run)
         self._runs = (*self._runs, run)
-        self._slots = (*self._slots, _RunSlots(parameters, placed))
+        self._slots = (*self._slots, _RunSlots(placed))
         self._rename_runs()
 
         return run
@@ -1356,6 +1377,13 @@ class SimulationView(QWidget):
         plot drew only after the plot has drawn it. So where the frame fails,
         the legend goes on naming the curves still on the plot (`PL-G3K7`).
 
+        **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
+        are handed frames assembled from the pinned run only, and the run's
+        name is on every Area. Where the pinned run is not open, no View is
+        drawn and every Area says so. Either way, the frames assembled over
+        every open run still make their checks, and each run is refreshed from
+        its own snapshot, so a pin never changes a readout.
+
         Raises:
             ValueError: If the runs have come to use different agents since
                 construction (`assemble_chart_frame`).
@@ -1384,7 +1412,34 @@ class SimulationView(QWidget):
             )
             for time_base, width_px in requests.items()
         }
-        self._areas.refresh(frames, snapshots, self._runs, selection)
+        shown = self._workspaces.current.shown_runs(self._open_runs())
+
+        if isinstance(shown, PinnedRunAbsent):
+            self._areas.show_pin(run_label(shown.pinned), absent=True)
+        else:
+            pinned = self._workspaces.current.pinned_run
+            self._areas.show_pin(None if pinned is None else run_label(pinned), absent=False)
+            drawn = [i for i, run in enumerate(self._runs) if run.run_id in shown]
+            view_frames = frames
+
+            if len(drawn) < len(self._runs):
+                view_frames = {
+                    time_base: assemble_chart_frame(
+                        tuple(inputs[i] for i in drawn),
+                        time_base,
+                        selection.shown,
+                        plot_width_px=width_px,
+                    )
+                    for time_base, width_px in requests.items()
+                }
+
+            self._areas.refresh(
+                view_frames,
+                tuple(snapshots[i] for i in drawn),
+                tuple(self._runs[i] for i in drawn),
+                selection,
+            )
+
         self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
 

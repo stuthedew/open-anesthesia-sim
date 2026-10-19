@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: interface-areas
-touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md, tests/unit/test_supported_range_edges.py, tests/integration/test_qt_rendering.py
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md, tests/unit/test_supported_range_edges.py, tests/integration/test_qt_rendering.py, tests/integration/test_workspace_tabs.py
 blocked-by: PL-TH35
 added: 2026-10-18
 closed: 2026-10-19
@@ -168,13 +168,23 @@ as "Fit run" without a notice: nothing saved is lost. A version 2 state whose
 window is not one the selector offers, such as 60 s or `true`, starts the chart
 on "Fit run" and shows the unreadable-state notice.
 
-**What a learner sees, and when.** The dashboard still builds its own fixed
-layout (`app/simulation_view.py`'s `_DASHBOARD_LAYOUT`), and nothing yet
-loads a Workspace's `view_state` into the Areas. Switching Workspaces by tab
-is `PL-2KXB`'s, and the Induction chart opens on 15 minutes once that loads
-the shipped file. Until then, the reader sets each chart's window from its
-own control. `tests/integration/test_view_contract.py` builds the chart from
-the shipped state and checks that it asks for the 15-minute window.
+**What a learner sees, and when.** `PL-2KXB` (`#1653`, the Workspace tab
+strip) merged while this pull request waited, and its tab switch loads each
+Workspace's saved View state. So the Induction tab opens its chart on 15
+minutes. `tests/integration/test_workspace_tabs.py`'s
+`test_the_induction_tab_opens_its_chart_on_the_15_minute_window` clicks the
+tab and checks the frame the chart draws. `tests/integration/test_view_contract.py`
+builds the chart from the shipped state and checks that it asks for the
+15-minute window. `#1653` also lets a Workspace pin one run. So when a
+Workspace is pinned, this branch assembles each window's frame from the
+pinned run alone, as `#1653` did for its single frame.
+
+**Whether a zoomed chart mentions an excursion outside its window**
+(project owner, 2026-10-19, ratified, over keeping the note on a chart that
+does not draw the clipped trace). He saw three screenshots: the whole-run
+chart with its off-scale note, the 15-minute chart without it, and a mock of
+the 15-minute chart keeping it. He answered "agree with recs and merge". So
+each chart's advisories describe only what that chart draws.
 
 **Tests.** `test_each_chart_names_only_the_clipped_traces_its_own_window_shows`
 is the regression test for the moved advisory. A case at 8% sevoflurane for
