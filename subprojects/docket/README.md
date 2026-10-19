@@ -600,16 +600,23 @@ they are, or named as not a read command.
 (`PL-Y48N`). A working tree behind `origin/main` holds every item as it stood
 at the fork, so `next` offered, and `show` called ready, an item another
 session had closed and merged since. Where the snapshot places the working
-tree behind, `next` and `show` read the base's copy of each item the base
+tree behind, the read commands read the base's copy of each item the base
 changed after the fork (`vcs.base_copies`) in place of the working tree's -
 unless this branch changed the item too, when its own edit stands except over
 a closure, since `holdings` releases every claim on an item the base has
-closed. `next` counts the items whose status it took from there and names the
-closed ones; `show` says so under the band. `claim` reads the base's copy
-after its fetch and refuses, writing nothing, an item the base has closed,
-which is the rule its read-back would have released the claim by. A command
-that writes the store never reads the base's copy, and the digest, `list` and
-`status` still answer from the working tree.
+closed. Those commands are the digest, `list`, `status`, `next`, `show`,
+`picks` and `concurrent`, and each loads the store through
+`cli._load_to_read`, so a read command added later gets the base's copy by
+calling it (`PL-KS01`). Each one counts the items whose status it took from
+there and names the closed ones; `show` says so under the band. So the
+digest's counts and its releasable count describe the base at the moment of
+the refs line, not this checkout's files. `claim` reads the base's copy after
+its fetch and refuses, writing nothing, an item the base has closed, which is
+the rule its read-back would have released the claim by. The commands that
+validate or write the store - `check`, `set`, `new`, `withdraw` and `record` -
+read the working tree's copy and never the base's. `triage`, `delegable`,
+`flight`, `stranded`, `branch`, `wave`, `feature`, `gate` and `generators`
+also still read the working tree's copy.
 
 **When the refs were last refreshed is read from `FETCH_HEAD`, and read before
 a fetch.** Git writes it on every fetch that reaches the remote - a fetch that
