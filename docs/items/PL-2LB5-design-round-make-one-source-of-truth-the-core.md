@@ -1,8 +1,13 @@
 ---
 id: PL-2LB5
 title: Design round: make one source of truth the core design principle everywhere, simulator and apparatus, and fix existing copies structurally rather than one instance at a time
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: planning, docs
 feature: one-source-of-truth
+touches: CLAUDE.md, docs/resident-instructions.md
+deferred-from: v0.6.0 - captured after the freeze on the owner's 2026-10-19 ask; the fixes are proposed as their own milestone once the inventory sizes them
 added: 2026-10-19
 ---
 
@@ -16,7 +21,7 @@ added: 2026-10-19
 
 No open item covers either baseline. Everything else is left to the sentence.
 
-**Why this principle.** The 2026-10-19 defect review found two themes behind about half of every member a head explains:
+**Why it matters.** The 2026-10-19 defect review found two themes behind about half of every member a head explains:
 - a fact worked out from history instead of recorded: 29 heads, 158 members
 - one fact spelled in many places: 15 heads, 121 members
 
@@ -41,4 +46,8 @@ Each check carries a baseline that can only shrink, and the baseline is burned d
 6. One home for each configuration fact, with its check (S).
 7. Burning each baseline down, as the inventory's items.
 
-**Open question for the owner: where this goes against v0.6.0** ("the layout is the reader's", 38 of 39 Required ids closed on 2026-10-19). **Recommendation:** do step 2, the inventory, now. Scope the fixes as their own `ROADMAP.md` milestone after v0.6.0 ships, because the inventory decides how large the work is, and a milestone is scoped before it is built.
+**Decision needed.** Where this goes against v0.6.0 ("the layout is the reader's", 38 of 39 Required ids closed on 2026-10-19). **Recommendation:** do step 2, the inventory, now. Scope the fixes as their own `ROADMAP.md` milestone after v0.6.0 ships, because the inventory decides how large the work is, and a milestone is scoped before it is built.
+
+**Done when.** The principle's wording is in `CLAUDE.md`, the inventory's items are filed under `one-source-of-truth`, each of the four shapes has a check with a baseline that only shrinks, and every baseline is at zero.
+
+**Generator check.** This widens `PL-4S6C` (the fact-home check and the resident principle, closed 2026-10-12) at the owner's ask, and is not a re-entry of it. No filing has fallen through `tools/fact_home_check.py` since it closed. The new scope is the shapes that check never covered: state, documents and configuration.
