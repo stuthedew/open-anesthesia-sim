@@ -3,15 +3,29 @@ id: PL-G2D4
 title: Measure the excess miss rate of Explore subagent search on Sonnet 5.5 and Haiku 5.5 against Opus 5.5 in one dedicated session, on thorough searches drawn from recent design rounds, before any cheaper Explore default is adopted: PL-2D28's third revision names the break-even lines (about 1 in 20 for Sonnet 5.5, 1 in 11 for Haiku 5.5) but decides on estimates and calls the measurement unaffordable, which its own cost table does not support
 priority: P3
 effort: L
-status: ready
+status: blocked
 classes: session-cost
 feature: model-evidence
 touches: docs/items/PL-G2D4-measure-the-excess-miss-rate-of-explore.md
+blocked-by: v0.7.0
 added: 2026-10-17
 payoff: the Explore subagent's model and effort are chosen on measured miss rates with bounds rather than on three multiplied estimates
 verify: grep -qE '^[*][*]Measured on 2026-[0-9]{2}-[0-9]{2}' docs/items/PL-G2D4-*.md
 not-delegable: the trial is one dedicated session that dispatches about 240 subagent searches and checks disputed leads against the source; a delegated worker cannot run it
 ---
+
+**On hold** (project owner, 2026-10-19: "Actually, hold off on that. That
+seems like a big can of warms right? With a lot of anaylsis?" and "Let's put a
+pin in that and figure out where it goes when I do a roadmap update"). The
+owner judged the trial too large an analysis to start now. Where it goes is
+the owner's decision at their next roadmap update. Until then the item is
+`blocked` on `v0.7.0`, so `bin/docket next`, `concurrent` and the workflow
+batches do not offer it. The next roadmap update the docket can see is the
+scoping round for v0.7.0. When that milestone is scoped, `bin/docket check`
+reports that this item is ready to promote. The session that sees that report
+puts the question of where it goes to the owner rather than promoting it. If
+the owner updates the roadmap without scoping v0.7.0, nothing in the docket
+fires, so the session doing that update has to raise this item itself.
 
 **Problem.** Measure the excess miss rate of Explore subagent search on Sonnet 5.5 and Haiku 5.5 against Opus 5.5 in one dedicated session, on thorough searches drawn from recent design rounds, before any cheaper Explore default is adopted: PL-2D28's third revision names the break-even lines (about 1 in 20 for Sonnet 5.5, 1 in 11 for Haiku 5.5) but decides on estimates and calls the measurement unaffordable, which its own cost table does not support
 
