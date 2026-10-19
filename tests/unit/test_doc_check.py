@@ -5615,6 +5615,62 @@ def test_an_open_brief_with_a_wrapped_clause_is_refused_and_a_closed_one_passes(
         assert report.errors == []
 
 
+# --- literal blocks that no page shows as prose (`PL-2B0B`) --------------------
+
+#: A paragraph, then the same text as an indented code block and as an HTML
+#: comment. CommonMark 0.31.2 reads the first block as code (§ 4.4) and the
+#: second as an HTML block that GitHub does not render (§ 4.6).
+LITERAL_BLOCKS = {
+    "an indented code block": "An example:\n\n    {text}\n",
+    "an HTML comment": "An example:\n\n<!--\n{text}\n-->\n",
+}
+
+
+def test_a_marker_in_an_indented_code_block_marks_nothing(tmp_path: Path) -> None:
+    """`PL-2B0B`: an `absent:` marker shown as code is the format being shown.
+
+    It neither declares the path absent nor is held to the tree. `PL-7454`
+    (#1444) already made `_marker_lines` read a marker only where it opens an
+    HTML block, so this pins that reading for an indented code block.
+    """
+    present = "The file `docs/MODEL.md` is here.\n\n    <!-- absent: docs/MODEL.md -->\n"
+    assert _errors(_repo(tmp_path / "present", readme=f"{README}\n{present}")) == []
+
+    missing = "There is no `setup.py` here.\n\n    <!-- absent: setup.py -->\n"
+    errors = _errors(_repo(tmp_path / "missing", readme=f"{README}\n{missing}"))
+    assert any("cites `setup.py`, which does not exist" in error for error in errors)
+
+
+@pytest.mark.parametrize("block", sorted(LITERAL_BLOCKS))
+def test_a_line_citation_in_an_indented_code_block_or_a_comment_is_not_held(
+    tmp_path: Path, block: str
+) -> None:
+    """`PL-2B0B`: a line citation no page shows is not held to its file's length."""
+    text = LITERAL_BLOCKS[block].format(text="see `src/anesthesia_sim/core/thing.py:900`")
+    root = _repo(tmp_path, readme=f"{README}\n{text}")
+
+    assert not [error for error in _errors(root) if "that file has" in error]
+
+
+def test_tex_in_an_html_block_is_quiet(tmp_path: Path) -> None:
+    """`PL-2B0B`: an HTML comment renders no math, so TeX inside it is not refused."""
+    text = LITERAL_BLOCKS["an HTML comment"].format(text="The step \\(\\Delta t\\) is explicit.")
+
+    assert _math_errors(tmp_path / "repo", "docs/NOTE.md", text) == []
+
+
+@pytest.mark.parametrize("block", sorted(LITERAL_BLOCKS))
+def test_a_claim_in_an_indented_code_block_or_a_comment_is_not_read(
+    tmp_path: Path, block: str
+) -> None:
+    """`PL-2B0B`: a quotation no page shows claims nothing about the file it names."""
+    text = LITERAL_BLOCKS[block].format(text='`docs/SRC.md`\'s "words it does not hold" is it.')
+    root = _repo(tmp_path, readme=f"# Demo\n\n{text}")
+    (root / "docs" / "SRC.md").write_text("## Heading\n\nOther words.\n", encoding="utf-8")
+
+    assert _quotation_findings(root) == []
+
+
 def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
     """`PL-2P5L`: a worktree-isolated agent's copy failed the main checkout's run.
 
