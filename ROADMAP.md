@@ -138,7 +138,7 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.38 | Completed | **The release where a weekly `drift.yml` job checks each sentence quoted from Claude Code's documentation against its page, so a quotation the page no longer carries is reported within a week.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.37 tag and here. The item merged in `#1643`, before the v0.5.37 cut landed, so its change is inside the v0.5.37 tag and v0.5.37's notes now point here. `tools/doc_quotes.toml` records each quotation, and `tools/doc_quote_check.py` checks it against both the quoting file and the page (`PL-S7LT`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.37 tag. `PL-TNTK`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.5.39 | Completed | **The release where `bin/docket arm` holds a simulator branch that adds long prose until a commit records its fresh review.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.38 tag and here. The item merged in `#1645`, before the v0.5.38 cut landed, so its change is inside the v0.5.38 tag and v0.5.38's notes now point here. A simulator branch that adds a long docstring or comment holds until a commit after it carries a `Prose-review:` trailer, and close-out step 8 tells a session to record one (`PL-W04Z`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.38 tag. `PL-VRQ9`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.5.40 | Completed | **The release where every `bin/docket` command that reads the queue answers from the same copy of each item, the default branch's newer one, so `delegable` and `triage` no longer offer an item `main` has already closed or triaged.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.39 tag and here. The item merged in `#1647`, after the v0.5.39 tag. `triage`, `delegable`, `wave`, `feature`, `gate` and `generators` now load the store through `cli._load_to_read` and say when they read the base's copy, and docket's README names the commands that still read the working tree's copy and why (`PL-4T32`). **It finishes `one-snapshot`**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.39 tag. `PL-06S3`, the cut, ships in no release under `PL-KRS6`. | 1 item |
-| v0.5.41 | Completed / current baseline | **The release where the dashboard opens on the shipped Workspaces with a tab strip to switch between them, and where each run keeps a number that is never given out twice, so a Workspace can pin the run it shows and says so when that run is gone.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 35 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.40 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/`, whose three Workspaces gain a schema version and an empty pin. `app/` and `layout/` changed because each run is named by an identity that is never reused and a Workspace can pin one (`PL-7Z84`), the dashboard opens on the shipped Workspaces under a tab strip where a reader sets a pin (`PL-2KXB`), and `AreaLayout` refuses a layout of two windows before it builds its widget, which had crashed a test worker on `main` (`PL-H9VT`). `docs/MODEL.md` states the run identity and the pin. **It finishes `owner-attention`**, and closes no generator head. **One is a Gate 2 entry**, `PL-7Z84`, and the gate stands at 239 of 246 cleared, from 238 of 246 at the v0.5.40 tag. `PL-5VTL`, the cut, ships in no release under `PL-KRS6`. | 5 items |
+| v0.5.41 | Completed / current baseline | **The release where the dashboard opens on the shipped Workspaces with a tab strip to switch between them, and where each run keeps a number that is never given out twice, so a Workspace can pin the run it shows and says so when that run is gone, and where every layout operation can be done from a menu and the keyboard.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 36 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.40 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/`, whose three Workspaces gain a schema version and an empty pin. `app/` and `layout/` changed because each run is named by an identity that is never reused and a Workspace can pin one (`PL-7Z84`), the dashboard opens on the shipped Workspaces under a tab strip where a reader sets a pin (`PL-2KXB`), each Area border can be moved from the keyboard and a Layout menu switches Workspace (`PL-M352`), and `AreaLayout` refuses a layout of two windows before it builds its widget, which had crashed a test worker on `main` (`PL-H9VT`). `docs/MODEL.md` states the run identity and the pin. **It finishes `owner-attention`**, and closes no generator head. **One is a Gate 2 entry**, `PL-7Z84`, and the gate stands at 239 of 246 cleared, from 238 of 246 at the v0.5.40 tag. `PL-5VTL`, the cut, ships in no release under `PL-KRS6`. | 6 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -247,9 +247,9 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 
 v0.5.41 is the release where the dashboard opens on the shipped Workspaces
 with a tab strip to switch between them, and where each run keeps a number
-that is never given out twice. It has five items, and it is a patch on both
+that is never given out twice. It has six items, and it is a patch on both
 halves of § "Versioning decision"'s test. No capability boundary is crossed,
-because v0.6.0's capability, a layout the reader arranges, is not finished: 35
+because v0.6.0's capability, a layout the reader arranges, is not finished: 36
 of the 39 ids in its Required scope are closed. The next three minor numbers,
 v0.6.0 through v0.8.0, are given to milestone sections. One item, `PL-7Z84`, is
 a Gate 2 entry. `bin/docket wave` puts the gate at 239 of 246 cleared at this
@@ -259,10 +259,10 @@ cut, from 238 at the v0.5.40 tag, and 7 entries stay open.
 
 | Tree | v0.5.40 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `532f2c9` | `aeefeed` | `app/`, `layout/` and `data/workspaces/` |
+| `src/` | `532f2c9` | `4bf5a52` | `app/`, `layout/` and `data/workspaces/` |
 | `core/` | `92e04de` | `92e04de` | nothing |
-| `app/` | `b869318` | `2ea1987` | the run name, the tab strip, the pin and the two-window refusal |
-| `layout/` | `c219f87` | `b748c67` | the run identity, the pin and the Workspace schema migration |
+| `app/` | `b869318` | `01166a5` | the run name, the tab strip, the pin, the keyboard and menu routes, and the two-window refusal |
+| `layout/` | `c219f87` | `0968a0f` | the run identity, the pin, the Workspace schema migration and each Area's nearest borders |
 | `data/workspaces/` | `e1db749` | `3967ab7` | schema version 2 and an empty `pinned_run` in each shipped Workspace |
 | `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
 | `docs/MODEL.md` | `1eda843` | `c28243f` | the run identity, the pin, and the readout row's column shares |
@@ -272,7 +272,7 @@ cut, from 238 at the v0.5.40 tag, and 7 entries stay open.
 `core/` resolves to the same tree at the v0.5.40 tag and at this cut, and the
 only stored values that moved are the three Workspace files, which hold
 layout and no scientific value. So this cut did not measure the trajectories
-again. All five items merged on `main` after the v0.5.40 tag, so no earlier
+again. All six items merged on `main` after the v0.5.40 tag, so no earlier
 release's notes need a pointer to them.
 
 **What a learner sees change.** The dashboard now opens on the shipped
@@ -286,6 +286,16 @@ the header of every Area, and when the pinned run is not open its Areas show a
 named "run not present" state instead of another run. `docs/MODEL.md` states
 both rules. The readout row keeps its own column shares, 0.82 and 0.18 of the
 width, so switching Workspace does not change the width a row is laid out at.
+
+**Every layout operation can now be done without a drag** (`PL-M352`). Each
+Area border is a tab stop. The arrow keys along its axis move it 20 px a step,
+and Escape puts back the layout drawn when the border took the focus. Each
+Area's menu has a Resize submenu that names its borders and gives the chosen
+one the focus. A Layout button at the end of the tab strip lists every
+Workspace and offers the previous and next Workspace on Ctrl+PgUp and
+Ctrl+PgDn. Blender has no keyboard resize, so the border follows the WAI-ARIA
+Authoring Practices window splitter pattern, and
+`docs/interface-provenance.md` records that divergence.
 
 **The code.** `src/anesthesia_sim/layout/run_identity.py` holds a run's
 identity, and `dashboard_frame.run_label` is the one place it is rendered. The
