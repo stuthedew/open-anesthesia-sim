@@ -38,14 +38,16 @@ exits 2 blocks the stop whatever else runs.
 
 **The corrected line still needs a remote-tracking ref to exist, which is the
 second half of this hook's job (`PL-3SGR`, `PL-483K`).** `--not --remotes`
-reads `refs/remotes/*` in this checkout and nothing else. The harness clones
-with `git clone --depth 1`, which implies `--single-branch` and leaves
-`remote.origin.fetch` as `+refs/heads/main:refs/remotes/origin/main` alone - so
-`git push` sends the session branch and never writes
-`refs/remotes/origin/<branch>`, and every commit on it counts as unpushed
-however many times it has been pushed. Observed 2026-09-07 after three
-successful pushes: the hook reported "has 3 unpushed commit(s) and no remote
-branch" while `git ls-remote` returned exactly the local `HEAD`.
+reads `refs/remotes/*` in this checkout and nothing else. The harness
+provisions the clone by fetching the default branch alone, at depth 50 (the
+`origin/main` reflog's first entry is `fetch --no-progress --depth 50 origin
+main`, `PL-2H0K`), and leaves `remote.origin.fetch` as
+`+refs/heads/main:refs/remotes/origin/main` alone - so `git push` sends the
+session branch and never writes `refs/remotes/origin/<branch>`, and every
+commit on it counts as unpushed however many times it has been pushed.
+Observed 2026-09-07 after three successful pushes: the hook reported "has 3
+unpushed commit(s) and no remote branch" while `git ls-remote` returned
+exactly the local `HEAD`.
 
 The repair is to the clone rather than to the test. Widening the refspec to
 `+refs/heads/*:refs/remotes/origin/*` is what makes `git push` write the

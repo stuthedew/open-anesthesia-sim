@@ -545,10 +545,10 @@ def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
     reader tells the two apart. No fetch, no listing - under `--no-fetch`, a
     fetch that failed, or `refresh=False`, the refs are read as they are.
 
-    `refresh=False` is `check`'s: it validates the store, runs in CI's shallow
-    checkout and in every `make check`, and its one ref read is the in-flight
-    exclusion behind an advisory, so it reads the refs as they are and is the
-    one read command that does not say so - `NO_FETCH_COMMANDS` in the tests
+    `refresh=False` is `check`'s: it validates the store, runs in CI and in
+    every `make check`, and its one ref read is the in-flight exclusion behind
+    an advisory, so it reads the refs as they are and is the one read command
+    that does not say so - `NO_FETCH_COMMANDS` in the tests
     holds that exemption by name. It takes effect only where this is the first
     ask; a snapshot already made is what it is.
 
@@ -606,10 +606,11 @@ def _from_base(
     """`items` with the default branch's copy in place of each one it supersedes.
 
     Beside them, what each replaced, by id: the working tree's copy and the
-    base's, which `next` and `show` name so that an answer taken from a copy
-    the working tree does not hold says so (`PL-Y48N`). Read commands only -
-    a command writing the store must never write the base's copy over the
-    working tree's, which is a merge nobody asked for.
+    base's, which each read command names so that an answer taken from a copy
+    the working tree does not hold says so (`PL-Y48N`). Read commands only,
+    and only through `_load_to_read` - a command writing the store must never
+    write the base's copy over the working tree's, which is a merge nobody
+    asked for.
     """
     copies = _base_copies(args)
     # A partial read answers from the working tree alone, which is what
@@ -627,6 +628,30 @@ def _from_base(
         answered.append(parse_item(copy.text, copy.path.rsplit("/", 1)[-1]))
         replaced[item.identifier] = (item, copy)
     return answered, replaced
+
+
+def _load_to_read(
+    args: argparse.Namespace,
+) -> tuple[list[Item], Config, dict[str, tuple[Item, BaseCopy]]]:
+    """The store as a read command answers from it, with what the base's copies replaced.
+
+    This is `_load` followed by `_from_base`, so every read command answers from
+    the same copy of each item (`PL-KS01`). Before this, `next`, `show` and
+    `picks` read the default branch's newer copy, while the digest, `list`,
+    `status` and `concurrent` read the working tree's. Behind `origin/main`,
+    the digest's `Top:` line could then name an item that `next` no longer
+    offered. A read command calls this rather than `_load`, and prints
+    `_say_read_from_base` with its answer. A command that validates or writes
+    the store calls `_load`, because it must see the working tree's files.
+
+    An empty store asks git nothing, so the digest of a project with no queue
+    stays silent and pays nothing, as it did before.
+    """
+    _, items, config = _load(args)
+    if not items:
+        return items, config, {}
+    answered, replaced = _from_base(args, items)
+    return answered, config, replaced
 
 
 def _commits(count: int) -> str:
@@ -648,7 +673,7 @@ def _base_unread_line(args: argparse.Namespace) -> str:
 def _say_read_from_base(
     args: argparse.Namespace, replaced: dict[str, tuple[Item, BaseCopy]]
 ) -> None:
-    """Say that `next` answered from the default branch's copy, naming what closed there.
+    """Say that a read command answered from the default branch's copy, naming what closed there.
 
     Counted where the status moved, and named where it moved to closed: a
     closure is what the working tree's copy would have offered, and a triage
@@ -1212,7 +1237,7 @@ def _offered(
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     root = _invocation(args).root
     report = analyze(
         items, args.today or date.today(), config, milestones=_milestones(root, config)
@@ -1220,6 +1245,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     rendered = render.format_list(report, _flight(args), config.protected_paths, config.gate_paths)
     if rendered:
         print(rendered)
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
 
@@ -1272,7 +1298,7 @@ def _milestones(root: Path, config: Config) -> MilestoneStates | None:
 
 
 def cmd_digest(args: argparse.Namespace) -> int:
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     if not items:
         return 0
     root = _invocation(args).root
@@ -1300,6 +1326,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
     )
     if rendered:
         print(rendered)
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     if getattr(args, "profile", False):
         git = _invocation(args).git
@@ -1378,11 +1405,18 @@ def cmd_triage(args: argparse.Namespace) -> int:
     reports the untriaged count and nothing about who is holding those items.
     Two sessions answered `PL-B0YN` and `PL-LXR3` the same afternoon and the
     merge discarded most of one answer (queue item PL-PRHN).
+
+    It lists from the default branch's newer copy of each item, as every read
+    command does, so an item another session has triaged on the base is not
+    offered for a second answer (`PL-4T32`). `set` still writes the working
+    tree's copy, and the line `_say_read_from_base` prints says to bring the
+    base in first.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
     flight = _elsewhere(args, _flight(args))
     print(render.format_triage(report, config, flight, _filed(args, report.untriaged)))
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
 
@@ -2297,10 +2331,9 @@ def cmd_show(args: argparse.Namespace) -> int:
     where the item sits in the queue rather than about who is working it
     (`PL-C97K`).
     """
-    _, items, config = _load(args)
     # Before the item is found, so every line below - the band, the placement,
     # the generator a member names - reads the copy `next` ranked (`PL-Y48N`).
-    items, replaced = _from_base(args, items)
+    items, config, replaced = _load_to_read(args)
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
@@ -2660,7 +2693,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     bare batch alone: an item's collisions include work outside the step, so
     the `<id>` form refuses the flag rather than hide them.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     today = args.today or date.today()
     report = analyze(items, today, config)
     flight = _flight(args)
@@ -2717,6 +2750,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         if not free:
             print("    nothing")
         _print_observed(args, item, flight)
+        _say_read_from_base(args, replaced)
         _say_unread(args, flight)
         return 0
 
@@ -2730,6 +2764,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         refusal = _unscoped(root, config, plan)
         if refusal or plan is None:
             print(refusal)
+            _say_read_from_base(args, replaced)
             _say_unread(args, flight)
             return 1
         startable = [i for i in startable if plan.scope.placement(i.identifier) == IN_SCOPE]
@@ -2771,6 +2806,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print(render.format_excluded(flight.ids, _holdings(args)))
     # A gate entry carried on past its line is read short, and the scope with
     # it, so a batch drawn from that scope may be missing work (`PL-GMR6`).
+    _say_read_from_base(args, replaced)
     status = _say_plan_unread(plan)
     _say_unread(args, flight)
     return status
@@ -2821,7 +2857,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     The cut is read only where the survey would otherwise print an offer, as
     the digest reads it only beside its own (`_cuts`).
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
     root = _invocation(args).root
     current = read_version(root / config.version_file)
@@ -2838,6 +2874,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         cuts=_cuts(root, config, args) if ready.shippable and not interrupted else None,
     )
     print(rendered if rendered else "Nothing open.")
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     # `format_status` names a plan list read short beneath the survey, which
     # may then have left a mark off an id the roadmap places (`PL-L4X3`).
@@ -2874,7 +2911,10 @@ def cmd_next(args: argparse.Namespace) -> int:
     ready too, since a queue whose startable work is all decisions would
     otherwise answer "nothing is ready" and say no more.
     """
-    _, items, config = _load(args)
+    # Ranked from the default branch's copy of any item it moved since this
+    # working tree forked, so an item another session closed and merged is not
+    # offered from a copy that predates it (`PL-Y48N`).
+    items, config, replaced = _load_to_read(args)
     lane = None if args.lane == "all" else args.lane
     if lane is not None and not config.workflow_paths:
         print(
@@ -2887,10 +2927,6 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
         return 1
     root = _invocation(args).root
-    # Ranked from the default branch's copy of any item it moved since this
-    # working tree forked, so an item another session closed and merged is not
-    # offered from a copy that predates it (`PL-Y48N`).
-    items, replaced = _from_base(args, items)
     # The grooming count printed at the foot of a pick is the same claim the
     # digest's is, so it is built from the same inputs (`_complete_report`).
     report = _complete_report(root, items, config, args)
@@ -3485,7 +3521,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
     entries that are not debt the freeze carries too (`PL-JV5Q`). A roadmap
     that cannot be read is said so, rather than read as one holding none.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     roadmap = _invocation(args).root / config.roadmap_file
     frozen_list = None
     unread = ""
@@ -3504,15 +3540,17 @@ def cmd_gate(args: argparse.Namespace) -> int:
     print(render.format_gate(computed, config.debt_classes))
     if unread:
         print(f"Not listed: the last frozen list's open entries that are not debt - {unread}.")
+    _say_read_from_base(args, replaced)
     return 0
 
 
 def cmd_feature(args: argparse.Namespace) -> int:
     """Progress by feature, so a half-finished one is visible as such."""
-    _, items, _ = _load(args)
+    items, _, replaced = _load_to_read(args)
     groups = features(items)
     if not groups:
         print("no items are assigned to a feature")
+        _say_read_from_base(args, replaced)
         return 0
     if args.name and args.name not in groups:
         print(f"no feature named '{args.name}'")
@@ -3523,6 +3561,7 @@ def cmd_feature(args: argparse.Namespace) -> int:
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
         for item in feature.items:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
+    _say_read_from_base(args, replaced)
     return 0
 
 
@@ -3552,8 +3591,18 @@ def cmd_generators(args: argparse.Namespace) -> int:
     stating one sit together - the list triage and grooming compare a capture
     against. Whether two lines name one record is judgment; the command makes
     it one screen, and flags the overlap it can decide.
+
+    It reads the default branch's newer copy of each item, as every read
+    command does, so a head closed there is not reported open (`PL-4T32`).
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
+    code = _answer_generators(args, items, config)
+    _say_read_from_base(args, replaced)
+    return code
+
+
+def _answer_generators(args: argparse.Namespace, items: list[Item], config: Config) -> int:
+    """Print what `cmd_generators` was asked for, and return its exit status."""
     if args.head and args.misread:
         # The pair is refused rather than half of it dropped: the id view was
         # printed as though the flag had been honoured (`PL-SL4L`), and it
@@ -4496,9 +4545,10 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
 
 def cmd_delegable(args: argparse.Namespace) -> int:
     """Everything a worker may take, with the command that proves each one."""
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
     print(render.format_delegable(report, _flight(args), config.protected_paths, config.gate_paths))
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
 
@@ -4666,7 +4716,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
     because a beat the tool is unsure of is worth less than an obvious failure
     to produce one.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     root = _invocation(args).root
     roadmap = root / config.roadmap_file
     if not roadmap.is_file():
@@ -4682,6 +4732,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         _deferrals(items),
     )
     print(render.format_wave(plan, {item.identifier: item for item in items}))
+    _say_read_from_base(args, replaced)
     if (
         plan.step is None
         or plan.problems
@@ -4709,9 +4760,8 @@ def cmd_picks(args: argparse.Namespace) -> int:
     which it names as `wave` does, since a count it printed may be short
     (`PL-GMR6`).
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     root = _invocation(args).root
-    items, replaced = _from_base(args, items)
     flight = _flight(args)
     plan = _plan(root, items, config) if (root / config.roadmap_file).is_file() else None
     failure = ""
@@ -5013,7 +5063,7 @@ def _open_pull_requests(
 
 
 def _run_forge_command(
-    command: str, root: Path, *extra: str
+    command: str, root: Path, *extra: str, timeout: float = OPEN_LOOKUP_TIMEOUT
 ) -> subprocess.CompletedProcess[str] | str:
     """Run a command a project named for asking its forge: what it did, or why it did not run.
 
@@ -5030,15 +5080,10 @@ def _run_forge_command(
         return "it could not be run (it is not one simple command of words)"
     try:
         return subprocess.run(
-            [*words, *extra],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=OPEN_LOOKUP_TIMEOUT,
-            check=False,
+            [*words, *extra], cwd=root, capture_output=True, text=True, timeout=timeout, check=False
         )
     except subprocess.TimeoutExpired:
-        return f"it gave no answer within {OPEN_LOOKUP_TIMEOUT:g} s"
+        return f"it gave no answer within {timeout:g} s"
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return f"it could not be run ({error})"
 
@@ -5115,6 +5160,44 @@ def _auto_merge(root: Path, config: Config) -> Callable[[int], arming.AutoMerge]
             return arming.AutoMerge(state=fields[0], at=fields[1])
         return arming.AutoMerge(
             declined=f"`{command}` answered {said[0]!r}, which is not `STATE TIME`"
+        )
+
+    return ask
+
+
+#: How long `prose_count_command` is given. Longer than the forge's limit,
+#: because the count parses every simulator file the branch changes, and a
+#: count that timed out holds the pull request rather than arming it.
+PROSE_COUNT_TIMEOUT = 60.0
+
+
+def _prose_count(root: Path, config: Config) -> Callable[[str], arming.ProseCount] | None:
+    """A way to count a branch's unreviewed long prose, or None if there is none.
+
+    `prose_count_command` answers it, with the commit carrying the newest
+    `Prose-review` record appended where there is one (`PL-W04Z`). A command
+    that failed, timed out or printed anything but a whole number comes back
+    `declined`, naming the command, and `arm` holds on it.
+    """
+    command = config.prose_count_command
+    if not command:
+        return None
+
+    def ask(since: str) -> arming.ProseCount:
+        extra = (since,) if since else ()
+        done = _run_forge_command(command, root, *extra, timeout=PROSE_COUNT_TIMEOUT)
+        if isinstance(done, str):
+            return arming.ProseCount(declined=f"`{command}` was not answered: {done}")
+        if done.returncode != 0:
+            err = " ".join(done.stderr.split())
+            return arming.ProseCount(
+                declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
+            )
+        said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
+        if len(said) == 1 and said[0].isdigit():
+            return arming.ProseCount(count=int(said[0]))
+        return arming.ProseCount(
+            declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
         )
 
     return ask
@@ -5308,6 +5391,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         runner=inv.git,
         newest=_newest_pull_request(inv.root, inv.config),
         auto_merge=_auto_merge(inv.root, inv.config),
+        prose_count=_prose_count(inv.root, inv.config),
     )
     for line in verdict.lines:
         print(line)

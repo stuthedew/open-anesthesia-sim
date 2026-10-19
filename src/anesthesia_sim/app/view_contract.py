@@ -73,8 +73,16 @@ pattern.
 View's title and the chooser (Q11, `app/area_layout.py`). No View is barred
 from an Area that a reader can close, because the values that must always be
 on screen are in the unconditional region and never in a View (Q9,
-`PL-NWTM`). A View's minimum size, and what an Area does when it cannot be
-given that size, are left to `PL-K285`. Where a Workspace pins a View to one
+`PL-NWTM`).
+
+**A View is never drawn below the size it needs** (`PL-K285`, project owner,
+2026-09-27, ratified). The size is a constraint, not a request. It is the
+larger of the minimum its registry entry declares and the View widget's own
+minimum size hint (`app/view_registry.py`). The container holds the Area at
+that size wherever the layout can give it. Where the layout cannot, the
+container hides the View and shows a notice stating the size the View needs
+and the size the Area has (`layout/sizing.py`). So a View never has to draw
+itself in less than it asked for, and is never clipped. Where a Workspace pins a View to one
 run, that binding is left to `PL-7Z84`. Until then, every View draws every
 displayed run.
 """

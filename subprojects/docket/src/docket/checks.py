@@ -48,6 +48,7 @@ from .model import (
     is_under,
     live_recurrences,
     misread_faults,
+    no_successor_faults,
     pr_number,
     ranks_as_generator,
     ranks_as_generator_defect,
@@ -1801,11 +1802,12 @@ def _check_provenance(
     Three things stop this from being a plain set membership test, and all
     three are about refusing to answer rather than answering wrongly.
 
-    A `history` that declined - most often a shallow clone, which is the normal
-    shape of an agent session's container - is recorded as a check that did not
-    run, and no item is judged. Reporting from a truncated history would mark
-    the oldest and best-established provenance in the store as broken, and
-    doing it silently would let that run read as a pass.
+    A `history` that declined is recorded as a check that did not run, and no
+    item is judged. The usual cause is a shallow clone: a session whose
+    session-start unshallow failed, or a checkout made with `--depth`.
+    Reporting from a truncated history would mark the oldest and
+    best-established provenance in the store as broken, and doing it silently
+    would let that run read as a pass.
 
     A `history` of `None` is a caller that did not ask, which every command but
     `check` is: no git read, and nothing to report about one.
@@ -2566,7 +2568,9 @@ def _check_recurrences(report: Report, known: set[str]) -> None:
 
 
 def _check_reentries(report: Report) -> None:
-    """Hold a `reenters:` id to a fix that had shipped when the item was filed.
+    """Hold `reenters:` and `no-successor:` ids to `done` items.
+
+    A `reenters:` id must also have been closed by the time the item was filed.
 
     `docket inflow` counts these as fixes that did not hold, so an id naming an
     open item, a dropped one or one closed after the filing is a re-entry the
@@ -2577,6 +2581,9 @@ def _check_reentries(report: Report) -> None:
         faults = reentry_faults(item, by_id)
         if faults:
             report.errors.append(f"{_where(item)}: `reenters:` {'; '.join(faults)}")
+        unanswered = no_successor_faults(item, by_id)
+        if unanswered:
+            report.errors.append(f"{_where(item)}: `no-successor:` {'; '.join(unanswered)}")
 
 
 def _check_spent_verdicts(report: Report, known: set[str]) -> None:

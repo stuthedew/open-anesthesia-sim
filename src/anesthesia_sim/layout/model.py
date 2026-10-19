@@ -37,8 +37,11 @@ also refuses a result that would nest a split deeper than
 whole edge is taken, whichever splits they sit in (`PL-G60V`), because a
 reader sees the rectangles and never the tree.
 
-**What is not here yet.** Minimum sizes, the clamp on a drag and `too_small()`
-are `PL-K285`'s; taking an Area into its own window is a later operation of
+**The model holds no minimum sizes.** How small an Area may be depends on the
+screen, so `layout/sizing.py` decides it against an extent in pixels and the
+adapter clamps a drag there (`PL-K285`).
+
+**What is not here yet.** Taking an Area into its own window is a later operation of
 `ROADMAP.md` item 34. Closing an Area is a join that gives its place to a
 neighbour, which the adapter's Area menu asks `join` for (`PL-2KXB`). What a
 Workspace carries beyond its layout is `PL-WV9K`'s, and the file is
@@ -688,8 +691,8 @@ class LayoutModel:
                 sizes would round the gap away, and when two handles of one split
                 lie on the line, since moving both to one place leaves the
                 children between them none. The message names the Areas left
-                with no room. `PL-K285` adds minimum sizes, which clamp a drag
-                before it gets here.
+                with no room. The adapter stops a drag at each Area's need
+                before it gets here (`layout/sizing.py`).
         """
 
         _require_float("position", position)

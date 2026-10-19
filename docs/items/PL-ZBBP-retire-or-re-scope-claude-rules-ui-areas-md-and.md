@@ -3,12 +3,15 @@ id: PL-ZBBP
 title: Retire or re-scope .claude/rules/ui-areas.md and re-point docs/ARCHITECTURE.md when the area system ships, since the rule is a standing prohibition on what v0.6.0 builds and its paths frontmatter does not reach a layout package outside app/
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: interface-areas
+milestone: v0.5.34
 touches: .claude/rules/ui-areas.md, docs/ARCHITECTURE.md
 blocked-by: PL-TH35
 added: 2026-09-16
+closed: 2026-10-19
+pr: 1630
 payoff: the rule that loads on the interface code describes the area system as built, and loads on the layout package too
 verify: ! grep -q 'Do not build splitting, joining, docking' .claude/rules/ui-areas.md
 ---

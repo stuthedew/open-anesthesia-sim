@@ -75,8 +75,8 @@ to `ready`, with a `verify:` command run on 2026-09-19 and watched to fail
 
 **Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** `check_gate_counts` at
 `tools/doc_check.py:1504` still says "Prose is deliberately left alone", and
-`git log -S'_withheld_counts' -- tools/doc_check.py` returns exactly one commit
-- the original `PL-GLBF` pattern, with nothing built on it since. The count has
+`git log -S'_withheld_counts' -- tools/doc_check.py` returns exactly one commit -
+the original `PL-GLBF` pattern, with nothing built on it since. The count has
 grown rather than held: the Gate 1 declines alone now carry roughly **35** bold
 count paragraphs against the brief's "about fifteen", including two added
 2026-09-19 (`ROADMAP.md:3218`, `:3395`). The decision half is recorded inside

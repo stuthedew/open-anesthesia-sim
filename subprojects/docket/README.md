@@ -600,16 +600,27 @@ they are, or named as not a read command.
 (`PL-Y48N`). A working tree behind `origin/main` holds every item as it stood
 at the fork, so `next` offered, and `show` called ready, an item another
 session had closed and merged since. Where the snapshot places the working
-tree behind, `next` and `show` read the base's copy of each item the base
+tree behind, the read commands read the base's copy of each item the base
 changed after the fork (`vcs.base_copies`) in place of the working tree's -
 unless this branch changed the item too, when its own edit stands except over
 a closure, since `holdings` releases every claim on an item the base has
-closed. `next` counts the items whose status it took from there and names the
-closed ones; `show` says so under the band. `claim` reads the base's copy
-after its fetch and refuses, writing nothing, an item the base has closed,
-which is the rule its read-back would have released the claim by. A command
-that writes the store never reads the base's copy, and the digest, `list` and
-`status` still answer from the working tree.
+closed. Those commands are the digest, `list`, `status`, `next`, `show`,
+`picks`, `concurrent`, `triage`, `delegable`, `wave`, `feature`, `gate` and
+`generators`, and each loads the store through `cli._load_to_read`, so a read
+command added later gets the base's copy by calling it (`PL-KS01`,
+`PL-4T32`). `triage` reads it too, although `set` then edits the working
+tree's file, because an item the base has already triaged should not be
+offered for a second answer that the merge would discard. Each one counts the items whose status it took from
+there and names the closed ones; `show` says so under the band. So the
+digest's counts and its releasable count describe the base at the moment of
+the refs line, not this checkout's files. `claim` reads the base's copy after
+its fetch and refuses, writing nothing, an item the base has closed, which is
+the rule its read-back would have released the claim by. The commands that
+validate or write the store - `check`, `set`, `new`, `withdraw` and `record` -
+read the working tree's copy and never the base's. `flight`, `stranded` and
+`branch` report on branches and refs rather than on the items, and also read
+the working tree's copy. So do `trend` and `inflow`, which count this
+checkout's own history and fetch nothing.
 
 **When the refs were last refreshed is read from `FETCH_HEAD`, and read before
 a fetch.** Git writes it on every fetch that reaches the remote - a fetch that
@@ -1024,7 +1035,12 @@ ask. `auto_merge_command` is the same boundary for `arm`'s other question
 prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
 where it was never switched on, or exits non-zero where it could not ask. A
 switch off that no `Auto-merge: off - <why>` trailer on a commit made since
-records as the session's holds the pull request.
+records as the session's holds the pull request. `prose_count_command` is how
+`arm` counts the long docstrings and comments a simulator change adds that no
+review covers (`PL-W04Z`): the package appends the commit carrying the newest
+`Prose-review: read N, rewrote M, rejected K` trailer, where one does, and the
+command prints one whole number or exits non-zero. A count above zero holds the
+pull request, and so does a count that could not be read.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the
@@ -3467,8 +3483,9 @@ reported:
 - **Anything at all, in a shallow clone.** `git log` in a truncated history
   answers confidently and wrongly, and the commits it is missing are the
   oldest ones — so the best-established provenance in the store is what would
-  be reported as broken. This matters more than it looks: the container an
-  agent session runs in is normally shallow.
+  be reported as broken. A session's container is provisioned at depth 50
+  and unshallowed by the session-start hook, so it is shallow only where that
+  fetch failed, and the hook fails silently (`PL-2H0K`).
 
 A shallow checkout is a worse condition than a bare one, and the difference
 shapes how it is reported. In a bare checkout git cannot answer and every read

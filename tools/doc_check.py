@@ -111,6 +111,7 @@ import sys
 import textwrap
 import tokenize
 import unicodedata
+import warnings
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -320,6 +321,10 @@ try:
         tags,
         untracked_path_args,
     )
+
+    # What `ast.parse` raises where this interpreter cannot parse a file, which
+    # `verify` names a file for (`PL-LCBQ`).
+    from docket.verify import UNPARSABLE
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -377,6 +382,10 @@ DOC_GLOBS = (
 # `paths:` frontmatter, which defers it to the sessions that open a matching
 # file.
 RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
+#: The record of what the resident set holds and why: each block routed out or
+#: kept, and the reductions already refused. Both resident advisories name it,
+#: so a session meeting one reads the answer already written (`PL-X925`).
+RESIDENT_LEDGER = "docs/resident-instructions.md"
 SKILLS_DIR = ".claude/skills"
 WORKER_DOC = "docs/worker.md"
 # Instruction text a session loads only once something makes it load: a skill
@@ -1125,7 +1134,8 @@ QUOTED_SOURCE_RE = re.compile(
 #: one contained in its file that day, so the move lost no finding. The
 #: possessive stays hard because neither refusal came through it, and because
 #: it is how this project quotes a sentence, whose drift is the point.
-CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?")
+CLAIMING_CONNECTIVE = r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?"
+CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
 #: A code-spanned source - a document, an item, a module - standing directly
 #: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
@@ -1133,17 +1143,17 @@ CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?")
 QUALIFIED_RE = re.compile(
     r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
 )
-#: A section mark after a code-spanned item id, which cites that item's brief:
-#: `` `PL-MB2W` § "Design round, 2026-09-24" ``. `QUALIFIED_RE` hands it on
-#: from `check_citations`, since no documentation heading answers it, and
-#: `QUOTED_SOURCE_RE` names only a `.md` document, so the seven such citations
-#: standing on 2026-09-26 were read by nothing (`PL-QYN4`). The mark alone,
-#: because nothing else after an id claims the brief holds the words: `under
-#: "X"` names the heading the item is listed under elsewhere, as both such sites
-#: did that day, and a quotation after a bare id is prose. The possessive would
-#: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
+#: A claiming connective after a code-spanned item id, which cites that item's
+#: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
+#: "writes nothing" ``. `QUALIFIED_RE` hands it on from `check_citations`,
+#: since no documentation heading answers it, and `QUOTED_SOURCE_RE` names only
+#: a `.md` document, so the seven section marks standing on 2026-09-26 were read
+#: by nothing (`PL-QYN4`), and the eleven possessives until `PL-RX0W`. Only
+#: the connectives that claim the brief holds the words: `under "X"` names the
+#: heading the item is listed under elsewhere, as both such sites did that day,
+#: and a quotation after a bare id is prose.
 ITEM_SECTION_RE = re.compile(
-    rf"`(?P<item>{ID_PATTERN})`{GAP}*§{{1,2}}{GAP}*"
+    rf"`(?P<item>{ID_PATTERN})`{GAP}*(?:{CLAIMING_CONNECTIVE}){GAP}*"
     rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 
@@ -1214,6 +1224,16 @@ MAKE_CONTINUED_RE = re.compile(r"(?<!\\)(?:\\\\)*\\$")
 MAKE_DEFINE_RE = re.compile(
     r"[ \t]*(?:(?:export|override|private)[ \t]+)*define"
     r"(?:[ \t]+(?![ \t]|(?:::|[:+?!])?=)|$)(?P<name>[^#]*)"
+)
+#: An assignment to `.RECIPEPREFIX`, after any of make's modifiers and with
+#: any operator, or a `define` of it. From that line on make 4.3 opens a
+#: recipe line with the variable's first character instead of a tab (`eval`
+#: in GNU make 4.3's `src/read.c` tests a line against `cmd_prefix`), and
+#: every reader here knows a recipe line by its tab, so `_make_lines` declines
+#: the Makefile by name rather than read its recipes as missing (`PL-GSJ6`).
+MAKE_RECIPEPREFIX_RE = re.compile(
+    r"[ \t]*(?:(?:export|override|private)[ \t]+)*(?:define[ \t]+)?"
+    r"\.RECIPEPREFIX[ \t]*(?:(?:::|[:+?!])?=|$|#)"
 )
 #: The body lines that nest a `define` or close one, as `do_define` in the same
 #: file reads them: a bare `define`, no modifier ahead of it, opens another, and
@@ -1347,6 +1367,11 @@ class ResidentFile:
     name: str
     characters: int
     lines: int
+    #: `False` for a skill's description, which is payload but no instruction
+    #: file. `CLAUDE.md`'s resident-growth series was taken on the instruction
+    #: files alone, before `PL-44DG` added the descriptions and the digest to
+    #: the total, so the printed line names that subtotal too (`PL-DXF0`).
+    instruction_file: bool = True
 
 
 @dataclass(frozen=True)
@@ -1393,6 +1418,11 @@ class ResidentInstructions:
     def comparable_total(self) -> int:
         """The half a git ref can reproduce: the number every comparison reads."""
         return sum(row.characters for row in self.files)
+
+    @property
+    def instruction_total(self) -> int:
+        """Characters in the instruction files alone, the basis of `CLAUDE.md`'s growth series."""
+        return sum(row.characters for row in self.files if row.instruction_file)
 
     @property
     def total_lines(self) -> int:
@@ -2703,7 +2733,7 @@ def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterato
     """
     end = _subsection_end(lines, section.gate_line)
     subsection = "\n".join(lines[section.gate_line : end])
-    for match in _statement_matches(NOT_DELEGABLE_COUNT_RE, subsection):
+    for match in _statement_matches(NOT_DELEGABLE_COUNT_RE, subsection, PROSE):
         stated = _count_word(match.group("count"))
         if stated is not None:
             yield section.gate_line + _line_of(subsection, match.start()), stated
@@ -2944,6 +2974,26 @@ SPAN_BREAK_RE = re.compile(SOFT_BREAK)
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
 
 
+def _parser_refusal(text: str) -> str | None:
+    """Why this interpreter's parser refuses `text`, or `None` where it reads it.
+
+    `docket.python` reads a file with the tokenizer, and says in its module
+    docstring that the tokenizer's reading can be wrong without an error. A
+    formatted string that nests its own quote (PEP 701) mis-tokenizes on
+    Python 3.11 and merges the statements after it into one. Where the
+    parser refuses a file, the tokenizer's reading of it may be short, so a
+    caller names the file, as `verify` does (`PL-LCBQ`).
+    """
+    try:
+        with warnings.catch_warnings():
+            # An invalid escape sequence warns; that is the file's linter's to report.
+            warnings.simplefilter("ignore")
+            ast.parse(text)
+    except UNPARSABLE as error:
+        return refusal(error)
+    return None
+
+
 def _defined_tests(text: str) -> set[str]:
     """The test functions a Python file defines, as its `def` statements name them.
 
@@ -3043,7 +3093,17 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
             try:
                 defined |= _defined_tests(text)
             except UNTOKENIZABLE as error:
-                refused[path.relative_to(root)] = (text, refusal(error))
+                refused[path.relative_to(root)] = (
+                    text,
+                    f"the tokenizer refuses it: {refusal(error)}",
+                )
+                continue
+            # Read, but perhaps short: a name only it could define is declined.
+            if (why := _parser_refusal(text)) is not None:
+                refused[path.relative_to(root)] = (
+                    text,
+                    f"the parser refuses it, so the tokenizer's reading may be short: {why}",
+                )
     if not searched:
         report.declined.append(
             f"the {len(seen)} test citation(s) in the documentation: no test directory was "
@@ -3060,9 +3120,9 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
         holders = [f"{file} ({why})" for file, (text, why) in refused.items() if name in text]
         if holders:
             report.declined.append(
-                f"{path}:{line}: names the test `{name}`, which no file the tokenizer read "
-                f"defines; Python {platform.python_version()} cannot tokenize "
-                f"{' or '.join(holders)}, which may, so the citation was neither passed nor failed"
+                f"{path}:{line}: names the test `{name}`, which no file read whole defines; "
+                f"Python {platform.python_version()} cannot read {' or '.join(holders)} whole, "
+                "which may define it, so the citation was neither passed nor failed"
             )
         else:
             report.errors.append(
@@ -3297,7 +3357,7 @@ def check_bound_families(root: Path, report: Report) -> None:
             where = f'{family.document}:{line}: § "{family.heading}"'
             if family.kind.names(member):
                 continue
-            declared = next(_statement_matches(family.kind.declares_none, member), None)
+            declared = next(_statement_matches(family.kind.declares_none, member, PROSE), None)
             if declared is None:
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
@@ -3703,7 +3763,7 @@ def _version_claim(
     to the `**Tags.**` statement take this one form, and `said` is how an error
     quotes the sentence back.
     """
-    match = next(_statement_matches(claim, body), None)
+    match = next(_statement_matches(claim, body, PROSE), None)
     if match is None:
         return frozenset(), [], 0
     line = first_line + body[: match.start()].count("\n")
@@ -3751,10 +3811,12 @@ def check_tags(root: Path, report: Report) -> None:
     than that depth reads as never tagged. That fired on `main` in every web
     session container, eight false errors at a time.
 
-    The guard is deliberately narrower than "this clone is shallow". Both the
-    session containers and `actions/checkout` clone shallow, so declining on
-    that alone would retire the check everywhere it runs - including in a
-    checkout that has since fetched its tags and can answer exactly. So the
+    The guard is deliberately narrower than "this clone is shallow". A clone
+    can be shallow and still answer: one made with `--depth` that has since
+    fetched its tags can answer exactly, so declining on depth alone would
+    retire the check where it works. A session's container is shallow only
+    where its session-start unshallow failed, and every workflow here that
+    runs this script checks out with `fetch-depth: 0` (`PL-2H0K`). So the
     findings are computed first, and only withheld when there is something to
     withhold *and* truncation could account for it. A tag being **present** is
     never in doubt, so those inferences are untouched.
@@ -3870,10 +3932,9 @@ def check_tags(root: Path, report: Report) -> None:
         )
 
     # Only a finding that a truncated checkout could have invented is withheld,
-    # and only when there is one. Declining on `is_shallow` alone would silence
-    # this check in every environment that matters - a web session's container
-    # and `actions/checkout` both clone shallow - including the ones that have
-    # since run `git fetch --tags` and can answer perfectly well.
+    # and only when there is one. Declining on `is_shallow` alone would also
+    # silence the check in a shallow clone that has since run `git fetch
+    # --tags` and can answer perfectly well.
     truncated = is_shallow(root)
     if absent and truncated is not False:
         report.declined.append(
@@ -4722,6 +4783,30 @@ def _comparable(text: str) -> str:
     return _normalized(text).translate(TYPOGRAPHY).casefold()
 
 
+def _without_emphasis(text: str) -> str:
+    """`text` with the delimiters of each emphasis CommonMark pairs in it removed.
+
+    A faithful quotation leaves out a passage's bold and italic marks, so
+    `writes **nothing**` is quoted as "writes nothing" (`PL-RX0W`). Only the
+    delimiters CommonMark 0.31.2 § 6.2 pairs are removed, as `emphasis` pairs
+    them, so a `*` in arithmetic and a `_` inside a name stay. A delimiter
+    inside a code span pairs with nothing.
+    """
+    runs = emphasis(text, [span.span() for span in code_spans(text)])
+    cuts = sorted(
+        cut
+        for run in runs
+        for cut in ((run.start, run.start + run.width), (run.end - run.width, run.end))
+    )
+    kept: list[str] = []
+    position = 0
+    for start, end in cuts:
+        kept.append(text[position:start])
+        position = end
+    kept.append(text[position:])
+    return "".join(kept)
+
+
 def _comparable_statements(text: str) -> str:
     """The document `text` as `_comparable` reads it, one statement to a line, and each fence.
 
@@ -4738,7 +4823,8 @@ def _comparable_statements(text: str) -> str:
     blocks = read_blocks(_body_lines(lines)).blocks
     fences = [(block.start, block.end) for block in blocks if block.kind == FENCE]
     return "\n".join(
-        _comparable("\n".join(blanked[first:end])) for first, end in [*_statements(lines), *fences]
+        _comparable(_without_emphasis("\n".join(blanked[first:end])))
+        for first, end in [*_statements(lines), *fences]
     )
 
 
@@ -5538,7 +5624,9 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
     for path, offset, raw in sources:
         # A fence holds a literal, and read as a claim it made an item that
         # documents a stale citation an error for quoting the one it reports.
-        for match in LINE_CITATION_RE.finditer(without_fences(raw)):
+        # So do an indented code block and an HTML block, which no page shows
+        # as a claim, so only the blocks `PROSE` names are read (`PL-2B0B`).
+        for match in _statement_matches(LINE_CITATION_RE, raw, PROSE):
             token, first, last = match.group(1), int(match.group(2)), match.group(3)
             if not _is_path_citation(token):
                 continue
@@ -5556,16 +5644,95 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
                 )
 
 
-def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
+def _docstrings(tree: ast.Module, source: bytes) -> Iterator[tuple[int, str]]:
     """Every docstring, an attribute docstring included, with the line it starts on.
 
     `docket.python.docstrings` decides which strings those are. Reading only a
     module's, a class's and a function's left a citation in an attribute
     docstring unchecked (`PL-8W1J`).
+
+    Each docstring comes as `_source_lined` gives it, so its line `n` is the
+    source line `n` below the line it starts on, and a finding numbered from it
+    names the line the reader sees (`PL-PV73`).
     """
+    strings = _string_tokens(source)
     for node in docstrings(tree):
         if isinstance(node.value, str):  # always, and how the type checker learns it
-            yield node.lineno, node.value
+            yield node.lineno, _source_lined(node, strings)
+
+
+def _string_tokens(source: bytes) -> dict[int, list[tokenize.TokenInfo]]:
+    """Every string token in `source`, by the row it starts on, or none where it will not tokenize.
+
+    None rather than a refusal, because the caller has parsed the file already
+    and `_source_lined` then numbers each docstring by its evaluated value, as
+    it did before this was read.
+    """
+    found: dict[int, list[tokenize.TokenInfo]] = {}
+    try:
+        for token in tokenize.tokenize(io.BytesIO(source).readline):
+            if token.type == tokenize.STRING:
+                found.setdefault(token.start[0], []).append(token)
+    except UNTOKENIZABLE:
+        return {}
+    return found
+
+
+def _source_lined(node: ast.Constant, strings: Mapping[int, list[tokenize.TokenInfo]]) -> str:
+    """A docstring's value with its line breaks where the source has them.
+
+    The value is the evaluated string, so a backslash-newline inside the
+    literal removes a source line from it and a `\\n` escape adds one the
+    source does not have. Counting the value's newlines then named the line
+    above a citation or the line below it (`PL-PV73`). So the value is rebuilt
+    a source line at a time, from the string tokens the tokenizer gives with
+    their start and end. A `\\n` escape becomes a space, and a backslash-newline
+    becomes a line break. Every other character is the value's.
+
+    Where the tokens do not rebuild the value exactly, the value is returned
+    as it is, and numbered as it was before.
+    """
+    value = node.value
+    if not isinstance(value, str):
+        return ""
+    tokens = [
+        token
+        for row in range(node.lineno, (node.end_lineno or node.lineno) + 1)
+        for token in strings.get(row, ())
+    ]
+    if not tokens or tokens[0].start[0] != node.lineno:
+        return value
+    rows: dict[int, list[tuple[str, str]]] = {}
+    for token in tokens:
+        for row, text, ending in _token_rows(token):
+            rows.setdefault(row, []).append((text, ending))
+    lines = [rows.get(row, []) for row in range(node.lineno, tokens[-1].end[0] + 1)]
+    if "".join(text + ending for line in lines for text, ending in line) != value:
+        return value
+    return "\n".join("".join(text for text, _ in line).replace("\n", " ") for line in lines)
+
+
+def _token_rows(token: tokenize.TokenInfo) -> Iterator[tuple[int, str, str]]:
+    """Each source row of one string token: its row, what it adds to the value, and its break.
+
+    The break is the newline the source line ends with where the value keeps
+    it, and empty on the token's last row or after a backslash-newline.
+    """
+    literal = token.string
+    prefix = literal[: len(literal) - len(literal.lstrip("rRuUbBfF"))]
+    quote = literal[len(prefix) : len(prefix) + 3]
+    if quote not in ('"""', "'''"):
+        quote = quote[0]
+    body = literal[len(prefix) + len(quote) : len(literal) - len(quote)]
+    raw = "r" in prefix.lower()
+    plain = prefix.replace("r", "").replace("R", "")
+    lines = body.split("\n")
+    for offset, line in enumerate(lines):
+        ending = "\n" if offset < len(lines) - 1 else ""
+        if not raw and (len(line) - len(line.rstrip("\\"))) % 2:
+            line, ending = line[:-1], ""
+        text = line if raw else ast.literal_eval(f"{plain}{quote}{line}X{quote}")[:-1]
+        yield token.start[0] + offset, text, ending
 
 
 def _unread_source(relative: Path, error: Exception, unread: str = "citation") -> str:
@@ -5644,11 +5811,12 @@ def _quoting_sources(
             continue
         relative = path.relative_to(root)
         try:
-            tree = ast.parse(path.read_bytes())
+            source = path.read_bytes()
+            tree = ast.parse(source)
         except (OSError, SyntaxError, ValueError) as error:
             declined.append(_unread_source(relative, error))
             continue
-        for line, docstring in _as_passages(_docstrings(tree)):
+        for line, docstring in _as_passages(_docstrings(tree, source)):
             yield relative, line, docstring
 
 
@@ -5673,7 +5841,8 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     Case, dash style and quote style are folded, because a passage copied by
     hand settles on one of the forms this project writes and the passage is
-    still there either way. The words must stand in one statement of the file,
+    still there either way. So is emphasis, which a quotation leaves out
+    (`_without_emphasis`, `PL-RX0W`). The words must stand in one statement of the file,
     as `_comparable_statements` reads it, so a splice across a heading and its
     paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
     written with an ellipsis cannot be found verbatim, and declining to
@@ -5685,7 +5854,8 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     since dropped, which it rightly lacks, and a reader can tell that from
     drift where no spelling can (`PL-HVST`).
 
-    **An item id is a source too, after the mark** - `ITEM_SECTION_RE`. The
+    **An item id is a source too, after the mark or the possessive** -
+    `ITEM_SECTION_RE`. The
     brief its file holds is tested the same way, closed or open, because a
     citation of a closed brief still claims the words are there; only a
     closed brief's own citations go unread, since `_quoting_sources` reads the
@@ -5718,7 +5888,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
         prose = without_fences(text)
-        for match in _statement_matches(QUOTED_SOURCE_RE, prose):
+        # A Markdown source is read in the blocks `PROSE` names, so a quotation
+        # in an indented code block or an HTML comment, which no page shows as
+        # a claim, is not held (`PL-2B0B`). A docstring is no Markdown: its
+        # lines after the first are indented, so read as Markdown a paragraph
+        # after a blank line is code, and the whole of it is read.
+        kinds = None if path.suffix == ".py" else PROSE
+        for match in _statement_matches(QUOTED_SOURCE_RE, prose, kinds):
             cited = match.group("document")
             line = offset + _line_of(text, match.start()) - 1
             claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
@@ -5736,7 +5912,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, which does not exist"
-            elif _comparable(quoted).rstrip(" .,;:") not in body:
+            elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
             else:
                 continue
@@ -5749,7 +5925,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     "the file holds the words)"
                 )
 
-        for match in _statement_matches(ITEM_SECTION_RE, prose):
+        for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")
             line = offset + _line_of(text, match.start()) - 1
             if match["unclosed"] is not None:
@@ -5774,7 +5950,9 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     f'{path}:{line}: quotes {item} as "{quoted}", but {len(held)} files under '
                     "docs/items/ carry that id, so which brief it cites was not decided"
                 )
-            elif _comparable(quoted).rstrip(" .,;:") not in (body_of(held[0]) or ""):
+            elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in (
+                body_of(held[0]) or ""
+            ):
                 report.errors.append(
                     f'{path}:{line}: quotes {item} as "{quoted}", which is not in {held[0]}'
                 )
@@ -5864,8 +6042,10 @@ def _make_lines(text: str, every_branch: bool = True) -> Iterator[tuple[str, int
     where it reads it; a line led by a tab after a branch that changed which
     rule is open (both run through make 4.3 on 2026-10-06); a rule line
     escaping what its names end at, which make unquotes (`MAKE_ESCAPED_NAME_RE`,
-    `PL-5M36`), where every reader of a rule took the names as written; and,
-    with `every_branch` false, a recipe line inside a conditional.
+    `PL-5M36`), where every reader of a rule took the names as written; an
+    assignment to `.RECIPEPREFIX`, after which make opens a recipe line with
+    another character (`MAKE_RECIPEPREFIX_RE`, `PL-GSJ6`); and, with
+    `every_branch` false, a recipe line inside a conditional.
     """
     lines = split_lines(text)
     index = 0
@@ -5893,6 +6073,13 @@ def _make_lines(text: str, every_branch: bool = True) -> Iterator[tuple[str, int
         statement = _make_uncommented(line)
         if not statement.strip(MAKE_SPACE):
             continue
+        if MAKE_RECIPEPREFIX_RE.match(statement):
+            raise UnreadStatement(
+                opens + 1,
+                "this line assigns `.RECIPEPREFIX`, after which make opens a recipe line "
+                "with that character instead of a tab, and this reader knows a recipe line "
+                "only by its tab",
+            )
         define = MAKE_DEFINE_RE.match(line)
         if define is not None:
             if not define["name"].strip():
@@ -7740,9 +7927,13 @@ def check_math_delimiters(root: Path, report: Report) -> None:
         # a working shell command (`PL-WTQ1`, hit on `PL-6194`). The body of
         # the same document is still scanned: the skip is the frontmatter's
         # line span and nothing else.
+        # An HTML block renders no math, a comment least of all, so only the
+        # blocks `PROSE` names are read (`PL-2B0B`). `_without_code` still
+        # blanks the code spans inside them.
         skip_to = _frontmatter_end(text)
+        prose = block_lines(_body_lines(split_lines(text)), PROSE)
         for number, line in enumerate(_without_code(text), 1):
-            if number <= skip_to:
+            if number <= skip_to or number - 1 not in prose:
                 continue
             for match in TEX_DELIMITER_RE.finditer(line):
                 report.errors.append(
@@ -7787,10 +7978,16 @@ def check_wrapped_list_items(root: Path, report: Report) -> None:
     letter. Both are what a wrap leaves behind: a sentence cut where it goes
     on, and a clause that carries it on.
 
-    Every Markdown file is read but the item store. Its briefs held 83 such
-    wraps when this check was written, and those are their own item
-    (`PL-XLYK`). A file's front matter is YAML rather than Markdown, so its
-    lines are skipped, as `check_math_delimiters` skips them.
+    Every Markdown file is read, and in the item store only the open briefs.
+    A closed brief is a record of the tree its work was done against, not a
+    live statement, so `.claude/rules/citation-drift.md` decides its prose is
+    not a finding. 76 closed briefs held such wraps when the store was added,
+    and rewrapping them would change records for no reader. An open brief is
+    where a session writes new prose, so a wrap there fails where it is
+    written (`PL-XLYK`). `_live_item_briefs` decides which briefs are open,
+    from the store's own reading of each status. A file's front matter is YAML
+    rather than Markdown, so its lines are skipped, as `check_math_delimiters`
+    skips them.
     """
     for path in _walk(root):
         relative = path.relative_to(root)
@@ -7800,24 +7997,31 @@ def check_wrapped_list_items(root: Path, report: Report) -> None:
             text = path.read_text(encoding="utf-8")
         except UNREADABLE:
             continue
-        lines = split_lines(text)
-        document = read_blocks(lines)
-        skip_to = _frontmatter_end(text)
-        ends = {block.end: block for block in document.blocks if block.kind == PARAGRAPH}
-        for item in document.items:
-            paragraph = ends.get(item.start)
-            if item.start < skip_to or paragraph is None or paragraph.depth != item.depth:
-                continue
-            opens = _from_column(lines[item.start], document.columns[item.start])
-            if _ends_a_sentence(lines[item.start - 1]):
-                continue
-            if paragraph.end - paragraph.start > 1 or opens[:1].islower():
-                report.errors.append(
-                    f"{relative}:{item.start + 1} starts a line with a list marker in the middle "
-                    "of the sentence above it, so the rest of that sentence renders as a list "
-                    "item; move the marker to the end of the line above, or put a blank line "
-                    "before a list meant as one"
-                )
+        _check_wrapped_list_items_in(relative, text, report)
+    for relative, text in _live_item_briefs(root):
+        _check_wrapped_list_items_in(relative, text, report)
+
+
+def _check_wrapped_list_items_in(relative: Path, text: str, report: Report) -> None:
+    """Report each list item in one Markdown file that a wrap opened mid-sentence."""
+    lines = split_lines(text)
+    document = read_blocks(lines)
+    skip_to = _frontmatter_end(text)
+    ends = {block.end: block for block in document.blocks if block.kind == PARAGRAPH}
+    for item in document.items:
+        paragraph = ends.get(item.start)
+        if item.start < skip_to or paragraph is None or paragraph.depth != item.depth:
+            continue
+        opens = _from_column(lines[item.start], document.columns[item.start])
+        if _ends_a_sentence(lines[item.start - 1]):
+            continue
+        if paragraph.end - paragraph.start > 1 or opens[:1].islower():
+            report.errors.append(
+                f"{relative}:{item.start + 1} starts a line with a list marker in the middle "
+                "of the sentence above it, so the rest of that sentence renders as a list "
+                "item; move the marker to the end of the line above, or put a blank line "
+                "before a list meant as one"
+            )
 
 
 def _ends_a_sentence(line: str) -> bool:
@@ -7902,7 +8106,7 @@ def _skill_description(name: str, text: str) -> ResidentFile | None:
     if block is None:
         return None
     described = "\n".join(block)
-    return ResidentFile(f"{name} (description)", len(described), len(block))
+    return ResidentFile(f"{name} (description)", len(described), len(block), instruction_file=False)
 
 
 def _measure(name: str, text: str) -> ResidentFile | None:
@@ -8204,7 +8408,9 @@ def check_resident_instructions(root: Path, report: Report) -> None:
             "check, the `docket` skill, a path-scoped rule - or keep it and say why a "
             "session could violate it before it would look anything up. Text the project "
             "owner asked for is the second answer, already given. Never trim other "
-            "resident text to offset the number. `PL-H7XN` carries the test."
+            f"resident text to offset the number. {RESIDENT_LEDGER} records what each "
+            "resident block was tested against and the reductions already refused, so read "
+            "it before deciding. `PL-H7XN` carries the test."
         )
     if any(count > 0 for _, count in material) and any(count < 0 for _, count in material):
         moved = ", ".join(f"{name} {count:+d}" for name, count in material)
@@ -8213,7 +8419,8 @@ def check_resident_instructions(root: Path, report: Report) -> None:
             "two net out in the total, so text cut to pay for an addition never shows up "
             "as growth at all. Check that the removed lines were routed somewhere a "
             "session still reads them, rather than cut to make room - making room is not "
-            "one of the two answers to the growth advisory. `PL-BKQW` carries the test."
+            "one of the two answers to the growth advisory. A routing is recorded in "
+            f'{RESIDENT_LEDGER} § "What was routed out". `PL-BKQW` carries the test.'
         )
 
 
@@ -8580,7 +8787,7 @@ def _host_claim_texts(
         except (SyntaxError, ValueError) as error:
             report.declined.append(_unread_source(relative, error, "host claim"))
         else:
-            for row, docstring in _docstrings(tree):
+            for row, docstring in _docstrings(tree, data):
                 yield row, _as_passage(_dedented(docstring))
         try:
             yield from _as_passages(_python_comments(data))
@@ -8721,8 +8928,18 @@ def _format_measured(label: str, when: str, measured: ResidentInstructions) -> s
 
 
 def _format_resident(resident: ResidentInstructions) -> str:
-    """One line: what every session loads, and how that compares to the base."""
-    return _format_measured("resident instructions", "loaded at launch", resident)
+    """One line: what every session loads, and how that compares to the base.
+
+    It also names the instruction files' subtotal. `CLAUDE.md`'s
+    resident-growth series is on that basis, so a reader compares it with
+    that subtotal rather than with the whole payload (`PL-DXF0`).
+    """
+    measured = _format_measured("resident instructions", "loaded at launch", resident)
+    return (
+        f"{measured}; the instruction files alone come to "
+        f"{_plural(resident.instruction_total, 'character', 'characters')}, the basis "
+        "of the resident-growth series in CLAUDE.md"
+    )
 
 
 def _format_on_demand(on_demand: ResidentInstructions) -> str:
@@ -8912,7 +9129,11 @@ def _changed_definitions(
     compares them.
 
     A copy the tokenizer refuses has its changed lines read a line at a time,
-    as every file's were, and is appended to `unread`.
+    as every file's were, and is appended to `unread`. So is a copy the
+    tokenizer reads but the parser refuses, since the tokenizer's reading of it
+    may have merged statements (`_parser_refusal`). Its changed lines are read
+    both ways, so no definition the tokenizer merged away is dropped
+    (`PL-LCBQ`).
     """
     found: set[str] = set()
     removed: set[int] = set()
@@ -8931,6 +9152,7 @@ def _changed_definitions(
                 # Undecoded line ends, so its rows are the ones git's counted.
                 text = (root / relative).read_bytes().decode("utf-8-sig")
             lines = read_logical_lines(text)
+            short = _parser_refusal(text)
         except (OSError, *UNTOKENIZABLE) as error:
             said = refusal(error) if not isinstance(error, OSError) else str(error)
             unread.append(
@@ -8947,6 +9169,17 @@ def _changed_definitions(
             name = definition(line)[1]
             if name and any(line.first <= row <= line.last for row in rows):
                 found.add(name)
+        if short is not None:
+            unread.append(
+                f"{relative}: Python {platform.python_version()} cannot parse its copy "
+                f"{f'at {copy}' if copy else 'in the working tree'} ({short}), so its tokenizer's "
+                "reading may be short, and its changed lines were also read a line at a time"
+            )
+            found |= {
+                match.group(1)
+                for line in split_lines(patch)
+                if (match := DEFINITION_RE.match(line)) is not None
+            }
     return found
 
 

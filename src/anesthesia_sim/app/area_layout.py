@@ -76,26 +76,35 @@ A border drag re-lays out the Areas live and stops, in WARNING, where an Area
 beside the moved line reaches its least size. Shift moves one border alone,
 and Escape undoes either drag.
 
-**What is not here yet.** A minimum size for each View, and what an Area shows
-when it cannot be given that size, are left to `PL-K285`. Until then, Qt does
-not draw a View smaller than its own minimum size hint. So a split that the
-model makes narrower than that hint is drawn at the minimum instead, and a
-border drag stops where an Area would go below that hint. The Workspace tab
-strip is left to `PL-2KXB`. Only the main window is drawn, because v0.6.0
-opens only one window (`ROADMAP.md` § "v0.6.0 - the layout is the reader's",
-"Explicitly out of scope for v0.6.0").
+**No View is drawn below the size it needs** (`PL-K285`). Each Area's need is
+its View's, the larger of the minimum its registry entry declares and the
+least size Qt would hold the View widget to, with the header above it.
+`layout/sizing.py`'s `settle` works out the sizes at this widget's size, and
+each frame is held at the size it was given, so a border drag stops at a
+neighbour's need. This widget's minimum size hint is every need added up, so a
+host that can grow, as the dashboard's scrolling page does, always gives every
+View its size. Where the host cannot, an Area that the latest change did not
+leave in place gives way first. It is held at its header and shows the size
+its View needs against the size it has, until a later change can give it
+that.
+
+**What is not here yet.** The Workspace tab strip is left to `PL-2KXB`. Only
+the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's", "Explicitly out of scope for
+v0.6.0").
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from typing import Final, cast
 
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QEnterEvent,
@@ -107,6 +116,7 @@ from PySide6.QtGui import (
     QPaintEvent,
     QPen,
     QResizeEvent,
+    QShowEvent,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -168,10 +178,29 @@ from anesthesia_sim.app.view_registry import (
     RetiredTag,
     missing_view_text,
     rename_offer_text,
+    too_small_text,
+    too_small_title,
     unbuilt_view_text,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused
-from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel, Neighbour, Rectangle, Side
+from anesthesia_sim.layout.model import (
+    BORDER_ALIGNMENT_TOLERANCE,
+    MAIN_WINDOW,
+    Handle,
+    LayoutModel,
+    Neighbour,
+    Rectangle,
+    Side,
+)
+from anesthesia_sim.layout.sizing import (
+    Fit,
+    PixelSize,
+    TooSmall,
+    apportion,
+    minimum_extent,
+    pixel_sizes,
+    settle,
+)
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind
 
 __all__ = [
@@ -376,7 +405,13 @@ class AreaLayout(QWidget):
         self._corner_drag: tuple[AreaId, QPoint] | None = None
         self.preview: SplitPreview | JoinPreview | None = None
         self._overlay = _LayoutOverlay(self)
-        self._build()
+        # What the last settle decided: each Area's size, and which Areas are
+        # too small for their View (`layout/sizing.py`).
+        self._fit: Fit | None = None
+        self._drawn: frozenset[AreaId] = frozenset()
+        self._settling = False
+        self._least: PixelSize | None = None
+        self._build(frozenset())
 
     @property
     def model(self) -> LayoutModel:
@@ -546,9 +581,26 @@ class AreaLayout(QWidget):
             return
 
         self._copy_split_state(moved)
+        kept = self._unmoved(moved)
         self._model = moved
-        self._build()
+        self._build(kept)
         self.layout_changed.emit(moved)
+
+    def _unmoved(self, moved: LayoutModel) -> frozenset[AreaId]:
+        """The Areas drawn now that `moved` leaves with the same View in the same place.
+
+        `settle` lets these go to their floors last, so an Area the reader did
+        not touch keeps its View when the change cannot fit (`PL-K285`).
+        """
+
+        held = {area.id: area.view for area in moved.areas()}
+
+        return frozenset(
+            area_id
+            for area_id in self._drawn
+            if held.get(area_id) == self._model.area(area_id).view
+            and _same_place(self._model.rectangle(area_id), moved.rectangle(area_id))
+        )
 
     def _copy_split_state(self, moved: LayoutModel) -> None:
         """Give each Area that a split makes in `moved` a copy of its source View's state.
@@ -575,6 +627,39 @@ class AreaLayout(QWidget):
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._overlay.setGeometry(self.rect())
+        self._settle(self._drawn)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        # Until it is shown, this widget's size is not the one it is drawn
+        # at, so which Areas are too small is first decided here.
+        self._settle(self._drawn)
+
+    def minimum_extent(self) -> PixelSize:
+        """The least size at which every Area draws its View: their needs, added up.
+
+        It is this widget's minimum size hint, so a host that can grow never
+        gives it less (`PL-K285` Q2). A host that cannot is given what it
+        can, and the Areas it cannot hold show that they are too small.
+        """
+
+        least = self._least
+        assert least is not None, "every build settles the Areas"
+
+        return least
+
+    def minimumSizeHint(self) -> QSize:
+        least = self.minimum_extent()
+
+        return QSize(least.width_px, least.height_px)
+
+    def too_small(self) -> tuple[TooSmall, ...]:
+        """The Areas too small for their View now, in reading order, with the size each needs."""
+
+        fit = self._fit
+        assert fit is not None, "every build settles the Areas"
+
+        return fit.too_small
 
     def corner_pressed(self, area_id: AreaId, at: QPoint) -> None:
         """Start a corner drag of the Area `area_id`, pressed at `at` on the screen."""
@@ -738,16 +823,21 @@ class AreaLayout(QWidget):
         same_shape = _shape(model.windows[MAIN_WINDOW].tree) == _shape(
             self._model.windows[MAIN_WINDOW].tree
         )
+        kept = self._unmoved(model)
         self._model = model
 
         if same_shape:
-            self._lay_out_all()
+            self._settle(kept)
             self._relight()
         else:
-            self._build()
+            self._build(kept)
 
-    def _build(self) -> None:
-        """Build the splitters for the model and put each Area's View in its place."""
+    def _build(self, kept: AbstractSet[AreaId]) -> None:
+        """Build the splitters for the model and put each Area's View in its place.
+
+        `kept` names the Areas `settle` lets go last where the new layout
+        cannot give every Area its View's size.
+        """
 
         previous_root = self._root
         self._previous_views = self._views
@@ -784,7 +874,7 @@ class AreaLayout(QWidget):
 
         self._column.addWidget(root)
         self._root = root
-        self._lay_out_all()
+        self._settle(kept)
         self._overlay.raise_()
         self.views_changed.emit()
 
@@ -853,26 +943,114 @@ class AreaLayout(QWidget):
 
         return notice
 
-    def _lay_out_all(self) -> None:
-        for splitter in self._splitters.values():
-            self._lay_out(splitter)
+    def _settle(self, kept: AbstractSet[AreaId]) -> None:
+        """Decide which Areas can be given their View's size, and lay every splitter out.
+
+        `layout/sizing.py`'s `settle` decides it at this widget's size, so the
+        sizes drawn are the ones it worked out (`PL-K285`). Each Area's frame
+        is held at the bound it was given: its need where it draws its View,
+        and its floor where it is too small, which then shows the statement
+        of the size its View needs instead of the View. Before this widget is
+        shown its size is not the one it is drawn at, so every Area keeps its
+        View and is held at its need until then.
+
+        Where the Views' needs add up to a new least size, the host is told,
+        so a host that can grow, such as the dashboard's scrolling page, gives
+        this widget room for every View (`minimumSizeHint`).
+        """
+
+        if self._settling:
+            return
+
+        self._settling = True
+
+        try:
+            tree = self._model.windows[MAIN_WINDOW].tree
+            needs = {area_id: self._need(area_id) for area_id in self._frames}
+            floors = {area_id: _floor(frame) for area_id, frame in self._frames.items()}
+            extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
+
+            least = minimum_extent(tree, AREA_HANDLE_WIDTH, needs)
+
+            if self.isVisible():
+                fit = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
+            else:
+                laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, needs)
+                fit = Fit(laid_out, needs, frozenset(needs), ())
+
+            self._fit = fit
+            self._drawn = fit.drawn
+
+            for area_id, frame in self._frames.items():
+                bound = fit.bounds[area_id]
+                frame.setMinimumSize(bound.width_px, bound.height_px)
+                shown = self._views.get(area_id)
+
+                if shown is None or area_id in fit.drawn:
+                    frame.show_view()
+                else:
+                    frame.show_too_small(self._registered[shown[0]].title, self._view_need(area_id))
+
+            for splitter in self._splitters.values():
+                self._lay_out(splitter)
+
+            if least != self._least:
+                self._least = least
+                self.updateGeometry()
+        finally:
+            self._settling = False
+
+    def _need(self, area_id: AreaId) -> PixelSize:
+        """The least size the Area `area_id` draws its View at: the View's need and the header.
+
+        An Area that shows a notice in place of a View needs its floor alone.
+        """
+
+        frame = self._frames[area_id]
+
+        if area_id not in self._views:
+            return _floor(frame)
+
+        view = self._view_need(area_id)
+
+        return PixelSize(view.width_px, view.height_px + _chrome_height(frame))
+
+    def _view_need(self, area_id: AreaId) -> PixelSize:
+        """The least size the View in `area_id` is drawn at, below the Area's header.
+
+        It is the larger, on each axis, of the minimum the View's registry
+        entry declares and the least size Qt would hold the View widget to,
+        which grows with what the View holds (`app/view_registry.py`).
+        """
+
+        kind, view = self._views[area_id]
+        declared = self._registered[kind].minimum
+        width, height = _least_size(_widget(view))
+
+        return PixelSize(max(declared.width_px, width), max(declared.height_px, height))
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
-        """Give `splitter`'s children the sizes the model holds for its split."""
+        """Give `splitter`'s children the sizes the last settle worked out for its split."""
 
         if self._splitters.get(splitter.path) is not splitter:
             # A splitter the last rebuild replaced, resized while it waits to
             # be deleted.
             return
 
-        split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
-        extent = (
-            splitter.width()
-            if splitter.orientation() == Qt.Orientation.Horizontal
-            else splitter.height()
-        )
-        available = extent - splitter.handleWidth() * (splitter.count() - 1)
-        splitter.setSizes(_pixel_sizes(split.sizes, max(available, len(split.sizes))))
+        sizes = None if self._fit is None else self._fit.apportionment.splits.get(splitter.path)
+
+        if sizes is None:
+            # The splitters are being built and nothing is settled yet.
+            split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
+            extent = (
+                splitter.width()
+                if splitter.orientation() == Qt.Orientation.Horizontal
+                else splitter.height()
+            )
+            available = extent - splitter.handleWidth() * (splitter.count() - 1)
+            sizes = pixel_sizes(split.sizes, max(available, len(split.sizes)))
+
+        splitter.setSizes(list(sizes))
 
     def border_pressed(self, handle: _AreaHandle, offset_px: int, *, alone: bool) -> None:
         """Start a drag of the border `handle` draws, pressed `offset_px` into its width.
@@ -938,7 +1116,7 @@ class AreaLayout(QWidget):
 
         changed = moved != self._model
         self._model = moved
-        self._lay_out_all()
+        self._settle(self._drawn)
         self._relight()
 
         if changed:
@@ -1225,9 +1403,16 @@ class AreaFrame(QFrame):
     in it, on the panel surface, with a 1px `GRIDLINE` rule under it. The
     chooser is its first control, a stretch follows it, and the Area menu
     ends it (`PL-2KXB`). The run's name, where `docs/MODEL.md` puts one on the
-    Area, comes with pinning (`PL-7Z84`). The header never
-    gets shorter than its row: an Area too short for it is a refused size,
-    which is `PL-K285`'s.
+    Area, comes with pinning (`PL-7Z84`). The header never gets shorter than
+    its row.
+
+    **An Area too small for its View shows a notice in its place** (`PL-K285`,
+    `PL-DB5G` Q3). The View is hidden, not deleted, so it keeps its state and
+    is shown again once the Area can be given its size. The notice states the
+    size the View needs and the size the Area has under its header, and it is
+    restated whenever the Area is resized, so the reader dragging a border
+    sees it clear the moment the size is enough. It shows no value from any
+    run.
 
     Attributes:
         area_id: The Area this frame draws.
@@ -1236,6 +1421,8 @@ class AreaFrame(QFrame):
         menu: The Area menu at the end of the header, or None where the
             caller gave none.
         content: The View or the notice under the header.
+        too_small_notice: The notice shown in place of the View while the
+            Area is too small for it, or None where it has never been.
     """
 
     def __init__(
@@ -1259,8 +1446,8 @@ class AreaFrame(QFrame):
         self.header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.header.setStyleSheet(panel_stylesheet(self.header.objectName()))
         # The header asks for no width: what an Area needs is its View's
-        # minimum, which is `PL-K285`'s, so a narrow Area clips the title
-        # rather than being held wider than its View needs.
+        # minimum, so a narrow Area clips the title rather than being held
+        # wider than its View needs.
         self.header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         row = QHBoxLayout(self.header)
         row.setContentsMargins(_HEADER_MARGIN_PX, 0, _HEADER_MARGIN_PX, 0)
@@ -1275,26 +1462,72 @@ class AreaFrame(QFrame):
         rule.setFixedHeight(_HEADER_RULE_PX)
         rule.setStyleSheet(foreground_stylesheet(GRIDLINE))
 
-        column = QVBoxLayout(self)
-        column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(0)
-        column.addWidget(self.header)
-        column.addWidget(rule)
-        column.addWidget(content, 1)
+        self._column = QVBoxLayout(self)
+        self._column.setContentsMargins(0, 0, 0, 0)
+        self._column.setSpacing(0)
+        self._column.addWidget(self.header)
+        self._column.addWidget(rule)
+        self._column.addWidget(content, 1)
         # A View handed back unparented by an earlier layout was hidden when
         # it lost its parent, and a layout does not show it again by itself.
         content.show()
+        self.too_small_notice: AreaNotice | None = None
+        self._needed: PixelSize | None = None
 
         self.corners: tuple[_CornerZone, ...] = ()
 
         if drags is not None:
             self.corners = tuple(_CornerZone(self, drags, corner) for corner in _Corner)
 
+    def show_view(self) -> None:
+        """Show the View or notice under the header, in place of the too-small notice."""
+
+        self._needed = None
+
+        if self.too_small_notice is not None:
+            self.too_small_notice.hide()
+
+        self.content.show()
+
+    def show_too_small(self, title: str, needed: PixelSize) -> None:
+        """Hide the View, and state that it needs `needed` under the header, which it lacks.
+
+        Args:
+            title: The View's title, as the chooser names it.
+            needed: The least size the View is drawn at, below the header.
+        """
+
+        notice = self.too_small_notice
+
+        if notice is None:
+            notice = AreaNotice(too_small_title(title), "")
+            self.too_small_notice = notice
+            self._column.addWidget(notice, 1)
+        else:
+            notice.title_label.setText(too_small_title(title))
+
+        self._needed = needed
+        self.content.hide()
+        notice.show()
+        self._restate()
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
+        self._restate()
 
         for zone in self.corners:
             zone.place()
+
+    def _restate(self) -> None:
+        """Write the too-small notice's body from the size the Area has now under its header."""
+
+        notice, needed = self.too_small_notice, self._needed
+
+        if notice is None or needed is None:
+            return
+
+        has = PixelSize(max(self.width(), 0), max(self.height() - _chrome_height(self), 0))
+        notice.body_label.setText(too_small_text(needed, has))
 
     def enterEvent(self, event: QEnterEvent) -> None:
         super().enterEvent(event)
@@ -1325,9 +1558,8 @@ class AreaNotice(QFrame):
     at the top left of the panel surface, inset by `PANEL_PADDING`. The notice
     has no fill colour of its own, no border and no icon, and it never shows a
     value from a run, since a plausible number in a failure state could be read
-    as a View's. Three states are built so far: an unknown View kind, a
-    registered View the caller cannot yet put in an Area, and a View another
-    Area already shows.
+    as a View's. Three states are built so far: an unknown View kind, a View
+    whose factory failed, and an Area too small for its View (`PL-K285`).
 
     Args:
         title: The first line.
@@ -1761,25 +1993,6 @@ def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
     return node
 
 
-def _pixel_sizes(fractions: tuple[float, ...], available: int) -> list[int]:
-    """Whole-pixel sizes in the proportion of `fractions`, summing to `available`.
-
-    Each size is rounded down, and the pixels that leaves over go one each to
-    the sizes that lost the most, so the sizes sum to `available` exactly and
-    no size is more than a pixel from its share.
-    """
-
-    exact = [fraction * available for fraction in fractions]
-    sizes = [math.floor(share) for share in exact]
-    left_over = max(0, min(len(sizes), available - sum(sizes)))
-    by_loss = sorted(range(len(sizes)), key=lambda index: (sizes[index] - exact[index], index))
-
-    for index in by_loss[:left_over]:
-        sizes[index] += 1
-
-    return sizes
-
-
 def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]) -> AreaOperation:
     """The entry for an operation the model may refuse, with the layout it makes if it does not."""
 
@@ -1809,16 +2022,16 @@ def _relative_place(own: Rectangle, other: Rectangle) -> str:
     return ", ".join(words)
 
 
-def _least_size(frame: AreaFrame) -> tuple[int, int]:
-    """The width and height Qt holds `frame` to in a splitter that does not collapse its children.
+def _least_size(widget: QWidget) -> tuple[int, int]:
+    """The width and height Qt holds `widget` to in a splitter that does not collapse its children.
 
-    That is the frame's minimum size where one is set, and its minimum size
+    That is the widget's minimum size where one is set, and its minimum size
     hint otherwise, on each axis.
     """
 
-    hint = frame.minimumSizeHint()
+    hint = widget.minimumSizeHint()
 
-    return (frame.minimumWidth() or hint.width(), frame.minimumHeight() or hint.height())
+    return (widget.minimumWidth() or hint.width(), widget.minimumHeight() or hint.height())
 
 
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
@@ -1842,6 +2055,32 @@ def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
     return (
         controls + 2 * _HEADER_MARGIN_PX,
         header.height() + _HEADER_RULE_PX + PANEL_PADDING + line,
+    )
+
+
+def _floor(frame: AreaFrame) -> PixelSize:
+    """The least size an Area too small for its View is held at: `_structural_minimum`."""
+
+    return PixelSize(*_structural_minimum(frame))
+
+
+def _chrome_height(frame: AreaFrame) -> int:
+    """How much of an Area's height its header and the rule under it take."""
+
+    return frame.header.sizeHint().height() + _HEADER_RULE_PX
+
+
+def _same_place(first: Rectangle, second: Rectangle) -> bool:
+    """Whether two rectangles of an Area are one place, to within the model's rounding."""
+
+    return first.window == second.window and all(
+        math.isclose(one, other, abs_tol=BORDER_ALIGNMENT_TOLERANCE)
+        for one, other in (
+            (first.left, second.left),
+            (first.top, second.top),
+            (first.right, second.right),
+            (first.bottom, second.bottom),
+        )
     )
 
 

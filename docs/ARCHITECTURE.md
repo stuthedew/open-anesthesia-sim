@@ -97,7 +97,7 @@ src/anesthesia_sim/
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed, which SimulationController.advance supplies each step
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case section of bookmarks and branching under the Areas, the render tick, and the layout model the Areas below the settings are drawn from; no domain logic
-│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; each Area's header ends in an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it with a preview drawn over the Areas (PL-2KXB); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ)
+│   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; each Area's header ends in an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it with a preview drawn over the Areas (PL-2KXB); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no View is drawn below its need, and an Area that cannot be given it shows the size it needs (PL-K285)
 │   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, ViewRequests for a change to shared state or a frame, and the saved-state version check (PL-TH35)
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
@@ -118,6 +118,7 @@ src/anesthesia_sim/
 │   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 ├── layout/               # the area layout as a value: which View occupies which part of each window - no toolkit dependency (PL-C842, PL-1FT6)
 │   ├── tree.py                     # the values a layout is built from - AreaId, ViewKind, Area, Split, Window - each refusing what could not be one, and the one form a tree takes
+│   ├── sizing.py                   # how a layout is drawn in whole pixels: each Area held at its View's need, its siblings giving way, and which Areas are too small and held at their header instead (PL-K285); pure functions of a tree and an extent
 │   ├── model.py                    # LayoutModel: every window's tree; split, join, resize, swap and set_view, each returning a new layout; the borders() line a drag moves
 │   ├── serialization.py            # the layout, a Workspace and the set of them as JSON: each body, and the versioned documents - the set's is the file the application writes
 │   ├── workspace.py                # Workspace and WorkspaceSet: a named layout with each View's saved state per Area and kind and the run it is pinned to, and the ordered set a reader works in; removing the last Workspace is refused by the type (PL-WV9K)
@@ -1020,12 +1021,10 @@ in it, or a line left behind after a deletion, fails `make check`.
   route for a View is the bullet above (`PL-TH35`). This bullet still decides
   **where the code goes** for what stays outside the Areas - the
   unconditional region, the settings above the Areas and the case section
-  below them - and
-  `.claude/rules/ui-areas.md` — which loads on the same `src/` read as this
-  file — decides **what shape it is in**: a widget that does not assume its
-  size, its neighbours, or that it is alone. The two are not in conflict once
-  read that way, and neither licenses building splitting, joining, workspace
-  tabs or layout persistence early. What outlives the fixed layout is this
+  below them. `.claude/rules/ui-areas.md` decides **what shape a View is
+  in**: a widget that is given what it draws and does not assume its size,
+  its neighbours, or that it is alone. It loads with any file under `app/`,
+  `layout/` or `data/workspaces/`. What outlives the fixed layout is this
   bullet's *reason* rather than its routing: a run's panel must not state one
   branch's numbers over both, and a control shared between runs must not be
   duplicated into each. Both are properties of the value rather than of the

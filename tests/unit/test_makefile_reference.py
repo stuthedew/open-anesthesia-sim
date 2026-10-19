@@ -34,10 +34,11 @@ column and after a tab, `define` blocks, assignments that end a rule, and
 `.ONESHELL`. Where a reader raises `UnreadStatement`, the test accepts the
 decline. Where it answers, the answer must match make's.
 
-One form is left out of the generator because the readers depart from make on
-it today, recorded by the open item that will fix it: a Makefile that sets
-`.RECIPEPREFIX` (`PL-GSJ6`). `KNOWN_DEPARTURES` pins its present reading, so a
-fix fails that row and the fix removes it and adds the form to the generator.
+One form is left out of the generator because the readers decline it by name:
+a Makefile that sets `.RECIPEPREFIX`, after which make opens a recipe line with
+another character (`PL-GSJ6`). `KNOWN_DEPARTURES` pins any form the readers
+read differently from make, recorded by the open item that will fix it, and
+holds none today.
 
 A conditional is drawn, and `make_targets` and `_target_recipes` decline a
 recipe line inside one, since make runs it only in its branch (`PL-HSB3`).
@@ -292,9 +293,7 @@ def test_the_makefile_readers_read_the_tracked_makefile_as_make_does() -> None:
 
 #: Makefiles the readers read differently from make today: each row's Makefile, its item,
 #: the commands make runs for `check`, and the commands `_target_recipes` reads under it.
-KNOWN_DEPARTURES = [
-    pytest.param(".RECIPEPREFIX = >\ncheck:\n>@echo ran\n", "echo ran\n", [], id="PL-GSJ6")
-]
+KNOWN_DEPARTURES: list[object] = []
 
 
 @pytest.mark.parametrize(("text", "make", "reader"), KNOWN_DEPARTURES)

@@ -3,11 +3,14 @@ id: PL-LCBQ
 title: doc_check's _defined_tests and _changed_definitions take docket.python's reading of a file at face value on the 3.11 floor, where an f-string nesting its own quote around an unmatched bracket mis-tokenizes without an error and merges the statements after it, though python.py's docstring asks a caller to name such a file; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
+milestone: v0.5.33
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-11 triage pass
 added: 2026-10-06
+closed: 2026-10-19
+pr: 1620
 payoff: a test file the 3.11 floor mis-tokenizes is named as unread rather than read short, so a cited test is not reported missing and a changed definition not dropped without a word
 verify: grep -q 'def test_a_file_the_running_interpreter_cannot_parse_is_named_by_the_definition_readers' tests/unit/test_doc_check.py
 ---
@@ -55,3 +58,21 @@ declares it.
 **Done when.** Both callers name a file `ast` cannot parse on the running
 interpreter, as `verify` does, pinned by a test with the input above that
 expects the name on 3.11.
+
+**Done 2026-10-19.** A new `_parser_refusal` in `tools/doc_check.py` asks
+`ast.parse` whether the running interpreter can parse a file, and catches
+`docket.verify`'s `UNPARSABLE`. `check_named_tests` still adds what the
+tokenizer read, and also files a file the parser refuses among the refused
+ones. So a cited name that only such a file holds is declined rather than
+reported missing. `_changed_definitions` appends such a copy to `unread`, and
+reads its changed lines a line at a time as well, so no definition the
+tokenizer merged away is dropped. The test covers both readers with the brief's
+input, which is refused on 3.11 only, and with a syntax error refused on every
+interpreter. Regression: under `uv run --no-project --python
+/usr/bin/python3.11 --with pytest python -m pytest -q --noconftest
+tests/unit/test_doc_check.py -k
+test_a_file_the_running_interpreter_cannot_parse` against the code before the
+fix, both cases fail with "'error: docs/WORKING_NOTES.md:3: names the test
+`test_ghost`' != 'declined: docs/WORKING_NOTES.md:3: names the test
+`test_ghost`'". `--noconftest` is needed because `tests/conftest.py` uses PEP
+695 syntax.

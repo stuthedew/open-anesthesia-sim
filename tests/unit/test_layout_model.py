@@ -1363,7 +1363,7 @@ def test_span_is_where_a_handles_split_begins_and_ends_in_its_window() -> None:
 
 
 def test_a_border_cannot_move_onto_or_past_a_neighbouring_border() -> None:
-    """Without minimum sizes (`PL-K285`'s) the limit is that every child keeps some size.
+    """The model holds no minimum sizes, so its limit is that every child keeps some size.
 
     On a line, the tightest of the handles it holds decides. The two rows'
     borders at one half are one line; the upper row's could go anywhere, but

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor, ux
 feature: interface-areas
+milestone: v0.5.32
 touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md, docs/MODEL.md, .claude/rules/ui-areas.md, tests/integration/test_layout_adapter.py, tests/integration/test_qt_rendering.py, tests/integration/test_simulation_view.py, tests/integration/test_view_contract.py, tests/unit/test_view_registry.py, tools/contrast_check.py, tools/literal_home_check.py, docs/items/PL-L59K-zoom-the-shipped-induction-workspace-s.md, docs/items/PL-K285-an-area-that-cannot-be-given-the-size-its-view.md, docs/items/PL-ZBBP-retire-or-re-scope-claude-rules-ui-areas-md-and.md
 blocked-by: PL-R1WQ
 added: 2026-09-16
@@ -182,8 +183,8 @@ names.
 `PL-K285`.
 
 **Q6. Empty state.** Text stating what is absent, in the rectangle, never a
-blank; the existing empty-state constants are the pattern and `PL-7Z84`'s
-"run not present" state is the same mechanism.
+blank; the existing empty-state constants are the pattern and the
+run-not-present state of `PL-7Z84` is the same mechanism.
 
 **Q7. Controls.** A control over the View's own instance state may live in
 the View. A control over shared state renders the handed value and emits a

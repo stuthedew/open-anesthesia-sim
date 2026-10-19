@@ -111,7 +111,11 @@ page and decides which file a session reads.
    in a discussion that was not about it.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
-   commits that name it. It runs the item's own `verify:` command and `make
+   commits that name it. **On a branch that changes the simulator, run step
+   8's prose review first.** Its rewrites change files that this audit reads.
+   Of five simulator branches that skipped step 8, two reported running this
+   audit, so the step's place at the end of the list was passed over
+   (`PL-W04Z`). It runs the item's own `verify:` command and `make
    check`, so it *is* the close-out's proof rather than a step beside one -
    re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
    neither.
@@ -357,5 +361,11 @@ page and decides which file a session reads.
    original sentence there, because the safety-critical standard applies to
    what a docstring states. Say in the pull request body how many units the
    reviewer read, how many it rewrote and how many rewrites you rejected.
-   The step is a trial: `PL-PRCS` records its measured cost, and the item it
-   filed re-measures the prose and retires the step if it has not helped.
+   Record the same three counts as a trailer in the last paragraph of the
+   commit that applies the rewrites, or of the next commit where there were
+   none: `Prose-review: read N, rewrote M, rejected K`. `bin/docket arm` holds
+   a simulator branch whose long prose was added after the newest such
+   trailer, as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
+   `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
+   2026-10-19: long prose from the branch that ran it was awkward in 22% of
+   blind verdicts, against 58% from branches that skipped it, so it is kept.

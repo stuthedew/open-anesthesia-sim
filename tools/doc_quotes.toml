@@ -1,0 +1,92 @@
+# Quotations of Claude Code's documentation that this repository relies on.
+#
+# `tools/doc_quote_check.py` reads this file. For each entry it checks that the
+# quoted text is still in `file`, and that it is still on the page
+# https://code.claude.com/docs/en/<page>.md. Both checks ignore line wrapping,
+# Markdown links and emphasis, backticks, comment markers and letter case, so
+# write the quotation as plain text.
+#
+# Add an entry when a live file quotes one of these pages, and remove it with
+# the quotation. A red `doc-quotes` job in `.github/workflows/drift.yml` means a
+# page has changed under a quotation: read the page, then correct the
+# quotation or withdraw the claim that rests on it (`PL-S7LT`).
+#
+# The entries are the quotations `PL-124X` compared on 2026-10-19, as
+# corrected that day. That comparison had 16 strings. One, the WebFetch
+# truncation limit, was dropped from its hook because the page no longer
+# states it, so 15 remain.
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "model-config"
+text = "uses opus for complex reasoning and architecture decisions"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "model-config"
+text = "automatically switches to sonnet for code generation and implementation"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "model-config"
+text = "Opus 5.5 at medium matches or exceeds Opus 5 at high on coding and knowledge-work evaluations"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "claude-projects"
+text = "Cloud threads use a default Anthropic-hosted environment until you pick one in Project settings > Environment"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "settings"
+text = "permissions.defaultMode values auto and bypassPermissions don't take effect from project or local settings; set them in user or managed settings instead, or pass --permission-mode for one session"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "settings"
+text = "not read. Both stay on your machine"
+
+[[quote]]
+file = "docs/maintainer.md"
+page = "claude-code-on-the-web"
+text = "You pick a cloud session's permission mode from the mode dropdown, both when you create the task and while the session runs"
+
+[[quote]]
+file = "docs/resident-instructions.md"
+page = "memory"
+text = "Rules without a paths field are loaded unconditionally and apply to all files"
+
+[[quote]]
+file = "docs/resident-instructions.md"
+page = "memory"
+text = "target under 200 lines per CLAUDE.md file. Longer files consume more context and reduce adherence"
+
+[[quote]]
+file = "docs/resident-instructions.md"
+page = "memory"
+text = "A path-scoped rule loads when Claude uses the Read, Write, or Edit tool on a matching file"
+
+[[quote]]
+file = "docs/resident-instructions.md"
+page = "memory"
+text = "if two instructions contradict each other, Claude may pick one arbitrarily"
+
+[[quote]]
+file = "docs/resident-instructions.md"
+page = "memory"
+text = "How Claude remembers your project"
+
+[[quote]]
+file = ".claude/skills/docket/SKILL.md"
+page = "skills"
+text = "keeping the first 5,000 tokens of each"
+
+[[quote]]
+file = ".claude/hooks/webfetch-quote-note.sh"
+page = "tools-reference"
+text = "For most fetches, it then runs the prompt against the content in a separate model call, and Claude receives the result of that call rather than the raw page"
+
+[[quote]]
+file = ".claude/hooks/webfetch-quote-note.sh"
+page = "hooks"
+text = "added to Claude's context alongside the tool result"
