@@ -1,10 +1,14 @@
 """Shared numeric-range guards used by every core compartment's field
 writes and setters, so invalid state is rejected at the same boundary
-everywhere instead of trusted or coerced silently. Two of them,
-`require_within_vaporizer_maximum` and `require_room_for_the_agent_held`,
-are relations between values rather than properties of one, and are here for
-the same reason: the records that hold each pair refuse it in one sentence
-(`PL-BBMG`, `PL-19Y0`).
+everywhere instead of trusted or coerced silently. Four of them are
+relations between values rather than properties of one, and are here for the
+same reason: the records that hold each pair refuse it in one sentence.
+`require_within_vaporizer_maximum` holds a dial to its vaporizer's maximum
+(`PL-BBMG`). `require_room_for_the_agent_held` and
+`require_within_the_capacity` hold an agent amount to its compartment's
+capacity, from the capacity's side and from the amount's (`PL-19Y0`,
+`PL-XVCV`). `require_a_capacity` holds a volume and a partition coefficient
+to a product that is a capacity at all (`PL-8LQZ`, `PL-FNH3`).
 
 A concentration's own range is not here. A fraction's 0 to 1 and a percent's 0
 to 100 were checked by guards in this module, at each of the twelve places a
@@ -145,6 +149,8 @@ def require_within_vaporizer_maximum(
     name: str,
     delivered_concentration_percent: Percent,
     max_delivered_concentration_percent: Percent,
+    *,
+    maximum_written: bool = False,
 ) -> None:
     """Require a vaporizer dial at or below the maximum the vaporizer in use delivers.
 
@@ -168,17 +174,33 @@ def require_within_vaporizer_maximum(
     (`require_percent`, `core/concentration.py`) before calling this; it
     compares the two and checks nothing else.
 
+    The pair is refused in the words of whichever value was written.
+    `name` is that value's name. `maximum_written` says that the value written
+    was the maximum, so that a maximum lowered under the dial is refused as
+    the maximum, and not as a dial nobody moved (`PL-XVCV`). A record that
+    holds both and checks them together, as `UptakeEquationSettings` does,
+    leaves it `False` and is refused in the dial's words.
+
     Raises:
         SimulationConfigurationError: the dial is above the maximum. The
             message quotes both in the percent the dial reads.
     """
 
-    if delivered_concentration_percent > max_delivered_concentration_percent:
+    if delivered_concentration_percent <= max_delivered_concentration_percent:
+        return
+
+    if maximum_written:
         raise SimulationConfigurationError(
-            f"{name} exceeds the vaporizer maximum "
-            f"({delivered_concentration_percent:g}% requested, "
-            f"{max_delivered_concentration_percent:g}% maximum)"
+            f"{name} of {max_delivered_concentration_percent:g}% is below the "
+            f"{delivered_concentration_percent:g}% the dial is set to, and a vaporizer maximum "
+            "must be at or above its dial"
         )
+
+    raise SimulationConfigurationError(
+        f"{name} exceeds the vaporizer maximum "
+        f"({delivered_concentration_percent:g}% requested, "
+        f"{max_delivered_concentration_percent:g}% maximum)"
+    )
 
 
 def require_room_for_the_agent_held(
@@ -218,4 +240,67 @@ def require_room_for_the_agent_held(
             f"{name} of {shown(value)} is too small for the {agent_amount_l!r} L of agent "
             f"the {compartment} holds: it would leave room for {capacity_l!r} L at a "
             f'partial pressure of one atmosphere (docs/MODEL.md, "{section}")'
+        )
+
+
+def require_within_the_capacity(
+    name: str, agent_amount_l: float, capacity_l: float, compartment: str, section: str
+) -> None:
+    """Refuse an agent amount larger than the capacity of the compartment it is written to.
+
+    The converse of `require_room_for_the_agent_held`, from the amount's side:
+    that guard refuses a factor of the capacity written too small for the
+    amount held, and this refuses an amount written too large for the
+    capacity. Either way the partial pressure would be above one atmosphere.
+    Both name the value, the capacity and the `docs/MODEL.md` section, so the
+    one relation is refused in the same terms from either side (`PL-XVCV`).
+    The caller checks first that the amount is a nonnegative finite number.
+
+    Raises:
+        SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
+    """
+
+    if agent_amount_l > capacity_l:
+        raise SimulationConfigurationError(
+            f"{name} of {shown(agent_amount_l)} L is more than the {capacity_l!r} L the "
+            f"{compartment} holds at a partial pressure of one atmosphere "
+            f'(docs/MODEL.md, "{section}")'
+        )
+
+
+def require_a_capacity(
+    name: str,
+    value: float,
+    volume_l: float,
+    capacity_per_litre: float,
+    compartment: str,
+    section: str,
+) -> None:
+    """Refuse a volume or partition coefficient whose product is not a positive finite capacity.
+
+    A blood or tissue compartment's capacity is its volume times its partition
+    coefficient, and its partial pressure is the agent it holds divided by
+    that capacity. Each factor is checked as positive and finite when it is
+    written, but their product can still leave that range. A volume and a
+    coefficient of 1e-200 multiply to 0.0, so every partial pressure read
+    from the compartment divided by zero (`PL-8LQZ`). Two of 1e200 multiply to
+    `inf`, so the venous pool's closed form formed an equilibrium of `inf`
+    times 0.0 and stored `nan` (`PL-FNH3`). So the compartment calls this as
+    either factor is written, once the other is held, with both factors.
+    `value` is the one being written, and `name` names it.
+
+    Raises:
+        SimulationConfigurationError: the product of `volume_l` and
+            `capacity_per_litre` is zero or not finite. The message names
+            the value written and both factors.
+    """
+
+    capacity_l = volume_l * capacity_per_litre
+
+    if not isfinite(capacity_l) or capacity_l <= 0.0:
+        raise SimulationConfigurationError(
+            f"{name} of {shown(value)} would make the {compartment}'s capacity "
+            f"{capacity_l!r} L, its volume of {volume_l!r} L times its partition coefficient "
+            f"of {capacity_per_litre!r}. A capacity must be positive and finite, because "
+            f'every partial pressure is read by dividing by it (docs/MODEL.md, "{section}")'
         )

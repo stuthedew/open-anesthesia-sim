@@ -3,12 +3,14 @@ id: PL-5D1Z
 title: A checked float type pickled at protocol 0 or 1 is rebuilt through float.__new__, skipping its check, so holding one is not proof for an unpickled value
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/checked_number.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation_step.py, tests/unit/test_checked_number.py, tests/unit/test_concentration.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-05
+closed: 2026-10-19
+pr: 1676
 payoff: a checked value read back from a pickle at any protocol has passed its check, so holding the type stays proof of a supported value even for a saved file edited by hand
 verify: grep -q 'def test_every_checked_type_unpickled_at_any_protocol_is_rebuilt_through_its_check' tests/unit/test_checked_number.py
 ---
@@ -72,3 +74,13 @@ rebuilt carries the type's default `name`, as protocol 2 rebuilds it today.
 outstanding. A test in `tests/unit/test_checked_number.py` named
 `test_every_checked_type_unpickled_at_any_protocol_is_rebuilt_through_its_check`,
 parametrized over every checked type and protocol, pins it.
+
+**Checked 2026-10-19, and fixed on `claude/core-guard-defects-u39w8s`.** Still
+real on `main` at `6fd84bd5`. One `__reduce__` on `CheckedQuantity` in
+`core/checked_number.py` rebuilds every checked type through its own class at
+every protocol. The test edits each type's pickle at each protocol from 0 to
+`pickle.HIGHEST_PROTOCOL` past its range, and expects the refusal the
+constructor gives when called directly with the edited number. On the code
+before the fix, 16 of its 48 cases failed: the eight types at protocols 0 and 1.
+
+**Run against the code before the fix, 2026-10-19:** with `core/checked_number.py` taken from `origin/main`, `uv run pytest -q -p no:randomly tests/unit/test_checked_number.py -k unpickled` failed 16 of 48 with `Failed: DID NOT RAISE SimulationConfigurationError`.

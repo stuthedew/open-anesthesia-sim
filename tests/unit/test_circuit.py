@@ -36,7 +36,11 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
     circuit = BreathingCircuit()
 
     with pytest.raises(
-        SimulationConfigurationError, match="^agent_amount_l exceeds circuit capacity$"
+        SimulationConfigurationError,
+        match=(
+            r"^circuit agent_amount_l of 6.1 L is more than the 6.0 L the breathing circuit "
+            r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+        ),
     ):
         circuit.set_agent_amount(6.1)
 
@@ -405,8 +409,8 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
             "max_delivered_concentration_percent",
             Percent(1.0),
             SimulationConfigurationError,
-            r"^delivered_concentration_percent exceeds the vaporizer maximum "
-            r"\(2% requested, 1% maximum\)$",
+            r"^max_delivered_concentration_percent of 1% is below the 2% the dial is set to, "
+            r"and a vaporizer maximum must be at or above its dial$",
             id="maximum-under-the-dial",
         ),
         pytest.param(

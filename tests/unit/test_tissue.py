@@ -1,5 +1,7 @@
 import copy
 import pickle
+import re
+import sys
 from dataclasses import astuple, replace
 from math import exp, inf, nan
 
@@ -40,7 +42,7 @@ def test_rejects_empty_tissue_name() -> None:
 
 def test_rejects_perfusion_fraction_above_one() -> None:
     with pytest.raises(
-        SimulationConfigurationError, match="^perfusion_fraction must not exceed 1$"
+        SimulationConfigurationError, match="^test perfusion_fraction must not exceed 1$"
     ):
         TissueGroup(
             name="test",
@@ -54,7 +56,10 @@ def test_rejects_perfusion_fraction_above_one() -> None:
 def test_rejects_agent_amount_above_tissue_capacity() -> None:
     with pytest.raises(
         SimulationConfigurationError,
-        match="^agent_amount_l exceeds the tissue capacity for a concentration fraction of 1$",
+        match=(
+            r"^test agent_amount_l of 4.1 L is more than the 4.0 L the test tissue holds at a "
+            r'partial pressure of one atmosphere \(docs/MODEL.md, "Tissue compartments"\)$'
+        ),
     ):
         TissueGroup(
             name="test",
@@ -82,7 +87,11 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     tissue.set_partial_pressure_fraction(Fraction(0.4))
     held = tissue.agent_amount_l
     past_capacity = tissue.capacity_l * 1.0000001
-    refused = "^agent_amount_l exceeds the tissue capacity for a concentration fraction of 1$"
+    refused = (
+        rf"^test agent_amount_l of {re.escape(repr(past_capacity))} L is more than the 4.0 L "
+        r"the test tissue holds at a partial pressure of one atmosphere \(docs/MODEL.md, "
+        r'"Tissue compartments"\)$'
+    )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         tissue.agent_amount_l = past_capacity
@@ -110,7 +119,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
 
 
 TOO_SMALL_FOR_THE_AGENT_HELD = (
-    r"^{field} of 0.5 is too small for the 2.0 L of agent the test tissue holds: it would "
+    r"^test {field} of 0.5 is too small for the 2.0 L of agent the test tissue holds: it would "
     r"leave room for 1.0 L at a partial pressure of one atmosphere \(docs/MODEL.md, "
     r'"Tissue compartments"\)$'
 )
@@ -138,24 +147,26 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "volume_l",
             0.0,
             SimulationConfigurationError,
-            "^volume_l must be positive and finite$",
+            "^test volume_l must be positive and finite$",
             id="zero-volume",
         ),
         pytest.param(
             "volume_l",
             -1.0,
             SimulationConfigurationError,
-            "^volume_l must be positive and finite$",
+            "^test volume_l must be positive and finite$",
             id="negative-volume",
         ),
         pytest.param(
             "volume_l",
             nan,
             SimulationConfigurationError,
-            "^volume_l must be positive and finite$",
+            "^test volume_l must be positive and finite$",
             id="nan-volume",
         ),
-        pytest.param("volume_l", "2", TypeError, "^volume_l of '2' has type str", id="str-volume"),
+        pytest.param(
+            "volume_l", "2", TypeError, "^test volume_l of '2' has type str", id="str-volume"
+        ),
         pytest.param(
             "volume_l",
             0.5,
@@ -167,42 +178,42 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "perfusion_fraction",
             0.0,
             SimulationConfigurationError,
-            "^perfusion_fraction must be positive and finite$",
+            "^test perfusion_fraction must be positive and finite$",
             id="zero-perfusion-fraction",
         ),
         pytest.param(
             "perfusion_fraction",
             7.0,
             SimulationConfigurationError,
-            "^perfusion_fraction must not exceed 1$",
+            "^test perfusion_fraction must not exceed 1$",
             id="perfusion-fraction-above-one",
         ),
         pytest.param(
             "perfusion_fraction",
             nan,
             SimulationConfigurationError,
-            "^perfusion_fraction must be positive and finite$",
+            "^test perfusion_fraction must be positive and finite$",
             id="nan-perfusion-fraction",
         ),
         pytest.param(
             "blood_gas_partition_coefficient",
             0.0,
             SimulationConfigurationError,
-            "^blood_gas_partition_coefficient must be positive and finite$",
+            "^test blood_gas_partition_coefficient must be positive and finite$",
             id="zero-blood-gas-coefficient",
         ),
         pytest.param(
             "blood_gas_partition_coefficient",
             inf,
             SimulationConfigurationError,
-            "^blood_gas_partition_coefficient must be positive and finite$",
+            "^test blood_gas_partition_coefficient must be positive and finite$",
             id="infinite-blood-gas-coefficient",
         ),
         pytest.param(
             "tissue_gas_partition_coefficient",
             0.0,
             SimulationConfigurationError,
-            "^tissue_gas_partition_coefficient must be positive and finite$",
+            "^test tissue_gas_partition_coefficient must be positive and finite$",
             id="zero-tissue-gas-coefficient",
         ),
         pytest.param(
@@ -280,7 +291,7 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 
     tissue = _build_tissue()
     tissue.set_partial_pressure_fraction(Fraction(0.5))
-    refused = "^perfusion_fraction must not exceed 1$"
+    refused = "^test perfusion_fraction must not exceed 1$"
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         replace(tissue, perfusion_fraction=7.0)
@@ -318,12 +329,12 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
     held = astuple(tissue)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+        SimulationConfigurationError, match="^test blood_flow_l_min must be nonnegative and finite$"
     ):
         tissue.time_constant_s(blood_flow_l_min)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+        SimulationConfigurationError, match="^test blood_flow_l_min must be nonnegative and finite$"
     ):
         tissue.advance(
             arterial_partial_pressure_fraction=Fraction(1.0),
@@ -516,7 +527,7 @@ def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(fa
     )
     fields[factor] = "2"
 
-    with pytest.raises(TypeError, match=f"^{factor} of '2' has type str"):
+    with pytest.raises(TypeError, match=f"^test {factor} of '2' has type str"):
         TissueGroup(**fields)  # type: ignore[arg-type]
 
 
@@ -555,3 +566,58 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
     assert tissue.time_constant_s(2.0) == pytest.approx(240.0, rel=1e-15)
     assert tissue.time_constant_s(5.0) == pytest.approx(96.0, rel=1e-15)
+
+
+def test_a_capacity_that_overflows_is_refused_at_build() -> None:
+    """`PL-FNH3`, `PL-8LQZ`: the volume and the tissue:gas coefficient must multiply to a capacity.
+
+    Each factor passed its own check as positive and finite, and their product
+    did not. A volume and a coefficient of 1e200 built a group whose capacity
+    was `inf`, and two of 1e-200 one whose capacity was 0.0, so its partial
+    pressure divided by zero. The factor written second is refused, naming
+    both. The largest finite capacity, `sys.float_info.max`, and the smallest
+    positive one, the least subnormal, are admitted, and a volume rewritten
+    onto a built group is held to the same rule.
+    """
+
+    def build(volume_l: float, tissue_gas_partition_coefficient: float) -> TissueGroup:
+        return TissueGroup(
+            name="test",
+            volume_l=volume_l,
+            perfusion_fraction=0.2,
+            blood_gas_partition_coefficient=0.5,
+            tissue_gas_partition_coefficient=tissue_gas_partition_coefficient,
+        )
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^test tissue_gas_partition_coefficient of 1e\+200 would make the test tissue's "
+            r"capacity inf L, its volume of 1e\+200 L times its partition coefficient of "
+            r"1e\+200\. A capacity must be positive and finite, because every partial pressure "
+            r'is read by dividing by it \(docs/MODEL.md, "Tissue compartments"\)$'
+        ),
+    ):
+        build(1e200, 1e200)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^test tissue_gas_partition_coefficient of 1e-200 would make the test tissue's "
+            r"capacity 0\.0 L, its volume of 1e-200 L times its partition coefficient of 1e-200\."
+        ),
+    ):
+        build(1e-200, 1e-200)
+
+    assert build(sys.float_info.max, 1.0).capacity_l == sys.float_info.max
+    assert build(5e-324, 1.0).capacity_l == 5e-324
+
+    tissue = build(2.0, 1e300)
+    held = astuple(tissue)
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"^test volume_l of 1e\+20 would make the test tissue's"
+    ):
+        tissue.volume_l = 1e20
+
+    assert astuple(tissue) == held

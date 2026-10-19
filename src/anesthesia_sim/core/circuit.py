@@ -57,6 +57,7 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_positive_finite,
+    require_within_the_capacity,
     require_within_vaporizer_maximum,
 )
 
@@ -449,8 +450,19 @@ class BreathingCircuit:
             elif name == "max_delivered_concentration_percent":
                 require_percent(name, value)
                 require_positive_finite(name, value)
+                # A maximum written onto a built circuit is a maximum lowered
+                # under the dial, and is refused in its own words. The first
+                # write, in a constructor, a copy or a pickle, meets a dial
+                # just written beside it, and is refused in the dial's words,
+                # which name both values (`PL-XVCV`).
+                rewritten = hasattr(self, "max_delivered_concentration_percent")
                 require_within_vaporizer_maximum(
-                    "delivered_concentration_percent", self.delivered_concentration_percent, value
+                    "max_delivered_concentration_percent"
+                    if rewritten
+                    else "delivered_concentration_percent",
+                    self.delivered_concentration_percent,
+                    value,
+                    maximum_written=rewritten,
                 )
             elif name == "deliverable_fresh_gas_flow_range":
                 _require_a_machine_range(value)
@@ -615,12 +627,23 @@ class BreathingCircuit:
         self.inspired_partial_pressure_fraction = inspired_partial_pressure_fraction
 
     def set_agent_amount(self, agent_amount_l: float) -> None:
-        """Set circuit state using equivalent agent gas amount."""
+        """Set circuit state using equivalent agent gas amount.
 
-        require_nonnegative_finite("agent_amount_l", agent_amount_l)
+        Raises:
+            TypeError: the amount is not an `int` or a `float`.
+            SimulationConfigurationError: the amount is negative or not
+                finite, or is more than the circuit volume, which is what the
+                circuit holds at a partial pressure of one atmosphere.
+        """
 
-        if agent_amount_l > self.circuit_volume_l:
-            raise SimulationConfigurationError("agent_amount_l exceeds circuit capacity")
+        require_nonnegative_finite("circuit agent_amount_l", agent_amount_l)
+        require_within_the_capacity(
+            "circuit agent_amount_l",
+            agent_amount_l,
+            self.circuit_volume_l,
+            "breathing circuit",
+            "Gas compartments",
+        )
 
         self.inspired_partial_pressure_fraction = Fraction(agent_amount_l / self.circuit_volume_l)
 
@@ -639,7 +662,7 @@ class BreathingCircuit:
                 and finite. Nothing is changed when it is refused.
         """
 
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_positive_finite("circuit simulation_step_s", simulation_step_s)
 
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction

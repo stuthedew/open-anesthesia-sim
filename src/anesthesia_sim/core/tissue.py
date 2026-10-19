@@ -14,9 +14,11 @@ from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
+    require_a_capacity,
     require_nonnegative_finite,
     require_positive_finite,
     require_room_for_the_agent_held,
+    require_within_the_capacity,
 )
 
 PERFUSION_FRACTION_UPPER_BOUND = 1.0
@@ -75,7 +77,15 @@ class TissueGroup:
             amount's own check never consulted (`PL-544D`, found at review;
             `require_room_for_the_agent_held`). The constructor writes the
             amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one.
+            factor is held to the amount only once there is one. The two
+            factors are held to each other as well: whichever is written second
+            must leave a capacity that is positive and finite, which two
+            positive finite factors can fail to do by underflowing to zero or
+            overflowing to `inf` (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`).
+
+            Each refusal names the group with the field, as
+            `"muscle volume_l"`, because three groups hold every field
+            (`PL-2TZT`).
 
             The perfusion fraction is written once, when the group is built,
             and a later write is refused (`PL-Z0HN`). The patient checks that
@@ -95,6 +105,8 @@ class TissueGroup:
                 SimulationConfigurationError: the name is blank; the volume, a
                     partition coefficient or the perfusion fraction is not
                     positive and finite, or the perfusion fraction is above 1;
+                    the volume and the tissue:gas coefficient multiply to a
+                    capacity that is zero or not finite;
                     the perfusion fraction is written to a group that already
                     has one; the agent amount is negative or not finite; or
                     the agent amount would be more than the tissue
@@ -111,23 +123,44 @@ class TissueGroup:
 
                 if not value.strip():
                     raise SimulationConfigurationError("name must be a nonempty string")
-            elif name == "volume_l":
-                require_positive_finite(name, value)
+
+                super().__setattr__(name, value)
+
+                return
+
+            # Three groups hold every field below, so a refusal names the
+            # group as well as the field (`core/validation.py`, `PL-2TZT`).
+            # The constructor writes the name first, so it is there to read.
+            field = f"{self.name} {name}"
+            compartment = f"{self.name} tissue"
+
+            if name == "volume_l":
+                require_positive_finite(field, value)
+
+                if hasattr(self, "tissue_gas_partition_coefficient"):
+                    require_a_capacity(
+                        field,
+                        value,
+                        value,
+                        self.tissue_gas_partition_coefficient,
+                        compartment,
+                        "Tissue compartments",
+                    )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         value * self.tissue_gas_partition_coefficient,
                         self.agent_amount_l,
-                        f"{self.name} tissue",
+                        compartment,
                         "Tissue compartments",
                     )
             elif name == "perfusion_fraction":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
 
                 if value > PERFUSION_FRACTION_UPPER_BOUND:
-                    raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
+                    raise SimulationConfigurationError(f"{field} must not exceed 1")
 
                 if hasattr(self, "perfusion_fraction"):
                     raise SimulationConfigurationError(
@@ -138,27 +171,29 @@ class TissueGroup:
                         '"Tissue groups"): build a new patient with the new fractions'
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
             elif name == "tissue_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+                # The constructor, a copy and a pickle write the volume
+                # first, so it is always there to multiply.
+                require_a_capacity(
+                    field, value, self.volume_l, value, compartment, "Tissue compartments"
+                )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         self.volume_l * value,
                         self.agent_amount_l,
-                        f"{self.name} tissue",
+                        compartment,
                         "Tissue compartments",
                     )
             elif name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-
-                if value > self.capacity_l:
-                    raise SimulationConfigurationError(
-                        "agent_amount_l exceeds the tissue capacity for a concentration "
-                        "fraction of 1"
-                    )
+                require_nonnegative_finite(field, value)
+                require_within_the_capacity(
+                    field, value, self.capacity_l, compartment, "Tissue compartments"
+                )
 
             super().__setattr__(name, value)
 
@@ -274,7 +309,7 @@ class TissueGroup:
             SimulationConfigurationError: the flow is negative or not finite.
         """
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        require_nonnegative_finite(f"{self.name} blood_flow_l_min", blood_flow_l_min)
 
         if blood_flow_l_min == 0.0:
             return inf
@@ -332,8 +367,10 @@ class TissueGroup:
                 unchanged.
         """
 
-        require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_fraction(
+            f"{self.name} arterial_partial_pressure_fraction", arterial_partial_pressure_fraction
+        )
+        require_positive_finite(f"{self.name} simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l

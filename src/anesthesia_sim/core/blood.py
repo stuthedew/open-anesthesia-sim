@@ -8,13 +8,14 @@ from math import inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
+    require_a_capacity,
     require_nonnegative_finite,
     require_positive_finite,
     require_room_for_the_agent_held,
+    require_within_the_capacity,
 )
 
 
@@ -67,25 +68,45 @@ class VenousBloodCompartment:
             is a volume or a coefficient too small for the amount already held
             (`require_room_for_the_agent_held`). The constructor writes the
             amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one.
+            factor is held to the amount only once there is one. The two
+            factors are held to each other as the tissue group's are: the one
+            written second must leave a positive finite capacity
+            (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`). Each refusal names
+            the pool with the field, as `"venous volume_l"` (`PL-2TZT`).
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`
                     (`require_a_number`).
                 SimulationConfigurationError: the volume or the partition
-                    coefficient is not positive and finite; the agent amount
+                    coefficient is not positive and finite; the two multiply
+                    to a capacity that is zero or not finite; the agent amount
                     is negative or not finite; or the agent
                     amount would be more than the pool holds at a partial
                     pressure of one atmosphere, whichever of the amount, the
                     volume and the coefficient is the one written.
             """
 
+            # Every compartment holds an agent amount, and the tissue groups
+            # a volume and a blood:gas coefficient too, so a refusal names
+            # the pool as well as the field (`core/validation.py`, `PL-2TZT`).
+            field = f"venous {name}"
+
             if name == "volume_l":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+
+                if hasattr(self, "blood_gas_partition_coefficient"):
+                    require_a_capacity(
+                        field,
+                        value,
+                        value,
+                        self.blood_gas_partition_coefficient,
+                        "venous blood",
+                        "Blood compartments",
+                    )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         value * self.blood_gas_partition_coefficient,
                         self.agent_amount_l,
@@ -93,11 +114,17 @@ class VenousBloodCompartment:
                         "Blood compartments",
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+
+                # The constructor, a copy and a pickle write the volume
+                # first, so it is always there to multiply.
+                require_a_capacity(
+                    field, value, self.volume_l, value, "venous blood", "Blood compartments"
+                )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         self.volume_l * value,
                         self.agent_amount_l,
@@ -105,12 +132,10 @@ class VenousBloodCompartment:
                         "Blood compartments",
                     )
             elif name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-
-                if value > self.capacity_l:
-                    raise SimulationConfigurationError(
-                        "agent_amount_l exceeds venous blood capacity"
-                    )
+                require_nonnegative_finite(field, value)
+                require_within_the_capacity(
+                    field, value, self.capacity_l, "venous blood", "Blood compartments"
+                )
 
             super().__setattr__(name, value)
 
@@ -149,7 +174,7 @@ class VenousBloodCompartment:
             SimulationConfigurationError: the flow is negative or not finite.
         """
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        require_nonnegative_finite("venous blood_flow_l_min", blood_flow_l_min)
 
         if blood_flow_l_min == 0.0:
             return inf
@@ -201,9 +226,10 @@ class VenousBloodCompartment:
         """
 
         require_fraction(
-            "tissue_return_partial_pressure_fraction", tissue_return_partial_pressure_fraction
+            "venous tissue_return_partial_pressure_fraction",
+            tissue_return_partial_pressure_fraction,
         )
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_positive_finite("venous simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l

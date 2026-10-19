@@ -230,7 +230,13 @@ class AgentParameters:
             to print `1 MAC = 0.0%` and the five formatters that divide by it
             to refuse at draw time (`PL-0FJ8`). The loader's `PositivePercent`
             refuses it first for a shipped file; this is the same refusal on a
-            record built any other way, `dataclasses.replace` included.
+            record built any other way, `dataclasses.replace` included. Or
+            `max_delivered_concentration_percent` is zero, for the same
+            reason, or `mac_percent` is above it, which the loader's
+            `_mac_percent_must_not_exceed_vaporizer_max` refuses for a file
+            and this refuses for every other record: a run opens at 1 MAC
+            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above
+            the vaporizer maximum (`PL-HPKK`).
     """
 
     schema_version: int
@@ -253,7 +259,17 @@ class AgentParameters:
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_percent("mac_percent", self.mac_percent)
+        require_positive_finite(
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
+        )
         require_positive_finite("mac_percent", self.mac_percent)
+
+        if self.mac_percent > self.max_delivered_concentration_percent:
+            raise SimulationConfigurationError(
+                f"mac_percent of {self.mac_percent:g}% is above the vaporizer maximum of "
+                f"{self.max_delivered_concentration_percent:g}%: the agent's own vaporizer "
+                "could not deliver 1 MAC, which is where a run opens"
+            )
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:

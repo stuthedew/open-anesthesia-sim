@@ -1,5 +1,7 @@
 import copy
 import pickle
+import re
+import sys
 from dataclasses import astuple, replace
 from math import exp, inf, nan
 
@@ -22,7 +24,11 @@ def _build_venous_blood() -> VenousBloodCompartment:
 
 def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
     with pytest.raises(
-        SimulationConfigurationError, match="^agent_amount_l exceeds venous blood capacity$"
+        SimulationConfigurationError,
+        match=(
+            r"^venous agent_amount_l of 0.66 L is more than the 0.65 L the venous blood holds "
+            r'at a partial pressure of one atmosphere \(docs/MODEL.md, "Blood compartments"\)$'
+        ),
     ):
         VenousBloodCompartment(
             volume_l=1.0, blood_gas_partition_coefficient=0.65, agent_amount_l=0.66
@@ -30,7 +36,7 @@ def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
 
 
 TOO_SMALL_FOR_THE_AGENT_HELD = (
-    r"^{field} of {value} is too small for the 0.325 L of agent the venous blood holds: it "
+    r"^venous {field} of {value} is too small for the 0.325 L of agent the venous blood holds: it "
     r"would leave room for {room} L at a partial pressure of one atmosphere "
     r'\(docs/MODEL.md, "Blood compartments"\)$'
 )
@@ -43,17 +49,19 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "volume_l",
             0.0,
             SimulationConfigurationError,
-            "^volume_l must be positive and finite$",
+            "^venous volume_l must be positive and finite$",
             id="zero-volume",
         ),
         pytest.param(
             "volume_l",
             nan,
             SimulationConfigurationError,
-            "^volume_l must be positive and finite$",
+            "^venous volume_l must be positive and finite$",
             id="nan-volume",
         ),
-        pytest.param("volume_l", "1", TypeError, "^volume_l of '1' has type str", id="str-volume"),
+        pytest.param(
+            "volume_l", "1", TypeError, "^venous volume_l of '1' has type str", id="str-volume"
+        ),
         pytest.param(
             "volume_l",
             0.4,
@@ -65,7 +73,7 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "blood_gas_partition_coefficient",
             -0.65,
             SimulationConfigurationError,
-            "^blood_gas_partition_coefficient must be positive and finite$",
+            "^venous blood_gas_partition_coefficient must be positive and finite$",
             id="negative-blood-gas-coefficient",
         ),
         pytest.param(
@@ -88,21 +96,23 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "agent_amount_l",
             0.65 * 1.0000001,
             SimulationConfigurationError,
-            "^agent_amount_l exceeds venous blood capacity$",
+            rf"^venous agent_amount_l of {re.escape(repr(0.65 * 1.0000001))} L is more than the "
+            r"0.65 L the venous blood holds at a partial pressure of one atmosphere "
+            r'\(docs/MODEL.md, "Blood compartments"\)$',
             id="amount-past-capacity",
         ),
         pytest.param(
             "agent_amount_l",
             -0.1,
             SimulationConfigurationError,
-            "^agent_amount_l must be nonnegative and finite$",
+            "^venous agent_amount_l must be nonnegative and finite$",
             id="negative-amount",
         ),
         pytest.param(
             "agent_amount_l",
             nan,
             SimulationConfigurationError,
-            "^agent_amount_l must be nonnegative and finite$",
+            "^venous agent_amount_l must be nonnegative and finite$",
             id="nan-amount",
         ),
         pytest.param(
@@ -152,7 +162,11 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
 
     venous = _build_venous_blood()
     past_capacity = venous.capacity_l * 1.0000001
-    refused = "^agent_amount_l exceeds venous blood capacity$"
+    refused = (
+        rf"^venous agent_amount_l of {re.escape(repr(past_capacity))} L is more than the "
+        r"0.65 L the venous blood holds at a partial pressure of one atmosphere "
+        r'\(docs/MODEL.md, "Blood compartments"\)$'
+    )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         replace(venous, agent_amount_l=past_capacity)
@@ -204,12 +218,14 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
     held = astuple(venous)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+        SimulationConfigurationError,
+        match="^venous blood_flow_l_min must be nonnegative and finite$",
     ):
         venous.time_constant_s(blood_flow_l_min)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^blood_flow_l_min must be nonnegative and finite$"
+        SimulationConfigurationError,
+        match="^venous blood_flow_l_min must be nonnegative and finite$",
     ):
         venous.advance(
             tissue_return_partial_pressure_fraction=Fraction(1.0),
@@ -316,3 +332,51 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
     assert venous.time_constant_s(4.0) == pytest.approx(30.0, rel=1e-15)
     assert venous.time_constant_s(6.0) == pytest.approx(20.0, rel=1e-15)
+
+
+def test_a_capacity_that_overflows_is_refused_at_build() -> None:
+    """`PL-FNH3`, `PL-8LQZ`: the volume and the blood:gas coefficient must multiply to a capacity.
+
+    A pool built from a volume and a coefficient of 1e200 had a capacity of
+    `inf`, and its closed form stored `nan` from an equilibrium of `inf` times
+    0.0. Two of 1e-200 gave a capacity of 0.0, so its partial pressure divided
+    by zero. The factor written second is refused, naming both. The largest
+    finite capacity and the smallest positive one are admitted, and a volume
+    rewritten onto a built pool is held to the same rule.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^venous blood_gas_partition_coefficient of 1e\+200 would make the venous blood's "
+            r"capacity inf L, its volume of 1e\+200 L times its partition coefficient of "
+            r"1e\+200\. A capacity must be positive and finite, because every partial pressure "
+            r'is read by dividing by it \(docs/MODEL.md, "Blood compartments"\)$'
+        ),
+    ):
+        VenousBloodCompartment(volume_l=1e200, blood_gas_partition_coefficient=1e200)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^venous blood_gas_partition_coefficient of 1e-200 would make the venous blood's "
+        r"capacity 0\.0 L",
+    ):
+        VenousBloodCompartment(volume_l=1e-200, blood_gas_partition_coefficient=1e-200)
+
+    largest = VenousBloodCompartment(
+        volume_l=sys.float_info.max, blood_gas_partition_coefficient=1.0
+    )
+    smallest = VenousBloodCompartment(volume_l=5e-324, blood_gas_partition_coefficient=1.0)
+
+    assert largest.capacity_l == sys.float_info.max
+    assert smallest.capacity_l == 5e-324
+
+    venous = VenousBloodCompartment(volume_l=1.0, blood_gas_partition_coefficient=1e300)
+    held = astuple(venous)
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"^venous volume_l of 1e\+20 would make the venous"
+    ):
+        venous.volume_l = 1e20
+
+    assert astuple(venous) == held

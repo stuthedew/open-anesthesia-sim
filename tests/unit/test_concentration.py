@@ -461,10 +461,10 @@ def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
 def test_a_copied_or_pickled_concentration_is_still_checked() -> None:
     """A state copied for a branch, or saved, keeps a value still of its type.
 
-    A copy, a deep copy and a pickle at the default protocol each rebuild
-    through the constructor rather than around it, which the test below pins
-    for the pickle. A pickle at protocol 0 or 1 does not, which `PL-5D1Z`
-    records for every checked type.
+    A copy, a deep copy and a pickle each rebuild through the constructor
+    rather than around it, which the test below pins for the pickle.
+    `tests/unit/test_checked_number.py` pins it for every checked type at
+    every pickle protocol (`PL-5D1Z`).
     """
 
     for value in (Fraction(0.02), Percent(8.0)):
@@ -612,10 +612,10 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     with pytest.raises(TypeError, match="^fat partial_pressure_fraction of 0.0 was not built"):
         fat.set_partial_pressure_fraction(0.0)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="^tissue_return_partial_pressure_fraction of 0.0 was"):
+    with pytest.raises(TypeError, match="^venous tissue_return_partial_pressure_fraction of 0.0"):
         venous.advance(0.0, step, 5.0)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="^arterial_partial_pressure_fraction of 0.0 was not"):
+    with pytest.raises(TypeError, match="^fat arterial_partial_pressure_fraction of 0.0 was"):
         fat.advance(0.0, step, 0.3)  # type: ignore[arg-type]
 
     assert system.state_vector() == vector_before
