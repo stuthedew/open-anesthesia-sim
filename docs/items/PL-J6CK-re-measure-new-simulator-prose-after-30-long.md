@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: prose-quality
+milestone: v0.5.35
 touches: .claude/skills/docket/modes/close-out.md, tools/new_prose.py
 added: 2026-10-18
 closed: 2026-10-19
