@@ -7045,6 +7045,84 @@ def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
     assert view._fork_panel.point_selector.count() == 0
 
 
+def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If every frame fails, the panel stops listing a mark the run cannot reach as still to come.
+
+    The bookmark panel was redrawn only from a drawn frame's snapshots. With
+    every frame failing, it kept the last frame's standings. So a mark ahead
+    of the clock was still listed as to come, beside "Stopped - simulation
+    error". That row tells a learner to wait for a mark that the failed run
+    will never reach (`PL-YHR3`). The halt now restates the panel from each
+    run's own record of its marks, which needs no frame.
+
+    The expected row has two independent sources. One is the literal wording
+    of the failed standing. The other is the row that a drawn frame of the
+    same failed run shows once frames draw again.
+    """
+
+    controller = _paused_run_with_history()
+    # Ahead of the paused clock, so the run has not reached it yet.
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    view = _shown_view(application, controller)
+    ahead = view._bookmarks_panel.times.text()
+    assert ahead == "10m – check", "the mark is not listed as still to come"
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert controller.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    halted = view._bookmarks_panel.times.text()
+    assert halted.endswith(" · not reached before the simulation error")
+
+    monkeypatch.undo()
+    view.present(False)
+
+    assert view._bookmarks_panel.times.text() == halted
+
+
+def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """If restating the bookmark panel raises, the halt hides both listings and still takes effect.
+
+    The restatement runs inside the halt path, where a raise would escape the
+    render path's guard and reach the toolkit. So the restatement is guarded, as
+    the fork panel's restatement is (`PL-MMNX`). A panel that cannot be restated
+    shows no standing at all, rather than the last frame's standings (`PL-YHR3`).
+    The next frame that draws shows both listings again.
+    """
+
+    controller = _paused_run_with_history()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    view = _shown_view(application, controller)
+    panel = view._bookmarks_panel
+    assert panel.times.isHidden() is False
+
+    def unanswerable(self: SimulationController) -> NoReturn:
+        raise RuntimeError("the run could not say where it stands on its marks")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(SimulationController, "bookmark_standings", unanswerable)
+    capfd.readouterr()
+
+    view.present(False)
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert controller.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert panel.times.isHidden() is True
+    assert panel.targets.isHidden() is True
+
+    monkeypatch.undo()
+    view.present(False)
+
+    assert panel.times.isHidden() is False
+    assert panel.targets.isHidden() is False
+
+
 def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
     application: QApplication,
 ) -> None:

@@ -82,12 +82,18 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.area_layout import AreaLayout
+from anesthesia_sim.app.bookmarks import BookmarkSet, BookmarkStandings
 from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
-from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import (
+    BranchedCase,
+    RunSettings,
+    SimulationController,
+    SimulationSnapshot,
+)
 from anesthesia_sim.app.dashboard_frame import (
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
@@ -1463,13 +1469,47 @@ class SimulationView(QWidget):
         for run, snapshot in zip(self._runs, snapshots, strict=True):
             run.refresh(snapshot)
 
-        self._refresh_bookmarks(snapshots)
+        self._refresh_bookmarks(
+            snapshots[0].bookmarks,
+            tuple(snapshot.bookmark_standings for snapshot in snapshots),
+            snapshots[0],
+        )
         self._refresh_fork_panel()
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks
 
-    def _refresh_bookmarks(self, snapshots: Sequence[SimulationSnapshot]) -> None:
+    def _restate_bookmark_panel(self) -> None:
+        """On a halt, restate both collections from every run, or list no standing if it raises.
+
+        Apart from this method, `_refresh_bookmarks` is called only with a drawn frame's
+        snapshots. So when a halt came from a failed frame, the last frame's standings
+        stayed on screen. A mark ahead of the clock still showed as to come, while every
+        other control said that the run had failed (`PL-YHR3`). Each run's controller
+        gives its marks and their standings without building a snapshot. So the
+        restatement needs no frame.
+
+        The restatement is guarded, as `_restate_fork_panel` is. It runs inside the halt
+        path, where a raise would escape the render path's own guard and reach the
+        toolkit. If the panel cannot be restated, it is withdrawn instead of keeping the
+        last frame's rows. The editor's lists are left alone, because removing a mark
+        selects it by its row in those lists.
+        """
+
+        controllers = tuple(run.controller for run in self._runs)
+
+        try:
+            self._refresh_bookmarks(
+                controllers[0].bookmarks,
+                tuple(controller.bookmark_standings() for controller in controllers),
+                controllers[0].settings(),
+            )
+        except Exception:
+            self._bookmarks_panel.withdraw()
+
+    def _refresh_bookmarks(
+        self, bookmarks: BookmarkSet, standings: Sequence[BookmarkStandings], reference: RunSettings
+    ) -> None:
         """Redraw both collections from every run, and rebound the height control.
 
         The *set* of marks is the reference run's, and reading one run for it
@@ -1481,8 +1521,8 @@ class SimulationView(QWidget):
         **Their standings are not, and are read from every run** (`PL-LHBY`,
         `PL-4KZD`). A standing is computed from the run's own clock, its own
         opening instant and its own halts, so the runs answer one mark
-        differently as soon as a branch is drawn. Passing the whole tick's
-        snapshots rather than a chosen one is what keeps the choice from
+        differently as soon as a branch is drawn. Passing every run's
+        standings rather than a chosen run's is what keeps the choice from
         being made here at all: there is no reference run to pick.
 
         The height control keeps reading the reference run, and that read is
@@ -1495,9 +1535,16 @@ class SimulationView(QWidget):
         asked to reach. `PL-GHMB` is the item that assumed otherwise, and it
         was dropped on the measurement.
 
+        A drawn frame passes in the parts of its snapshots, so the panel shows the values
+        that the frame was assembled from. A halt passes the same parts, read instead from
+        each run's controller (`_restate_bookmark_panel`).
+
         Args:
-            snapshots: Every displayed run's snapshot for this tick, in
-                drawing order - the same reads the frame was assembled from.
+            bookmarks: The reference run's marks.
+            standings: Every displayed run's standings on those marks, in
+                drawing order.
+            reference: The reference run's agent and settings, which set the limits
+                of the height control.
 
         Raises:
             ValueError: If no run is given, which `bookmark_panel` refuses
@@ -1516,12 +1563,11 @@ class SimulationView(QWidget):
                 `CLAUDE.md`'s safety-critical standard asks for.
         """
 
-        reference = snapshots[0]
         panel = bookmark_panel(
-            reference.bookmarks,
+            bookmarks,
             tuple(
-                RunMarks(run_label(run.run_id), snapshot.bookmark_standings)
-                for run, snapshot in zip(self._runs, snapshots, strict=True)
+                RunMarks(run_label(run.run_id), run_standings)
+                for run, run_standings in zip(self._runs, standings, strict=True)
             ),
         )
         self._bookmarks_panel.set_panel(panel)
@@ -1706,7 +1752,9 @@ class SimulationView(QWidget):
         or a snapshot whose own values refuse - and a halt presented only
         through it would never be seen (`PL-25KS`, `PL-7DJK`). The branch
         controls are restated from the case for the same reason
-        (`_restate_fork_panel`, `PL-MMNX`). The trunk records that its frame
+        (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated
+        from each run's controller for the same reason
+        (`_restate_bookmark_panel`, `PL-YHR3`). The trunk records that its frame
         failed, so the case then offers no branch at all: one opened now would
         be drawn by the same frame and halt on it (`PL-T2Q2`). A presentation
         that fails afterwards cannot unwind the halt.
@@ -1719,6 +1767,7 @@ class SimulationView(QWidget):
             run.present_halt()
 
         self._restate_fork_panel()
+        self._restate_bookmark_panel()
 
         try:
             self._refresh_view()
