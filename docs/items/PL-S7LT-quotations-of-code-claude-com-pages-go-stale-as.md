@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.38
 touches: tools/doc_quote_check.py, tools/doc_quotes.toml, tests/unit/test_doc_quote_check.py, .github/workflows/drift.yml, docket.toml, docs/apparatus.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
