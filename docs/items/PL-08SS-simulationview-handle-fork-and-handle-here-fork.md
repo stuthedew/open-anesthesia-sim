@@ -3,12 +3,14 @@ id: PL-08SS
 title: SimulationView._handle_fork and _handle_here_fork keep the branch in the case before add_run reads its snapshot, so a fork taken on a run whose snapshot refuses raises out of the slot and leaves a branch kept but never displayed, which Reset neither drops nor rebuilds (found at PL-V2HC's review)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: every-control-restates-the-halt
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-12
+closed: 2026-10-19
+pr: 1675
 payoff: pressing Fork on a run that cannot be read ends in the halt on screen, instead of a silent branch that Reset neither shows nor clears
 verify: grep -q 'def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch' tests/integration/test_simulation_view.py
 ---
@@ -49,3 +51,5 @@ instead of outliving it (`test_a_one_run_reset_leaves_a_case_with_no_branches`).
 The press itself is unchanged: it still keeps a branch it never draws and says
 nothing about it, so the brief above stands, minus "which Reset neither drops
 nor rebuilds".
+
+**Regression check 2026-10-19.** Run with `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest tests/integration/test_simulation_view.py -k <test>` against `src/` as `origin/main` 6fd84bd5 held it. `test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch[take]` and `[here]` fail on the code before the fix at `assert "Traceback" not in capfd.readouterr().err`, with the raise in `_show_branch`.
