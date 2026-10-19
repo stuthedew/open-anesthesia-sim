@@ -3,12 +3,14 @@ id: PL-2LB5
 title: Design round: make one source of truth the core design principle everywhere, simulator and apparatus, and fix existing copies structurally rather than one instance at a time
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: planning, docs
 feature: one-source-of-truth
 touches: CLAUDE.md, docs/resident-instructions.md
 deferred-from: v0.6.0 - captured after the freeze on the owner's 2026-10-19 ask; the fixes are proposed as their own milestone once the inventory sizes them
 added: 2026-10-19
+closed: 2026-10-19
+verify: bin/docket feature one-source-of-truth
 ---
 
 **Problem.** Design round: make one source of truth the core design principle everywhere, simulator and apparatus, and fix existing copies structurally rather than one instance at a time
@@ -37,7 +39,7 @@ Each check carries a baseline that can only shrink, and the baseline is burned d
 
 **Two copies that must stay copies.** A test's expected value: `.claude/rules/test-oracles.md` requires it from a source independent of the code under test, and an expected value imported from that code verifies nothing. And a published value restated in a data file with its citation, which is provenance.
 
-**Proposed breakdown, not yet filed.**
+**Proposed breakdown** [superseded 2026-10-19: filed as `PL-K88Z`, `PL-JS6P`, `PL-WM5P`, `PL-VWXL` and `PL-SH0W`, below].
 1. The principle's wording in `CLAUDE.md`, done on 2026-10-19 on this item's branch.
 2. An inventory of second copies by shape across the whole tree, deterministic tools first, each finding filed under this feature (M).
 3. The `doc_check` rule tying numbers in `docs/MODEL.md` and `README.md` to their home (M; safety-relevant, since `docs/MODEL.md` is the authoritative specification).
@@ -48,6 +50,8 @@ Each check carries a baseline that can only shrink, and the baseline is burned d
 
 **Decision needed.** Where this goes against v0.6.0 ("the layout is the reader's", 38 of 39 Required ids closed on 2026-10-19). **Recommendation:** do step 2, the inventory, now. Scope the fixes as their own `ROADMAP.md` milestone after v0.6.0 ships, because the inventory decides how large the work is, and a milestone is scoped before it is built.
 
-**Done when.** The principle's wording is in `CLAUDE.md`, the inventory's items are filed under `one-source-of-truth`, each of the four shapes has a check with a baseline that only shrinks, and every baseline is at zero.
+**Answer** (project owner, 2026-10-19, ratified, over folding the fixes into v0.6.0 and over leaving them unplaced): "Agree with recs". The inventory runs now as `PL-K88Z`, ahead of v0.6.0's last item. The fixes are `ROADMAP.md` planned-milestone item 43, placed on § "The timeline" as the `v0.6.x — one source of truth` row, directly after v0.6.0 and before the interface pass. Placing it directly after v0.6.0 is the session's reading of "after v0.6.0 ships": every release that waits behind it pays the defect inflow these copies cause. The row is scoped once the inventory has sized it. Steps 3 to 6 are filed as `PL-JS6P` (numbers in `docs/MODEL.md` tied to their home), `PL-WM5P` (one writer for every surface that states run state), `PL-VWXL` (the pylint duplicate-code ratchet) and `PL-SH0W` (one home for each configuration fact). Each waits on v0.6.0 and on the inventory. Step 7, burning each baseline down, is the inventory's own filings.
+
+**Done when.** [superseded 2026-10-19: the whole program's end state now belongs to the feature `one-source-of-truth` and planned-milestone item 43.] This design round is done when the principle's wording is in `CLAUDE.md`, the breakdown is filed under `one-source-of-truth`, and the fixes are placed in `ROADMAP.md`. All three held on 2026-10-19.
 
 **Generator check.** This widens `PL-4S6C` (the fact-home check and the resident principle, closed 2026-10-12) at the owner's ask, and is not a re-entry of it. No filing has fallen through `tools/fact_home_check.py` since it closed. The new scope is the shapes that check never covered: state, documents and configuration.
