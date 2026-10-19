@@ -11208,9 +11208,8 @@ def test_a_test_of_the_tooling_is_a_collected_test_importing_no_simulator_on_eit
     assert arming.waits_on_read(test)
     assert not arming.waits_on_read(test, {test})
     assert arming.arms_on_green(test, {test})
-    assert arming.waits_on_read(
-        "src/anesthesia_sim/core/uptake.py", {"src/anesthesia_sim/core/uptake.py"}
-    )
+    for path in ("src/anesthesia_sim/core/uptake.py",):
+        assert arming.waits_on_read(path, {path}), path
 
 
 def _arm_gate_on_base(git: Callable[..., str], root: Path) -> None:
