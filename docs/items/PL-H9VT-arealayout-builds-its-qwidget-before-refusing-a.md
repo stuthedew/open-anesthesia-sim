@@ -1,8 +1,9 @@
 ---
 id: PL-H9VT
 title: AreaLayout builds its QWidget before refusing a layout of two windows, so the refusal test aborts a pytest worker with no QApplication and turns main red
-status: untriaged
+status: done
 added: 2026-10-19
+closed: 2026-10-19
 payoff: main's test run no longer fails on whichever run happens to schedule the two-window refusal test first on a fresh worker
 verify: grep -q 'drawable = _drawable(model)' src/anesthesia_sim/app/area_layout.py
 ---
