@@ -19,13 +19,18 @@ from anesthesia_sim.app.view_registry import (
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
     REGISTERED,
+    REQUIRED_REACHABLE,
     RETIRED_TAGS,
     WASH_IN,
     RegisteredView,
     RetiredTag,
     missing_view_text,
     registry,
+    rename_offer_text,
+    required_kinds,
     retirements,
+    shown_elsewhere_text,
+    unplaced_view_text,
 )
 from anesthesia_sim.layout.shipped import SHIPPED_WORKSPACE_IDS, shipped_workspace
 from anesthesia_sim.layout.tree import ViewKind
@@ -156,7 +161,7 @@ def test_a_tag_cannot_be_renamed_to_itself() -> None:
 
 # --- The notice's text -----------------------------------------------------------
 
-_KEPT = "The saved name is kept, so saving this layout loses nothing."
+_KEPT = "Choose a View from the menu above. The saved name is kept until you do."
 
 
 def test_an_unknown_kind_is_named_and_said_to_be_unknown() -> None:
@@ -190,3 +195,93 @@ def test_a_renamed_kind_names_the_release_and_the_view_it_became() -> None:
 def test_a_registered_kind_has_no_notice() -> None:
     with pytest.raises(ValueError, match="'wash_in' is registered, so its Area draws it"):
         missing_view_text(WASH_IN)
+
+
+# --- The kinds that must stay reachable --------------------------------------------
+
+
+def test_the_agent_accounting_is_the_one_kind_that_must_stay_reachable() -> None:
+    """`docs/MODEL.md` § "Minimum displayed outputs" names the agent accounting alone."""
+
+    assert REQUIRED_REACHABLE == ("agent_accounting",)
+    assert {tag for tag, entry in REGISTERED.items() if entry.required_reachable} == {
+        "agent_accounting"
+    }
+
+
+def test_a_build_that_does_not_register_a_required_kind_fails() -> None:
+    """The check the module runs on import refuses a registry that dropped the kind."""
+
+    without = registry(RegisteredView(CONCENTRATION_CHART, "Concentrations"))
+
+    with pytest.raises(ValueError, match="'agent_accounting' must stay reachable in every layout"):
+        required_kinds(without, AGENT_ACCOUNTING)
+
+
+def test_a_required_kind_whose_entry_lacks_the_flag_fails() -> None:
+    unflagged = registry(RegisteredView(AGENT_ACCOUNTING, "Agent accounting"))
+
+    with pytest.raises(ValueError, match="does not carry required_reachable"):
+        required_kinds(unflagged, AGENT_ACCOUNTING)
+
+
+def test_a_flag_no_requirement_names_fails() -> None:
+    flagged = registry(
+        RegisteredView(AGENT_ACCOUNTING, "Agent accounting", required_reachable=True),
+        RegisteredView(WASH_IN, "Wash-in", required_reachable=True),
+    )
+
+    with pytest.raises(ValueError, match=r"\['wash_in'\] carry required_reachable"):
+        required_kinds(flagged, AGENT_ACCOUNTING)
+
+
+def test_a_required_kind_named_twice_or_as_a_plain_string_fails() -> None:
+    flagged = registry(
+        RegisteredView(AGENT_ACCOUNTING, "Agent accounting", required_reachable=True)
+    )
+
+    with pytest.raises(ValueError, match="required to stay reachable twice"):
+        required_kinds(flagged, AGENT_ACCOUNTING, AGENT_ACCOUNTING)
+
+    with pytest.raises(TypeError, match="a required View kind is a ViewKind"):
+        required_kinds(flagged, "agent_accounting")  # type: ignore[arg-type]
+
+
+def test_an_entry_refuses_a_flag_that_is_not_a_bool() -> None:
+    with pytest.raises(TypeError, match="must stay reachable is a bool, not int"):
+        RegisteredView(WASH_IN, "Wash-in", required_reachable=1)  # type: ignore[arg-type]
+
+
+# --- The other notices and the rename offer ------------------------------------------
+
+
+def test_a_renamed_kind_is_offered_its_new_title() -> None:
+    registered = registry(RegisteredView(NEW, "New view"), RegisteredView(GONE, "Other"))
+    retired = retirements(registered, RetiredTag(OLD, "0.8.1", NEW))
+
+    assert rename_offer_text(OLD, registered, retired) == "Show 'New view'"
+
+
+def test_a_removed_or_unknown_kind_is_offered_nothing() -> None:
+    registered = registry(RegisteredView(NEW, "New"))
+    retired = retirements(registered, RetiredTag(GONE, "0.7.0"))
+
+    assert rename_offer_text(GONE, registered, retired) is None
+    assert rename_offer_text(ViewKind("from_a_later_build"), registered, retired) is None
+
+
+def test_a_registered_kind_is_offered_nothing_to_rename_to() -> None:
+    with pytest.raises(ValueError, match="'wash_in' is registered"):
+        rename_offer_text(WASH_IN)
+
+
+def test_the_notice_for_a_view_not_drawn_in_an_area_names_it_by_title() -> None:
+    assert unplaced_view_text(WASH_IN) == (
+        "This build cannot put 'Wash-in' in an Area yet. Choose a View from the menu above."
+    )
+
+
+def test_the_notice_for_a_view_shown_elsewhere_names_it_by_title() -> None:
+    assert shown_elsewhere_text(CONCENTRATION_CHART) == (
+        "This build draws one 'Concentrations' at a time. Choose a View from the menu above."
+    )
