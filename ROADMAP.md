@@ -130,7 +130,7 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.30 | Completed | **The release where two compared runs each take one line above one shared heading, so the concentration chart gets back 63 px on the laptop reference, and where a failed drift run reaches the next session.** Three items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 27 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at v0.5.29 and here, and `data/` and `layout/` resolve to the same trees, so the trajectories were not re-measured. `app/` changed (`6d1a9c6` to `48d6a4a`) because in compare mode each run's transport controls and delivered concentration share one line, and the substance, 1 MAC and model the two runs share are stated once above the paired readouts (`PL-QLZ5`). On the 1366 by 700 reference that takes the region from 366 px to 303 px and leaves the chart about 264 px, still under the 360 px one run keeps, which the project owner accepted (`PL-JG82`). **It finishes `claim-integrity`**, and closes no generator head. **One is a Gate 2 entry**, and the gate stands at 233 of 246 cleared, from 232 of 246 at the v0.5.29 tag. `PL-JLK6` and `PL-JTWV` shipped inside the v0.5.29 tag and are described here. `PL-1BL8`, the cut, ships in no release under `PL-KRS6`. | 3 items |
 | v0.5.31 | Completed | **The release where every Area's header offers every View kind the build registers, so the accounting View can be brought on screen from any Workspace, and where a chart made wider by a resize or a dragged border is redrawn at its new width.** 11 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 30 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at v0.5.30 and here, and `data/` and `layout/` resolve to the same trees, so the trajectories were not re-measured. `app/` changed (`48d6a4a` to `89ae293`) because each Area's header carries a View chooser and a build without the accounting View fails (`PL-50PZ`), and because a widened chart is redrawn at its own width, the time base is held outside its selector, and each of a run's four Area surfaces can be built more than once (`PL-9LNF`), and the dashboard marks each string it holds with whether a reader can see it now, which changes nothing on screen (`PL-904Y`). **It finishes `test-effectiveness-measurement`**, and closes no generator head. **Three are Gate 2 entries**, and the gate stands at 236 of 246 cleared, from 233 of 246 at the v0.5.30 tag. `PL-QT2J` shipped inside the v0.5.30 tag and is described here. `PL-VL8G`, the cut, ships in no release under `PL-KRS6`. | 11 items |
 | v0.5.32 | Completed | **The release where each Area builds its own View from the View registry under one View contract, so any registered View can be chosen for any Area and two Areas that name one kind each draw it, and where a pull request held for the owner's read carries its question in a commit trailer.** Two items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 31 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at v0.5.31 and here, and `data/` and `layout/` resolve to the same trees, so the trajectories were not re-measured. `app/` changed (`89ae293` to `64a6e74`) because each Area builds its View from that View's registry entry, and the concentration chart, the wash-in plot, the parameter controls and the agent accounting each meet the `View` protocol in `app/view_contract.py` (`PL-TH35`). **It finishes `review-hold`**, and closes no generator head. **One is a Gate 2 entry**, and the gate stands at 237 of 246 cleared, from 236 of 246 at the v0.5.31 tag. `PL-CKZL`, the cut, ships in no release under `PL-KRS6`. | 2 items |
-| v0.5.33 | Completed / current baseline | **The release where seven `docket` and `doc_check` answers that were wrong without saying so are refused, read correctly or named as unread, and where the resident-instruction total states the basis its growth series is on.** Eight items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 31 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/` resolves to `2dd16af` at the v0.5.32 tag and here, so the trajectories were not re-measured. Seven items close in one pull request, `#1620`: `docket check` refuses a `no-successor:` id naming no item, the item itself, or an item not done (`PL-21Z5`); `bin/docket stranded` reports a branch whose only post-merge commit deletes a file (`PL-N80K`); `doc_check` names a Makefile that sets `.RECIPEPREFIX` as unread (`PL-GSJ6`) and a file the running parser mis-tokenizes as unread (`PL-LCBQ`), and it reads a quoted brief after a possessive with emphasis folded (`PL-RX0W`); and the resident line points at `docs/resident-instructions.md` and ends with the subtotal its growth series counts (`PL-X925`, `PL-DXF0`). **It finishes three features**, `generator-heads`, `resident-gauge-basis` and `stranded-report-fidelity`, and closes no generator head. **None is a Gate 2 entry**, and the gate stands at 237 of 246 cleared, as at the v0.5.32 tag. `PL-2N6J` shipped inside the v0.5.32 tag and is described here, as is `#1618`'s Area menu, which shipped there with its item `PL-2KXB` still open. `PL-WQJS`, the cut, ships in no release under `PL-KRS6`. | 8 items |
+| v0.5.33 | Completed / current baseline | **The release where an Area that cannot be given the size its View needs says so instead of clipping the View, and where seven `docket` and `doc_check` answers that were wrong without saying so are refused, read correctly or named as unread.** 11 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 32 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.32 tag and here, and `data/` and `tests/reference/` resolve to the same trees, so the trajectories were not re-measured. `app/` (`aeece81` to `b869318`) and `layout/` (`9b54bb9` to `c219f87`) changed because `layout/sizing.py` works out each Area's size from its View's need, the dashboard's page grows to give every View that size, and an Area that cannot be given it shows its header, the size its View needs and the size it has, and no run value (`PL-K285`). Seven items close in `#1620`: `docket check` refuses a `no-successor:` id naming no item, the item itself, or an item not done (`PL-21Z5`); `bin/docket stranded` reports a branch whose only post-merge commit deletes a file (`PL-N80K`); `doc_check` names a Makefile that sets `.RECIPEPREFIX` as unread (`PL-GSJ6`) and a file the running parser mis-tokenizes as unread (`PL-LCBQ`), and it reads a quoted brief after a possessive with emphasis folded (`PL-RX0W`); and the resident line points at `docs/resident-instructions.md` and ends with the subtotal its growth series counts (`PL-X925`, `PL-DXF0`). The read commands answer from `main`'s newer item copies (`PL-KS01`). **It finishes three features**, `generator-heads`, `resident-gauge-basis` and `stranded-report-fidelity`, and closes no generator head. **One is a Gate 2 entry**, `PL-K285`, and the gate stands at 238 of 246 cleared, from 237 of 246 at the v0.5.32 tag. `PL-2N6J` shipped inside the v0.5.32 tag and is described here, as is `#1618`'s Area menu, which shipped there with its item `PL-2KXB` still open. `PL-WQJS`, the cut, ships in no release under `PL-KRS6`. | 11 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -237,26 +237,47 @@ There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
 ## Current baseline: v0.5.33
 
-v0.5.33 is the release where seven answers from `docket` and `doc_check` that
-were wrong without saying so are now refused, read correctly or named as
-unread. It is also where the resident-instruction total that `make check`
-prints states the basis that `CLAUDE.md`'s growth series counts. It has eight
-items, and it is a patch on both halves of § "Versioning decision"'s test. No
-capability boundary is crossed, because v0.6.0's capability, a layout the
-reader arranges, is not finished: 31 of the 39 ids in its Required scope are
-closed. The next three minor numbers, v0.6.0 through v0.8.0, are given to
-milestone sections. None of the items is a Gate 2 entry. `bin/docket wave`
-puts the gate at 237 of 246 cleared at this cut and at the v0.5.32 tag, and 9
+v0.5.33 is the release where an Area that cannot be given the size its View
+needs says so, instead of drawing the View clipped. It is also where seven
+answers from `docket` and `doc_check` that were wrong without saying so are
+now refused, read correctly or named as unread. It has 11 items, and it is a
+patch on both halves of § "Versioning decision"'s test. No capability boundary
+is crossed, because v0.6.0's capability, a layout the reader arranges, is not
+finished: 32 of the 39 ids in its Required scope are closed. The next three
+minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. One of
+the items, `PL-K285`, is a Gate 2 entry. `bin/docket wave` puts the gate at
+238 of 246 cleared at this cut, against 237 of 246 at the v0.5.32 tag, and 8
 entries stay open.
 
-**No equation, parameter or stored value changed, and no run can differ.**
-`src/` resolves to `2dd16af` at the v0.5.32 tag and at this cut, and so do
-`tests/reference/` (`b0c7cb3`), `docs/MODEL.md` (`1aece01`), `README.md`
-(`98a0d7f`) and `.github/` (`ccc99d5`). No step a run takes can differ, so
-this cut did not measure the trajectories again. What moved is
-`tools/doc_check.py`, the `docket` package and their tests.
+**No equation, parameter or stored value changed, and no run can differ:**
 
-**What a learner sees change.** Nothing that this release's items closed.
+| Tree | v0.5.32 tag | This cut | What moved |
+| --- | --- | --- | --- |
+| `src/` | `2dd16af` | `532f2c9` | `app/` and `layout/` only, below |
+| `core/` | `92e04de` | `92e04de` | nothing |
+| `app/` | `aeece81` | `b869318` | `area_layout.py` draws each Area at the size `layout/sizing.py` works out and reports the sum of the Views' needs as its minimum size; `view_registry.py` gives each View kind a placeholder minimum size; `view_contract.py` states that a View is never drawn below that size (`PL-K285`) |
+| `data/` | `af2d672` | `af2d672` | nothing |
+| `layout/` | `9b54bb9` | `c219f87` | `sizing.py` is new and imports no toolkit: it works out the pixel size of every Area from the tree, the space available and each Area's need, and the other Areas in a split give way in proportion to their fractions (`PL-K285`) |
+| `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
+| `docs/MODEL.md` | `1aece01` | `1eda843` | § "What this list requires once the layout is the reader's" says the dashboard's page grows to give a chosen View the size it needs, so a choice shows the View and never only the notice of an Area too small for it (`PL-K285`) |
+| `README.md` | `98a0d7f` | `98a0d7f` | nothing |
+| `.github/` | `ccc99d5` | `ccc99d5` | nothing |
+
+`core/`, `data/` and `tests/reference/` resolve to the same trees at the
+v0.5.32 tag and at this cut, so no step a run takes can differ, and this cut
+did not measure the trajectories again. The `app/` and `layout/` changes
+decide how large each Area is drawn, and change no value a run computes.
+
+**What a learner sees change.** No View is drawn below the size it needs.
+Before, Qt squeezed an Area below its View's minimum without saying so, and at
+1366 by 900 px the Induction Workspace drew the concentration chart, which
+needs about 585 px of height, in 325 px. Now each Area is held at its View's
+need, and the dashboard's page grows and scrolls to give every View its size.
+A border drag stops at a neighbour's need. Where the window cannot grow, an
+Area that the latest change moved shows only its header, with "Too small for"
+and the View's name, the size its View needs and the size it has. It shows no
+run value, so a clipped reading is never on screen (`PL-K285`).
+
 `#1618` merged after v0.5.32's cut was written and before it landed, so its
 change is inside the v0.5.32 tag and is described here. Each Area's header
 ends in an Area menu that splits, joins, swaps and closes Areas, and an entry
@@ -272,23 +293,27 @@ same span and closed nothing.
 **The apparatus.** Seven items close in `#1620`. `docket check` now refuses a
 `no-successor:` id that names no item, the item itself, or an item that is not
 done (`PL-21Z5`). `bin/docket stranded` reports a branch whose only commit
-after its merge deletes a file as work left behind (`PL-N80K`). `doc_check` names a Makefile that
-sets `.RECIPEPREFIX` as unread instead of reading it as having no recipes
-(`PL-GSJ6`). It also names a file that the running parser cannot tokenize, so
-the tests after an f-string that Python 3.11 mis-reads are no longer lost
-without a word (`PL-LCBQ`). A quotation of an item brief after a possessive is
-now compared with the brief, with paired emphasis removed on both sides
-(`PL-RX0W`). The two resident-instruction advisories name
+after its merge deletes a file as work left behind (`PL-N80K`). `doc_check`
+names a Makefile that sets `.RECIPEPREFIX` as unread instead of reading it as
+having no recipes (`PL-GSJ6`). It also names a file that the running parser
+cannot tokenize, so the tests after an f-string that Python 3.11 mis-reads are
+no longer lost without a word (`PL-LCBQ`). A quotation of an item brief after a
+possessive is now compared with the brief, with paired emphasis removed on
+both sides (`PL-RX0W`). The two resident-instruction advisories name
 `docs/resident-instructions.md` (`PL-X925`), and the resident line ends with
 the instruction files' subtotal, which is the basis of the growth series
-(`PL-DXF0`). Both pytest steps in `quality.yml` now run unbuffered, so CI's
-timestamps show that `checks-part-2`'s slow start is its costly tests and not
-start-up (`PL-2N6J`, `#1615`, inside the v0.5.32 tag). The release finishes
-`generator-heads`, `resident-gauge-basis` and `stranded-report-fidelity`, and
-closes no generator head. The release item is `PL-WQJS`, whose `resource:
-release-train` keeps it out of every later release. Every closure carried its
-`pr:` number before the cut, so every bullet cites its pull request.
-`tools/pr_body_check.py` found no squash commit that lost its body.
+(`PL-DXF0`). The session-start digest, `list`, `status` and `concurrent` now
+read `main`'s newer copy of an item, as `next` and `show` already did
+(`PL-KS01`, `#1625`), and `docs/apparatus.md` names the failed `drift.yml` line
+that `tools/main_ci_status.py` prints (`PL-TWC5`). Both pytest steps in
+`quality.yml` now run unbuffered, so CI's timestamps show that
+`checks-part-2`'s slow start is its costly tests and not start-up (`PL-2N6J`,
+`#1615`, inside the v0.5.32 tag). The release finishes `generator-heads`,
+`resident-gauge-basis` and `stranded-report-fidelity`, and closes no generator
+head. The release item is `PL-WQJS`, whose `resource: release-train` keeps it
+out of every later release. Every closure carried its `pr:` number before the
+cut, so every bullet cites its pull request. `tools/pr_body_check.py` found no
+squash commit that lost its body.
 
 `#1615` merged on `main` after v0.5.32's cut was written and before it landed,
 and its item `PL-2N6J` ships here, so v0.5.32's notes take a pointer to it. As
