@@ -1,9 +1,15 @@
 ---
 id: PL-80R5
-title: Run delegable queue items headless on the monthly Claude Platform API credits: a script on the owner's machine that runs claude --bare -p on Sonnet 5.5 under docs/worker.md, one ready delegable item per run with a --max-budget-usd cap, records each run's total_cost_usd, and stops when the month's credit is spent (credits do not cover interactive or GitHub Action Claude Code, and expire unused each billing cycle)
-status: untriaged
+title: Run delegable queue items headless on the monthly Claude Platform API credits - a script on the owner's machine that runs claude -p under docs/worker.md, one ready delegable item per run with a --max-budget-usd cap, records each run's total_cost_usd, and stops when the cycle's credit is spent (credits do not cover interactive or GitHub Action Claude Code, and expire unused each billing cycle)
+priority: P2
+effort: M
+status: done
 feature: api-credit-runs
+touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/maintainer.md, docs/worker.md, docs/items/PL-80R5-run-delegable-queue-items-headless-on-the.md
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1666
+verify: uv run pytest -q tests/unit/test_headless_worker.py
 ---
 
 **Problem.** Run delegable queue items headless on the monthly Claude Platform API credits: a script on the owner's machine that runs claude --bare -p on Sonnet 5.5 under docs/worker.md, one ready delegable item per run with a --max-budget-usd cap, records each run's total_cost_usd, and stops when the month's credit is spent (credits do not cover interactive or GitHub Action Claude Code, and expire unused each billing cycle)
@@ -63,3 +69,42 @@ set under `-p`. The runner also needs a `--model` option and a no-push mode,
 because `PL-6FX6`'s trial runs Sonnet and Haiku copies that must never be
 pushed. Its plumbing is tested with a fake `claude` executable, because no
 session holds the key.
+
+**Built 2026-10-19, and the `--bare` question settled.** The runner runs
+without `--bare`. Anthropic's authentication page ranks the credentials, and
+under `-p` "the key is always used when present"
+(https://code.claude.com/docs/en/authentication, "Authentication precedence",
+read 2026-10-19). Only cloud-provider selection and `ANTHROPIC_AUTH_TOKEN` rank
+above the key, and a signed-in Claude apps gateway session sits outside the
+list. So the runner refuses to start without `ANTHROPIC_API_KEY` and drops the
+outranking variables from the run's environment. That makes the billing as
+certain as bare mode would, and the run still loads `CLAUDE.md`, the skills and
+the hooks. Bare mode was refused because the hooks are part of what keeps a
+worker inside its rules. The gateway case cannot be detected and is named in
+the script's docstring.
+
+What was built:
+
+- `tools/headless_worker.py` clones the repository for each run, borrowing this
+  checkout's objects, and makes a branch named `claude/<id>-worker`. It starts
+  one `claude -p` run on Opus 5.5 with `--max-budget-usd`, auto mode and
+  permission prompts denied, and appends the reported `total_cost_usd` to a
+  ledger. It stops before a run that the cycle's remaining credit cannot cover.
+  A run whose cost cannot be read stops the batch, and the next start refuses
+  until the ledger line is corrected.
+- `--no-push` sets the clone's push URL to a name no remote answers to, so a
+  trial copy cannot leave the machine whatever the worker does. `--model`
+  selects the trial's other models.
+- `bin/docket delegable --ids` prints the delegable list as bare ids, so the
+  runner reads the one list that `docket` computes rather than parsing prose.
+- `docs/maintainer.md` § "Spend the monthly API credit on delegable items" has
+  the owner's steps, and `docs/worker.md`'s loop now tells a headless worker
+  to use the branch the runner made.
+
+Tested with a fake `claude` executable that records its arguments, commits and
+tries to push (`tests/unit/test_headless_worker.py`). Nothing has run against
+the real API yet: no session holds the key. The first real runs are
+`PL-6FX6`'s trial, and they also check the cost estimate against the Console's
+usage page.
+
+**Generator check.** Not a head and not an instance: a new tool requested by the project owner, and it reads its one shared fact, the delegable list, from `bin/docket delegable --ids` rather than deriving it again.

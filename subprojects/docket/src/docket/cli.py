@@ -4547,7 +4547,29 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     """Everything a worker may take, with the command that proves each one."""
     items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_delegable(report, _flight(args), config.protected_paths, config.gate_paths))
+    flight = _flight(args)
+    if args.ids:
+        # Bare ids for a script, so nothing else may reach stdout. An in-flight
+        # read that failed would hand over a partial list as a whole one, so
+        # it refuses instead.
+        unread = render.format_unread(flight)
+        if unread:
+            print(unread, file=sys.stderr)
+            return 1
+        candidates = render.delegable_items(
+            report, flight, config.protected_paths, config.gate_paths
+        )
+        for item in candidates:
+            print(item.identifier)
+        # What the answer was read from still travels, on stderr.
+        stdout, sys.stdout = sys.stdout, sys.stderr
+        try:
+            _say_read_from_base(args, replaced)
+            _say_snapshot(args)
+        finally:
+            sys.stdout = stdout
+        return 0
+    print(render.format_delegable(report, flight, config.protected_paths, config.gate_paths))
     _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
@@ -6048,9 +6070,11 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--dry-run", action="store_true")
     release.set_defaults(func=cmd_release)
 
-    add("delegable", "what a cheaper model may work, and what proves it").set_defaults(
-        func=cmd_delegable
+    delegable = add("delegable", "what a cheaper model may work, and what proves it")
+    delegable.add_argument(
+        "--ids", action="store_true", help="print only the ids, one per line, best-first"
     )
+    delegable.set_defaults(func=cmd_delegable)
 
     verify_cmd = add("verify", "prove an item's work stayed inside its commission")
     verify_cmd.add_argument("item", nargs="+", help="one or more item ids, verified as a batch")
