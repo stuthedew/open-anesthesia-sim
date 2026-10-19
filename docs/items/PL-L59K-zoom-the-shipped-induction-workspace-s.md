@@ -3,12 +3,14 @@ id: PL-L59K
 title: Zoom the shipped Induction Workspace's concentration chart to the first 15 minutes, once the chart saves its own state
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature
 feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_run_surfaces.py, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_layout_shipped.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, README.md
 blocked-by: PL-TH35
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1650
 payoff: the shipped Induction Workspace opens with its concentration chart on the first minutes of the case, where induction happens, rather than on the same window as every other Workspace
 verify: grep -q '"time_base_s": 900.0' src/anesthesia_sim/data/workspaces/induction.json
 ---
@@ -179,10 +181,3 @@ is the regression test for the moved advisory. A case at 8% sevoflurane for
 10 minutes and then 0% for 25 leaves the circuit trace clipped early in the
 run. The chart that fits the run names it, and a 15-minute chart, whose window
 starts after the excursion, does not.
-
-
-**Next steps, 2026-10-19.** The build is on `claude/v060-l59k-zbbp-zuw20e`,
-on top of `PL-7Z84`'s branch, and the full test suite passes there. Once
-`#1614` merges: bring `origin/main` in, run `make check`, close this item
-with its `pr:`, open the pull request, and ask `bin/docket arm`. It changes
-which window each clinical advisory describes, so expect the owner's read.
