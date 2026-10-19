@@ -1,6 +1,6 @@
 ---
 id: PL-70M6
-title: bin/docket show prints, for a closed item, the sessions that worked it with each one's model, effort, served model and cost, joined from docs/session-ledger.tsv through the item's pull request, so one item can be read whole without storing session facts on it
+title: bin/docket show prints, for a closed item, the sessions that worked it, as one more section of the whole item that the existing command already prints: each session's model, effort, served model and cost, joined from docs/session-ledger.tsv through the item's pull request
 priority: P2
 effort: S
 status: ready
@@ -12,7 +12,14 @@ payoff: one item reads whole in bin/docket show, and the model review joins item
 verify: grep -rq 'session-ledger.tsv' subprojects/docket/src/docket && grep -q 'session-ledger' subprojects/docket/README.md
 ---
 
-**Problem.** bin/docket show prints, for a closed item, the sessions that worked it with each one's model, effort, served model and cost, joined from docs/session-ledger.tsv through the item's pull request, so one item can be read whole without storing session facts on it
+**Problem.** bin/docket show prints, for a closed item, the sessions that worked it, as one more section of the whole item that the existing command already prints: each session's model, effort, served model and cost, joined from docs/session-ledger.tsv through the item's pull request.
+
+`bin/docket show` already exists and prints everything about one item: its
+fields, its brief and its history. This item adds one section to that output.
+It does not add a command. The owner noted on 2026-10-19 that the old title
+read as if `show` were a new command for model and effort. The section's
+heading, "Sessions that worked it", is a placeholder name, and it is what
+says what the lines are (placeholder, 2026-10-19).
 
 **Why it matters.** On 2026-10-19 the project owner asked why a closed item does
 not carry its model and effort directly. The facts belong to a session, not an
@@ -31,8 +38,8 @@ follows `CLAUDE.md` § "Architecture and development discipline" (a shared fact
 has one source of truth). It is data access, not analysis, so it does not
 reopen the owner's refusal of a committed analysis tool recorded on `PL-92ZN`.
 
-**Done when.** `bin/docket show` prints, under a closed item, one line per
-joined session: session id, last served model, effort level and cost in USD.
+**Done when.** `bin/docket show` prints, under a closed item and below a
+heading that names the section, one line per joined session: session id, last served model, effort level and cost in USD.
 It says so plainly when the item has no `pr:`, when no session joins, or when
 a joined session has no ledger row. It must never print an empty list as if
 the item had no sessions. A function in `docket` exposes the join for the model
