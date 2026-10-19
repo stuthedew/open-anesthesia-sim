@@ -319,9 +319,10 @@ _FOLLOWED_PAINTS = 5
 def _induction_view(application: QApplication) -> SimulationView:
     """`_INDUCTION_DIAL_PERCENT` for `_INDUCTION_S`, paused, in the following 15-minute width.
 
-    Paused, so that no frame is drawn while the pointer waits on the event
-    loop and the points it is aimed at stay where they were. The view is
-    shown and drawn, and no event-loop pass follows the last frame.
+    The view is paused so that no frame is drawn while the pointer waits on the
+    event loop. The points that the pointer is aimed at then stay where they
+    were. The view is shown and drawn, and no event-loop pass follows the last
+    frame.
     """
 
     controller = SimulationController(agent_id=_AGENT_ID)
@@ -366,13 +367,13 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
 def test_the_dashboard_page_keeps_its_height_from_its_first_paint(
     application: QApplication,
 ) -> None:
-    """`PL-MXMG`: the page stands at its final height as soon as a frame is drawn.
+    """`PL-MXMG`: the page has its final height as soon as a frame is drawn.
 
-    Before the fix, the Areas were sized from what each View needed before Qt
-    had handled the layout requests that the View's frame posted. A per-run
-    line that a chart shows and hides again on its first frame still counted
-    then. So the page measured 15 px taller for its first paints and then
-    shrank, and a pixel read off a plot depended on when it was read.
+    Before the fix, the page sized the Areas from what each View needed before
+    Qt had handled the layout requests that the View's frame posted. At that
+    point, a per-run line that a chart shows and then hides on its first frame
+    still counted. So the page measured 15 px taller for its first paints and
+    then shrank. A pixel read off a plot therefore depended on when it was read.
     """
 
     view = _induction_view(application)

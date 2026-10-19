@@ -329,11 +329,11 @@ def test_a_layout_of_two_windows_is_refused() -> None:
 def test_a_refused_layout_leaves_no_widget_behind(application: QApplication) -> None:
     """`PL-Q18P`: the layout is refused before any widget is built, so nothing half-built is left.
 
-    The refusal is kept while the widgets are counted. Its traceback holds the
-    constructor's frame, so a widget built before the refusal would still
-    exist here. Such a widget is destroyed only once nothing holds that
-    traceback, which can be during another test, and that is how a test worker
-    crashed on `main`.
+    The test keeps the exception that refused the layout while it counts the
+    widgets. The exception's traceback holds the constructor's frame, so a
+    widget built before the refusal would still exist at this point. Such a
+    widget is destroyed only once nothing holds that traceback. That can happen
+    during another test, which is how a test worker crashed on `main`.
     """
 
     model = LayoutModel((Window(_area(1)), Window(_area(2))), AreaId(3))

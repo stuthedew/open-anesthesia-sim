@@ -528,27 +528,27 @@ class AreaLayout(QWidget):
         self.follow_needs()
 
     def follow_needs(self) -> None:
-        """Settle the Areas again where what was just drawn changed what a View needs.
+        """Settle the Areas again if what was just drawn changed what a View needs.
 
-        `refresh` calls it once the Views have drawn. A host that writes into
-        a widget that a View shows after `refresh` calls it again once it has,
-        as the dashboard does for each run's own surfaces.
+        `refresh` calls this method once the Views have drawn. After `refresh`, a
+        host may write into a widget that a View shows. That host calls this method
+        again once it has written, as the dashboard does for each run's own surfaces.
 
         A View can build, show or hide widgets while it draws. The setting
         controls build their per-run copies on their first frame, and a chart
-        shows and hides its per-run lines. Qt updates a widget's least size
-        only when it handles the layout requests those changes post, which is
-        otherwise on the next passes of the event loop. So the requests are
-        handled here first (`_handle_layout_requests`), and the needs read
-        after them are the ones those passes would read.
+        shows and hides its per-run lines. These changes post layout requests.
+        Qt updates a widget's minimum size only when it handles those requests,
+        and otherwise it handles them on the next passes of the event loop. So
+        this method handles the requests first (`_handle_layout_requests`). The
+        needs that it reads afterwards are then the ones those passes would read.
 
-        Where a need changed, the Areas are settled again and the host is told
-        that this widget's size hint changed. So the splitters stand at the
-        sizes the next pass would give them as soon as the frame is drawn
-        (`PL-4L8B`), and a host that sized this widget from its earlier hint
-        lays it out again (`PL-PHPZ`). The requests that follow are handled
-        too, so the page and every View in it have their final sizes before
-        the caller sees the frame (`PL-MXMG`).
+        If a need changed, this method settles the Areas again and tells the
+        host that this widget's size hint changed. As a result, the splitters
+        have the sizes that the next pass would give them as soon as the frame
+        is drawn (`PL-4L8B`). A host that sized this widget from its earlier hint
+        also lays it out again (`PL-PHPZ`). This method then handles the requests
+        that follow too, so the page and every View in it have their final sizes
+        before the caller sees the frame (`PL-MXMG`).
         """
 
         _handle_layout_requests()
@@ -1392,11 +1392,11 @@ class AreaLayout(QWidget):
         if total <= 0:
             return
 
-        # The step starts where the border is drawn, as a drag does. That can
-        # differ from the model's position while an Area is held wider than
-        # its share so that its View fits, and a step from the model's
-        # position would then move nothing on screen until it caught up with
-        # the drawn border (`PL-4L8B`).
+        # A keyboard step starts from where the border is drawn, as a drag does.
+        # The drawn border can differ from the model's position while an Area is
+        # held wider than its share so that its View fits. A step from the model's
+        # position would then move nothing on screen until it caught up with the
+        # drawn border (`PL-4L8B`).
         low, high = self._model.span(address)
         drawn = sum(handle.owner.sizes()[: address.index + 1]) / total
         target = low + (high - low) * (drawn + steps * AREA_KEYBOARD_STEP / total)
@@ -2029,9 +2029,9 @@ class AreaNotice(QFrame):
 # than a pixel on any screen.
 _BORDER_BISECTIONS: Final = 20
 
-#: The most times `_handle_layout_requests` hands out the posted layout
-#: requests. Each time hands out the requests the time before posted, one
-#: level further up or down the widgets. The dashboard needs fewer than ten.
+#: The maximum number of rounds in which `_handle_layout_requests` handles the posted
+#: layout requests. Each round handles the requests that the round before it posted,
+#: which are one level further up or down the widgets. The dashboard needs fewer than ten.
 _LAYOUT_REQUEST_ROUNDS: Final = 64
 
 
@@ -2050,13 +2050,14 @@ class _LayoutRequestCount(QObject):
 
 
 def _handle_layout_requests() -> None:
-    """Hand out every posted layout request now, and the ones those post, until none is left.
+    """Handle every posted layout request now, and the requests those post, until none is left.
 
-    A layout that handles a request can post the next one, to the widget
-    above it or below it. Qt keeps a request posted while requests are being
-    handed out for the next time they are. So this repeats until a round
-    hands out none, or for `_LAYOUT_REQUEST_ROUNDS` rounds. Any request still
-    left is handled by the event loop, as it would have been without this.
+    A layout that handles a request can post the next request, to the widget
+    above it or below it. If a request is posted while Qt is handling posted
+    requests, Qt keeps it until the next time it handles them. So this function
+    repeats until a round handles no requests, or for `_LAYOUT_REQUEST_ROUNDS`
+    rounds. The event loop handles any request still left, as it would have
+    done without this function.
     """
 
     application = QApplication.instance()

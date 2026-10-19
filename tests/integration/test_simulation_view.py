@@ -5004,16 +5004,16 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
     """The unconditional region keeps its own height, and the Areas take the rest.
 
-    At the fixed test size the page is taller than the window, so there is no
-    spare height. The Areas then stand at the height they ask for, their size
-    hint, from the first frame on. Before `PL-PHPZ` the page laid them out
-    from a hint read before the Views had drawn, so their height depended on
-    when the page was laid out. A window taller than the page's own size hint has spare
-    height. Every pixel of it makes the Areas taller, while the region that
-    holds the readouts does not move. The readout section is measured inside
-    the region, where it has been since `PL-NWTM`. The setting controls have
-    been a View in an Area since `PL-2KXB`, so they take their share of the
-    Areas' height.
+    At the fixed test size, the page is taller than the window, so there is no
+    spare height. From the first frame on, the Areas then have the height that
+    they ask for, which is their size hint. Before `PL-PHPZ`, the page laid out
+    the Areas from a hint read before the Views had drawn. So their height
+    depended on when the page was laid out. A window taller than the page's own
+    size hint has spare height. Every pixel of that spare height makes the Areas
+    taller, while the region that holds the readouts keeps its height. The test
+    measures the readout section inside the region, where the section has been
+    since `PL-NWTM`. The setting controls have been a View in an Area since
+    `PL-2KXB`, so they take their share of the Areas' height.
     """
 
     controller = SimulationController()
@@ -5042,14 +5042,14 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
     application: QApplication,
 ) -> None:
-    """`PL-PHPZ`: the Areas stand at their size hint straight after the first frame.
+    """`PL-PHPZ`: the Areas are as tall as their size hint straight after the first frame.
 
-    The setting controls, in an Area above the charts, build their per-run
-    copies on their first frame, which changes the Areas' size hint. Before
-    the fix the page kept the hint it read before that frame, so the Areas
-    stood 62 px shorter than their hint after the frame and 45 px taller once
-    the event loop had run. The expected height is the Areas' own size hint,
-    not one the page worked out.
+    The setting controls sit in an Area above the charts. They build their
+    per-run copies on their first frame, which changes the Areas' size hint.
+    Before the fix, the page kept the hint that it read before that frame. So
+    after the frame the Areas were 62 px shorter than their hint, and 45 px
+    taller once the event loop had run. The expected height is the Areas' own
+    size hint, not a height that the page worked out.
     """
 
     view = _shown_view(application, SimulationController())

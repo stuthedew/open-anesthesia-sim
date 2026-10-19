@@ -1,12 +1,13 @@
-"""`tests/conftest.py` deletes the windows the tests built when the session ends (`PL-CW51`).
+"""`tests/conftest.py` deletes the windows that the tests built when the session ends (`PL-CW51`).
 
 The conftest's module docstring says why. Qt keeps some parentless widgets of
-its own, such as the one each `QGraphicsLayoutStyleInfo` holds for a pyqtgraph
-plot's layout, and deleting one of those before its plot crashes the process.
-So the cleanup chooses only the windows Python built. These tests build one
-dashboard, check which of its new windows the cleanup chooses, and check that
-deleting those leaves none of the dashboard's widgets alive, Qt's own included.
-They render under the `offscreen` platform that `tests/conftest.py` selects.
+its own, such as the one that each `QGraphicsLayoutStyleInfo` holds for a
+pyqtgraph plot's layout. Deleting one of those widgets before its plot crashes
+the process. So the cleanup chooses only the windows that Python built. These
+tests build one dashboard and check which of its new windows the cleanup
+chooses. They also check that deleting those windows leaves none of the
+dashboard's widgets alive, including Qt's own. The tests render under the
+`offscreen` platform that `tests/conftest.py` selects.
 """
 
 import importlib.util
@@ -59,10 +60,11 @@ def _new_windows(application: QApplication, before: set[int]) -> list[QWidget]:
 def test_the_cleanup_deletes_a_dashboard_and_the_widgets_qt_built_for_it(
     application: QApplication,
 ) -> None:
-    """The dashboard is chosen, Qt's own widget is not, and deleting the dashboard takes both.
+    """The cleanup chooses the dashboard but not Qt's own widget.
 
-    Only this test's windows are deleted, so a window another test in this
-    worker still holds is left alone.
+    Deleting the dashboard deletes Qt's widget too. Only this test's windows are
+    deleted, so a window that another test in this worker still holds is left
+    alone.
     """
 
     before = {_address(window) for window in application.topLevelWidgets()}
