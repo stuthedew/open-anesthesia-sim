@@ -48,6 +48,7 @@ from .model import (
     is_under,
     live_recurrences,
     misread_faults,
+    no_successor_faults,
     pr_number,
     ranks_as_generator,
     ranks_as_generator_defect,
@@ -2566,7 +2567,9 @@ def _check_recurrences(report: Report, known: set[str]) -> None:
 
 
 def _check_reentries(report: Report) -> None:
-    """Hold a `reenters:` id to a fix that had shipped when the item was filed.
+    """Hold `reenters:` and `no-successor:` ids to `done` items.
+
+    A `reenters:` id must also have been closed by the time the item was filed.
 
     `docket inflow` counts these as fixes that did not hold, so an id naming an
     open item, a dropped one or one closed after the filing is a re-entry the
@@ -2577,6 +2580,9 @@ def _check_reentries(report: Report) -> None:
         faults = reentry_faults(item, by_id)
         if faults:
             report.errors.append(f"{_where(item)}: `reenters:` {'; '.join(faults)}")
+        unanswered = no_successor_faults(item, by_id)
+        if unanswered:
+            report.errors.append(f"{_where(item)}: `no-successor:` {'; '.join(unanswered)}")
 
 
 def _check_spent_verdicts(report: Report, known: set[str]) -> None:
