@@ -33,3 +33,8 @@ for now, simulator sessions included, replacing the ratified 2026-09-19 record
 of `max` for simulator sessions. They asked to be told when the ledger shows
 statistically significant evidence that `high` led to real-world issues;
 `PL-63CB` § "Effort monitoring" holds the method (project owner, 2026-10-19).
+
+**Comparison trial, the same day.** The owner chose a randomized comparison
+group: from Friday 2026-10-23 at 11 pm CDT, sessions they open at minutes :00
+to :14 run at `xhigh` and all others at `high` (project owner, 2026-10-19,
+over `high` for every session with observational data only).

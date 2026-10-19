@@ -204,6 +204,17 @@ at `xhigh` or `max`. When it finds a statistically significant difference, it
 tells the owner, with the size of the effect and its uncertainty. `PL-63CB`
 holds the method.
 
+**From Friday 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), about one
+session in four runs at `xhigh` as a comparison group** (project owner,
+2026-10-19, over `high` for every session and an observational comparison
+only). The rule is the clock's minute when the owner opens a session. At
+minutes :00 to :14 the owner sets `xhigh`; at any other minute, `high`. The
+minute has nothing to do with the work, so it acts as a random assignment.
+The ledger's `created_at` records the minute, so the model review can check
+that each session ran at the level its minute assigned. Projects threads are
+started by the coordinator rather than the owner, so they stay at `high` and
+are analyzed apart. The trial runs until the owner ends it.
+
 **Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
 at `max`** (project owner, 2026-09-19, ratified, over running every session at
 `max`). The split
