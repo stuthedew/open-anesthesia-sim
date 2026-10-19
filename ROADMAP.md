@@ -135,7 +135,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.35 | Completed | **The release where `doc_check`'s docstring checks name the source line a citation stands on, and where the close-out step that rewrites a branch's new simulator prose is kept on a measured rate.** Two items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.34 tag and here. Both items merged in `#1627` and `#1634` after v0.5.34's cut was written and before it landed, so their changes are inside the v0.5.34 tag and are described here. `possessive_section_check` and two `doc_check` readers number a docstring finding from the source rows, so a backslash-newline or a `\n` escape no longer moves it to the wrong line (`PL-PV73`). A blind re-measure found 21.7% of the long prose written under close-out step 8 awkward, against a 30% bar, so the step is kept (`PL-J6CK`). **It finishes no feature**, and closes no generator head. **None is a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.34 tag. `PL-GHDF`, the cut, ships in no release under `PL-KRS6`. | 2 items |
 | v0.5.36 | Completed | **The release where docket's docstrings and the hooks say what three containers showed about a session's clone, and where three quotations of Claude Code's documentation read as the pages now do.** Two items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.35 tag and here. Both items merged in `#1637` after the v0.5.35 tag. The harness fetches the default branch at depth 50 and the session-start hook unshallows it, so `vcs.py`, `checks.py`, `cli.py`, `render.py`, docket's README, the stop hook and `docs/apparatus.md` no longer call a shallow clone the normal case or say `--depth 1`, and `tools/doc_check.py` no longer says the workflows' checkout is shallow (`PL-2H0K`). Of 16 quoted strings compared with the pages' markdown, four in three passages had drifted and are corrected (`PL-124X`). **It finishes no feature**, and closes no generator head. **None is a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.35 tag. `PL-7NJ2`, the cut, ships in no release under `PL-KRS6`. | 2 items |
 | v0.5.37 | Completed | **The release where `CLAUDE.md` says a path-scoped rule loads when a session reads, writes or edits a matching file, as Claude Code's memory page now says.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.36 tag and here. The item merged in `#1640`, after the v0.5.36 tag. The clause in `CLAUDE.md` that routes a rule to a path scope now says such a rule reaches a first write only after that write, rather than that no read precedes it (`PL-PDBM`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.36 tag. `PL-6KXN`, the cut, ships in no release under `PL-KRS6`. | 1 item |
-| v0.5.38 | Completed / current baseline | **The release where a weekly `drift.yml` job checks each sentence quoted from Claude Code's documentation against its page, so a quotation the page no longer carries is reported within a week.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.37 tag and here. The item merged in `#1643`, before the v0.5.37 cut landed, so its change is inside the v0.5.37 tag and v0.5.37's notes now point here. `tools/doc_quotes.toml` records each quotation, and `tools/doc_quote_check.py` checks it against both the quoting file and the page (`PL-S7LT`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.37 tag. `PL-TNTK`, the cut, ships in no release under `PL-KRS6`. | 1 item |
+| v0.5.38 | Completed | **The release where a weekly `drift.yml` job checks each sentence quoted from Claude Code's documentation against its page, so a quotation the page no longer carries is reported within a week.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.37 tag and here. The item merged in `#1643`, before the v0.5.37 cut landed, so its change is inside the v0.5.37 tag and v0.5.37's notes now point here. `tools/doc_quotes.toml` records each quotation, and `tools/doc_quote_check.py` checks it against both the quoting file and the page (`PL-S7LT`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.37 tag. `PL-TNTK`, the cut, ships in no release under `PL-KRS6`. | 1 item |
+| v0.5.39 | Completed / current baseline | **The release where `bin/docket arm` holds a simulator branch that adds long prose until a commit records its fresh review.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.38 tag and here. The item merged in `#1645`, before the v0.5.38 cut landed, so its change is inside the v0.5.38 tag and v0.5.38's notes now point here. A simulator branch that adds a long docstring or comment holds until a commit after it carries a `Prose-review:` trailer, and close-out step 8 tells a session to record one (`PL-W04Z`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.38 tag. `PL-VRQ9`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -240,21 +241,21 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.38
+## Current baseline: v0.5.39
 
-v0.5.38 is the release where a weekly job checks the sentences this repository
-quotes from Claude Code's documentation against the pages they came from. It
-has one item, and it is a patch on both halves of § "Versioning decision"'s
-test. No capability boundary is crossed, because v0.6.0's capability, a layout
-the reader arranges, is not finished: 33 of the 39 ids in its Required scope
-are closed. The next three minor numbers, v0.6.0 through v0.8.0, are given to
+v0.5.39 is the release where `bin/docket arm` holds a simulator branch that
+adds long prose until a commit records that a fresh reviewer read it. It has
+one item, and it is a patch on both halves of § "Versioning decision"'s test.
+No capability boundary is crossed, because v0.6.0's capability, a layout the
+reader arranges, is not finished: 33 of the 39 ids in its Required scope are
+closed. The next three minor numbers, v0.6.0 through v0.8.0, are given to
 milestone sections. The item is not a Gate 2 entry. `bin/docket wave` puts the
-gate at 238 of 246 cleared at this cut, the same as at the v0.5.37 tag, and 8
+gate at 238 of 246 cleared at this cut, the same as at the v0.5.38 tag, and 8
 entries stay open.
 
 **No file in `src/` changed, and no run can differ:**
 
-| Tree | v0.5.37 tag | This cut | What moved |
+| Tree | v0.5.38 tag | This cut | What moved |
 | --- | --- | --- | --- |
 | `src/` | `532f2c9` | `532f2c9` | nothing |
 | `core/` | `92e04de` | `92e04de` | nothing |
@@ -264,28 +265,29 @@ entries stay open.
 | `README.md` | `98a0d7f` | `98a0d7f` | nothing |
 | `.github/` | `453b943` | `453b943` | nothing |
 
-Every tree in the table resolves to the same object at the v0.5.37 tag and at
-this cut, so this cut did not measure the trajectories again. `.github/` is the
-same at both because the item's change to `drift.yml` is already inside the
-v0.5.37 tag. The item merged on `main` in `#1643` after v0.5.37's cut was
-written and before that cut's pull request landed. v0.5.37's notes now carry a
-pointer that names it and this release.
+Every tree in the table resolves to the same object at the v0.5.38 tag and at
+this cut, so this cut did not measure the trajectories again. The item merged
+on `main` in `#1645` after v0.5.38's cut was written and before that cut's
+pull request landed, so its change is already inside the v0.5.38 tag.
+v0.5.38's notes now carry a pointer that names it and this release.
 
-**What a learner sees change.** Nothing. The item adds a check that runs in CI
-once a week. It does not reach the interface or a value a run computes.
+**What a learner sees change.** Nothing. The item changes when a pull request
+may merge. It does not reach the interface or a value a run computes.
 
-**The apparatus.** Several rules here rest on a sentence quoted from a
-code.claude.com page, and nothing compared a quotation with its page again once
-it was written. `PL-124X` found 4 of 16 quoted strings gone from their pages on
-2026-10-19. `tools/doc_quotes.toml` now records each quotation, with the file
-that quotes it and the page it came from. `tools/doc_quote_check.py` checks
-that the text is still in the file and still on the page. A new `doc-quotes`
-job in `drift.yml` runs it each Monday at 06:00 UTC and on a manual run, so a
-page change reaches the session-start digest within a week. A red run is a lead
-for a session to read the page, not a verdict (`PL-S7LT`).
+**The apparatus.** Close-out step 8 has a fresh reviewer rewrite each long
+docstring and comment that a branch adds to the simulator. `PL-J6CK` found
+that only one of six simulator branches recorded running it, and that the
+other five wrote prose rated awkward in 58% of blind verdicts, against 22% for
+the one that ran it. `bin/docket arm` now holds a simulator branch that adds a
+long unit of prose until a later commit carries a `Prose-review: read N,
+rewrote M, rejected K` trailer. It also holds when the count cannot be read.
+`docket.toml`'s new `prose_count_command` names `tools/new_prose.py --count`,
+which counts only the prose the branch itself adds, so prose that a merge of
+`main` brings in is not counted. Close-out step 8 now tells a session to
+record the trailer (`PL-W04Z`).
 
 The release finishes no feature and closes no generator head. The release item
-is `PL-TNTK`, whose `resource: release-train` keeps it out of every later
+is `PL-VRQ9`, whose `resource: release-train` keeps it out of every later
 release. Every closure carried its `pr:` number before the cut, so every bullet
 cites its pull request.
 `tools/pr_body_check.py` found no squash commit that lost its body.
@@ -296,8 +298,8 @@ paths arrived over 106 filings, which is 0.24 a filing against a ceiling of
 table.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.5.38 tag. It is described in the
-next release, and v0.5.38's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.5.39 tag. It is described in the
+next release, and v0.5.39's notes take a pointer to it at that release's cut.
 
 ## The plan
 
