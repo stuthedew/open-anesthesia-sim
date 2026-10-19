@@ -1405,11 +1405,18 @@ def cmd_triage(args: argparse.Namespace) -> int:
     reports the untriaged count and nothing about who is holding those items.
     Two sessions answered `PL-B0YN` and `PL-LXR3` the same afternoon and the
     merge discarded most of one answer (queue item PL-PRHN).
+
+    It lists from the default branch's newer copy of each item, as every read
+    command does, so an item another session has triaged on the base is not
+    offered for a second answer (`PL-4T32`). `set` still writes the working
+    tree's copy, and the line `_say_read_from_base` prints says to bring the
+    base in first.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
     flight = _elsewhere(args, _flight(args))
     print(render.format_triage(report, config, flight, _filed(args, report.untriaged)))
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
 
@@ -3514,7 +3521,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
     entries that are not debt the freeze carries too (`PL-JV5Q`). A roadmap
     that cannot be read is said so, rather than read as one holding none.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     roadmap = _invocation(args).root / config.roadmap_file
     frozen_list = None
     unread = ""
@@ -3533,15 +3540,17 @@ def cmd_gate(args: argparse.Namespace) -> int:
     print(render.format_gate(computed, config.debt_classes))
     if unread:
         print(f"Not listed: the last frozen list's open entries that are not debt - {unread}.")
+    _say_read_from_base(args, replaced)
     return 0
 
 
 def cmd_feature(args: argparse.Namespace) -> int:
     """Progress by feature, so a half-finished one is visible as such."""
-    _, items, _ = _load(args)
+    items, _, replaced = _load_to_read(args)
     groups = features(items)
     if not groups:
         print("no items are assigned to a feature")
+        _say_read_from_base(args, replaced)
         return 0
     if args.name and args.name not in groups:
         print(f"no feature named '{args.name}'")
@@ -3552,6 +3561,7 @@ def cmd_feature(args: argparse.Namespace) -> int:
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
         for item in feature.items:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
+    _say_read_from_base(args, replaced)
     return 0
 
 
@@ -3581,8 +3591,18 @@ def cmd_generators(args: argparse.Namespace) -> int:
     stating one sit together - the list triage and grooming compare a capture
     against. Whether two lines name one record is judgment; the command makes
     it one screen, and flags the overlap it can decide.
+
+    It reads the default branch's newer copy of each item, as every read
+    command does, so a head closed there is not reported open (`PL-4T32`).
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
+    code = _answer_generators(args, items, config)
+    _say_read_from_base(args, replaced)
+    return code
+
+
+def _answer_generators(args: argparse.Namespace, items: list[Item], config: Config) -> int:
+    """Print what `cmd_generators` was asked for, and return its exit status."""
     if args.head and args.misread:
         # The pair is refused rather than half of it dropped: the id view was
         # printed as though the flag had been honoured (`PL-SL4L`), and it
@@ -4525,9 +4545,10 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
 
 def cmd_delegable(args: argparse.Namespace) -> int:
     """Everything a worker may take, with the command that proves each one."""
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     report = analyze(items, args.today or date.today(), config)
     print(render.format_delegable(report, _flight(args), config.protected_paths, config.gate_paths))
+    _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
 
@@ -4695,7 +4716,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
     because a beat the tool is unsure of is worth less than an obvious failure
     to produce one.
     """
-    _, items, config = _load(args)
+    items, config, replaced = _load_to_read(args)
     root = _invocation(args).root
     roadmap = root / config.roadmap_file
     if not roadmap.is_file():
@@ -4711,6 +4732,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         _deferrals(items),
     )
     print(render.format_wave(plan, {item.identifier: item for item in items}))
+    _say_read_from_base(args, replaced)
     if (
         plan.step is None
         or plan.problems
