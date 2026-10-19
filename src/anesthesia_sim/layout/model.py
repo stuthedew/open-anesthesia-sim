@@ -37,9 +37,12 @@ also refuses a result that would nest a split deeper than
 whole edge is taken, whichever splits they sit in (`PL-G60V`), because a
 reader sees the rectangles and never the tree.
 
-**The model holds no minimum sizes.** How small an Area may be depends on the
-screen, so `layout/sizing.py` decides it against an extent in pixels and the
-adapter clamps a drag there (`PL-K285`).
+**The model holds no minimum sizes but one.** How small an Area may be depends
+on the screen, so `layout/sizing.py` decides it against an extent in pixels and
+the adapter clamps a drag there (`PL-K285`). The one exception is geometric.
+An Area must be wider and taller than `BORDER_ALIGNMENT_TOLERANCE` of its
+window. A narrower Area would have its two edges read as one line by
+`borders()` and `join`, and no drag could give it room again (`PL-391Y`).
 
 **What is not here yet.** Taking an Area into its own window is a later operation of
 `ROADMAP.md` item 34. Closing an Area is a join that gives its place to a
@@ -89,6 +92,8 @@ __all__ = [
 # arithmetic that places them - a border moved to a position lands within a
 # few units in the last place of it - and nothing visible: two borders a pixel
 # apart are two lines, as two edges with separate vertices are in Blender.
+# It is also the width and height an Area must exceed, so that an Area's two
+# edges are never read as one line (`PL-391Y`).
 BORDER_ALIGNMENT_TOLERANCE: Final = 1e-9
 
 # The main window's index in `LayoutModel.windows`. A layout always has this
@@ -242,8 +247,10 @@ class LayoutModel:
         TypeError: a field is not of its declared type.
         InvalidLayout: the layout has no window; a window's tree holds a split
             deeper than `TREE_DEPTH_MAXIMUM`, which the message names with its
-            path; two Areas share an id; or `next_area_id` is not above every
-            id in use.
+            path; an Area is no wider or no taller than
+            `BORDER_ALIGNMENT_TOLERANCE` of its window, which the message names
+            with the size; two Areas share an id; or `next_area_id` is not
+            above every id in use.
     """
 
     windows: tuple[Window, ...]
@@ -276,6 +283,12 @@ class LayoutModel:
                     f"{too_deep}, and a split sits at most {TREE_DEPTH_MAXIMUM} deep in a "
                     "window's tree"
                 )
+
+        for index, window in enumerate(self.windows):
+            narrow = _too_narrow(window.tree)
+
+            if narrow is not None:
+                raise InvalidLayout(f"in window {index}, {_narrow_reason(*narrow)}")
 
         allocated: set[AreaId] = set()
 
@@ -495,7 +508,9 @@ class LayoutModel:
                 `float`.
             NotInLayout: no Area of this layout holds `area_id`.
             LayoutRefused: `at` does not lie strictly between 0 and 1, or is
-                so close to one end that a part would have no size; the cut
+                so close to one end that a part would be no wider or no taller
+                than `BORDER_ALIGNMENT_TOLERANCE` of the window, which the
+                message names with the part's size (`PL-391Y`); the cut
                 would nest a split deeper than `TREE_DEPTH_MAXIMUM`, which a
                 cut along the axis of the split holding the Area never does,
                 since it adds a child rather than a level; or `next_area_id`
@@ -558,6 +573,16 @@ class LayoutModel:
                 )
 
             tree = _replaced(tree, place.path, Split(orientation, (at, 1 - at), (source, added)))
+
+        # The layout held no Area this narrow before the cut, so any found is
+        # one of the two parts.
+        narrow = _too_narrow(tree)
+
+        if narrow is not None:
+            raise LayoutRefused(
+                f"a cut at {at!r} of Area {area_id}'s {measure} leaves a part too small: "
+                f"{_narrow_reason(*narrow, verb='would be')}"
+            )
 
         return (
             LayoutModel(self._with_tree(place.window, tree), AreaId(self.next_area_id + 1)),
@@ -723,10 +748,12 @@ class LayoutModel:
                 or `alone` not a `bool`.
             NotInLayout: `handle` is not a border of this layout.
             LayoutRefused: `position` is not finite, or would leave an Area
-                beside the line with no size. That happens when `position`
-                lies at or past the far edge of that Area, which is another
-                border or the window's edge, or so close to it that the stored
-                sizes would round the gap away, and when two handles of one split
+                beside the line no wider or no taller than
+                `BORDER_ALIGNMENT_TOLERANCE` of the window. That happens when
+                `position` lies at or past the far edge of that Area, which is
+                another border or the window's edge, or that close to it, or so
+                close that the stored sizes would round the gap away, and when
+                two handles of one split
                 lie on the line, since moving both to one place leaves the
                 children between them none. The message names the Areas left
                 with no room. The adapter stops a drag at each Area's need
@@ -948,10 +975,11 @@ def _dragged(
     and is left out of the result.
 
     Raises:
-        LayoutRefused: a child would be left with no width or height,
-            because a border or an edge now lies at or past the one on the
-            child's far side, or because the sizes the tree would store place
-            the two together. A split whose own extent is nothing is refused
+        LayoutRefused: a child would be left no wider or no taller than
+            `BORDER_ALIGNMENT_TOLERANCE` of the window, because a border or an
+            edge now lies at, past or that close to the one on the child's far
+            side, or because the sizes the tree would store place the two
+            that close. A split whose own extent is nothing is refused
             the same way, before any size is divided by that extent.
             The message names that split's children left with no room, and
             its Areas. The first such split in depth-first order is named.
@@ -981,7 +1009,7 @@ def _dragged(
             sizes = () if squeezed else _fractions(placed)
 
             # The tree stores fractions, and placing a border from them again
-            # can round a sliver of 1e-16 to nothing, so the check is repeated
+            # can round a gap a little smaller, so the check is repeated
             # on the borders the stored sizes will give.
             if not squeezed:
                 squeezed = _squeezed(node, _boundaries(low, high, sizes))
@@ -1008,7 +1036,7 @@ def _dragged(
 
 
 def _squeezed(split: Split, placed: tuple[float, ...]) -> tuple[Node, ...]:
-    """The children of `split` that the borders `placed` leave no width or height.
+    """The children of `split` that the borders `placed` leave too narrow, as `_too_narrow` judges.
 
     `placed` holds one more border than `split` has children, in the window's
     fractions, so each child lies between a border and the next one.
@@ -1017,7 +1045,40 @@ def _squeezed(split: Split, placed: tuple[float, ...]) -> tuple[Node, ...]:
     return tuple(
         child
         for child, (near, far) in zip(split.children, pairwise(placed), strict=True)
-        if not far > near
+        if not far - near > BORDER_ALIGNMENT_TOLERANCE
+    )
+
+
+def _too_narrow(tree: Node) -> tuple[Area, Orientation, float] | None:
+    """The first Area, in reading order, no wider or no taller than `BORDER_ALIGNMENT_TOLERANCE`.
+
+    Returns that Area, the axis along which it is too small, and its size
+    along that axis as a fraction of the window, or `None` where every Area is
+    larger. An Area this small would have its two edges read as one line,
+    so `join` and `borders()` could not tell them apart (`PL-391Y`).
+    """
+
+    for path, area in _area_paths(tree, ()):
+        rect = _rect_at(tree, path)
+
+        for orientation in Orientation:
+            low, high = rect.span(orientation)
+
+            if not high - low > BORDER_ALIGNMENT_TOLERANCE:
+                return area, orientation, high - low
+
+    return None
+
+
+def _narrow_reason(area: Area, orientation: Orientation, size: float, verb: str = "is") -> str:
+    """Why `_too_narrow`'s finding is refused, in the words a refusal uses."""
+
+    measure = "wide" if orientation is Orientation.ROW else "tall"
+
+    return (
+        f"Area {area.id} {verb} {size!r} of the window {measure}, and an Area is more than "
+        f"{BORDER_ALIGNMENT_TOLERANCE!r} of its window {measure}, so that its two edges are "
+        "never read as one line"
     )
 
 
@@ -1258,6 +1319,12 @@ def _full_cuts(
     follows one, and an edge that close to the region's own edge is that
     edge. A line enters a piece that begins before it and ends after it, each
     by more than the tolerance.
+
+    A line followed that way can run wider than the tolerance, so whether it
+    enters a piece depends on which of its edges it is drawn at. The cut is
+    drawn at the first of them that enters no piece (`PL-8GLZ`). Drawn at the
+    first edge alone, it entered a piece ending at the last one, and refused
+    a join that a tree could hold.
     """
 
     low, high = region.span(orientation)
@@ -1273,15 +1340,15 @@ def _full_cuts(
         else:
             lines.append([start])
 
-    return tuple(
-        line[0]
-        for line in lines
-        if not any(
-            begin < line[0] - BORDER_ALIGNMENT_TOLERANCE
-            and end > line[0] + BORDER_ALIGNMENT_TOLERANCE
+    def enters_none(at: float) -> bool:
+        return not any(
+            begin < at - BORDER_ALIGNMENT_TOLERANCE and end > at + BORDER_ALIGNMENT_TOLERANCE
             for begin, end in spans
         )
-    )
+
+    cuts = (next((edge for edge in line if enters_none(edge)), None) for line in lines)
+
+    return tuple(cut for cut in cuts if cut is not None)
 
 
 def _flattened(

@@ -364,6 +364,26 @@ def test_the_layouts_own_invariants_are_refused_by_name() -> None:
     assert "windows[0]: a window is an object" in refused(json.dumps(document(windows=[[]])))
 
 
+def test_a_file_whose_sizes_leave_an_area_no_width_is_refused() -> None:
+    """`PL-391Y`'s file: sizes of 1 and 5e-10 sum to one within the tolerance.
+
+    Its second Area would lie between 1.0 and 1.0 of the window, where `resize`
+    can never give it room. The reader refuses the file and names the Area
+    and its size.
+    """
+
+    sliver = {
+        "split": "row",
+        "sizes": [1.0, 5e-10],
+        "children": [
+            {"area": 1, "view": "concentration_chart"},
+            {"area": 2, "view": "agent_accounting"},
+        ],
+    }
+
+    assert "Area 2 is 0.0 of the window wide" in refused(with_tree(sliver))
+
+
 def test_a_view_kind_no_view_is_registered_under_loads() -> None:
     """`PL-SSQW` Q5: an unknown kind is the registry's to report in its Area, not a file error."""
 
