@@ -228,6 +228,12 @@ PAGE_PADDING = 16
 
 PANEL_PADDING = 14
 
+# Between the rows a View stacks inside its Area, and between the heading of a
+# chart View and the time-base control beside it.
+VIEW_ROW_SPACING = 6
+
+VIEW_HEADING_SPACING = 8
+
 PANEL_RADIUS = 10
 
 # Between the rows of the control-change panel: its heading, caption, entries

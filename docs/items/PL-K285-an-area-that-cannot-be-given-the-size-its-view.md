@@ -1,14 +1,16 @@
 ---
 id: PL-K285
 title: An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
-status: blocked
-feature: interface-areas
-added: 2026-09-16
-priority: P2
+priority: P1
 effort: M
-blocked-by: PL-1FT6, PL-TH35
+status: ready
 classes: safety, anticipated
+feature: interface-areas
 touches: src/anesthesia_sim/layout/, src/anesthesia_sim/app/, tests/unit
+blocked-by: PL-1FT6, PL-TH35
+added: 2026-09-16
+payoff: an Area too small for its View states the size it needs instead of clipping or collapsing the View, and a split or drag that cannot give a View its minimum is refused
+verify: grep -q 'minimum_size' src/anesthesia_sim/app/view_registry.py && grep -rq 'def too_small' src/anesthesia_sim/layout
 ---
 
 **Problem.** An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying

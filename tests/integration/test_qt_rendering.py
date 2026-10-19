@@ -45,6 +45,7 @@ from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, ONE_MAC_LINE_COLOR, PANEL
+from anesthesia_sim.app.views import ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
 
 #: The size the dashboard is rendered at. Wide enough that the page's own
@@ -104,6 +105,18 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
+def _concentration(view: SimulationView) -> ConcentrationView:
+    """The concentration chart View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
+
+
+def _wash_in(view: SimulationView) -> WashInView:
+    """The F_A/F_I View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, WashInView))
+
+
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
         controller.advance(SIMULATION_STEP_S)
@@ -147,7 +160,7 @@ def _page(view: SimulationView) -> tuple[QScrollArea, QWidget]:
 
 
 def _drawn_frame(view: SimulationView) -> ChartFrame:
-    frame = view._concentration_chart.frame
+    frame = _concentration(view).chart.frame
     assert frame is not None
 
     return frame
@@ -260,7 +273,7 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    selector = view._time_base_selector
+    selector = _concentration(view).time_base_selector
     index = selector.findData(str(width.span_s))
     assert index >= 0, "the time-base control does not offer the 15-minute width"
     selector.setCurrentIndex(index)
@@ -312,7 +325,7 @@ def test_the_agent_badge_is_painted_in_the_agents_own_fill(dashboard: Simulation
 def test_the_one_mac_line_is_painted_where_the_axis_says(dashboard: SimulationView) -> None:
     """The dashed line stands on the row `plot_pixel` maps `mac_percent` to, three rows deep."""
 
-    chart = dashboard._concentration_chart
+    chart = _concentration(dashboard).chart
     frame = _drawn_frame(dashboard)
     image = chart.painted()
     left_x, y = chart.plot_pixel(frame.start_s, frame.mac_percent)
@@ -328,7 +341,7 @@ def test_the_one_mac_line_is_painted_where_the_axis_says(dashboard: SimulationVi
 
 
 def test_the_alveolar_trace_is_drawn_inside_the_plot(dashboard: SimulationView) -> None:
-    chart = dashboard._concentration_chart
+    chart = _concentration(dashboard).chart
     frame = _drawn_frame(dashboard)
     times, percents = chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
 
@@ -388,7 +401,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: SimulationView) -> None:
     """A hover on the dashboard's own chart says agent, compartment gloss and both units."""
 
-    chart = dashboard._concentration_chart
+    chart = _concentration(dashboard).chart
     frame = _drawn_frame(dashboard)
     run = frame.runs[0]
     index = len(run.times_s) // 3
@@ -428,8 +441,8 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
     leave at none.
     """
 
-    chart = induction_dashboard._concentration_chart
-    wash_in = induction_dashboard._wash_in_chart
+    chart = _concentration(induction_dashboard).chart
+    wash_in = _wash_in(induction_dashboard).chart
     frame = _drawn_frame(induction_dashboard)
     middle = (frame.start_s + frame.stop_s) / 2.0
     quarter = frame.axis_top_percent / 4.0
