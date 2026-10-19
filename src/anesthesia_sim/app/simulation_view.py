@@ -1380,9 +1380,9 @@ class SimulationView(QWidget):
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
         are handed frames assembled from the pinned run only, and the run's
         name is on every Area. Where the pinned run is not open, no View is
-        drawn and every Area says so. Either way, the frames assembled over
-        every open run still make their checks, and each run is refreshed from
-        its own snapshot, so a pin never changes a readout.
+        drawn and every Area says so. Either way, a frame is still assembled
+        over every open run for each window, so its checks still run. Each run
+        is refreshed from its own snapshot, so a pin never changes a readout.
 
         Raises:
             ValueError: If the runs have come to use different agents since
