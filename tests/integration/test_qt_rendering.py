@@ -301,6 +301,12 @@ def _distance(colour: QColor, to: str) -> float:
     )
 
 
+#: How many paints in a row the page's size must hold before the induction
+#: fixture is settled, and how many paints it may take in all.
+_SETTLE_HELD_PAINTS = 5
+_SETTLE_MAX_PAINTS = 30
+
+
 @pytest.fixture
 def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
     """`_INDUCTION_DIAL_PERCENT` for `_INDUCTION_S`, paused, in the following 15-minute width.
@@ -330,10 +336,25 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
 
     view.present(False)
     application.processEvents()
-    # A first paint settles the layout, and the plots in it, before a pixel is
-    # read off them.
-    view.grab()
-    application.processEvents()
+    # Painting settles the layout, and the plots in it, before a pixel is read
+    # off them. One paint is not always enough. In a test worker that has
+    # already drawn other dashboards, the page measured 15 px taller for the
+    # first two paints and then shrank. The concentration plot lost 8 px of
+    # it, which moved the hover box after the test had measured it. So the
+    # page is painted until its size has held for several paints.
+    _, page = _page(view)
+    held = 0
+
+    for _ in range(_SETTLE_MAX_PAINTS):
+        size = page.size()
+        view.grab()
+        application.processEvents()
+        held = held + 1 if page.size() == size else 0
+
+        if held == _SETTLE_HELD_PAINTS:
+            break
+
+    assert held == _SETTLE_HELD_PAINTS, "the page did not settle"
 
     yield view
 
