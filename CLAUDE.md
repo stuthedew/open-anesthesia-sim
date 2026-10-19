@@ -598,7 +598,7 @@ deviating from a described deliverable, not acting without one.
   2026-10-17, `PL-DKBG`). Which one a change is stays your call, recorded as an
   `Owner-read:` trailer that `arm` prints the form and the test for. `hold`, for
   a claim, a simulator change no such record covers, a record saying `needed`,
-  or docket's `arming.py` - leave it unarmed, disarming it before the push that
+  or an edit to a test pinning `arm`'s answers - leave it unarmed, disarming it before the push that
   brings the hold or green CI merges half the work, a draft while the hold is a
   claim, and once no claim holds it record the judgment or ask as `arm` says;
   a pull request held for the owner merges on their word alone. Workflow items
