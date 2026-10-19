@@ -3,11 +3,12 @@ id: PL-TWC5
 title: docs/apparatus.md's tree entry for tools/main_ci_status.py and its paragraph listing the lines the script prints both leave out the failed drift.yml line PL-JTWV added; left out of PL-JTWV because the other workflow thread's #1601 holds docs/apparatus.md
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-19
 payoff: docs/apparatus.md lists every line the session-start CI script prints, the drift line included
 verify: grep -q 'PL-JTWV' docs/apparatus.md
 ---
