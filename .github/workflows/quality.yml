@@ -327,6 +327,11 @@ jobs:
       # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 1/2
         if: steps.scope.outputs.scope != 'items'
+        # Write each line to the log as pytest prints it. Without this, the log
+        # stamped pytest's session header at the end of collection, which hid
+        # where a slow part spent its time (`PL-2N6J`).
+        env:
+          PYTHONUNBUFFERED: "1"
       # `.coverage` is a hidden file, which the action leaves out unless asked.
       # One day is enough, since only this run's `checks` job reads it.
       - uses: actions/upload-artifact@v7.0.2
@@ -549,6 +554,11 @@ jobs:
       - run: uv sync --locked --dev
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 2/2
         if: steps.scope.outputs.scope != 'items'
+        # Write each line to the log as pytest prints it. Without this, the log
+        # stamped pytest's session header at the end of collection, which hid
+        # where a slow part spent its time (`PL-2N6J`).
+        env:
+          PYTHONUNBUFFERED: "1"
       # The fast path's part of the suite, in place of both parts on a pull
       # request that changes only item files. It runs here rather than in the
       # first part, which already runs the tools that read the store, so the

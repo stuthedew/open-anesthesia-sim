@@ -1,8 +1,16 @@
 ---
 id: PL-T91K
 title: The unconditional region spends 12 px with one run and 24 px with two on notice banners that are hidden, because each run's banner sits in a holder that stays visible and the notice column stays in the run column with its spacing on both sides
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
+feature: interface-areas
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, docs/MODEL.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
+payoff: Compare mode gives the concentration chart back 24 px on a laptop screen where it is already below its minimum height, without hiding any halt or refusal banner
+verify: grep -q 'def test_hidden_notice_banners_take_no_height' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The unconditional region spends 12 px with one run and 24 px with two on notice banners that are hidden, because each run's banner sits in a holder that stays visible and the notice column stays in the run column with its spacing on both sides
@@ -24,3 +32,14 @@ on the 1366 by 700 laptop reference, against a 360 px minimum (`PL-JG82`,
 still show each one when it applies. `docs/MODEL.md`'s hazard table describes
 the notice column and its 12 px spacing (`PL-TSZM`), so that row is reread with
 the fix.
+
+**Checked 2026-10-19.** `_place_run` in `src/anesthesia_sim/app/simulation_view.py`
+still places `run.build_notice()` inside a `_holder` in `self._notice_column`,
+and `_build_unconditional_region` still adds the `notices` widget to the run
+column, as the brief describes.
+
+**Done when.** With every banner hidden, the notice column takes no height and
+adds no spacing, for one run and for two. With a banner showing, it appears
+where it does today. A test in `tests/integration/test_simulation_view.py`
+pins both cases. The hazard-table row in `docs/MODEL.md` that describes the
+notice column is reread and corrected if it no longer holds.
