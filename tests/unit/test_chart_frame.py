@@ -22,7 +22,9 @@ from anesthesia_sim.app.chart_frame import (
     WASH_IN_HOVER_LABEL,
     WASH_IN_TERMINUS_CEILING,
     ChartFrame,
+    RunCount,
     RunFrame,
+    RunIndex,
     RunInput,
     WashInStretch,
     assemble_chart_frame,
@@ -1480,6 +1482,58 @@ def test_a_style_is_refused_for_a_run_the_chart_is_not_drawing() -> None:
     for run_index, run_count in ((1, 1), (-1, 2), (2, 2), (0, 0)):
         with pytest.raises(ValueError, match="runs on the chart"):
             run_trace_style(RecordedQuantity.ALVEOLAR, run_index, run_count)
+
+
+@pytest.mark.parametrize("count", [1, 2, 3])
+def test_a_run_count_of_one_or_more_is_built_and_compares_as_its_int(count: int) -> None:
+    built = RunCount(count)
+
+    assert isinstance(built, RunCount)
+    assert built == count
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_a_run_count_below_one_is_refused(count: int) -> None:
+    """A chart that draws no run has nothing to style, hover or name (`PL-7694`)."""
+
+    with pytest.raises(ValueError, match=f"a chart draws at least one run, not {count}"):
+        RunCount(count)
+
+
+@pytest.mark.parametrize("index", [0, 1, 2])
+def test_a_nonnegative_run_index_is_built_and_compares_as_its_int(index: int) -> None:
+    built = RunIndex(index)
+
+    assert isinstance(built, RunIndex)
+    assert built == index
+
+
+@pytest.mark.parametrize("index", [-1, -2])
+def test_a_negative_run_index_is_refused(index: int) -> None:
+    """Python reads -1 as the last run, so it would name the wrong run's values (`PL-7694`)."""
+
+    with pytest.raises(ValueError, match=f"counted from 0, not {index}"):
+        RunIndex(index)
+
+
+@pytest.mark.parametrize("value", [True, False, 1.0, "1", None])
+def test_a_run_count_or_index_that_is_not_an_int_is_refused(value: object) -> None:
+    """A `bool` is an `int` to Python, and would make `True` one run or the second run."""
+
+    with pytest.raises(TypeError, match="a run count is an int"):
+        RunCount(value)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="a run index is an int"):
+        RunIndex(value)  # type: ignore[arg-type]
+
+
+def test_a_frame_s_run_count_is_the_checked_count_of_its_runs() -> None:
+    frame = assemble_chart_frame(
+        [_input(_run(60.0))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+
+    assert isinstance(frame.run_count, RunCount)
+    assert frame.run_count == len(frame.runs) == 1
 
 
 def test_one_run_draws_every_compartment_the_reader_left_shown() -> None:
