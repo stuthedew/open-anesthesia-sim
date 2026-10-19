@@ -3,7 +3,7 @@ id: PL-L59K
 title: Zoom the shipped Induction Workspace's concentration chart to the first 15 minutes, once the chart saves its own state
 priority: P2
 effort: S
-status: ready
+status: needs-decision
 classes: feature
 feature: interface-areas
 touches: src/anesthesia_sim/data/workspaces/induction.json, tests/unit/test_layout_shipped.py
