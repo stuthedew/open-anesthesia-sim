@@ -180,8 +180,14 @@ evaluations" (Claude Code docs, *Model configuration*, section "Adjust effort
 level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
 
 **On Opus 5.5, apparatus sessions open at `high`, and so do analysis and design
-rounds about the apparatus** (project owner, 2026-10-17, ratified, over
-recording `xhigh` as the uniform level, `PL-SW0B`). On 2026-10-17 six of the
+rounds about the apparatus** (project owner, 2026-10-19, over `max` and
+`xhigh`, `PL-6XZG`). This is the owner's own judgement for now: the published
+gain from `xhigh` over `high` is small. It replaces a ratified record from
+2026-10-17 (`PL-SW0B`) whose stated reason was cost. Cost alone never
+justifies a lower setting (project owner, 2026-10-19), so a session does not
+argue for `high` on cost. The owner may revisit the level as evidence arrives,
+for example from the model review's comparison of outcomes by effort level
+(`PL-63CB`). On 2026-10-17 six of the
 seven sessions in this repository ran at `xhigh`, which matches neither half of
 the split below. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of
 tasks at `high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4

@@ -47,9 +47,9 @@ mechanical sweep or a review, unless the owner approves it for that task.
 The owner would rather pay for correct work than save on work that may be
 wrong, and this covers effort as well as model (project owner, 2026-10-19,
 replacing a ratified default of `high` for apparatus subagents from
-2026-09-19). On Opus 5.5 the owner chose `high` over `xhigh`
-for apparatus sessions too (`docs/maintainer.md`, 2026-10-17, ratified,
-`PL-SW0B`).
+2026-09-19). On Opus 5.5 the owner keeps apparatus sessions themselves at
+`high`, as their own judgement that `xhigh` adds little (`docs/maintainer.md`,
+project owner, 2026-10-19, `PL-6XZG`).
 
 ## What a test on this side is for
 
