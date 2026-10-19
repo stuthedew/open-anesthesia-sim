@@ -212,10 +212,26 @@ holds the method.
 **About one session in four runs at `xhigh` as a randomized comparison
 group, assigned automatically** (project owner, 2026-10-19, over `high` for
 every session and an observational comparison only). The owner asked that
-they not have to set the level by hand. The trial starts after Friday
-2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), and only once the automatic
-assignment is built and tested (`PL-HYRM`). Until then every session
-runs at `high`. The trial runs until the owner ends it.
+they not have to set the level by hand. The effort trial starts on Friday
+2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC). Until then every session
+runs at `high`.
+
+How it works (`PL-HYRM`): the cloud environment's setup script runs
+`tools/effort_trial.py` before Claude starts. The script draws the session's
+arm and writes it as both `effortLevel` and `maxEffortLevel` in
+`.claude/settings.local.json`. The `maxEffortLevel` cap outranks the app's
+effort picker, so the arm holds whatever the picker shows. Keep the picker at
+`xhigh`. The app keeps its last level, so it needs no reset per session. Each
+session's start-of-session digest names its arm, and the session tells you the
+arm in its first reply. That digest line is kept in the session's transcript,
+and it is the trial's record of the arm: the model review reads it from there
+by session id. Sessions on your own computer do not run the setup script, so
+they are not in the trial.
+
+The trial runs until the owner ends it. The monthly model review puts the
+question of ending it to the owner once both arms have adequate data, and in
+any case at its run on 2027-04-24, six months in (`PL-63CB` § "Effort
+monitoring").
 
 **Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
 at `max`** (project owner, 2026-09-19, ratified, over running every session at

@@ -3,13 +3,15 @@ id: PL-HYRM
 title: Assign each new cloud session's effort automatically for the effort trial: the cloud environment's setup script, which runs before Claude starts, draws xhigh for about one session in four and high otherwise, writes it as effortLevel in .claude/settings.local.json, and records the draw where the model review can read it; first test that a cloud session applies it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
-touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, tools/effort_trial.py, tests/unit/test_effort_trial.py
+touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/apparatus.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1678
 payoff: the randomized effort trial runs without the owner setting a level by hand, so its result can say whether high causes real problems
-verify: grep -qi 'effort trial started' docs/maintainer.md
+verify: grep -q 'The effort trial starts' docs/maintainer.md
 ---
 
 **Problem.** Assign each new cloud session's effort automatically for the effort trial: the cloud environment's setup script, which runs before Claude starts, draws xhigh for about one session in four and high otherwise, writes it as effortLevel in .claude/settings.local.json, and records the draw where the model review can read it; first test that a cloud session applies it
@@ -183,60 +185,65 @@ is still recorded and shown in the monthly model review, so nothing is lost.
 If the owner wants it shown anyway, build the hook line, and have the analysis
 say that the trial was not blinded.
 
-**Next steps for the session that builds it.**
-1. Write `tools/effort_trial.py`, standard library only, with tests. It
-   reads `CLAUDE_CODE_REMOTE_SESSION_ID`, strips the `cse_` prefix, and
-   assigns `xhigh` when the first 8 hex digits of the SHA-256 of the
-   remainder, read as an integer, are below 2^32 / 4. Before the start
-   time it writes no settings. At any time it appends one line to
-   `/tmp/effort-trial.log` saying whether the id was visible and which arm
-   it would draw, so the test below can be run before Friday. Where the id
-   is missing, it draws with `secrets` and logs that the draw cannot be
-   recomputed.
-2. Test it from a fresh session started on this branch with `create_session`
-   once the setup-script line below exists. Read `/tmp/effort-trial.log` and
-   `CLAUDE_EFFORT` there.
-3. Propose the setup-script line with `update_environment`, saying in one
-   sentence what it does just before the call. The line is
-   `f=/home/user/open-anesthesia-sim/tools/effort_trial.py; [ -f "$f" ] && python3 "$f" || true`,
-   appended to the existing script.
-4. After the merge, write the trial's start date into `docs/maintainer.md`
-   § "Match effort to the standard the work is held to". Say there that the
-   model review recomputes each session's arm from the ledger's session id
-   with the same function. Update `PL-63CB` § "Effort monitoring" item 6 to
-   match.
-5. Add one line to the `SessionStart` digest, built from `CLAUDE_EFFORT`,
-   such as "Effort: high (trial arm; the picker shows xhigh)". Make the
-   session repeat it in its first reply to the owner, through the rule that
-   already sets what that reply contains. Do not add a separate instruction.
-6. Announce the trial's start once, clearly (project owner, 2026-10-19). The
-   first session to start after 2026-10-24 04:00 UTC tells the owner, at the
-   top of its first reply, that the effort trial has begun. It says that the
-   picker stays at `xhigh` from then on, that the owner does not reset it per
-   session, and that the app keeps its last level. The owner confirmed that
-   on 2026-10-19, which also answers the open question in the decision
-   above. Later sessions show only the step 5 line. The announcement needs a
-   record that it has been made, so that it fires once. A first-session test
-   with no record fires in every concurrent session.
-7. Make the monthly analysis run without being asked (project owner,
-   2026-10-19: "I don't have to remember to ask you about it"). On
-   2026-10-19 no recurring scheduled task ran it, and `PL-63CB`, the
-   model-review skill it needs, was still `ready`. Before the trial starts,
-   create a monthly scheduled task with `create_trigger`
-   (`create_new_session_on_fire: true`) that runs the model review and
-   reports the effort comparison, "not yet adequate" included. It needs
-   `PL-63CB` built first, or the task must at least run
-   `PL-63CB` § "Effort monitoring" by hand. Tell the owner the task's name
-   and its first run date.
-8. Add a maximum length or stopping rule to `PL-63CB` § "Effort monitoring".
-   Today the trial ends only when the power calculation says both arms are
-   large enough.
-9. Delete the probe branches `claude/pl-hyrm-probe-settings-local` and
-   `claude/pl-hyrm-probe-cap`.
+**Built 2026-10-19.**
 
-**Readiness check scheduled.** A one-off scheduled task, "PL-HYRM: is the effort trial ready to start Friday night?" (`trig_01ANGyWDXegBT6pScgaBJ2Gu`), starts a fresh session on Thursday 2026-10-22 at 9:00 am CDT. That session checks steps 1 to 5 and 7 against the source and tells the owner what is missing. The trial itself needs no reminder: `tools/effort_trial.py` reads the clock each time a container is built.
+1. `tools/effort_trial.py`, with `tests/unit/test_effort_trial.py`. The
+   setup script runs it with no argument. It draws `xhigh` with probability
+   1/4 using `secrets`. From 2026-10-24 04:00 UTC it writes the arm as
+   `effortLevel` and `maxEffortLevel` in `.claude/settings.local.json`, and
+   it logs every run to `/tmp/effort-trial.log`.
+2. The cloud environment's setup script (the owner's `Default` environment)
+   gained one line, approved by the owner on its card:
+   `f=/home/user/open-anesthesia-sim/tools/effort_trial.py; [ -f "$f" ] && python3 "$f" || true`.
+   It does nothing in a checkout without the file, so it is harmless in other
+   repositories and on branches cut before this one merged.
+3. `.claude/hooks/docket-digest.sh` runs `tools/effort_trial.py digest`
+   early in the session-start digest. From the start time it prints
+   "Effort trial arm: high." or "xhigh.", says the cap holds whatever the
+   picker shows, adds the level in `CLAUDE_EFFORT` where the hook's
+   environment holds it, and tells the session to give the owner the arm in
+   its first reply. No rule set what a first reply contains, so the
+   instruction rides in the digest line itself rather than in a resident
+   file. Where no arm was written it says so and why.
+4. `docs/maintainer.md` § "Match effort to the standard the work is held to"
+   gives the start time and how the trial works. `PL-63CB` § "Effort
+   monitoring" step 6 says where the arm is recorded and how to read it.
+   Its new step 7 is the stopping point: the review puts ending the trial to
+   the owner once both arms have adequate data, and at its 2027-04-24 run in
+   any case. That date is a placeholder set here for the owner to change.
+5. Three scheduled tasks, each starting a fresh session
+   with push and email notifications. Each prompt attaches the repository
+   itself, because a scheduled session starts with none (`sources: []` in
+   the task as created).
+   - "PL-HYRM: is the effort trial ready to start Friday night?"
+     (`trig_01ANGyWDXegBT6pScgaBJ2Gu`), Thursday 2026-10-22, 9:00 am CDT.
+   - "Effort trial has started: announce and check"
+     (`trig_01Vcr2WJZKiCz3DXt3jtidCF`), 2026-10-24 04:05 UTC (Friday
+     11:05 pm CDT). This is the owner's one-time start announcement. It
+     fires once by construction, so it needs no record of having fired. It
+     also starts a probe session on `main` and reports whether that
+     session's arm line, log and settings agree, which is the end-to-end
+     test of the live trial.
+   - "Monthly effort-trial review" (`trig_01U72kAfYGB494ZuQL1UQaHs`),
+     `CRON_TZ=America/Chicago 47 8 24 * *`. Its 2026-10-24 run replies in one
+     line and stops, so the first real review is 2026-11-24. It runs
+     `PL-63CB`'s skill if built, and its § "Effort monitoring" by hand if not.
 
-**A route that removes unknown 3.** The draw can be a fixed function of the
+**Unknown 3, measured: the setup script cannot see the session id.** A probe
+session on this branch (`session_01E73NmN5Ye3r6BGgszscooh`, 2026-10-19 21:58
+UTC) logged `no-id`. Its container was a pre-built spare: the setup script ran
+at 21:59:20 UTC, before the session claimed it (`warm_spare_claimed: true` in
+the probe's result event). The session itself held
+`CLAUDE_CODE_REMOTE_SESSION_ID=cse_01E73NmN5Ye3r6BGgszscooh` and
+`CLAUDE_EFFORT=high`. So the hash route below cannot run, and the draw is
+random. The record is the digest line instead. The probe's own transcript
+showed that each hook's output is stored as a `hook_response` event, which
+`list_events` returns, so the review can read each session's arm by its
+session id. Two limits follow. A container rebuilt for a resumed session draws
+again, so the review uses a session's first arm line. And a session deleted
+before the review loses its record.
+
+**A route that removes unknown 3 (refuted 2026-10-19; see above).** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
 when the hash falls in the lowest quarter. The ledger already holds every
 session id, so the model review recomputes each assignment and nothing new has
@@ -249,8 +256,19 @@ the ledger's `session_...` id, but whether the setup script's environment holds
 that variable is untested.
 
 **Done when.** The three unknowns are answered in this brief. A new cloud
-session gets its level from the draw without the owner setting it, and
-`get_session` shows that level. The draw is recorded where the model review
-can read it. `docs/maintainer.md` gives the date the trial started.
+session gets its level from the draw without the owner setting it. The draw is
+recorded where the model review can read it. `docs/maintainer.md` gives the
+date the trial starts.
+
+**Revised 2026-10-19, when the build ended.** `get_session` shows only the
+level the app asked for, and only for a session the app opened, so it cannot
+show the arm. The digest line and `CLAUDE_EFFORT` show it instead. The item
+closes before the start time so that its pull request can merge in time.
+Everything up to the start was tested on 2026-10-19: the tests pin the draw,
+the gating and the settings write, and a fresh session showed that the setup
+script runs the script. What runs only from the start time, a written cap and
+a printed arm line in a live session, is checked by the "Effort trial has
+started: announce and check" task. That task reports any failure to the owner
+at 11:05 pm CDT on Friday.
 
 **Generator check.** A one-off, asked for by the owner; not a member of a head.

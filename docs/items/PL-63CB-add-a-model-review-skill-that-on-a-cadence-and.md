@@ -120,15 +120,28 @@ choice that needed rework or unintended behavior. Each monthly run does this:
    So compare within origin as well. The groups also differ in date, project
    phase (product focus began 2026-09-25) and the apparatus around them. A significant difference is therefore an association that points at
    a cause, not proof of one. The report says so.
-6. **The trial, once `PL-HYRM` starts it.** Each new cloud session is
-   assigned `xhigh` or `high` automatically, and the assignment is recorded
-   (`docs/maintainer.md`, `PL-HYRM`). Analyze sessions by the level they were
-   assigned (intention to treat), and report as a second result the level
-   they actually ran at. Report how many ran at a
+6. **The trial, from 2026-10-24 04:00 UTC.** Each new cloud session is
+   assigned `xhigh` or `high` automatically (`docs/maintainer.md`,
+   `PL-HYRM`). The record of a session's arm is the line starting "Effort
+   trial arm:" that `tools/effort_trial.py digest` prints into its
+   session-start digest. Read it from the session's `hook_response` events
+   with `list_events` (`kinds: ["system"]`). Use the first such line in a
+   session, since a container rebuilt for a resumed session draws again,
+   and count the sessions whose later lines differ. A session with no line,
+   or with "Effort trial arm: none", has no arm and is counted and left out.
+   Analyze sessions by the level they were assigned (intention to treat),
+   and report as a second result the level they actually ran at, which the
+   same line gives where Claude Code reported it. Report how many ran at a
    level other than the one assigned. This comparison is randomized, so it
    is the primary result once it has adequate data. The historical
    comparison above becomes a supporting one. Projects threads are not
    assigned and are analyzed apart.
-7. **Report.** When the corrected test is significant, put it to the owner:
+7. **When to stop.** Once both arms of the trial reach the sample size step
+   3 computes, put ending the trial to the owner with the result. Put it to
+   them at the run on 2027-04-24 in any case, six months in, with the counts
+   and what more data would buy. The trial ends only on the owner's word
+   (`docs/maintainer.md`). This is a placeholder rule, set by `PL-HYRM` on
+   2026-10-19 for the owner to change.
+8. **Report.** When the corrected test is significant, put it to the owner:
    the effect with its 95% confidence interval, the counts, the confounders,
    and a recommendation.
