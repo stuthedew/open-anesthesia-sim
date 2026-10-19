@@ -9,6 +9,7 @@ touches: CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1640
 payoff: the resident reason for routing a rule to a path scope matches what Claude Code documents about when such a rule loads
 verify: ! grep -qF 'which loads when a session *reads* a matching file' CLAUDE.md
 ---
