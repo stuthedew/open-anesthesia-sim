@@ -21,7 +21,7 @@ import pytest
 from anesthesia_sim.layout import migrations
 from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout.exceptions import LayoutFormatError, UnsupportedSchemaVersion
-from anesthesia_sim.layout.migrations import Migrated
+from anesthesia_sim.layout.migrations import Migrated, SchemaVersion
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.serialization import (
@@ -627,6 +627,17 @@ class TestWorkspaceSetDocument:
         assert read.written_at == 1
         assert read.lossy == ()
         assert read.workspaces.current.pinned_run is None
+
+    def test_the_version_read_from_a_document_is_built_as_a_schema_version(self) -> None:
+        """`PL-8JV2`: the reader is where a version is built, so the store is handed the type."""
+
+        body = {key: value for key, value in workspace_body().items() if key != "pinned_run"}
+        older = workspace_set_from_json(set_document(body, schema_version=1))
+        current = workspace_set_from_json(set_document(workspace_body()))
+
+        for read, version in ((older, 1), (current, LAYOUT_SCHEMA_VERSION)):
+            assert isinstance(read.written_at, SchemaVersion)
+            assert read.written_at == version
 
     def test_a_body_is_written_and_read_without_a_version(self) -> None:
         body = workspace_to_dict(the_set().workspaces[0])

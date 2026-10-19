@@ -105,7 +105,7 @@ from anesthesia_sim.layout.exceptions import (
     UnsupportedSchemaVersion,
     WorkspaceFileError,
 )
-from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION
+from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, SchemaVersion
 from anesthesia_sim.layout.serialization import (
     ReadWorkspaceSet,
     workspace_set_from_json,
@@ -143,7 +143,23 @@ _SET_ASIDE_TIME_FORMAT: Final = "%Y%m%dT%H%M%SZ"
 
 
 def set_aside_file_name(when: datetime, attempt: int = 0) -> str:
-    """The name an invalid file is set aside under at `when`, numbered where a second holds two."""
+    """The name an invalid file is set aside under at `when`, numbered where a second holds two.
+
+    `attempt` counts the names already taken in that second, from 0, which
+    adds no number.
+
+    Raises:
+        TypeError: `attempt` is not an `int`, or is a `bool`, which would
+            write `-True` into the name.
+        ValueError: `attempt` is negative, which would write a second hyphen
+            into the name.
+    """
+
+    if isinstance(attempt, bool) or not isinstance(attempt, int):
+        raise TypeError(f"an attempt is an int, not {type(attempt).__name__}")
+
+    if attempt < 0:
+        raise ValueError(f"an attempt counts from 0, not {attempt}")
 
     stamp = when.astimezone(UTC).strftime(_SET_ASIDE_TIME_FORMAT)
     suffix = "" if attempt == 0 else f"-{attempt}"
@@ -151,10 +167,18 @@ def set_aside_file_name(when: datetime, attempt: int = 0) -> str:
     return f"workspaces.invalid-{stamp}{suffix}.json"
 
 
-def kept_file_name(written_at: int) -> str:
-    """The name the pre-migration file is kept under: the version it was written at."""
+def kept_file_name(written_at: SchemaVersion) -> str:
+    """The name the pre-migration file is kept under: the version it was written at.
 
-    return f"workspaces.v{written_at}.json"
+    Raises:
+        TypeError: `written_at` is not an `int`, or is a `bool`, which would
+            name the file `workspaces.vTrue.json`.
+        InvalidLayout: `written_at` is below 1, a version no build wrote.
+    """
+
+    # Built through the type even from a `SchemaVersion`, so a caller the
+    # type checker does not reach cannot name a version that does not exist.
+    return f"workspaces.v{SchemaVersion(written_at)}.json"
 
 
 def user_data_directory(
@@ -218,7 +242,7 @@ class Loaded:
     writable: bool
     notice: str | None
     set_aside: Path | None
-    written_at: int | None
+    written_at: SchemaVersion | None
 
 
 class WorkspaceStore:

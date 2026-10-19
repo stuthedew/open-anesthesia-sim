@@ -34,6 +34,12 @@ Workspace body and the set document change together, so the one
 a body carries no version of its own. It is defined here rather than in
 `layout/serialization.py` because the version and the steps that bridge the
 versions before it are one record.
+
+**A version is a `SchemaVersion`** (`PL-8JV2`). The rule that a schema version
+is a whole number from 1 is checked once, when the type is built, and
+`layout/serialization.py` builds one where it reads a document's
+`schema_version`. Every signature past that point takes the type, so a version
+held anywhere in the package was checked when it was read.
 """
 
 from __future__ import annotations
@@ -55,14 +61,40 @@ __all__ = [
     "OLDEST_READABLE_VERSION",
     "Migrated",
     "Migration",
+    "SchemaVersion",
     "migrate",
     "oldest_readable",
 ]
 
+
+class SchemaVersion(int):
+    """A schema version: a whole number from 1, built only through that check.
+
+    It compares, hashes and prints as the `int` it was built from, so a
+    document writes it as that number.
+
+    Raises:
+        TypeError: the value is not an `int`, or is a `bool`, which subclasses
+            `int` and would make `True` version 1.
+        InvalidLayout: the value is below 1.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, value: int) -> SchemaVersion:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"a schema version is an int, not {type(value).__name__}")
+
+        if value < 1:
+            raise InvalidLayout(f"a schema version counts from 1, not {shown(value)}")
+
+        return super().__new__(cls, value)
+
+
 # The version of the serialized form this build writes, and the newest it
 # reads. Raised by the change that alters the shape, together with the
 # `Migration` that reads the version before it.
-LAYOUT_SCHEMA_VERSION: Final = 2
+LAYOUT_SCHEMA_VERSION: Final = SchemaVersion(2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,18 +105,20 @@ class Migration:
     sentence the reader is shown saying what the step could not carry over.
 
     Raises:
-        TypeError: a field is not of its declared type.
-        InvalidLayout: `reads` is below 1, or `lossy` is an empty sentence.
+        TypeError: a field is not of its declared type, `reads` included,
+            which is built as a `SchemaVersion` rather than passed as an `int`.
+        InvalidLayout: `lossy` is an empty sentence.
     """
 
-    reads: int
+    reads: SchemaVersion
     apply: Callable[[dict[str, object]], dict[str, object]]
     lossy: str | None = None
 
     def __post_init__(self) -> None:
-        if isinstance(self.reads, bool) or not isinstance(self.reads, int):
+        if not isinstance(self.reads, SchemaVersion):
             raise TypeError(
-                f"a migration reads a version given as an int, not {type(self.reads).__name__}"
+                f"a migration reads a version built as a SchemaVersion, not "
+                f"{type(self.reads).__name__}"
             )
 
         if not callable(self.apply):
@@ -94,9 +128,6 @@ class Migration:
             raise TypeError(
                 f"a migration's lossy is a str or None, not {type(self.lossy).__name__}"
             )
-
-        if self.reads < 1:
-            raise InvalidLayout(f"a schema version counts from 1, not {shown(self.reads)}")
 
         if self.lossy is not None and not self.lossy:
             raise InvalidLayout("a lossy migration says what it loses; an empty sentence does not")
@@ -110,15 +141,17 @@ class Migrated:
     lossy: tuple[str, ...]
 
 
-def oldest_readable(steps: tuple[Migration, ...], current: int) -> int:
+def oldest_readable(steps: tuple[Migration, ...], current: SchemaVersion) -> SchemaVersion:
     """The oldest version `steps` read up to `current`, checking the chain has no gap.
 
     Raises:
-        InvalidLayout: a step reads a version out of sequence, so some version
-            between the oldest and `current` has no step, or two have one.
+        InvalidLayout: the chain holds a step for every version before
+            `current` and more, so its oldest would be below version 1; or a
+            step reads a version out of sequence, so some version between the
+            oldest and `current` has no step, or two have one.
     """
 
-    oldest = current - len(steps)
+    oldest = SchemaVersion(current - len(steps))
 
     for index, step in enumerate(steps):
         expected = oldest + index
@@ -166,7 +199,7 @@ def _unpinned(body: dict[str, object]) -> dict[str, object]:
 
 # The steps this build applies, in order, each reading the version the one
 # before it writes.
-MIGRATIONS: Final[tuple[Migration, ...]] = (Migration(1, _unpinned),)
+MIGRATIONS: Final[tuple[Migration, ...]] = (Migration(SchemaVersion(1), _unpinned),)
 
 # The oldest version this build reads: the current one, less a step for each
 # version before it that has one.
@@ -175,9 +208,9 @@ OLDEST_READABLE_VERSION: Final = oldest_readable(MIGRATIONS, LAYOUT_SCHEMA_VERSI
 
 def migrate(
     body: dict[str, object],
-    written_at: int,
+    written_at: SchemaVersion,
     steps: tuple[Migration, ...] = MIGRATIONS,
-    current: int = LAYOUT_SCHEMA_VERSION,
+    current: SchemaVersion = LAYOUT_SCHEMA_VERSION,
 ) -> Migrated:
     """`body`, written at `written_at`, as version `current` writes it.
 
