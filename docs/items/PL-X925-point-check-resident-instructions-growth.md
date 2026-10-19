@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, infra
+milestone: v0.5.33
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-10-19
