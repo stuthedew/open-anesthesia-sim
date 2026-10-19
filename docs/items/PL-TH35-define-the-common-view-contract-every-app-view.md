@@ -183,8 +183,8 @@ names.
 `PL-K285`.
 
 **Q6. Empty state.** Text stating what is absent, in the rectangle, never a
-blank; the existing empty-state constants are the pattern and `PL-7Z84`'s
-"run not present" state is the same mechanism.
+blank; the existing empty-state constants are the pattern and the
+run-not-present state of `PL-7Z84` is the same mechanism.
 
 **Q7. Controls.** A control over the View's own instance state may live in
 the View. A control over shared state renders the handed value and emits a

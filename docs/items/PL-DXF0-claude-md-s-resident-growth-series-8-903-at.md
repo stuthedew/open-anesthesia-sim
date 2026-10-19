@@ -3,11 +3,13 @@ id: PL-DXF0
 title: CLAUDE.md's resident-growth series (8,903 at inception, 49,991 on 2026-09-13, 60,199 on 2026-09-19) is now on a different basis from what make check prints: PL-44DG added the SessionStart digest and skill descriptions to the total, so a reader comparing the series against a fresh reading over-reads about 4,900 characters as growth
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: resident-gauge-basis
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
+closed: 2026-10-19
+pr: 1620
 payoff: the resident-growth series is compared like with like, instead of about 4,700 characters of basis change being read as instruction growth
 verify: grep -q 'def test_resident_line_names_the_instruction_file_subtotal' tests/unit/test_doc_check.py
 ---
@@ -33,3 +35,13 @@ the whole payload and says which one `CLAUDE.md`'s series is taken on. A test in
 series in `CLAUDE.md`.** It keeps the series comparable on every future reading
 at no resident cost, where an edit to the series would have to be repeated at
 each change of basis.
+
+**Done 2026-10-19.** `ResidentFile` gained an `instruction_file` flag, which is
+`False` for a skill's description row, and `ResidentInstructions` an
+`instruction_total` that sums the rows with it set. The resident line printed by
+`make check` now ends by naming that subtotal as the basis of the
+resident-growth series in `CLAUDE.md`. On 2026-10-19 the line read 95,607
+characters in all and 88,447 in the instruction files alone.
+`test_resident_line_names_the_instruction_file_subtotal` holds it with a
+fixture skill whose description is counted in the total and not in the
+subtotal.
