@@ -923,6 +923,17 @@ into disuse, which the pull-request bodies under `docs/pr-bodies` would show.
 
 ## The one-source-of-truth principle, added 2026-10-12
 
+**Widened 2026-10-19** (`PL-2LB5`). The project owner asked for one source of
+truth "everywhere", as "a core design principle", fixed "structurally". The
+bullet now names state and documents as well as values, says a second copy is
+fixed by its shape rather than as one instance, and names the two copies that
+must stay copies: a test's independent expected value and a cited published
+value. The test-oracle exception keeps the principle from removing the
+independence that verification needs. What it replaces is the history clause about three
+heads re-entering under a path-scoped rule, which `PL-4S6C` still carries. The
+carrier test below is unchanged: the moment is still a first write that no read
+precedes.
+
 `PL-4S6C` wrote one bullet into `CLAUDE.md` § "Architecture and development
 discipline": a shared fact has one source of truth, imported from the module
 or data file that owns it and never derived again beside it, with the

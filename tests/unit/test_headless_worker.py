@@ -283,7 +283,7 @@ def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {"PL-B7K2": "workflow"},
+        effort_level=lambda: "high",
         today=lambda: date(2026, 10, 19),
     )
     assert code == 0
@@ -305,7 +305,7 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
         "environ": {"ANTHROPIC_API_KEY": "sk-test"},
         "tools": lambda env: None,
         "docket": lambda: "PL-B7K2\nPL-C8M3\n",
-        "lanes": lambda: {"PL-B7K2": "workflow", "PL-C8M3": "product"},
+        "effort_level": lambda: "high",
         "today": lambda: date(2026, 10, 19),
     }
     assert headless_worker.main(args, **common) == 1
@@ -314,32 +314,38 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
     assert "cost could not be read" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize(
-    ("lane", "effort"), [("product", "max"), ("crossing", "max"), ("workflow", "high")]
-)
-def test_a_worker_runs_at_the_effort_the_owner_chose_for_its_lane(
-    lane: str, effort: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_a_worker_runs_at_the_level_the_project_settings_hold(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Simulator work runs at `max`, apparatus work at `high`, never the default (`PL-KFJY`)."""
+    """Every run takes the settings file's `effortLevel`, whatever its item's lane (`PL-4N0K`)."""
+    settings = tmp_path / "settings.json"
+    settings.write_text('{"effortLevel": "xhigh"}', encoding="utf-8")
     code = headless_worker.main(
         ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {"PL-B7K2": lane},
+        effort_level=lambda: headless_worker.read_effort_level(settings),
         today=lambda: date(2026, 10, 19),
     )
     assert code == 0
-    assert f"PL-B7K2 at {effort} effort" in capsys.readouterr().out
+    assert "PL-B7K2 at xhigh effort" in capsys.readouterr().out
 
 
-def test_an_item_docket_gives_no_lane_is_refused_before_any_spend(tmp_path: Path) -> None:
+def test_the_project_settings_set_high_for_every_run() -> None:
+    """The owner set `high` for all work on 2026-10-19 (`PL-6XZG`, `docs/maintainer.md`)."""
+    assert headless_worker.read_effort_level() == "high"
+
+
+def test_a_settings_file_with_no_effort_level_is_refused_before_any_spend(tmp_path: Path) -> None:
+    settings = tmp_path / "settings.json"
+    settings.write_text("{}", encoding="utf-8")
     code = headless_worker.main(
         ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {},
+        effort_level=lambda: headless_worker.read_effort_level(settings),
         today=lambda: date(2026, 10, 19),
     )
     assert code == 2

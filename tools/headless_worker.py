@@ -31,9 +31,11 @@ unavailable, as for a model that does not support it, Claude Code starts in
 Manual instead and every prompt is denied; the ledger's `denials` count shows
 that (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
-**Effort follows the item's lane.** A worker on an item that reaches the
-simulator runs at `max`, and one on apparatus work at `high`, as the owner
-chose for sessions. Without `--effort` every run took Opus 5.5's default,
+**Effort is the project's own level.** Every run takes `effortLevel` from
+`.claude/settings.json`, the level an interactive session opens at, and passes
+it as `--effort`. The owner set `high` there for all work on 2026-10-19
+(`PL-6XZG`), so the runner keeps no level of its own to fall out of step
+with it (`PL-4N0K`). Without `--effort` every run took Opus 5.5's default,
 `medium` (`PL-KFJY`).
 
 **`--no-push` is enforced, not asked for.** `PL-6FX6`'s trial runs Sonnet and
@@ -85,11 +87,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket import cli as docket_cli  # noqa: E402
-from docket.config import load as load_docket_config  # noqa: E402
+import docket.cli as docket_cli  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.model import LANE_CROSSING, LANE_PRODUCT  # noqa: E402
-from docket.store import read_items  # noqa: E402
 from docket.vcs import call_git, default_base, read_git  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools"))
@@ -100,15 +99,10 @@ import worker_runs  # noqa: E402
 #: Sonnet 5.5 workers, `PL-80R5`).
 WORKER_MODEL = "claude-opus-5-5"
 
-#: The effort a worker runs at, by the lane of its item. Simulator work runs at
-#: `max` and apparatus work at `high` (project owner, 2026-09-19, ratified, over
-#: running every session at `max`; and 2026-10-17, ratified, over `xhigh` for
-#: apparatus work, `PL-SW0B`). `docs/maintainer.md` § "Match effort to the
-#: standard the work is held to" records both. A lane that reaches the
-#: simulator takes the simulator's level (`PL-KFJY`).
-SIMULATOR_EFFORT = "max"
-APPARATUS_EFFORT = "high"
-SIMULATOR_LANES = (LANE_PRODUCT, LANE_CROSSING)
+#: The project settings file whose `effortLevel` every run takes.
+#: `docs/maintainer.md` § "Match effort to the standard the work is held to"
+#: says what it is set to and why.
+PROJECT_SETTINGS = ROOT / ".claude" / "settings.json"
 
 #: Variables Claude Code ranks above `--effort`, so a run that inherited one
 #: would not run at the level chosen for it
@@ -250,16 +244,17 @@ def run_docket_delegable() -> str:
     return out.getvalue()
 
 
-def effort_for(lane: str) -> str:
-    """The effort level for a worker on an item in `lane`."""
-    return SIMULATOR_EFFORT if lane in SIMULATOR_LANES else APPARATUS_EFFORT
+def read_effort_level(settings: Path = PROJECT_SETTINGS) -> str:
+    """The `effortLevel` the project's settings file holds.
 
-
-def read_lanes() -> dict[str, str]:
-    """Each item's lane, as docket reads it from the item's `touches`."""
-    config = load_docket_config(ROOT)
-    items = read_items(ROOT / config.items_dir)
-    return {item.identifier: item.lane(config.workflow_paths) for item in items}
+    Raises:
+        Refused: the file sets no `effortLevel`, so no level is chosen and a
+            run would silently take the model's default.
+    """
+    level = json.loads(settings.read_text(encoding="utf-8")).get("effortLevel")
+    if not isinstance(level, str) or not level:
+        raise Refused(f"{settings} sets no effortLevel, so no effort is chosen.")
+    return level
 
 
 def check_tools(env: Mapping[str, str]) -> None:
@@ -576,7 +571,7 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     docket: Callable[[], str] = run_docket_delegable,
-    lanes: Callable[[], Mapping[str, str]] = read_lanes,
+    effort_level: Callable[[], str] = read_effort_level,
     tools: Callable[[Mapping[str, str]], None] = check_tools,
     today: Callable[[], date] = lambda: datetime.now(UTC).date(),
 ) -> int:
@@ -585,11 +580,8 @@ def main(
         env = child_environment(environ)
         tools(env)
         items = choose(delegable_ids(docket), args.item, args.runs)
-        lane = lanes()
-        unread = [item for item in items if item not in lane]
-        if unread:
-            raise Refused(f"docket gives no lane for {', '.join(unread)}, so no effort is chosen.")
-        efforts = {item: effort_for(lane[item]) for item in items}
+        level = effort_level()
+        efforts = {item: level for item in items}
         origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
         start = cycle_start(today(), args.cycle_day)
         if args.dry_run:

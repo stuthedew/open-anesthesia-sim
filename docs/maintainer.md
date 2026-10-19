@@ -713,9 +713,9 @@ billing cycle (https://support.claude.com/en/articles/17154008, read
 works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
 `claude/<id>-worker`, and adds its reported cost to a ledger in
 `~/.local/state/open-anesthesia-sim/`. It stops before a run that the
-credit left cannot cover. A run on an item that reaches the simulator uses
-`max` effort, and a run on apparatus work uses `high`, as § "Match effort to
-the standard the work is held to" sets for sessions (`PL-KFJY`). Run it on
+credit left cannot cover. Every run uses the effort level
+in `.claude/settings.json`, which is `high`, as § "Match effort to the
+standard the work is held to" sets for sessions (`PL-4N0K`). Run it on
 your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it
 through `uv run python`, never a bare `python3`: macOS's own `python3` is
 Xcode's 3.9, older than the 3.11 the tools need, and `uv run` also puts the
