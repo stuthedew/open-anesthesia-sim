@@ -5643,16 +5643,95 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
                 )
 
 
-def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
+def _docstrings(tree: ast.Module, source: bytes) -> Iterator[tuple[int, str]]:
     """Every docstring, an attribute docstring included, with the line it starts on.
 
     `docket.python.docstrings` decides which strings those are. Reading only a
     module's, a class's and a function's left a citation in an attribute
     docstring unchecked (`PL-8W1J`).
+
+    Each docstring comes as `_source_lined` gives it, so its line `n` is the
+    source line `n` below the line it starts on, and a finding numbered from it
+    names the line the reader sees (`PL-PV73`).
     """
+    strings = _string_tokens(source)
     for node in docstrings(tree):
         if isinstance(node.value, str):  # always, and how the type checker learns it
-            yield node.lineno, node.value
+            yield node.lineno, _source_lined(node, strings)
+
+
+def _string_tokens(source: bytes) -> dict[int, list[tokenize.TokenInfo]]:
+    """Every string token in `source`, by the row it starts on, or none where it will not tokenize.
+
+    None rather than a refusal, because the caller has parsed the file already
+    and `_source_lined` then numbers each docstring by its evaluated value, as
+    it did before this was read.
+    """
+    found: dict[int, list[tokenize.TokenInfo]] = {}
+    try:
+        for token in tokenize.tokenize(io.BytesIO(source).readline):
+            if token.type == tokenize.STRING:
+                found.setdefault(token.start[0], []).append(token)
+    except UNTOKENIZABLE:
+        return {}
+    return found
+
+
+def _source_lined(node: ast.Constant, strings: Mapping[int, list[tokenize.TokenInfo]]) -> str:
+    """A docstring's value with its line breaks where the source has them.
+
+    The value is the evaluated string, so a backslash-newline inside the
+    literal removes a source line from it and a `\\n` escape adds one the
+    source does not have. Counting the value's newlines then named the line
+    above a citation or the line below it (`PL-PV73`). So the value is rebuilt
+    a source line at a time, from the string tokens the tokenizer gives with
+    their start and end. A `\\n` escape becomes a space, and a backslash-newline
+    becomes a line break. Every other character is the value's.
+
+    Where the tokens do not rebuild the value exactly, the value is returned
+    as it is, and numbered as it was before.
+    """
+    value = node.value
+    if not isinstance(value, str):
+        return ""
+    tokens = [
+        token
+        for row in range(node.lineno, (node.end_lineno or node.lineno) + 1)
+        for token in strings.get(row, ())
+    ]
+    if not tokens or tokens[0].start[0] != node.lineno:
+        return value
+    rows: dict[int, list[tuple[str, str]]] = {}
+    for token in tokens:
+        for row, text, ending in _token_rows(token):
+            rows.setdefault(row, []).append((text, ending))
+    lines = [rows.get(row, []) for row in range(node.lineno, tokens[-1].end[0] + 1)]
+    if "".join(text + ending for line in lines for text, ending in line) != value:
+        return value
+    return "\n".join("".join(text for text, _ in line).replace("\n", " ") for line in lines)
+
+
+def _token_rows(token: tokenize.TokenInfo) -> Iterator[tuple[int, str, str]]:
+    """Each source row of one string token: its row, what it adds to the value, and its break.
+
+    The break is the newline the source line ends with where the value keeps
+    it, and empty on the token's last row or after a backslash-newline.
+    """
+    literal = token.string
+    prefix = literal[: len(literal) - len(literal.lstrip("rRuUbBfF"))]
+    quote = literal[len(prefix) : len(prefix) + 3]
+    if quote not in ('"""', "'''"):
+        quote = quote[0]
+    body = literal[len(prefix) + len(quote) : len(literal) - len(quote)]
+    raw = "r" in prefix.lower()
+    plain = prefix.replace("r", "").replace("R", "")
+    lines = body.split("\n")
+    for offset, line in enumerate(lines):
+        ending = "\n" if offset < len(lines) - 1 else ""
+        if not raw and (len(line) - len(line.rstrip("\\"))) % 2:
+            line, ending = line[:-1], ""
+        text = line if raw else ast.literal_eval(f"{plain}{quote}{line}X{quote}")[:-1]
+        yield token.start[0] + offset, text, ending
 
 
 def _unread_source(relative: Path, error: Exception, unread: str = "citation") -> str:
@@ -5731,11 +5810,12 @@ def _quoting_sources(
             continue
         relative = path.relative_to(root)
         try:
-            tree = ast.parse(path.read_bytes())
+            source = path.read_bytes()
+            tree = ast.parse(source)
         except (OSError, SyntaxError, ValueError) as error:
             declined.append(_unread_source(relative, error))
             continue
-        for line, docstring in _as_passages(_docstrings(tree)):
+        for line, docstring in _as_passages(_docstrings(tree, source)):
             yield relative, line, docstring
 
 
@@ -8706,7 +8786,7 @@ def _host_claim_texts(
         except (SyntaxError, ValueError) as error:
             report.declined.append(_unread_source(relative, error, "host claim"))
         else:
-            for row, docstring in _docstrings(tree):
+            for row, docstring in _docstrings(tree, data):
                 yield row, _as_passage(_dedented(docstring))
         try:
             yield from _as_passages(_python_comments(data))
