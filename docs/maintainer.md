@@ -615,7 +615,11 @@ billing cycle (https://support.claude.com/en/articles/17154008, read
 works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
 `claude/<id>-worker`, and adds its reported cost to a ledger in
 `~/.local/state/open-anesthesia-sim/`. It stops before a run that the
-credit left cannot cover. Run it on your Mac, from a checkout of `main`:
+credit left cannot cover. Run it on your Mac, from a checkout of `main`,
+with `claude` and `uv` installed. Start it through `uv run python`, never a
+bare `python3`: macOS's own `python3` is Xcode's 3.9, older than the 3.11
+the tools need, and `uv run` also puts the project's Python first on `PATH`
+for the workers (`PL-W38C`).
 
 1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
    organization. This links one Console organization, and changing it later
@@ -623,9 +627,9 @@ credit left cannot cover. Run it on your Mac, from a checkout of `main`:
 2. Create a key in that organization: platform.claude.com, API keys, Create
    key.
 3. `export ANTHROPIC_API_KEY=<the key>` in the shell you run from.
-4. `python3 tools/headless_worker.py --dry-run --runs 3` prints the items it
+4. `uv run python tools/headless_worker.py --dry-run --runs 3` prints the items it
    would run and the credit left, and starts nothing.
-5. `python3 tools/headless_worker.py --runs 3` runs them, one after another.
+5. `uv run python tools/headless_worker.py --runs 3` runs them, one after another.
    Each prints one line: the item, the cost, and the branch it pushed.
 
 Each branch is a worker's, so review it as delegated work: `bin/docket verify
