@@ -3,13 +3,15 @@ id: PL-25D9
 title: LayoutModel.join refuses a join that needs a cut beside an Area narrower than BORDER_ALIGNMENT_TOLERANCE, though a tree holding the result exists: column[row(0.5, 5e-10, 0.5-5e-10)[1,2,3], row[4,5]] refuses joining 1 and 4, where a 2e-9 sliver joins
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: layout-sliver-areas
 touches: src/anesthesia_sim/layout/model.py, tests/unit/test_layout_model.py
 blocked-by: PL-391Y
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1674
 payoff: A reader can never be refused a join beside a sliver Area, because no layout can hold an Area that narrow
 verify: grep -q "PL-25D9's layout" tests/unit/test_layout_model.py
 ---
