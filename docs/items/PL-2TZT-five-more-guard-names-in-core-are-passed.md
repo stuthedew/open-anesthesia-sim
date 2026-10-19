@@ -105,3 +105,12 @@ also matched the compiled `__pycache__` files), and greps a whole anchored
 message from each of the two test files that pin the `__setattr__`
 refusals, which the old pattern could not see. Each reworded message is
 pinned as an anchored whole string, as `PL-79PK` asked.
+
+**Owner ask, 2026-10-19:** #1676 carries this item with PL-8LQZ, PL-FNH3,
+PL-XVCV, PL-HPKK, PL-5BD7, PL-5D1Z and PL-WP52, and is held for the owner's
+review of one risk. A new or reworded refusal could fire on something a
+learner does and halt a run that ran before. The full suite, the reference
+trajectories included, passes unchanged. The 1 ms floor the compartments now
+take is the floor the run already had, and the capacity refusals need a
+factor near 1e200 or 1e-200. What is left to judge is whether the reworded
+refusal messages read clearly to a learner.
