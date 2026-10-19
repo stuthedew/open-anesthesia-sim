@@ -3,7 +3,7 @@ import pickle
 import re
 import sys
 from dataclasses import astuple, replace
-from math import exp, inf, nan
+from math import exp, inf, nan, nextafter
 
 import pytest
 
@@ -380,3 +380,40 @@ def test_a_capacity_that_overflows_is_refused_at_build() -> None:
         venous.volume_l = 1e20
 
     assert astuple(venous) == held
+
+
+@pytest.mark.parametrize("simulation_step_s", [nextafter(1e-3, 0.0), 1e-6, 1e-14, 5e-324])
+def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-WP52`: the venous pool stepped on its own refuses a step shorter than 1 ms.
+
+    Rounding grows as the step shrinks in the pool stepped alone, as it does in a
+    run. This pool was held at a fraction of 0.01 and stepped toward 0.02 at
+    5 L/min. Over 10 000 steps of 1e-14 s, its change was 4% wrong.
+    The step is refused and the amount held does not change. The floor itself is
+    accepted, and so is a step of 1 s, longer than the run's 0.1 s ceiling, which
+    does not apply to a compartment stepped alone. The expected floor, 0.001 s, is
+    written out here rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    """
+
+    venous = _build_venous_blood()
+    held_l = venous.agent_amount_l
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            rf"^venous simulation_step_s of {re.escape(str(simulation_step_s))} s is shorter "
+            r"than the smallest supported step of 0\.001 s, below which rounding is a "
+            r'growing share of what each step changes \(docs/MODEL.md, "Supported '
+            r'simulation step"\)$'
+        ),
+    ):
+        venous.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+
+    assert venous.agent_amount_l == held_l
+
+    venous.advance(Fraction(0.02), 0.001, BLOOD_FLOW_L_MIN)
+    venous.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
+
+    assert venous.agent_amount_l > held_l

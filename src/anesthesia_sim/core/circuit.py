@@ -47,6 +47,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -650,19 +651,21 @@ class BreathingCircuit:
     def advance_fresh_gas(self, simulation_step_s: float) -> FreshGasExchange:
         """Advance exact circuit wash-in and report external exchange.
 
-        The circuit's own closed form with no patient connected, and not how a
-        run advances: a connected patient adds the ventilation term
-        `docs/MODEL.md` § "Breathing circuit" carries beside this one, and the
-        step that solves both is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction, and why zero
-        flow needs no branch here.
+        This method is the circuit's own closed-form solution with no patient
+        connected. It is not how a run advances. A connected patient adds a
+        ventilation term, which `docs/MODEL.md` § "Breathing circuit" gives beside
+        this one, and `AgentUptakeSystem.advance()` is the step that solves both.
+        The package docstring in `core/__init__.py` explains the distinction. It
+        also explains why zero flow needs no separate branch here.
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Nothing is changed when it is refused.
+                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
+                (`core/simulation_step.py`, `PL-WP52`). Nothing changes when the
+                step is refused.
         """
 
-        require_positive_finite("circuit simulation_step_s", simulation_step_s)
+        require_at_least_the_smallest_step("circuit simulation_step_s", simulation_step_s)
 
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction

@@ -3,7 +3,7 @@ import pickle
 import re
 import sys
 from dataclasses import astuple, replace
-from math import exp, inf, nan
+from math import exp, inf, nan, nextafter
 
 import pytest
 
@@ -621,3 +621,41 @@ def test_a_capacity_that_overflows_is_refused_at_build() -> None:
         tissue.volume_l = 1e20
 
     assert astuple(tissue) == held
+
+
+@pytest.mark.parametrize("simulation_step_s", [nextafter(1e-3, 0.0), 1e-6, 1e-14, 5e-324])
+def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-WP52`: a tissue group stepped on its own refuses a step shorter than 1 ms.
+
+    Rounding grows as the step shrinks in a tissue stepped alone, as it does in a
+    run. A tissue built as this one, held at a fraction of 0.01 and stepped toward
+    0.02 at 1 L/min, did not change at all over 10 000 steps of 1e-14 s, although
+    the exact change is not zero. The step is refused and the
+    amount held does not change. The floor itself is accepted, and so is a step of
+    1 s, longer than the run's 0.1 s ceiling, which does not apply to a
+    compartment stepped alone. The expected floor, 0.001 s, is written out here
+    rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    """
+
+    tissue = _build_tissue()
+    held_l = tissue.agent_amount_l
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            rf"^test simulation_step_s of {re.escape(str(simulation_step_s))} s is shorter "
+            r"than the smallest supported step of 0\.001 s, below which rounding is a "
+            r'growing share of what each step changes \(docs/MODEL.md, "Supported '
+            r'simulation step"\)$'
+        ),
+    ):
+        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+
+    assert tissue.agent_amount_l == held_l
+
+    tissue.advance(Fraction(0.02), 0.001, BLOOD_FLOW_L_MIN)
+    tissue.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
+
+    assert tissue.agent_amount_l > held_l

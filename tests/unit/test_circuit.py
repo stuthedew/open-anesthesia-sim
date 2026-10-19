@@ -4,7 +4,7 @@ import pickle
 import re
 from dataclasses import astuple, replace
 from importlib.resources import files
-from math import exp, inf, nan
+from math import exp, inf, nan, nextafter
 
 import pytest
 
@@ -956,3 +956,44 @@ def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
     for past in (lowest - _JUST_PAST_AN_END_L_MIN, highest + _JUST_PAST_AN_END_L_MIN):
         with pytest.raises(SimulationConfigurationError):
             circuit.set_fresh_gas_flow(FreshGasFlow(past))
+
+
+@pytest.mark.parametrize("simulation_step_s", [nextafter(1e-3, 0.0), 1e-6, 1e-14, 5e-324])
+def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-WP52`: the circuit stepped on its own refuses a step shorter than 1 ms.
+
+    Rounding grows as the step shrinks in the circuit stepped alone, as it does in
+    a run. Over 10 000 steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4%
+    wrong. Both `advance_fresh_gas` and `advance` refuse the step, and the
+    inspired fraction does not change. The floor itself is accepted, and so is a
+    step of 1 s, longer than the run's 0.1 s ceiling, which does not apply to a
+    compartment stepped alone. The expected floor, 0.001 s, is written out here
+    rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    """
+
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        fresh_gas_flow_l_min=FreshGasFlow(6.0),
+        delivered_concentration_percent=Percent(2.0),
+    )
+    refusal = (
+        rf"^circuit simulation_step_s of {re.escape(str(simulation_step_s))} s is shorter "
+        r"than the smallest supported step of 0\.001 s, below which rounding is a "
+        r'growing share of what each step changes \(docs/MODEL.md, "Supported '
+        r'simulation step"\)$'
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        circuit.advance_fresh_gas(simulation_step_s)
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        circuit.advance(simulation_step_s)
+
+    assert circuit.inspired_partial_pressure_fraction == 0.0
+
+    circuit.advance_fresh_gas(0.001)
+    circuit.advance(1.0)
+
+    assert circuit.inspired_partial_pressure_fraction > 0.0
