@@ -134,6 +134,7 @@ LANE_ONLY = (
     "docs/stress-2026-09-25",
     "docs/session-ledger.tsv",
     "docs/ci-runs.tsv",
+    "model-evidence.toml",
     # Configuration, which carries no prose a standard could apply to.
     ".gitattributes",
     ".gitignore",
