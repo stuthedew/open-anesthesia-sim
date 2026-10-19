@@ -31,7 +31,7 @@ from typing import Any, NoReturn
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
-from PySide6.QtGui import QBrush, QColor, QPalette
+from PySide6.QtGui import QBrush, QColor, QFont, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -157,6 +157,7 @@ from anesthesia_sim.app.theme import (
     INK,
     MARK_ROW_BULLET,
     MUTED,
+    PAGE_SPACING,
     PANEL,
     WARNING,
 )
@@ -6293,6 +6294,46 @@ def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) 
     assert run_label(FIRST_RUN) not in notice
 
 
+@pytest.mark.parametrize("compared", [False, True], ids=["one run", "two runs"])
+def test_hidden_notice_banners_take_no_height(application: QApplication, compared: bool) -> None:
+    """A banner with nothing to say takes no room, and a shown one sits under the transport rows.
+
+    The unconditional region, the band of required values that no Workspace
+    can remove, has little height to spare on a laptop screen. So every
+    pixel it spends on a hidden banner is a pixel the concentration chart
+    loses (`PL-T91K`). The expected gaps are the theme's page spacing, not a
+    value read from the layout under test. With two runs, only the branch's
+    banner is shown. The hidden trunk banner ahead of it must not push it
+    down. The branch's banner sits where the trunk's banner would, so only
+    its words say which run it belongs to (`PL-TSZM`).
+    """
+
+    if compared:
+        view = _case_view(application, _branched_case())
+        _take_fork(view, 60.0)
+    else:
+        view = _shown_view(application, SimulationController(agent_id="isoflurane"))
+
+    _settle(application)
+    transports = view._transport_column.parentWidget()
+    readouts = view._readout_column.parentWidget()
+    banners = [run._notice_text for run in view.runs]
+
+    assert len(banners) == (2 if compared else 1)
+    assert all(banner.isHidden() for banner in banners)
+    assert readouts.y() == transports.geometry().bottom() + 1 + PAGE_SPACING
+
+    run = view.runs[-1]
+    run.controller.start()
+    run._handle_delivered_concentration_change(_ABOVE_ANY_VAPORIZER_PERCENT)
+    _settle(application)
+    shown = banners[-1]
+
+    assert shown.isVisible()
+    assert shown.y() == transports.geometry().bottom() + 1 + PAGE_SPACING
+    assert readouts.y() == shown.geometry().bottom() + 1 + PAGE_SPACING
+
+
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
     """Both panels sit in a column the runs share, so each heading says whose.
 
@@ -7360,6 +7401,45 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
     assert not any(widget.isHidden() for widget in withdrawn)
 
 
+#: A mark name long enough that its row wraps in the bookmark panel at any
+#: width the page allows.
+_WRAPPING_MARK_NAME = "a mark name long enough to wrap " * 10
+
+
+@pytest.mark.parametrize("height_px", [450, 1000])
+def test_a_wrapped_mark_row_is_never_clipped(application: QApplication, height_px: int) -> None:
+    """A mark row that wraps gets the height its lines need in a narrow window (`PL-KX97`).
+
+    The row's name is long enough to wrap at the page's narrowest width, so
+    the row under test does wrap. The expected height is the label's own
+    `heightForWidth`, not a value read from the layout under test. A short
+    window must scroll the page rather than squeeze the row.
+    """
+
+    case = BranchedCase(SimulationController())
+    case.trunk.add_mac_target(
+        MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5), _WRAPPING_MARK_NAME)
+    )
+    view = _case_view(application, case, width_px=700)
+    view.resize(700, height_px)
+    application.processEvents()
+    view.present(False)
+    application.processEvents()
+    rows = [
+        label
+        for label in view._bookmarks_panel.findChildren(QLabel)
+        if label.isVisible() and label.wordWrap() and _WRAPPING_MARK_NAME.strip() in label.text()
+    ]
+
+    assert rows
+
+    for row in rows:
+        needed_px = row.heightForWidth(row.width())
+
+        assert needed_px > row.fontMetrics().height(), "the row does not wrap"
+        assert needed_px <= row.height()
+
+
 @pytest.mark.parametrize("door", ["take", "here"])
 def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch(
     application: QApplication,
@@ -8404,17 +8484,22 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
 
-def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplication) -> None:
-    """A mark's entry cut short would lose the words that say it is a mark.
+def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
+    """Give a dashboard's selector its widest mark entry and measure that entry against the field.
 
-    The selector is fixed in width (`theme.FORK_POINT_SELECTOR_WIDTH`) and its
-    widest entry is a mark's late in the supported run, so the width is held
-    against that entry in the font it is drawn in. The widest is found rather
-    than assumed: the face spaces its digits proportionally, so the last
-    step's 23h59m59.9s is not the widest reading. Hours, minutes and seconds
-    vary independently, so the widest of each together is the widest clock
-    `format_elapsed` can write, and it is offered through `fork_offer` and
-    read back off the selector rather than measured as a bare string.
+    The widest entry is found here rather than taken from
+    `widest_fork_point_label`, so the test does not check that function
+    against its own result. The font spaces its digits proportionally, so
+    23h59m59.9s, the reading at the last step, is not the widest reading.
+    Hours, minutes and seconds vary independently, so the widest value of
+    each, put together, is the widest clock reading that `format_elapsed`
+    can write. The test passes the entry through `fork_offer` and reads it
+    back from the selector, rather than measuring it as a bare string.
+
+    Returns:
+        The entry's advance, its drawn width, and the width of the
+        selector's text field. Both are in pixels, in the font the selector
+        is drawn in.
     """
 
     view = _case_view(application, _branched_case())
@@ -8453,7 +8538,45 @@ def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplicat
         panel.point_selector,
     )
 
-    assert metrics.horizontalAdvance(panel.point_selector.currentText()) <= field.width()
+    return metrics.horizontalAdvance(panel.point_selector.currentText()), field.width()
+
+
+def test_the_branch_selector_draws_its_widest_entry_whole(application: QApplication) -> None:
+    """A mark's entry cut short would lose the words that say it is a mark.
+
+    The selector has a fixed width. Its widest entry is the entry for a mark
+    late in the supported run. So the test checks that the width fits that
+    entry, in the font the selector is drawn in.
+    """
+
+    entry_px, field_px = _widest_mark_entry_fits(application)
+
+    assert entry_px <= field_px
+
+
+def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face(
+    application: QApplication,
+) -> None:
+    """The width still fits in a face and size that the container does not draw in (`PL-NC0D`).
+
+    The application sets no font of its own, so the selector draws in the
+    platform's default face and size. In DejaVu Sans at 16 px, the widest
+    entry needs 228 px. The fixed 230 px width that this replaced left a
+    text field of only 196 px, so the words "on your mark" were cut. The
+    width is now measured from the selector's own font when it is built.
+    """
+
+    previous = application.font()
+    wider = QFont("DejaVu Sans")
+    wider.setPixelSize(16)
+    application.setFont(wider)
+
+    try:
+        entry_px, field_px = _widest_mark_entry_fits(application)
+    finally:
+        application.setFont(previous)
+
+    assert entry_px <= field_px
 
 
 # --- one readout block at a laptop's width (`PL-F2YS`) -----------------------

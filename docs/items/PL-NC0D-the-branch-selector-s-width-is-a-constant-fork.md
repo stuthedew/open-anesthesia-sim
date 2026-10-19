@@ -3,12 +3,14 @@ id: PL-NC0D
 title: The branch selector's width is a constant, FORK_POINT_SELECTOR_WIDTH = 230 px, measured on Inter at 12 and 13 px; the readout panels reserve their width from their own font at runtime (PL-3355), which would hold on a machine drawing another face
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-19
+pr: 1680
 payoff: On a desktop with a wider or larger default font, a mark's entry in the branch selector still reads as a mark instead of being cut before the words that say so.
 verify: grep -q 'def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face' tests/integration/test_simulation_view.py
 ---
@@ -41,3 +43,5 @@ padding and arrow included, as `MetricPanel` does for the readouts
 `tests/integration/test_simulation_view.py`, builds the panel under a wider
 application font (DejaVu Sans at 16 px, which cuts the 230 px constant) and
 asserts the widest mark entry fits the edit field.
+
+**Regression check 2026-10-19.** `ForkPanel` fixes the selector's width from `dashboard_frame.widest_fork_point_label`, measured in the selector's own font, plus the frame, padding and arrow the style draws around the text field. `theme.FORK_POINT_SELECTOR_WIDTH` is gone. `test_the_branch_selector_fits_its_widest_entry_in_a_wider_face` fails on the code before this change (the `src/` of b1240300, the head of #1675) with `assert 228 <= 196` under DejaVu Sans at 16 px.
