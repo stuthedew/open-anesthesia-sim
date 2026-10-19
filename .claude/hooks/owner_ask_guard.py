@@ -57,6 +57,7 @@ import shell_split  # noqa: F401 - puts docket's src on sys.path
 
 # isort: split
 from docket.arming import NO_ASK
+from docket.lines import split_lines
 
 #: The tools whose text reaches the owner in a thread, with the fields that carry it.
 TEXT_FIELDS = {
@@ -153,13 +154,15 @@ def owner_ask(root: Path) -> tuple[int, str] | None:
     )
     try:
         done = subprocess.run(
-            command, cwd=root, capture_output=True, text=True, timeout=ARM_TIMEOUT_S, check=False
+            command, cwd=root, capture_output=True, timeout=ARM_TIMEOUT_S, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return None
     if done.returncode not in (0, NO_ASK):
         return None
-    lines = [line.strip() for line in done.stdout.splitlines() if line.strip()]
+    lines = [
+        line.strip() for line in split_lines(done.stdout.decode("utf-8", "replace")) if line.strip()
+    ]
     if not lines:
         return None
     return done.returncode, lines[0]
