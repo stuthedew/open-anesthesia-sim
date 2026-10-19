@@ -446,6 +446,33 @@ def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> 
             assert _advance_px(label) <= label.width(), label.text()
 
 
+def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationView) -> None:
+    """The agent-accounting panel gets its whole height once a run is going (`PL-TZNM`).
+
+    A running case writes the lines of the litres readout into the panel. A
+    panel laid out from a size hint taken before those lines arrived would
+    cut off its last line. The expected heights are the panel's and the
+    readout's own size hints, not values read from the layout under test.
+    """
+
+    panels = dashboard.runs[0]._accounting_panels
+
+    assert panels
+
+    for panel in panels:
+        amounts = panel._agent_amounts_text
+        needed_px = (
+            amounts.heightForWidth(amounts.width())
+            if amounts.wordWrap()
+            else amounts.sizeHint().height()
+        )
+
+        assert panel.isVisible()
+        assert amounts.text()
+        assert panel.sizeHint().height() <= panel.height()
+        assert needed_px <= amounts.height(), amounts.text()
+
+
 def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: SimulationView) -> None:
     """Nothing a reader is meant to see is laid out beyond the page's right edge.
 
