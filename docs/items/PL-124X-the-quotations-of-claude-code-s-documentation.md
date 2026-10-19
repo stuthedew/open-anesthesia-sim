@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: docs
+milestone: v0.5.36
 touches: docs/apparatus.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, .claude/hooks/webfetch-quote-note.sh, docs/items
 added: 2026-10-01
 closed: 2026-10-19

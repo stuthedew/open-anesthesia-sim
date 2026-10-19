@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.36
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, .claude/hooks/stop_hook_patch.py, tests/unit/test_stop_hook_patch.py, docs/apparatus.md, tools/doc_check.py
 added: 2026-09-23
 closed: 2026-10-19
