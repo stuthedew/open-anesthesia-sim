@@ -61,8 +61,8 @@ kind that was read. The notice uses the look that `PL-DB5G` set: a bold title
 in `WARNING` over a body in `INK`, on the panel surface, with no fill, border
 or icon.
 
-**Every Area has a menu at the end of its header** (`PL-MS34` Q2,
-`PL-2KXB`). The menu holds the operations on the Area's place: a split left
+**Every Area has a menu, which a right-click on its header opens** (`PL-2KXB`,
+`PL-R5G4`). The menu holds the operations on the Area's place: a split left
 and right or top and bottom, a join with each neighbour, a swap with every
 other Area, and Close Area, which gives the Area's place to a neighbour. The
 menu works out each entry by asking the model for the layout that the entry
@@ -70,14 +70,15 @@ would make. When the model or the Area's size rejects an entry, the menu shows
 it disabled, with the reason beside it. So a join that the layout cannot make
 is visibly unavailable, and is never approximated.
 
-**A reader also splits and joins by dragging** (`PL-30L5`, `PL-RQT1`). Each
-corner of an Area is a 16 px zone with a cross cursor. A drag inside the Area
-previews a split through the pointer, and a drag into a neighbour previews a
-join. The preview is drawn over the Areas, and nothing changes until the
-reader releases the drag. A border drag lays the Areas out again as it moves.
-It stops where an Area beside the moved line reaches its minimum size, and the
-stop is drawn in WARNING. Holding Shift moves the dragged border alone, and
-Escape undoes either drag.
+**A reader also splits, joins and swaps by dragging** (`PL-30L5`, `PL-RQT1`,
+`PL-R5G4`). Each corner of an Area is a 16 px zone with a cross cursor. A drag
+inside the Area previews a split through the pointer, and a drag into a
+neighbour previews a join. With Ctrl held at the press, a drag into any other
+Area previews a swap, as in Blender. The preview is drawn over the Areas,
+and nothing changes until the reader releases the drag. A border drag lays the
+Areas out again as it moves. It stops where an Area beside the moved line
+reaches its minimum size, and the stop is drawn in WARNING. Holding Shift
+moves the dragged border alone, and Escape undoes any drag.
 
 **No View is drawn below the size it needs** (`PL-K285`). An Area needs the
 size that its View needs, plus its header. A View needs the larger of two
@@ -111,6 +112,7 @@ from typing import Final, cast
 from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
+    QContextMenuEvent,
     QEnterEvent,
     QFocusEvent,
     QFont,
@@ -227,6 +229,7 @@ __all__ = [
     "AreaOperation",
     "JoinPreview",
     "SplitPreview",
+    "SwapPreview",
     "ViewChooser",
 ]
 
@@ -234,8 +237,8 @@ __all__ = [
 _HEADER_RULE_PX: Final = 1
 
 # The space at each end of an Area's header row, before the chooser and after
-# the Area menu. It is as wide as a corner's drag zone, so the zone never takes
-# the first click meant for a header control (`PL-30L5` Q1).
+# the last control. It is as wide as a corner's drag zone, so the zone never
+# takes the first click meant for a header control (`PL-30L5` Q1).
 _HEADER_MARGIN_PX: Final = AREA_CORNER_ZONE
 
 # The Area menu and its entries (`PL-MS34` Q2, `PL-2KXB`). The wording is a
@@ -368,6 +371,26 @@ class JoinPreview:
     result: LayoutModel | None
 
 
+@dataclass(frozen=True, slots=True)
+class SwapPreview:
+    """A corner drag with Ctrl held, into another Area: the two Areas that change places.
+
+    Blender swaps two Areas' contents on Ctrl and a corner drag (Blender
+    Manual, "Areas", section "Swapping Contents", read 2026-10-19), and `PL-R5G4`
+    took the gesture. The two Areas need not be side by side.
+
+    Attributes:
+        start: The Area the drag started in.
+        other: The Area under the pointer.
+        result: The layout releasing the drag makes, or None where the model
+            refuses the swap, in which case releasing changes nothing.
+    """
+
+    start: AreaId
+    other: AreaId
+    result: LayoutModel | None
+
+
 # A row lays its children out left to right, which Qt calls horizontal, and a
 # column stacks them, which Qt calls vertical (`layout/tree.py` says why the
 # model does not use Qt's words).
@@ -448,8 +471,8 @@ class AreaLayout(QWidget):
         # The border that has the keyboard focus, and the layout it had then.
         self._keyed: _KeyedBorder | None = None
         self._at_minimum = False
-        self._corner_drag: tuple[AreaId, QPoint] | None = None
-        self.preview: SplitPreview | JoinPreview | None = None
+        self._corner_drag: tuple[AreaId, QPoint, bool] | None = None
+        self.preview: SplitPreview | JoinPreview | SwapPreview | None = None
         self._overlay = _LayoutOverlay(self)
         # What the last settle decided: each Area's size, and which Areas are
         # too small for their View (`layout/sizing.py`).
@@ -755,10 +778,15 @@ class AreaLayout(QWidget):
 
         return fit.too_small
 
-    def corner_pressed(self, area_id: AreaId, at: QPoint) -> None:
-        """Start a corner drag of the Area `area_id`, pressed at `at` on the screen."""
+    def corner_pressed(self, area_id: AreaId, at: QPoint, *, swap: bool = False) -> None:
+        """Start a corner drag of the Area `area_id`, pressed at `at` on the screen.
 
-        self._corner_drag = (area_id, at)
+        With `swap`, which Ctrl held at the press sets, the drag swaps the
+        Area with the one it is released over, rather than splitting or
+        joining.
+        """
+
+        self._corner_drag = (area_id, at, swap)
         self._show_preview(None)
 
     def corner_moved(self, at: QPoint) -> None:
@@ -776,9 +804,7 @@ class AreaLayout(QWidget):
         preview = self._preview_at(*self._corner_drag, at)
         self.corner_cancelled()
 
-        if isinstance(preview, SplitPreview) and preview.result is not None:
-            self._apply(preview.result)
-        elif isinstance(preview, JoinPreview) and preview.result is not None:
+        if preview is not None and preview.result is not None:
             self._apply(preview.result)
 
     def corner_cancelled(self) -> None:
@@ -787,7 +813,7 @@ class AreaLayout(QWidget):
         self._corner_drag = None
         self._show_preview(None)
 
-    def _show_preview(self, preview: SplitPreview | JoinPreview | None) -> None:
+    def _show_preview(self, preview: SplitPreview | JoinPreview | SwapPreview | None) -> None:
         self.preview = preview
         self._overlay.update()
 
@@ -799,8 +825,8 @@ class AreaLayout(QWidget):
         return QRect(frame.mapTo(self, QPoint(0, 0)), frame.size())
 
     def _preview_at(
-        self, area_id: AreaId, pressed: QPoint, at: QPoint
-    ) -> SplitPreview | JoinPreview | None:
+        self, area_id: AreaId, pressed: QPoint, swap: bool, at: QPoint
+    ) -> SplitPreview | JoinPreview | SwapPreview | None:
         """What a corner drag of `area_id` from `pressed` would do if released at `at`.
 
         Inside its own Area, the drag splits it. The cut runs across the
@@ -808,11 +834,22 @@ class AreaLayout(QWidget):
         drag sideways cuts the Area into left and right. Nothing is previewed
         until the pointer has moved the platform's drag distance. In another
         Area, the drag joins that Area into this one, which keeps its View.
-        Anywhere else, nothing is previewed.
+        With `swap`, a drag into another Area swaps the two instead, and a
+        drag inside its own Area does nothing. Anywhere else, nothing is
+        previewed.
         """
 
         local = self.mapFromGlobal(at)
         own = self.frame_rect(area_id)
+
+        if swap:
+            for other in self._frames:
+                if other != area_id and self.frame_rect(other).contains(local):
+                    result = _attempt("", None, partial(self._model.swap, area_id, other)).result
+
+                    return SwapPreview(area_id, other, result)
+
+            return None
 
         if own.contains(local):
             moved = at - pressed
@@ -1509,7 +1546,9 @@ class ViewChooser(QToolButton):
     checked, and nothing marks the kinds that must stay reachable: the
     registry keeps them, so the menu needs no warning. Choosing an entry
     calls `choose`. The menu opens on a click, or on Space with the keyboard
-    focus, and the button is in the tab order.
+    focus, and the button is in the tab order. With the keyboard focus, the
+    Menu key and Shift+F10 open the Area menu instead, as a right-click on the
+    header does (`PL-R5G4`).
 
     Args:
         area: The Area whose header holds this chooser.
@@ -1548,18 +1587,37 @@ class ViewChooser(QToolButton):
 
         self.setMenu(menu)
 
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        shift = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
 
-class AreaMenu(QToolButton):
-    """The last control in an Area's header, a menu of layout operations on that Area.
+        if event.key() == Qt.Key.Key_F10 and shift:
+            # The header opens the Area menu on a context menu event that
+            # this button leaves to it. Qt makes one from the Menu key itself,
+            # and from Shift+F10 only here.
+            at = self.rect().bottomLeft()
+            keyboard = QContextMenuEvent.Reason.Keyboard
+            QApplication.sendEvent(self, QContextMenuEvent(keyboard, at, self.mapToGlobal(at)))
+        else:
+            super().keyPressEvent(event)
 
-    `PL-MS34` Q2 placed it there as a flat button labelled "Area" with a
-    chevron, and `PL-2KXB` fills its menu. The menu holds the two splits, a
-    "Join with" submenu, a "Swap with" submenu and Close Area. The menu works
-    out its entries each time it opens, from the layout drawn at that moment.
-    An unavailable entry is still shown, but disabled, with the reason as its
-    tooltip. So the reader sees an operation that the layout cannot make,
-    rather than not finding it at all. The button looks like the chooser and
-    is reached from the keyboard in the same way.
+
+class AreaMenu(QMenu):
+    """The menu of layout operations on one Area, opened from the Area's header.
+
+    `PL-2KXB` fills it. It holds the two splits, a "Join with" submenu, a
+    "Swap with" submenu and Close Area. It works out its entries each time it
+    opens, from the layout drawn at that moment. An unavailable entry is still
+    shown, but disabled, with the reason as its tooltip. So the reader sees an
+    operation that the layout cannot make, rather than not finding it at all.
+
+    **The header carries no button for it** (`PL-R5G4`; project owner,
+    2026-10-19, ratified, over a button in every header). Blender opens its
+    Area operations from a right-click on the header or a border, and its
+    headers carry no such button (Blender Manual: "Regions", section
+    "Header"; "Areas", section "Area Options"; read 2026-10-19). So a
+    right-click anywhere on the header opens this menu. The Menu key and
+    Shift+F10 open it while the header's View chooser has the keyboard focus,
+    so a keyboard reader still reaches every entry (`PL-M352`).
 
     A "Resize" submenu sits before Close Area. It lists each border of the
     Area. Choosing a border gives it the keyboard focus, so that the arrow keys
@@ -1567,7 +1625,7 @@ class AreaMenu(QToolButton):
     its menu shows the submenu as unavailable, with the reason.
 
     Args:
-        area_id: The Area whose header holds this menu.
+        area_id: The Area whose header opens this menu.
         operations: Returns the Area's entries, as `AreaLayout.operations` does.
         perform: Draws the layout that an available entry produces.
         borders: Returns the Area's borders, as `AreaLayout.borders` does. By
@@ -1586,51 +1644,38 @@ class AreaMenu(QToolButton):
         borders: Callable[[AreaId], tuple[AreaBorder, ...]] = lambda _: (),
         focus_border: Callable[[Handle], None] = lambda _: None,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(AREA_MENU_LABEL, parent)
         self.setObjectName("areaMenu")
         self.area_id = area_id
         self._operations = operations
         self._perform = perform
         self._borders = borders
         self._focus_border = focus_border
-        self.setText(AREA_MENU_LABEL)
         self.setAccessibleDescription("Split, join, swap, resize or close this Area")
-        self.setStyleSheet(view_chooser_stylesheet())
-        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        font = QFont(self.font())
-        font.setPixelSize(METRIC_NAME_SIZE)
-        self.setFont(font)
-
-        menu = QMenu(self)
-        menu.setStyleSheet(menu_stylesheet())
-        menu.setToolTipsVisible(True)
-        menu.aboutToShow.connect(self.fill)
-        self.setMenu(menu)
+        self.setStyleSheet(menu_stylesheet())
+        self.setToolTipsVisible(True)
+        self.aboutToShow.connect(self.fill)
 
     def fill(self) -> None:
         """Write the menu's entries from the layout drawn now."""
 
-        menu = self.menu()
-
         # `QMenu.clear` keeps each submenu as a child of the menu, so the
         # submenus written at the last opening are deleted here.
-        for old in menu.findChildren(QMenu, options=Qt.FindChildOption.FindDirectChildrenOnly):
+        for old in self.findChildren(QMenu, options=Qt.FindChildOption.FindDirectChildrenOnly):
             old.deleteLater()
 
-        menu.clear()
+        self.clear()
         submenus: dict[str, QMenu] = {}
 
         for operation in self._operations(self.area_id):
-            holder = menu
+            holder: QMenu = self
 
             if operation.label == CLOSE_AREA_LABEL and operation.group is None:
-                self._add_resize(menu)
+                self._add_resize()
 
             if operation.group is not None:
                 if operation.group not in submenus:
-                    submenu = menu.addMenu(operation.group)
+                    submenu = self.addMenu(operation.group)
                     submenu.setStyleSheet(menu_stylesheet())
                     submenu.setToolTipsVisible(True)
                     submenus[operation.group] = submenu
@@ -1646,14 +1691,14 @@ class AreaMenu(QToolButton):
             if group not in submenus:
                 # No Area to join with or to swap with: the submenu is shown,
                 # unavailable, rather than left out.
-                empty = menu.addMenu(group)
+                empty = self.addMenu(group)
                 empty.setEnabled(False)
                 empty.menuAction().setToolTip(_ONLY_AREA_TEXT)
 
-    def _add_resize(self, menu: QMenu) -> None:
+    def _add_resize(self) -> None:
         """Add the "Resize" submenu: one entry per border, or the submenu shown unavailable."""
 
-        submenu = menu.addMenu(RESIZE_LABEL)
+        submenu = self.addMenu(RESIZE_LABEL)
         submenu.setStyleSheet(menu_stylesheet())
         borders = self._borders(self.area_id)
 
@@ -1671,11 +1716,12 @@ class AreaFrame(QFrame):
 
     The header is one row of text, as tall as the chooser it holds. It sits on
     the panel surface, with a 1px `GRIDLINE` rule under it, and `PL-MS34`
-    decided this design. The chooser is the header's first control. Empty
-    stretching space follows it, and the Area menu comes last (`PL-2KXB`).
-    While the Workspace is pinned to a run, the run's name follows the
-    chooser, because `docs/MODEL.md` asks a View to name its run while it is
-    pinned to one (`PL-7Z84`). The header never gets shorter than that row.
+    decided this design. The chooser is the header's first control, and empty
+    stretching space follows it. While the Workspace is pinned to a run, the
+    run's name follows the chooser, because `docs/MODEL.md` asks a View to
+    name its run while it is pinned to one (`PL-7Z84`). The header never gets
+    shorter than that row. A right-click anywhere on the header opens the Area
+    menu, as a right-click on a header does in Blender (`PL-R5G4`).
 
     **An Area of a Workspace whose pinned run is not open shows a notice in
     place of its View** (`PL-WV9K` Q6). The View is hidden, not deleted, and
@@ -1694,8 +1740,8 @@ class AreaFrame(QFrame):
         area_id: The Area this frame draws.
         header: The header row.
         chooser: The View chooser in the header.
-        menu: The Area menu at the end of the header, or None where the
-            caller gave none.
+        menu: The Area menu that a right-click on the header opens, or None
+            where the caller gave none.
         content: The View or the notice under the header.
         too_small_notice: The notice shown in place of the View while the
             Area is too small for it, or None if the Area has never been too
@@ -1739,7 +1785,9 @@ class AreaFrame(QFrame):
         row.addStretch(1)
 
         if menu is not None:
-            row.addWidget(menu)
+            menu.setParent(self, menu.windowFlags())
+            self.header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self.header.customContextMenuRequested.connect(self._open_menu)
 
         rule = QFrame()
         rule.setFrameShape(QFrame.Shape.HLine)
@@ -1764,6 +1812,12 @@ class AreaFrame(QFrame):
 
         if drags is not None:
             self.corners = tuple(_CornerZone(self, drags, corner) for corner in _Corner)
+
+    def _open_menu(self, at: QPoint) -> None:
+        """Open the Area menu at `at`, in the header's coordinates."""
+
+        if self.menu is not None:
+            self.menu.popup(self.header.mapToGlobal(at))
 
     def show_view(self) -> None:
         """Show the View or notice under the header, in place of the too-small notice."""
@@ -2192,7 +2246,8 @@ class _CornerZone(QWidget):
     the platform's cross cursor. It draws a grip of three short strokes in
     MUTED while the pointer is in its Area, and nothing otherwise. A press
     starts a drag that `AreaLayout` previews and makes on release, and Escape
-    during the drag cancels it.
+    during the drag cancels it. With Ctrl held at the press, the drag swaps
+    two Areas (`PL-R5G4`).
     """
 
     def __init__(self, frame: AreaFrame, drags: AreaLayout, corner: _Corner) -> None:
@@ -2227,7 +2282,10 @@ class _CornerZone(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.setFocus()
-            self._drags.corner_pressed(self.frame.area_id, event.globalPosition().toPoint())
+            swap = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+            self._drags.corner_pressed(
+                self.frame.area_id, event.globalPosition().toPoint(), swap=swap
+            )
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self._drags.corner_moved(event.globalPosition().toPoint())
@@ -2274,8 +2332,9 @@ class _LayoutOverlay(QWidget):
     or in WARNING where a part would be too small to hold its header. A join
     tints the Area that will close in MUTED and outlines the Area the two
     will make in PRIMARY. A join the layout cannot make outlines the Area
-    under the pointer in WARNING, with no tint. The overlay takes no mouse
-    events, so the Areas under it work as usual.
+    under the pointer in WARNING, with no tint. A swap outlines the two Areas
+    that change places in PRIMARY, or in WARNING where the swap is refused.
+    The overlay takes no mouse events, so the Areas under it work as usual.
     """
 
     def __init__(self, layout: AreaLayout) -> None:
@@ -2304,6 +2363,11 @@ class _LayoutOverlay(QWidget):
                 line = QRect(own.left(), y, own.width(), AREA_PREVIEW_LINE_WIDTH)
 
             painter.fillRect(line, colour)
+        elif isinstance(preview, SwapPreview):
+            edge = PRIMARY if preview.result is not None else WARNING
+
+            for area_id in (preview.start, preview.other):
+                _outline(painter, self._layout.frame_rect(area_id), edge)
         else:
             closing = self._layout.frame_rect(preview.remove)
 
@@ -2466,12 +2530,8 @@ def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
     title_font.setBold(True)
     line = QFontMetrics(title_font).lineSpacing()
     header = frame.header.sizeHint()
-    controls = frame.chooser.sizeHint().width() + (
-        0 if frame.menu is None else frame.menu.sizeHint().width()
-    )
-
     return (
-        controls + 2 * _HEADER_MARGIN_PX,
+        frame.chooser.sizeHint().width() + 2 * _HEADER_MARGIN_PX,
         header.height() + _HEADER_RULE_PX + PANEL_PADDING + line,
     )
 

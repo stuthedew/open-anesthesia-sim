@@ -26,6 +26,8 @@ from anesthesia_sim.app.theme import (
     BACKGROUND,
     GRIDLINE,
     INK,
+    MENU_ARROW_GAP,
+    MENU_ARROW_SIZE,
     MUTED,
     PANEL,
     PANEL_RADIUS,
@@ -146,13 +148,23 @@ def view_chooser_stylesheet() -> str:
     page's colour, with the title still in INK. With the keyboard focus it
     carries a 1px INK edge, which the transparent edge at rest keeps from
     moving the title. `tools/contrast_check.py` measures INK on both surfaces.
+
+    The arrow that marks the menu sits in the right padding, centred on the
+    title's line, as Blender's Editor Type selector draws its arrow after the
+    icon. Left to the platform, the arrow sat at the bottom right corner on
+    top of the title's last letters (`PL-R5G4`). The arrow's size and gap are
+    placeholders.
     """
 
     return (
         f"QToolButton {{ color: {INK}; background-color: transparent; "
-        f"border: 1px solid transparent; border-radius: {PANEL_RADIUS}px; padding: 2px 6px; }} "
+        f"border: 1px solid transparent; border-radius: {PANEL_RADIUS}px; "
+        f"padding: 2px {MENU_ARROW_SIZE + 2 * MENU_ARROW_GAP}px 2px 6px; }} "
         f"QToolButton:hover, QToolButton:open {{ background-color: {BACKGROUND}; }} "
-        f"QToolButton:focus {{ border-color: {INK}; }}"
+        f"QToolButton:focus {{ border-color: {INK}; }} "
+        "QToolButton::menu-indicator { subcontrol-origin: padding; "
+        f"subcontrol-position: center right; right: {MENU_ARROW_GAP}px; "
+        f"width: {MENU_ARROW_SIZE}px; height: {MENU_ARROW_SIZE}px; }}"
     )
 
 

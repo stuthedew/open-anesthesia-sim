@@ -236,6 +236,11 @@ VIEW_HEADING_SPACING = 8
 
 PANEL_RADIUS = 10
 
+# The arrow that marks the View chooser's menu, and the space on each side of
+# it, in px (`PL-R5G4`). Placeholders until the visual pass.
+MENU_ARROW_SIZE = 8
+MENU_ARROW_GAP = 4
+
 # Between the rows of the control-change panel: its heading, caption, entries
 # and overflow line.
 CONTROL_TIMELINE_ROW_SPACING = 4
@@ -512,8 +517,9 @@ AREA_KEYBOARD_STEP = 20
 
 # The square at each corner of an Area that a reader drags to split or join it,
 # in px (`PL-30L5` Q1). Twice Blender's, and less than WCAG 2.2 SC 2.5.8's 24
-# px, which the Area menu meets as the equivalent control. The header's end
-# margins are this wide too, so a zone never takes a header control's click.
+# px. The Area menu meets that criterion as the equivalent route, since a
+# right-click anywhere on the Area's header opens it (`PL-R5G4`). The header's
+# end margins are this wide too, so a zone never takes a header control's click.
 AREA_CORNER_ZONE = 16
 
 # The grip a corner draws while the pointer is in its Area: this many strokes,

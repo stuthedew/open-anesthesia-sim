@@ -2,11 +2,13 @@
 
 `PL-M352` asks that split, join, resize, swap, close, Workspace switch,
 rename, duplicate and delete each be reachable from a menu and from the
-keyboard. Split, join, swap and close are in each Area's menu. Resize uses the
-"Resize" submenu, which gives a border the keyboard focus. The arrow keys then
-move the border. Switching Workspace uses the Layout menu at the end of the
-tab strip, or Ctrl+PageUp and Ctrl+PageDown. Rename, duplicate and delete are
-in each tab's menu, and again in the Layout menu's "This Workspace" submenu.
+keyboard. Split, join, swap and close are in each Area's menu, which Shift+F10
+on the Area's View chooser opens (`PL-R5G4`). Resize uses the "Resize"
+submenu, which gives a border the keyboard focus. The arrow keys then move the
+border. Switching Workspace uses Ctrl+PageUp and Ctrl+PageDown, or Previous
+and Next Workspace in a tab's menu. Rename, duplicate and delete are in each
+tab's menu, which Shift+F10 on the tab opens, and again in the Layout menu's
+"This Workspace" submenu.
 
 The first test drives the whole set with key presses. It gives each control
 the focus in code, as the Tab key would. The tab-order tests check that each
@@ -24,7 +26,8 @@ from functools import partial
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtCore import QEvent, QPoint, Qt, QTimer
+from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QMenu, QSplitter, QToolButton, QWidget
 
@@ -193,14 +196,21 @@ def _handle(container: AreaLayout, handle: Handle) -> _AreaHandle:
 
 
 def _choose_by_keys(
-    application: QApplication, window: QWidget, button: QToolButton, path: tuple[str, ...]
+    application: QApplication,
+    window: QWidget,
+    control: QWidget,
+    path: tuple[str, ...],
+    *,
+    context: bool = False,
 ) -> None:
-    """Open `button`'s menu with Space, and walk `path` with Down, Right and Return.
+    """Open a menu from `control` by key, and walk `path` with Down, Right and Return.
 
-    The menu runs its own event loop, so the walk is queued before Space is
-    pressed. The queued walk then waits until the menu is open. At the end of
-    the walk, every popup is closed, whatever the walk found. So a missing
-    entry fails the test instead of leaving the test waiting on a menu.
+    Space opens a button's own menu. With `context`, Shift+F10 opens the
+    control's context menu instead, as for an Area's chooser or a tab. A
+    button's menu runs its own event loop, so the walk is queued before the
+    key is pressed. The queued walk then waits until the menu is open. At the
+    end of the walk, every popup is closed, whatever the walk found. So a
+    missing entry fails the test instead of leaving the test waiting on a menu.
     """
 
     reached: list[str] = []
@@ -242,11 +252,16 @@ def _choose_by_keys(
             while (left_open := QApplication.activePopupWidget()) is not None:
                 left_open.close()
 
-    assert button.focusPolicy() & Qt.FocusPolicy.TabFocus
-    button.setFocus(Qt.FocusReason.TabFocusReason)
+    assert control.focusPolicy() & Qt.FocusPolicy.TabFocus
+    control.setFocus(Qt.FocusReason.TabFocusReason)
     application.processEvents()
     QTimer.singleShot(0, partial(walk, 100))
-    QTest.keyClick(button, Qt.Key.Key_Space)
+
+    if context:
+        QTest.keyClick(control, Qt.Key.Key_F10, Qt.KeyboardModifier.ShiftModifier)
+    else:
+        QTest.keyClick(control, Qt.Key.Key_Space)
+
     application.processEvents()
     finished = True
     _activate(application, window)
@@ -278,6 +293,24 @@ def _menu(view: SimulationView, area_id: AreaId) -> AreaMenu:
     return menu
 
 
+def _choose_in_area_menu(
+    application: QApplication, view: SimulationView, area_id: AreaId, path: tuple[str, ...]
+) -> None:
+    """Walk `path` in the Area's menu, opened with Shift+F10 on its View chooser."""
+
+    chooser = view.layout_container.frame(area_id).chooser
+    _choose_by_keys(application, view, chooser, path, context=True)
+
+
+def _choose_in_tab_menu(
+    application: QApplication, view: SimulationView, path: tuple[str, ...]
+) -> None:
+    """Walk `path` in the current tab's menu, opened with Shift+F10 on the tab."""
+
+    tab = view.tab_strip.tab_at(view.workspaces.active)
+    _choose_by_keys(application, view, tab, path, context=True)
+
+
 def _entry(view: SimulationView, area_id: AreaId, group: str) -> str:
     """The label of the first available entry of `group` in the Area's menu."""
 
@@ -304,7 +337,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     # one step moves the border by AREA_KEYBOARD_STEP as a fraction of the
     # split's width less its handle.
     before = areas.model.rectangle(first)
-    _choose_by_keys(application, view, _menu(view, first), (RESIZE_LABEL, "Right border"))
+    _choose_in_area_menu(application, view, first, (RESIZE_LABEL, "Right border"))
     border = QApplication.focusWidget()
     assert isinstance(border, _AreaHandle)
     splitter = border.owner
@@ -316,7 +349,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     )
 
     # Split: the first Area becomes two side by side, both showing its View.
-    _choose_by_keys(application, view, _menu(view, first), (SPLIT_SIDE_BY_SIDE_LABEL,))
+    _choose_in_area_menu(application, view, first, (SPLIT_SIDE_BY_SIDE_LABEL,))
     assert len(areas.model.areas()) == 3
     made = next(area.id for area in areas.model.areas() if area.id not in kinds)
     assert areas.model.area(made).view == kinds[first]
@@ -324,31 +357,31 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     # Swap: the first Area and another exchange their places.
     label = _entry(view, first, SWAP_WITH_LABEL)
     place = areas.model.rectangle(first)
-    _choose_by_keys(application, view, _menu(view, first), (SWAP_WITH_LABEL, label))
+    _choose_in_area_menu(application, view, first, (SWAP_WITH_LABEL, label))
     assert areas.model.rectangle(first) != place
     assert len(areas.model.areas()) == 3
 
     # Join: the first Area takes a neighbour's place, so one Area fewer.
     label = _entry(view, first, JOIN_WITH_LABEL)
-    _choose_by_keys(application, view, _menu(view, first), (JOIN_WITH_LABEL, label))
+    _choose_in_area_menu(application, view, first, (JOIN_WITH_LABEL, label))
     assert len(areas.model.areas()) == 2
 
     # Close: a neighbour takes the closed Area's place, leaving one.
     survivor = next(area.id for area in areas.model.areas() if area.id != first)
-    _choose_by_keys(application, view, _menu(view, survivor), (CLOSE_AREA_LABEL,))
+    _choose_in_area_menu(application, view, survivor, (CLOSE_AREA_LABEL,))
     assert len(areas.model.areas()) == 1
 
-    # Switch Workspace: Ctrl+PageDown and Ctrl+PageUp, then the Layout menu.
+    # Switch Workspace: Ctrl+PageDown and Ctrl+PageUp, then a tab's menu.
     order = display_order(view.workspaces)
-    names = [view.workspaces.workspaces[index].name for index in order]
-    QTest.keyClick(strip.layout_menu, Qt.Key.Key_PageDown, Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClick(strip.add_button, Qt.Key.Key_PageDown, Qt.KeyboardModifier.ControlModifier)
     assert view.workspaces.active == order[1]
-    QTest.keyClick(strip.layout_menu, Qt.Key.Key_PageUp, Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClick(strip.add_button, Qt.Key.Key_PageUp, Qt.KeyboardModifier.ControlModifier)
     assert view.workspaces.active == order[0]
     # A shortcut consumes its key press, and QTest then leaves Ctrl held in
     # the application's modifier state, so Ctrl is let go here by hand.
-    QTest.keyClick(strip.layout_menu, Qt.Key.Key_Control)
-    _choose_by_keys(application, view, strip.layout_menu, (names[2],))
+    QTest.keyClick(strip.add_button, Qt.Key.Key_Control)
+    _choose_in_tab_menu(application, view, (NEXT_WORKSPACE_LABEL,))
+    _choose_in_tab_menu(application, view, (NEXT_WORKSPACE_LABEL,))
     assert view.workspaces.active == order[2]
 
     # Rename: F2 on the focused tab, a new name, Return.
@@ -361,16 +394,15 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     QTest.keyClick(editor, Qt.Key.Key_Return)
     assert view.workspaces.current.name == "Mine"
 
-    # Duplicate, from the Layout menu's "This Workspace" submenu.
+    # Duplicate, from the tab's menu.
     count = len(view.workspaces.workspaces)
-    path = (THIS_WORKSPACE_LABEL, DUPLICATE_LABEL)
-    _choose_by_keys(application, view, strip.layout_menu, path)
+    _choose_in_tab_menu(application, view, (DUPLICATE_LABEL,))
     assert len(view.workspaces.workspaces) == count + 1
 
     # Delete, which asks first: Tab to the dialog's Delete button, then Space.
     if strip.editor is not None:
         QTest.keyClick(strip.editor, Qt.Key.Key_Escape)
-    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DELETE_LABEL))
+    _choose_in_tab_menu(application, view, (DELETE_LABEL,))
     dialog = strip.question
     assert dialog is not None
     _activate(application, dialog)
@@ -396,7 +428,7 @@ def test_every_layout_operation_is_reachable_from_a_menu(
     first = view.layout_container.model.areas()[0].id
     area_menu = _menu(view, first)
     area_menu.fill()
-    area_entries = [action.text() for action in area_menu.menu().actions()]
+    area_entries = [action.text() for action in area_menu.actions()]
 
     for label in (
         SPLIT_SIDE_BY_SIDE_LABEL,
@@ -410,7 +442,7 @@ def test_every_layout_operation_is_reachable_from_a_menu(
 
     strip = view.tab_strip
     strip.layout_menu.fill()
-    layout_actions = {action.text(): action for action in strip.layout_menu.menu().actions()}
+    layout_actions = {action.text(): action for action in strip.layout_menu.actions()}
     names = [strip.workspaces.workspaces[index].name for index in display_order(strip.workspaces)]
 
     for label in (*names, PREVIOUS_WORKSPACE_LABEL, NEXT_WORKSPACE_LABEL, THIS_WORKSPACE_LABEL):
@@ -424,7 +456,17 @@ def test_every_layout_operation_is_reachable_from_a_menu(
         assert label in entries
 
     tab_entries = [action.text() for action in strip.menu_for(strip.workspaces.active).actions()]
-    assert entries == tab_entries
+    assert tab_entries[: len(entries)] == entries
+
+    for label in (
+        PREVIOUS_WORKSPACE_LABEL,
+        NEXT_WORKSPACE_LABEL,
+        SAVE_AS_DEFAULT_LABEL,
+        RESTORE_SHIPPED_LABEL,
+        RESET_ALL_LABEL,
+    ):
+        assert label in tab_entries
+        assert label in layout_actions
 
     layout_actions[names[1]].trigger()
     assert view.workspaces.active == display_order(view.workspaces)[1]
@@ -436,7 +478,7 @@ def test_the_layout_menu_lists_every_workspace_in_tab_order_with_the_current_che
     workspaces = shipped_workspaces().duplicate(0).activate(2)
     strip = WorkspaceTabs(workspaces, lambda _set: None, lambda: ())
     strip.layout_menu.fill()
-    actions = strip.layout_menu.menu().actions()
+    actions = strip.layout_menu.actions()
     names = [workspaces.workspaces[index].name for index in display_order(workspaces)]
 
     assert [action.text() for action in actions[: len(names)]] == names
@@ -504,6 +546,7 @@ def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
         application, shown, _layout(_row((1 / 3, 1 / 3, 1 / 3), _area(1), _area(2), _area(3)), 4)
     )
     area_menu = container.frame(AreaId(2)).menu
+    assert area_menu is not None
 
     for _ in range(3):
         strip.layout_menu.fill()
@@ -511,8 +554,8 @@ def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
         QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     direct = Qt.FindChildOption.FindDirectChildrenOnly
-    layout_submenus = strip.layout_menu.menu().findChildren(QMenu, options=direct)
-    area_submenus = area_menu.menu().findChildren(QMenu, options=direct)
+    layout_submenus = strip.layout_menu.findChildren(QMenu, options=direct)
+    area_submenus = area_menu.findChildren(QMenu, options=direct)
     # The Layout menu has one submenu, "This Workspace". The Area menu has
     # three: "Join with", "Swap with" and "Resize".
     assert [submenu.title() for submenu in layout_submenus] == [THIS_WORKSPACE_LABEL]
@@ -521,14 +564,44 @@ def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
     )
 
 
-def test_the_layout_menu_comes_last_in_the_strip_and_after_plus_in_the_tab_order(
-    application: QApplication,
+def test_the_strip_holds_no_layout_button_and_a_right_click_beside_the_tabs_opens_the_menu(
+    application: QApplication, shown: list[QWidget]
 ) -> None:
+    """`PL-R5G4`: as in Blender, the Workspace operations open from the strip, not a button.
+
+    A right-click on "+" or on the strip's empty space opens the Layout menu.
+    A right-click on a tab opens that tab's own menu instead.
+    """
+
     strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
-    row = strip.row
-    last = row.itemAt(row.count() - 1)
-    assert last is not None and last.widget() is strip.layout_menu
-    assert strip.add_button.nextInFocusChain() is strip.layout_menu
+    strip.resize(900, 40)
+    strip.show()
+    shown.append(strip)
+    application.processEvents()
+
+    visible = [button.text() for button in strip.findChildren(QToolButton) if button.isVisible()]
+    assert sorted(visible) == sorted([*(tab.text() for tab in strip.tabs), "+"])
+
+    mouse = QContextMenuEvent.Reason.Mouse
+    empty = QPoint(strip.width() - 20, strip.height() // 2)
+    assert strip.childAt(empty) is None
+
+    for target, at in ((strip, empty), (strip.add_button, QPoint(2, 2))):
+        assert not strip.layout_menu.isVisible()
+        QApplication.sendEvent(target, QContextMenuEvent(mouse, at, target.mapToGlobal(at)))
+        application.processEvents()
+        assert strip.layout_menu.isVisible()
+        strip.layout_menu.close()
+        application.processEvents()
+
+    tab = strip.tabs[0]
+    QApplication.sendEvent(
+        tab, QContextMenuEvent(mouse, QPoint(2, 2), tab.mapToGlobal(QPoint(2, 2)))
+    )
+    application.processEvents()
+    popup = QApplication.activePopupWidget()
+    assert isinstance(popup, QMenu) and popup is not strip.layout_menu
+    popup.close()
 
 
 def test_an_arrow_key_moves_a_focused_border_one_step_and_escape_puts_it_back(
@@ -620,9 +693,11 @@ def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
 ) -> None:
     """The last step stops at the minimum size, as a drag does, not one step short of it.
 
-    From 400 px, ten whole steps leave the right Area 200 px wide. An eleventh step would
-    leave 180 px, which is less than the minimum width that its frame declares. So the
-    border stops part of the way through the eleventh step.
+    The right Area starts 400 px wide, many steps above the minimum width that
+    its frame declares. Pressing Right until the border can go no further
+    leaves the Area at least that minimum wide and less than one step wider.
+    A border that stopped at its last whole step would be up to a whole step
+    wider.
     """
 
     container = _container(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
@@ -630,13 +705,14 @@ def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
     container.focus_border(Handle(0, (), 0))
     application.processEvents()
     least = container.frame(AreaId(2)).minimumWidth()
-    assert 400 - 11 * AREA_KEYBOARD_STEP < least < 400 - 10 * AREA_KEYBOARD_STEP
+    steps = (400 - least) // AREA_KEYBOARD_STEP
+    assert steps >= 3
 
-    for _ in range(11):
+    for _ in range(steps + 2):
         QTest.keyClick(border, Qt.Key.Key_Right)
 
     assert border.warning
-    assert least <= border.owner.sizes()[1] < 400 - 10 * AREA_KEYBOARD_STEP
+    assert least <= border.owner.sizes()[1] < least + AREA_KEYBOARD_STEP
 
 
 def test_a_focused_border_keeps_its_starting_layout_while_another_window_is_active(
@@ -698,10 +774,10 @@ def test_the_resize_submenu_names_each_border_and_its_entry_gives_that_border_th
         ("Bottom border", Handle(0, (1,), 0)),
     ]
 
-    button = container.frame(AreaId(2)).menu
-    assert button is not None
-    button.fill()
-    top = {action.text(): action for action in button.menu().actions()}
+    menu = container.frame(AreaId(2)).menu
+    assert menu is not None
+    menu.fill()
+    top = {action.text(): action for action in menu.actions()}
     assert list(top)[-2:] == [RESIZE_LABEL, CLOSE_AREA_LABEL]
     resize = top[RESIZE_LABEL].menu()
     assert isinstance(resize, QMenu)
@@ -781,9 +857,7 @@ def test_the_this_workspace_submenu_acts_on_the_current_workspace(
     strip = WorkspaceTabs(workspaces, made.append, lambda: ())
     strip.layout_menu.fill()
     entry = next(
-        action
-        for action in strip.layout_menu.menu().actions()
-        if action.text() == THIS_WORKSPACE_LABEL
+        action for action in strip.layout_menu.actions() if action.text() == THIS_WORKSPACE_LABEL
     )
     submenu = entry.menu()
     assert isinstance(submenu, QMenu)
@@ -798,10 +872,10 @@ def test_the_only_areas_resize_submenu_is_shown_unavailable_with_its_reason(
     application: QApplication, shown: list[QWidget]
 ) -> None:
     container = _container(application, shown, LayoutModel.single_area(_VIEW))
-    button = container.frame(AreaId(1)).menu
-    assert button is not None
-    button.fill()
-    resize = next(action for action in button.menu().actions() if action.text() == RESIZE_LABEL)
+    menu = container.frame(AreaId(1)).menu
+    assert menu is not None
+    menu.fill()
+    resize = next(action for action in menu.actions() if action.text() == RESIZE_LABEL)
 
     assert not resize.isEnabled()
     assert "only Area" in resize.toolTip()
@@ -824,7 +898,7 @@ def test_save_restore_and_reset_all_are_reachable_from_the_keyboard(
 
     # Delete the shipped Induction Workspace, which asks first.
     strip.activate(view.workspaces.position_of(WorkspaceName("Induction")))
-    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DELETE_LABEL))
+    _choose_in_tab_menu(application, view, (DELETE_LABEL,))
     dialog = strip.question
     assert dialog is not None
     _proceed_by_keys(application, dialog)
@@ -832,18 +906,18 @@ def test_save_restore_and_reset_all_are_reachable_from_the_keyboard(
     assert view.workspaces.current.name == "Maintenance"
 
     # Restore puts it back where it was shipped, and keeps the current tab.
-    _choose_by_keys(application, view, strip.layout_menu, (RESTORE_SHIPPED_LABEL,))
+    _choose_in_tab_menu(application, view, (RESTORE_SHIPPED_LABEL,))
     assert names() == ["Default", "Induction", "Maintenance"]
     assert view.workspaces.current.name == "Maintenance"
     assert view.workspaces.workspaces[1] == shipped_workspace(ShippedWorkspaceId("induction"))
 
     # Duplicate the current Workspace, then save the four as the default.
-    _choose_by_keys(application, view, strip.layout_menu, (THIS_WORKSPACE_LABEL, DUPLICATE_LABEL))
+    _choose_in_tab_menu(application, view, (DUPLICATE_LABEL,))
     if strip.editor is not None:
         QTest.keyClick(strip.editor, Qt.Key.Key_Escape)
     assert names() == ["Default", "Induction", "Maintenance", "Maintenance (copy)"]
     saved = view.workspaces
-    _choose_by_keys(application, view, strip.layout_menu, (SAVE_AS_DEFAULT_LABEL,))
+    _choose_in_tab_menu(application, view, (SAVE_AS_DEFAULT_LABEL,))
     dialog = strip.question
     assert dialog is not None
     _proceed_by_keys(application, dialog)
@@ -853,14 +927,14 @@ def test_save_restore_and_reset_all_are_reachable_from_the_keyboard(
     written = (tmp_path / WORKSPACES_FILE_NAME).read_bytes()
 
     # Reset all layouts asks first. Escape keeps the set, and the button resets it.
-    _choose_by_keys(application, view, strip.layout_menu, (RESET_ALL_LABEL,))
+    _choose_in_tab_menu(application, view, (RESET_ALL_LABEL,))
     dialog = strip.question
     assert dialog is not None
     _activate(application, dialog)
     QTest.keyClick(dialog, Qt.Key.Key_Escape)
     application.processEvents()
     assert names() == ["Default", "Induction", "Maintenance", "Maintenance (copy)"]
-    _choose_by_keys(application, view, strip.layout_menu, (RESET_ALL_LABEL,))
+    _choose_in_tab_menu(application, view, (RESET_ALL_LABEL,))
     dialog = strip.question
     assert dialog is not None
     _proceed_by_keys(application, dialog)

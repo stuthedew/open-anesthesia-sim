@@ -23,24 +23,29 @@ a click (`PL-WV9K` Q2).
 
 Each tab's context menu holds these entries, in the order that `PL-QW1Z` Q3
 set: Rename, Duplicate, Move left, Move right, one entry to pin or unpin each
-open run, Reset this Workspace (only on a shipped tab), and Delete. The menu
-opens on a right-click, the Menu key or Shift+F10. A double-click or F2
-renames a tab in place. Delete and Reset ask for confirmation first, because
-a session's Workspaces have no undo.
+open run, Reset this Workspace (only on a shipped tab), and Delete. Previous
+and Next Workspace follow, and then the three entries that keep or undo a
+session's changes, listed below (`PL-R5G4`). The menu opens on a right-click,
+the Menu key or Shift+F10. So the keyboard reaches every Workspace operation
+from a tab (`PL-M352`). A double-click or F2 renames a tab in place. Delete
+and Reset ask for confirmation first, because a session's Workspaces have no
+undo.
 
-**The Layout menu, at the strip's right end, makes every Workspace operation
-available without a pointer** (`PL-M352`). It is the "layout drop-down menu"
-that `PL-WV9K` § "Answers 2026-09-27" names. It lists every Workspace, with
-the current one checked, and choosing one switches to it. Next come Previous
-Workspace and Next Workspace. Their shortcuts are Ctrl+PageUp and
-Ctrl+PageDown, which Blender uses for the same thing (Blender Manual,
-"Workspaces", "Controls", read 2026-10-19). As in Blender's
-`SCREEN_OT_workspace_cycle`, they wrap around at either end. Last comes a
-"This Workspace" submenu, which holds the current tab's own menu. The menu's
-button is in the tab order after "+". Its place and its wording are
-placeholders, chosen under the project owner's rule of 2026-10-18.
+**The Layout menu opens on a right-click on the strip outside a tab**
+(`PL-R5G4`). It is the "layout drop-down menu" that `PL-WV9K` § "Answers
+2026-09-27" names, and `PL-M352` built it as a button at the strip's right
+end. The project owner had the button removed on 2026-10-19 (ratified, over
+keeping it), because Blender's top bar carries no such button. The menu lists
+every Workspace, with the current one checked, and choosing one switches to
+it. Next come Previous Workspace and Next Workspace. Their shortcuts are
+Ctrl+PageUp and Ctrl+PageDown, which Blender uses for the same thing (Blender
+Manual, "Workspaces", "Controls", read 2026-10-19). As in Blender's
+`SCREEN_OT_workspace_cycle`, they wrap around at either end. Then comes a
+"This Workspace" submenu, which holds the current tab's own entries. Which
+part of the strip opens it and its wording are placeholders, chosen under the
+project owner's rule of 2026-10-18.
 
-**The Layout menu ends with the three entries that keep or undo a session's
+**Both menus end with the three entries that keep or undo a session's
 changes** (`PL-DWHG`). A separator sets them apart. `PL-WV9K` § "Answers
 2026-09-27" decided them, modelled on Blender's Save Startup File and Load
 Factory Settings. The three entries are these.
@@ -91,7 +96,6 @@ from anesthesia_sim.app.stylesheets import (
     filled_button_stylesheet,
     menu_stylesheet,
     outlined_button_stylesheet,
-    view_chooser_stylesheet,
     workspace_separator_stylesheet,
     workspace_tab_stylesheet,
 )
@@ -571,72 +575,51 @@ class WorkspaceQuestionDialog(QDialog):
         self.keep_button.clicked.connect(self.reject)
 
 
-class LayoutMenu(QToolButton):
-    """The Layout menu at the strip's right end, which lists the Workspaces and their operations.
+class LayoutMenu(QMenu):
+    """The Layout menu, which lists the Workspaces and their operations.
 
-    The menu writes its entries each time it opens. It works them out from the
-    same set that the strip uses for its own entries. The module docstring
-    lists the menu's entries. The button looks like the Area menu and is
-    reached from the keyboard in the same way. It is in the tab order, and
-    Space or Enter opens it.
+    A right-click on the strip outside a tab opens it (`PL-R5G4`). The strip
+    carries no button for it, as Blender's top bar carries none beside its
+    Workspace tabs. The menu writes its entries each time it opens. It works
+    them out from the same set that the strip uses for its own entries. The
+    module docstring lists the menu's entries.
 
     Args:
         strip: The strip that carries out each entry.
     """
 
     def __init__(self, strip: WorkspaceTabs) -> None:
-        super().__init__(strip)
+        super().__init__(LAYOUT_MENU_LABEL, strip)
         self.setObjectName("layoutMenu")
         self._strip = strip
-        self.setText(LAYOUT_MENU_LABEL)
         self.setAccessibleDescription(_LAYOUT_DESCRIPTION)
-        self.setStyleSheet(view_chooser_stylesheet())
-        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        font = QFont(self.font())
-        font.setPixelSize(METRIC_NAME_SIZE)
-        self.setFont(font)
-        menu = QMenu(self)
-        menu.setStyleSheet(menu_stylesheet())
-        menu.setToolTipsVisible(True)
-        menu.aboutToShow.connect(self.fill)
-        self.setMenu(menu)
+        self.setStyleSheet(menu_stylesheet())
+        self.setToolTipsVisible(True)
+        self.aboutToShow.connect(self.fill)
 
     def fill(self) -> None:
         """Write the menu's entries from the set the strip works its entries out from."""
 
         strip = self._strip
         now = strip.current_set()
-        menu = self.menu()
-        _clear(menu)
+        _clear(self)
 
         for index in display_order(now):
-            action = menu.addAction(now.workspaces[index].name)
+            action = self.addAction(now.workspaces[index].name)
             action.setCheckable(True)
             action.setChecked(index == now.active)
             action.triggered.connect(partial(strip.activate, index))
 
-        menu.addSeparator()
-        menu.addAction(strip.previous_action)
-        menu.addAction(strip.next_action)
-        menu.addSeparator()
-        current = menu.addMenu(THIS_WORKSPACE_LABEL)
+        self.addSeparator()
+        self.addAction(strip.previous_action)
+        self.addAction(strip.next_action)
+        self.addSeparator()
+        current = self.addMenu(THIS_WORKSPACE_LABEL)
         current.setStyleSheet(menu_stylesheet())
         current.setToolTipsVisible(True)
         strip.fill_tab_menu(current, now.active)
-        menu.addSeparator()
-        save = strip.save_entry()
-        action = menu.addAction(SAVE_AS_DEFAULT_LABEL)
-        action.setEnabled(save.available)
-        action.setToolTip(save.refusal or "")
-        action.triggered.connect(partial(strip.save_as_default, save))
-
-        for operation in strip.default_operations():
-            action = menu.addAction(operation.label)
-            action.setEnabled(operation.available)
-            action.setToolTip(operation.refusal or "")
-            action.triggered.connect(partial(strip.choose, operation))
+        self.addSeparator()
+        strip.fill_default_entries(self)
 
 
 def _clear(menu: QMenu) -> None:
@@ -851,7 +834,7 @@ class WorkspaceTabs(QWidget):
 
     @property
     def row(self) -> QHBoxLayout:
-        """The row holding the tabs, "+", the rename refusal and the Layout menu."""
+        """The row holding the tabs, "+" and the rename refusal."""
 
         return self._row
 
@@ -907,15 +890,14 @@ class WorkspaceTabs(QWidget):
         self._separator.setVisible(0 < shipped < len(self._tabs))
 
         # The keyboard reaches the tabs in the order they stand, then "+",
-        # then the Layout menu, then Dismiss while a notice is shown.
-        chain = [*self._tabs, self.add_button, self.layout_menu, self.dismiss_button]
+        # then Dismiss while a notice is shown.
+        chain = [*self._tabs, self.add_button, self.dismiss_button]
 
         for before, after in zip(chain, chain[1:], strict=False):
             QWidget.setTabOrder(before, after)
         self._row.addWidget(self.add_button)
         self._row.addWidget(self.refusal_label)
         self._row.addStretch(1)
-        self._row.addWidget(self.layout_menu)
 
     def activate(self, index: int) -> None:
         """Make the Workspace at `index` current."""
@@ -966,13 +948,28 @@ class WorkspaceTabs(QWidget):
 
         return tab_operations(self._now(), index, self._open_runs())
 
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        # A tab opens its own menu, so this is a right-click on "+" or on the
+        # strip's empty space (`PL-R5G4`).
+        self.layout_menu.popup(event.globalPos())
+
     def menu_for(self, index: int) -> QMenu:
-        """The context menu of the tab at `index`, built from the set drawn now."""
+        """The context menu of the tab at `index`, built from the set drawn now.
+
+        The tab's own entries come first. Previous and Next Workspace and the
+        three entries that keep or undo a session's changes follow, so the
+        keyboard reaches all of them from a tab (`PL-R5G4`).
+        """
 
         menu = QMenu(self)
         menu.setStyleSheet(menu_stylesheet())
         menu.setToolTipsVisible(True)
         self.fill_tab_menu(menu, index)
+        menu.addSeparator()
+        menu.addAction(self.previous_action)
+        menu.addAction(self.next_action)
+        menu.addSeparator()
+        self.fill_default_entries(menu)
 
         return menu
 
@@ -982,6 +979,21 @@ class WorkspaceTabs(QWidget):
         menu.addAction(RENAME_LABEL).triggered.connect(partial(self.rename, index))
 
         for operation in self.operations(index):
+            action = menu.addAction(operation.label)
+            action.setEnabled(operation.available)
+            action.setToolTip(operation.refusal or "")
+            action.triggered.connect(partial(self.choose, operation))
+
+    def fill_default_entries(self, menu: QMenu) -> None:
+        """Add Save as default, Restore shipped Workspaces and Reset all layouts to `menu`."""
+
+        save = self.save_entry()
+        action = menu.addAction(SAVE_AS_DEFAULT_LABEL)
+        action.setEnabled(save.available)
+        action.setToolTip(save.refusal or "")
+        action.triggered.connect(partial(self.save_as_default, save))
+
+        for operation in self.default_operations():
             action = menu.addAction(operation.label)
             action.setEnabled(operation.available)
             action.setToolTip(operation.refusal or "")
