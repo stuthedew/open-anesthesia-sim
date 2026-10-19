@@ -9,6 +9,7 @@ touches: docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
 closed: 2026-10-19
+pr: 1625
 payoff: docs/apparatus.md lists every line the session-start CI script prints, the drift line included
 verify: grep -q 'PL-JTWV' docs/apparatus.md
 ---
