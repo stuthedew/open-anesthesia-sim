@@ -7048,18 +7048,19 @@ def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
 def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """If every frame fails, the panel stops listing a mark the run cannot reach as still to come.
+    """If every frame fails, the bookmark panel stops listing an unreachable mark as still to come.
 
-    The bookmark panel was redrawn only from a drawn frame's snapshots. With
-    every frame failing, it kept the last frame's standings. So a mark ahead
-    of the clock was still listed as to come, beside "Stopped - simulation
-    error". That row tells a learner to wait for a mark that the failed run
-    will never reach (`PL-YHR3`). The halt now restates the panel from each
-    run's own record of its marks, which needs no frame.
+    The bookmark panel used to be redrawn only from the snapshots in a
+    frame that drew. When every frame failed, the panel kept the standings from the last
+    frame that drew. So a mark ahead of the clock was still listed as to come, beside
+    "Stopped - simulation error". That row tells a learner to wait for a mark that the
+    failed run will never reach (`PL-YHR3`). Now, when the run halts, the panel is redrawn
+    from each run's own record of its marks. That redraw does not need a frame.
 
-    The expected row has two independent sources. One is the literal wording
-    of the failed standing. The other is the row that a drawn frame of the
-    same failed run shows once frames draw again.
+    The test writes the expected row as a literal string. It copies the panel's wording for
+    a mark that a failed run can no longer reach. The test then lets frames draw again and
+    checks that a frame of the same failed run shows the same row. That shows the redraw at
+    the halt and the redraw from a frame agree.
     """
 
     controller = _paused_run_with_history()
@@ -7075,12 +7076,39 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
     assert controller.has_failed is True
     assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
     halted = view._bookmarks_panel.times.text()
-    assert halted.endswith(" · not reached before the simulation error")
+    assert halted == "10m – check · not reached before the simulation error"
 
     monkeypatch.undo()
     view.present(False)
 
     assert view._bookmarks_panel.times.text() == halted
+
+
+def test_a_failing_frame_restates_each_displayed_run_s_own_bookmark_standings(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When a trunk and its branch halt, the panel gives each run its own standing, not the trunk's.
+
+    The branch ran up through a marked height of 0.50 xMAC alveolar that the
+    trunk never reached. When every frame fails, both runs stop. The branch has
+    still reached the mark, but the trunk now cannot reach it. So the mark's row
+    names both runs. Suppose the halt gave every run the standings of the
+    reference run, which here is the trunk. The two runs would then agree, so the
+    panel would draw the row without naming either run (`PL-YHR3`).
+    """
+
+    view = _halted_branch_view(application)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert all(run.controller.has_failed for run in view.runs)
+    targets = view._bookmarks_panel.targets.text()
+    failed = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
+    reached = MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]
+
+    assert f"{run_label(FIRST_RUN)} {failed}" in targets
+    assert f"{run_label(SECOND_RUN)} {reached}" in targets
 
 
 def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
