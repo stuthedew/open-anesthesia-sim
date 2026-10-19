@@ -235,6 +235,7 @@ try:
         notes_bullets,
         notes_claims,
         notes_files,
+        notes_ids,
         notes_path,
         notes_version,
         version_in,
@@ -1438,8 +1439,9 @@ class TreeMap:
     # Directories drawn without any children beneath them. Such an entry
     # stands for its whole subtree — a unit documented by its own README
     # rather than module by module — so files under it are covered without
-    # being listed. No tree draws one today; the mechanism is kept because a
-    # subtree with its own documentation is the case it exists for.
+    # being listed. No live tree draws one, so the two tests named in
+    # `docs/apparatus.md` hold both directions of it; the mechanism is kept
+    # because a subtree with its own documentation is the case it exists for.
     covered_dirs: frozenset[PurePosixPath]
 
     @property
@@ -4350,6 +4352,35 @@ def _tag_spans(root: Path) -> _TagSpans | None:
     return _TagSpans(version, pull_request, cut, max(version.values(), key=version_key))
 
 
+def check_release_row_item_count(root: Path, report: Report) -> None:
+    """Hold a version-table row's item count to the items its notes file claims.
+
+    The release session writes both from the same items, by hand, so nothing
+    else says whether they agree. On 2026-10-18 all 45 rows that carry a count
+    agreed with their notes (`PL-S9X7`). A row with no count cell, or a
+    version with no notes file, is skipped, since the older releases have
+    neither. The notes are counted by `notes_ids` on the claimed half of the
+    file, as `docket.release.notes_by_version` counts them, so a pointer
+    bullet naming another release's item is not counted here either.
+    """
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
+    if not roadmap.is_file():
+        return
+    for row in parse_version_table(roadmap.read_text(encoding="utf-8")):
+        if row.items is None:
+            continue
+        notes = root / notes_path(row.version)
+        if not notes.is_file():
+            continue
+        claimed = len(notes_ids(notes_claims(notes.read_text(encoding="utf-8"))[0]))
+        if claimed != row.items:
+            report.errors.append(
+                f"{roadmap_name}:{row.line}: v{row.version} says {row.items} items, "
+                f"but {notes_path(row.version)} claims {claimed}; correct whichever is wrong"
+            )
+
+
 def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     """Hold each release tag's span to notes that name every closure inside it.
 
@@ -6765,6 +6796,114 @@ def _command_paths(words: Iterable[str]) -> Iterator[str]:
         yield token
 
 
+QUALITY_WORKFLOW = Path(".github/workflows/quality.yml")
+# The floor section is the `run:` steps after the step that installs the
+# floor's interpreter and before the step that installs uv. `docs/apparatus.md`
+# lists them between these two markers.
+FLOOR_OPENS = "actions/setup-python@"
+FLOOR_CLOSES = "astral-sh/setup-uv@"
+FLOOR_LIST_OPENS = "<!-- floor-commands -->"
+FLOOR_LIST_CLOSES = "<!-- /floor-commands -->"
+
+
+def _command_key(command: str) -> str:
+    """A command's first two words, stopping at an option, which is how the floor list names one.
+
+    `python3 tools/pr_body_check.py --anchors` and `python3
+    tools/pr_body_check.py` are the same tool here. The list in
+    `docs/apparatus.md` drifted by gaining and losing whole commands, never by
+    an argument, and `bin/docket ci-scope` is quoted there without its
+    arguments.
+    """
+    words: list[str] = []
+    for word in command.split()[:2]:
+        if word.startswith("-"):
+            break
+        words.append(word)
+    return " ".join(words)
+
+
+def floor_commands(text: str) -> tuple[list[tuple[str, int]], list[UnreadStatement]] | None:
+    """The commands `quality.yml`'s floor section runs, or None where it has no such section."""
+    lines = split_lines(text)
+    scripts, unread = _workflow_scripts(text)
+    commands: list[tuple[str, int]] = []
+    inside = False
+    for step, _, script in scripts:
+        if "uses" in step.keys:
+            index, column = step.keys["uses"]
+            action = lines[index][column:].removeprefix("uses:").strip()
+            if action.startswith(FLOOR_OPENS):
+                inside = True
+                continue
+            if inside and action.startswith(FLOOR_CLOSES):
+                return commands, unread
+        if inside:
+            commands.extend(script)
+    return None
+
+
+def check_floor_list(root: Path, report: Report) -> None:
+    """Hold `docs/apparatus.md`'s list of the CI floor commands to the workflow.
+
+    The list was written by hand, and it drifted five times between 2026-09-05
+    and 2026-10-11: commands were added to the floor section and removed from
+    it, and nothing compared the two (`PL-5N7T`). `check_workflow_paths`
+    resolves the paths each command names, which is a different question. A
+    path that exists says nothing about whether the list is complete.
+
+    The list is the code spans between `FLOOR_LIST_OPENS` and
+    `FLOOR_LIST_CLOSES` that start with `python3 ` or `bin/`. Each side is
+    compared by `_command_key`. A workflow with no floor section, or no
+    workflow, is not held, and a list whose markers are missing while the
+    floor section exists is an error.
+    """
+    workflow = root / QUALITY_WORKFLOW
+    if not workflow.is_file():
+        return
+    read = floor_commands(workflow.read_text(encoding="utf-8"))
+    document = root / APPARATUS
+    text = document.read_text(encoding="utf-8") if document.is_file() else ""
+    opens, closes = text.find(FLOOR_LIST_OPENS), text.find(FLOOR_LIST_CLOSES)
+    if read is None:
+        if opens != -1:
+            report.errors.append(
+                f"{APPARATUS}: lists the floor section's commands, but {QUALITY_WORKFLOW} "
+                f"has no step using {FLOOR_OPENS} followed by one using {FLOOR_CLOSES}"
+            )
+        return
+    commands, unread = read
+    for declined in unread:
+        report.declined.append(
+            f"{QUALITY_WORKFLOW}:{declined.line}: a step was not read ({declined.why}), "
+            f"so the floor list in {APPARATUS} may be held to fewer commands than run"
+        )
+    if opens == -1 or closes < opens:
+        report.errors.append(
+            f"{APPARATUS}: no list of the floor section's commands between "
+            f"{FLOOR_LIST_OPENS} and {FLOOR_LIST_CLOSES}, so nothing holds it to "
+            f"{QUALITY_WORKFLOW}"
+        )
+        return
+    listed = {
+        _command_key(span["content"])
+        for span in code_spans(text, opens, closes)
+        if span["content"].startswith(("python3 ", "bin/"))
+    }
+    run = {_command_key(command): line for command, line in commands}
+    line = text.count("\n", 0, opens) + 1
+    for key in sorted(run.keys() - listed):
+        report.errors.append(
+            f"{APPARATUS}:{line}: the floor list leaves out `{key}`, which "
+            f"{QUALITY_WORKFLOW}:{run[key]} runs in the floor section"
+        )
+    for key in sorted(listed - run.keys()):
+        report.errors.append(
+            f"{APPARATUS}:{line}: the floor list names `{key}`, which the floor section "
+            f"of {QUALITY_WORKFLOW} does not run"
+        )
+
+
 def check_workflow_paths(root: Path, report: Report) -> None:
     """Resolve every repository path a CI step runs.
 
@@ -7826,6 +7965,29 @@ def measure_resident(root: Path) -> list[ResidentFile]:
     return measured
 
 
+def session_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The environment a session runs the SessionStart hook in, rebuilt from the caller's.
+
+    `make check` and CI run this tool under `uv run`, which sets `VIRTUAL_ENV`
+    and puts the virtualenv's `bin` first on `PATH`. Passed on as it was, the
+    hook's bare `python3` became the virtualenv's interpreter, while a session
+    runs the hook with the system's. On 2026-09-24 the two printed digests 276
+    characters apart, from one line the virtualenv's interpreter printed and
+    the system's did not (`PL-HDMP`). So `VIRTUAL_ENV` is dropped, and so is
+    each `PATH` entry inside it.
+    """
+    virtualenv = environ.get("VIRTUAL_ENV", "")
+    kept = {name: value for name, value in environ.items() if name != "VIRTUAL_ENV"}
+    if virtualenv and "PATH" in environ:
+        inside = Path(virtualenv).resolve()
+        kept["PATH"] = os.pathsep.join(
+            entry
+            for entry in environ["PATH"].split(os.pathsep)
+            if not entry or not Path(entry).resolve().is_relative_to(inside)
+        )
+    return kept
+
+
 def measure_digest(root: Path) -> ResidentFile | None:
     """What the SessionStart hook emits into every session, by running it.
 
@@ -7875,7 +8037,7 @@ def measure_digest(root: Path) -> ResidentFile | None:
             text=True,
             timeout=DIGEST_TIMEOUT,
             check=False,
-            env={**os.environ, "CLAUDE_PROJECT_DIR": str(root)},
+            env={**session_environment(os.environ), "CLAUDE_PROJECT_DIR": str(root)},
         )
     except GIT_UNAVAILABLE:
         return None
@@ -8517,8 +8679,10 @@ def _analyze(root: Path) -> Report:
     check_gate_reentries(root, report)
     check_tags(root, report)
     check_tag_span_covers_its_notes(root, report)
+    check_release_row_item_count(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
+    check_floor_list(root, report)
     check_coverage_gate(root, report)
     check_ruff_cache(root, report)
     check_gate_parity(root, report)

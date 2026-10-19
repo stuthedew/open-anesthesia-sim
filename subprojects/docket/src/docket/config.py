@@ -11,7 +11,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass, field, fields
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .model import SAFETY_CLASSES
 
@@ -411,6 +411,24 @@ def _str(value: object, fallback: str, name: str) -> str:
     raise ValueError(f"{name}: {value!r} is not a string")
 
 
+def _store_dir(value: object, fallback: str, name: str) -> str:
+    """Read the item store's directory in the one spelling git prints for it.
+
+    Twelve readers build a git-path prefix from `items_dir` by hand, and none
+    removes a leading `./`, so `./docs/items` read the store through `pathlib`
+    while every `startswith` test against git's paths matched nothing - the
+    in-flight guard among them (`PL-F66M`). `PurePosixPath` collapses `./`,
+    doubled slashes and a trailing slash, so every reader gets one spelling.
+
+    An absolute path and one that climbs out with `..` keep their meaning. A
+    store outside the checkout is a supported case: `cli._tracked` gives it
+    the empty prefix, and the readers that cannot ask git about it skip or
+    refuse it by name (`PL-3T2Q`).
+    """
+    text = _str(value, fallback, name)
+    return PurePosixPath(text).as_posix() if text.strip() else text
+
+
 def _int(value: object, fallback: int, name: str) -> int:
     """Read a whole number. TOML's `true` is a bool, which Python counts as an int."""
     if value is None:
@@ -445,7 +463,7 @@ def load(root: Path) -> Config:
         raise ValueError(f"{CONFIG_NAME}: no setting is named {', '.join(unknown)}")
     defaults = Config()
     return Config(
-        items_dir=_str(section.get("items_dir"), defaults.items_dir, "items_dir"),
+        items_dir=_store_dir(section.get("items_dir"), defaults.items_dir, "items_dir"),
         safety_classes=_tuple(
             section.get("safety_classes"), defaults.safety_classes, "safety_classes"
         ),

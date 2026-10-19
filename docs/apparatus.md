@@ -61,8 +61,11 @@ in its map, or a line left behind after a deletion, fails `make check`, and a
 document whose map is gone fails rather than passing on the other's. That is
 why the trees list every module individually: a
 directory drawn with no children beneath it stands for its whole subtree and
-is not expanded — no tree draws one today — and `__init__.py` is excluded
-throughout. The same tool checks `docs/MODEL.md`'s provenance table against
+is not expanded, and `__init__.py` is excluded throughout. Neither live tree
+draws such a directory, so `tests/unit/test_doc_check.py` holds the rule in
+both directions:
+`test_childless_directory_covers_its_whole_subtree` and
+`test_a_childless_directory_covers_nothing_outside_its_own_subtree`. The same tool checks `docs/MODEL.md`'s provenance table against
 the data files and resolves every path and section heading the documentation
 cites.
 
@@ -599,13 +602,15 @@ All of those are approximations run under the project virtualenv — a syntax
 gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. The floor section of
 `.github/workflows/quality.yml`'s `checks-part-1` job performs the run they stand in
-for: `actions/setup-python` at the declared floor, then
+for: `actions/setup-python` at the declared floor, then <!-- floor-commands -->
 `python3 tools/doc_check.py check`, `python3 tools/possessive_section_check.py`,
 `python3 tools/branch_id_check.py`, `python3 tools/rules_paths_check.py`,
 `python3 tools/pr_body_check.py --anchors`, `python3 tools/dead_ends.py check`,
 `python3 tools/fact_home_check.py` and `bin/docket check` under it. On a pull
 request, `bin/docket ci-scope` runs under it first, to decide whether the run
-takes the item-only fast path (`PL-DXD4`). `dead_ends.py` and `bin/docket
+takes the item-only fast path (`PL-DXD4`). <!-- /floor-commands -->
+`tools/doc_check.py`'s `check_floor_list` holds the commands between those
+two markers to the steps the floor section runs (`PL-5N7T`). `dead_ends.py` and `bin/docket
 check` joined the section under `PL-PBP5`, which found them enforced by `make
 check` alone; `tools/doc_check.py`'s `check_gate_parity` now refuses that
 asymmetry in both directions, so this list cannot fall behind the Makefile's

@@ -3959,6 +3959,17 @@ def test_the_cut_window_names_what_landed_since_the_cut() -> None:
     assert "Read from commit subjects" in advisories[0]
 
 
+def test_the_cut_window_names_an_id_whose_status_it_could_not_read() -> None:
+    """Named as unread, not dropped, so a missing copy is not taken for open (`PL-WKLJ`)."""
+    advisories = _window_advisories(
+        CutWindow(version="0.3.8", landed=("PL-D9WD", "PL-GH0S"), unread=("PL-GH0S",))
+    )
+
+    assert len(advisories) == 1
+    assert "PL-D9WD" in advisories[0]
+    assert "the base's copy of PL-GH0S could not be read" in advisories[0]
+
+
 def test_an_id_the_cut_already_names_is_not_a_stranger() -> None:
     """The branch's own work reaches the base through the merge, which is not the seam."""
     assert (

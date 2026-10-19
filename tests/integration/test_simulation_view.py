@@ -625,7 +625,15 @@ def _identity_controls(run: RunView) -> tuple[QWidget, ...]:
 
 
 def _interface_strings(view: SimulationView) -> set[str]:
+    """Every string the dashboard holds, hidden ones included: for what is never said."""
+
     return set(view.interface_strings())
+
+
+def _visible_strings(view: SimulationView) -> set[str]:
+    """The strings a reader can see now: for what the reader is told (`PL-904Y`)."""
+
+    return set(view.visible_strings())
 
 
 def _strings_of(widget: QWidget, skip: Sequence[QWidget]) -> set[str]:
@@ -2961,7 +2969,7 @@ def test_selecting_a_rate_changes_the_loop_and_the_readout_together(
 def test_the_mounted_interface_states_the_playback_rate(application: QApplication) -> None:
     view = _shown_view(application, SimulationController())
 
-    assert format_playback_rate(1) in _interface_strings(view)
+    assert format_playback_rate(1) in _visible_strings(view)
 
 
 def test_the_playback_control_is_never_disabled(application: QApplication) -> None:
@@ -4218,7 +4226,7 @@ def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio(
     application: QApplication,
 ) -> None:
     view = _shown_view(application, SimulationController())
-    strings = _interface_strings(view)
+    strings = _visible_strings(view)
 
     assert "1 MAC sevoflurane = 2.0%" in " ".join(sorted(strings))
     # The readouts write the unit as a ratio, never as a bare "MAC".
@@ -4233,7 +4241,7 @@ def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
         view = _shown_view(application, SimulationController(agent_id=agent_id))
-        strings = _interface_strings(view)
+        strings = _visible_strings(view)
 
         assert (
             format_mac_awake_reference(
@@ -4248,7 +4256,7 @@ def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
 
 
 def test_the_interface_says_which_trace_the_band_is_read_against(application: QApplication) -> None:
-    prose = " ".join(_interface_strings(_shown_view(application, SimulationController())))
+    prose = " ".join(_visible_strings(_shown_view(application, SimulationController())))
 
     assert "vessel-rich trace" in prose
     assert "±1 SD" in prose
@@ -4310,7 +4318,7 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
 def test_the_wash_in_plot_says_what_its_denominator_is(application: QApplication) -> None:
     """`PL-F9TQ`: F_I is the modelled circuit, and the plot says so where it is read."""
 
-    prose = " ".join(_interface_strings(_shown_view(application, SimulationController())))
+    prose = " ".join(_visible_strings(_shown_view(application, SimulationController())))
 
     assert "not the vaporizer dial" in prose
     assert "denominator moving" in prose
@@ -4320,7 +4328,7 @@ def test_the_wash_in_plot_says_what_its_denominator_is(application: QApplication
 def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
     application: QApplication,
 ) -> None:
-    prose = " ".join(_interface_strings(_shown_view(application, SimulationController())))
+    prose = " ".join(_visible_strings(_shown_view(application, SimulationController())))
 
     assert "Settings only — not a measurement." in prose
     assert "Control change" in prose
@@ -5120,7 +5128,58 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
 
     view = _shown_view(application, SimulationController())
 
-    assert USE_DISCLAIMER_TEXT in view.interface_strings()
+    assert USE_DISCLAIMER_TEXT in view.visible_strings()
+
+
+def test_a_value_hidden_from_the_reader_is_not_counted_as_shown(application: QApplication) -> None:
+    """A View no Area draws is held but not shown, and both questions still reach it.
+
+    Choosing another View for the chart's Area takes the chart panel out of
+    the window (`PL-50PZ`). The walk used to count the plots' axis titles as
+    on screen all the same, and it lost every label in the panel, so a test
+    that nothing says something would pass because the string had moved out
+    of reach (`PL-904Y`). The disclaimer is outside the Areas, so it stays
+    visible. The expected strings are the plots' axis titles and a caption,
+    written out here rather than read from the panel.
+    """
+
+    from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
+    from anesthesia_sim.app.view_registry import WASH_IN
+
+    view = _shown_view(application, SimulationController())
+    in_the_panel = {"% of 1 atm", "F_A/F_I", "Clinical references:"}
+
+    assert in_the_panel <= _visible_strings(view)
+
+    view.layout_container.choose_view(AreaId(1), WASH_IN)
+    _settle(application)
+
+    assert not view._chart_column.isVisible()
+    assert in_the_panel.isdisjoint(_visible_strings(view))
+    assert in_the_panel <= _interface_strings(view)
+    assert USE_DISCLAIMER_TEXT in _visible_strings(view)
+
+
+def test_a_hidden_advisory_and_a_closed_combo_entry_are_held_but_not_shown(
+    application: QApplication,
+) -> None:
+    """Present in the tree and visible to the reader are two answers (`PL-904Y`).
+
+    The no-traces advisory waits hidden until every trace is off, and a
+    combo shows its current entry only. Both are held, so a test that a
+    string is never said still reaches them, and neither is told to the
+    reader.
+    """
+
+    view = _shown_view(application, SimulationController())
+    held = _interface_strings(view)
+    visible = _visible_strings(view)
+
+    assert NO_TRACES_SHOWN_TEXT in held
+    assert NO_TRACES_SHOWN_TEXT not in visible
+    assert format_playback_rate(1) in visible
+    assert format_playback_rate(60) in held
+    assert format_playback_rate(60) not in visible
 
 
 # --------------------------------------------------------------- bookmarks
