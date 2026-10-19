@@ -76,6 +76,24 @@ this session's own environment and `docs/session-ledger.tsv`:
   `.claude/settings.local.json` on a throwaway branch, as the session
   modifying its own settings. So the test needs the owner's word first.
 
+**Unknown 1, measured 2026-10-19: yes, for a session nothing else sets.** The
+owner approved a probe. Branch `claude/pl-hyrm-probe-settings-local` adds
+`.claude/settings.local.json` with `"effortLevel": "xhigh"` to `main`, whose
+`.claude/settings.json` says `high`. A session started on that branch with
+`create_session` (`session_01CCoYCwWA4q5xqwsw4FpdUt`) printed
+`CLAUDE_EFFORT=xhigh` and `CLAUDE_CODE_EFFORT_LEVEL=unset`. This session, on
+`main` with no local file, prints `CLAUDE_EFFORT=high`. So Claude Code read the
+local file over the project file, as the docs say, and exports the level it
+settled on as `CLAUDE_EFFORT`. That variable is the only place the level showed
+up. `get_session` on the probe returns no `effort_level` at all, so the brief's
+plan to read the level with `get_session` does not work for a session the app
+did not open. The model review needs another record of the level actually run.
+
+**Unknown 2 is still open, and it can be tested on `main`.** If the app's
+picker counts as an explicit choice, a session opened from the app with the
+picker at a level other than `high` prints that level, not the file's `high`.
+If it prints `high`, the file wins over the picker.
+
 **A route that removes unknown 3.** The draw can be a fixed function of the
 session id instead of a stored random number: hash the id, and assign `xhigh`
 when the hash falls in the lowest quarter. The ledger already holds every
