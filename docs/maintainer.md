@@ -327,17 +327,34 @@ imports the simulator, to `docs/MODEL.md`, to `src/anesthesia_sim/data/` or to
 session that never judges holds the pull request rather than merging a
 clinical change unread. `not needed` arms it on green, with the reason in the
 pull request body. `needed` holds it for you on any path.
-`subprojects/docket/src/docket/arming.py` always waits on you, because it
-decides what merges without you and could loosen the rule (project owner,
-2026-10-12, ratified, `PL-VKHD`). So does a change to or a deletion of an
-existing test that pins `arm`'s answers in
+`subprojects/docket/src/docket/arming.py` decides what merges without you. A
+change to it waits on you only when it changes or deletes an existing test
+that pins `arm`'s answers, moves the file, or carries a `needed` record, and
+otherwise merges on green (project owner,
+2026-10-19, ratified, over holding every change to it, `PL-9JHM`). Until then
+every change to it waited on you (`PL-VKHD`). A pinned test is one in
 `subprojects/docket/tests/test_cli.py`: a `test_arm_` test, a test that runs
 `arm` or reads `arming`, or one of those tests' `_arm` helpers and `ARM_`
 constants. The modules `arm` reads through, such as `vcs.py`, `claims.py` and
 `cli.py`, arm on green, so a change there that loosens an answer has to edit a
 pinned test, and that edit waits on you (project owner, 2026-10-12, ratified,
-`PL-WW0Q`). The hold covers `arming.py` and the tests that pin its answers,
-not its inputs: a new test arms, and a loosening that no test pins arms too.
+`PL-WW0Q`). The hold covers the tests that pin `arm`'s answers, not the code
+they test: a new test arms, and so does a loosening that no test pins, in
+`arming.py` itself too.
+
+**A hold reaches you with its question or its risk, never a bare "read #N"**
+(project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
+as an `Owner-ask:` trailer on a commit, and `arm` prints it as the ask's
+opening line. It is either a decision or a risk review. A decision has at
+least two options, each saying what it changes for you or a learner, and a
+recommendation. A risk review says what could go wrong and for whom, what was
+checked, and the one thing to look at. Until a record made after the newest
+change covers it, `arm` tells the session to send you nothing. A question
+whose answer is obvious is wrong, as on `#1516`. When there is nothing to
+decide or review, the session records `Owner-read: not needed` and the change
+merges on green without asking you. A change to a test pinning `arm`'s
+answers still holds whatever that record says, so its ask is a risk review.
+
 A held pull request merges on your word
 alone - "Merge it" - by the route § "Bring a stale base in when you merge,
 with Update branch" describes.
@@ -382,8 +399,9 @@ test, because `arm` reads the file before and after the change. So do
 `tests/conftest.py` and every other file pytest does not collect, which serve
 the simulator's tests whatever they import, and any test `arm` could not read,
 with the reason beside the hold. The rule is the one
-`tools/workflow_paths_check.py` sorts the lanes by, spelt once in `arming.py`,
-so changing it still waits on your read.
+`tools/workflow_paths_check.py` sorts the lanes by, spelt once in `arming.py`.
+Since 2026-10-19 changing it waits on your read only where the change edits a
+test pinning `arm`'s answers (`PL-9JHM`).
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 

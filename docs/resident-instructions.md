@@ -1118,7 +1118,9 @@ that day: a pull request reaches the owner only for a real decision or a
 high-risk change, and housekeeping merges on green. The `hold` clause had
 named the read list, five simulator paths and `arming.py`. It now names what
 holds instead: a claim, a simulator change no `Owner-read:` record covers, a
-record saying `needed`, and `arming.py`. The fix-now rule's third condition
+record saying `needed`, and `arming.py`. Since 2026-10-19 (`PL-9JHM`) the
+last is an edit to a test pinning `arm`'s answers instead of any change to
+`arming.py`. The fix-now rule's third condition
 said "a fix on the owner's read list" and now says "a fix that needs the
 owner's read", the same test under the new hold.
 

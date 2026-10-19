@@ -1689,8 +1689,8 @@ def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> 
 def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     """`arming.RECORDS` spells the body records again, and the two spellings must agree.
 
-    The gate holds `arming.py` for a read so that it cannot loosen itself, and
-    this module arms on green. Imported from here, a one-line widening of the
+    Until 2026-10-19 the gate held `arming.py` for a read so that it could not
+    loosen itself, and this module arms on green. Imported from here, a one-line widening of the
     records would merge unread and then arm whatever it newly admitted, so the
     held file keeps its own copy (`PL-F6MM`; project owner, 2026-09-26,
     ratified, over `arming` importing this one). This keeps the two one answer.
@@ -1698,14 +1698,14 @@ def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     assert RECORDS == arming.RECORDS
 
 
-def test_what_arms_on_green_is_everything_but_the_owners_read_list_and_the_gate() -> None:
+def test_what_arms_on_green_is_everything_but_the_owners_read_list() -> None:
     """The store, the tooling and the records arm as before, and so does every path off the list."""
     items = QUEUE.items_dir
     assert arming.arms_on_green("docs/items/PL-B1B1-held.md")
     assert arming.arms_on_green("subprojects/docket/src/docket/render.py")
     assert arming.arms_on_green("docs/pr-bodies/1066.md")
     assert arming.arms_on_green("docs/items-archive.md")
-    assert not arming.arms_on_green(arming.GATE)
+    assert arming.arms_on_green(arming.GATE)
     assert not arming.arms_on_green("src/work.py")
     assert arming.arms_on_green(".github/workflows/update-armed.yml")
     assert arming.arms_on_green(".claude/hooks/direct-merge-guard.sh")
