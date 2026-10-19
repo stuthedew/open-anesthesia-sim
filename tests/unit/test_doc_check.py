@@ -5565,8 +5565,8 @@ def test_a_wrapped_clause_that_renders_as_a_list_item_is_refused(
         ),
         pytest.param(
             "docs/items/PL-T3ST-demo.md",
-            "---\nid: PL-T3ST\n---\n\nThe design landed on v0.4.x\n- and was kept.\n",
-            id="a brief in the item store, left to its own item",
+            "---\nid: PL-T3ST\nstatus: done\n---\n\nThe design landed on v0.4.x\n- and was kept.\n",
+            id="a closed brief in the item store, left as a record",
         ),
     ],
 )
@@ -5579,6 +5579,40 @@ def test_a_list_that_interrupts_a_paragraph_on_purpose_passes(
     one-line label whose item opens with a capital or with code.
     """
     assert _wrapped_list_errors(tmp_path / "repo", name, body) == []
+
+
+@pytest.mark.parametrize(
+    ("status", "identifier", "refused"),
+    [
+        pytest.param("ready", "PL-T3ST", True, id="an open brief is refused"),
+        pytest.param("blocked", "PL-B10K", True, id="a blocked brief is refused"),
+        pytest.param("done", "PL-D0N3", False, id="a done brief is left as a record"),
+        pytest.param("dropped", "PL-DRPD", False, id="a dropped brief is left as a record"),
+    ],
+)
+def test_an_open_brief_with_a_wrapped_clause_is_refused_and_a_closed_one_passes(
+    tmp_path: Path, status: str, identifier: str, refused: bool
+) -> None:
+    """`PL-XLYK`: the item store is read for wraps, but only its open briefs.
+
+    A closed brief is a record of the tree its work was done against, which
+    `.claude/rules/citation-drift.md` decides is not a finding. An open brief
+    is where a session writes new prose, so a wrap there is refused at its line.
+    """
+    root = _repo(tmp_path)
+    _item(
+        root, f"{identifier}-demo", _brief(status, "The design landed on v0.4.x\n- and was kept.")
+    )
+    report = doc_check.Report()
+    doc_check.check_wrapped_list_items(root, report)
+
+    if refused:
+        assert len(report.errors) == 1
+        assert report.errors[0].startswith(
+            f"docs/items/{identifier}-demo.md:7 starts a line with a list marker"
+        )
+    else:
+        assert report.errors == []
 
 
 def test_a_worktree_under_claude_worktrees_is_not_walked(tmp_path: Path) -> None:
