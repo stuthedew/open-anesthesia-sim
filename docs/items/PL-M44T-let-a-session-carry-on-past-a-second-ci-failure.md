@@ -3,11 +3,13 @@ id: PL-M44T
 title: Let a session carry on past a second CI failure whose new cause it reproduced, and stop at four failed runs of one check
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: projects-trial
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-10-19
+closed: 2026-10-19
+pr: 1652
 payoff: a session stops on a repeated CI failure only when the owner has something to weigh, and never retries one check more than four times
 verify: grep -q 'Four failed runs of one check on one pull request' CLAUDE.md
 ---
