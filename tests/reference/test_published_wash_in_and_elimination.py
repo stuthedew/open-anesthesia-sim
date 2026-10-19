@@ -816,7 +816,7 @@ EARLY_WASH_IN_DISAGREEMENTS = frozenset(
     }
 )
 
-# The top of that regression band. The worst point was +2.11 SD when the
+# The top of that regression band. The worst point was +2.10 SD when the
 # comparison was first run, and a reading error of 0.006 in a mean is about
 # 0.3 SD at desflurane's spread, so 2.5 SD leaves room for the reading and
 # catches a change that moves the model further from the measurement.
