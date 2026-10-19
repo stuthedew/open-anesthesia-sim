@@ -86,6 +86,15 @@ ASKS = (
     "Merge it once you have looked.",
     "Shall I merge?",
     "Merge #1676 now?",
+    # Hand-offs beside a pull request, the gaps `#1688` first shipped with.
+    "Over to you for #1688.",
+    "Your call on #1688.",
+    "Over to you on the pull request.",
+    "Up to you whether #1688 goes in.",
+    "#1688 is your decision.",
+    "PR #1688: your call.",
+    "Let me know about #1688.",
+    "Thoughts on #1688?",
 )
 
 
@@ -109,6 +118,13 @@ PROGRESS = (
     "I read the item's brief and #1612's body before starting.",
     "I'll bring main in and merge it once the checks pass.",
     "The reviewer's comment is answered and the fix is pushed.",
+    # A hand-off with no pull request in its sentence asks for no read.
+    "The colour is your call; I chose blue as a placeholder.",
+    "Whether to cut a release later is up to you.",
+    "#1688 merged. What colour to use next is your call.",
+    "Over to the coordinator for #1688's merge.",
+    "I'll let you know when #1688 is green.",
+    "Your PR template is not used here.",
 )
 
 
@@ -168,16 +184,3 @@ def test_the_hook_is_wired_on_a_threads_reply_tools() -> None:
         if "owner_ask_guard.py" in hook["command"]
     ]
     assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision)$"]
-
-
-KNOWN_GAPS = (
-    # Phrasings `ASKS` does not name. Each is filed as an item once a thread is
-    # seen sending it, and held here to the verdict it gets today.
-    "Over to you for #1688.",
-    "Your call on #1688.",
-)
-
-
-@pytest.mark.parametrize("text", KNOWN_GAPS)
-def test_a_known_gap_is_let_through_today(tmp_path: Path, text: str) -> None:
-    assert _decision(tmp_path, text) is None

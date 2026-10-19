@@ -840,7 +840,7 @@ class Verdict:
         """The ask's opening line, where something may be sent to the owner; None otherwise.
 
         This is what `bin/docket arm --owner-ask` prints, and what
-        `.claude/hooks/owner-ask-guard.sh` requires in a reply that asks the
+        `.claude/hooks/owner_ask_guard.py` requires in a reply that asks the
         owner to read or merge the pull request (`PL-TLPH`).
         """
         return self.ask.line if self.asks_owner and self.ask is not None else None

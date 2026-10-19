@@ -5408,7 +5408,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
     `newest_pull_request_command`, where the project names one, is how it
     learns that the pull request has already merged (`PL-8BR0`).
 
-    With `--owner-ask` it answers one question for `.claude/hooks/owner-ask-guard.sh`:
+    With `--owner-ask` it answers one question for `.claude/hooks/owner_ask_guard.py`:
     what may be sent to the owner about this pull request. It prints the
     recorded ask's opening line and exits 0, or prints why nothing may be sent,
     led by the answer's first line, and exits 3.

@@ -22,11 +22,13 @@ the safe direction: the coordinator forwards the owner's word, and a thread
 asks only about its own pull request.
 
 **What an ask is, is a list, not an inference.** `ASKS` names the phrasings
-sessions have used and the closing-block lines that carry them. A phrasing it
-misses is a known gap, held as a row in `tests/unit/test_owner_ask_guard.py`,
-and a message that matches by accident is told to reword. A false refusal
-costs a rewording, while a missed ask costs the owner's attention, so the list
-leans toward refusing.
+sessions have used, the closing-block lines that carry them, and close
+variants of each. A hand-off such as "over to you" or "your call" counts only
+in a sentence that also names a pull request. A wording the list does not
+name still passes, so a new one seen in a thread is added to `ASKS` with a
+test row. A message that matches by accident is told to reword. A false
+refusal costs a rewording, while a missed ask costs the owner's attention, so
+the list leans toward refusing.
 
 **Not wired on the coordinator's `post_message`.** The coordinator's checkout
 is not the pull request's branch, so `arm` cannot answer for it there.
@@ -69,6 +71,19 @@ TEXT_FIELDS = {
 #: Where an imperative starts: a line, a list item or a sentence.
 _START = r"(?:^[ \t]*(?:[-*+]|\d+[.)])?[ \t]*|[.!?:;][ \t]+)"
 
+#: Words that hand a decision to the owner. They are an ask only beside a pull
+#: request, since "the colour is your call" asks for no read.
+_HANDOFF = (
+    r"\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you|your[ \t]+(?:call|decision|choice|go)"
+    r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
+)
+
+#: A pull request named by number or by name.
+_PULL_REQUEST = r"(?:#\d+|\bpull[ \t]+requests?\b|\bprs?\b)"
+
+#: The text between two phrases in one sentence: no sentence end or line break.
+_SAME_SENTENCE = r"[^.!?\n]{0,80}?"
+
 #: The phrasings of an ask to read or merge a pull request (`PL-TLPH`). Each is
 #: matched case-insensitively against the text with its Markdown emphasis
 #: removed.
@@ -96,6 +111,10 @@ ASKS = tuple(
         # "Shall I merge?", "Merge #1676?"
         r"\b(?:shall|should|can|may)[ \t]+i[ \t]+(?:go[ \t]+ahead[ \t]+and[ \t]+)?merge\b",
         r"\bmerge[ \t]+(?:(?:pull[ \t]+request|pr)[ \t]+)?#\d+[ \t]*(?:now[ \t]*)?\?",
+        # "Over to you for #1688", "#1688 is your call": a hand-off and a pull
+        # request named in one sentence, in either order.
+        _HANDOFF + _SAME_SENTENCE + _PULL_REQUEST,
+        _PULL_REQUEST + _SAME_SENTENCE + _HANDOFF,
     )
 )
 

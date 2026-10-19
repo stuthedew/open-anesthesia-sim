@@ -77,8 +77,10 @@ refused the call with its reason. `bin/docket arm --no-fetch` answered in 2.2 s.
 
 **What it does not reach.** The coordinator's `post_message` is left out: the
 coordinator's checkout is not the pull request's branch, so `arm` cannot answer
-for it there. A phrasing of an ask that none of the hook's patterns matches is
-a known gap, recorded as a test row, as `gate-status-guard.sh` records its own.
+for it there, and `PL-YV90` holds that gap. A phrasing of an ask that none of
+the hook's patterns matches still passes. The first push let "Over to you for
+#1688" and "Your call on #1688" through. The owner asked why on 2026-10-19, so
+a hand-off beside a pull request in one sentence now counts as an ask too.
 
 **Done when.** A no-ask hold leads with "send the owner nothing" and exits 3;
 `bin/docket arm | head` is refused by the guard; and a thread's reply that asks
