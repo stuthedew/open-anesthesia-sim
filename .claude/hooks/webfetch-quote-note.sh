@@ -14,12 +14,13 @@
 # that session was recording (`PL-KLN5`); it was caught only because the
 # session then read the page's `.md` with curl.
 #
-# **It is documented behaviour, not a fault.** WebFetch "runs the prompt
-# against the content using a small, fast model. For most fetches, Claude
-# receives that model's answer, not the raw page", and "Large pages are
-# truncated to a fixed character limit before processing"
-# (https://code.claude.com/docs/en/tools-reference, § "WebFetch tool
-# behavior", read from the page's markdown 2026-10-01). The tool's own
+# **It is documented behaviour, not a fault.** WebFetch fetches the page, and
+# "For most fetches, it then runs the prompt against the content in a separate
+# model call, and Claude receives the result of that call rather than the raw
+# page" (https://code.claude.com/docs/en/tools-reference, § "WebFetch tool
+# behavior", compared with the page's markdown on 2026-10-19, `PL-124X`; the
+# 2026-10-01 reading quoted a "small, fast model" and a truncation limit that
+# the page no longer states). The tool's own
 # description says it too, and the session misread it anyway: an answer to a
 # request for verbatim text looks like verbatim text.
 #

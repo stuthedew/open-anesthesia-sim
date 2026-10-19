@@ -32,10 +32,13 @@ path-scoped rule; resident. The question each is answered against is *at what
 moment does a session need this rule, and what is the cheapest thing that
 delivers it then.*
 
-One constraint decides most of the hard cases. A path-scoped rule "triggers
-when Claude reads files matching the pattern, not on every tool use"
-([memory](https://code.claude.com/docs/en/memory)) — so it cannot carry a rule
-that must fire before a first write, or before any file is opened at all. Most
+One constraint decides most of the hard cases. "A path-scoped rule loads when
+Claude uses the Read, Write, or Edit tool on a matching file", and when a Bash
+command such as `cat` reads one ([memory](https://code.claude.com/docs/en/memory),
+section "Path-specific rules", compared with the page's `.md` on 2026-10-19,
+`PL-124X`). A rule that loads with a write arrives after that write's content
+was composed, so it cannot carry a rule that must fire before a first write,
+or before any file is opened at all. Most
 of what is resident here is of exactly that shape: it governs how a session
 receives a request, decides an approach, or writes a reply, none of which is
 preceded by a read.
@@ -134,8 +137,8 @@ rather than a gate (line 96), decomposition (line 246), filing an item (line
 254), opening the pull request (line 343) — across 250 lines, none of them
 emphasised, each buried in a bullet about something else, plus rule 14's three
 dispositions in the other resident file. Claude Code's own documentation names
-the consequence: "if two rules contradict each other, Claude may pick one
-arbitrarily" ([memory](https://code.claude.com/docs/en/memory)). The project
+the consequence: "if two instructions contradict each other, Claude may pick
+one arbitrarily" ([memory](https://code.claude.com/docs/en/memory)). The project
 owner reported the predicted failure — decisions offered that `CLAUDE.md`
 already settles. The bullet restates no rule; it names where each release
 lives, at the one place a session is guaranteed to read them together. It is
