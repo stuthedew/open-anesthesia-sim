@@ -14,7 +14,8 @@ every later push while a pull request is open.
 **Five answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - waits on
-  no read from the owner: it leaves this module alone, and either reaches no
+  no read from the owner: it changes or deletes no existing test pinning this
+  module's answers (`PINS`), and either reaches no
   simulator path (`READ_PATHS`, a test of the tooling under `tests/` aside,
   which `arms_on_green` answers path by path) or carries the session's
   `Owner-read: not needed - <why>` record on a commit since its newest change
@@ -32,12 +33,14 @@ every later push while a pull request is open.
   work nobody finished or handed back. A simulator path no `Owner-read`
   record covers holds it until the session records whether the owner needs
   to read it (`JUDGE_ASK`), so a judgment nobody made fails safe rather than
-  merging a clinical change unread. A record saying `needed`, any change to
-  this module, and a change to an existing test pinning its answers (`PINS`)
-  hold it for the owner's read, and it merges on the owner's word alone. So
+  merging a clinical change unread. A record saying `needed` and a change to
+  an existing test pinning this module's answers (`PINS`) hold it for the
+  owner's read, and it merges on the owner's word alone. A change to this
+  module that edits no such test arms, and the answer names it. So
   does a switch of auto-merge off that no commit records as the session's
-  (`AUTO_MERGE`). Once no claim holds it, that hold also says where the ask goes
-  and what it carries (`READ_ASK`).
+  (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
+  line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
+  says that nothing goes to the owner until there is one (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -76,41 +79,43 @@ has already merged; what went unread is said beside it.
   read, this module included (2026-09-25, ratified, over holding every path
   outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
   docket change and was clicked through, so it guarded nothing, the simulator
-  included. This module stays held so that the gate cannot loosen itself;
+  included. This module stays held so that the gate cannot loosen itself
+  (until 2026-10-19, below);
 - a body record arms on green beside them (2026-09-25, ratified with the
   record's form, over every pull request holding on the record it writes
   before its merge, `PL-979D`): the record is a copy of the body, never a
   change to read;
 - only the owner's read list waits on a read - `src/`, `tests/` outside
-  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md`
-  and this module - and every other path arms on green, named beside the
-  answer, unless the change raises a question for the owner (the Projects
-  trial's instructions, 2026-10-03, kind unrecorded, over holding every path
-  outside the store, the tooling and the records; built by `PL-KKHD`). The
-  rule was written there alone, so on one day `#1298` armed under it while
-  `#1308` held under the old one. It reopened `PL-0JGZ` (project owner,
-  2026-09-26, ratified), which kept `ROADMAP.md` and `docs/WORKING_NOTES.md`
-  off what arms because the roadmap is where the owner sets direction:
-  neither is on the list, so both arm, and the owner settled it so (project
-  owner, 2026-10-03, ratified, over holding them as before). `.github/workflows/`
-  and `.claude/hooks/` joined the list the same day, since they decide merges
-  and tags as this module does (project owner, 2026-10-03, ratified, over
-  leaving them armed on green; `PL-KKHD` records both answers), until the
-  owner's rule of 2026-10-12 below;
-- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it the
-  reader every guard hook reads a Bash call through, so that a change to what
-  the guards refuse still waited on a read outside `.claude/hooks/` (project
-  owner, 2026-10-10, ratified, over arming lexer changes on green; `PL-JNYL`
-  records the answer), until the same rule;
+  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md` and
+  this module, until 2026-10-19 - and every other path arms on green, named
+  beside the answer, unless the change raises a question for the owner (the
+  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
+  every path outside the store, the tooling and the records; built by
+  `PL-KKHD`). The rule was written there alone, so on one day `#1298` armed
+  under it while `#1308` held under the old one. It reopened `PL-0JGZ`
+  (project owner, 2026-09-26, ratified), which kept `ROADMAP.md` and
+  `docs/WORKING_NOTES.md` off what arms because the roadmap is where the owner
+  sets direction: neither is on the list, so both arm, and the owner settled
+  it so (project owner, 2026-10-03, ratified, over holding them as before).
+  `.github/workflows/` and `.claude/hooks/` joined the list the same day,
+  since they decide merges and tags as this module does (project owner,
+  2026-10-03, ratified, over leaving them armed on green; `PL-KKHD` records
+  both answers), until the owner's rule of 2026-10-12 below;
+- docket's lexer, `docket/shell.py`, joined the list when `PL-JNYL` made it
+  the reader every guard hook reads a Bash call through, so that a change to
+  what the guards refuse still waited on a read outside `.claude/hooks/`
+  (project owner, 2026-10-10, ratified, over arming lexer changes on green;
+  `PL-JNYL` records the answer), until the same rule;
 - workflow items need no merge confirmation (project owner, 2026-10-12: "don't
   need to ask me for merge confirmation for workflow items"), so
-  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm on
-  green with the rest of the workflow lane, while a product path waits as
+  `.github/workflows/`, `.claude/hooks/` and the lexer left the list and arm
+  on green with the rest of the workflow lane, while a product path waits as
   before, in a change crossing both lanes too (`PL-KPM2`). This module stays
   on the list so that the gate still cannot loosen itself: a change to it
   could drop `src/` from the list and merge unread (project owner, 2026-10-12,
   ratified, over arming a change to it on green with the rest of the workflow
-  lane; `PL-VKHD` records the answer);
+  lane; `PL-VKHD` records the answer), until the owner's answer of 2026-10-19
+  below;
 - a test of the tooling under `tests/` - a file pytest collects that imports
   no `anesthesia_sim` on either side of the change - arms on green, as
   `subprojects/docket/tests/` does, and the rest of `tests/` stays on the list
@@ -125,24 +130,46 @@ has already merged; what went unread is said beside it.
   green: widening what arms still takes an edit the gate holds (`PL-0JGZ`);
 - a pull request reaches the owner only for a real decision or a high-risk
   change, and housekeeping merges on green (project owner, 2026-10-17: "Model
-  comes to me only when there is a real decision as discussed or making a
-  high risk change you want a second set of eyes on then you should present
-  the case for the change, the risks etc. but house keeping stuff I don't
-  need to sign off everything"; built by `PL-DKBG`). The read list had held
-  `#1516`'s measured figures and tightened tests exactly as it would a changed
-  equation, and its ask invented two points to judge. So the list no longer
-  holds by itself: a change to it waits for the session's recorded judgment,
-  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads
-  from the branch's commits, and only `needed` and this module wait on the
-  owner. Chosen over dropping the list and leaving the judgment to prose,
-  which fails open on a session that never makes it, and over keeping the
-  list and rewording the ask, which leaves housekeeping waiting on the owner.
+  comes to me only when there is a real decision as discussed or making a high
+  risk change you want a second set of eyes on then you should present the
+  case for the change, the risks etc. but house keeping stuff I don't need to
+  sign off everything"; built by `PL-DKBG`). The read list had held `#1516`'s
+  measured figures and tightened tests exactly as it would a changed equation,
+  and its ask invented two points to judge. So the list no longer holds by
+  itself: a change to it waits for the session's recorded judgment,
+  `Owner-read: needed - <why>` or `not needed - <why>`, which `arm` reads from
+  the branch's commits, and only `needed` and this module wait on the owner
+  (this module until 2026-10-19, below). Chosen over dropping the list and
+  leaving the judgment to prose, which fails open on a session that never
+  makes it, and over keeping the list and rewording the ask, which leaves
+  housekeeping waiting on the owner.
+- a hold for the owner's read carries its ask as an `Owner-ask` record, a
+  decision with at least two options and a recommendation or a risk review,
+  and `arm` prints it as the ask's opening line (project owner, 2026-10-18:
+  "View chooser thread just told me a generic read pull request without a
+  question again" and "it's not supposed to ask for a merge if nothing to
+  review"; built by `PL-9JHM`). The ask's shape was prose twice before
+  (`PL-9KHK`, `PL-DKBG`), and sessions still sent a bare read. A form for
+  "nothing to decide" was weighed and refused, because a pull request with
+  nothing to review should not reach the owner at all: the way out of such a
+  hold is `Owner-read: not needed`;
+- a change to this module holds only when it changes or deletes an existing
+  test pinning its answers, and otherwise arms on green with the rest of the
+  tooling (project owner, 2026-10-19, ratified, over holding every change to
+  it with a risk-review ask and over arming it on green with no such test;
+  `PL-9JHM` records the owner's answer). It reopens `PL-VKHD`'s answer of
+  2026-10-12, which held every change here so that the gate could not loosen
+  itself, because nine of those holds in two weeks were mostly refactors
+  with nothing to review. To loosen an existing answer, a change has to edit
+  the test that pins it, so that kind of loosening still waits. A loosening
+  that no test pins merges unread, and so would one that also rewrote the
+  check reading the pins, since this module judges its own change;
 - the gate's read covers the existing tests that pin its answers as well as
-  this module, so a loosening through what the answer is read through has to
-  edit one (project owner, 2026-10-12, ratified, over holding `vcs.py`,
-  `claims.py`, `cli.py` and `test_cli.py` whole, and over leaving it;
-  `PL-WW0Q`). It reopens, for that one route, `PL-SQTR`'s line at this
-  module alone.
+  this module, and since 2026-10-19 those tests alone (`PL-9JHM`), so a
+  loosening through what the answer is read through has to edit one (project
+  owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
+  and `test_cli.py` whole, and over leaving it; `PL-WW0Q`). It reopens, for
+  that one route, `PL-SQTR`'s line at this module alone.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -201,32 +228,6 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
 #: names before counting the rest.
 SHOWN = 5
 
-#: What a `hold` for a read tells the session to put in the owner's ask, once
-#: no claim keeps the pull request a draft. It is said here, where the ask is
-#: decided, rather than in a resident rule every session pays for (`PL-8XQS`).
-#: It names the closing block's line, because a wording that said only what
-#: the ask opens with was followed to the letter: three sessions closed on a
-#: bare "read #N" (`PL-9KHK`). Its two forms are the owner's two reasons to
-#: be asked (2026-10-17, `PL-DKBG`). Its earlier form asked for "numbered
-#: points for the owner to judge" wherever a clinical value or a
-#: `docs/MODEL.md` statement changed, which contradicted the rule already in
-#: design.md step 4 and rule 14 of `.claude/rules/instruction-writing.md`: on
-#: `#1516` it produced a measured figure and an option the model's own run
-#: length ruled out as "points to judge". So it points at that rule now rather
-#: than stating a second one.
-READ_ASK = (
-    "  Ask for it in the closing block's own line, never as 'read #N', and repeat that line "
-    "whole in every later reply that still waits on it, short enough to take in at a "
-    "glance. For a real decision: the question, what the owner is deciding, each option "
-    "with what it costs, and the recommendation, one line each. For a high-risk change: "
-    "one plain sentence of what the change does, in terms a clinician recognises; then "
-    "the case for it and its risks, most important first - what could go wrong, for whom, "
-    "and what was checked to rule it out; then what needs no review, in one clause. A "
-    "question goes in only where .claude/skills/docket/modes/design.md step 4 makes it the "
-    "owner's. Where only the gate holds it and nothing in it carries a risk, say so in one "
-    "sentence and ask for the merge word alone."
-)
-
 #: The commit trailer a session records its judgment in: whether the owner
 #: needs to read the branch's change before it merges (project owner,
 #: 2026-10-17, `PL-DKBG`). Its value is `READ_NEEDED` or `READ_NOT_NEEDED`,
@@ -235,6 +236,55 @@ READ_ASK = (
 OWNER_READ = "Owner-read"
 READ_NEEDED = "needed"
 READ_NOT_NEEDED = "not needed"
+
+#: The commit trailer that carries what a hold for the owner's read asks him
+#: (project owner, 2026-10-18, `PL-9JHM`). `arm` prints it as the ask's
+#: opening line, so the ask is a recorded fact rather than prose a session
+#: may skip. It takes one of two forms, the owner's two reasons to be asked
+#: (`PL-DKBG`), each a run of fields joined by `ASK_SEPARATOR`:
+#:
+#: - a decision: `<question>? | <option>: <what it changes> | <option>: <what
+#:   it changes> | recommend <option> - <why>`, with at least two options;
+#: - a risk review, for a high-risk change with no choice in it: `risk -
+#:   <what could go wrong, for whom> | checked - <what was checked to rule it
+#:   out> | look - <the one thing the owner should look at>`.
+OWNER_ASK = "Owner-ask"
+ASK_SEPARATOR = " | "
+ASK_RECOMMEND = "recommend"
+ASK_RISK = ("risk", "checked", "look")
+
+#: What a hold for the owner's read prints when no `OWNER_ASK` record covers
+#: the change. The ask was prose until 2026-10-18, and sessions skipped it:
+#: three closed on a bare "read #N" (`PL-9KHK`), `#1516`'s ask invented two
+#: points to judge (`PL-DKBG`), and the view chooser thread sent another bare
+#: read on 2026-10-18. The owner's rule is that a pull request with nothing to
+#: review does not reach him at all, so the way out of a hold with nothing in
+#: it is `Owner-read: not needed`, never a question made up to fill the form.
+READ_ASK = (
+    "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
+    "since its newest change outside the store and the pull request bodies says what to "
+    "ask. A hold reaches the owner only with something to decide or to review. A question "
+    "whose answer is obvious is wrong, as on #1516, whose ask invented two points to judge "
+    "(PL-DKBG). Record one of two forms in the last paragraph of a commit, beside its "
+    "Co-authored-by line, then ask again. For a decision, with at least two options a "
+    f"careful person could each pick: `{OWNER_ASK}: <question>? | <option>: <what it changes "
+    f"for the owner or a learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - "
+    f"<why>`. For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_RISK[0]} - "
+    f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
+    f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
+    f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
+    "the change merges on green. A change to a test pinning the gate's answers holds whatever "
+    "that record says, so for one of those use the risk form."
+)
+
+#: What a hold for the owner's read prints before the line its `OWNER_ASK`
+#: record renders. The line goes in the closing block, because a wording
+#: that said only what the ask opens with was followed to the letter
+#: (`PL-9KHK`).
+ASK_LINE = (
+    "  Open the ask with this line, word for word, as the closing block's own line, never "
+    "as 'read #N', and repeat it whole in every later reply that still waits on it:"
+)
 
 #: What a `hold` without a claim tells a session about a repair push. A
 #: session never arms a held pull request, so a held one that is armed was
@@ -302,8 +352,10 @@ JUDGE_ASK = (
 #: because it is a directory a tool writes and not a part of the package.
 RECORDS = "docs/pr-bodies/"
 
-#: The one file under `TOOLING` that still waits on a read: this module, which
-#: decides the answer, so a change to it could loosen the rule it states. It is
+#: This module, which decides the answer. Since 2026-10-19 a change to it
+#: waits on a read only when it edits a test pinning its answers or moves it
+#: off the path the base holds it at (`PL-9JHM`), and `arm` names it beside an
+#: `arm`. It is
 #: the module's own path from the root of the checkout holding it, so a move
 #: cannot leave it naming a file nothing reads, and the package spells none of
 #: this repository's layout (`PL-QFCR`). It is read from the module rather than
@@ -335,10 +387,11 @@ TOOLING = _tooling(GATE)
 #: answer is read through - `vcs.changed_path_args`, `claims.holdings`,
 #: `cli.cmd_arm` - arms on green, so a loosening there passes unread unless it
 #: also has to edit a pinned answer. So a change to or a deletion of an
-#: existing pinned test waits on the owner's read, as a change to `GATE` does,
-#: and a new test arms (project owner, 2026-10-12, ratified, over holding
-#: `vcs.py`, `claims.py`, `cli.py` and `test_cli.py` whole, `PL-WW0Q`).
-#: `None` where no checkout holds the module.
+#: existing pinned test waits on the owner's read, which since 2026-10-19 is
+#: what holds a change to `GATE` too (`PL-9JHM`), and a new test arms (project
+#: owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
+#: and `test_cli.py` whole, `PL-WW0Q`). `None` where no checkout holds the
+#: module.
 PINS = None if TOOLING is None else TOOLING + "tests/test_cli.py"
 
 #: How a top-level name in `PINS` marks the definition as one of the arm
@@ -357,8 +410,9 @@ TESTS = "tests/"
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
 #: arm on green (`PL-552M`). Spelt here, in the module the gate holds, and
-#: imported by the lane check, so the two read one rule and neither can
-#: change it without an edit that waits on the owner's read.
+#: imported by the lane check, so the two read one rule. Since 2026-10-19 an
+#: edit to it waits on the owner's read only where it edits a pinned test
+#: (`PL-9JHM`).
 PRODUCT_PACKAGE = "anesthesia_sim"
 
 #: What pytest collects as a test module: its default `python_files`, which
@@ -370,16 +424,16 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 
 #: The simulator's paths, which were the owner's read list as they spelt it
 #: (2026-10-03, `PL-KKHD`). Since 2026-10-17 a change reaching one of these
-#: waits for the session's `OWNER_READ` record rather than for the owner,
-#: and only a record saying `READ_NEEDED`, or the gate, waits on them
-#: (`PL-DKBG`). A directory holds what is under it, a
-#: file is itself. `TESTS` is the simulator's, but for a test of the tooling
-#: (`tests_the_tooling`), which arms on green since the owner's answer of
-#: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
-#: the reader who looks for it by name. `.github/workflows/`, `.claude/hooks/`
-#: and docket's lexer, which joined on the owner's answers of 2026-10-03 and
-#: 2026-10-10, left it on his rule of 2026-10-12 that workflow items need no
-#: merge confirmation (`PL-KPM2`): what is left is the simulator's.
+#: waits for the session's `OWNER_READ` record rather than for the owner, and
+#: only a record saying `READ_NEEDED` waits on them (`PL-DKBG`). A directory
+#: holds what is under it, and a file is itself. `TESTS` is the simulator's,
+#: but for a test of the tooling (`tests_the_tooling`), which arms on green
+#: since the owner's answer of 2026-10-05. `src/anesthesia_sim/data/` lies
+#: under `src/` and is kept for the reader who looks for it by name.
+#: `.github/workflows/`, `.claude/hooks/` and docket's lexer, which joined on
+#: the owner's answers of 2026-10-03 and 2026-10-10, left it on his rule of
+#: 2026-10-12 that workflow items need no merge confirmation (`PL-KPM2`): what
+#: is left is the simulator's.
 READ_PATHS = ("src/", TESTS, "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
 
 #: The simulator's paths as the answers name them.
@@ -433,18 +487,17 @@ def tests_the_tooling(path: str, sides: Iterable[str]) -> bool:
 
 
 def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
-    """Whether a change to `path` waits on a read: a simulator path, or the gate.
+    """Whether a change to `path` waits on a read: a simulator path.
 
-    A simulator path waits for the session's `OWNER_READ` record, and the gate
-    for the owner (`PL-DKBG`); `arm` tells the two apart.
+    It waits for the session's `OWNER_READ` record (`PL-DKBG`). `GATE` does
+    not wait by its path since 2026-10-19: a change to it waits only when it
+    edits a test in `PINS`, which `arm` reads apart (`PL-9JHM`).
 
     `tooling` is the paths under `TESTS` that `tests_the_tooling` read as
     tests of the tooling, on both sides of the change, which arm on green. A
     name alone cannot say so, so a path under `TESTS` nobody read waits, and
     `tooling` clears nothing outside `TESTS`.
     """
-    if path == GATE:
-        return True
     if path in tooling and path.startswith(TESTS):
         return False
     return any(
@@ -455,10 +508,10 @@ def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
 def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     """Whether a change to `path` may merge on green CI without a recorded judgment.
 
-    A path this answers no to waits for the session's `OWNER_READ` record, or,
-    for `GATE`, for the owner (project owner, 2026-10-17, `PL-DKBG`).
+    A path this answers no to waits for the session's `OWNER_READ` record
+    (project owner, 2026-10-17, `PL-DKBG`).
 
-    Everything but the owner's read list and `GATE` may (the Projects trial's
+    Everything but the owner's read list may (the Projects trial's
     instructions, 2026-10-03, kind unrecorded, over holding every path outside
     the store, the tooling and the records, `PL-SQTR`; built by `PL-KKHD`),
     and so may a test of the tooling under `TESTS`, named in `tooling`
@@ -477,8 +530,8 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     `PL-0JGZ`), because the roadmap is the milestone map the owner sets
     direction in. The owner's read list leaves both off, so they arm now;
     `PL-KKHD` records the reopening. The rule is spelt here, in the one
-    module the gate holds, rather than beside `in_queue`, so that widening
-    what arms still takes an edit the gate holds (2026-09-26, ratified, over
+    module the gate is, rather than beside `in_queue`, so that widening what
+    arms takes an edit to the gate and to its pinned tests (2026-09-26, ratified, over
     two named predicates in `claims`, `PL-0JGZ`), as `RECORDS` is kept here
     for `PL-F6MM`, and the import rule for `PL-552M`.
     """
@@ -594,14 +647,73 @@ def parse_owner_read(value: str) -> tuple[bool, str] | None:
 
 
 @dataclass(frozen=True)
+class OwnerAsk:
+    """What a hold for the owner's read asks him, from a session's `OWNER_ASK` record.
+
+    `commit` carries the trailer, and `line` is the ask's opening line as
+    `parse_owner_ask` renders it.
+    """
+
+    commit: str
+    line: str
+
+
+def parse_owner_ask(value: str) -> tuple[str, str]:
+    """`(line, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
+
+    A decision needs a question ending in "?", at least two options that each
+    say what they change, distinct labels, and a recommendation naming one of
+    them with its reason. A risk review needs its three fields in order, each
+    with a value. Whether a question's answer is obvious is judgment, so the
+    printed instructions say it and this does not try.
+    """
+    fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
+    named = [field.partition(" -") for field in fields]
+    if [word.strip().lower() for word, _, _ in named] == list(ASK_RISK):
+        if not all(dash and said.strip() for _, dash, said in named):
+            return "", "a risk review needs a value after each of risk, checked and look"
+        risk, checked, look = (said.strip().rstrip(".") for _, _, said in named)
+        return f"Risk to review: {risk}. Checked: {checked}. Please look at: {look}.", ""
+    question, options = fields[0], fields[1:-1]
+    recommend = fields[-1] if len(fields) > 1 else ""
+    if not question.endswith("?"):
+        return "", (
+            "it is neither a risk review nor a decision whose first field is a question, and "
+            f"{ASK_SEPARATOR.strip()!r} with a space either side separates its fields"
+        )
+    word, _, rest = recommend.partition(" ")
+    pick, dash, why = rest.partition(" - ")
+    if word.lower() != ASK_RECOMMEND or not dash or not pick.strip() or not why.strip():
+        return "", f"its last field is not '{ASK_RECOMMEND} <option> - <why>'"
+    if len(options) < 2:
+        return "", "a decision needs at least two options"
+    pairs = [option.partition(": ") for option in options]
+    if not all(label.strip() and colon and change.strip() for label, colon, change in pairs):
+        return "", "each option needs '<option>: <what it changes>'"
+    labels = [label.strip().lower() for label, _, _ in pairs]
+    if len(set(labels)) < len(labels):
+        return "", "two options share a label"
+    if pick.strip().lower() not in labels:
+        return "", f"it recommends {pick.strip()!r}, which is not one of its options"
+    shown = " ".join(
+        f'Option "{label.strip()}": {change.strip().rstrip(".")}.' for label, _, change in pairs
+    )
+    return f'{question} {shown} I recommend "{pick.strip()}": {why.strip().rstrip(".")}.', ""
+
+
+@dataclass(frozen=True)
 class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
     `claims` are the unreleased claims bound to this branch, `read` the
     simulator paths a merge would land, `record` the newest `OWNER_READ`
-    record that covers them (or, with none, the branch), `outside` the paths it would
+    record that covers them (or, with none, the branch), `ask` the newest
+    `OWNER_ASK` record made since the branch's newest change outside the store,
+    and `misasked` why such a record did not parse, `outside` the paths it would
     land outside the store, the tooling and the records that arm all the same
-    and are named, `gate` whether it would change this module, `pinned` the
+    and are named, `gate` whether it would change this module, `moved`
+    whether it brings the module in at a path the base does not hold it at,
+    `pinned` the
     existing tests in `PINS` pinning its answers that it would change or
     delete, `switched_off` when the owner switched its auto-merge off, and
     `behind`
@@ -619,8 +731,11 @@ class Verdict:
     claims: tuple[Hold, ...] = ()
     read: tuple[str, ...] = ()
     record: OwnerRead | None = None
+    ask: OwnerAsk | None = None
+    misasked: str = ""
     outside: tuple[str, ...] = ()
     gate: bool = False
+    moved: bool = False
     pinned: tuple[str, ...] = ()
     switched_off: str = ""
     behind: int = 0
@@ -641,10 +756,13 @@ class Verdict:
     def needs_owner(self) -> bool:
         """Whether the pull request waits on the owner's read.
 
-        It does for a change to the gate or to a test pinning its answers, and
-        for a record saying needed.
+        It does for a change to a test pinning the gate's answers, for a move
+        of the gate, and for a record saying needed. Any other change to the
+        gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
+        because `PINS` is found from where the module is, so a module moved to
+        another depth reads a test file that does not exist and finds no pin.
         """
-        return self.gate or bool(self.pinned) or (self.record is not None and self.record.needed)
+        return self.moved or bool(self.pinned) or (self.record is not None and self.record.needed)
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -676,6 +794,12 @@ class Verdict:
                     "in the pull request body, with the paths:"
                 )
                 said.append(f"  {self._shown(self.read)}")
+            if self.gate:
+                said.append(
+                    f"  It changes {GATE}, the gate itself, and changes or deletes no test in "
+                    f"{PINS} pinning its answers, so it arms on green with the rest of the "
+                    "tooling: name it in the report."
+                )
             if self.outside:
                 count = len(self.outside)
                 noun = "path" if count == 1 else "paths"
@@ -745,7 +869,12 @@ class Verdict:
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
         if read and not self.claims:
-            said.append(READ_ASK)
+            if self.misasked:
+                said.append(f"  {self.misasked}")
+            if self.ask is None:
+                said.append(READ_ASK)
+            else:
+                said.extend((ASK_LINE, f"  {self.ask.line}"))
         return (*said, *notes)
 
     @property
@@ -786,13 +915,17 @@ class Verdict:
                 f"auto-merge was switched off at {self.switched_off}, after it was armed, and "
                 "no commit since records this session doing it"
             )
-        if self.gate:
-            reasons.append(f"it changes {GATE}, the gate itself")
+        if self.moved:
+            reasons.append(
+                f"it brings in {GATE}, the gate itself, at a path the base does not hold it at, "
+                f"so {PINS} may not be the file that pins its answers"
+            )
         if self.pinned:
             count = len(self.pinned)
             tests = "test" if count == 1 else "tests"
+            gate = f"it changes {GATE}, the gate itself, and " if self.gate else "it "
             reasons.append(
-                f"it changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
+                f"{gate}changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
                 f"{self._shown(self.pinned)}"
             )
         return reasons
@@ -917,14 +1050,21 @@ def arm(
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
     on_list: tuple[str, ...] = ()
     outside: tuple[str, ...] = ()
+    worked: tuple[str, ...] = ()
     gate = False
+    moved = False
     pinned: tuple[str, ...] = ()
     if answered(changed):
         paths = set(listed_paths(changed))
+        worked = tuple(sorted(path for path in paths if not path.startswith((prefix, RECORDS))))
         # The gate is reported apart, and asked for directly rather than read
         # back out of what `arms_on_green` holds.
         gate = GATE in paths
         rest = paths - {GATE}
+        if gate:
+            fork = run(["merge-base", base, "HEAD"], root).strip()
+            held = run(["ls-tree", "-z", "--name-only", fork, "--", GATE], root) if fork else ""
+            moved = held.rstrip("\0") != GATE
         tooling, unreadable = _tests_of_the_tooling(sorted(rest), base, root, run)
         unread.extend(unreadable)
         if PINS is not None and PINS in paths:
@@ -942,6 +1082,7 @@ def arm(
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
     record, misread = _owner_read(root, run, base, on_list)
     unread.extend(misread)
+    ask, misasked = _owner_ask(root, run, base, worked)
 
     read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
     if not read.known:
@@ -976,8 +1117,11 @@ def arm(
         claims=claims,
         read=on_list,
         record=record,
+        ask=ask,
+        misasked=misasked,
         outside=outside,
         gate=gate,
+        moved=moved,
         pinned=pinned,
         switched_off=switched_off,
         behind=behind,
@@ -998,6 +1142,7 @@ def arm(
         read=on_list,
         record=record,
         outside=outside,
+        gate=gate,
     )
 
 
@@ -1028,6 +1173,66 @@ def _switched_off_here(root: Path, run: Runner, base: str, at: str) -> tuple[boo
     return False, ()
 
 
+def _since_change(
+    root: Path, run: Runner, base: str, paths: Sequence[str], *, merges: bool = True
+) -> list[str] | None:
+    """The revisions `git log` walks for a record made since the newest commit changing `paths`.
+
+    With no `paths`, every commit of the branch. `None` when no commit of the
+    branch changed them, so no record can be for them. Without `merges`, a
+    merge does not count as a change, so bringing the base in, which the
+    owner's *Update branch* does, leaves a record standing.
+    """
+    span = ["HEAD", f"^{base}"]
+    if paths:
+        skip = [] if merges else ["--no-merges"]
+        newest = run(
+            ["log", "-1", *skip, "--format=%H", f"{base}..HEAD", "--", *paths], root
+        ).strip()
+        if not newest:
+            return None
+        parents = run(["rev-parse", f"{newest}^@"], root).split()
+        span.extend(f"^{parent}" for parent in parents)
+    return span
+
+
+def _newest_trailer(root: Path, run: Runner, span: Sequence[str], key: str) -> tuple[str, str]:
+    """The newest commit in `span` carrying the trailer `key`, and its last value.
+
+    `("", "")` where no commit in `span` carries it.
+    """
+    fmt = f"--format=%H%x1f%(trailers:key={key},valueonly,unfold,separator=%x1e)"
+    for line in split_lines(run(["log", fmt, *span, "--"], root)):
+        commit, _, values = line.partition("\x1f")
+        said = [value for value in values.split("\x1e") if value.strip()]
+        if said:
+            return commit, said[-1].strip()
+    return "", ""
+
+
+def _owner_ask(
+    root: Path, run: Runner, base: str, paths: Sequence[str]
+) -> tuple[OwnerAsk | None, str]:
+    """The newest `OWNER_ASK` record since the newest change to `paths`, or why it did not parse.
+
+    `paths` are what the branch changes outside the store and the records, so
+    an ask made before a later change to the work does not cover it, while
+    the closure, `record` and claim commits that follow the work do not
+    disturb it, and nor does a merge of the base: the ask has already gone to
+    the owner by then, and a merge brings in no work of the branch's.
+    """
+    span = _since_change(root, run, base, paths, merges=False)
+    if span is None:
+        return None, ""
+    commit, value = _newest_trailer(root, run, span, OWNER_ASK)
+    if not commit:
+        return None, ""
+    line, why = parse_owner_ask(value)
+    if why:
+        return None, f"The {OWNER_ASK} record on {commit[:12]} was not read: {why}."
+    return OwnerAsk(commit=commit, line=line), ""
+
+
 def _owner_read(
     root: Path, run: Runner, base: str, paths: Sequence[str]
 ) -> tuple[OwnerRead | None, tuple[str, ...]]:
@@ -1041,29 +1246,20 @@ def _owner_read(
     and not read, so it covers nothing: a simulator change it was meant for
     still holds, and anything else is `unknown` rather than armed.
     """
-    span = ["HEAD", f"^{base}"]
-    if paths:
-        newest = run(["log", "-1", "--format=%H", f"{base}..HEAD", "--", *paths], root).strip()
-        if not newest:
-            return None, ()
-        parents = run(["rev-parse", f"{newest}^@"], root).split()
-        span.extend(f"^{parent}" for parent in parents)
-    fmt = f"--format=%H%x1f%(trailers:key={OWNER_READ},valueonly,unfold,separator=%x1e)"
-    listed = run(["log", fmt, *span, "--"], root)
-    for line in split_lines(listed):
-        commit, _, values = line.partition("\x1f")
-        said = [value for value in values.split("\x1e") if value.strip()]
-        if not said:
-            continue
-        parsed = parse_owner_read(said[-1])
-        if parsed is None:
-            return None, (
-                f"the {OWNER_READ} record on {commit[:12]} is neither "
-                f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
-                f"{said[-1].strip()}",
-            )
-        return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
-    return None, ()
+    span = _since_change(root, run, base, paths)
+    if span is None:
+        return None, ()
+    commit, value = _newest_trailer(root, run, span, OWNER_READ)
+    if not commit:
+        return None, ()
+    parsed = parse_owner_read(value)
+    if parsed is None:
+        return None, (
+            f"the {OWNER_READ} record on {commit[:12]} is neither "
+            f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
+            f"{value}",
+        )
+    return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
 
 
 def _pins_changed(base: str, root: Path, run: Runner) -> tuple[tuple[str, ...], tuple[str, ...]]:

@@ -11028,11 +11028,11 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "README.md",
-        ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
         assert not arming.arms_on_green(path), path
     for path in (
+        ARM_GATE,
         "subprojects/docket/tests/test_cli.py",
         "subprojects/docket/src/docket/shell.py",
         "docs/MODEL.md.bak",
@@ -11208,55 +11208,79 @@ def test_a_test_of_the_tooling_is_a_collected_test_importing_no_simulator_on_eit
     assert arming.waits_on_read(test)
     assert not arming.waits_on_read(test, {test})
     assert arming.arms_on_green(test, {test})
-    for path in ("src/anesthesia_sim/core/uptake.py", ARM_GATE):
+    for path in ("src/anesthesia_sim/core/uptake.py",):
         assert arming.waits_on_read(path, {path}), path
 
 
-@pytest.mark.parametrize("change", ["edit", "move"])
-def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_tooling(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
-) -> None:
-    """The gate cannot loosen itself, by an edit or by moving where the exception points.
-
-    The module is on the base, so a move reads as its deletion beside the new
-    file, both under the tooling: read with rename detection, the move would
-    print as the new path alone and arm.
-    """
-    root, git = _arm_repo(tmp_path)
+def _arm_gate_on_base(git: Callable[..., str], root: Path) -> None:
+    """Put the gate on `main`, publish it, and bring it into `ARM_BRANCH`, as the tree holds it."""
     git("checkout", "-q", "main")
     _put(git, root, ARM_GATE, "2026-08-01T12:00:00+00:00")
     git("push", "-q", "origin", "main")
     git("checkout", "-q", ARM_BRANCH)
     git("merge", "-q", "--ff-only", "main")
+
+
+def test_arm_holds_the_gate_brought_in_at_a_path_the_base_does_not_hold(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate moved to another depth would read a pinned-test file that does not exist.
+
+    `PINS` is found from where the module is, so a move that also edits a
+    pinned test would find no pin and arm. In a fixture the running module
+    never moves, so the gate brought in new on the branch stands for it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, ARM_GATE, ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it brings in {ARM_GATE}, the gate itself, at a path the base "
+        "does not hold it at"
+    )
+    assert out.splitlines()[0].endswith("so its pull request waits on the owner's read")
+
+
+@pytest.mark.parametrize("change", ["edit", "move"])
+def test_arm_arms_a_change_to_arming_py_that_edits_no_pinned_test_and_names_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
+) -> None:
+    """A change to the gate that leaves its pinned answers alone arms, and is named (`PL-9JHM`).
+
+    Until 2026-10-19 every change to it held for the owner's read. The module
+    is on the base, so a move reads as its deletion beside the new file, and
+    the deletion is what names it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _arm_gate_on_base(git, root)
     if change == "edit":
         _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
     else:
         git("mv", ARM_GATE, "subprojects/docket/src/docket/gating.py")
         git("commit", "-qm", "move the gate", when=ARM_T0)
 
-    assert _arm(root) == 1
+    assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
-        "so its pull request waits on the owner's read\n"
-    )
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
+    assert f"  It changes {ARM_GATE}, the gate itself, and changes or deletes no test" in out
     assert "simulator path" not in out
 
 
-def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
+def test_arm_holds_a_gate_change_beside_a_simulator_path_for_the_simulator_path_alone(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Both reasons are said, and the listed paths are the ones on the list, not the gate."""
+    """The simulator path holds the branch, and the gate beside it adds no reason of its own."""
     root, git = _arm_repo(tmp_path)
-    _put(git, root, ARM_GATE)
+    _arm_gate_on_base(git, root)
+    _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
     _put(git, root, "src/anesthesia_sim/core/uptake.py")
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
         f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
-        "commit since its newest change there says whether the owner must read it and it "
-        f"changes {ARM_GATE}, the gate itself, so its pull request waits on the owner's read\n"
+        "commit since its newest change there says whether the owner must read it\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
 
@@ -11372,21 +11396,24 @@ def test_an_owner_read_record_in_neither_form_is_said_and_covers_nothing(
     assert "so it was not read: not needed" in out
 
 
-def test_the_gate_waits_on_the_owner_whatever_the_owner_read_record_says(
+def test_a_change_to_the_gate_waits_on_the_owner_only_as_any_change_does(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A change to `arming.py` changes what merges without the owner, so it cannot judge itself."""
+    """A change to `arming.py` arms, and a record saying needed still holds it (`PL-9JHM`)."""
     root, git = _arm_repo(tmp_path)
-    _put(git, root, ARM_GATE, "2026-09-01T12:00:00+00:00")
+    _arm_gate_on_base(git, root)
+    _commit_file(git, root, ARM_GATE, "X = 2\n", "2026-09-01T12:00:00+00:00")
     _record_read(git, "not needed - housekeeping", "2026-09-01T12:01:00+00:00")
+
+    assert _arm(root) == 0
+    assert "the gate itself" in capsys.readouterr().out
+
+    _record_read(git, "needed - it changes what arms", "2026-09-01T12:02:00+00:00")
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
-    assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, so its pull request "
-        "waits on the owner's read\n"
-    )
-    assert arming.READ_ASK in out
+    assert out.startswith(f"hold - {ARM_BRANCH}: the Owner-read record on ")
+    assert arming.READ_ASK in out.splitlines()
 
 
 @pytest.mark.parametrize(
@@ -11414,7 +11441,8 @@ def test_a_read_hold_asks_once_no_claim_holds_the_branch(
     """
     root, git = _arm_repo(tmp_path)
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
-    _put(git, root, ARM_GATE, "2026-09-01T12:00:30+00:00")
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:20+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:30+00:00")
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
@@ -11431,36 +11459,194 @@ def test_a_read_hold_asks_once_no_claim_holds_the_branch(
 
 
 def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> None:
-    """The ask carries the owner's two reasons to be asked, and never an obvious call.
+    """With no recorded ask, the hold sends the owner nothing and says how to record one.
 
     Worded as what the ask opens with, it was followed to the letter: three
     sessions closed on a bare "read #N" (`PL-9KHK`). On `#1516` a measured
     figure and an option the model's run length ruled out were put as points
-    to judge, and the owner asked what the trade-off was (`PL-DKBG`).
+    to judge, and the owner asked what the trade-off was (`PL-DKBG`). Prose
+    alone did not stop a bare read, so the ask is a record now, and a hold
+    with nothing in it is judged `not needed` rather than asked (`PL-9JHM`).
     """
     parts = (
-        "the closing block's own line",
-        "never as 'read #N'",
-        "every later reply that still waits on it",
-        "short enough to take in at a glance",
-        "For a real decision: the question",
-        "each option with what it costs, and the recommendation",
+        "Send the owner nothing about this pull request yet",
+        "only with something to decide or to review",
+        "A question whose answer is obvious is wrong",
+        "#1516",
+        "For a decision, with at least two options",
+        "what it changes for the owner or a learner",
+        "recommend <option> - <why>",
         "For a high-risk change",
-        "in terms a clinician recognises",
-        "the case for it and its risks",
-        "what needs no review",
-        "design.md step 4 makes it the owner's",
-        "the merge word alone",
+        "risk - <what could go wrong, for whom>",
+        "nothing needs the owner",
+        "Owner-read: not needed - <why>",
+        "merges on green",
     )
     places = [arming.READ_ASK.index(part) for part in parts]
 
     assert places == sorted(places)
+    assert "never as 'read #N'" in arming.ASK_LINE
+    assert "every later reply that still waits on it" in arming.ASK_LINE
+
+
+def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
+    """A commit carrying the session's `Owner-ask` record, beside its attribution line."""
+    git(
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        f"PL-B1B1: say what to ask\n\nOwner-ask: {value}\n"
+        "Co-authored-by: Claude <noreply@anthropic.com>",
+        when=when,
+    )
+
+
+ARM_DECISION = (
+    "Which view opens first? | Chooser: the learner picks a view each run | "
+    "Last used: it opens where they left off | recommend Chooser - it names every view"
+)
+
+
+def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A hold for the owner's read prints the recorded ask, and with none sends nothing.
+
+    The owner was sent a bare read again on 2026-10-18, after two prose fixes
+    (`PL-9KHK`, `PL-DKBG`), so the ask is a record `arm` parses (`PL-9JHM`).
+    An ask made before a later change to the work does not cover it, and the
+    closure that follows the work does not disturb it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert arming.READ_ASK in out.splitlines()
+    assert arming.ASK_LINE not in out
+
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK not in lines
+    at = lines.index(arming.ASK_LINE)
+    assert lines[at + 1] == (
+        '  Which view opens first? Option "Chooser": the learner picks a view each run. '
+        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
+        "every view."
+    )
+
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    assert arming.ASK_LINE in capsys.readouterr().out.splitlines()
+
+    _commit_file(git, root, "CLAUDE.md", "X = 2\n", "2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK in lines
+    assert arming.ASK_LINE not in lines
+
+    _record_ask(git, "none - held by rule", "2026-09-01T12:00:50+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.READ_ASK in lines
+    assert any(
+        line.startswith("  The Owner-ask record on ")
+        and line.endswith(
+            " was not read: it is "
+            "neither a risk review nor a decision whose first field is a question, and '|' "
+            "with a space either side separates its fields."
+        )
+        for line in lines
+    )
+
+
+def test_arm_keeps_a_recorded_ask_through_a_merge_of_the_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Bringing the base in changes no work, so the ask the owner already has still stands.
+
+    A merge in which both sides changed one file differs from both parents
+    there, so `git log` names it as that file's newest change.
+    """
+    root, git = _arm_repo(tmp_path)
+    shared = "docs/PL-D3D3-drafted.md"
+    text = (root / shared).read_text(encoding="utf-8")
+    _commit_file(git, root, shared, text + "branch\n", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+    git("checkout", "-q", "main")
+    _commit_file(git, root, shared, "main\n" + text, "2026-09-01T12:00:30+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--no-edit", "main", when="2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    lines = capsys.readouterr().out.splitlines()
+    assert arming.ASK_LINE in lines
+    assert arming.READ_ASK not in lines
+
+
+@pytest.mark.parametrize(
+    ("value", "line", "why"),
+    [
+        (
+            ARM_DECISION,
+            'Which view opens first? Option "Chooser": the learner picks a view each run. '
+            'Option "Last used": it opens where they left off. I recommend "Chooser": it '
+            "names every view.",
+            "",
+        ),
+        (
+            "Risk - a dose label could read mg for mcg | checked - the formatter tests pin "
+            "the unit. | look - the infusion panel's label",
+            "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests "
+            "pin the unit. Please look at: the infusion panel's label.",
+            "",
+        ),
+        (
+            "risk - x | checked -  | look - z",
+            "",
+            "a risk review needs a value after each of risk, checked and look",
+        ),
+        (
+            "none - held by rule",
+            "",
+            "it is neither a risk review nor a decision whose first field is a question, and "
+            "'|' with a space either side separates its fields",
+        ),
+        ("Merge it?", "", "its last field is not 'recommend <option> - <why>'"),
+        ("Q? | A: x | recommend A - y", "", "a decision needs at least two options"),
+        ("Q? | A: x | B | recommend A - y", "", "each option needs '<option>: <what it changes>'"),
+        ("Q? | A: x | a: y | recommend A - z", "", "two options share a label"),
+        (
+            "Q? | A: x | B: y | recommend C - z",
+            "",
+            "it recommends 'C', which is not one of its options",
+        ),
+        (
+            "Q? | A: x | B: y | recommend A",
+            "",
+            "its last field is not 'recommend <option> - <why>'",
+        ),
+    ],
+)
+def test_parse_owner_ask_takes_a_decision_or_a_risk_review(value: str, line: str, why: str) -> None:
+    assert arming.parse_owner_ask(value) == (line, why)
 
 
 def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
-    """A move of `arming.py` would leave the exception naming a file nothing reads.
+    """A move of `arming.py` would leave `GATE` naming a file nothing reads.
 
-    The moved module would then arm on green, which is the gate loosening itself.
+    Then neither the line naming a gate change nor the hold on a moved gate
+    would fire, and `PINS` would point at a file that may not exist.
     """
     root = Path(__file__).resolve().parents[3]
 
