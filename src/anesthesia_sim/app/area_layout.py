@@ -22,16 +22,38 @@ the model has it.
 children out from the model again whenever it is resized, so rounding to whole
 pixels cannot carry the layout away from the model over many resizes.
 
+**Every Area has a header, and the header holds the View chooser**
+(`PL-TH35` Q11, `PL-MS34`, `PL-50PZ`). The container draws the header, not
+the View, so every View gets the same one. It is one text row on the panel
+surface with a 1px rule beneath it. Its first control is the chooser: a flat
+menu button showing the Area's View by its registry title, whose menu lists
+every registered kind in registry order with the current one checked
+(`PL-RBXL`). Choosing an entry calls `LayoutModel.set_view` for that Area and
+draws the result. The menu reads the registry and not the Workspace, so every
+registered kind, the agent accounting among them, can be brought into any
+Area of any layout. That is what `docs/MODEL.md` means by reachable.
+
 **Each Area's View kind is looked up in the View registry.** An Area whose
 kind `app/view_registry.py` registers draws the widget the caller's
 `view_for` returns for it. An Area whose kind is not registered draws the
 failure notice in its place, and `view_for` is never asked for it
-(`PL-R1WQ`). The notice names the saved kind and says what became of it. It
-shows no value from any run, and the model keeps the kind, so the Area's
-neighbours draw as usual and a later save writes back what was read. The
-notice's look is `PL-DB5G`'s: a bold title in `WARNING` over a body in
-`INK`, on the panel surface, with no fill, border or icon. The caller builds
-each registered View until `PL-TH35`'s contract gives the registry a factory.
+(`PL-R1WQ`). The notice names the saved kind, says what became of it, and
+tells the reader to choose a View from the chooser above it. Where the View
+was renamed, the notice also offers a button that shows it under its new tag,
+since a renamed tag is never mapped silently (`PL-R1WQ` Q3). It shows no value
+from any run, and the model keeps the kind, so the Area's neighbours draw as
+usual and a later save writes back what was read. The notice's look is
+`PL-DB5G`'s: a bold title in `WARNING` over a body in `INK`, on the panel
+surface, with no fill, border or icon.
+
+**Until `PL-TH35` gives the registry a factory, the caller builds each View,
+and may not have one to give.** `view_for` returns None for a registered kind
+the caller cannot yet draw in an Area of its own, and that Area shows a notice
+saying so. The caller may also hand back a widget another Area already
+shows, where it draws only one of that View. A widget cannot sit in two
+places, so the second Area shows a notice instead and the first keeps the
+View. Both notices are `AreaNotice`s, so a reader meets one shape for every
+state in which an Area shows no View (`PL-DB5G`).
 
 **What is not here yet.** A minimum size for each View, and what an Area shows
 when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
@@ -51,14 +73,32 @@ from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QEvent, QRect, Qt, Signal
-from PySide6.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QResizeEvent
-from PySide6.QtWidgets import QFrame, QSplitter, QSplitterHandle, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor, QEnterEvent, QFont, QPainter, QPaintEvent, QResizeEvent
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QMenu,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
+    QSplitterHandle,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from anesthesia_sim.app.qt_widgets import styled_label
-from anesthesia_sim.app.stylesheets import panel_stylesheet
+from anesthesia_sim.app.stylesheets import (
+    foreground_stylesheet,
+    menu_stylesheet,
+    outlined_button_stylesheet,
+    panel_stylesheet,
+    view_chooser_stylesheet,
+)
 from anesthesia_sim.app.theme import (
     AREA_HANDLE_LINE_WIDTH,
     AREA_HANDLE_WIDTH,
+    GRIDLINE,
     INK,
     METRIC_NAME_SIZE,
     PANEL_PADDING,
@@ -68,17 +108,31 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_registry import (
     MISSING_VIEW_TITLE,
     REGISTERED,
+    RETIRED_TAGS,
+    SHOWN_ELSEWHERE_TITLE,
+    UNPLACED_VIEW_TITLE,
     RegisteredView,
+    RetiredTag,
     missing_view_text,
+    rename_offer_text,
+    shown_elsewhere_text,
+    unplaced_view_text,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused
 from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel
-from anesthesia_sim.layout.tree import Area, Node, Orientation, Split
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind
 
-__all__ = ["AreaLayout", "AreaNotice", "ViewFor"]
+__all__ = ["AreaFrame", "AreaLayout", "AreaNotice", "ViewChooser", "ViewFor"]
 
-type ViewFor = Callable[[Area], QWidget]
-"""What gives the adapter each Area's View: the widget to draw in that Area."""
+type ViewFor = Callable[[Area], QWidget | None]
+"""What gives the adapter each Area's View: the widget to draw in that Area.
+
+It returns None for a registered kind the caller cannot yet draw in an Area of
+its own, and the Area then shows a notice that says so.
+"""
+
+# The height of the rule under an Area's header.
+_HEADER_RULE_PX: Final = 1
 
 # A row lays its children out left to right, which Qt calls horizontal, and a
 # column stacks them, which Qt calls vertical (`layout/tree.py` says why the
@@ -100,10 +154,12 @@ class AreaLayout(QWidget):
     Args:
         model: The layout to draw.
         view_for: Gives the widget for each Area whose View kind is
-            registered.
+            registered, or None where it has none to give.
         parent: The Qt parent.
-        registered: The View kinds this build can draw. A test passes a
-            registry of its own.
+        registered: The View kinds this build can draw, in the order each
+            Area's chooser lists them. A test passes a registry of its own.
+        retired: The tags no View has any more, which the failure notice
+            reads. A test passes a table of its own.
 
     Raises:
         TypeError: `model` is not a `LayoutModel`.
@@ -119,16 +175,19 @@ class AreaLayout(QWidget):
         parent: QWidget | None = None,
         *,
         registered: Mapping[str, RegisteredView] = REGISTERED,
+        retired: Mapping[str, RetiredTag] = RETIRED_TAGS,
     ) -> None:
         super().__init__(parent)
         self._view_for = view_for
         self._registered = registered
+        self._retired = retired
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._model = _drawable(model)
         self._root: QWidget | None = None
         self._views: list[QWidget] = []
         self._notices: list[AreaNotice] = []
+        self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
         self._build()
@@ -138,6 +197,36 @@ class AreaLayout(QWidget):
         """The layout drawn now, after every drag the reader has made."""
 
         return self._model
+
+    def frame(self, area_id: AreaId) -> AreaFrame:
+        """The widget drawing the Area `area_id`: its header, and its View or notice under it.
+
+        Raises:
+            KeyError: the layout drawn now holds no Area `area_id`.
+        """
+
+        return self._frames[area_id]
+
+    def choose_view(self, area_id: AreaId, view: ViewKind) -> None:
+        """Show `view` in the Area `area_id`, as its chooser does when the reader picks it.
+
+        Choosing the kind the Area already shows changes nothing. Otherwise
+        the model's `set_view` gives the new layout, the widgets are built
+        from it, and `layout_changed` is emitted with it.
+
+        Raises:
+            TypeError: `area_id` is not an `AreaId`, or `view` not a `ViewKind`.
+            NotInLayout: the layout drawn now holds no Area `area_id`.
+        """
+
+        moved = self._model.set_view(area_id, view)
+
+        if moved == self._model:
+            return
+
+        self._model = moved
+        self._build()
+        self.layout_changed.emit(moved)
 
     def set_model(self, model: LayoutModel) -> None:
         """Draw `model` in place of the layout drawn now.
@@ -175,6 +264,7 @@ class AreaLayout(QWidget):
         previous_notices = self._notices
         self._views = []
         self._notices = []
+        self._frames = {}
         self._splitters = {}
         self._hovered = None
         root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
@@ -188,32 +278,25 @@ class AreaLayout(QWidget):
             notice.deleteLater()
 
         if previous_root is not None:
+            # The root is an Area's frame or a splitter, never a View, so it
+            # always goes; every View it held that is kept has moved already.
             self._column.removeWidget(previous_root)
-
-            if not any(previous_root is kept for kept in self._views):
-                previous_root.setParent(None)
-                previous_root.deleteLater()
+            previous_root.setParent(None)
+            previous_root.deleteLater()
 
         self._column.addWidget(root)
         self._root = root
         self._lay_out_all()
 
     def _widget_for(self, node: Node, path: tuple[int, ...]) -> QWidget:
-        """The widget drawing `node`: its View for an Area, a splitter for a split."""
+        """The widget drawing `node`: its frame for an Area, a splitter for a split."""
 
         if isinstance(node, Area):
-            if node.view not in self._registered:
-                notice = AreaNotice(
-                    MISSING_VIEW_TITLE, missing_view_text(node.view, self._registered)
-                )
-                self._notices.append(notice)
+            chooser = ViewChooser(node, self._registered, self.choose_view)
+            frame = AreaFrame(node.id, chooser, self._content_for(node))
+            self._frames[node.id] = frame
 
-                return notice
-
-            view = self._view_for(node)
-            self._views.append(view)
-
-            return view
+            return frame
 
         splitter = _AreaSplitter(self, path, _QT_ORIENTATION[node.orientation])
         self._splitters[path] = splitter
@@ -224,6 +307,45 @@ class AreaLayout(QWidget):
         splitter.splitterMoved.connect(partial(self._dragged, splitter))
 
         return splitter
+
+    def _content_for(self, area: Area) -> QWidget:
+        """What `area` shows under its header: its View, or the notice saying why not."""
+
+        if area.view not in self._registered:
+            offer = rename_offer_text(area.view, self._registered, self._retired)
+            notice = AreaNotice(
+                MISSING_VIEW_TITLE,
+                missing_view_text(area.view, self._registered, self._retired),
+                offer_label=offer,
+            )
+
+            if notice.offer_button is not None:
+                successor = self._retired[area.view].successor
+                assert successor is not None, "an offer is made only for a renamed tag"
+                notice.offer_button.clicked.connect(partial(self.choose_view, area.id, successor))
+
+            return self._notice(notice)
+
+        view = self._view_for(area)
+
+        if view is None:
+            return self._notice(
+                AreaNotice(UNPLACED_VIEW_TITLE, unplaced_view_text(area.view, self._registered))
+            )
+
+        if any(view is placed for placed in self._views):
+            return self._notice(
+                AreaNotice(SHOWN_ELSEWHERE_TITLE, shown_elsewhere_text(area.view, self._registered))
+            )
+
+        self._views.append(view)
+
+        return view
+
+    def _notice(self, notice: AreaNotice) -> AreaNotice:
+        self._notices.append(notice)
+
+        return notice
 
     def _lay_out_all(self) -> None:
         for splitter in self._splitters.values():
@@ -307,6 +429,111 @@ class AreaLayout(QWidget):
                     handle.set_lit(any(handle is member for member in lit))
 
 
+class ViewChooser(QToolButton):
+    """The first control of an Area's header: its View's title, and a menu of every View.
+
+    `PL-RBXL` decided it. It is a flat menu button rather than a combo box,
+    because this interface uses combo boxes for settings, and choosing a View
+    changes no run. It shows the Area's View by its registry title, or by the
+    saved tag where the registry does not hold it. Its menu lists every kind
+    in `registered`, in registry order, by title, with the current kind
+    checked, and nothing marks the kinds that must stay reachable: the
+    registry keeps them, so the menu needs no warning. Choosing an entry
+    calls `choose`. The menu opens on a click, or on Space with the keyboard
+    focus, and the button is in the tab order.
+
+    Args:
+        area: The Area whose header holds this chooser.
+        registered: The View kinds the menu lists.
+        choose: Called with the Area's id and the kind the reader chose.
+    """
+
+    def __init__(
+        self,
+        area: Area,
+        registered: Mapping[str, RegisteredView],
+        choose: Callable[[AreaId, ViewKind], None],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("viewChooser")
+        current = registered.get(area.view)
+        self.setText(area.view if current is None else current.title)
+        self.setAccessibleDescription("Choose the View this Area shows")
+        self.setStyleSheet(view_chooser_stylesheet())
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        font = QFont(self.font())
+        font.setPixelSize(METRIC_NAME_SIZE)
+        self.setFont(font)
+
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_stylesheet())
+
+        for kind, entry in registered.items():
+            action = menu.addAction(entry.title)
+            action.setCheckable(True)
+            action.setChecked(kind == area.view)
+            action.triggered.connect(partial(choose, area.id, ViewKind(kind)))
+
+        self.setMenu(menu)
+
+
+class AreaFrame(QFrame):
+    """One Area as drawn: its header, a rule, and its View or notice filling the rest.
+
+    `PL-MS34` decided the header. It is one text row, as tall as the chooser
+    in it, on the panel surface, with a 1px `GRIDLINE` rule under it. The
+    chooser is its first control and a stretch follows it. The run's name and
+    the Area menu are later items' (`PL-7Z84`, `PL-M352`). The header never
+    gets shorter than its row: an Area too short for it is a refused size,
+    which is `PL-K285`'s.
+
+    Attributes:
+        area_id: The Area this frame draws.
+        header: The header row.
+        chooser: The View chooser in the header.
+        content: The View or the notice under the header.
+    """
+
+    def __init__(
+        self, area_id: AreaId, chooser: ViewChooser, content: QWidget, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.area_id = area_id
+        self.chooser = chooser
+        self.content = content
+
+        self.header = QWidget()
+        self.header.setObjectName("areaHeader")
+        self.header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.header.setStyleSheet(panel_stylesheet(self.header.objectName()))
+        # The header asks for no width: what an Area needs is its View's
+        # minimum, which is `PL-K285`'s, so a narrow Area clips the title
+        # rather than being held wider than its View needs.
+        self.header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        row = QHBoxLayout(self.header)
+        row.setContentsMargins(PANEL_PADDING // 2, 0, PANEL_PADDING // 2, 0)
+        row.addWidget(chooser)
+        row.addStretch(1)
+
+        rule = QFrame()
+        rule.setFrameShape(QFrame.Shape.HLine)
+        rule.setFixedHeight(_HEADER_RULE_PX)
+        rule.setStyleSheet(foreground_stylesheet(GRIDLINE))
+
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(0)
+        column.addWidget(self.header)
+        column.addWidget(rule)
+        column.addWidget(content, 1)
+        # A View handed back unparented by an earlier layout was hidden when
+        # it lost its parent, and a layout does not show it again by itself.
+        content.show()
+
+
 class AreaNotice(QFrame):
     """What an Area shows in place of a View it cannot draw: a title and a body, and nothing else.
 
@@ -317,14 +544,32 @@ class AreaNotice(QFrame):
     at the top left of the panel surface, inset by `PANEL_PADDING`. The notice
     has no fill colour of its own, no border and no icon, and it never shows a
     value from a run, since a plausible number in a failure state could be read
-    as a View's. An unknown View kind is the one state built so far.
+    as a View's. Three states are built so far: an unknown View kind, a
+    registered View the caller cannot yet put in an Area, and a View another
+    Area already shows.
+
+    Args:
+        title: The first line.
+        body: What happened and what to do.
+        parent: The Qt parent.
+        offer_label: The label of a button under the body that puts it right,
+            such as showing a renamed View under its new tag, or None for no
+            button.
 
     Attributes:
         title_label: The title.
         body_label: The body.
+        offer_button: The button `offer_label` names, or None.
     """
 
-    def __init__(self, title: str, body: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        title: str,
+        body: str,
+        parent: QWidget | None = None,
+        *,
+        offer_label: str | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("areaNotice")
         self.setStyleSheet(panel_stylesheet(self.objectName()))
@@ -336,6 +581,13 @@ class AreaNotice(QFrame):
         column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
         column.addWidget(self.title_label)
         column.addWidget(self.body_label)
+        self.offer_button: QPushButton | None = None
+
+        if offer_label is not None:
+            self.offer_button = QPushButton(offer_label)
+            self.offer_button.setStyleSheet(outlined_button_stylesheet())
+            column.addWidget(self.offer_button, 0, Qt.AlignmentFlag.AlignLeft)
+
         column.addStretch(1)
 
 

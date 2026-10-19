@@ -539,7 +539,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the readout heading line of each run, which `RunView` places on the "
         "page surface above its readout cards: the substance the run "
         "administers (`_compartment_substance_text`) and its delivered "
-        "concentration (`_delivered_text`, PL-NWTM)",
+        "concentration (`_delivered_text`, PL-NWTM), and the View chooser's "
+        "title under the pointer and while its menu is open, when the chooser "
+        "is filled in BACKGROUND (`view_chooser_stylesheet`, PL-RBXL Q1)",
     ),
     Requirement(
         "INK",
@@ -555,7 +557,12 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "legend label beside a swatch (`TraceLegend` for the concentration "
         "chart's three rows, `WashInLegend` for the wash-in plot's), and the "
         "body of the notice an Area shows in place of a View it cannot draw "
-        "(`AreaNotice`, PL-DB5G, PL-R1WQ). Also the "
+        "(`AreaNotice`, PL-DB5G, PL-R1WQ), with the label and edge of the button "
+        "it offers for a renamed View. Also the View chooser's title at rest on "
+        "the Area header's PANEL surface (`ViewChooser`, `AreaFrame`, PL-RBXL, "
+        "PL-MS34), the 1px edge it carries with the keyboard focus "
+        "(`view_chooser_stylesheet`), and every entry of the menu it opens "
+        "(`menu_stylesheet`). Also the "
         "six compartment checkboxes that show and hide the chart's traces "
         "(`TraceLegend`), whose label is INK text while that trace is drawn and "
         "MUTED while it is hidden - `_on_toggled` is the one writer of that. "
@@ -649,7 +656,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`_playback_rate_text`), which shares the surface and the size of the "
         "MAC multiples beside it (PL-SN2C), and the border of the chart's "
         "time base selector (`TimeBaseSelector`), a user-interface component "
-        "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
+        "needing only SC 1.4.11's 3:1, and the edge of the View chooser's menu "
+        "(`menu_stylesheet`), which bounds a PANEL menu drawn over a PANEL "
+        "Area. Also the gloss under a setting's name "
         "in the controls row (`ParameterSlider`, PL-71CF), which is the "
         "readout gloss one panel row up: the same colour on the same surface "
         "at the same size, so it too adds no pair. Also the label of a "
@@ -751,7 +760,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "selected row of either list in the bookmark editor and of the list a "
         "selector opens, declared as palette HighlightedText on Highlight by "
         "`declare_interface_colours` and as `selection-color` on "
-        "`selection-background-color` by `popup_stylesheet`. The selection is "
+        "`selection-background-color` by `popup_stylesheet`, and the entry under "
+        "the pointer or the keyboard in the View chooser's menu "
+        "(`menu_stylesheet`, PL-RBXL Q2). The selection is "
         'what "Remove selected" acts on, so which row is selected is a claim a '
         "reader acts on rather than decoration (PL-RKRY, PL-0NVN). "
         "`declare_application_colours` writes the pair on the application too, so a "
@@ -944,13 +955,13 @@ KNOWN_SHORTFALLS: dict[tuple[str, str], Shortfall] = {}
 #: required and exempt at once: the two tables answer one question about one
 #: pair and must not disagree.
 #:
-#: **`GRIDLINE` is recorded as exempt in all four things it draws, and not
+#: **`GRIDLINE` is recorded as exempt in every thing it draws, and not
 #: darkened** (project owner, 2026-09-27, ratified, over darkening the grey to
 #: 3:1; PL-HKTB). It measures 1.31:1 on `PANEL`, far under the 3:1 a graphical
 #: object needs, and until this table it carried no requirement and no record
 #: `make check` could report - the question had been argued in `app/theme.py`'s
 #: comment, which also misread the criterion's line-graph example as exempting
-#: gridlines outright. Each of the four uses falls under a carve-out the
+#: gridlines outright. Each use falls under a carve-out the
 #: criterion states in its own words, given per use below. Darkening was
 #: refused on the chart's hierarchy rather than on the criterion: a ruling at
 #: 3:1 would be 87% as dark as the lightest trace (`MUSCLE_COLOR`, 3.43:1) and
@@ -1008,6 +1019,17 @@ EXEMPT: dict[str, tuple[Exemption, ...]] = {
             "rather than the ruling's, because a rule separating two regions of content "
             "is structure a reader uses where a gridline is not, and the case had to be "
             "made for it separately - PL-HKTB's brief was right that the two may part",
+        ),
+        Exemption(
+            "PANEL",
+            "the rule under each Area's header",
+            "not required for understanding - the header's controls carry the boundary",
+            "the 1px rule `AreaFrame` draws between an Area's header and its View "
+            "(PL-MS34 Q3, which called it decorative). The header holds the View "
+            "chooser, whose title is INK text, and the View under it opens with its "
+            "own heading or panel, so the boundary the rule marks is carried by text "
+            "on both sides and the criterion's own test is passed with the rule "
+            "invisible. Joined the table with PL-50PZ, which built the header",
         ),
         Exemption(
             "PANEL",

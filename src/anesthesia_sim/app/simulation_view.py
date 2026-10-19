@@ -135,7 +135,7 @@ from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 
 #: The shares of the window's width the chart panel and the sidebar take
 #: (`PL-W9P6`). The chart panel still holds the wash-in plot, the marks and the
@@ -204,6 +204,52 @@ def _within(widget: QWidget, ancestor: QWidget) -> bool:
         current = current.parentWidget()
 
     return False
+
+
+@dataclass(frozen=True, slots=True)
+class InterfaceText:
+    """One string the dashboard holds, and whether a reader can see it now (`PL-904Y`)."""
+
+    text: str
+    visible: bool
+
+
+def _seen_by_reader(widget: QWidget) -> bool:
+    """Whether a reader can see `widget` now, scrolling aside.
+
+    The widget and every widget it sits inside are shown, its window is shown
+    and not minimized, and it has an area to draw in. A widget scrolled out
+    of view still counts as seen, because the reader reaches it by scrolling
+    without opening, choosing or switching anything. A View that no Area
+    draws has no shown window, so it is not seen.
+    """
+
+    return (
+        widget.isVisible()
+        and not widget.window().isMinimized()
+        and widget.width() > 0
+        and widget.height() > 0
+    )
+
+
+def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
+    """The strings `widget` draws itself, not those of the widgets inside it."""
+
+    seen = _seen_by_reader(widget)
+
+    if isinstance(widget, QDialog):
+        yield InterfaceText(widget.windowTitle(), seen)
+
+    if isinstance(widget, QLabel | QAbstractButton):
+        yield InterfaceText(widget.text(), seen)
+
+    if isinstance(widget, QAbstractButton) and widget.accessibleName():
+        yield InterfaceText(widget.accessibleName(), seen)
+    elif isinstance(widget, QComboBox):
+        current = widget.currentIndex()
+
+        for index in range(widget.count()):
+            yield InterfaceText(widget.itemText(index), seen and index == current)
 
 
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
@@ -621,24 +667,26 @@ class SimulationView(QWidget):
 
         return self._areas
 
-    def _area_view(self, area: Area) -> QWidget:
-        """The widget `area` draws: the chart panel, or the sidebar of accounting panels.
+    def _area_view(self, area: Area) -> QWidget | None:
+        """The widget `area` draws: the chart panel, the sidebar of accounting panels, or None.
 
-        Raises:
-            LookupError: `area` names a registered View kind the dashboard
-                does not draw as a View of its own yet, such as the wash-in
-                plot. `_DASHBOARD_LAYOUT` names only these two, so this is a
-                defect in that layout rather than a reader's file. A kind the
-                registry does not hold never reaches here: the adapter draws
-                its failure notice instead.
+        None is for a registered View kind the dashboard does not draw as a
+        View of its own yet, such as the wash-in plot, which a reader can
+        choose for any Area from its View chooser. The adapter shows a notice
+        in that Area instead (`PL-50PZ`). A kind the registry does not hold
+        never reaches here: the adapter draws its failure notice instead.
         """
 
-        views = {CONCENTRATION_CHART: self._chart_column, AGENT_ACCOUNTING: self._sidebar}
+        return self._views().get(area.view)
 
-        if area.view not in views:
-            raise LookupError(f"the dashboard draws no View of the kind {area.view!r}")
+    def _views(self) -> dict[ViewKind, QWidget]:
+        """Every View the dashboard builds, by the kind an Area names it with.
 
-        return views[area.view]
+        The adapter takes a View out of the window when no Area draws it,
+        so this is what reaches the Views the window no longer holds.
+        """
+
+        return {CONCENTRATION_CHART: self._chart_column, AGENT_ACCOUNTING: self._sidebar}
 
     def _build_chart_column(self) -> QWidget:
         """The chart panel: heading and time base, captions, legend, advisories, both plots.
@@ -1657,32 +1705,63 @@ class SimulationView(QWidget):
 
     # ------------------------------------------------------------- reading
 
-    def interface_strings(self) -> tuple[str, ...]:
-        """Every string a reader can see on the dashboard, hidden widgets included.
+    def interface_text(self) -> tuple[InterfaceText, ...]:
+        """Every string the dashboard holds, each marked with whether a reader can see it now.
 
-        Every label, every button and the name assistive technology
-        announces for it, every entry of every combo, every window title, and
-        the titles on both plots' axes - so a whole-interface test holds one
-        definition of "on screen" rather than each walking the tree its own
-        way. The hover readout is not standing text and is held by the chart's
-        own tests.
+        This is the one definition of "on screen" that the whole-interface
+        tests assert through (`PL-904Y`). It covers every label, every button
+        and the name assistive technology announces for it, every entry of
+        every combo, every window and dialog title, and the titles on both
+        plots' axes. The hover readout is not standing text, and the chart's
+        own tests cover it.
+
+        It walks the window and every View the dashboard has built, including
+        a View that no Area draws now. The adapter takes such a View out of
+        the window, so a walk of the window alone would lose its strings.
+        Then a test that something is never said would pass because the
+        string had moved out of reach. A dialog the dashboard opens is a
+        child of it, so the walk reaches it too. A window broken out of the
+        main one (`ROADMAP.md` planned-milestone item 34, not yet built) is
+        to be added to this walk when it is built.
+
+        A string is visible where `_seen_by_reader` holds for the widget
+        that draws it. Of a combo's entries, only the current one is visible:
+        the rest are a click away and not on screen. An Area's View that the
+        reader replaced, a widget hidden until its condition holds, and a
+        window that is minimized are all held and not visible.
         """
 
-        return tuple(self._interface_strings())
+        return tuple(self._interface_text())
 
-    def _interface_strings(self) -> Iterator[str]:
-        yield self.window().windowTitle()
-        yield from self._concentration_chart.axis_titles()
-        yield from self._wash_in_chart.axis_titles()
+    def interface_strings(self) -> tuple[str, ...]:
+        """Every string the dashboard holds, whether or not a reader can see it now.
 
-        for widget in (self, *self.findChildren(QWidget)):
-            if isinstance(widget, QDialog):
-                yield widget.windowTitle()
+        Use it to show that something is never said anywhere, since a hidden
+        string can be shown at any moment. To show that a reader is told
+        something, use `visible_strings`.
+        """
 
-            if isinstance(widget, QLabel | QAbstractButton):
-                yield widget.text()
+        return tuple(text.text for text in self._interface_text())
 
-            if isinstance(widget, QAbstractButton) and widget.accessibleName():
-                yield widget.accessibleName()
-            elif isinstance(widget, QComboBox):
-                yield from (widget.itemText(index) for index in range(widget.count()))
+    def visible_strings(self) -> tuple[str, ...]:
+        """The strings a reader can see now, in every window the dashboard owns.
+
+        Use it to show that a reader is told something. A string in a hidden
+        widget, or in a View that no Area draws, is not among them.
+        """
+
+        return tuple(text.text for text in self._interface_text() if text.visible)
+
+    def _interface_text(self) -> Iterator[InterfaceText]:
+        window = self.window()
+        yield InterfaceText(window.windowTitle(), _seen_by_reader(window))
+
+        for chart in (self._concentration_chart, self._wash_in_chart):
+            seen = _seen_by_reader(chart)
+            yield from (InterfaceText(title, seen) for title in chart.axis_titles())
+
+        held = [self, *(view for view in self._views().values() if not self.isAncestorOf(view))]
+
+        for root in held:
+            for widget in (root, *root.findChildren(QWidget)):
+                yield from _widget_text(widget)
