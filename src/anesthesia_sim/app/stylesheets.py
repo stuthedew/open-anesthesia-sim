@@ -157,11 +157,18 @@ def view_chooser_stylesheet() -> str:
 
 
 def menu_stylesheet() -> str:
-    """A menu a button opens: PANEL fill, INK entries, a PRIMARY selection, as a popup draws."""
+    """A menu a button opens: PANEL fill, INK entries, a PRIMARY selection, as a popup draws.
+
+    An entry that is unavailable, such as a join the layout cannot make, is
+    drawn in MUTED, so it reads as unavailable rather than as an entry that
+    does nothing (`PL-2KXB`). `tools/contrast_check.py` measures MUTED on
+    PANEL at the full text minimum.
+    """
 
     return (
         f"QMenu {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; }} "
-        f"QMenu::item:selected {{ background-color: {PRIMARY}; color: {PANEL}; }}"
+        f"QMenu::item:selected {{ background-color: {PRIMARY}; color: {PANEL}; }} "
+        f"QMenu::item:disabled {{ color: {MUTED}; }}"
     )
 
 
