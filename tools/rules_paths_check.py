@@ -132,6 +132,8 @@ LANE_ONLY = (
     "docs/dead-ends.md",
     "docs/pr-bodies",
     "docs/stress-2026-09-25",
+    "docs/session-ledger.tsv",
+    "docs/ci-runs.tsv",
     # Configuration, which carries no prose a standard could apply to.
     ".gitattributes",
     ".gitignore",
