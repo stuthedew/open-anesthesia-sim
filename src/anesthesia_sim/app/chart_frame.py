@@ -371,20 +371,20 @@ def trace_style(quantity: RecordedQuantity) -> TraceStyle:
 
 
 class RunCount(int):
-    """How many runs a chart draws, checked whole and at least one when built.
+    """The number of runs a chart draws, checked when built to be a whole number of at least one.
 
     A chart that draws no run has no trace, hover or legend entry to style,
-    so every reader of the count may assume one run at least. That is the
-    whole of what a count can be checked for on its own. How many runs the
-    dashboard may draw at once is `CompartmentSelection`'s check, against
-    `MAX_DISPLAYED_RUNS`. Arithmetic on a `RunCount` returns a plain `int`,
-    as on any `int` subclass, so a derived count is built as a `RunCount`
-    again where it is used.
+    so code that uses the count may assume there is at least one run. That
+    is the only property a count can be checked for on its own.
+    `CompartmentSelection` checks how many runs the dashboard may draw at
+    once, against `MAX_DISPLAYED_RUNS`. Arithmetic on a `RunCount` returns a
+    plain `int`, as it does on any `int` subclass. So code that derives a new
+    count builds it as a `RunCount` again where it uses it.
 
     Raises:
         TypeError: `run_count` is not an `int`, or is a `bool`. A `float` or
-            a `bool` where a count belongs is a programming error in the
-            caller rather than a count to refuse.
+            a `bool` passed as a count is a programming error in the caller,
+            not a count to reject.
         ValueError: `run_count` is less than one.
     """
 
@@ -401,14 +401,15 @@ class RunCount(int):
 
 
 class RunIndex(int):
-    """Which of a chart's runs, as its position in the frame's runs, checked whole and nonnegative.
+    """The position of one run among a frame's runs, checked to be a whole number of zero or more.
 
-    A negative position is the reason this is a type. Python reads `-1` as
-    the last run, so an unchecked negative index draws the last run's values
-    under the name the caller meant, which `CLAUDE.md`'s safety-critical
-    standard counts as a presentation failure (`PL-7694`). Whether the index
-    addresses one of the runs is a relation with the count or the frame, and
-    the function holding both checks it.
+    This type exists to reject a negative position. Python treats `-1` as
+    the last run, so an unchecked negative index would draw the last run's
+    values under the name of the run the caller meant. `CLAUDE.md`'s
+    safety-critical standard counts that as a presentation failure
+    (`PL-7694`). This type cannot check that the index names one of the
+    runs, because that depends on the run count or the frame. The function
+    that holds both makes that check.
 
     Raises:
         TypeError: `run_index` is not an `int`, or is a `bool`.
@@ -736,9 +737,10 @@ class ChartFrame:
 
     @property
     def run_count(self) -> RunCount:
-        """How many runs the frame draws, as the checked count its readers take.
+        """How many runs the frame draws, as the checked count that its users take.
 
-        `assemble_chart_frame` refuses a frame with no run, so this builds.
+        `assemble_chart_frame` rejects a frame with no run, so building the
+        count cannot fail.
         """
 
         return RunCount(len(self.runs))
@@ -1191,9 +1193,10 @@ def format_trace_hover(
         run: The run the point belongs to.
         quantity: The compartment the trace draws.
         index: Which drawn point, as a position in `run.times_s`.
-        run_count: How many runs are on the chart, built here as the
-            `RunCount` that checks it. The first line names the run while more
-            than one is drawn; `_hover_context` carries why.
+        run_count: How many runs are on the chart. This function builds it
+            as a `RunCount`, which checks it. The first line names the run
+            only when more than one run is drawn. `_hover_context` explains
+            why.
 
     Returns:
         The readout, three lines joined by newlines.

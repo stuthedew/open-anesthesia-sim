@@ -3,13 +3,15 @@ id: PL-96SQ
 title: A patient profile can open the run at an alveolar ventilation or cardiac output off the 0.1 L/min slider grid, which PL-1KQ9's refusal holds only for the fresh gas flow, so the slider and its readout would each show a flow the run does not hold (found building PL-1KQ9)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1673
 payoff: no run opens at a ventilation or cardiac output that the slider and the readout beside it cannot both show
-verify: grep -q "def test_an_opening_cardiac_output_off_the_slider_grid_is_refused" tests/unit/test_dashboard_frame.py
+verify: grep -q 'def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** A patient profile can open the run at an alveolar ventilation or cardiac output off the 0.1 L/min slider grid, which PL-1KQ9's refusal holds only for the fresh gas flow, so the slider and its readout would each show a flow the run does not hold (found building PL-1KQ9)

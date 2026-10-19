@@ -1684,13 +1684,14 @@ def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused
 ) -> None:
     """A run cannot open at a ventilation or cardiac output its slider cannot show (`PL-96SQ`).
 
-    The patient profile states both opening values, and the core checks them
-    only as positive and finite, so it opens the run at 5.25 L/min. The
-    controls refuse it, as they refuse an off-grid fresh gas flow
-    (`PL-1KQ9`). Otherwise the slider would stand at 5.2 beside a readout
-    printing 5.2 over a run at 5.25. The run is opened here through the
-    controller's explicit setting rather than a patient file, because the
-    refusal reads the setting in force whatever stated it.
+    The patient profile states both opening values. The core checks only
+    that they are positive and finite, so it accepts 5.25 L/min and opens
+    the run. The controls reject that value, as they reject an off-grid
+    fresh gas flow (`PL-1KQ9`). Otherwise the slider would sit at 5.2,
+    beside a readout showing 5.2, while the run used 5.25. This test opens
+    the run through the controller's explicit setting rather than a patient
+    file. That is enough, because the check reads the setting in force,
+    whatever stated it.
     """
 
     controller = SimulationController(**controller_settings)
@@ -1724,10 +1725,10 @@ def test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused
 def test_an_opening_ventilation_or_cardiac_output_on_the_slider_grid_opens(
     control: ControlInput, controller_settings: dict[str, Any]
 ) -> None:
-    """An opening ventilation or cardiac output on a slider step opens, at the top of the range too.
+    """A run opens at a ventilation or cardiac output on a slider step, including the range's top.
 
-    The readout prints the stated value, which is the property the refusal
-    above protects.
+    The readout shows the stated value. That is the property that the
+    rejection in the test above protects.
     """
 
     controller = SimulationController(**controller_settings)
@@ -2443,13 +2444,13 @@ def test_each_run_s_off_scale_line_is_named_while_runs_are_compared() -> None:
 
 
 def test_off_scale_notice_refuses_a_negative_run_index() -> None:
-    """A run index of -1 is refused, not read as the last run under the name asked for (`PL-7694`).
+    """A run index of -1 is rejected rather than treated as the last run (`PL-7694`).
 
-    Python reads `frame.runs[-1]` as the last run. Here run 1 is inside the
-    axis and run 2 is above it, so an index of -1 that reached the frame would
-    report run 2's clipped circuit trace in the slot for whichever run the
-    caller meant. `compared_run_line` takes the same index and refuses it for
-    the same reason.
+    Python treats `frame.runs[-1]` as the last run. Here run 1 stays inside
+    the axis and run 2 rises above it. An index of -1 that reached the frame
+    would therefore report run 2's clipped circuit trace under the name of
+    whichever run the caller meant. `compared_run_line` takes the same index
+    and rejects it for the same reason.
     """
 
     inside = (

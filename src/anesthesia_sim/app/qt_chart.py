@@ -284,8 +284,8 @@ def _branch_point_pen() -> QPen:
     return pen
 
 
-#: The one run a plot draws when it is not comparing, and the position it
-#: stands at: the defaults `_wash_in_pen` draws a lone run's trace with.
+#: The position and the count of the one run that a plot draws when it is
+#: not comparing runs. `_wash_in_pen` uses them as its defaults for that run.
 _LONE_RUN_INDEX: Final = RunIndex(0)
 _LONE_RUN_COUNT: Final = RunCount(1)
 
@@ -539,13 +539,13 @@ class _HoverReadout:
         )
         self._text.setText(target.readout)
         # The box sits to the right of the anchor and above it, unless that
-        # would run it off the plot: past the middle of the window it goes to
-        # the left, and where there is less room above the anchor than the
-        # box is tall it goes below. The newest point of a following window
-        # is at the right edge, which is where a reader most often hovers, so
-        # the flip is the common case rather than an edge one. The vertical
-        # flip is decided in pixels, because the box's height is fixed in
-        # pixels while the plot's height is whatever its Area leaves it. A
+        # would put it off the plot. Past the middle of the window, it goes to
+        # the left. Where the room above the anchor is less than the box's
+        # height, it goes below. A following window keeps its newest point at
+        # the right edge, and that is where a reader most often hovers. So the
+        # flip is the common case rather than a rare one. The vertical flip is
+        # decided in pixels, because the box's height is fixed in pixels while
+        # the plot's height is whatever its Area leaves it. Deciding it at a
         # fraction of the axis put the box partly above a short plot
         # (`PL-9BVQ`).
         anchor = target.anchor
@@ -562,7 +562,7 @@ class _HoverReadout:
         self._text.setVisible(True)
 
     def _room_above_px(self, time_s: float, value: float) -> float:
-        """How many pixels lie between a plot position and the top of the plot."""
+        """Return how many pixels lie between a plot position and the top of the plot."""
 
         view_box = self._plot.getPlotItem().getViewBox()
         anchor = self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, value)))
@@ -571,12 +571,12 @@ class _HoverReadout:
         return float(anchor.y() - top)
 
     def _box_height_px(self) -> float:
-        """How tall the box is, in pixels, for the text it now holds.
+        """Return the box's height in pixels, for the text it now holds.
 
-        Read from the text item's own rectangle, which is in pixels whatever
-        the view's scale, rather than from the box's place in the scene, which
-        is only right once the box has been oriented for the view
-        (`PL-J0F7`).
+        The height is read from the text item's own rectangle, which is in
+        pixels at any view scale. It is not read from the box's position in
+        the scene, which is only correct once the box has been oriented for
+        the view (`PL-J0F7`).
         """
 
         return float(self._text.boundingRect().height())
@@ -795,6 +795,10 @@ class ConcentrationChart(QWidget):
         self._frame: ChartFrame | None = None
         self._hover = _HoverReadout(self._plot)
         self._hover.moved.connect(self._on_pointer)
+        # Whether the box goes above or below its point depends on the plot's
+        # height in pixels. So a resize places the box again, even while the
+        # pointer rests and no frame is drawn (`PL-9BVQ`).
+        item.getViewBox().sigResized.connect(self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -1139,6 +1143,10 @@ class WashInChart(QWidget):
         self._frame: ChartFrame | None = None
         self._hover = _HoverReadout(self._plot)
         self._hover.moved.connect(self._on_pointer)
+        # Whether the box goes above or below its point depends on the plot's
+        # height in pixels. So a resize places the box again, even while the
+        # pointer rests and no frame is drawn (`PL-9BVQ`).
+        item.getViewBox().sigResized.connect(self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.

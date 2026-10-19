@@ -50,9 +50,9 @@ class CompartmentSelection:
             the cap reads (`with_compartment`); what is drawn, and in what
             order, is `shown`'s.
         run_count: How many runs the selection is drawn across, which is
-            what decides whether the cap applies. Given as an `int`, it is
-            built here as the `RunCount` that checks it, so the selection
-            holds a checked count.
+            what decides whether the cap applies. It is passed as an `int`
+            and built here as a `RunCount`, which checks it, so the selection
+            always holds a checked count.
 
     Raises:
         TypeError: If `order` is not a tuple, holds anything but a
@@ -87,8 +87,8 @@ class CompartmentSelection:
                 f"{', '.join(repeated)} more than once"
             )
 
-        # A frozen record writes its own field once, here, so what it holds is
-        # the checked count rather than whatever `int` it was given.
+        # A frozen record can write its own field here, once. So the record
+        # holds the checked count rather than the `int` it was given.
         object.__setattr__(self, "run_count", _drawn_run_count(self.run_count))
         _, undrawn = compared_compartments(self.order, self.run_count)
 
@@ -177,12 +177,13 @@ class CompartmentSelection:
 
 
 def _drawn_run_count(run_count: int) -> RunCount:
-    """`run_count` built as a `RunCount`, where the dashboard can draw that many runs.
+    """Build `run_count` as a `RunCount`, checking that the dashboard can draw that many runs.
 
-    `RunCount` refuses what is not a count of at least one run. The upper
-    bound, `MAX_DISPLAYED_RUNS`, is the dashboard's rather than the count's,
-    so it is checked here. Both refusals name the range the dashboard draws,
-    which is what a reader of the selection needs to know.
+    `RunCount` rejects anything that is not a count of at least one run. The
+    upper bound, `MAX_DISPLAYED_RUNS`, is a limit of the dashboard, not of
+    counts in general, so this function checks it. Both error messages give
+    the range of run counts that the dashboard draws, which is what a reader
+    of a selection error needs to know.
 
     Raises:
         TypeError: If `run_count` is a `bool` or not an `int` (`RunCount`).

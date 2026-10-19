@@ -1090,12 +1090,13 @@ class SettingReadout:
     secondary: str
 
 
-# The three flows a profile states the opening value of, each with the profile
-# that states it and the `docs/MODEL.md` section that holds its range. Every
-# flow a slider sets is one of its steps, so only an opening value can be off
-# the grid, and `setting_readouts` refuses one (`PL-1KQ9`, `PL-96SQ`). The
-# delivered dial is not here: its setting is a fraction converted to percent,
-# so an exact comparison with a step needs its own reading first.
+# The three flows whose opening value a profile states. Each entry gives the
+# profile that states it and the `docs/MODEL.md` section that gives its range.
+# Every flow that a slider sets is one of the slider's steps. So only an
+# opening value can fall off the slider's grid, and `setting_readouts` rejects
+# one that does (`PL-1KQ9`, `PL-96SQ`). The delivered dial is not listed here.
+# Its setting is a fraction that is converted to percent, so comparing it
+# exactly with a step would first need a rule for rounding that conversion.
 _OPENING_SOURCES: Final[Mapping[ControlInput, tuple[str, str]]] = MappingProxyType(
     {
         ControlInput.FRESH_GAS_FLOW: (
@@ -1129,11 +1130,12 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             declaring a fresh gas flow range narrower than one step could.
             Also if the fresh gas flow, alveolar ventilation or cardiac
             output in force is not one of the steps its slider offers.
-            Every flow a slider sets is a step, so only an opening flow that
-            a machine or patient profile states can reach it, and the run is
-            refused rather than opened with the slider and its readout each
-            showing a flow the run does not hold (`PL-1KQ9`, `PL-96SQ`,
-            `PL-25KS` decision D4). No shipped profile reaches it.
+            Every flow that a slider sets is a step, so only an opening flow
+            stated by a machine or patient profile can cause this. The run
+            is then rejected, rather than opened with the slider and its
+            readout each showing a flow that the run does not have
+            (`PL-1KQ9`, `PL-96SQ`, `PL-25KS` decision D4). No shipped
+            profile causes it.
     """
 
     delivered = settings.delivered_partial_pressure_fraction
@@ -1224,8 +1226,8 @@ def _is_offered_step(value: float, offered: tuple[float, float], decimals: int) 
     """Whether a setting is one of the steps a slider offers, so the slider can show it.
 
     A step is compared as the value the slider emits for it, `slider_value`,
-    so a setting the slider wrote is always one. An opening flow that a
-    machine or patient profile states is the one setting no slider wrote
+    so a setting the slider wrote is always one. The only setting that no
+    slider wrote is an opening flow stated by a machine or patient profile
     (`PL-1KQ9`, `PL-96SQ`).
 
     Args:
@@ -2376,11 +2378,12 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     there. A trace is off scale only once it clears the ceiling by more
     than the readouts resolve: isoflurane's ceiling is 3 x 1.2, which in
     binary floating point is 3.5999999999999996, and a comparison against
-    zero would report that noise as an excursion. Nothing here builds a
-    checked concentration: the percents and the axis top were built when the
-    frame was assembled, so this cannot refuse a value after the chart has
-    drawn (`PL-7DJK`). The run index is built as a `RunIndex` before it is
-    used, so a negative one is refused rather than read as the last run.
+    zero would report that noise as an excursion. This function builds no
+    checked concentration. The percents and the axis top were built when the
+    frame was assembled, so this function cannot reject a value after the
+    chart has drawn it (`PL-7DJK`). The run index is built as a `RunIndex`
+    before it is used, so a negative index is rejected rather than treated
+    as the last run.
 
     Args:
         frame: The frame drawn this tick.
@@ -2392,8 +2395,8 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     Raises:
         TypeError: If `run_index` is not an `int` (`RunIndex`).
         ValueError: If `run_index` is negative (`RunIndex`). Python would
-            read `-1` as the last run, and answer for it under the name the
-            caller meant (`PL-7694`).
+            treat `-1` as the last run, and report on that run under the name
+            of the run the caller meant (`PL-7694`).
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
@@ -2574,8 +2577,8 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
 
     Raises:
         TypeError: If `run_index` is not an `int` (`RunIndex`).
-        ValueError: If `run_index` is negative (`RunIndex`), for the reason
-            `off_scale_notice` refuses one.
+        ValueError: If `run_index` is negative (`RunIndex`), for the same
+            reason that `off_scale_notice` rejects one.
         IndexError: If `run_index` is not one of the frame's runs.
     """
 
