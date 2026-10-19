@@ -3282,6 +3282,36 @@ def test_a_checkout_carrying_a_cut_names_the_version_and_what_landed_since() -> 
     assert window.declined == ""
 
 
+def test_a_capture_landing_during_the_cut_is_not_named_after_the_absorb_route() -> None:
+    """A capture landing during the cut leads a subject and closes nothing (`PL-WKLJ`).
+
+    A re-cut stamps only finished work, so an open id stayed named after the
+    absorb route. Its status is read from the base's copy, and an id the base
+    holds no copy of is kept and named as unread rather than dropped.
+    """
+    copies = {
+        "PL-D9WD": "---\nid: PL-D9WD\ntitle: T\nstatus: done\n---\n",
+        "PL-C4PT": "---\nid: PL-C4PT\ntitle: T\nstatus: untriaged\n---\n",
+    }
+    inner = _cut_window_runner(
+        added=("docs/releases/v0.3.8.md",), landed=("PL-D9WD", "PL-C4PT", "PL-GH0S")
+    )
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "ls-tree":
+            return "".join(
+                f"100644 blob {'0' * 40}\tdocs/items/{identifier}-t.md\0" for identifier in copies
+            )
+        if args[0] == "show":
+            name = args[1].split(":", 1)[1].rsplit("/", 1)[-1]
+            return copies.get(name.split("-t.md")[0], "")
+        return inner(args, root)
+
+    window = cut_window(ROOT, runner=run)
+
+    assert (window.landed, window.unread) == (("PL-D9WD", "PL-GH0S"), ("PL-GH0S",))
+
+
 def test_a_checkout_cutting_nothing_carries_no_window() -> None:
     """One session in a release cuts; every other one pays a single `git diff`."""
     window = cut_window(ROOT, runner=_cut_window_runner(landed=("PL-D9WD",)))
