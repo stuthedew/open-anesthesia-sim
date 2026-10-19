@@ -3,11 +3,12 @@ id: PL-92ZN
 title: Record every session's model, served model, mid-session switch, effort, tokens and cost in a per-session ledger written from the harness record by the model review, not by the working session, and backfill it for the sessions behind the 1,759 closed items
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
 touches: docs/session-ledger.tsv, docs/maintainer.md, .claude/skills/model-review, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/dead-ends.md, docs/items/PL-G2D4-measure-the-excess-miss-rate-of-explore.md
 added: 2026-10-17
+closed: 2026-10-19
 payoff: what model and effort worked every closed item is a durable record in the tree, so the model review has data on its first run instead of in a year
 verify: grep -q 'session-ledger' docs/maintainer.md && grep -q 'last_served_model' docs/session-ledger.tsv
 recurrences: 2026-10-19 PL-70M6
@@ -80,23 +81,26 @@ returns. 299 session ids named in `Claude-Session:` trailers and
 `docs/pr-bodies/` have no row yet. They are split into six lists in the
 session's scratchpad, `ledger/threads/ids_1.txt` to `ids_6.txt`.
 
-**Next steps, for this session after `/compact` or a fresh one.**
-1. Wait for the six Opus 5.5 runners, which write `ledger/threads/opus_K.jsonl`
-   from `ledger/threads/prompt_opus.txt`. If the scratchpad is gone, rerun
-   them from that prompt, on the session's own model.
-2. The record is the Opus copy (project owner, 2026-10-19). Compare it field
-   by field with the Sonnet copy in `rows_K.jsonl` by script. Fetch any
-   disagreeing row a third time with `get_session` and keep the value that
-   two of the three copies agree on.
-3. Add the thread rows to `docs/session-ledger.tsv` with the same columns
-   and sort by `created_at`. The builder is `ledger/build.py` in the
-   scratchpad.
-4. Count closed items that still join to no ledger row, write that count
-   here, set this item `done`, and open the pull request with `PL-92ZN` and
-   `PL-4SFQ` leading the title.
-5. `PL-4SFQ`'s CI snapshot: `ci_snapshot.py` in the scratchpad writes
-   `ci/runs.jsonl` from the GitHub REST API, 11,664 runs on 2026-10-19.
-   Turn it into `docs/ci-runs.tsv` and commit it under `PL-4SFQ`. That item
-   stays open for its outcome-measure definitions, which need the
-   model-review skill (`PL-63CB`).
+**Result, 2026-10-19.** The ledger holds 1,188 rows: 893 from
+`list_sessions` and 295 Projects threads from `get_session`. Six Opus 5.5
+runners copied the 299 thread records into JSON lines, and a script wrote the
+rows. A Sonnet 5.5 copy of 279 of them agreed on every field, and a second
+Opus copy of the other 20 agreed too. Four of the 299 were not threads. They
+were desktop sessions whose first source was the references repository and
+whose second was this one. The first builder kept a session only when this
+repository was its first source, so it missed them and one more. It now keeps
+a session when any source is this repository.
 
+The join, run against `origin/main` the same day:
+
+- 1,992 `done` items. 1,878 of them (94.3%) join to at least one ledger row.
+- 114 `done` items, on 69 pull requests between `#3` and `#1587`, have no
+  session id in their squash commit or in `docs/pr-bodies/`. No ledger can
+  join them.
+- No `done` item names a session that has no ledger row.
+- 273 `dropped` items have no `pr:` and so nothing to join.
+
+The join reads any `claude.ai/code/session_...` URL in the squash commit's
+body, not only a `Claude-Session:` line. Squash bodies carry the pull request
+body, where the URL usually stands on a line of its own. `PL-70M6` should
+read it the same way.

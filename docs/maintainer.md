@@ -240,7 +240,8 @@ refresh has three steps:
 1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
    `claude-code-remote` MCP server. A page is too large to show inline, so the
    harness saves it to a file. Copy each file unchanged and parse it with a
-   script, so that no model retypes a value.
+   script, so that no model retypes a value. Keep a session when any of its
+   sources is this repository, not only its first.
 2. Fetch every Projects thread with `get_session`. `list_sessions` leaves
    threads out, because they carry the `hearth-thread` tag, and a session
    cannot pass the `tags` filter. Find them as the session ids in
