@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: projects-trial
+milestone: v0.5.41
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-10-19
 closed: 2026-10-19
