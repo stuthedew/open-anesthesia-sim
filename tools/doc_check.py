@@ -111,6 +111,7 @@ import sys
 import textwrap
 import tokenize
 import unicodedata
+import warnings
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -320,6 +321,10 @@ try:
         tags,
         untracked_path_args,
     )
+
+    # What `ast.parse` raises where this interpreter cannot parse a file, which
+    # `verify` names a file for (`PL-LCBQ`).
+    from docket.verify import UNPARSABLE
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -2954,6 +2959,26 @@ SPAN_BREAK_RE = re.compile(SOFT_BREAK)
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
 
 
+def _parser_refusal(text: str) -> str | None:
+    """Why this interpreter's parser refuses `text`, or `None` where it reads it.
+
+    `docket.python` reads a file with the tokenizer, and says in its module
+    docstring that the tokenizer's reading can be wrong without an error. A
+    formatted string that nests its own quote (PEP 701) mis-tokenizes on
+    Python 3.11 and merges the statements after it into one. Where the
+    parser refuses a file, the tokenizer's reading of it may be short, so a
+    caller names the file, as `verify` does (`PL-LCBQ`).
+    """
+    try:
+        with warnings.catch_warnings():
+            # An invalid escape sequence warns; that is the file's linter's to report.
+            warnings.simplefilter("ignore")
+            ast.parse(text)
+    except UNPARSABLE as error:
+        return refusal(error)
+    return None
+
+
 def _defined_tests(text: str) -> set[str]:
     """The test functions a Python file defines, as its `def` statements name them.
 
@@ -3053,7 +3078,17 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
             try:
                 defined |= _defined_tests(text)
             except UNTOKENIZABLE as error:
-                refused[path.relative_to(root)] = (text, refusal(error))
+                refused[path.relative_to(root)] = (
+                    text,
+                    f"the tokenizer refuses it: {refusal(error)}",
+                )
+                continue
+            # Read, but perhaps short: a name only it could define is declined.
+            if (why := _parser_refusal(text)) is not None:
+                refused[path.relative_to(root)] = (
+                    text,
+                    f"the parser refuses it, so the tokenizer's reading may be short: {why}",
+                )
     if not searched:
         report.declined.append(
             f"the {len(seen)} test citation(s) in the documentation: no test directory was "
@@ -3070,9 +3105,9 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
         holders = [f"{file} ({why})" for file, (text, why) in refused.items() if name in text]
         if holders:
             report.declined.append(
-                f"{path}:{line}: names the test `{name}`, which no file the tokenizer read "
-                f"defines; Python {platform.python_version()} cannot tokenize "
-                f"{' or '.join(holders)}, which may, so the citation was neither passed nor failed"
+                f"{path}:{line}: names the test `{name}`, which no file read whole defines; "
+                f"Python {platform.python_version()} cannot read {' or '.join(holders)} whole, "
+                "which may define it, so the citation was neither passed nor failed"
             )
         else:
             report.errors.append(
@@ -8931,7 +8966,11 @@ def _changed_definitions(
     compares them.
 
     A copy the tokenizer refuses has its changed lines read a line at a time,
-    as every file's were, and is appended to `unread`.
+    as every file's were, and is appended to `unread`. So is a copy the
+    tokenizer reads but the parser refuses, since the tokenizer's reading of it
+    may have merged statements (`_parser_refusal`). Its changed lines are read
+    both ways, so no definition the tokenizer merged away is dropped
+    (`PL-LCBQ`).
     """
     found: set[str] = set()
     removed: set[int] = set()
@@ -8950,6 +8989,7 @@ def _changed_definitions(
                 # Undecoded line ends, so its rows are the ones git's counted.
                 text = (root / relative).read_bytes().decode("utf-8-sig")
             lines = read_logical_lines(text)
+            short = _parser_refusal(text)
         except (OSError, *UNTOKENIZABLE) as error:
             said = refusal(error) if not isinstance(error, OSError) else str(error)
             unread.append(
@@ -8966,6 +9006,17 @@ def _changed_definitions(
             name = definition(line)[1]
             if name and any(line.first <= row <= line.last for row in rows):
                 found.add(name)
+        if short is not None:
+            unread.append(
+                f"{relative}: Python {platform.python_version()} cannot parse its copy "
+                f"{f'at {copy}' if copy else 'in the working tree'} ({short}), so its tokenizer's "
+                "reading may be short, and its changed lines were also read a line at a time"
+            )
+            found |= {
+                match.group(1)
+                for line in split_lines(patch)
+                if (match := DEFINITION_RE.match(line)) is not None
+            }
     return found
 
 

@@ -8304,6 +8304,49 @@ def _changed_terms(tmp_path: Path, before: str, after: str) -> list[str]:
     ]
 
 
+#: Python 3.11's tokenizer reads this as one statement and raises nothing, so
+#: `test_ghost` is no definition there, while its parser refuses the file.
+#: Python 3.12 and later read three statements (PEP 701) (`PL-LCBQ`).
+NESTED_QUOTE_FSTRING = 'x = f"{"(" + s}"\ndef test_ghost(): pass\ny = f"{")" + s}"\n'
+#: Read whole by the tokenizer and refused by the parser on every interpreter.
+UNPARSED_SUITE = "def test_ghost(): pass\nx = (1 +)\n"
+#: What the close-out sweep says of a changed copy that the parser refuses.
+PARSER_REFUSED = (
+    "src/anesthesia_sim/core/thing.py: so its tokenizer's reading may be short, and its "
+    "changed lines were also read a line at a time"
+)
+
+
+@pytest.mark.parametrize(
+    ("suite", "refused"),
+    [(NESTED_QUOTE_FSTRING, sys.version_info < (3, 12)), (UNPARSED_SUITE, True)],
+    ids=["a nested quote, refused on 3.11", "a syntax error, refused everywhere"],
+)
+def test_a_file_the_running_interpreter_cannot_parse_is_named_by_the_definition_readers(
+    tmp_path: Path, suite: str, refused: bool
+) -> None:
+    """Each definition reader names a file the parser refuses, as `verify` does.
+
+    On Python 3.11 the tokenizer merges the nested-quote file into one
+    statement with no error. Before the fix, `check_named_tests` then
+    reported the cited `test_ghost` as missing, and the close-out sweep
+    dropped it from the changed definitions, each without a word.
+    """
+    (tmp_path / "cited").mkdir()
+    (tmp_path / "changed").mkdir()
+    cited = suite.replace("def test_ghost(): pass", "# test_ghost was here")
+
+    citations = _test_citations(tmp_path / "cited", cited, "test_ghost")
+    terms = _changed_terms(tmp_path / "changed", "", suite)
+
+    if refused:
+        assert citations == ["declined: docs/WORKING_NOTES.md:3: names the test `test_ghost`"]
+        assert terms == ["test_ghost", "thing", "thing.py", PARSER_REFUSED]
+    else:
+        assert citations == ["error: docs/WORKING_NOTES.md:3: names the test `test_ghost`"]
+        assert terms == ["test_ghost", "thing", "thing.py"]
+
+
 def _bump_refusal(tmp_path: Path) -> str:
     """What `prepare_bump` says of a version TOML continues across lines, or "" if it bumps."""
     pyproject = tmp_path / "pyproject.toml"
