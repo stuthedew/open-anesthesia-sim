@@ -21,6 +21,7 @@ from docket.store import ID_RE
 from headless_worker import (
     NO_PUSH_URL,
     OUTRANKING_CREDENTIALS,
+    OUTRANKING_EFFORT,
     Refused,
     Run,
     check_tools,
@@ -108,6 +109,7 @@ def _work(
     return work(
         "PL-B7K2",
         model="claude-sonnet-5-5",
+        effort="high",
         per_run_usd=15.0,
         no_push=no_push,
         origin=str(origin),
@@ -128,6 +130,7 @@ def test_the_child_environment_drops_every_credential_that_outranks_the_key() ->
         "ANTHROPIC_API_KEY": "sk-test",
         "HOME": "/h",
         **dict.fromkeys(OUTRANKING_CREDENTIALS, "1"),
+        **dict.fromkeys(OUTRANKING_EFFORT, "low"),
     }
     assert child_environment(environ) == {"ANTHROPIC_API_KEY": "sk-test", "HOME": "/h"}
 
@@ -152,6 +155,7 @@ def test_a_pushed_run_records_its_cost_and_the_remote_branch(
     record = json.loads((tmp_path / "record.json").read_text(encoding="utf-8"))
     argv = record["argv"]
     assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
+    assert argv[argv.index("--effort") + 1] == "high"
     assert argv[argv.index("--max-budget-usd") + 1] == "15.00"
     assert argv[argv.index("--output-format") + 1] == "json"
     assert "PL-B7K2" in argv[argv.index("-p") + 1]
@@ -214,6 +218,7 @@ def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
+        lanes=lambda: {"PL-B7K2": "workflow"},
         today=lambda: date(2026, 10, 19),
     )
     assert code == 0
@@ -235,12 +240,44 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
         "environ": {"ANTHROPIC_API_KEY": "sk-test"},
         "tools": lambda env: None,
         "docket": lambda: "PL-B7K2\nPL-C8M3\n",
+        "lanes": lambda: {"PL-B7K2": "workflow", "PL-C8M3": "product"},
         "today": lambda: date(2026, 10, 19),
     }
     assert headless_worker.main(args, **common) == 1
     assert started == ["PL-B7K2"]
     assert headless_worker.main(args, **common) == 2
     assert "cost could not be read" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("lane", "effort"), [("product", "max"), ("crossing", "max"), ("workflow", "high")]
+)
+def test_a_worker_runs_at_the_effort_the_owner_chose_for_its_lane(
+    lane: str, effort: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Simulator work runs at `max`, apparatus work at `high`, never the default (`PL-KFJY`)."""
+    code = headless_worker.main(
+        ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
+        environ={"ANTHROPIC_API_KEY": "sk-test"},
+        tools=lambda env: None,
+        docket=lambda: "PL-B7K2\n",
+        lanes=lambda: {"PL-B7K2": lane},
+        today=lambda: date(2026, 10, 19),
+    )
+    assert code == 0
+    assert f"PL-B7K2 at {effort} effort" in capsys.readouterr().out
+
+
+def test_an_item_docket_gives_no_lane_is_refused_before_any_spend(tmp_path: Path) -> None:
+    code = headless_worker.main(
+        ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
+        environ={"ANTHROPIC_API_KEY": "sk-test"},
+        tools=lambda env: None,
+        docket=lambda: "PL-B7K2\n",
+        lanes=lambda: {},
+        today=lambda: date(2026, 10, 19),
+    )
+    assert code == 2
 
 
 def test_spend_counts_only_the_current_cycle(tmp_path: Path) -> None:

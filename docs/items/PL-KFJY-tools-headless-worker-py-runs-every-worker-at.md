@@ -3,11 +3,12 @@ id: PL-KFJY
 title: tools/headless_worker.py runs every worker at Opus 5.5's default medium effort because it passes no --effort, not at the owner's high for apparatus work and max for simulator work (docs/maintainer.md, Match effort to the standard the work is held to)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
+touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md
 deferred-from: v0.6.0 - a workflow-lane runner defect outside the layout release
 added: 2026-10-19
+closed: 2026-10-19
 payoff: each worker runs at the effort the owner chose for the standard its item is held to: high for apparatus work, max for simulator work
 verify: grep -q -- '--effort' tools/headless_worker.py
 ---
