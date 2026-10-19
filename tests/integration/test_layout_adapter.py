@@ -326,6 +326,26 @@ def test_a_layout_of_two_windows_is_refused() -> None:
         AreaLayout(model, _REQUESTS, registered=_REGISTERED)
 
 
+def test_a_refused_layout_leaves_no_widget_behind(application: QApplication) -> None:
+    """`PL-Q18P`: the layout is refused before any widget is built, so nothing half-built is left.
+
+    The test keeps the exception that refused the layout while it counts the
+    widgets. The exception's traceback holds the constructor's frame, so a
+    widget built before the refusal would still exist at this point. Such a
+    widget is destroyed only once nothing holds that traceback. That can happen
+    during another test, which is how a test worker crashed on `main`.
+    """
+
+    model = LayoutModel((Window(_area(1)), Window(_area(2))), AreaId(3))
+    before = len(QApplication.allWidgets())
+
+    with pytest.raises(ValueError, match="draws one window, and the layout holds 2") as refused:
+        AreaLayout(model, _REQUESTS, registered=_REGISTERED)
+
+    assert len(QApplication.allWidgets()) == before
+    del refused
+
+
 # --------------------------------------------------------- a reader's drag
 
 
