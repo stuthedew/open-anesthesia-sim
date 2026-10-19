@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: interface-areas
+milestone: v0.5.41
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/, src/anesthesia_sim/data/workspaces/, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-2KXB-build-the-docking-affordances-a-reader-uses.md, tests/unit, tests/integration
 blocked-by: PL-WV9K
 added: 2026-09-16
