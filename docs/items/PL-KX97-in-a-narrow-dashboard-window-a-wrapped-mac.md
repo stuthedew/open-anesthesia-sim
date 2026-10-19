@@ -3,12 +3,14 @@ id: PL-KX97
 title: In a narrow dashboard window a wrapped MAC-target row is laid out below the height its wrap needs, so its second line - where a run's standing such as 'Run 2 reached' lands - is clipped: at 700x450 each row gets 13-14 of 30 px, at 700x1000 28 of 30 (found working PL-VCF0)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+touches: tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
+closed: 2026-10-19
+pr: 1680
 payoff: in a narrow window a mark row's second line, such as Run 2 reached, is shown or scrolled to rather than silently cut off
 verify: grep -q 'def test_a_wrapped_mark_row_is_never_clipped' tests/integration/test_simulation_view.py
 ---
@@ -52,3 +54,5 @@ missing.
 `heightForWidth`, the page scrolling where the window is too short, and a
 rendering test of the dashboard built as `main()` builds it, at a width where
 rows wrap, finds none clipped.
+
+**Checked 2026-10-19.** No longer reproduced: at 700 by 450 and 700 by 1000 on the Every View Workspace no mark row is clipped, and the page now holds a 1115 px minimum width, so ordinary rows no longer wrap. No change here located the fix. `test_a_wrapped_mark_row_is_never_clipped` gives a mark a name long enough to wrap and pins the row's height to its `heightForWidth`; it passes on the code before this change (the `src/` of b1240300, the head of #1675) too, so it is a pinning test rather than a regression test.
