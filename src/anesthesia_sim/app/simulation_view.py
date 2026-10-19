@@ -294,20 +294,21 @@ class _RunSlots:
 class HaltRestatement:
     """A dashboard panel that offers an action on a run, and what restates it on a halt.
 
-    A `RunView` restates its own widgets on a halt (`RunView.present_halt`). The
-    panels the dashboard itself holds are not inside any run, so a halt reaches them
-    only through this list (`SimulationView.halt_restatements`). A panel that holds
-    a control and is missing from the list keeps offering its action over a run that
-    every other control says has failed. That was `PL-MMNX` for the branch panel and
-    `PL-YHR3` for the bookmark panel. `test_every_dashboard_control_is_restated_on_a_halt`
+    To restate a widget is to rewrite it from the runs' controllers, without drawing a frame.
+    A `RunView` restates its own widgets on a halt (`RunView.present_halt`). The panels
+    that belong to the dashboard itself are not inside any run. So a halt restates them
+    only through this list (`SimulationView.halt_restatements`). A panel that holds a
+    control and is missing from the list keeps offering its action over a run that every
+    other control says has failed. That happened to the branch panel (`PL-MMNX`) and to
+    the bookmark panel (`PL-YHR3`). `test_every_dashboard_control_is_restated_on_a_halt`
     fails on a control that is in no `RunView`, in no panel listed here, and in no
-    container it exempts by name (`PL-5JTH`).
+    container that the test exempts by name (`PL-5JTH`).
 
     Attributes:
-        panels: The widgets this restatement writes. A control inside one of them is
-            covered.
-        restate: Writes them from the runs' controllers, without a frame. It must not
-            raise, because it runs inside the halt path.
+        panels: The widgets this restatement writes. A control inside one of them counts
+            as restated on a halt.
+        restate: Writes the panels from the runs' controllers, without a frame. It must
+            not raise, because it runs inside the halt path.
     """
 
     panels: tuple[QWidget, ...]
@@ -1081,29 +1082,27 @@ class SimulationView(QWidget):
     # ----------------------------------------------------------- branching
 
     def _handle_fork(self) -> None:
-        """Take the branch the panel is set to, and draw it beside the trunk.
+        """Create a branch at the point the panel is set to, and draw it beside the trunk.
 
-        The selector holds two of the three doors, and the point it answers
-        with says which: a recorded control event is taken through
-        `BranchedCase.fork_at` at its instant, and a mark the trunk has passed
-        through `fork_at_mark` with the mark itself (`PL-W4XQ`), so where a
-        mark's branch opens is found by the case from the mark rather than
-        handed over as a float. Either refusal reaches the notice rather than
-        being swallowed: a press is not proof that what the frame offered is
-        still there.
+        There are three ways to start a branch, and the panel's selector offers two of
+        them. The point that the selector returns decides which one is used. A recorded
+        control event is forked through `BranchedCase.fork_at`, at the event's instant.
+        A mark that the trunk has passed is forked through `fork_at_mark`, with the mark
+        itself (`PL-W4XQ`). So the case works out where a mark's branch opens from the
+        mark, rather than being handed that time as a float. If either call refuses, its
+        reason goes to the notice rather than being swallowed. A press does not prove
+        that what the last frame offered is still there.
 
-        Refused rather than obeyed while a comparison is already shown. The
-        display is capped at two runs and no run selector exists yet, so a
-        second branch could only replace the one on screen while the first
-        went on living inside `BranchedCase` - hidden state of exactly the
-        kind this interface refuses elsewhere. The control is not offered
-        then; this check is what makes that a property of the dashboard
-        rather than of the widget that happens to be hidden.
+        The method refuses to fork while a comparison is already shown. The display is
+        capped at two runs, and no run selector exists yet. So a second branch could
+        only replace the one on screen, while the first stayed inside `BranchedCase`.
+        That is hidden state, of exactly the kind this interface refuses elsewhere. The
+        control is not offered in that state. This check makes the refusal a property
+        of the dashboard, rather than of the widget that happens to be hidden.
 
         The trunk's snapshot is read through `_reference_snapshot_for_a_control`
-        before the case keeps anything. A fork on a run that cannot be read then
-        ends in the halt on screen, rather than in a branch kept and never drawn
-        (`PL-08SS`).
+        before the case keeps anything. If that read fails, the fork ends with the halt
+        on screen, rather than with a branch that is kept but never drawn (`PL-08SS`).
         """
 
         case = self._case
@@ -1146,24 +1145,23 @@ class SimulationView(QWidget):
         self._show_branch(branch)
 
     def _handle_here_fork(self) -> None:
-        """Take the branch where the trunk is paused, stopped on a mark or not.
+        """Create a branch where the trunk is paused, whether or not it stopped on a mark.
 
-        The third door (`PL-Y2SL`), and the sequence `docs/ARCHITECTURE.md`
-        § "How a learner takes one" describes: a learner pauses at the
-        decision point, or a mark stops the run there, and this is how they
-        branch there. It names no instant - `BranchedCase.fork_here` forks
-        where the trunk stands - so the one thing a caller could get wrong is
-        not expressible here.
+        This is the third way to start a branch (`PL-Y2SL`). It follows the sequence that
+        `docs/ARCHITECTURE.md` § "How a learner takes one" describes. A learner pauses at
+        the decision point, or a mark stops the run there, and this control branches at
+        that point. The method passes no instant, because `BranchedCase.fork_here` forks
+        wherever the trunk is. So a caller cannot pass a wrong instant, the one thing it
+        could otherwise get wrong.
 
-        Guarded rather than trusted, for the reason `_handle_fork` is. The cap
-        is checked here too, so refusing a second branch is a property of the
-        dashboard rather than of a hidden widget; and where the trunk stands
-        is re-read by the case on the press, because the trunk can be started
-        between the frame that drew the button and the press, so the button's
-        own frame is not proof that the fork is still there. `fork_here`
-        raising is that check, and its reason goes to the notice rather than
-        being swallowed. The trunk's snapshot is read first, as `_handle_fork`
-        reads it (`PL-08SS`).
+        The method checks the state rather than trusting the button, for the same reason
+        as `_handle_fork`. It checks the two-run cap here too, so refusing a second
+        branch is a property of the dashboard rather than of a hidden widget. The case
+        also reads the trunk's position again when the button is pressed. The trunk can
+        be started between the frame that drew the button and the press, so that frame
+        does not prove the fork is still possible. `fork_here` makes this check by
+        raising, and its reason goes to the notice rather than being swallowed. The
+        trunk's snapshot is read first, as `_handle_fork` reads it (`PL-08SS`).
         """
 
         case = self._case
@@ -1516,20 +1514,20 @@ class SimulationView(QWidget):
     # -------------------------------------------------------------- bookmarks
 
     def _restate_bookmark_panel(self) -> None:
-        """On a halt, restate both collections from every run, or list no standing if it raises.
+        """On a halt, restate both lists of marks from every run, or hide them if that raises.
 
-        Apart from this method, `_refresh_bookmarks` is called only with a drawn frame's
-        snapshots. So when a halt came from a failed frame, the last frame's standings
-        stayed on screen. A mark ahead of the clock still showed as to come, while every
-        other control said that the run had failed (`PL-YHR3`). Each run's controller
-        gives its marks and their standings without building a snapshot. So the
-        restatement needs no frame.
+        A mark's standing says whether the run has reached it. Apart from this method,
+        `_refresh_bookmarks` is called only with a drawn frame's snapshots. So when a halt
+        came from a failed frame, the last frame's standings stayed on screen. A mark
+        ahead of the clock still showed as still to come, while every other control said
+        that the run had failed (`PL-YHR3`). Each run's controller gives its marks and
+        their standings without building a snapshot. So the restatement needs no frame.
 
         The restatement is guarded, as `_restate_fork_panel` is. It runs inside the halt
-        path, where a raise would escape the render path's own guard and reach the
-        toolkit. If the panel cannot be restated, it is withdrawn instead of keeping the
-        last frame's rows, and so are the editor's lists and their Remove buttons, so
-        the two places that list the marks agree (`PL-F5KT`).
+        path, where an exception would escape the render path's own guard and reach the
+        toolkit. If the panel cannot be restated, it is hidden rather than left showing
+        the last frame's rows. The editor's lists and their Remove buttons are hidden
+        too, so the two places that list the marks agree (`PL-F5KT`).
         """
 
         controllers = tuple(run.controller for run in self._runs)
@@ -1765,23 +1763,24 @@ class SimulationView(QWidget):
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
     def _reference_snapshot_for_a_control(self) -> SimulationSnapshot | None:
-        """Read the reference run's snapshot for a control, and halt every run where it refuses.
+        """Read the reference run's snapshot for a control, and halt every run if the read raises.
 
-        The dashboard's counterpart of `RunView._snapshot_for_a_control`, for the
-        controls that act on the case rather than on one run: Remove in the marks
-        editor and both branch controls. Each runs inside a slot, where a raise is
-        printed by the toolkit and otherwise lost. On a run whose snapshot refuses a
-        value (`PL-7DJK`), the read raised there, so the press did nothing and nothing
-        on screen said why (`PL-F2T2`), or a branch was kept that was never drawn
-        (`PL-08SS`). The raise is attributable to the case rather than to one run, so
-        every run halts, as `present` does for a frame that cannot be drawn.
+        This is the dashboard's counterpart of `RunView._snapshot_for_a_control`. It serves
+        the controls that act on the case rather than on one run: Remove in the marks
+        editor, and both branch controls. Each control's handler runs inside a slot, where
+        the toolkit prints an exception and otherwise loses it. On a run whose snapshot
+        rejects a value (`PL-7DJK`), the read used to raise inside the slot. Then either
+        the press did nothing and nothing on screen said why (`PL-F2T2`), or a branch was
+        kept that was never drawn (`PL-08SS`). The exception belongs to the case rather
+        than to one run, so every run halts, as `present` does for a frame that cannot
+        be drawn.
 
         The reference run is the first displayed run, which is the trunk. That is how
         the dashboard is built, and `_refresh_bookmarks` reads the same run for the
         set of marks.
 
         Returns:
-            The snapshot, or `None` once every run has been halted for the raise and
+            The snapshot, or `None` once every run has been halted for the exception and
             the halt is on screen.
         """
 
@@ -1818,33 +1817,31 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _halt_every_run(self, error: BaseException) -> None:
-        """Stop every run for a raise out of the shared render path, say so, then try to draw.
+        """Halt every run on an exception in the shared render path, show it, then try to draw.
 
-        A raise the render loop meets is attributable to no run, so every
-        run stops. Each run states its halt from its controller's record,
-        which builds no compartment value, before the frame is attempted,
-        because the frame is what just failed and may fail again for the
-        same cause - two runs that have come to be on different agents, say,
-        or a snapshot whose own values refuse - and a halt presented only
-        through it would never be seen (`PL-25KS`, `PL-7DJK`). The branch
-        controls are restated from the case for the same reason
-        (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated
-        from each run's controller for the same reason
-        (`_restate_bookmark_panel`, `PL-YHR3`). Both are read from one list,
-        `halt_restatements`, which a test holds to every control the dashboard
-        offers outside a run (`PL-5JTH`). The trunk records that its frame
-        failed, so the case then offers no branch at all: one opened now would
-        be drawn by the same frame and halt on it (`PL-T2Q2`). A presentation
-        that fails afterwards cannot unwind the halt.
+        An exception that the render loop meets belongs to no single run, so every run
+        stops. Each run shows its halt before the frame is tried. It shows the halt from
+        its controller's record, which builds no compartment value. The frame is what
+        just failed, and it may fail again for the same cause. For example, two runs may
+        have come to use different agents, or a snapshot's own values may be rejected. A
+        halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
+        The branch controls are restated from the case for the same reason
+        (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated from each
+        run's controller for the same reason (`_restate_bookmark_panel`, `PL-YHR3`). Both
+        come from one list, `halt_restatements`. A test checks that this list covers every
+        control the dashboard offers outside a run (`PL-5JTH`). The trunk records that its
+        frame failed, so the case then offers no branch at all. A branch opened now would
+        be drawn by the same frame and would halt on it (`PL-T2Q2`). If presenting the
+        frame fails afterwards, the halt is not undone.
 
-        One run's `present_halt` can raise after it has stated the halt, when
-        its dials cannot be written. That raise no longer stops the path: every
-        other run states its halt, every panel is restated and the frame is
-        tried, and only then does the first raise escape, so it still reaches
-        the console rather than hiding (`PL-TLH4`).
+        One run's `present_halt` can raise after it has shown the halt, when its dials
+        cannot be written. That exception no longer stops the path. Every other run shows
+        its halt, every panel is restated and the frame is tried. Only then does the first
+        exception escape, so it still reaches the console rather than being hidden
+        (`PL-TLH4`).
 
         Raises:
-            ValueError: The first raise out of a run's `present_halt`, once
+            ValueError: The first exception raised by a run's `present_halt`, once
                 everything above has been done.
         """
 

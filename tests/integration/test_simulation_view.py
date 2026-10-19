@@ -7152,17 +7152,17 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
     assert panel.targets.isHidden() is False
 
 
-#: The containers whose controls a halt leaves as they are, each against the
-#: reason. Every other control on the dashboard - one added later included - is
-#: held by the test below to sit inside a `RunView`, which restates its own
-#: widgets (`PL-X7D5`), or inside a panel `SimulationView.halt_restatements`
-#: lists. A control in neither keeps offering its action over a run that every
-#: other control says has failed, as the branch panel did (`PL-MMNX`) and the
-#: bookmark panel did (`PL-YHR3`). Keyed by class name, because each is a kind
-#: of container the dashboard builds once per Area or once per dashboard.
+#: The containers whose controls a halt leaves unchanged, each with the reason. The test
+#: below requires every other control on the dashboard, including one added later, to sit
+#: in one of two places. One is a `RunView`, which restates its own widgets (`PL-X7D5`).
+#: The other is a panel that `SimulationView.halt_restatements` lists. A control in
+#: neither keeps offering its action over a run that every other control says has failed,
+#: as the branch panel did (`PL-MMNX`) and the bookmark panel did (`PL-YHR3`). The keys
+#: are class names, because the dashboard builds each kind of container once per Area or
+#: once per dashboard.
 #:
-#: Held live in both directions: an entry that matches no control on the built
-#: dashboard fails, since nothing then needs the exemption.
+#: The test also checks the other direction. An entry that matches no control on the
+#: built dashboard fails the test, because nothing then needs the exemption.
 NOT_RESTATED_ON_A_HALT: dict[str, str] = {
     "WorkspaceTabs": (
         "the Workspace tabs choose and rename layouts. A layout is the reader's "
@@ -7227,14 +7227,14 @@ def _ancestry(widget: QWidget) -> list[QWidget]:
 def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:
     """Every control on the dashboard is restated by a halt, or is named with why it need not be.
 
-    A `RunView` restates its own widgets on a halt, and `PL-X7D5`'s guard holds
-    that by default. The dashboard's own panels sit outside every run, and each
-    one was restated by hand in `_halt_every_run`, so a panel added later was
-    restated only if someone remembered to add it there (`PL-5JTH`). This test
-    builds the dashboard with every panel that holds a control: a case, so the
-    branch panel is offered, a mark, and the marks editor open. It then fails on
-    any control that no run holds, that no `halt_restatements` panel holds, and
-    that no container in `NOT_RESTATED_ON_A_HALT` holds.
+    A `RunView` restates its own widgets on a halt, and `PL-X7D5`'s guard enforces that by
+    default. The dashboard's own panels sit outside every run. Each one used to be restated
+    by hand in `_halt_every_run`, so a panel added later was restated only if someone
+    remembered to add it there (`PL-5JTH`). This test builds the dashboard with every panel
+    that holds a control. It gives the view a case, so that the branch panel is offered,
+    adds a mark, and opens the marks editor. It then fails on any control that no run
+    holds, that no `halt_restatements` panel holds, and that no container in
+    `NOT_RESTATED_ON_A_HALT` holds.
     """
 
     case = _branched_case()
@@ -7282,13 +7282,14 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
 
     `present_halt` writes the dials last and raises when `setting_readouts`
     cannot build them, as `test_a_halt_is_stated_before_its_dials_are_written`
-    shows for one run. `_halt_every_run` called it in a bare loop, so the raise
-    left the halt path before the branch panel and the bookmark panel were
-    restated: "Branch here" stayed live over a failed trunk, and a mark ahead
-    of the clock still read as to come (`PL-TLH4`). The raise now waits until
-    the panels are restated and the frame is tried. The bookmark row is the
-    literal wording of a mark a failed run cannot reach, as in
-    `test_a_failing_frame_withdraws_the_last_frames_bookmark_standings`.
+    shows for one run. `_halt_every_run` used to call it in a bare loop. So the
+    exception left the halt path before the branch panel and the bookmark panel
+    were restated. "Branch here" stayed enabled over a failed trunk, and a mark
+    ahead of the clock still showed as still to come (`PL-TLH4`). The exception
+    now waits until the panels are restated and the frame is tried. The test
+    checks the bookmark row against the literal text of a mark that a failed run
+    cannot reach, as `test_a_failing_frame_withdraws_the_last_frames_bookmark_standings`
+    does.
     """
 
     case = _branched_case()
@@ -7321,11 +7322,11 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
 ) -> None:
     """A halt that withdraws the bookmark panel withdraws the editor's lists and Remove buttons too.
 
-    The editor lists the same rows as the panel beside the chart. When a halt
-    could not work out the standings, it withdrew the panel and left the open
-    editor listing the last frame's rows, so the mark ahead of the clock still
-    read as to come there, with Remove live against it (`PL-F5KT`). The next
-    frame that draws shows both again.
+    The editor lists the same rows as the panel beside the chart. A halt that could not
+    work out the marks' standings used to hide the panel but leave the open editor
+    listing the last frame's rows. The editor then still showed the mark ahead of the
+    clock as still to come, and its Remove button still worked on that row (`PL-F5KT`).
+    The next frame that is drawn shows both again.
     """
 
     controller = _paused_run_with_history()
@@ -7366,13 +7367,13 @@ def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch(
     capfd: pytest.CaptureFixture[str],
     door: str,
 ) -> None:
-    """A fork on a trunk whose snapshot refuses ends in the halt, and the case keeps no branch.
+    """A fork on a trunk whose snapshot raises ends in the halt, and the case keeps no branch.
 
-    The case kept the branch before `add_run` read its snapshot to draw it. On
-    a run whose snapshot refuses a value (`PL-7DJK`) that read raised out of
-    the slot, so the press showed nothing and left a branch kept but never
-    drawn; a second press kept a second one (`PL-08SS`). The trunk's snapshot
-    is now read through the halt first, at both doors.
+    The case used to keep the branch before `add_run` read its snapshot to draw it. On a
+    run whose snapshot rejects a value (`PL-7DJK`), that read raised out of the slot. The
+    press showed nothing and left a branch that was kept but never drawn. A second press
+    kept a second one (`PL-08SS`). Both fork handlers now read the trunk's snapshot first,
+    through the halt.
     """
 
     case = _branched_case()
@@ -7399,13 +7400,13 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     capfd: pytest.CaptureFixture[str],
     kind: str,
 ) -> None:
-    """Remove in the marks editor on a run whose snapshot refuses ends in the halt on screen.
+    """Pressing Remove in the marks editor on a run whose snapshot raises shows the halt.
 
-    Both removers read the reference run's snapshot to find the selected mark,
-    outside any halt gate, so on a run whose snapshot refuses the press raised
-    out of the slot: the button did nothing and nothing on screen said why
-    (`PL-F2T2`). The read now goes through the halt, so the run reads as
-    stopped and the mark is left where it was.
+    Both remove handlers read the reference run's snapshot to find the selected mark.
+    They used to read it outside the code that halts the run on an error. So on a run
+    whose snapshot rejects a value, the press raised out of the slot. The button did
+    nothing, and nothing on screen said why (`PL-F2T2`). The read now goes through the
+    halt, so the run shows as stopped and the mark stays where it was.
     """
 
     controller = _paused_run_with_history()
@@ -7438,12 +7439,12 @@ def test_a_drag_whose_readouts_refuse_halts_the_run(
 ) -> None:
     """A dial whose readouts cannot be built after a drag halts the run, and says so on screen.
 
-    After a dragged dial is applied, the run's own labels are rewritten at
-    once from a snapshot, and `setting_readouts` raises there for a control
-    that can offer no setting. Only the apply was inside the guard, so the
-    raise escaped the slot with the run still reading "Paused" and no banner
-    (`PL-M3M2`). It now halts the run first. The dial write in the halt raises
-    again, and that second raise still reaches the console.
+    After a dragged dial is applied, the run's own labels are rewritten at once from a
+    snapshot. `setting_readouts` raises there for a control that can offer no setting.
+    Only the apply step was inside the guard. So the exception escaped the slot, and the
+    run still showed "Paused" with no banner (`PL-M3M2`). The exception now halts the run
+    first. The dial write in the halt raises again, and that second exception still
+    reaches the console.
     """
 
     controller = _paused_run_with_history()

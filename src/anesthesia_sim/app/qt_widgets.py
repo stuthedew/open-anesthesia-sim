@@ -1190,15 +1190,16 @@ class BookmarksPanel(QWidget):
         self.targets.show()
 
     def withdraw(self) -> None:
-        """Hide both collections, because their standings could not be worked out.
+        """Hide both lists of marks, because the halt could not work out their standings.
 
-        A halt calls this method when restating the panel raised
+        A mark's standing says whether the run has reached it. The halt path calls this
+        method when restating the panel raised an exception
         (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
-        last frame. On a failed run, a row that still shows a mark as to come is a
-        stale claim. The halt exists to remove that claim (`PL-YHR3`). The button
-        that opens the editor stays on screen, and the editor withdraws its own lists
-        at the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel`
-        shows both collections again.
+        last frame. On a failed run, a row that still shows a mark as still to come is
+        a stale claim. The halt restates the panel to remove that claim (`PL-YHR3`). The
+        button that opens the editor stays on screen. The editor hides its own lists at
+        the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel` shows
+        both lists again.
         """
 
         self.times.hide()
@@ -1578,15 +1579,15 @@ class BookmarkDialog(QDialog):
     def withdraw(self) -> None:
         """Hide both lists and their Remove buttons, because the standings could not be worked out.
 
-        A halt calls this method together with `BookmarksPanel.withdraw`, when
-        restating the marks raised (`SimulationView._restate_bookmark_panel`). The
-        rows come from the last frame, so a row that still lists a mark as to come
-        on a failed run is a stale claim, and the panel beside the chart has already
-        withdrawn the same listing (`PL-F5KT`). The rows are hidden rather than
-        cleared, because Remove selects a mark by its row. Each Remove button is
-        hidden with its list, so nothing can be removed against a row the reader
-        cannot see. The two forms stay, and the next call to `set_panel` shows the
-        lists and buttons again.
+        A mark's standing says whether the run has reached it. The halt path calls this
+        method together with `BookmarksPanel.withdraw`, when restating the marks raised an
+        exception (`SimulationView._restate_bookmark_panel`). The rows come from the last
+        frame. On a failed run, a row that still lists a mark as still to come is a stale
+        claim. The panel beside the chart has already hidden the same rows (`PL-F5KT`).
+        The rows are hidden rather than cleared, because Remove selects a mark by its row.
+        Each Remove button is hidden with its list, so the reader cannot remove a mark
+        through a row they cannot see. The two forms stay on screen. The next call to
+        `set_panel` shows the lists and buttons again.
         """
 
         for widget in self._withdrawable():
