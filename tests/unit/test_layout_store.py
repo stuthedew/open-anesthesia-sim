@@ -21,8 +21,8 @@ import pytest
 
 from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout import store as store_module
-from anesthesia_sim.layout.exceptions import LayoutRefused, WorkspaceFileError
-from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, Migrated
+from anesthesia_sim.layout.exceptions import InvalidLayout, LayoutRefused, WorkspaceFileError
+from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, Migrated, SchemaVersion
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import workspace_set_from_json, workspace_set_to_json
 from anesthesia_sim.layout.store import (
@@ -491,6 +491,24 @@ def test_the_pre_migration_file_is_kept_once_at_the_first_save(
 
     assert kept.read_text(encoding="utf-8") == workspace_set_to_json(MINE)
     assert entries(tmp_path) == [WORKSPACES_FILE_NAME, PREVIOUS_FILE_NAME, kept.name]
+
+
+def test_a_file_name_cannot_name_a_version_or_an_attempt_that_does_not_exist() -> None:
+    """`PL-8JV2`: `kept_file_name(True)` wrote `workspaces.vTrue.json`, and attempt -1 a `--`."""
+
+    with pytest.raises(TypeError, match="a schema version is an int, not bool"):
+        kept_file_name(True)  # type: ignore[arg-type]
+
+    with pytest.raises(InvalidLayout, match="a schema version counts from 1, not 0"):
+        kept_file_name(0)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="an attempt counts from 0, not -1"):
+        set_aside_file_name(MOMENT, -1)
+
+    with pytest.raises(TypeError, match="an attempt is an int, not bool"):
+        set_aside_file_name(MOMENT, True)
+
+    assert kept_file_name(SchemaVersion(2)) == "workspaces.v2.json"
 
 
 def test_the_file_names_are_the_documented_ones() -> None:
