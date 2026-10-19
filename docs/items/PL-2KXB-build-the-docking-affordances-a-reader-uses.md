@@ -6,10 +6,10 @@ effort: L
 status: ready
 classes: feature, ux
 feature: interface-areas
-touches: src/anesthesia_sim/app/, tests/integration
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tools/contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-16
 payoff: a reader can split, join and swap Areas and switch Workspaces with the mouse, and a join the layout cannot make is shown as unavailable rather than approximated
-verify: grep -q 'def test_a_corner_drag_splits_an_area' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_shown_unavailable' tests/integration/test_layout_adapter.py
+verify: grep -q 'def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_nothing' tests/integration/test_layout_adapter.py && grep -q 'def test_a_tab_switches_the_layout_and_leaves_the_run' tests/integration/test_workspace_tabs.py
 ---
 
 **Problem.** Build the docking affordances a reader uses: border drag moving the collinear chain, corner drag to split and to join, and Area swap, with a join the splitter tree cannot express refused rather than approximated
@@ -49,3 +49,46 @@ swap, and Workspace tabs. `AreaLayout.set_model` already rebuilds the
 splitters when the tree changes shape, so a split, join or swap reaches the
 screen through it.
 
+
+## Built 2026-10-19: the Area menu, the corner drag and the border drag
+
+`#1618` lands the first three parts and leaves this item open for the fourth.
+
+- **The Area menu** (`PL-MS34` Q2). Each Area's header ends in an `AreaMenu`
+  with Split left and right, Split top and bottom, Join with each neighbour,
+  Swap with every other Area, and Close Area. Each entry is worked out by
+  asking `LayoutModel` for the layout it makes. An entry the model or the
+  Area's size refuses is shown disabled, with the reason as its tooltip.
+  `LayoutModel.rectangle` and `LayoutModel.neighbours` are new for it.
+- **The corner drag** (`PL-30L5`). Each corner is a 16 px zone with a cross
+  cursor and a MUTED grip shown while the pointer is in that Area. A drag
+  inside the Area previews a split through the pointer, and a drag into a
+  neighbour previews a join. Nothing changes until release, and Escape
+  cancels. A refused split or join is drawn in WARNING and release does
+  nothing.
+- **The rest of the border drag** (`PL-RQT1` Q3). The adapter now works the
+  drag out itself instead of Qt's splitter drag. The border stops where an
+  Area beside a moved line reaches the least size Qt draws it at, and its
+  line turns WARNING there. Shift moves one border alone
+  (`LayoutModel.resize(..., alone=True)`), and Escape returns the layout to
+  where the drag started. A drag the model refuses now stops at the farthest
+  place it allows, where it used to change nothing.
+- **A split copies the source View's state** (`PL-TH35` Q10). The new half
+  of a split, from the menu or by the corner, is built from a copy of the
+  source View's `save_state()`, so splitting a chart gives two identical
+  charts. `AreaLayout._copy_split_state` does it once, for every split.
+
+**Placeholders decided here** (look, wording and placement, project owner
+2026-10-18). The menu's wording. "Join with" keeps this Area's View. Close
+gives the place to the first neighbour that shares a whole edge. The grip is
+drawn in opaque MUTED rather than at 40% alpha, so it meets SC 1.4.11's 3:1.
+The header has 16 px side margins so a corner zone never takes the chooser's
+or the menu's click.
+
+**What is left: the Workspace tab strip** (`PL-QW1Z`), with the lifecycle
+from `PL-WV9K` and "Pin current run" on the tab. It waits on two things.
+`PL-TH35` builds the Wash-in and Parameters Views that the shipped
+Workspaces name, so the dashboard can open on them. `PL-7Z84` (`#1614`)
+gives a Workspace its pinned run. The fourth part also wires a
+`WorkspaceSet` into the dashboard, since nothing holds one yet. The rewritten
+`verify:` names that part's test.
