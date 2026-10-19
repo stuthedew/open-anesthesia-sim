@@ -213,21 +213,28 @@ is not optional.
 - Treat simulation time as explicit state, never wall-clock time.
 - Preserve deterministic results for identical inputs.
 - Add or update tests with every core behavior change.
-- **A shared fact has one source of truth** (project owner, 2026-10-12: "a
-  hard coding principle", and "make sure this happens. However the best
-  approach"). A value, grammar, predicate or reading the repository already
-  holds is imported from the one module or data file that owns it, in the
-  simulator and the apparatus alike, never derived again beside it. Before
-  writing a reader of a fact, ask whether a module or document already states
-  it: read that one, or, where none does, write the one record and read it,
-  never a sharper heuristic. `tools/literal_home_check.py` refuses a second
+- **A shared fact has one source of truth. This is the project's core design
+  principle** (project owner, 2026-10-12: "a hard coding principle", and "make
+  sure this happens. However the best approach"; 2026-10-19: "one source of
+  truth everywhere", "a core design principle", "fix this structurally
+  everywhere"). A value, grammar, predicate, state or reading the repository
+  already holds is read from the one module, data file or writer that owns
+  it. That applies in the simulator, its documents and the apparatus alike,
+  and the fact is never derived again beside it. Before writing a reader of a
+  fact, ask whether a module or document already states it: read that one,
+  or, where none does, write the one record and read it, never a sharper
+  heuristic. **Fix a second copy by its shape, not as one instance.** Replace
+  it with a read of the home, then make the next copy fail through a checked
+  type, a single writer or a check. File the copies a sweep finds under the
+  `one-source-of-truth` feature (`PL-2LB5`). Two copies stay copies: a test's
+  expected value, which `.claude/rules/test-oracles.md` takes from a source
+  independent of the code under test, and a published value restated beside
+  its citation. `tools/literal_home_check.py` refuses a second
   copy of a number under `src/`, and `tools/fact_home_check.py` refuses a
   reader of git, the tree, the GitHub API, the default branch or a shell
   command outside the module that owns it, and a constant defined in two
-  apparatus files. What neither reaches - two readers of one fact that
-  touches no primitive - is this sentence's to catch, and three generator
-  heads closed on sweeps and re-entered under a rule that loaded only on
-  apparatus paths (`PL-4S6C`), so it is resident.
+  apparatus files. What neither check reaches is this sentence's to catch,
+  which is why it is resident (`PL-4S6C`).
   `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
   where none exists, write one" has the three shapes a new reader takes.
 - Keep agent/model parameters in validated, versioned data files.
