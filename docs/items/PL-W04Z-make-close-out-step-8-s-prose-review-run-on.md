@@ -3,13 +3,14 @@ id: PL-W04Z
 title: Make close-out step 8's prose review run on every simulator branch that changes long prose: only 1 of the 6 simulator branches that held the step from 2026-10-18 to 2026-10-19 recorded running it (#1619), and the 5 that did not wrote prose rated 58% awkward against 22% for #1619 (PL-J6CK)
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: housekeeping
 feature: prose-quality
-touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml, tools/new_prose.py, subprojects/docket/tests
+touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
 payoff: a simulator branch's long docstrings and comments get the fresh review that cut awkward prose from 58% to 22% of verdicts, rather than skipping it five times in six
+verify: grep -q 'def test_arm_holds_without_prose_review' subprojects/docket/tests/test_arming.py && grep -q 'def test_arm_holds_when_prose_count_fails' subprojects/docket/tests/test_arming.py && grep -q 'def test_counts_units_since_commit' tests/unit/test_new_prose.py && grep -q 'Prose-review:' .claude/skills/docket/modes/close-out.md
 ---
 
 **Problem.** Close-out step 8 in `.claude/skills/docket/modes/close-out.md`
@@ -49,7 +50,7 @@ so that part is inferred, not measured.
 a session on a simulator branch to run step 8 first. The step keeps its number,
 because items and documents cite "step 8" by number.
 
-**Decision needed.** Whether to make a skipped review stop the pull request
+[superseded 2026-10-19: decided below.] **Decision needed.** Whether to make a skipped review stop the pull request
 from arming, or to rely on the new pointer in step 5.
 
 - **Recommended: `bin/docket arm` holds a simulator branch whose long prose
@@ -75,3 +76,48 @@ feature would rewrite later, so the hold is recommended now.
 
 **Generator check.** Its reader misread whether a close-out step had run,
 which no head names. It is one step in one file, so it is an ordinary item.
+
+**Decided 2026-10-19: `bin/docket arm` holds a simulator branch whose long
+prose has no recorded review.** This is the recommendation above. It was taken
+in the workflow decision round without putting it to the owner, because one
+option is clearly correct (`.claude/rules/instruction-writing.md` rule 14).
+`CLAUDE.md` gives standing approval for putting the decidable part of a rule in
+code. Whether `tools/new_prose.py` counts a unit and whether a trailer is
+recorded are both decidable. Whether each rewrite is good stays with the
+session and its reviewer. No open workflow-lane generator is live, so the
+generator pause does not hold this back. The alternative, relying on the
+pointer in step 5 and measuring five more branches, was refused. It is the
+cheap route with its repayment made conditional, which
+`.claude/rules/expert-review.md` says to count first. The count is already in
+this item: five of six branches skipped the review, and each one added long
+prose that the `prose-quality` feature would have to rewrite later.
+
+The round settled four details of the build, all of them the session's to
+decide:
+
+1. **The record is a commit trailer**, `Prose-review: read N, rewrote M,
+   rejected K`, read with the helper that reads `Owner-read:`. Step 8 still
+   asks for the same counts in the pull request body, because a reader of the
+   squash commit sees the body and not the branch's trailers.
+2. **The count covers only prose added since the newest record.** `arm` runs
+   the command named in `docket.toml` over the commits after the newest
+   `Prose-review:` trailer, or over the whole branch when there is none, and
+   holds when it counts any unit. A code fix after the review then needs no
+   second review, while a new long docstring does. Holding on any simulator
+   change since the record, as `Owner-read:` does, would ask for a review of
+   prose that was already reviewed. `tools/new_prose.py` gains the option that
+   counts from a given commit. Docket names no repository tool, so the command
+   comes from `docket.toml`, as `open_pull_requests_command` does.
+3. **One hold message names both missing records.** When a branch lacks both
+   `Owner-read:` and `Prose-review:`, `arm` names both in one answer, so a
+   single commit can carry both trailers and the session does not meet a second
+   hold after clearing the first.
+4. **A command that fails is a hold, not a pass.** When the configured command
+   exits non-zero, `arm` holds and says the count could not be read. A branch
+   whose prose could not be counted is never armed as though it had none.
+
+Done when `bin/docket arm` holds a branch that adds a long unit with no
+`Prose-review:` trailer after it, arms the same branch once the trailer is
+recorded, and holds again when a later commit adds another long unit. Close-out
+step 8 tells a session to record the trailer. The tests named in `verify:`
+cover the three cases and the failing command.
