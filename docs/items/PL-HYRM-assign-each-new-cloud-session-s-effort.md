@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: model-evidence
-touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/apparatus.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh
+touches: docs/maintainer.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md, docs/apparatus.md, docket.toml, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh
 added: 2026-10-19
 closed: 2026-10-19
 pr: 1678
