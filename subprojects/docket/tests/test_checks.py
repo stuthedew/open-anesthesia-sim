@@ -5501,10 +5501,10 @@ def test_a_pr_value_with_a_leading_zero_is_refused() -> None:
 @pytest.mark.parametrize(
     ("named", "fault"),
     [
-        ("PL-N0PE", "names PL-N0PE, which no item in this store carries"),
+        ("PL-NXST", "names PL-NXST, which no item in this store carries"),
         ("PL-K7QX", "names itself"),
         ("PL-DR0P", "names PL-DR0P, which is not `done`"),
-        ("PL-0PEN", "names PL-0PEN, which is not `done`"),
+        ("PL-0PN1", "names PL-0PN1, which is not `done`"),
     ],
     ids=["no-item", "itself", "dropped", "open"],
 )
@@ -5512,12 +5512,12 @@ def test_a_no_successor_id_that_answers_nothing_is_refused(named: str, fault: st
     """A mistyped id left the re-entered line listed, or answered another (`PL-21Z5`)."""
     closed = {"status": "done", "closed": date(2026, 8, 2), "reason": "fixed"}
     store = [
-        _item("PL-D0NE", **closed),
+        _item("PL-DN01", **closed),
         _item("PL-DR0P", status="dropped", closed=date(2026, 8, 2), reason="not needed"),
-        _item("PL-0PEN"),
+        _item("PL-0PN1"),
     ]
 
     errors = _errors(_item(no_successor=(named,)), *store)
 
     assert _has(errors, f"`no-successor:` {fault}")
-    assert not _has(_errors(_item(no_successor=("PL-D0NE",)), *store), "no-successor")
+    assert not _has(_errors(_item(no_successor=("PL-DN01",)), *store), "no-successor")
