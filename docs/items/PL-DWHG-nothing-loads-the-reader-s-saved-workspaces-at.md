@@ -81,3 +81,8 @@ are look, wording or placement (project owner's rule of 2026-10-18):
   name `Open Anesthesia Simulator`. On Linux the file is
   `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/workspaces.json`,
   measured with PySide6's `QStandardPaths` on 2026-10-19.
+
+**Owner read not needed (2026-10-19).** The menu entries carry out
+`PL-WV9K`'s recorded answers, and their wording is a placeholder. No clinical
+value, or what one means, changes. The branch's long docstrings and comments
+were rewritten in plain English after a review that read 21 and rewrote 16.
