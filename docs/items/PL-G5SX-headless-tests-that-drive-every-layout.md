@@ -10,6 +10,7 @@ touches: tests/integration
 blocked-by: PL-DWHG
 added: 2026-09-16
 closed: 2026-10-19
+pr: 1661
 payoff: every layout operation a learner can perform, saving and reloading included, is checked never to take a required clinical value off the screen
 verify: grep -q 'def test_every_layout_operation_leaves_the_unconditional_set_on_screen' tests/integration/test_layout_safety.py
 ---
