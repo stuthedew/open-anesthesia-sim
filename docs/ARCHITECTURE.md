@@ -399,7 +399,9 @@ checked without being listed (`PL-X7D5`). The legends are told what a frame
 drew once both plots have drawn it, so where the frame a click asked for
 fails, the boxes go on naming the curves on the plot (`PL-G3K7`); and
 `SimulationView._halt_every_run` restates the branch controls from the case,
-so a failed trunk offers no branch where it stands (`PL-MMNX`). The trunk
+so a failed trunk offers no branch where it stands (`PL-MMNX`). It also
+restates the bookmark standings from each run's controller, so a mark the
+failed run will never reach is not listed as still to come (`PL-YHR3`). The trunk
 records that its frame failed, so it then offers no keyframe and no passed
 mark either: a branch opened there would be drawn by the same failing frame
 (`SimulationController.record_failed_frame`, `PL-T2Q2`). A run that

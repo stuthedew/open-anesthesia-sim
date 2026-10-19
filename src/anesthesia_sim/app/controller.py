@@ -1009,7 +1009,7 @@ class SimulationController:
             control_timeline=self._control_timeline,
             bookmarks=self._bookmarks,
             bookmark_halt=self._bookmark_halt,
-            bookmark_standings=self._bookmark_standings(),
+            bookmark_standings=self.bookmark_standings(),
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
         )
@@ -1026,6 +1026,17 @@ class SimulationController:
     # re-worded here: the message names the value that failed, and a second
     # sentence wrapped around it would put two accounts of one refusal on
     # screen.
+
+    @property
+    def bookmarks(self) -> BookmarkSet:
+        """Return the instants and the heights at which this run is marked.
+
+        No part of this set is built from a compartment value. It is the same set that
+        `snapshot()` carries as `SimulationSnapshot.bookmarks`. A halt reads it here,
+        because a halt cannot rely on a snapshot (`bookmark_standings`, `PL-YHR3`).
+        """
+
+        return self._bookmarks
 
     def add_time_bookmark(self, bookmark: TimeBookmark) -> None:
         """Mark an instant of the case.
@@ -1893,13 +1904,14 @@ class SimulationController:
         return self._resume_point(self._run_definition.segment_at(fork_s), fork)
 
     def _passed_time_bookmarks(self) -> tuple[TimeBookmark, ...]:
-        """The time bookmarks this run's clock is at or past, as its standings say.
+        """Return the time bookmarks that this run's standings show as passed.
 
-        Read from `_bookmark_standings` rather than from a comparison made here,
-        so a mark is offered for a fork exactly when its row reads passed.
+        These are the marks that the run's clock is at or past. The method reads
+        `bookmark_standings` instead of comparing times here. So a mark is offered for a
+        fork exactly when its row shows it as passed.
         """
 
-        standings = self._bookmark_standings()
+        standings = self.bookmark_standings()
 
         return tuple(
             bookmark
@@ -2548,8 +2560,16 @@ class SimulationController:
             for quantity, index in COMPARTMENT_STATE_INDEX.items()
         }
 
-    def _bookmark_standings(self) -> BookmarkStandings:
-        """Where each of this run's marks stands, for the snapshot to carry.
+    def bookmark_standings(self) -> BookmarkStandings:
+        """Return the standing of each of this run's marks, without using a compartment value.
+
+        The snapshot carries these standings. A halt also reads them directly, from this
+        method (`SimulationView._restate_bookmark_panel`). When a halt comes from a failed
+        frame, `snapshot()` may refuse as well, so the halt cannot read the standings
+        from a snapshot. Every input below comes from the run's own record: the
+        instants and heights it reached, its opening instant, its clock, the run-length
+        guard and the failure. None of these inputs builds a `Fraction`. So this method
+        cannot raise for a value that a frame would refuse (`PL-YHR3`).
 
         **Both of `start`'s refusals are passed, because both end the run's
         reach** (`PL-N3N5`). A standing says whether a mark can still be

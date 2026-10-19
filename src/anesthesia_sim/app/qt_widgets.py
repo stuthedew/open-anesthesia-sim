@@ -1178,7 +1178,7 @@ class BookmarksPanel(QWidget):
         column.addLayout(actions)
 
     def set_panel(self, panel: BookmarkPanel) -> None:
-        """Draw both collections from one tick's answer.
+        """Draw both collections from one tick's answer, and show them if withdrawn.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1186,6 +1186,22 @@ class BookmarksPanel(QWidget):
 
         self.times.set_listing(panel.times)
         self.targets.set_listing(panel.targets)
+        self.times.show()
+        self.targets.show()
+
+    def withdraw(self) -> None:
+        """Hide both collections, because their standings could not be worked out.
+
+        A halt calls this method when restating the panel raised
+        (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
+        last frame. On a failed run, a row that still shows a mark as to come is a
+        stale claim. The halt exists to remove that claim (`PL-YHR3`). The button
+        that opens the editor stays on screen. The next call to `set_panel` shows both
+        collections again.
+        """
+
+        self.times.hide()
+        self.targets.hide()
 
 
 class ForkPanel(QWidget):
