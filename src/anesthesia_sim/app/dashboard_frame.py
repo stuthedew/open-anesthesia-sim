@@ -25,7 +25,7 @@ requirements rather than wording: the "Alveolar" readout glossed
 (`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
@@ -93,6 +93,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     CaseInstant,
 )
+from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.layout.run_identity import RunId
 
 # The step each simulation tick advances by. What range of steps is
@@ -507,6 +508,52 @@ HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 # (2026-10-12, ratified, over a label stating the mark's typed instant or its
 # name), so a rewrite is put to them rather than made.
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
+
+# Each range below holds one part of a clock reading within the supported run, with every
+# value that part can take. Hours run below the run length, minutes and whole seconds run
+# below 60, and the tenth is nonzero. Each range starts at 1 so that a reading built from
+# them includes every part (`PL-NC0D`).
+_CLOCK_HOURS: Final = range(1, int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // SECONDS_PER_HOUR))
+_CLOCK_MINUTES: Final = range(1, int(MINUTES_PER_HOUR))
+_CLOCK_WHOLE_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
+_TENTHS_PER_SECOND: Final = 10
+_CLOCK_TENTHS: Final = range(1, _TENTHS_PER_SECOND)
+
+
+def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
+    """Return the branch selector's widest possible entry, as `advance_px` measures it.
+
+    The selector has a fixed width, so it reserves the width of its widest
+    entry once, when it is built (`PL-NC0D`). The entry for a mark that the
+    run has passed is the widest kind of entry. It is the clock reading of a
+    control event, followed by the words of `MARK_FORK_LABEL_TEMPLATE`. The
+    widest clock reading is found by measuring, not by counting characters.
+    A proportional font gives its digits different widths, so 23h59m59.9s,
+    the reading at the last step, is not the widest. Hours, minutes and
+    seconds vary independently. So the widest value of each, put together,
+    is the widest reading that `format_elapsed` writes within the supported
+    run.
+
+    Args:
+        advance_px: How wide a string draws in the selector's font, in
+            pixels.
+
+    Returns:
+        The entry for a mark passed at the instant with the widest reading.
+    """
+
+    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(f"{hour}h"))
+    minutes = max(_CLOCK_MINUTES, key=lambda minute: advance_px(f"{minute}m"))
+    whole, tenth = max(
+        ((whole, tenth) for whole in _CLOCK_WHOLE_SECONDS for tenth in _CLOCK_TENTHS),
+        key=lambda second: advance_px(f"{second[0]}.{second[1]}s"),
+    )
+    instant_s = (
+        hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
+    )
+
+    return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
+
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
 EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
