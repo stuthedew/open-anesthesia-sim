@@ -55,6 +55,13 @@ rules, "phases," or "closed loops" in the output itself.
     to the interface carries one screenshot per option, of one concrete run,
     annotated where the options differ. The run-the-app skill § "Compare
     interface approaches for the owner" says how (`PL-KYTY`).
+    **A session running under a coordinator asks the coordinator, not the
+    owner** (project owner, 2026-10-19). This applies to a Projects thread and
+    to any other session that a coordinator session started. Such a session
+    sends a question the coordinator can answer to the coordinator, never to
+    the owner: what to work on next, which item to take, whether to carry on.
+    The coordinator decides it, or brings the owner only a real decision,
+    written to the standard above.
 11. PROGRESSIVE DISCLOSURE. Do not include execution steps for options
     not yet chosen. Name the option and its cost; deliver its procedure
     after the user picks it.

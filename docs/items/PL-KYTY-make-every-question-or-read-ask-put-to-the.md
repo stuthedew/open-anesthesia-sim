@@ -30,6 +30,12 @@ ask for clarification every time. Can it make it obvious in the future? And
 any time it's a UI question about different approaches, I want screenshots
 (annotated if possible) for comparison."
 
+The owner added a second rule the same day, after a workflow thread asked them
+directly what to work on next: "It shouldn't be asking me directly. It should
+be asking you and if you have questions then ask me." A session running under
+a coordinator sends such a question to the coordinator. The coordinator
+decides it, or brings the owner only a real decision.
+
 **Done when.** The rule is written where sessions write their asks, and the
 tooling's own ask text agrees with it:
 
@@ -39,6 +45,8 @@ tooling's own ask text agrees with it:
   option, gives a recommendation, and says why the choice is the owner's. An
   ask about different approaches to the interface carries one screenshot per
   option, annotated where the options differ.
+- The same rule says that a session running under a coordinator sends a
+  question the coordinator can answer to the coordinator, never to the owner.
 - `.claude/skills/run-the-app/SKILL.md` has a tested procedure for rendering
   those captures from the branch and annotating them.
 - The `READ_ASK` text that `bin/docket arm` prints asks for the same things,

@@ -1186,5 +1186,13 @@ needs its ask written.
 
 **Why nothing more is cut.** No resident sentence said how plainly an ask must
 be worded or that an interface choice comes with pictures, so nothing is
-superseded. The story of `#1650` sits here rather than in rule 10. The rules
-file grows by 664 characters.
+superseded. The story of `#1650` sits here rather than in rule 10.
+
+**A second sentence, the same day.** A workflow thread asked the owner
+directly what to work on next. The owner's rule: a session running under a
+coordinator sends a question the coordinator can answer to the coordinator,
+and the coordinator brings the owner only a real decision. It joins rule 10
+for the same reason as the first sentence, because a question is written in a
+reply that no read precedes. No resident sentence said where such a session
+sends its questions, so nothing is superseded. With both sentences the rules
+file grows by 1,157 characters.
