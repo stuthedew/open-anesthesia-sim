@@ -9,6 +9,7 @@ feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration, tests/unit/test_layout_model.py, tools/contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-10-19
+pr: 1653
 payoff: a reader can split, join and swap Areas and switch Workspaces with the mouse, and a join the layout cannot make is shown as unavailable rather than approximated
 verify: grep -q 'def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release' tests/integration/test_layout_adapter.py && grep -q 'def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_nothing' tests/integration/test_layout_adapter.py && grep -q 'def test_a_tab_switches_the_layout_and_leaves_the_run' tests/integration/test_workspace_tabs.py
 ---
