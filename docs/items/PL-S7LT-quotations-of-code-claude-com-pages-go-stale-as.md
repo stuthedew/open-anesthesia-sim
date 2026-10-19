@@ -9,6 +9,7 @@ touches: tools/doc_quote_check.py, tools/doc_quotes.toml, tests/unit/test_doc_qu
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-19
 closed: 2026-10-19
+pr: 1643
 payoff: a rule resting on a sentence of Claude Code's documentation is told when that sentence leaves the page
 verify: grep -q 'doc_quote_check' .github/workflows/drift.yml && grep -q 'tests/unit/test_doc_quote_check.py' docket.toml
 ---
