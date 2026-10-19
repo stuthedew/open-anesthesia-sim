@@ -1698,14 +1698,14 @@ def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     assert RECORDS == arming.RECORDS
 
 
-def test_what_arms_on_green_is_everything_but_the_owners_read_list_and_the_gate() -> None:
+def test_what_arms_on_green_is_everything_but_the_owners_read_list() -> None:
     """The store, the tooling and the records arm as before, and so does every path off the list."""
     items = QUEUE.items_dir
     assert arming.arms_on_green("docs/items/PL-B1B1-held.md")
     assert arming.arms_on_green("subprojects/docket/src/docket/render.py")
     assert arming.arms_on_green("docs/pr-bodies/1066.md")
     assert arming.arms_on_green("docs/items-archive.md")
-    assert not arming.arms_on_green(arming.GATE)
+    assert arming.arms_on_green(arming.GATE)
     assert not arming.arms_on_green("src/work.py")
     assert arming.arms_on_green(".github/workflows/update-armed.yml")
     assert arming.arms_on_green(".claude/hooks/direct-merge-guard.sh")

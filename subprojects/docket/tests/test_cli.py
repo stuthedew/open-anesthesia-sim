@@ -11028,11 +11028,11 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "README.md",
-        ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
         assert not arming.arms_on_green(path), path
     for path in (
+        ARM_GATE,
         "subprojects/docket/tests/test_cli.py",
         "subprojects/docket/src/docket/shell.py",
         "docs/MODEL.md.bak",
@@ -11208,19 +11208,20 @@ def test_a_test_of_the_tooling_is_a_collected_test_importing_no_simulator_on_eit
     assert arming.waits_on_read(test)
     assert not arming.waits_on_read(test, {test})
     assert arming.arms_on_green(test, {test})
-    for path in ("src/anesthesia_sim/core/uptake.py", ARM_GATE):
-        assert arming.waits_on_read(path, {path}), path
+    assert arming.waits_on_read(
+        "src/anesthesia_sim/core/uptake.py", {"src/anesthesia_sim/core/uptake.py"}
+    )
 
 
 @pytest.mark.parametrize("change", ["edit", "move"])
-def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_tooling(
+def test_arm_arms_a_change_to_arming_py_that_edits_no_pinned_test_and_names_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
 ) -> None:
-    """The gate cannot loosen itself, by an edit or by moving where the exception points.
+    """A change to the gate that leaves its pinned answers alone arms, and is named (`PL-9JHM`).
 
-    The module is on the base, so a move reads as its deletion beside the new
-    file, both under the tooling: read with rename detection, the move would
-    print as the new path alone and arm.
+    Until 2026-10-19 every change to it held for the owner's read. The module
+    is on the base, so a move reads as its deletion beside the new file, and
+    the deletion is what names it.
     """
     root, git = _arm_repo(tmp_path)
     git("checkout", "-q", "main")
@@ -11234,19 +11235,17 @@ def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_t
         git("mv", ARM_GATE, "subprojects/docket/src/docket/gating.py")
         git("commit", "-qm", "move the gate", when=ARM_T0)
 
-    assert _arm(root) == 1
+    assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
-        "so its pull request waits on the owner's read\n"
-    )
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read from the owner")
+    assert f"  It changes {ARM_GATE}, the gate itself, and changes or deletes no test" in out
     assert "simulator path" not in out
 
 
 def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Both reasons are said, and the listed paths are the ones on the list, not the gate."""
+    """The simulator path holds the branch, and the gate beside it adds no reason of its own."""
     root, git = _arm_repo(tmp_path)
     _put(git, root, ARM_GATE)
     _put(git, root, "src/anesthesia_sim/core/uptake.py")
@@ -11255,8 +11254,7 @@ def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
     out = capsys.readouterr().out
     assert out.startswith(
         f"hold - {ARM_BRANCH}: it changes 1 simulator path and no Owner-read record on a "
-        "commit since its newest change there says whether the owner must read it and it "
-        f"changes {ARM_GATE}, the gate itself, so its pull request waits on the owner's read\n"
+        "commit since its newest change there says whether the owner must read it\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
 
@@ -11372,21 +11370,23 @@ def test_an_owner_read_record_in_neither_form_is_said_and_covers_nothing(
     assert "so it was not read: not needed" in out
 
 
-def test_the_gate_waits_on_the_owner_whatever_the_owner_read_record_says(
+def test_a_change_to_the_gate_waits_on_the_owner_only_as_any_change_does(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A change to `arming.py` changes what merges without the owner, so it cannot judge itself."""
+    """A change to `arming.py` arms, and a record saying needed still holds it (`PL-9JHM`)."""
     root, git = _arm_repo(tmp_path)
     _put(git, root, ARM_GATE, "2026-09-01T12:00:00+00:00")
     _record_read(git, "not needed - housekeeping", "2026-09-01T12:01:00+00:00")
 
+    assert _arm(root) == 0
+    assert "the gate itself" in capsys.readouterr().out
+
+    _record_read(git, "needed - it changes what arms", "2026-09-01T12:02:00+00:00")
+
     assert _arm(root) == 1
     out = capsys.readouterr().out
-    assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, so its pull request "
-        "waits on the owner's read\n"
-    )
-    assert arming.READ_ASK in out
+    assert out.startswith(f"hold - {ARM_BRANCH}: the Owner-read record on ")
+    assert arming.READ_ASK in out.splitlines()
 
 
 @pytest.mark.parametrize(
@@ -11414,7 +11414,8 @@ def test_a_read_hold_asks_once_no_claim_holds_the_branch(
     """
     root, git = _arm_repo(tmp_path)
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
-    _put(git, root, ARM_GATE, "2026-09-01T12:00:30+00:00")
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:20+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:30+00:00")
 
     assert _arm(root) == 1
     out = capsys.readouterr().out

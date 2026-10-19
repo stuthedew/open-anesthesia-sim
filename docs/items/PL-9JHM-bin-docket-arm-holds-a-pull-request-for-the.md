@@ -3,14 +3,16 @@ id: PL-9JHM
 title: bin/docket arm holds a pull request for the owner's read with no ask in it, so sessions still send a bare 'read #N' and holds with nothing to review reach the owner
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, CLAUDE.md, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner asked for it on 2026-10-18
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1616
 payoff: a pull request reaches the owner only with a recorded question or risk to review, printed as the ask's opening line, and anything else merges on green
-verify: grep -q 'OWNER_ASK = "Owner-ask"' subprojects/docket/src/docket/arming.py && grep -q 'def test_arm_holds_for_the_owner_only_with_a_recorded_ask' subprojects/docket/tests/test_cli.py && grep -q 'PL-9JHM records the owner' subprojects/docket/src/docket/arming.py
+verify: grep -q 'OWNER_ASK = "Owner-ask"' subprojects/docket/src/docket/arming.py && grep -q 'def test_arm_holds_for_the_owner_only_with_a_recorded_ask' subprojects/docket/tests/test_cli.py && grep -q 'PL-9JHM. records the owner' subprojects/docket/src/docket/arming.py
 reenters: PL-9KHK, PL-DKBG
 ---
 
@@ -62,6 +64,17 @@ it edits or deletes an existing pinned test), keep holding (with a risk-review
 ask), or merge on green. **Recommendation: tests guard it.** To loosen an
 existing answer, a change has to edit the test that pins it, so that kind of
 loosening still reaches the owner.
+
+**Answered 2026-10-19 for PL-9JHM: tests guard it** (project owner,
+2026-10-19, ratified, a tap on the card at 00:36Z, over keeping every gate
+change held and over arming gate changes on green). A change to `arming.py`
+now holds only when it changes or deletes an existing test pinning `arm`'s
+answers. Otherwise it arms on green, and `arm` names it in its answer. A
+loosening that no test pins merges unread, as the card said. So does one that
+also rewrites the check that reads the pins, because the gate judges its own
+change. Closing that last gap would need `arm` to judge a branch with the base
+branch's copy of itself. That was weighed and not built, because a session
+would have to loosen the gate on purpose to use it.
 
 **Done when.** `arm` holds for the owner's read only with a valid `Owner-ask:`
 record and prints it as the ask's opening line; without one it says that

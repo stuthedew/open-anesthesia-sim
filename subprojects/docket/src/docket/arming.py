@@ -14,7 +14,8 @@ every later push while a pull request is open.
 **Five answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - waits on
-  no read from the owner: it leaves this module alone, and either reaches no
+  no read from the owner: it changes or deletes no existing test pinning this
+  module's answers (`PINS`), and either reaches no
   simulator path (`READ_PATHS`, a test of the tooling under `tests/` aside,
   which `arms_on_green` answers path by path) or carries the session's
   `Owner-read: not needed - <why>` record on a commit since its newest change
@@ -32,9 +33,10 @@ every later push while a pull request is open.
   work nobody finished or handed back. A simulator path no `Owner-read`
   record covers holds it until the session records whether the owner needs
   to read it (`JUDGE_ASK`), so a judgment nobody made fails safe rather than
-  merging a clinical change unread. A record saying `needed`, any change to
-  this module, and a change to an existing test pinning its answers (`PINS`)
-  hold it for the owner's read, and it merges on the owner's word alone. So
+  merging a clinical change unread. A record saying `needed` and a change to
+  an existing test pinning this module's answers (`PINS`) hold it for the
+  owner's read, and it merges on the owner's word alone. A change to this
+  module that edits no such test arms, and the answer names it. So
   does a switch of auto-merge off that no commit records as the session's
   (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
   line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
@@ -148,6 +150,17 @@ has already merged; what went unread is said beside it.
   "nothing to decide" was weighed and refused, because a pull request with
   nothing to review should not reach the owner at all: the way out of such a
   hold is `Owner-read: not needed`;
+- a change to this module holds only when it changes or deletes an existing
+  test pinning its answers, and otherwise arms on green with the rest of the
+  tooling (project owner, 2026-10-19, ratified, over holding every change to
+  it with a risk-review ask and over arming it on green with no such test;
+  `PL-9JHM` records the owner's answer). It reopens `PL-VKHD`'s answer of
+  2026-10-12, which held every change here so that the gate could not loosen
+  itself, because nine of those holds in two weeks were mostly refactors
+  with nothing to review. To loosen an existing answer, a change has to edit
+  the test that pins it, so that kind of loosening still waits. A loosening
+  that no test pins merges unread, and so would one that also rewrote the
+  check reading the pins, since this module judges its own change;
 - the gate's read covers the existing tests that pin its answers as well as
   this module, so a loosening through what the answer is read through has to
   edit one (project owner, 2026-10-12, ratified, over holding `vcs.py`,
@@ -257,8 +270,8 @@ READ_ASK = (
     f"<what could go wrong, for whom> | {ASK_RISK[1]} - <what was checked to rule it out> | "
     f"{ASK_RISK[2]} - <the one thing to look at>`. If neither form can be filled honestly, "
     f"nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - <why>` instead, and "
-    "the change merges on green. A change to the gate or to a test pinning its answers holds "
-    "whatever that record says, so for one of those use the risk form."
+    "the change merges on green. A change to a test pinning the gate's answers holds whatever "
+    "that record says, so for one of those use the risk form."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
@@ -369,10 +382,11 @@ TOOLING = _tooling(GATE)
 #: answer is read through - `vcs.changed_path_args`, `claims.holdings`,
 #: `cli.cmd_arm` - arms on green, so a loosening there passes unread unless it
 #: also has to edit a pinned answer. So a change to or a deletion of an
-#: existing pinned test waits on the owner's read, as a change to `GATE` does,
-#: and a new test arms (project owner, 2026-10-12, ratified, over holding
-#: `vcs.py`, `claims.py`, `cli.py` and `test_cli.py` whole, `PL-WW0Q`).
-#: `None` where no checkout holds the module.
+#: existing pinned test waits on the owner's read, which since 2026-10-19 is
+#: what holds a change to `GATE` too (`PL-9JHM`), and a new test arms (project
+#: owner, 2026-10-12, ratified, over holding `vcs.py`, `claims.py`, `cli.py`
+#: and `test_cli.py` whole, `PL-WW0Q`). `None` where no checkout holds the
+#: module.
 PINS = None if TOOLING is None else TOOLING + "tests/test_cli.py"
 
 #: How a top-level name in `PINS` marks the definition as one of the arm
@@ -404,16 +418,16 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 
 #: The simulator's paths, which were the owner's read list as they spelt it
 #: (2026-10-03, `PL-KKHD`). Since 2026-10-17 a change reaching one of these
-#: waits for the session's `OWNER_READ` record rather than for the owner,
-#: and only a record saying `READ_NEEDED`, or the gate, waits on them
-#: (`PL-DKBG`). A directory holds what is under it, a
-#: file is itself. `TESTS` is the simulator's, but for a test of the tooling
-#: (`tests_the_tooling`), which arms on green since the owner's answer of
-#: 2026-10-05. `src/anesthesia_sim/data/` lies under `src/` and is kept for
-#: the reader who looks for it by name. `.github/workflows/`, `.claude/hooks/`
-#: and docket's lexer, which joined on the owner's answers of 2026-10-03 and
-#: 2026-10-10, left it on his rule of 2026-10-12 that workflow items need no
-#: merge confirmation (`PL-KPM2`): what is left is the simulator's.
+#: waits for the session's `OWNER_READ` record rather than for the owner, and
+#: only a record saying `READ_NEEDED` waits on them (`PL-DKBG`). A directory
+#: holds what is under it, and a file is itself. `TESTS` is the simulator's,
+#: but for a test of the tooling (`tests_the_tooling`), which arms on green
+#: since the owner's answer of 2026-10-05. `src/anesthesia_sim/data/` lies
+#: under `src/` and is kept for the reader who looks for it by name.
+#: `.github/workflows/`, `.claude/hooks/` and docket's lexer, which joined on
+#: the owner's answers of 2026-10-03 and 2026-10-10, left it on his rule of
+#: 2026-10-12 that workflow items need no merge confirmation (`PL-KPM2`): what
+#: is left is the simulator's.
 READ_PATHS = ("src/", TESTS, "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
 
 #: The simulator's paths as the answers name them.
@@ -467,18 +481,17 @@ def tests_the_tooling(path: str, sides: Iterable[str]) -> bool:
 
 
 def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
-    """Whether a change to `path` waits on a read: a simulator path, or the gate.
+    """Whether a change to `path` waits on a read: a simulator path.
 
-    A simulator path waits for the session's `OWNER_READ` record, and the gate
-    for the owner (`PL-DKBG`); `arm` tells the two apart.
+    It waits for the session's `OWNER_READ` record (`PL-DKBG`). `GATE` does
+    not wait by its path since 2026-10-19: a change to it waits only when it
+    edits a test in `PINS`, which `arm` reads apart (`PL-9JHM`).
 
     `tooling` is the paths under `TESTS` that `tests_the_tooling` read as
     tests of the tooling, on both sides of the change, which arm on green. A
     name alone cannot say so, so a path under `TESTS` nobody read waits, and
     `tooling` clears nothing outside `TESTS`.
     """
-    if path == GATE:
-        return True
     if path in tooling and path.startswith(TESTS):
         return False
     return any(
@@ -489,10 +502,10 @@ def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
 def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     """Whether a change to `path` may merge on green CI without a recorded judgment.
 
-    A path this answers no to waits for the session's `OWNER_READ` record, or,
-    for `GATE`, for the owner (project owner, 2026-10-17, `PL-DKBG`).
+    A path this answers no to waits for the session's `OWNER_READ` record
+    (project owner, 2026-10-17, `PL-DKBG`).
 
-    Everything but the owner's read list and `GATE` may (the Projects trial's
+    Everything but the owner's read list may (the Projects trial's
     instructions, 2026-10-03, kind unrecorded, over holding every path outside
     the store, the tooling and the records, `PL-SQTR`; built by `PL-KKHD`),
     and so may a test of the tooling under `TESTS`, named in `tooling`
@@ -734,10 +747,11 @@ class Verdict:
     def needs_owner(self) -> bool:
         """Whether the pull request waits on the owner's read.
 
-        It does for a change to the gate or to a test pinning its answers, and
-        for a record saying needed.
+        It does for a change to a test pinning the gate's answers, and for a
+        record saying needed. A change to the gate itself does not, since
+        2026-10-19 (`PL-9JHM`).
         """
-        return self.gate or bool(self.pinned) or (self.record is not None and self.record.needed)
+        return bool(self.pinned) or (self.record is not None and self.record.needed)
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -769,6 +783,12 @@ class Verdict:
                     "in the pull request body, with the paths:"
                 )
                 said.append(f"  {self._shown(self.read)}")
+            if self.gate:
+                said.append(
+                    f"  It changes {GATE}, the gate itself, and changes or deletes no test in "
+                    f"{PINS} pinning its answers, so it arms on green with the rest of the "
+                    "tooling: name it in the report."
+                )
             if self.outside:
                 count = len(self.outside)
                 noun = "path" if count == 1 else "paths"
@@ -884,8 +904,6 @@ class Verdict:
                 f"auto-merge was switched off at {self.switched_off}, after it was armed, and "
                 "no commit since records this session doing it"
             )
-        if self.gate:
-            reasons.append(f"it changes {GATE}, the gate itself")
         if self.pinned:
             count = len(self.pinned)
             tests = "test" if count == 1 else "tests"
@@ -1101,6 +1119,7 @@ def arm(
         read=on_list,
         record=record,
         outside=outside,
+        gate=gate,
     )
 
 
