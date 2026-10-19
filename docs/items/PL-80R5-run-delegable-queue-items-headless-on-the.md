@@ -38,3 +38,16 @@ The first runs measure it; `PL-6FX6` is that trial.
 **The likelier limit is review, not money.** A simulator change arms only
 with an `Owner-read:` record, so each product pull request may wait on the
 project owner. Size each month's batch to what they will read.
+
+**Decision needed (2026-10-19): which model the workers run.** This brief
+first named Sonnet 5.5, the `delegable` tier in `docs/maintainer.md`. That
+tier rests on the owner's 2026-09-19 asymmetry: default to Opus whenever in
+doubt. `PL-2D28` then kept Explore subagents on Opus and cheapened no search
+(project owner, 2026-10-17, ratified, over Haiku 5.5 and Sonnet 5.5). Its
+reason was that a cheaper model's miss enters the record and costs more later
+than the saving. The monthly credit changes the cost side and nothing else.
+It expires unused, so a dollar saved by a cheaper model buys nothing. The risk
+side is unchanged. **Recommended:** run the workers on Opus 5.5 and accept
+roughly half the items per month, about 25 to 50 `S` items by the estimate
+above. That keeps the asymmetry and the `PL-2D28` decision intact. Keep Sonnet
+5.5 out unless `PL-6FX6` measures it as safe.
