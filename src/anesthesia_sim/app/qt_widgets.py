@@ -1196,8 +1196,9 @@ class BookmarksPanel(QWidget):
         (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
         last frame. On a failed run, a row that still shows a mark as to come is a
         stale claim. The halt exists to remove that claim (`PL-YHR3`). The button
-        that opens the editor stays on screen. The next call to `set_panel` shows both
-        collections again.
+        that opens the editor stays on screen, and the editor withdraws its own lists
+        at the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel`
+        shows both collections again.
         """
 
         self.times.hide()
@@ -1570,6 +1571,36 @@ class BookmarkDialog(QDialog):
 
         _refill(self.time_list, panel.times.rows)
         _refill(self.target_list, panel.targets.rows)
+
+        for widget in self._withdrawable():
+            widget.show()
+
+    def withdraw(self) -> None:
+        """Hide both lists and their Remove buttons, because the standings could not be worked out.
+
+        A halt calls this method together with `BookmarksPanel.withdraw`, when
+        restating the marks raised (`SimulationView._restate_bookmark_panel`). The
+        rows come from the last frame, so a row that still lists a mark as to come
+        on a failed run is a stale claim, and the panel beside the chart has already
+        withdrawn the same listing (`PL-F5KT`). The rows are hidden rather than
+        cleared, because Remove selects a mark by its row. Each Remove button is
+        hidden with its list, so nothing can be removed against a row the reader
+        cannot see. The two forms stay, and the next call to `set_panel` shows the
+        lists and buttons again.
+        """
+
+        for widget in self._withdrawable():
+            widget.hide()
+
+    def _withdrawable(self) -> tuple[QWidget, ...]:
+        """The widgets `withdraw` hides and `set_panel` shows again."""
+
+        return (
+            self.time_list,
+            self.remove_time_button,
+            self.target_list,
+            self.remove_target_button,
+        )
 
     def selected_time_index(self) -> int:
         """Which marked instant is selected, or -1 for none."""

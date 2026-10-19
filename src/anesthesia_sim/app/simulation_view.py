@@ -290,6 +290,30 @@ class _RunSlots:
     placed: tuple[QWidget, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class HaltRestatement:
+    """A dashboard panel that offers an action on a run, and what restates it on a halt.
+
+    A `RunView` restates its own widgets on a halt (`RunView.present_halt`). The
+    panels the dashboard itself holds are not inside any run, so a halt reaches them
+    only through this list (`SimulationView.halt_restatements`). A panel that holds
+    a control and is missing from the list keeps offering its action over a run that
+    every other control says has failed. That was `PL-MMNX` for the branch panel and
+    `PL-YHR3` for the bookmark panel. `test_every_dashboard_control_is_restated_on_a_halt`
+    fails on a control that is in no `RunView`, in no panel listed here, and in no
+    container it exempts by name (`PL-5JTH`).
+
+    Attributes:
+        panels: The widgets this restatement writes. A control inside one of them is
+            covered.
+        restate: Writes them from the runs' controllers, without a frame. It must not
+            raise, because it runs inside the halt path.
+    """
+
+    panels: tuple[QWidget, ...]
+    restate: Callable[[], None]
+
+
 class SimulationView(QWidget):
     """The dashboard over one or two runs on one agent.
 
@@ -1075,6 +1099,11 @@ class SimulationView(QWidget):
         kind this interface refuses elsewhere. The control is not offered
         then; this check is what makes that a property of the dashboard
         rather than of the widget that happens to be hidden.
+
+        The trunk's snapshot is read through `_reference_snapshot_for_a_control`
+        before the case keeps anything. A fork on a run that cannot be read then
+        ends in the halt on screen, rather than in a branch kept and never drawn
+        (`PL-08SS`).
         """
 
         case = self._case
@@ -1089,6 +1118,9 @@ class SimulationView(QWidget):
             self._fork_refusal = comparing_fork_lock_text(compared)
             self.present(False)
 
+            return
+
+        if self._reference_snapshot_for_a_control() is None:
             return
 
         point = self._fork_panel.selected_point()
@@ -1130,7 +1162,8 @@ class SimulationView(QWidget):
         between the frame that drew the button and the press, so the button's
         own frame is not proof that the fork is still there. `fork_here`
         raising is that check, and its reason goes to the notice rather than
-        being swallowed.
+        being swallowed. The trunk's snapshot is read first, as `_handle_fork`
+        reads it (`PL-08SS`).
         """
 
         case = self._case
@@ -1145,6 +1178,9 @@ class SimulationView(QWidget):
             self._fork_refusal = comparing_fork_lock_text(compared)
             self.present(False)
 
+            return
+
+        if self._reference_snapshot_for_a_control() is None:
             return
 
         try:
@@ -1492,8 +1528,8 @@ class SimulationView(QWidget):
         The restatement is guarded, as `_restate_fork_panel` is. It runs inside the halt
         path, where a raise would escape the render path's own guard and reach the
         toolkit. If the panel cannot be restated, it is withdrawn instead of keeping the
-        last frame's rows. The editor's lists are left alone, because removing a mark
-        selects it by its row in those lists.
+        last frame's rows, and so are the editor's lists and their Remove buttons, so
+        the two places that list the marks agree (`PL-F5KT`).
         """
 
         controllers = tuple(run.controller for run in self._runs)
@@ -1506,6 +1542,9 @@ class SimulationView(QWidget):
             )
         except Exception:
             self._bookmarks_panel.withdraw()
+
+            if self._bookmark_dialog is not None:
+                self._bookmark_dialog.withdraw()
 
     def _refresh_bookmarks(
         self, bookmarks: BookmarkSet, standings: Sequence[BookmarkStandings], reference: RunSettings
@@ -1667,7 +1706,12 @@ class SimulationView(QWidget):
         if dialog is None:
             return
 
-        marks = self._runs[0].snapshot().bookmarks.time_bookmarks
+        reference = self._reference_snapshot_for_a_control()
+
+        if reference is None:
+            return
+
+        marks = reference.bookmarks.time_bookmarks
         index = dialog.selected_time_index()
 
         if not 0 <= index < len(marks):
@@ -1704,7 +1748,12 @@ class SimulationView(QWidget):
         if dialog is None:
             return
 
-        marks = self._runs[0].snapshot().bookmarks.mac_targets
+        reference = self._reference_snapshot_for_a_control()
+
+        if reference is None:
+            return
+
+        marks = reference.bookmarks.mac_targets
         index = dialog.selected_target_index()
 
         if not 0 <= index < len(marks):
@@ -1714,6 +1763,33 @@ class SimulationView(QWidget):
 
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
+
+    def _reference_snapshot_for_a_control(self) -> SimulationSnapshot | None:
+        """Read the reference run's snapshot for a control, and halt every run where it refuses.
+
+        The dashboard's counterpart of `RunView._snapshot_for_a_control`, for the
+        controls that act on the case rather than on one run: Remove in the marks
+        editor and both branch controls. Each runs inside a slot, where a raise is
+        printed by the toolkit and otherwise lost. On a run whose snapshot refuses a
+        value (`PL-7DJK`), the read raised there, so the press did nothing and nothing
+        on screen said why (`PL-F2T2`), or a branch was kept that was never drawn
+        (`PL-08SS`). The raise is attributable to the case rather than to one run, so
+        every run halts, as `present` does for a frame that cannot be drawn.
+
+        The reference run is the first displayed run, which is the trunk. That is how
+        the dashboard is built, and `_refresh_bookmarks` reads the same run for the
+        set of marks.
+
+        Returns:
+            The snapshot, or `None` once every run has been halted for the raise and
+            the halt is on screen.
+        """
+
+        try:
+            return self._runs[0].snapshot()
+        except Exception as error:
+            self._halt_every_run(error)
+            return None
 
     def _handle_frame_request(self) -> None:
         """Draw at once for a View that changed its own drawing setting, such as its window.
@@ -1754,25 +1830,63 @@ class SimulationView(QWidget):
         controls are restated from the case for the same reason
         (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated
         from each run's controller for the same reason
-        (`_restate_bookmark_panel`, `PL-YHR3`). The trunk records that its frame
+        (`_restate_bookmark_panel`, `PL-YHR3`). Both are read from one list,
+        `halt_restatements`, which a test holds to every control the dashboard
+        offers outside a run (`PL-5JTH`). The trunk records that its frame
         failed, so the case then offers no branch at all: one opened now would
         be drawn by the same frame and halt on it (`PL-T2Q2`). A presentation
         that fails afterwards cannot unwind the halt.
+
+        One run's `present_halt` can raise after it has stated the halt, when
+        its dials cannot be written. That raise no longer stops the path: every
+        other run states its halt, every panel is restated and the frame is
+        tried, and only then does the first raise escape, so it still reaches
+        the console rather than hiding (`PL-TLH4`).
+
+        Raises:
+            ValueError: The first raise out of a run's `present_halt`, once
+                everything above has been done.
         """
 
         for run in self._runs:
             run.halt(error, in_frame=True)
 
-        for run in self._runs:
-            run.present_halt()
+        presentation_error: Exception | None = None
 
-        self._restate_fork_panel()
-        self._restate_bookmark_panel()
+        for run in self._runs:
+            try:
+                run.present_halt()
+            except Exception as raised:
+                presentation_error = presentation_error or raised
+
+        for restatement in self.halt_restatements():
+            restatement.restate()
 
         try:
             self._refresh_view()
         except Exception:
             pass
+
+        if presentation_error is not None:
+            raise presentation_error
+
+    def halt_restatements(self) -> tuple[HaltRestatement, ...]:
+        """Every dashboard panel that offers an action on a run, with what restates it on a halt.
+
+        `_halt_every_run` restates each one, so this tuple is the one list of them
+        (`PL-5JTH`). The bookmark editor is listed with the bookmark panel once it has
+        been built, because one restatement writes both.
+        """
+
+        bookmarks: tuple[QWidget, ...] = (self._bookmarks_panel,)
+
+        if self._bookmark_dialog is not None:
+            bookmarks = (*bookmarks, self._bookmark_dialog)
+
+        return (
+            HaltRestatement((self._fork_panel,), self._restate_fork_panel),
+            HaltRestatement(bookmarks, self._restate_bookmark_panel),
+        )
 
     # -------------------------------------------------------------- timing
 

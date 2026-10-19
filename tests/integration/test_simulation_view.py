@@ -47,6 +47,7 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QScrollArea,
+    QScrollBar,
     QSplitter,
     QStyle,
     QStyleOptionComboBox,
@@ -7149,6 +7150,320 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
 
     assert panel.times.isHidden() is False
     assert panel.targets.isHidden() is False
+
+
+#: The containers whose controls a halt leaves as they are, each against the
+#: reason. Every other control on the dashboard - one added later included - is
+#: held by the test below to sit inside a `RunView`, which restates its own
+#: widgets (`PL-X7D5`), or inside a panel `SimulationView.halt_restatements`
+#: lists. A control in neither keeps offering its action over a run that every
+#: other control says has failed, as the branch panel did (`PL-MMNX`) and the
+#: bookmark panel did (`PL-YHR3`). Keyed by class name, because each is a kind
+#: of container the dashboard builds once per Area or once per dashboard.
+#:
+#: Held live in both directions: an entry that matches no control on the built
+#: dashboard fails, since nothing then needs the exemption.
+NOT_RESTATED_ON_A_HALT: dict[str, str] = {
+    "WorkspaceTabs": (
+        "the Workspace tabs choose and rename layouts. A layout is the reader's "
+        "arrangement of Areas, so it acts on no run."
+    ),
+    "ViewChooser": ("an Area's View chooser picks what the Area shows, which acts on no run."),
+    "TimeBaseSelector": (
+        "a chart's time base is the chart's own drawing setting. It touches no "
+        "simulation state, and it is never disabled (`PL-012`)."
+    ),
+    "TraceLegend": (
+        "the legend's boxes ask the dashboard which compartments to draw. The "
+        "selection is the dashboard's display state and acts on no run (`PL-VN6M`)."
+    ),
+}
+
+#: The widget types a reader acts through. A scroll bar is left out: it moves
+#: the widget that holds it, and that widget's own container is what is checked.
+_CONTROL_TYPES = (
+    QAbstractButton,
+    QComboBox,
+    QAbstractSlider,
+    QAbstractSpinBox,
+    QLineEdit,
+    QAbstractItemView,
+)
+
+
+def _controls(root: QWidget) -> list[QWidget]:
+    """Every control under `root` a reader can act through, a combo box's own popup apart."""
+
+    found: list[QWidget] = []
+
+    for widget in root.findChildren(QWidget):
+        if not isinstance(widget, _CONTROL_TYPES) or isinstance(widget, QScrollBar):
+            continue
+
+        ancestor = widget.parentWidget()
+
+        while ancestor is not None and not isinstance(ancestor, QComboBox):
+            ancestor = ancestor.parentWidget()
+
+        if ancestor is None:
+            found.append(widget)
+
+    return found
+
+
+def _ancestry(widget: QWidget) -> list[QWidget]:
+    """The widget and every widget above it, nearest first."""
+
+    chain: list[QWidget] = []
+    current: QWidget | None = widget
+
+    while current is not None:
+        chain.append(current)
+        current = current.parentWidget()
+
+    return chain
+
+
+def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:
+    """Every control on the dashboard is restated by a halt, or is named with why it need not be.
+
+    A `RunView` restates its own widgets on a halt, and `PL-X7D5`'s guard holds
+    that by default. The dashboard's own panels sit outside every run, and each
+    one was restated by hand in `_halt_every_run`, so a panel added later was
+    restated only if someone remembered to add it there (`PL-5JTH`). This test
+    builds the dashboard with every panel that holds a control: a case, so the
+    branch panel is offered, a mark, and the marks editor open. It then fails on
+    any control that no run holds, that no `halt_restatements` panel holds, and
+    that no container in `NOT_RESTATED_ON_A_HALT` holds.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    _opened_bookmark_dialog(view)
+    run_widgets = {id(widget) for run in view.runs for widget in _widget_attributes(run).values()}
+    restated = {
+        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
+    }
+    exemptions_used: set[str] = set()
+    unrestated: list[str] = []
+
+    for control in _controls(view):
+        chain = _ancestry(control)
+
+        if any(id(widget) in run_widgets or id(widget) in restated for widget in chain):
+            continue
+
+        exempt = next(
+            (type(w).__name__ for w in chain if type(w).__name__ in NOT_RESTATED_ON_A_HALT), None
+        )
+
+        if exempt is not None:
+            exemptions_used.add(exempt)
+            continue
+
+        unrestated.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
+
+    assert view._bookmark_dialog is not None
+    assert sorted(set(unrestated)) == [], (
+        "these controls are in no RunView and in no panel a halt restates: add their panel "
+        "to SimulationView.halt_restatements, or name its container in "
+        "NOT_RESTATED_ON_A_HALT with the reason a halt need not restate it"
+    )
+    assert sorted(set(NOT_RESTATED_ON_A_HALT) - exemptions_used) == [], (
+        "these exemptions match no control on the dashboard now - remove the entry"
+    )
+
+
+def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run whose dials cannot be written on a halt still lets the halt restate every panel.
+
+    `present_halt` writes the dials last and raises when `setting_readouts`
+    cannot build them, as `test_a_halt_is_stated_before_its_dials_are_written`
+    shows for one run. `_halt_every_run` called it in a bare loop, so the raise
+    left the halt path before the branch panel and the bookmark panel were
+    restated: "Branch here" stayed live over a failed trunk, and a mark ahead
+    of the clock still read as to come (`PL-TLH4`). The raise now waits until
+    the panels are restated and the frame is tried. The bookmark row is the
+    literal wording of a mark a failed run cannot reach, as in
+    `test_a_failing_frame_withdraws_the_last_frames_bookmark_standings`.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    view = _case_view(application, case)
+    here = view._fork_panel.here_button
+    assert here.isHidden() is False, "the paused trunk offers no branch here to withdraw"
+    assert view._bookmarks_panel.times.text() == "10m – check"
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        view.present(False)
+
+    assert case.trunk.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert here.isHidden() is True
+    assert view._fork_panel.point_selector.count() == 0
+    assert view._bookmarks_panel.times.text() == (
+        "10m – check · not reached before the simulation error"
+    )
+
+
+def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt that withdraws the bookmark panel withdraws the editor's lists and Remove buttons too.
+
+    The editor lists the same rows as the panel beside the chart. When a halt
+    could not work out the standings, it withdrew the panel and left the open
+    editor listing the last frame's rows, so the mark ahead of the clock still
+    read as to come there, with Remove live against it (`PL-F5KT`). The next
+    frame that draws shows both again.
+    """
+
+    controller = _paused_run_with_history()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    view = _shown_view(application, controller)
+    dialog = _opened_bookmark_dialog(view)
+    withdrawn = (
+        dialog.time_list,
+        dialog.remove_time_button,
+        dialog.target_list,
+        dialog.remove_target_button,
+    )
+    assert dialog.time_list.count() == 1
+    assert not any(widget.isHidden() for widget in withdrawn)
+
+    def unanswerable(self: SimulationController) -> NoReturn:
+        raise RuntimeError("the run could not say where it stands on its marks")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(SimulationController, "bookmark_standings", unanswerable)
+
+    view.present(False)
+
+    assert controller.has_failed is True
+    assert view._bookmarks_panel.times.isHidden() is True
+    assert all(widget.isHidden() for widget in withdrawn)
+
+    monkeypatch.undo()
+    view.present(False)
+
+    assert not any(widget.isHidden() for widget in withdrawn)
+
+
+@pytest.mark.parametrize("door", ["take", "here"])
+def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    capfd: pytest.CaptureFixture[str],
+    door: str,
+) -> None:
+    """A fork on a trunk whose snapshot refuses ends in the halt, and the case keeps no branch.
+
+    The case kept the branch before `add_run` read its snapshot to draw it. On
+    a run whose snapshot refuses a value (`PL-7DJK`) that read raised out of
+    the slot, so the press showed nothing and left a branch kept but never
+    drawn; a second press kept a second one (`PL-08SS`). The trunk's snapshot
+    is now read through the halt first, at both doors.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    if door == "take":
+        _take_fork(view, 60.0)
+    else:
+        view._fork_panel.here_button.click()
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert case.branches == ()
+    assert len(view.runs) == 1
+    assert case.trunk.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+
+
+@pytest.mark.parametrize("kind", ["time", "target"])
+def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    capfd: pytest.CaptureFixture[str],
+    kind: str,
+) -> None:
+    """Remove in the marks editor on a run whose snapshot refuses ends in the halt on screen.
+
+    Both removers read the reference run's snapshot to find the selected mark,
+    outside any halt gate, so on a run whose snapshot refuses the press raised
+    out of the slot: the button did nothing and nothing on screen said why
+    (`PL-F2T2`). The read now goes through the halt, so the run reads as
+    stopped and the mark is left where it was.
+    """
+
+    controller = _paused_run_with_history()
+    time_mark = TimeBookmark(CaseInstant(30.0), "check")
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
+    controller.add_time_bookmark(time_mark)
+    controller.add_mac_target(target)
+    view = _shown_view(application, controller)
+    dialog = _opened_bookmark_dialog(view)
+    listing, remove = (
+        (dialog.time_list, dialog.remove_time_button)
+        if kind == "time"
+        else (dialog.target_list, dialog.remove_target_button)
+    )
+    listing.setCurrentRow(0)
+    _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
+    capfd.readouterr()
+
+    remove.click()
+
+    assert "Traceback" not in capfd.readouterr().err
+    assert controller.has_failed is True
+    assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
+    assert controller.bookmarks.time_bookmarks == (time_mark,)
+    assert controller.bookmarks.mac_targets == (target,)
+
+
+def test_a_drag_whose_readouts_refuse_halts_the_run(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """A dial whose readouts cannot be built after a drag halts the run, and says so on screen.
+
+    After a dragged dial is applied, the run's own labels are rewritten at
+    once from a snapshot, and `setting_readouts` raises there for a control
+    that can offer no setting. Only the apply was inside the guard, so the
+    raise escaped the slot with the run still reading "Paused" and no banner
+    (`PL-M3M2`). It now halts the run first. The dial write in the halt raises
+    again, and that second raise still reaches the console.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    def no_setting(settings: object) -> NoReturn:
+        raise ValueError("this control can offer no setting")
+
+    monkeypatch.setattr(run_view_module, "setting_readouts", no_setting)
+    capfd.readouterr()
+
+    _set_fresh_gas_flow(run, 4.0)
+
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert run._start_button.isEnabled() is False
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "can offer no setting" in notice
 
 
 def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(

@@ -975,7 +975,11 @@ class RunView(QWidget):
         and says so, where the raise used to escape the slot after the
         setting had been applied (`PL-V2HC`), and has its dials written from
         the settings the run holds, since no frame follows to write them
-        (`PL-85LJ`).
+        (`PL-85LJ`). The rewrite is guarded too: where it raises, as
+        `setting_readouts` does for a control that can offer no setting, the
+        run is halted through `_halt_run`, so the status word, the transport
+        and the banner state the halt before the dial write raises again and
+        escapes (`PL-M3M2`).
 
         Args:
             apply: The controller call that applies the setting.
@@ -1004,7 +1008,11 @@ class RunView(QWidget):
             if snapshot is None:
                 return
 
-            self._refresh_against_last_frame(snapshot)
+            try:
+                self._refresh_against_last_frame(snapshot)
+            except Exception as error:
+                self._halt_run(error)
+                return
 
         self.presentation_requested.emit(deferred)
 
