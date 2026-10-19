@@ -2255,7 +2255,11 @@ def _unlanded_refs(
             unreadable.add(name)
             continue
         split = landings.split(name)
-        if split is None or not _work_already_on_base(split):
+        # A deletion gives no path content, so it is in neither half of the
+        # split. Without the second test, a commit made after the merge that
+        # only deletes a file left the split all landed, and the branch read
+        # as taken whole (`PL-N80K`).
+        if split is None or not _work_already_on_base(split) or landings.deletions(name)[1]:
             unlanded.append(name)
             landing[name] = split or ((), ())
         else:

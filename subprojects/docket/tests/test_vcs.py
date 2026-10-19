@@ -5514,3 +5514,32 @@ def test_every_path_listing_read_in_docket_asks_for_z() -> None:
 
     assert modules, "no module was found to read"
     assert [found for module in modules for found in _path_listings_without_z(module)] == []
+
+
+def test_orphaned_reports_a_post_merge_commit_that_only_deletes_a_file(tmp_path: Path) -> None:
+    """`PL-N80K`: the deletion is the branch's only work the base has not taken.
+
+    The branch adds `a.txt`, which the base squash-merges, and then pushes a
+    commit that deletes `old.txt` and changes nothing else. The content split
+    is then all landed, so the branch read as taken whole and was never asked
+    about.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="old\n", b_txt="b\n")
+    repo.git("checkout", "-qb", "claude/work")
+    repo.commit("PL-0001: the work", a_txt="a\n")
+    repo.git("checkout", "-q", "main")
+    repo.git("merge", "-q", "--squash", "claude/work")
+    repo.git("commit", "-qm", "PL-0001: the work (#1)")
+    repo.git("checkout", "-q", "claude/work")
+    repo.git("rm", "-q", "old.txt")
+    repo.git("commit", "-qm", "PL-0001: retire old.txt after the merge")
+    lost = repo.git("rev-parse", "HEAD").strip()
+    repo.git("checkout", "-q", "main")
+
+    report = orphaned(repo.root)
+
+    assert report.known, report.declined
+    [branch] = report.branches
+    assert [commit.commit for commit in branch.commits] == [lost]
+    assert set(branch.outstanding) == {"old.txt"}

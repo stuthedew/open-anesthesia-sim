@@ -3,12 +3,14 @@ id: PL-21Z5
 title: docket check does not hold a no-successor: id to an item: an id naming no item, the item itself, or a closed item that is not done is accepted with 0 errors, so a typo either answers nothing or answers the wrong re-entered line (found reviewing PL-C4F0)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-heads
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_checks.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-10-19
+pr: 1620
 payoff: docket check refuses a no-successor: id that names no item, the item itself, or a closed item that is not done
 verify: grep -q 'def test_a_no_successor_id_that_answers_nothing_is_refused' subprojects/docket/tests/test_checks.py
 ---
@@ -35,3 +37,12 @@ than `done`. A test in `subprojects/docket/tests/test_checks.py` pins each case.
 are already checked through `model.reentry_faults`; this is the same check
 missing on a field added on 2026-10-18 (`PL-C4F0`), so the fix should reuse
 that function rather than write a second id check.
+
+**Done 2026-10-19.** `model.no_successor_faults` holds each `no-successor:` id
+to another `done` item, through `_done_item_faults`, the id check it now
+shares with `reentry_faults`. `checks._check_reentries` reports both fields.
+It also refuses an id naming an open item, which the Done-when did not list:
+a re-entered line is a `done` item that `reenters:` ids named, so an open item
+cannot be one. `test_a_no_successor_id_that_answers_nothing_is_refused` pins
+the four cases, and the real store passes `bin/docket check` unchanged.
+
