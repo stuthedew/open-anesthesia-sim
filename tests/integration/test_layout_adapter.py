@@ -1,17 +1,18 @@
-"""The adapter between the layout model and the widgets, driven headless.
+"""Tests of the adapter between the layout model and the widgets, run headless.
 
 `app/area_layout.py` is the one module that builds splitters (`PL-W9P6`).
-These tests hold what it promises: each split in the model is a splitter and
-each Area its View, the splitters take the model's sizes, a reader's drag
-changes the model and every widget follows the model, and a layout the model
-refuses changes nothing. An Area whose View kind the registry does not hold
-shows the failure notice and nothing else, while its neighbours draw as usual
-(`PL-R1WQ`). Each Area's View is built by its registry entry's factory, and
-the adapter holds the View contract's side of it (`PL-TH35`): a View of its
-own for every Area, its state kept when it is replaced, and every View drawn
-from one tick. Each expected size is worked out here from the
-pixels, never read back from the adapter. They render under the `offscreen`
-platform `tests/conftest.py` selects.
+These tests check what it promises. Each split in the model is a splitter,
+and each Area holds its View. The splitters take the model's sizes. A
+reader's drag changes the model, and every widget follows the model. A layout
+that the model rejects changes nothing. An Area whose View kind the registry
+does not hold shows only the failure notice, while its neighbours draw as
+usual (`PL-R1WQ`). Each Area's View is built by its registry entry's factory.
+The tests also check that the adapter keeps its side of the View contract
+(`PL-TH35`): every Area gets a View of its own, a View's state is kept when
+the View is replaced, and every View is drawn from one tick. Each expected
+size is worked out here from the pixels, never read back from the adapter.
+The tests render under the `offscreen` platform that `tests/conftest.py`
+selects.
 """
 
 from collections.abc import Iterator, Mapping
@@ -47,6 +48,9 @@ _UNKNOWN = ViewKind("retired_view")
 # it before each test.
 _BUILT: list[_TestView] = []
 
+# Every test View refreshed, in the order the adapter refreshed it.
+_REFRESHED: list[_TestView] = []
+
 # A View asks the dashboard for nothing here.
 _REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
 
@@ -75,6 +79,7 @@ class _TestView(QWidget):
 
     def refresh(self, tick: ViewTick) -> None:
         self.ticks.append(tick)
+        _REFRESHED.append(self)
 
     @property
     def owes_a_frame(self) -> bool:
@@ -132,8 +137,10 @@ def application() -> Iterator[QApplication]:
 @pytest.fixture(autouse=True)
 def _forget_the_views() -> Iterator[None]:
     _BUILT.clear()
+    _REFRESHED.clear()
     yield
     _BUILT.clear()
+    _REFRESHED.clear()
 
 
 @pytest.fixture
@@ -743,10 +750,10 @@ def test_two_areas_of_one_kind_each_get_a_view_of_their_own(
 def test_a_view_replaced_and_chosen_again_comes_back_with_its_state(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-TH35` Q10: the replaced View's state is kept under its Area and kind.
+    """A replaced View's state is kept under its Area and kind (`PL-TH35` Q10).
 
-    Area 2 shows the same kind and keeps its own setting, so the state is
-    told apart by Area as well as by kind.
+    Area 2 shows the same kind and keeps its own setting. So the test shows
+    that the state is kept apart by Area as well as by kind.
     """
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
@@ -772,14 +779,55 @@ def test_a_view_replaced_and_chosen_again_comes_back_with_its_state(
     assert second.setting == 0
 
 
-def test_a_factory_that_returns_no_view_is_refused(application: QApplication) -> None:
-    """A widget that cannot be refreshed would leave its Area showing a stale picture."""
+def _broken(_context: ViewContext) -> _TestView:
+    raise RuntimeError("no chart to draw on")
 
-    for built in (lambda _context: QWidget(), lambda _context: object()):
-        registered = registry(RegisteredView(_VIEW, "Test view", built))
 
-        with pytest.raises(TypeError, match="not a QWidget that satisfies the View contract"):
-            AreaLayout(_layout(_area(1), 2), _REQUESTS, registered=registered)
+def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A factory that raises, or builds no View, leaves its Area saying so and the rest drawn.
+
+    A widget that cannot be refreshed would leave its Area showing a stale
+    picture. A raise from the chooser's menu would be lost, and it left the
+    layout half built: the Area's old View moved into a frame never shown.
+    """
+
+    cases = (
+        (_broken, "Building 'Third view' failed: RuntimeError: no chart to draw on."),
+        (
+            lambda _context: QWidget(),
+            "Building 'Third view' failed: TypeError: the factory for the View kind "
+            "'third_view' returned a QWidget, which is not a QWidget that satisfies the "
+            "View contract.",
+        ),
+    )
+
+    for built, body in cases:
+        registered = registry(
+            RegisteredView(_VIEW, "Test view", _TestView),
+            RegisteredView(_OTHER, "Other view", _OtherView),
+            RegisteredView(_THIRD, "Third view", built),
+        )
+        model = _layout(_row((0.5, 0.5), Area(AreaId(1), _VIEW), Area(AreaId(2), _OTHER)), 3)
+        container = _show_with(application, shown, model, registered=registered)
+        kept = container.frame(AreaId(1)).content
+
+        _pick(application, container.frame(AreaId(2)).chooser, "Third view")
+        notice = container.frame(AreaId(2)).content
+
+        assert isinstance(notice, AreaNotice)
+        assert _texts(notice) == [
+            "This Area's View could not be built.",
+            f"{body} Choose a View from the menu above.",
+        ]
+        assert container.frame(AreaId(1)).content is kept
+        assert kept.isVisible()
+        assert container.model.area(AreaId(2)).view == _THIRD
+
+        _pick(application, container.frame(AreaId(2)).chooser, "Other view")
+
+        assert isinstance(container.frame(AreaId(2)).content, _OtherView)
 
 
 def _tick() -> ViewTick:
@@ -807,13 +855,17 @@ def test_every_view_is_drawn_from_the_one_tick_in_reading_order(
     container = _show_with(application, shown, model)
     tick = _tick()
 
+    for setting, view in enumerate(_BUILT):
+        view.setting = setting
+
     assert container.owes_a_frame
 
     container.refresh(tick)
 
     assert [view.ticks for view in _BUILT] == [[tick], [tick], [tick]]
+    assert _REFRESHED == _BUILT
     assert not container.owes_a_frame
-    assert container.painted_strings() == ("painted 0", "painted 0", "painted 0")
+    assert container.painted_strings() == ("painted 0", "painted 1", "painted 2")
 
 
 def test_the_frame_is_sampled_for_the_widest_view_that_draws_one(

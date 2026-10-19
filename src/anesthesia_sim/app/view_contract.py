@@ -1,23 +1,23 @@
 """The View contract: what every View implements, and what it is given.
 
 An Area holds one View, and any View can occupy any Area (`ROADMAP.md`
-§ "v0.6.0 - the layout is the reader's", Required scope entry 5). That holds
-only if every View presents the same small contract, so the adapter,
-`app/area_layout.py`, can build, draw and save any of them without knowing
+§ "v0.6.0 - the layout is the reader's", Required scope entry 5). That works
+only if every View presents the same small contract. The adapter,
+`app/area_layout.py`, can then build, draw and save any View without knowing
 which kind it holds. This module is that contract. `PL-TH35` designed it, and
 the project owner ratified each answer on 2026-09-27. The question numbers
-below are that item's.
+below refer to that item's questions.
 
 **What a View is.** A View is a `QWidget` that satisfies the `View` protocol
 below. Its registry entry's factory builds it from a `ViewContext`
 (`app/view_registry.py`). The adapter is the only caller of the protocol's
-members, and `tests/integration/test_view_contract.py` holds the contract to
-that. Every member must have a call site in the adapter, and every registered
-kind must build a View that satisfies the protocol. A member nothing calls is
-deleted rather than kept for later. Blender's editor table carries two hooks
-that no editor implements and a field that no editor assigns, and nothing in
-its design reports either (`docs/interface-provenance.md` § "Prune the
-contract").
+members, and `tests/integration/test_view_contract.py` enforces that rule.
+Every member must have a call site in the adapter, and every registered kind
+must build a View that satisfies the protocol. A member that nothing calls is
+deleted rather than kept for later. For comparison, Blender's editor table
+carries two hooks that no editor implements and a field that no editor
+assigns, and nothing in its design reports either problem
+(`docs/interface-provenance.md` § "Prune the contract").
 
 **What a View is given, and what it is not** (Q2, Q7). A View is handed a
 `ViewContext` when it is built and a `ViewTick` on every frame. It receives no
@@ -30,15 +30,15 @@ View in each tick. The View asks for a change to it through
 `ViewContext.requests`, and never holds the value itself.
 
 **What a View is drawn from** (Q3). The dashboard assembles one `ChartFrame`
-per tick and the adapter hands it to every View in the `ViewTick`. The frame
+per tick, and the adapter hands it to every View in the `ViewTick`. The frame
 is sampled for the widest plot that any View asks for through
 `View.frame_width_px`, so no plot draws a chord wider than a pixel
 (`PL-GS3R`). One frame serves every plot, so the concentration chart and the
-F_A/F_I plot draw the same instants (`PL-9LNF`). That replaces Q3's own
-sketch, in which each chart pulled a frame at its own width: two charts of
-different widths would then draw different instants, and the frame would be
-assembled once per chart on every tick. A View that draws no frame returns
-None from `frame_width_px`.
+F_A/F_I plot draw the same instants (`PL-9LNF`). This replaces the sketch in
+Q3, in which each chart pulled a frame at its own width. Under that sketch,
+two charts of different widths would draw different instants, and the frame
+would be assembled once per chart on every tick. A View that draws no frame
+returns None from `frame_width_px`.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -49,24 +49,26 @@ so in its rectangle, through `unreadable_state_text`. A View silently drawn
 with defaults would be the stale-state failure that `CLAUDE.md`'s display
 standard names.
 
-**What a split, a swap and a change of View do to the state** (Q10). A View
-that the reader replaces through the chooser has its state saved under its
-Area and kind. When that kind returns to that Area, it is built from the saved
-state again. A split gives the new Area a copy of the source View's state, and
-a swap moves each instance with its state. Those two operations are
-`PL-2KXB`'s, and they build on `save_state` as it is here.
+**What a split, a swap and a change of View do to the state** (Q10). When the
+reader replaces a View through the chooser, the View's state is saved under
+its Area and kind. When that kind returns to that Area, its View is built from
+the saved state again. A split gives the new Area a copy of the source View's
+state, and a swap moves each instance with its state. Splitting and swapping
+are left to `PL-2KXB`, and they build on `save_state` as it stands here.
 
-**What a View owes when there is nothing to draw** (Q6). Text that states
-what is absent, in the View's rectangle, and never a blank. The charts'
-advisories, such as `dashboard_frame.NO_TRACES_SHOWN_TEXT`, are the pattern.
+**What a View owes when there is nothing to draw** (Q6). The View shows text
+in its rectangle that states what is absent, and never leaves it blank. The
+charts' advisories, such as `dashboard_frame.NO_TRACES_SHOWN_TEXT`, are the
+pattern.
 
-**What is not the View's.** The Area's header, with the View's title and the
-chooser, is drawn by the container (Q11, `app/area_layout.py`). No View is
-barred from an Area a reader can close, because the values that must always
-be on screen are in the unconditional region and never in a View (Q9,
+**What is not the View's.** The container draws the Area's header, with the
+View's title and the chooser (Q11, `app/area_layout.py`). No View is barred
+from an Area that a reader can close, because the values that must always be
+on screen are in the unconditional region and never in a View (Q9,
 `PL-NWTM`). A View's minimum size, and what an Area does when it cannot be
-given it, are `PL-K285`'s. The run a View is bound to, where a Workspace pins
-one, is `PL-7Z84`'s. Until then every View draws every displayed run.
+given that size, are left to `PL-K285`. Where a Workspace pins a View to one
+run, that binding is left to `PL-7Z84`. Until then, every View draws every
+displayed run.
 """
 
 from __future__ import annotations
@@ -117,10 +119,10 @@ UNREADABLE_STATE_TEXT: Final = (
 class RunSurfaces(Protocol):
     """The parts of one displayed run that a View may show, each built as a new copy.
 
-    `RunView` satisfies it. Each method builds another copy that shows what the
-    run shows now, and the run writes every live copy from then on
-    (`app/run_surfaces.py`, `PL-9LNF`). A View holds the copies and never the
-    run's controller.
+    `RunView` satisfies this protocol. Each method builds a new copy that
+    shows what the run shows now. From then on, the run updates every live
+    copy (`app/run_surfaces.py`, `PL-9LNF`). A View holds the copies and
+    never the run's controller.
     """
 
     def build_parameter_controls(self) -> ParameterControls: ...
@@ -150,7 +152,7 @@ class ViewRequests:
 
 @dataclass(frozen=True, slots=True)
 class ViewContext:
-    """What a View is built from, and the only thing (Q2).
+    """Everything a View is built from. A View is given nothing else (Q2).
 
     Attributes:
         requests: How the View asks for a change to shared state.
@@ -192,11 +194,11 @@ class View(Protocol):
     """
 
     def refresh(self, tick: ViewTick) -> None:
-        """Draw `tick`. The adapter calls it on every frame the dashboard draws.
+        """Draw `tick`. The adapter calls this method on every frame the dashboard draws.
 
         Raises:
-            Exception: whatever drawing the frame raises. The dashboard halts
-                every run on it, because a failure in the shared drawing path
+            Exception: Whatever drawing the frame raises. The dashboard then
+                halts every run, because a failure in the shared drawing path
                 belongs to no single run.
         """
         ...

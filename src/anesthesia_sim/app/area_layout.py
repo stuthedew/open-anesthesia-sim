@@ -1,22 +1,23 @@
-"""The one module that builds splitters: the widget tree drawn from the layout model.
+"""Build the splitter widget tree from the layout model.
 
-`PL-C842` made the layout's source of truth a pure-Python value,
-`layout.model.LayoutModel`, because `QSplitter.saveState()` records no View
-identity. This module is the other half of that decision. It builds one
-`QSplitter` for each split in the model and puts each Area's View into it. It
-is the only module that imports `QSplitter`, and
-`tools/import_boundary_check.py` refuses the import anywhere else
-(`PL-L8RN`). So no View can see a splitter, save a splitter's state or store
-its own geometry.
+This is the only module that builds splitters. `PL-C842` made the layout's
+source of truth a pure-Python value, `layout.model.LayoutModel`, because
+`QSplitter.saveState()` records no View identity. This module is the other
+half of that decision. It builds one `QSplitter` for each split in the model
+and puts each Area's View into it. It is the only module that imports
+`QSplitter`, and `tools/import_boundary_check.py` rejects that import anywhere
+else (`PL-L8RN`). So no View can see a splitter, save a splitter's state or
+store its own geometry.
 
 **A drag changes the model, and the widgets follow the model.** When a reader
-drags a handle, Qt reports the new place as a share of the one splitter that
-was dragged. The adapter turns that share into a position in the window, asks
-`LayoutModel.resize()` for the layout that results, and lays every splitter
-out again from it. So the other handles on the dragged border's line move with
-it, because `resize()` moves every handle `LayoutModel.borders()` joins to the
-dragged one (`PL-5HSG`). A drag the model refuses puts the splitter back where
-the model has it.
+drags a handle, Qt reports the new position as a fraction of the one splitter
+that was dragged. The adapter turns that fraction into a position in the
+window and asks `LayoutModel.resize()` for the layout that results. It then
+lays every splitter out again from that layout. `LayoutModel.borders()` gives
+the handles that are joined to the dragged one, and `resize()` moves all of
+them (`PL-5HSG`). So the other handles on the dragged border's line move with
+the dragged handle. When the model rejects a drag, the splitter goes back to
+the position that the model holds.
 
 **A window resize keeps each split's fractions.** Each splitter lays its
 children out from the model again whenever it is resized, so rounding to whole
@@ -24,44 +25,49 @@ pixels cannot carry the layout away from the model over many resizes.
 
 **Every Area has a header, and the header holds the View chooser**
 (`PL-TH35` Q11, `PL-MS34`, `PL-50PZ`). The container draws the header, not
-the View, so every View gets the same one. It is one text row on the panel
-surface with a 1px rule beneath it. Its first control is the chooser: a flat
-menu button showing the Area's View by its registry title, whose menu lists
-every registered kind in registry order with the current one checked
-(`PL-RBXL`). Choosing an entry calls `LayoutModel.set_view` for that Area and
-draws the result. The menu reads the registry and not the Workspace, so every
-registered kind, the agent accounting among them, can be brought into any
-Area of any layout. That is what `docs/MODEL.md` means by reachable.
+the View, so every View gets the same header. The header is one row of text
+on the panel surface, with a 1px rule beneath it. Its first control is the
+chooser. The chooser is a flat menu button that shows the Area's View by its
+registry title. Its menu lists every registered kind in registry order, with
+the current kind checked (`PL-RBXL`). Choosing an entry calls
+`LayoutModel.set_view` for that Area and draws the result. The menu takes its
+list from the registry and not from the Workspace. So any registered kind,
+including the agent accounting, can be brought into any Area of any layout.
+That is what `docs/MODEL.md` means by reachable.
 
 **Each Area's View kind is looked up in the View registry, and its View is
 built by the entry's factory** (`PL-R1WQ`, `PL-TH35`). The factory is called
-with a `ViewContext`: how the View asks for a change to shared state, and the
-state this layout kept for that Area and kind. So every registered kind can be
-drawn in any Area, and two Areas naming one kind each get their own View. This
-module is the only caller of the View contract's members
-(`app/view_contract.py`). It hands every View each frame's `ViewTick`, asks
-each for the plot width its frame must be sampled for, and saves a View's
-state when the reader replaces it through the chooser. When that kind returns
-to that Area, its View is built from the saved state. A View the layout still
-draws in the same Area keeps its instance across a rebuild. An Area whose kind
-is not registered draws the failure notice in its place, and no factory is
-called for it. The notice names the saved kind, says what became of it, and
-tells the reader to choose a View from the chooser above it. Where the View
-was renamed, the notice also offers a button that shows it under its new tag,
-since a renamed tag is never mapped silently (`PL-R1WQ` Q3). It shows no value
-from any run, and the model keeps the kind, so the Area's neighbours draw as
-usual and a later save writes back what was read. The notice's look is
-`PL-DB5G`'s: a bold title in `WARNING` over a body in `INK`, on the panel
-surface, with no fill, border or icon.
+with a `ViewContext`. The context holds two things: how the View asks for a
+change to shared state, and the state that this layout kept for that Area and
+kind. So every registered kind can be drawn in any Area, and two Areas that
+name one kind each get their own View. This module is the only caller of the
+View contract's members (`app/view_contract.py`). It hands every View each
+frame's `ViewTick`. It asks each View for the plot width that its frame must
+be sampled for. It saves a View's state when the reader replaces that View
+through the chooser. When that kind returns to that Area, its View is built
+from the saved state. A View that the layout still draws in the same Area
+keeps its instance across a rebuild. An Area whose kind is not registered
+draws the failure notice instead of a View, and no factory is called for it.
+An Area whose factory raises, or returns something that is not a View, draws a
+notice that names the error, and the other Areas are built as usual.
+The missing-kind notice names the saved kind, says what became of it, and tells the reader
+to choose a View from the chooser above it. Where the View was renamed, the
+notice also offers a button that shows the View under its new tag. The button
+is there because a renamed tag is never mapped silently (`PL-R1WQ` Q3). The
+notice shows no value from any run. The model keeps the kind, so the Area's
+neighbours draw as usual and a later save writes back the kind that was read.
+The notice uses the look that `PL-DB5G` set: a bold title in `WARNING` over a
+body in `INK`, on the panel surface, with no fill, border or icon.
 
 **What is not here yet.** A minimum size for each View, and what an Area shows
-when it cannot be given that size, are `PL-K285`'s. Until then Qt holds each
-View to its own minimum size hint, so a split narrower than that in the model
-is drawn at the minimum instead. Shift to move one handle alone, Escape to
-cancel a drag and the warning line at a minimum are `PL-2KXB`'s, with the
-corner drag and the swap a reader performs. Only the main window is drawn,
-because v0.6.0 opens one (`ROADMAP.md` § "v0.6.0 - the layout is the
-reader's", "Explicitly out of scope for v0.6.0").
+when it cannot be given that size, are left to `PL-K285`. Until then, Qt does
+not draw a View smaller than its own minimum size hint. So a split that the
+model makes narrower than that hint is drawn at the minimum instead. These are
+left to `PL-2KXB`: Shift to move one handle alone, Escape to cancel a drag,
+the warning line at a minimum, the corner drag and the swap a reader performs.
+Only the main window is drawn, because v0.6.0 opens only one window
+(`ROADMAP.md` § "v0.6.0 - the layout is the reader's", "Explicitly out of
+scope for v0.6.0").
 """
 
 from __future__ import annotations
@@ -109,10 +115,12 @@ from anesthesia_sim.app.view_registry import (
     MISSING_VIEW_TITLE,
     REGISTERED,
     RETIRED_TAGS,
+    UNBUILT_VIEW_TITLE,
     RegisteredView,
     RetiredTag,
     missing_view_text,
     rename_offer_text,
+    unbuilt_view_text,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused
 from anesthesia_sim.layout.model import MAIN_WINDOW, Handle, LayoutModel
@@ -154,9 +162,12 @@ class AreaLayout(QWidget):
         retired: The tags no View has any more, which the failure notice
             reads. A test passes a table of its own.
 
+    A factory that raises, or that returns something other than a
+    `QWidget` satisfying `View`, leaves its Area showing a notice that names
+    the error, and every other Area is built as usual.
+
     Raises:
-        TypeError: `model` is not a `LayoutModel`; or a factory returned
-            something that is not a `QWidget` satisfying `View`.
+        TypeError: `model` is not a `LayoutModel`.
         ValueError: `model` holds more than one window.
     """
 
@@ -377,7 +388,18 @@ class AreaLayout(QWidget):
             view = kept[1]
         else:
             context = ViewContext(self._requests, self._saved.get((area.id, area.view)))
-            view = _checked_view(area.view, self._registered[area.view].factory(context))
+
+            try:
+                view = _checked_view(area.view, self._registered[area.view].factory(context))
+            except Exception as error:
+                # The failure stays in this Area, and the other Areas are still
+                # built. Raised out of the chooser's menu, it would be lost and
+                # leave the layout half built.
+                return self._notice(
+                    AreaNotice(
+                        UNBUILT_VIEW_TITLE, unbuilt_view_text(area.view, error, self._registered)
+                    )
+                )
 
         self._views[area.id] = (area.view, view)
 
@@ -713,12 +735,12 @@ class _AreaHandle(QSplitterHandle):
 
 
 def _checked_view(kind: ViewKind, view: object) -> View:
-    """`view`, once it is a `QWidget` that satisfies the View contract.
+    """Return `view` once it is checked to be a `QWidget` that satisfies the View contract.
 
     Raises:
-        TypeError: the factory for `kind` returned something else. A View
+        TypeError: The factory for `kind` returned something else. A View
             that could not be drawn or refreshed would leave its Area showing
-            whatever it drew last, or nothing, as if it were current.
+            whatever it drew last, or nothing, as if that were current.
     """
 
     if not isinstance(view, QWidget) or not isinstance(view, View):

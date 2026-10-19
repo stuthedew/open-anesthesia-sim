@@ -16,21 +16,22 @@ Each one is drawn from the `ViewTick` the adapter hands it on every frame
 - `ParameterControlsView` is every displayed run's setting controls.
 
 A View that shows a run's own surfaces asks the run for a copy of each, and
-the run writes every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
-two Views of one kind show the same values, and closing one takes nothing
+the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
+two Views of one kind show the same values, and closing one View takes nothing
 with it.
 
-These classes compute nothing a reader interprets. Every caption is
-`app/dashboard_frame.py`'s, and every drawn value is the frame's.
+These classes compute nothing that a reader interprets. Every caption comes
+from `app/dashboard_frame.py`, and every drawn value comes from the frame.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 from types import MappingProxyType
 from typing import Final
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.dashboard_frame import (
@@ -75,10 +76,10 @@ from anesthesia_sim.app.view_contract import (
 
 __all__ = ["AccountingView", "ConcentrationView", "ParameterControlsView", "WashInView"]
 
-#: The version of every View's saved state here. None of these Views has a
-#: setting of its own yet, so each saves its version and nothing else. The
-#: time base and the compartment selection are shared state, which the
-#: dashboard owns (`PL-VN6M`, `PL-9LNF`).
+#: The version of the saved state of every View in this module. None of these
+#: Views has a setting of its own yet, so each saves its version and nothing
+#: else. The time base and the compartment selection are shared state, which
+#: the dashboard owns (`PL-VN6M`, `PL-9LNF`).
 _STATE_VERSION: Final = 1
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
@@ -93,6 +94,10 @@ class _RunCopies:
     displayed is deleted. So a branch taken or removed changes only its own
     copy, and a slider being dragged in another run's copy is not rebuilt
     under the pointer.
+
+    A copy is also deleted when its run is. A run removed while frames are
+    failing never reaches `follow` again, and its copy would otherwise go on
+    showing that run's last values beside the runs still displayed.
     """
 
     def __init__(self, build: Callable[[RunSurfaces], QWidget], spacing: int) -> None:
@@ -121,7 +126,7 @@ class _RunCopies:
 
         for run in runs:
             copy = next((copy for owner, copy in self._copies if owner is run), None)
-            kept.append((run, self._build(run) if copy is None else copy))
+            kept.append((run, self._built_for(run) if copy is None else copy))
 
         for _, copy in self._copies:
             self._column.removeWidget(copy)
@@ -135,6 +140,21 @@ class _RunCopies:
             copy.show()
 
         self._copies = kept
+
+    def _built_for(self, run: RunSurfaces) -> QWidget:
+        """A new copy for `run`, deleted with the run and forgotten once Qt destroys it."""
+
+        copy = self._build(run)
+
+        if isinstance(run, QObject):
+            run.destroyed.connect(copy.deleteLater)
+
+        copy.destroyed.connect(partial(self._forget, copy))
+
+        return copy
+
+    def _forget(self, copy: QWidget, *_destroyed: object) -> None:
+        self._copies = [(run, kept) for run, kept in self._copies if kept is not copy]
 
 
 def _state_notice(context: ViewContext) -> QLabel:
@@ -182,11 +202,12 @@ def _bare_column(view: QWidget) -> QVBoxLayout:
 class ConcentrationView(QWidget):
     """The concentration chart, with everything a reader needs to read it.
 
-    The heading and the time-base control, the statement of the window shown,
-    the 1 MAC and MAC-awake reference values, the legend, the two advisories
-    that speak only when they apply, a line per run naming its traces above
-    the plot, and the plot. Everything above the plot is a label, a legend
-    entry or a reference value rather than a sentence (`PL-6580`, `PL-F9TQ`).
+    The View holds the heading and the time-base control, the statement of
+    the window shown, the 1 MAC and MAC-awake reference values, and the
+    legend. It also holds two advisories that appear only when they apply.
+    Above the plot, a line for each run names that run's traces. Then comes
+    the plot itself. Everything above the plot is a label, a legend entry or a
+    reference value rather than a sentence (`PL-6580`, `PL-F9TQ`).
 
     The time-base control and the legend show the dashboard's time base and
     compartment selection, and ask for a change through the context's
@@ -217,10 +238,10 @@ class ConcentrationView(QWidget):
             NO_TRACES_SHOWN_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.hidden_traces_text.setHidden(True)
-        # Conditional text, and it earns a sentence on
-        # `.claude/rules/ui-reader.md`'s own test: it says why boxes the
-        # reader checked have come unchecked, which no label, unit or axis
-        # title can carry.
+        # This text appears only when it applies. It passes the test in
+        # `.claude/rules/ui-reader.md` for when text may be a sentence. It says
+        # why boxes that the reader checked have become unchecked, and no
+        # label, unit or axis title can say that.
         self.capped_traces_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
@@ -249,10 +270,10 @@ class ConcentrationView(QWidget):
         """Draw the tick's frame, then write the legend, the control and the captions from it.
 
         The legend and the time-base control are told what the plot drew only
-        once it has drawn it, so where drawing fails they go on naming what is
-        still on the plot (`PL-G3K7`). The MAC-awake line is the reference
-        run's, because the frame carries the band's edges and not the
-        published fraction they were drawn from.
+        after the plot has drawn it. So where drawing fails, they go on naming
+        what is still on the plot (`PL-G3K7`). The MAC-awake line comes from
+        the reference run, because the frame carries the band's edges and not
+        the published fraction that they were drawn from.
         """
 
         self._off_scale.follow(tick.runs)
@@ -389,8 +410,8 @@ class AccountingView(_RunSurfaceView):
 class ParameterControlsView(_RunSurfaceView):
     """Every displayed run's setting controls, one row of four per run.
 
-    A slider moved here sets the run, and the run then shows the setting in
-    force on every copy, the one above the Areas included.
+    A slider moved here sets the run. The run then shows the setting in force
+    on every copy, including the copy above the Areas.
 
     Args:
         context: What the View is built from.

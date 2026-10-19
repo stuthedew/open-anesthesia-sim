@@ -3680,18 +3680,18 @@ def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothin
 def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     application: QApplication,
 ) -> None:
-    """The selection is the dashboard's, so the legend can go without taking it (`PL-VN6M`).
+    """The dashboard owns the selection, so the legend can go without taking it (`PL-VN6M`).
 
-    The legend sits in the concentration chart's View, and a reader closes
-    it by choosing another View for its Area (`.claude/rules/ui-areas.md`,
-    test 2). While the boxes were the selection, the dashboard read it back
-    from them, so a deleted legend left no selection to assemble the next
-    frame from. Here the chart's View is replaced, which deletes the legend,
-    and the dashboard still draws the reader's choice on the F_A/F_I plot's
-    frame - and still takes a branch and a Reset, each of which holds the
-    selection to the new run count with no legend left to show it to. A
-    chart View brought back, and a legend connected afterwards, follow the
-    selection like the first.
+    The legend sits in the concentration chart's View. A reader closes the
+    legend by choosing another View for its Area (`.claude/rules/ui-areas.md`,
+    test 2). When the legend's boxes held the selection, the dashboard read
+    the selection back from them. So a deleted legend left no selection from
+    which to assemble the next frame. Here the chart's View is replaced, which
+    deletes the legend. The dashboard still draws the reader's choice on the
+    F_A/F_I plot's frame. It also still takes a branch and a Reset. Each of
+    those fits the selection to the new run count, with no legend left to
+    show the selection to. A chart View brought back, and a legend connected
+    afterwards, follow the selection as the first ones did.
     """
 
     view = _case_view(application, _branched_case())
@@ -4037,12 +4037,13 @@ def test_the_time_base_is_never_disabled(application: QApplication) -> None:
 
 
 def test_the_chosen_time_base_survives_its_selector_being_closed(application: QApplication) -> None:
-    """`PL-9LNF`: the dashboard owns the width both plots are drawn at, not the control.
+    """The dashboard, not the control, owns the width that both plots are drawn at (`PL-9LNF`).
 
-    Before, the dropdown was the state: the handler read the width back out
-    of it. The control sits in the concentration chart's View, so a reader
-    closes it by choosing another View for its Area. The next frame must stay
-    at the width the reader chose, and a chart View brought back must state it.
+    Before this change, the dropdown held the state, and the handler read the
+    width back out of it. The control sits in the concentration chart's View,
+    so a reader closes it by choosing another View for its Area. The next
+    frame must stay at the width the reader chose, and a chart View brought
+    back must show that width.
     """
 
     controller = _paused_run_with_history(1800.0)
@@ -7894,3 +7895,98 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 
     for value in (UnconditionalValue.ADMINISTERED_SUBSTANCE, UnconditionalValue.ONE_MAC):
         assert branch.unconditional_widgets()[value] is trunk.unconditional_widgets()[value]
+
+
+# ------------------------------------------------- Views in the dashboard
+
+
+def _copies_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
+    """Each View that shows a run's surfaces, with the View and the copies it shows."""
+
+    accounting = _accounting(view)
+    concentration = _concentration(view)
+    wash_in = _wash_in(view)
+
+    return {
+        "accounting": (accounting, accounting.copies),
+        "off-scale": (concentration, concentration._off_scale.copies),
+        "wash-in state": (wash_in, wash_in._states.copies),
+    }
+
+
+def test_each_view_places_one_copy_per_run_inside_itself(application: QApplication) -> None:
+    """`PL-TH35`: a View shows its copies of the runs' surfaces in its own rectangle.
+
+    Each run's line names the run (`PL-C3GS`), which another test reads off
+    the run's own list of copies. That list cannot tell a copy placed in its
+    View from one built and never placed, so this holds each copy to its View.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert len(view.runs) == 2
+
+    for name, (shown_in, copies) in _copies_by_view(view).items():
+        assert len(copies) == 2, f"{name}: {len(copies)} copies for 2 runs"
+
+        for copy in copies:
+            assert shown_in.isAncestorOf(copy), f"{name}: a copy is outside its View"
+
+    for panel in _accounting(view).copies:
+        assert panel.isVisible(), "an accounting panel is not shown"
+
+
+def test_a_branch_dropped_while_frames_fail_leaves_no_copy_in_any_view(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Reset that drops the branch takes its copies away even when no frame can be drawn.
+
+    A View drops a run's copy when it is next refreshed, and with every frame
+    failing it never is. The branch's accounting panel then stayed on screen
+    with the status "Valid", beside the halted trunk, after the branch was
+    gone. Each copy is now deleted with its run.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view.runs[0].controller.has_failed is True
+
+    for name, (_, copies) in _copies_by_view(view).items():
+        assert len(copies) == 1, f"{name}: the dropped branch's copy is still shown"
+
+
+def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed frame is not retried on every render tick, for a View chosen after it either.
+
+    A new View owed its first frame until one drew, so with every frame
+    failing, each idle render tick assembled the frame again and halted every
+    run again. The dashboard now records that the frame failed for these
+    Views, and a View owes one again only once the Views change.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    view = _shown_view(application, controller)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    halts: list[Exception] = []
+    halt = view._halt_every_run
+    monkeypatch.setattr(view, "_halt_every_run", lambda error: (halts.append(error), halt(error)))
+
+    view.layout_container.choose_view(AreaId(3), CONCENTRATION_CHART)
+    chosen = len(halts)
+
+    for _ in range(5):
+        view.render_tick()
+
+    assert chosen == 1, "the chosen View was not offered a frame at once"
+    assert len(halts) == chosen, f"{len(halts) - chosen} idle ticks retried the failed frame"

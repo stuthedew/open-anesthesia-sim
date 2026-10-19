@@ -1,50 +1,53 @@
-"""The dashboard: what every displayed run shares, in PySide6.
+"""The shared part of the dashboard, which every displayed run uses, in PySide6.
 
-`SimulationView` is the shared half of the dashboard along `PL-B9PY`'s seam.
-It holds what two runs cannot each have their own of - the compartment
-selection, the time base, the Areas and the Views in them, the marks and the
-branch control - and one `RunView` per run for everything else. The Views are
-built by `app/area_layout.py` through the View registry, each from the View
-contract's context (`app/view_contract.py`, `PL-TH35`), so this class names
-none of them but to keep the concentration chart in view after a branch.
+`PL-B9PY` divided the dashboard into a part that all runs share and a part
+for each run. `SimulationView` is the shared part. It holds what two runs
+cannot each have a copy of: the compartment selection, the time base, the
+Areas and the Views in them, the marks and the branch control. It also holds
+one `RunView` per run, and each `RunView` holds everything else for its run.
+`app/area_layout.py` builds the Views through the View registry, each from
+the View contract's context (`app/view_contract.py`, `PL-TH35`). So this class
+names no View, except to keep the concentration chart in view after a branch.
 
-**The unconditional region is outside the splitters** (`PL-NWTM`). Each run's
-transport row, its notice banner, its readouts and its control-change record
-sit in a band across the top of the page, and the use disclaimer in a line
-across its foot. `docs/MODEL.md` § "Minimum displayed outputs" requires those
-values on screen in every Workspace, and `app/unconditional_set.py` declares
-which they are; `_place_run` refuses a run whose declared values the band does
-not hold. Under the band, each run's setting controls stand at their own
-height, and under them the Areas: the concentration chart over the F_A/F_I
-plot, beside the accounting sidebar, drawn from a layout model by
-`app/area_layout.py`, so a reader can drag the borders between them
-(`PL-W9P6`). The Areas are the layout container. Nothing in the
-band has an ancestor among them, so no split, join or close can reach it.
+**The unconditional region is outside the splitters** (`PL-NWTM`). The
+unconditional region holds the values that must be on screen at all times.
+Each run's transport row, its notice banner, its readouts and its
+control-change record sit in a band across the top of the page. The use
+disclaimer sits in a line across the foot of the page. `docs/MODEL.md`
+§ "Minimum displayed outputs" requires those values on screen in every
+Workspace, and `app/unconditional_set.py` declares which values they are.
+`_place_run` rejects a run when the band does not hold every value that the
+run declares. Under the band, each run's setting controls keep their own
+height. Under the controls are the Areas: the concentration chart over the
+F_A/F_I plot, beside the accounting sidebar. `app/area_layout.py` draws the
+Areas from a layout model, so a reader can drag the borders between them
+(`PL-W9P6`). The Areas are the layout container. No widget in the band sits
+inside an Area, so no split, join or close of an Area can affect the band.
 
 **One frame, every View, then every run.** `_refresh_view` reads one
-snapshot per run, assembles one `ChartFrame` through `app/chart_frame.py`,
-hands it to every View in one `ViewTick`, and only then refreshes each run
-against it, so the readouts, the traces and the sentences beside them are one
-instant of one run (decision D2). Every claim in a caption is
-`app/dashboard_frame.py`'s; this class formats nothing and decides nothing a
-reader interprets.
+snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`.
+It hands that frame to every View in one `ViewTick`, and only then refreshes
+each run against the frame. So the readouts, the traces and the sentences
+beside them all show one instant of one run (decision D2). Every claim in a
+caption comes from `app/dashboard_frame.py`. This class formats nothing, and
+it decides nothing that a reader interprets.
 
-**Two cadences, kept apart** (decision D7). Each run's own timer steps it;
-this view's render timer draws, and only while a run is running or a frame
-is owed: by a coalesced slider change (`PL-R2YM`), by a change to the run
-set, or by a run whose record differs from what its view last wrote
-(`PL-X7D5`). A frame that cannot be drawn halts every run, because a raise
-out of the shared render path is attributable to none of them. No wall
-clock is read anywhere.
+**Two cadences, kept apart** (decision D7). Each run's own timer steps that
+run. This view's render timer draws, but only while a run is running or a
+frame is owed. A frame is owed after a coalesced slider change (`PL-R2YM`),
+after a change to the run set, or when a run's record differs from what its
+view last wrote (`PL-X7D5`). A frame that cannot be drawn halts every run,
+because an exception raised in the shared drawing path cannot be attributed
+to any one run. No wall clock is read anywhere.
 
-**The legend is a frame widget** (`PL-G3K7`). Its View hands it the
-selection a frame was assembled from once its plot has drawn that frame, so
-its boxes name the curves on the plot even where the frame a click asked for
-fails.
+**The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
+selection that a frame was assembled from, but only after the plot has drawn
+that frame. So the legend's boxes name the curves on the plot, even when the
+frame that a click asked for fails.
 
-**Hover is the chart's** (decision D6): `qt_chart` answers whenever the
-pointer is over a drawn point, running or paused, and the dashboard adds
-nothing to it.
+**Hover belongs to the chart** (decision D6). `qt_chart` shows its hover
+readout whenever the pointer is over a drawn point, whether the run is running
+or paused. The dashboard adds nothing to it.
 """
 
 from __future__ import annotations
@@ -124,17 +127,19 @@ from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.model import MAIN_WINDOW, LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 
-#: The shares of the window's width the two charts and the accounting sidebar
-#: take (`PL-W9P6`). The sidebar's 0.18 gives it about the 228 px it had beside
-#: the charts in a 1366 px window before the row was an Area layout, when it
-#: stood at its own minimum width at every window size. A placeholder until
-#: the shipped Workspaces replace this layout.
+#: The fractions of the window's width that the two charts and the accounting
+#: sidebar take (`PL-W9P6`). In a 1366 px window, the sidebar's 0.18 gives it
+#: about 228 px. That is the width the sidebar had beside the charts before the
+#: row became an Area layout, when it stayed at its own minimum width at every
+#: window size. These values are a placeholder until the shipped Workspaces
+#: replace this layout.
 _CHART_PANEL_SHARE: Final = 0.82
 _SIDEBAR_SHARE: Final = 0.18
 
-#: The shares of the charts' height the concentration chart and the F_A/F_I
-#: plot take, the second under the first as they stood in one panel before
-#: each was a View of its own (`PL-TH35`). A placeholder.
+#: The fractions of the charts' height that the concentration chart and the
+#: F_A/F_I plot take. The plot sits under the chart, as the two stood in one
+#: panel before each became a View of its own (`PL-TH35`). These values are a
+#: placeholder.
 _CONCENTRATION_SHARE: Final = 0.55
 _WASH_IN_SHARE: Final = 0.45
 
@@ -217,20 +222,21 @@ def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
 def _holder(
     layout: QBoxLayout, widgets: Sequence[QWidget], *, before_stretch: bool = False
 ) -> QWidget:
-    """One run's contribution to a shared layout, wrapped so it can be taken out again.
+    """Wrap one run's widgets for a shared layout, so that they can be taken out again.
 
-    A holder rather than the widgets themselves, because the dashboard's run
-    set changes while it is alive: a run added after construction has to land
-    in the same place in each of these layouts that it would have had at
-    construction, and a run taken off has to leave nothing behind. One holder
-    per run per layout makes both of those a single insertion and a single
-    deletion. Its own layout has no margins, so it is invisible.
+    The run's widgets go into a holder rather than straight into the layout,
+    because the dashboard's run set changes while the dashboard is alive. A
+    run added after construction has to land in the same place in each of
+    these layouts that it would have had at construction. A run taken off has
+    to leave nothing behind. With one holder per run per layout, each of
+    those is a single insertion or a single deletion. The holder's own layout
+    has no margins, so the holder itself is invisible.
 
     Args:
-        layout: The shared layout to add it to.
+        layout: The shared layout to add the holder to.
         widgets: This run's widgets for that layout, in order.
-        before_stretch: True where the layout ends in a stretch the run's
-            widgets must stay in front of - the record column.
+        before_stretch: True where the layout ends in a stretch and the run's
+            widgets must stay in front of it, as in the record column.
 
     Returns:
         The holder, already placed.
@@ -255,16 +261,17 @@ def _holder(
 
 @dataclass(frozen=True, slots=True)
 class _RunSlots:
-    """Where one displayed run's widgets sit among the layouts every run shares.
+    """Where one displayed run's widgets sit among the layouts that every run shares.
 
     Attributes:
-        parameters: The run's setting controls, a section of the settings
-            column above the Areas, held to its own height. A reader can also
-            show them in any Area as the `parameter_controls` View, which
-            builds copies of its own (`PL-TH35`).
-        placed: Every widget this run put into a shared layout, the section
-            included, and for a later run the readings it put into the first
-            run's readout panels. Removing the run is deleting these.
+        parameters: The run's setting controls. They are a section of the
+            settings column above the Areas, kept at their own height. A
+            reader can also show them in any Area as the `parameter_controls`
+            View, which builds copies of its own (`PL-TH35`).
+        placed: Every widget that this run put into a shared layout, including
+            the section. For any run after the first, it also holds the
+            readings that the run put into the first run's readout panels.
+            Removing the run means deleting these widgets.
     """
 
     parameters: QWidget
@@ -283,11 +290,12 @@ class SimulationView(QWidget):
     compartment_selection_changed = Signal(object)
     """Emitted with the selection a frame was assembled from, once every View has drawn it.
 
-    Not when the selection is set, by a reader's request or a change to the
-    run set: a frame that then failed left the legend naming curves the plot
-    was not drawing (`PL-G3K7`). Every View is handed the same selection in
-    its `ViewTick`. A legend outside the Areas connects to this signal, so
-    one that has been closed is simply no longer told (`PL-VN6M`).
+    It is not emitted when the selection is set, whether by a reader's request
+    or by a change to the run set. When it was emitted at that point, a frame
+    that then failed left the legend naming curves that the plot was not
+    drawing (`PL-G3K7`). Every View is handed the same selection in its
+    `ViewTick`. A legend outside the Areas connects to this signal, so a
+    legend that has been closed simply stops receiving it (`PL-VN6M`).
     """
 
     time_base_changed = Signal(object)
@@ -379,20 +387,25 @@ class SimulationView(QWidget):
         # How many runs the last frame attempted was drawn over; `render_tick`
         # draws when the run set has changed since (`PL-0LG6`).
         self._drawn_run_count = 0
+        # The Views the last frame was attempted for, and whether it failed.
+        # A View owes a frame only while it has not been offered one, so a
+        # frame that failed for these Views is not retried every tick.
+        self._offered_views: tuple[QWidget, ...] = ()
+        self._frame_failed = False
         self.presented_frames = 0
         # Whether the page is holding the concentration chart in view, from
         # a branch taken until the reader scrolls the page themselves
         # (`_keep_chart_in_view`, `PL-562Z`).
         self._chart_view_owed = False
 
-        # The marks are the *case's* and not any one run's, which is why they
-        # are built here beside the Areas rather than in `RunView`
+        # The marks belong to the *case* and not to any one run. That is why
+        # they are built here beside the Areas rather than in `RunView`
         # (`docs/ARCHITECTURE.md` § "Where new code belongs": a control shared
         # between runs must not be duplicated into each). Every run holds its
-        # own copy and this is the only thing that writes them, so the copies
-        # stay equal by construction - and two runs compared at two different
-        # heights, because a learner typed one of them twice, is the failure
-        # that arrangement exists to make unreachable.
+        # own copy of the marks, and this code is the only thing that writes
+        # them, so the copies stay equal by construction. The arrangement exists
+        # to make one failure impossible: two runs compared at two different
+        # heights because a learner typed one of them twice.
         self._bookmarks_panel = BookmarksPanel()
         self._bookmark_dialog: BookmarkDialog | None = None
         self._bookmarks_panel.edit_button.clicked.connect(self._open_bookmark_dialog)
@@ -443,24 +456,25 @@ class SimulationView(QWidget):
     def _build_page(self) -> None:
         """Lay the dashboard out, top to bottom, inside a scrolling page.
 
-        The unconditional region comes first: per run the transport row, the
-        notice banner and the readouts, with every run's control-change
-        record in a column to their right (`PL-J8K2` Q1 and Q3). The notice
-        banners sit under the transport rows and above every displayed
-        value, so a halted run is read before the values it explains. Under
-        the region come the setting controls of each run, each at its own
-        height, and then the Areas, which take the spare height. The adapter
-        draws them from `_DASHBOARD_LAYOUT`, and builds each Area's View
-        through the View registry (`PL-TH35`), so a reader can drag the
-        borders between them and choose any View for any Area. Under the
-        Areas come the case's controls, the marks and the branch control,
-        and the use disclaimer is the page's last line.
+        The unconditional region comes first. For each run it holds the
+        transport row, the notice banner and the readouts, and every run's
+        control-change record sits in a column to their right (`PL-J8K2` Q1
+        and Q3). The notice banners sit under the transport rows and above
+        every displayed value. So a reader sees a halted run's notice before
+        the values that the notice explains. Under the region come the setting
+        controls of each run, each at its own height. Then come the Areas,
+        which take the spare height. The adapter draws the Areas from
+        `_DASHBOARD_LAYOUT` and builds each Area's View through the View
+        registry (`PL-TH35`). So a reader can drag the borders between the
+        Areas and choose any View for any Area. Under the Areas come the
+        case's controls, the marks and the branch control. The use disclaimer
+        is the page's last line.
 
-        No run is placed here. Every layout a run contributes to is kept, so
-        that `_place_run` can fill them in the same order whether it is
-        called at construction or when a learner takes a branch: a page laid
-        out over the run set it happened to be built with could not gain a
-        run without being rebuilt.
+        No run is placed here. Every layout that a run contributes to is kept,
+        so that `_place_run` can fill the layouts in the same order at
+        construction and when a learner takes a branch. A page laid out for
+        the run set it was first built with could not gain a run without
+        being rebuilt.
         """
 
         page = QWidget()
@@ -501,23 +515,23 @@ class SimulationView(QWidget):
         outer.addWidget(scroll)
 
     def _build_unconditional_region(self) -> QWidget:
-        """Build the band that holds every run's unconditional values, empty of runs.
+        """Build the band that holds every run's unconditional values, with no runs in it yet.
 
-        Its left column stacks every run's transport row, then every
+        The band's left column stacks every run's transport row, then every
         notice banner, then the first run's readout section. A later run's
-        readouts join the first run's panels (`RunView.show_readings_of`),
-        and while runs are compared each run's delivered concentration sits
-        on its own transport row, so a later run's section is not shown
-        (`PL-QLZ5`). Its right column holds
-        every run's control-change record, scrolling within itself so a long
-        record never makes the band taller than the rows beside it
-        (`PL-J8K2` Q3). The two columns take the band's width in the shares
-        the charts and the sidebar take the Areas' width, so one run's
-        seven readouts stand in one row at a 1366 px window (`PL-F2YS`).
-        Nothing new is drawn around the region (`PL-J8K2` Q4).
+        readouts join the first run's panels (`RunView.show_readings_of`).
+        While runs are compared, each run's delivered concentration sits on
+        its own transport row. So a later run's readout section is not shown
+        (`PL-QLZ5`). The band's right column holds every run's control-change
+        record. That column scrolls within itself, so a long record never
+        makes the band taller than the rows beside it (`PL-J8K2` Q3). The two
+        columns split the band's width in the same shares as the charts and
+        the sidebar split the Areas' width. So one run's seven readouts stand
+        in one row in a 1366 px window (`PL-F2YS`). Nothing new is drawn
+        around the region (`PL-J8K2` Q4).
 
         Returns:
-            The region, which `unconditional_region` names.
+            The region. `unconditional_region` gives access to this widget.
         """
 
         region = QWidget()
@@ -581,10 +595,10 @@ class SimulationView(QWidget):
         return self._areas
 
     def _build_case_section(self) -> QWidget:
-        """The case's controls, under the Areas: the marks, then the branch control.
+        """Build the case's controls under the Areas: first the marks, then the branch control.
 
-        Neither is a View, because neither belongs to a plot. Both offer
-        instants of the case rather than of any one run or plot, so neither
+        Neither is a View, because neither belongs to a plot. Both deal with
+        instants of the case rather than of any one run or plot. So neither
         sits inside a `RunView` or an Area. Where they sit is a placeholder
         (`PL-TH35`).
         """
@@ -597,12 +611,14 @@ class SimulationView(QWidget):
         column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
         column.setSpacing(VIEW_ROW_SPACING)
 
-        # A section of its own rather than inside the concentration chart's
-        # View it is most often read against. Two reasons, and the second is
-        # the stronger: the marks are the case's rather than either plot's,
-        # so nesting them in one plot's chrome would say otherwise; and
-        # `PL-F9TQ` governs what may stand between a chart heading and its
-        # plot, which is the accretion a control placed there would resume.
+        # The marks get a section of their own. They are not placed inside the
+        # concentration chart's View, although they are most often read
+        # against that chart. There are two reasons, and the second is the
+        # stronger. First, the marks belong to the case rather than to either
+        # plot, so nesting them in one plot's chrome would say otherwise.
+        # Second, `PL-F9TQ` limits what may stand between a chart heading and
+        # its plot. A control placed there would restart the build-up of
+        # items there that `PL-F9TQ` stopped.
         column.addWidget(self._bookmarks_panel)
 
         # And the branch control below them, for the same reason and one
@@ -1046,9 +1062,10 @@ class SimulationView(QWidget):
     def _show_branch(self, branch: SimulationController) -> None:
         """Draw a branch just taken beside the trunk, and bring the charts comparing them into view.
 
-        Both branch controls end here. The new run's readouts are laid out
-        above the chart, so without the scroll the chart the learner branched
-        to compare on falls mostly below the fold (`PL-562Z`).
+        Both branch controls finish by calling this method. The new run's
+        readouts are laid out above the chart. So without the scroll, most of
+        the chart that the learner branched in order to compare would fall
+        below the visible part of the page (`PL-562Z`).
         """
 
         self._fork_refusal = None
@@ -1059,16 +1076,17 @@ class SimulationView(QWidget):
     def _keep_chart_in_view(self) -> None:
         """Scroll the page to the concentration chart, and keep it there until the reader scrolls.
 
-        The chart is the plot of the first Area showing a concentration chart
-        View, or the Areas themselves where none does (`_chart_in_view`). The
-        new run's widgets reach their final size over several passes of
-        layout after the press returns, and each pass moves the chart. So
-        the scroll is made now and again each time the page's height changes
-        (`_follow_chart`), until the reader scrolls the page themselves or the
-        trunk's Reset ends the comparison. It scrolls as little as Qt's
-        `ensureWidgetVisible` needs to, so nothing moves where the chart is
-        already in view. The scroll goes when v0.6.0's tiled layout replaces
-        the scrolling page.
+        The chart is the plot of the first Area that shows a concentration
+        chart View, or the Areas themselves where no Area does
+        (`_chart_in_view`). After the press returns, the new run's widgets
+        reach their final size over several layout passes, and each pass
+        moves the chart. So the page scrolls once now, and once more each time
+        the page's height changes (`_follow_chart`). This continues until the
+        reader scrolls the page themselves or the trunk's Reset ends the
+        comparison. Each scroll goes only as far as Qt's `ensureWidgetVisible`
+        needs, so nothing moves when the chart is already in view. This
+        scrolling will be removed when v0.6.0's tiled layout replaces the
+        scrolling page.
         """
 
         self._chart_view_owed = True
@@ -1199,26 +1217,33 @@ class SimulationView(QWidget):
             self._halt_every_run(error)
 
     def render_tick(self) -> None:
-        """Draw a frame if a run is running or one is owed; halt every run if drawing fails.
+        """Draw a frame when one is owed or a run is running, and halt all runs if drawing fails.
 
-        A frame is owed when a change asked for one (`present(True)`), when
-        the run set differs from the one the last frame was drawn over, when
-        a run's record differs from the one its view last wrote
-        (`RunView.owes_a_frame`), and when a View owes one (`View.owes_a_frame`):
-        a View not drawn yet, or a chart wider than the frame it drew was
-        sampled for. The last three are read from the runs and the Views
-        rather than asked for by whatever changed them, so a run that stops
-        itself inside its own step tick is redrawn within one tick
-        (`PL-T995`), a run added without a frame is drawn on the next
-        (`PL-0LG6`), a View a reader chooses for an Area is drawn on the next
-        (`PL-TH35`), a chart whose Area a reader widens is redrawn although
-        the window kept its size (`PL-9LNF`), and a path added later is
-        covered without being named (`PL-X7D5`).
+        A frame is owed in four cases: when a change asked for one
+        (`present(True)`), when the run set differs from the one the last frame
+        was drawn over, when a run's record differs from the one its view last
+        wrote (`RunView.owes_a_frame`), and when a View owes one
+        (`View.owes_a_frame`). A View owes a frame until it has been offered
+        its first, or when it is a chart wider than the frame it drew was
+        sampled for. The last three cases are read from the runs and the Views. They
+        are not asked for by whatever changed them. That design has these
+        effects:
 
-        The pending flag is cleared before the frame is drawn, so a frame
-        that raises cannot leave the change that asked for it owed forever;
-        the run count and each run's record are stored where they are
-        written, the halt included, so neither can either.
+        - A run that stops itself inside its own step tick is redrawn within
+          one tick (`PL-T995`).
+        - A run added without a frame is drawn on the next tick (`PL-0LG6`).
+        - A View that a reader chooses for an Area is drawn at once, through
+          `AreaLayout.views_changed`, and on the next tick if nothing has drawn
+          it yet (`PL-TH35`).
+        - A chart whose Area a reader widens is redrawn, although the window
+          kept its size (`PL-9LNF`).
+        - A path added later is covered without being named (`PL-X7D5`).
+
+        The pending flag is cleared before the frame is drawn. So a frame
+        that raises cannot leave the change that asked for it owed forever.
+        The run count and each run's record are stored where they are written,
+        including in the halt, so neither of them can leave a frame owed
+        forever either.
         """
 
         if (
@@ -1226,7 +1251,7 @@ class SimulationView(QWidget):
             and not self._render_pending
             and len(self._runs) == self._drawn_run_count
             and not any(run.owes_a_frame for run in self._runs)
-            and not self._areas.owes_a_frame
+            and not self._views_owe_a_frame()
         ):
             return
 
@@ -1237,27 +1262,45 @@ class SimulationView(QWidget):
         except Exception as error:
             self._halt_every_run(error)
 
+    def _views_owe_a_frame(self) -> bool:
+        """Whether a View owes a frame that has not already failed for the same Views.
+
+        A View chosen while every frame fails, or a chart widened then, would
+        otherwise owe a frame on every tick. Each tick would assemble the
+        frame again and halt every run again.
+        """
+
+        if self._frame_failed and self._areas.views() == self._offered_views:
+            return False
+
+        return self._areas.owes_a_frame
+
     def _refresh_view(self) -> None:
         """Read every run once, assemble one frame, draw every View, then refresh every run.
 
-        The frame is assembled for the widest plot any View draws, so none
-        draws a chord wider than a pixel (`PL-GS3R`). One frame rather than
-        one per plot at its own width: the two plots differ by about 53 px at
-        every window width measured, so a frame each would assemble twice on
-        every tick, and the two plots would not draw the same instants
-        (`PL-9LNF`). The adapter hands the frame to every View in one
-        `ViewTick` (`PL-TH35`). Each legend is told what its plot drew once
-        the plot has drawn it, and not before, so where the frame fails it
-        goes on naming the curves still on the plot (`PL-G3K7`).
+        The frame is assembled for the widest plot that any View draws. So no
+        plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
+        straight line drawn between two neighbouring samples. The dashboard
+        assembles one frame rather than one per plot at that plot's own width.
+        The two plots differ by about 53 px at every window width measured.
+        So one frame for each plot would mean two assemblies on every tick,
+        and the two plots would not draw the same instants (`PL-9LNF`). The
+        adapter hands the frame to every View in one `ViewTick` (`PL-TH35`).
+        Each legend is told what its plot drew only after the plot has drawn
+        it. So where the frame fails, the legend goes on naming the curves
+        still on the plot (`PL-G3K7`).
 
         Raises:
-            ValueError: If the runs have come to be on different agents
-                since construction (`assemble_chart_frame`).
+            ValueError: If the runs have come to use different agents since
+                construction (`assemble_chart_frame`).
         """
 
         # Stored before anything can raise: a frame that fails over a new run
-        # set is answered by the halt it raises, and is not retried every tick.
+        # set, or for new Views, is answered by the halt it raises, and is not
+        # retried every tick.
         self._drawn_run_count = len(self._runs)
+        self._offered_views = self._areas.views()
+        self._frame_failed = True
         selection = self._compartment_selection
         time_base = self._time_base
         snapshots = tuple(run.snapshot() for run in self._runs)
@@ -1269,6 +1312,7 @@ class SimulationView(QWidget):
             inputs, time_base, selection.shown, plot_width_px=self._areas.frame_width_px()
         )
         self._areas.refresh(ViewTick(frame, snapshots, self._runs, time_base, selection))
+        self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
         self.time_base_changed.emit(time_base)
 
@@ -1561,13 +1605,13 @@ class SimulationView(QWidget):
     def interface_strings(self) -> tuple[str, ...]:
         """Every string a reader can see on the dashboard, hidden widgets included.
 
-        Every label, every button and the name assistive technology
-        announces for it, every entry of every combo, every window title, and
-        what every View paints itself, such as its plot's axis titles
-        (`View.painted_strings`) - so a whole-interface test holds one
-        definition of "on screen" rather than each walking the tree its own
-        way. The hover readout is not standing text and is held by the chart's
-        own tests.
+        The strings are every label and every button, the name that assistive
+        technology announces for each, every entry of every combo box, every
+        window title, and the text that every View paints itself, such as its
+        plot's axis titles (`View.painted_strings`). So a whole-interface test
+        has one definition of "on screen", rather than each test walking the
+        widget tree its own way. The hover readout is not standing text. The
+        chart's own tests check it.
         """
 
         return tuple(self._interface_strings())

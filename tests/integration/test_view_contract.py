@@ -1,11 +1,12 @@
-"""The View contract, held against every View this build registers (`PL-TH35`).
+"""The View contract, checked against every View this build registers (`PL-TH35`).
 
 `app/view_contract.py` states the contract and its pruning rule: every member
 of `View` has a call site in the adapter, and every registered kind builds a
-View that satisfies it. These tests are that rule. They also hold what each
-shipped View owes a reader: saved state it can read, a notice where it cannot,
-and, in a real dashboard, one frame shared by every View drawn from it. They
-render under the `offscreen` platform `tests/conftest.py` selects.
+View that satisfies the contract. These tests enforce that rule. They also
+check what each shipped View owes a reader: saved state it can read, and a
+notice where it cannot. In a real dashboard, they check that every View is
+drawn from one shared frame. They render under the `offscreen` platform that
+`tests/conftest.py` selects.
 """
 
 import ast

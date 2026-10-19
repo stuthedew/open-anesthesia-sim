@@ -1,13 +1,14 @@
 """Unit tests for `app/view_registry.py`: the View kinds this build can draw.
 
-`PL-R1WQ` holds each tag as a literal written once beside its entry, so a
-rename of a class or a title cannot change what a saved layout means. These
-tests pin each tag against the string a saved file holds, check that every
-shipped Workspace names only registered kinds, and hold the retirement table
-to its two rules: a retired tag is never registered again, and a renamed
-View's new tag is registered. The notice text is checked against sentences
-written out here. Each entry's factory is checked here only for being one;
-`tests/integration/test_view_contract.py` builds every shipped View from it.
+`PL-R1WQ` requires each tag to be a literal written once beside its entry, so
+renaming a class or a title cannot change what a saved layout means. These
+tests pin each tag against the string that a saved file holds. They check that
+every shipped Workspace names only registered kinds. They check the retirement
+table against its two rules: a retired tag is never registered again, and a
+renamed View's new tag is registered. The notice text is checked against
+sentences written out here. Here each entry's factory is checked only for
+being a factory. `tests/integration/test_view_contract.py` builds every
+shipped View from it.
 """
 
 import pytest
