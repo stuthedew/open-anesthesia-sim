@@ -1515,6 +1515,9 @@ class SimulationView(QWidget):
             snapshots[0],
         )
         self._refresh_fork_panel()
+        # The run surfaces that some Views show are written after the Areas
+        # drew, so the Areas follow what those Views need now (`PL-MXMG`).
+        self._areas.follow_needs()
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks

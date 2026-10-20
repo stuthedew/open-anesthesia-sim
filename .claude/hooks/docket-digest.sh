@@ -53,6 +53,13 @@ fi
 
 # The checkout, as every hook finds it (`hook_input.py`, `PL-FB77`).
 root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
+
+# The effort trial's arm for this session, from 2026-10-24 04:00 UTC and
+# silent before. Early, because the session repeats it to the owner in its
+# first reply. This line in the transcript is also the trial's record of the
+# arm, which the model review reads (`PL-HYRM`).
+python3 "$root/tools/effort_trial.py" digest 2>/dev/null || true
+
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
 

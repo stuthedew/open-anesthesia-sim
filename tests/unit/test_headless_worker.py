@@ -40,6 +40,10 @@ head = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 branch = subprocess.run(head, capture_output=True, text=True).stdout.strip()
 subprocess.run(["git", "commit", "--allow-empty", "-qm", "work"], check=True)
 subprocess.run(["git", "push", "-q", "-u", "origin", branch], capture_output=True)
+if os.environ.get("FAKE_OUTPUT") == "unpushed":
+    subprocess.run(["git", "commit", "--allow-empty", "-qm", "later"], check=True)
+if os.environ.get("FAKE_OUTPUT") == "dirty":
+    open("left-behind.txt", "w").write("not committed")
 if os.environ.get("FAKE_OUTPUT") == "refused":
     print(json.dumps({"type": "result", "subtype": "success", "is_error": True,
                       "result": "Invalid API key", "total_cost_usd": 0, "num_turns": 1}))
@@ -48,7 +52,9 @@ if os.environ.get("FAKE_OUTPUT") == "junk":
     print("not json")
 else:
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
-                      "num_turns": 12, "total_cost_usd": 3.25, "permission_denials": []}))
+                      "num_turns": 12, "total_cost_usd": 3.25, "permission_denials": [],
+                      "usage": {"input_tokens": 40, "cache_read_input_tokens": 9000,
+                                "cache_creation_input_tokens": 700, "output_tokens": 1200}}))
 """
 
 
@@ -161,6 +167,65 @@ def test_a_pushed_run_records_its_cost_and_the_remote_branch(
     assert "PL-B7K2" in argv[argv.index("-p") + 1]
 
 
+@pytest.mark.parametrize(
+    ("no_push", "output", "removed"),
+    [
+        (False, "json", True),
+        (True, "json", False),
+        (False, "refused", False),
+        (False, "dirty", False),
+    ],
+    ids=["pushed", "trial-run", "failed-after-pushing", "uncommitted-file"],
+)
+def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it(
+    origin: Path, fake_claude: Path, tmp_path: Path, no_push: bool, output: str, removed: bool
+) -> None:
+    """Every run used to leave a full clone behind until the owner deleted it (`PL-TX7K`).
+
+    Only a run that succeeded and pushed everything it made removes its clone.
+    A trial run, a failure and a clone holding a file the remote lacks are kept
+    for reading. Every run keeps its log.
+    """
+    run = _work(origin, fake_claude, tmp_path, no_push=no_push, output=output)
+    assert run.removed is removed
+    assert Path(run.clone).is_dir() is not removed
+    assert Path(run.clone + ".log").is_file()
+    line = headless_worker.describe(run)
+    kept = f"in {run.clone}, log in {run.clone}.log"
+    assert ("clone removed, log in" in line, kept in line) == (removed, not removed)
+
+
+def test_a_pushed_run_commits_its_record_to_its_branch_for_review(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    """Nothing in the repository said which items a headless worker did (`PL-87BR`)."""
+    run = _work(origin, fake_claude, tmp_path, no_push=False)
+    stamp = run.started[:19].replace("-", "").replace(":", "")
+    assert run.record == f"docs/worker-runs/pl-b7k2-worker-{stamp}.json"
+    checkout = tmp_path / "checkout"
+    _git("clone", "-q", "-b", run.branch, str(origin), str(checkout), cwd=tmp_path)
+    subject = _git("log", "-1", "--format=%s", cwd=checkout).strip()
+    assert subject == "PL-B7K2: record the headless run"
+    record = json.loads((checkout / run.record).read_text(encoding="utf-8"))
+    assert record["review"] is None
+    assert "clone" not in record
+    assert (record["cost_usd"], record["effort"], record["turns"]) == (3.25, "high", 12)
+    tokens = ("input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens")
+    assert [record[name] for name in tokens] == [40, 9000, 700, 1200]
+    assert f"record: {run.record}" in headless_worker.describe(run)
+
+
+def test_a_record_is_not_committed_over_work_the_worker_left_unpushed(
+    origin: Path, fake_claude: Path, tmp_path: Path
+) -> None:
+    """Pushing the record would also have published the worker's unpushed commit."""
+    run = _work(origin, fake_claude, tmp_path, no_push=False, output="unpushed")
+    assert run.record is None
+    assert run.record_failure == "the clone's HEAD is not the branch it pushed"
+    assert not run.removed
+    assert "no record committed" in headless_worker.describe(run)
+
+
 def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
     origin: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -218,7 +283,7 @@ def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {"PL-B7K2": "workflow"},
+        effort_level=lambda: "high",
         today=lambda: date(2026, 10, 19),
     )
     assert code == 0
@@ -240,7 +305,7 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
         "environ": {"ANTHROPIC_API_KEY": "sk-test"},
         "tools": lambda env: None,
         "docket": lambda: "PL-B7K2\nPL-C8M3\n",
-        "lanes": lambda: {"PL-B7K2": "workflow", "PL-C8M3": "product"},
+        "effort_level": lambda: "high",
         "today": lambda: date(2026, 10, 19),
     }
     assert headless_worker.main(args, **common) == 1
@@ -249,32 +314,38 @@ def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
     assert "cost could not be read" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize(
-    ("lane", "effort"), [("product", "max"), ("crossing", "max"), ("workflow", "high")]
-)
-def test_a_worker_runs_at_the_effort_the_owner_chose_for_its_lane(
-    lane: str, effort: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_a_worker_runs_at_the_level_the_project_settings_hold(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Simulator work runs at `max`, apparatus work at `high`, never the default (`PL-KFJY`)."""
+    """Every run takes the settings file's `effortLevel`, whatever its item's lane (`PL-4N0K`)."""
+    settings = tmp_path / "settings.json"
+    settings.write_text('{"effortLevel": "xhigh"}', encoding="utf-8")
     code = headless_worker.main(
         ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {"PL-B7K2": lane},
+        effort_level=lambda: headless_worker.read_effort_level(settings),
         today=lambda: date(2026, 10, 19),
     )
     assert code == 0
-    assert f"PL-B7K2 at {effort} effort" in capsys.readouterr().out
+    assert "PL-B7K2 at xhigh effort" in capsys.readouterr().out
 
 
-def test_an_item_docket_gives_no_lane_is_refused_before_any_spend(tmp_path: Path) -> None:
+def test_the_project_settings_set_high_for_every_run() -> None:
+    """The owner set `high` for all work on 2026-10-19 (`PL-6XZG`, `docs/maintainer.md`)."""
+    assert headless_worker.read_effort_level() == "high"
+
+
+def test_a_settings_file_with_no_effort_level_is_refused_before_any_spend(tmp_path: Path) -> None:
+    settings = tmp_path / "settings.json"
+    settings.write_text("{}", encoding="utf-8")
     code = headless_worker.main(
         ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
         environ={"ANTHROPIC_API_KEY": "sk-test"},
         tools=lambda env: None,
         docket=lambda: "PL-B7K2\n",
-        lanes=lambda: {},
+        effort_level=lambda: headless_worker.read_effort_level(settings),
         today=lambda: date(2026, 10, 19),
     )
     assert code == 2

@@ -52,7 +52,7 @@ from anesthesia_sim.app.view_contract import (
     ViewRequests,
     ViewTick,
 )
-from anesthesia_sim.app.view_registry import RegisteredView, registry
+from anesthesia_sim.app.view_registry import PARAMETER_CONTROLS, RegisteredView, registry
 from anesthesia_sim.app.workspace_tabs import (
     DELETE_LABEL,
     DUPLICATE_LABEL,
@@ -333,20 +333,15 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     kinds = {area.id: area.view for area in areas.model.areas()}
 
     # Resize. The Resize submenu gives the first Area's right border the focus.
-    # Left then moves the border one step. The root split spans the window, so
-    # one step moves the border by AREA_KEYBOARD_STEP as a fraction of the
-    # split's width less its handle.
-    before = areas.model.rectangle(first)
+    # Left then moves the border one step from where it is drawn, so the
+    # first Area is drawn AREA_KEYBOARD_STEP px narrower (`PL-4L8B`).
+    before_px = areas.frame(first).width()
     _choose_in_area_menu(application, view, first, (RESIZE_LABEL, "Right border"))
     border = QApplication.focusWidget()
     assert isinstance(border, _AreaHandle)
-    splitter = border.owner
-    drawable_px = splitter.width() - splitter.handleWidth() * (splitter.count() - 1)
     QTest.keyClick(border, Qt.Key.Key_Left)
     application.processEvents()
-    assert areas.model.rectangle(first).right == pytest.approx(
-        before.right - AREA_KEYBOARD_STEP / drawable_px
-    )
+    assert areas.frame(first).width() == before_px - AREA_KEYBOARD_STEP
 
     # Split: the first Area becomes two side by side, both showing its View.
     _choose_in_area_menu(application, view, first, (SPLIT_SIDE_BY_SIDE_LABEL,))
@@ -713,6 +708,45 @@ def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
 
     assert border.warning
     assert least <= border.owner.sizes()[1] < least + AREA_KEYBOARD_STEP
+
+
+def test_the_controls_area_has_its_least_width_from_the_first_frame(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """`PL-4L8B`: the first frame settles the Areas, so a border's first keyboard step is one step.
+
+    The setting controls build their per-run copies on their first frame,
+    which raises the minimum width of the Area that holds them. Before the fix,
+    the root splitter kept the widths it had before that frame until the next
+    pass of the event loop. At this size those widths were 1010 and 336 px, and
+    that pass gave the controls their 590 px. A border moved between the frame
+    and that pass moved by about 250 px. The test reads the width that the Area
+    needs from Qt's own size hint for the Area's frame, not from the sizes that
+    the adapter worked out.
+    """
+
+    view = _dashboard(application, shown)
+    areas = view.layout_container
+    controls = next(area.id for area in areas.model.areas() if area.view == PARAMETER_CONTROLS)
+    frame = areas.frame(controls)
+    border = _handle(areas, Handle(0, (), 0))
+    root = border.owner
+    first_frame = root.sizes()
+    controls_px = frame.width()
+
+    assert controls_px >= frame.minimumSizeHint().width() > 336
+    application.processEvents()
+    assert root.sizes() == first_frame
+
+    areas.focus_border(Handle(0, (), 0))
+    application.processEvents()
+    QTest.keyClick(border, Qt.Key.Key_Left)
+
+    assert frame.width() == controls_px + AREA_KEYBOARD_STEP
+    assert root.sizes() == [
+        first_frame[0] - AREA_KEYBOARD_STEP,
+        first_frame[1] + AREA_KEYBOARD_STEP,
+    ]
 
 
 def test_a_focused_border_keeps_its_starting_layout_while_another_window_is_active(

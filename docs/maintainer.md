@@ -212,10 +212,26 @@ holds the method.
 **About one session in four runs at `xhigh` as a randomized comparison
 group, assigned automatically** (project owner, 2026-10-19, over `high` for
 every session and an observational comparison only). The owner asked that
-they not have to set the level by hand. The trial starts after Friday
-2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC), and only once the automatic
-assignment is built and tested (`PL-HYRM`). Until then every session
-runs at `high`. The trial runs until the owner ends it.
+they not have to set the level by hand. The effort trial starts on Friday
+2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC). Until then every session
+runs at `high`.
+
+How it works (`PL-HYRM`): the cloud environment's setup script runs
+`tools/effort_trial.py` before Claude starts. The script draws the session's
+arm and writes it as both `effortLevel` and `maxEffortLevel` in
+`.claude/settings.local.json`. The `maxEffortLevel` cap outranks the app's
+effort picker, so the arm holds whatever the picker shows. Keep the picker at
+`xhigh`. The app keeps its last level, so it needs no reset per session. Each
+session's start-of-session digest names its arm, and the session tells you the
+arm in its first reply. That digest line is kept in the session's transcript,
+and it is the trial's record of the arm: the model review reads it from there
+by session id. Sessions on your own computer do not run the setup script, so
+they are not in the trial.
+
+The trial runs until the owner ends it. The monthly model review puts the
+question of ending it to the owner once both arms have adequate data, and in
+any case at its run on 2027-04-24, six months in (`PL-63CB` § "Effort
+monitoring").
 
 **Superseded on 2026-10-19: apparatus sessions at `high` and simulator sessions
 at `max`** (project owner, 2026-09-19, ratified, over running every session at
@@ -697,13 +713,24 @@ billing cycle (https://support.claude.com/en/articles/17154008, read
 works one item on Opus 5.5 under `docs/worker.md`, pushes a branch named
 `claude/<id>-worker`, and adds its reported cost to a ledger in
 `~/.local/state/open-anesthesia-sim/`. It stops before a run that the
-credit left cannot cover. A run on an item that reaches the simulator uses
-`max` effort, and a run on apparatus work uses `high`, as § "Match effort to
-the standard the work is held to" sets for sessions (`PL-KFJY`). Run it on
-your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it through `uv run python`, never a
-bare `python3`: macOS's own `python3` is Xcode's 3.9, older than the 3.11
-the tools need, and `uv run` also puts the project's Python first on `PATH`
-for the workers (`PL-W38C`).
+credit left cannot cover. Every run uses the effort level
+in `.claude/settings.json`, which is `high`, as § "Match effort to the
+standard the work is held to" sets for sessions (`PL-4N0K`). Run it on
+your Mac, from a checkout of `main`, with `claude` and `uv` installed. Start it
+through `uv run python`, never a bare `python3`: macOS's own `python3` is
+Xcode's 3.9, older than the 3.11 the tools need, and `uv run` also puts the
+project's Python first on `PATH` for the workers (`PL-W38C`).
+
+A worker runs `make check` before it commits, so the Mac needs the tools the
+suite compares its readers against: bash 5.2 or newer, and GNU Make 4 or newer.
+macOS ships bash 3.2 and GNU Make 3.81, and with them 89 tests fail whatever the
+change, so a worker cannot see its own failures among them (`PL-TSH9`).
+`brew install bash make` installs both. Homebrew installs the new make as
+`gmake`, so also add `export PATH="$(brew --prefix)/opt/make/libexec/gnubin:$PATH"`
+to the end of `~/.zshrc`, which makes it `make` in a new Terminal window
+(the formula's own caveat, `Formula/m/make.rb` in Homebrew/homebrew-core,
+read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
+4.4.1 or newer.
 
 1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
    organization. This links one Console organization, and changing it later
@@ -715,10 +742,21 @@ for the workers (`PL-W38C`).
    would run and the credit left, and starts nothing.
 5. `uv run python tools/headless_worker.py --runs 3` runs them, one after another.
    Each prints one line: the item, its effort, the cost, and the branch it
-   pushed.
+   pushed. A pushed run adds a line naming its record.
+   A run that pushed everything it made removes its clone and keeps its log
+   in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
+   `--no-push` one, keeps both, and its line names the clone to read
+   (`PL-TX7K`).
 
 Each branch is a worker's, so review it as delegated work: `bin/docket verify
-<id>` on the branch, then open its pull request. `--item <id>` runs one named
+<id>` on the branch, then open its pull request. A pushed run also commits its
+record to the branch, as `docs/worker-runs/<branch>-<started>.json`, and its
+line names the file. Before opening the pull request, the reviewing session
+runs `python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back
+--note "<one line>"`, and `make check` fails until it does (`PL-87BR`). The
+records are how headless work is compared with chat-session work, so a
+sent-back branch's record still belongs on `main`: carry its two record commits
+to a branch of their own. `--item <id>` runs one named
 item, `--per-run-usd` caps a run (default $15), and `--cycle-day` sets the day
 your billing cycle starts. `--no-push --model claude-sonnet-5-5` is
 `PL-6FX6`'s trial form: the clone cannot push, so the work stays on your
