@@ -6,13 +6,14 @@ effort: S
 status: done
 classes: defect
 feature: numerical-domain
+milestone: v0.6.0
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/simulation_step.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_circuit.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
 closed: 2026-10-19
 pr: 1676
-verify: grep -q 'def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone' tests/unit/test_tissue.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone' tests/unit/test_blood.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone' tests/unit/test_circuit.py
 payoff: a compartment stepped on its own either refuses a step below the floor by name or is shown by measurement not to need one, so a caller stepping it finely cannot be handed a plausible number nothing checked
+verify: grep -q 'def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone' tests/unit/test_tissue.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone' tests/unit/test_blood.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone' tests/unit/test_circuit.py
 not-delegable: the item ends in one of two states chosen on a measurement - a floor each compartment refuses below, with a test per compartment, or the measured error against step recorded with why none is needed - and a command written before the measurement could pin only the state chosen in advance; its touches reach src/anesthesia_sim/core besides, which delegation may never modify
 ---
 

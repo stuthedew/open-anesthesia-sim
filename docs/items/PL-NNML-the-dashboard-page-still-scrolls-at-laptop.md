@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety
 feature: v0.6.0-done-check
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, ROADMAP.md, tests/integration/test_simulation_view.py, tests/integration/test_qt_rendering.py
 added: 2026-10-20
 closed: 2026-10-20

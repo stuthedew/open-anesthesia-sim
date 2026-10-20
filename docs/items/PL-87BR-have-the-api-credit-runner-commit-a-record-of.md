@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: feature
+milestone: v0.6.0
 touches: tools/worker_runs.py, tools/headless_worker.py, tests/unit/test_worker_runs.py, tests/unit/test_headless_worker.py, docs/worker-runs, docket.toml, tools/rules_paths_check.py, Makefile, .github/workflows/quality.yml, docs/apparatus.md, docs/maintainer.md
 deferred-from: v0.6.0 - a workflow-lane runner feature outside the layout release
 added: 2026-10-19

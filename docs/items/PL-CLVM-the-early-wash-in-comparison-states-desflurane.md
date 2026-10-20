@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.0
 touches: tests/reference/test_published_wash_in_and_elimination.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-18

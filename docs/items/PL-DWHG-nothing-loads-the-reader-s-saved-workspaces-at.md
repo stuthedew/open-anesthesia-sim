@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: interface-areas
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/layout/store.py, tests/integration, tests/unit/test_bootstrap.py, docs/ARCHITECTURE.md
 added: 2026-10-19
 closed: 2026-10-19

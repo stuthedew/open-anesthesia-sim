@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, anticipated
 feature: interface-areas
+milestone: v0.6.0
 touches: tests/integration
 blocked-by: PL-DWHG
 added: 2026-09-16

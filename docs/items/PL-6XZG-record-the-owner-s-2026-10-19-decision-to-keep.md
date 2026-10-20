@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: model-evidence
+milestone: v0.6.0
 touches: docs/maintainer.md, .claude/rules/apparatus-standard.md, .claude/settings.json, docs/items/PL-HYRM-assign-each-new-cloud-session-s-effort.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-19
 closed: 2026-10-19

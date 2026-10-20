@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
+milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md, docs/apparatus.md, tools/worker_runs.py
 added: 2026-10-19
 closed: 2026-10-20

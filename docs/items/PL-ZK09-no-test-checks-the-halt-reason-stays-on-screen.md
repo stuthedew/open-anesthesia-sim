@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: v0.6.0-done-check
+milestone: v0.6.0
 touches: tests/integration/test_layout_safety.py
 added: 2026-10-20
 closed: 2026-10-20

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: anticipated
 feature: every-control-restates-the-halt
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, docs/ARCHITECTURE.md
 added: 2026-10-17
 closed: 2026-10-19

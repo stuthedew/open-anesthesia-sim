@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parse-dont-validate
+milestone: v0.6.0
 touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-04

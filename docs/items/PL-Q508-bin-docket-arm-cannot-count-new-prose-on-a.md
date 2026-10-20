@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.0
 touches: docket.toml, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science: a workflow-lane defect in arm's prose count
 added: 2026-10-19

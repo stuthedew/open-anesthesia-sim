@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 deferred-from: v0.6.0 - a workflow-lane runner defect outside the layout release
 added: 2026-10-19

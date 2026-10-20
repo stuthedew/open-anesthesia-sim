@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, ux
+milestone: v0.6.0
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/validation.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_validation.py, src/anesthesia_sim/core/circuit.py, tests/unit/test_circuit.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

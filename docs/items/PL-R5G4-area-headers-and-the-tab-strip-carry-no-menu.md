@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: interface-areas
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/, tests/integration, docs/interface-provenance.md, docs/ARCHITECTURE.md
 added: 2026-10-19
 closed: 2026-10-19

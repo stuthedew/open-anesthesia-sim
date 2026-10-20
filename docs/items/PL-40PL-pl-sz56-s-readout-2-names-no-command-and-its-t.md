@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: planning-cadence
+milestone: v0.6.0
 touches: docs/releases/v0.3.0.md, docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 added: 2026-09-02
 closed: 2026-10-19

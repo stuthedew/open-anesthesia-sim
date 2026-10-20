@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, ux
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-10-18

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: v0.6.0-done-check
+milestone: v0.6.0
 touches: docs/MODEL.md, docs/ARCHITECTURE.md, README.md
 added: 2026-10-20
 closed: 2026-10-20

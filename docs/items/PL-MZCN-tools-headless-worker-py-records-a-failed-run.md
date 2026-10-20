@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 feature: api-credit-runs
+milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 added: 2026-10-19
 closed: 2026-10-19
