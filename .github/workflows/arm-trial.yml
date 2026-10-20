@@ -1,0 +1,38 @@
+name: arm-trial
+
+# PL-JWBW's trial, and temporary. It runs quality.yml's two pytest parts, with
+# the same commands, on the free arm64 runner and on the x64 runner in the same
+# run, so each run gives a paired comparison. It prints the CPU model, which
+# tells the slow x64 runners (AMD EPYC 7763) from the fast ones. It triggers
+# only on a push to this trial's branch and is deleted before the branch merges.
+on:
+  push:
+    branches: [claude/lucid-cerf-8wwjad]
+
+jobs:
+  part:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        part: ["1/2", "2/2"]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: cpu
+        run: |
+          uname -m
+          grep -m1 -E 'model name|CPU part' /proc/cpuinfo || true
+          lscpu | grep -E 'Model name|^CPU\(s\)|Vendor' || true
+          nproc
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --dev
+      - name: pytest
+        run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part ${{ matrix.part }}
+        env:
+          PYTHONUNBUFFERED: "1"
