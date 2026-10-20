@@ -419,11 +419,11 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
 def test_moving_a_tab_and_stacking_a_split_are_reachable_from_the_keyboard(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """Move right, Move left and a stacked split, by key alone (`PL-DZL0`).
+    """The Move right and Move left commands and stacking a split work by key alone (`PL-DZL0`).
 
-    The test above drives every other layout operation by key. The tab order
-    expected here is written out from the shipped order, Default, Induction
-    and Maintenance, rather than read from the strip.
+    The test above drives every other layout operation by key. This test writes
+    out the expected tab order as the shipped order: Default, Induction and
+    Maintenance. It does not read the order from the tab strip.
     """
 
     view = _dashboard(application, shown)

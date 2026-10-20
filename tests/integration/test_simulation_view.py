@@ -5018,16 +5018,17 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
     """The unconditional region keeps its own height, and the Areas take the rest.
 
     At the fixed test size, the page is taller than the window, so there is no
-    spare height. From the first frame on, the Areas then have the height that
-    they ask for, which is their size hint. Before `PL-PHPZ`, the page laid out
-    the Areas from a hint read before the Views had drawn. So their height
-    depended on when the page was laid out. A window tall enough that the
-    scrolling middle shows all of itself, and taller still, has spare height.
-    Every pixel of that spare height makes the Areas
-    taller, while the region that holds the readouts keeps its height. The test
-    measures the readout section inside the region, where the section has been
-    since `PL-NWTM`. The setting controls have been a View in an Area since
-    `PL-2KXB`, so they take their share of the Areas' height.
+    spare height. From the first frame on, the Areas then have the height they
+    ask for, which is their size hint. Before `PL-PHPZ`, the page laid out the
+    Areas from a hint read before the Views had drawn. So the Areas' height
+    depended on when the page was laid out.
+
+    A window has spare height once it is tall enough for the scrolling middle to
+    show all of its content. Every extra pixel of height makes the Areas taller,
+    while the region that holds the readouts keeps its height. The test measures
+    the readout section inside the region, where the section has been since
+    `PL-NWTM`. The setting controls have been a View in an Area since `PL-2KXB`,
+    so they take their share of the Areas' height.
     """
 
     controller = SimulationController()
@@ -5333,16 +5334,17 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
 def test_the_region_and_the_use_disclaimer_stay_in_the_viewport(
     application: QApplication, workspace: str, height_px: int
 ) -> None:
-    """`PL-NNML`: the region and the use disclaimer stay inside the window, however it scrolls.
+    """The region and the use disclaimer stay in view, however the page scrolls (`PL-NNML`).
 
     The whole page used to scroll. Measured offscreen on 2026-10-20 at
     1366 px wide, it was 1087 px tall in the Default Workspace and 1505 px in
     Induction and Maintenance. So at these window heights the disclaimer at
     its foot was below the visible part, and scrolling down to it moved the
     region off the top. Now only the part between them scrolls. The test
-    checks the window at opening, scrolled to the end of the scrolling part,
-    and after a branch is taken, which scrolls to the chart. The disclaimer is
-    found by its text, so the test also runs against the code before the fix.
+    checks the window in three states: when it opens, when the scrolling part
+    is scrolled to its end, and after a branch is taken, which scrolls to the
+    chart. The disclaimer is found by its text, so the test also runs against
+    the code before the fix.
     """
 
     from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT

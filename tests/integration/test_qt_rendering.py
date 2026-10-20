@@ -507,11 +507,11 @@ def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationVi
 def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: SimulationView) -> None:
     """Nothing a reader is meant to see is laid out beyond the page's right edge.
 
-    The page is the whole dashboard column: the region pinned above the
-    scrolling middle, the middle and the disclaimer below it (`PL-NNML`). It is
-    asserted no wider than the window, and the scrolling middle no wider than
-    its viewport, so a row that fits only because the page grew past the
-    window cannot pass.
+    The page is the whole dashboard column. It holds the region pinned above the
+    scrolling middle, the scrolling middle itself, and the disclaimer below the
+    middle (`PL-NNML`). The test asserts that the page is no wider than the window,
+    and that the scrolling middle is no wider than its viewport. So a row that
+    fits only because the page grew wider than the window fails the test.
     """
 
     scroll, middle = _page(dashboard)

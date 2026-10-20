@@ -512,32 +512,35 @@ class SimulationView(QWidget):
     # -------------------------------------------------------------- layout
 
     def _build_page(self) -> None:
-        """Lay the dashboard out, top to bottom, with only its middle scrolling.
+        """Lay the dashboard out from top to bottom, with only its middle scrolling.
 
-        The unconditional region comes first, and it stays at the top of the
-        window. The use disclaimer is the last line, and it stays at the foot.
-        Everything between them scrolls when the window is too short for it,
-        so no window height and no scrolling takes the region or the
-        disclaimer out of view (`PL-NNML`). The region For each run it holds the
-        transport row, the notice banner and the readouts, and every run's
-        control-change record sits in a column to their right (`PL-J8K2` Q1
-        and Q3). The notice banners sit under the transport rows and above
-        every displayed value. So a reader sees a halted run's notice before
-        the values that the notice explains. Under the region comes the
-        Workspace tab strip, directly above the Areas it switches (`PL-QW1Z`
-        Q1). Then come the Areas, which take the spare height.
-        `app/area_layout.py` draws them from the current Workspace's layout. It
-        builds each Area's View through the View registry, from the state the
-        Workspace keeps for it (`PL-TH35`). So a reader can drag the borders
-        between the Areas and choose any View for any Area. Under the Areas
-        come the case's controls, the marks and the branch control. The use
-        disclaimer follows them, outside the scrolling part.
+        The unconditional region comes first and stays at the top of the window.
+        It holds the values that no Workspace may remove. The use disclaimer is the
+        last line and stays at the foot of the window. Everything between them
+        scrolls when the window is too short to show it all. So no window height
+        and no amount of scrolling can move the region or the disclaimer out of
+        view (`PL-NNML`).
 
-        No run is placed here. Instead, every layout that a run adds widgets
-        to is kept, so that `_place_run` can fill the layouts in the same
-        order at construction and when a learner takes a branch. A page laid
-        out for the run set it was first built with could not gain a run
-        without being rebuilt.
+        For each run, the region holds the transport row, the notice banner and
+        the readouts. Every run's record of control changes sits in a column to
+        their right (`PL-J8K2` Q1 and Q3). The notice banners sit under the
+        transport rows and above every displayed value. So a reader sees a halted
+        run's notice before the values that the notice explains.
+
+        Under the region comes the Workspace tab strip, directly above the Areas
+        that it switches (`PL-QW1Z` Q1). Then come the Areas, which take the spare
+        height. `app/area_layout.py` draws the Areas from the current Workspace's
+        layout. It builds each Area's View through the View registry, from the
+        state that the Workspace keeps for that Area (`PL-TH35`). This is how a
+        reader can drag the borders between the Areas and choose any View for any
+        Area. Under the Areas come the case's controls, the marks and the branch
+        control. The use disclaimer follows them, outside the scrolling part.
+
+        This method places no run. Instead, it keeps every layout that a run adds
+        widgets to. `_place_run` then fills those layouts in the same order, both
+        at construction and when a learner takes a branch. A page laid out for
+        the set of runs it was first built with could not gain a run without
+        being rebuilt.
         """
 
         page = QWidget()

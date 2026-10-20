@@ -16,17 +16,18 @@ After each operation the test checks three things:
   shown, and its text must be among the strings a reader can see.
 - No value of the set is drawn inside the Area container, so closing or
   replacing an Area cannot take one away with the surface that drew it.
-- Every Area's View chooser offers the agent accounting. The chooser is the
-  route to the accounting that `tests/integration/test_view_chooser.py`
-  checks.
+- Every Area's View chooser offers the agent accounting. The chooser is how a
+  reader reaches the accounting, and `tests/integration/test_view_chooser.py`
+  checks that route.
 
 The expected set is read from the declaration in `app/unconditional_set.py`,
 not from the dashboard under test. The dashboard shows the halt reason only
-when a run has halted, so the run that never halts leaves it out of the set,
-and a second test halts a run at the supported run length and requires it. Each test
-also checks that every value on screen before an operation is on screen after
-it. A third test rearranges a case with a branch, so the two compared runs are
-checked through the same operations (`PL-ZK09`).
+when a run has halted. So the test whose run never halts leaves the halt reason
+out of the expected set. A second test halts a run at the supported run length
+and requires the halt reason. Each test also checks that every value on screen
+before an operation is still on screen after it. A third test rearranges a case
+with a branch, so that the two compared runs are checked through the same
+operations (`PL-ZK09`).
 """
 
 from collections.abc import Callable, Iterator
@@ -101,12 +102,12 @@ def _paused_run() -> SimulationController:
 
 
 def _halted_run() -> SimulationController:
-    """`_paused_run`'s run, halted at the end of the supported domain.
+    """Return `_paused_run`'s run, halted at the end of the supported domain.
 
-    The dashboard draws a halt reason only for a run that failed or reached the
-    supported run length (`dashboard_frame.notice`). Stepping to the 24-hour
-    limit would take 864,000 steps, so the halt is recorded the way the
-    interface records one it caught on another path.
+    The dashboard draws a halt reason only for a run that failed or that reached
+    the supported run length (`dashboard_frame.notice`). Stepping to the 24-hour
+    limit would take 864,000 steps. So this helper records the halt directly, the
+    same way the interface records a halt that it detected on another code path.
     """
 
     controller = _paused_run()
@@ -370,9 +371,9 @@ def test_a_halted_run_keeps_its_halt_reason_on_screen(
     """A halted run's halt reason survives every layout operation and a reload.
 
     The test above leaves the halt reason out of what it requires, because its
-    run never halts. Here the run has halted at the end of the supported
-    domain, so the reason is on screen at launch, and the same operations must
-    leave it there (`PL-ZK09`).
+    run never halts. Here the run has halted at the end of the supported domain,
+    so the reason is on screen at launch. The same operations must leave it
+    there (`PL-ZK09`).
     """
 
     controller = _halted_run()
@@ -404,12 +405,12 @@ def test_a_branched_case_keeps_both_runs_drawn_and_named(
 ) -> None:
     """Two compared runs both stay drawn, named and complete through every layout operation.
 
-    v0.6.0's Definition of done asks that everything a learner could do with
-    two runs before the layout became the reader's still works (`PL-ZK09`).
-    After each operation, each run's own unconditional values must be on
-    screen, its alveolar curve must be drawn, and each run's name must be
-    visible. The names are written as literals rather than read from
-    `run_label`, which the dashboard also reads.
+    v0.6.0's Definition of done asks that everything a learner could do with two
+    runs still works now that the reader controls the layout (`PL-ZK09`). After
+    each operation, each run's own unconditional values must be on screen, its
+    alveolar curve must be drawn, and its name must be visible. The test writes
+    the names as literals rather than reading them from `run_label`, because the
+    dashboard reads `run_label` too.
     """
 
     case = BranchedCase(_paused_run())
