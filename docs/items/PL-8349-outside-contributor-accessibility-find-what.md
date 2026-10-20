@@ -1,7 +1,7 @@
 ---
 id: PL-8349
 title: Outside-contributor accessibility: find what stops a professional developer who finds this repository from landing a quick fix, without lowering the quality bars
-priority: P1
+priority: P3
 effort: M
 status: ready
 classes: infra
@@ -12,7 +12,9 @@ not-delegable: the deliverable is a findings report and a design round with the 
 ---
 
 **Skeleton, to be fleshed out** (project owner, 2026-10-20: "will flesh out
-later"). Priority P1 is the owner's.
+later"). Priority P3 is the owner's (project owner, 2026-10-20:
+"should not be p1. Can be untriaged or P3"), corrected from a P1 filed by
+mistake.
 
 **Problem.** The repository is tailored to one owner's workflow. Its checks
 cover code quality, and also pull request formatting, item ids in commit
