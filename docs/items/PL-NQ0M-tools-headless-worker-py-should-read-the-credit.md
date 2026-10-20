@@ -31,3 +31,5 @@ added: 2026-10-19
 - **C. Turn the account into an organization to open the Cost API.** This needs an answer from Anthropic about the Max credit first.
 
 **Recommendation: A.** It is the only option that keeps the Console as the single record without the Cost API, and a missing figure stops the runner rather than letting it guess.
+
+**Decided: A** (project owner, 2026-10-20, ratified, over keeping the labelled ledger and over turning the account into an organization). The runner refuses to start without `--credit-left`, the figure from the Console's billing page, and subtracts each finished run's reported cost from it during the batch. The ledger no longer decides anything. Build it together with PL-44SP, which changes the same loop in `main()`.
