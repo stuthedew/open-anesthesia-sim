@@ -8,6 +8,7 @@ feature: ci-cost
 touches: .github/workflows/quality.yml
 added: 2026-10-17
 closed: 2026-10-20
+pr: 1703
 payoff: it is known whether the free arm64 runners avoid the slow x64 ones, which take 1.9 times as long
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
