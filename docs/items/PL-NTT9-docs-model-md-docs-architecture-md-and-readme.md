@@ -3,11 +3,12 @@ id: PL-NTT9
 title: docs/MODEL.md, docs/ARCHITECTURE.md and README.md still describe the area system as planned and the page as about to stop scrolling: the page still scrolls, and no shipped Workspace shows the accounting the README lists
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: v0.6.0-done-check
 touches: docs/MODEL.md, docs/ARCHITECTURE.md, README.md
 added: 2026-10-20
+closed: 2026-10-20
 payoff: the specification and README say where the use disclaimer and the required values actually sit, so a reader trusting them is not wrong about what is on screen
 verify: ! grep -q "1571 px" docs/MODEL.md && ! grep -q "planned area and" docs/ARCHITECTURE.md && ! grep -q "becoming closeable when the" docs/MODEL.md
 ---
