@@ -1,13 +1,18 @@
 ---
 id: PL-JRVV
 title: Review CLAUDE.md for instructions that a script, hook or check now enforces, and retire them to cut the resident set and the risk of context rot
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: session-cost
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-10-20
+payoff: every session loads shorter resident instructions, so the rules that only judgment can apply are less likely to be missed
+not-delegable: deciding whether a check fully enforces a rule, and so whether its prose can go, is judgment that no command can make
 ---
 
-**Skeleton, to be fleshed out** (project owner, 2026-10-20). Priority is left
-to triage.
+**Skeleton, to be fleshed out** (project owner, 2026-10-20). Priority P1 is the
+owner's (project owner, 2026-10-20).
 
 **Problem.** `CLAUDE.md` is 56,157 characters on 2026-10-20 (`wc -c`), and it
 loads in full in every session. Some of its instructions may now be enforced
@@ -33,6 +38,8 @@ judgment can apply it. Record the result in `docs/resident-instructions.md`.
 three generator paragraphs to the docket skill. That item routes prose
 elsewhere, while this one deletes prose that a check makes redundant. Settle
 both together, so a paragraph is not moved and then deleted.
+
+**Done when.** Every block in `CLAUDE.md` is recorded in `docs/resident-instructions.md` as retired, shortened to a pointer, or kept, with the check that justifies each retirement. The retirements are made, and the resident character total that `make check` reports is lower.
 
 **Questions to settle when this is fleshed out.**
 
