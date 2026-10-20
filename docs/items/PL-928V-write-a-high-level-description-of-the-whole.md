@@ -64,3 +64,17 @@ returning after a gap has the same problem at lower stakes. And a session
 proposing a new mechanism has no way to check whether one already exists, which
 is how the apparatus grows a second answer to a question it had already
 answered. Verified 2026-09-13: `docs/workflow.md` does not exist.
+
+**Blocked.** (headless worker, 2026-10-20) The item creates a tracked file that
+no entry in `docket.toml` places, and `docket.toml` is not in `touches`. I
+created a one-line `docs/workflow.md`, staged it with `git add`, and ran
+`uv run python tools/workflow_paths_check.py`, which `make check` runs. It
+exited 1 with: `"docs/workflow.md" is tracked (1 file(s)) and neither
+workflow_paths nor product_paths in docket.toml places it, so an item declaring
+it lands on the simulator's side by default rather than by a decision. Add
+"docs/workflow.md" to workflow_paths if it exists so sessions can be
+productive, or to product_paths if a reader of the simulator needs it`. So
+"`make check` passes" in the brief's done-when cannot be met inside `touches`.
+I removed the file again and wrote nothing else. Unblocking needs `docket.toml`
+added to `touches`, and a decision on which of the two lists places the new
+document.
