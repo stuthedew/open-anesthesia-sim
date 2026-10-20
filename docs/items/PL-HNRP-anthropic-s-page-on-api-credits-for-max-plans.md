@@ -12,3 +12,5 @@ added: 2026-10-20
 **Why it matters.** The whole runner is built on this credit. If the use is not covered, it could stop working or breach the program terms (https://www.anthropic.com/legal/credit-terms) without warning.
 
 **Next step.** Read the program terms. If they do not settle it, the project owner asks Anthropic support. If the use is not covered, the runner could call the Agent SDK instead, which the page lists as covered.
+
+**2026-10-20:** the project owner agreed to ask Anthropic support. Suggested wording: "Does the monthly API credit included with Max 20x cover running `claude -p` (Claude Code in print mode) with a Console API key from the linked organization?" Record the answer here.
