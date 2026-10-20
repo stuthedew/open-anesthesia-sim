@@ -56,6 +56,8 @@ from anesthesia_sim.app.view_registry import PARAMETER_CONTROLS, RegisteredView,
 from anesthesia_sim.app.workspace_tabs import (
     DELETE_LABEL,
     DUPLICATE_LABEL,
+    MOVE_LEFT_LABEL,
+    MOVE_RIGHT_LABEL,
     NEXT_WORKSPACE_LABEL,
     PREVIOUS_WORKSPACE_LABEL,
     RENAME_LABEL,
@@ -412,6 +414,53 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     QTest.keyClick(dialog.proceed_button, Qt.Key.Key_Space)
     application.processEvents()
     assert len(view.workspaces.workspaces) == count
+
+
+def test_moving_a_tab_and_stacking_a_split_are_reachable_from_the_keyboard(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Move right, Move left and a stacked split, by key alone (`PL-DZL0`).
+
+    The test above drives every other layout operation by key. The tab order
+    expected here is written out from the shipped order, Default, Induction
+    and Maintenance, rather than read from the strip.
+    """
+
+    view = _dashboard(application, shown)
+    areas = view.layout_container
+    first = areas.model.areas()[0].id
+    kinds = {area.id: area.view for area in areas.model.areas()}
+    place = areas.model.rectangle(first)
+
+    # Split stacked: the first Area becomes two, one above the other, across
+    # the width it had.
+    _choose_in_area_menu(application, view, first, (SPLIT_STACKED_LABEL,))
+    assert len(areas.model.areas()) == len(kinds) + 1
+    made = next(area.id for area in areas.model.areas() if area.id not in kinds)
+    upper, lower = sorted((first, made), key=lambda area_id: areas.model.rectangle(area_id).top)
+
+    for area_id in (upper, lower):
+        rectangle = areas.model.rectangle(area_id)
+        assert (rectangle.left, rectangle.right) == (place.left, place.right)
+
+    assert areas.model.rectangle(upper).top == place.top
+    assert areas.model.rectangle(upper).bottom == areas.model.rectangle(lower).top
+    assert areas.model.rectangle(lower).bottom == place.bottom
+
+    def tab_names() -> list[str]:
+        return [str(view.workspaces.workspaces[i].name) for i in display_order(view.workspaces)]
+
+    assert tab_names() == ["Default", "Induction", "Maintenance"]
+    assert view.workspaces.current.name == "Default"
+
+    # Move right, then Move left, from the current tab's menu.
+    _choose_in_tab_menu(application, view, (MOVE_RIGHT_LABEL,))
+    assert tab_names() == ["Induction", "Default", "Maintenance"]
+    assert view.workspaces.current.name == "Default"
+
+    _choose_in_tab_menu(application, view, (MOVE_LEFT_LABEL,))
+    assert tab_names() == ["Default", "Induction", "Maintenance"]
+    assert view.workspaces.current.name == "Default"
 
 
 def test_every_layout_operation_is_reachable_from_a_menu(
