@@ -129,6 +129,11 @@ PROGRESS = (
     "Over to the coordinator for #1688's merge.",
     "I'll let you know when #1688 is green.",
     "Your PR template is not used here.",
+    # A hand-off in quote marks is a mention, here from a reply listing what the
+    # hook counts, which the hook refused (`PL-XR8B`).
+    'It refuses twenty ask phrasings including "over to you" and "your call" beside a '
+    "pull request.",
+    "The hand-offs are “over to you” and ‘your call’ when a sentence names a PR.",
 )
 
 

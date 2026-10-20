@@ -72,9 +72,11 @@ TEXT_FIELDS = {
 _START = r"(?:^[ \t]*(?:[-*+]|\d+[.)])?[ \t]*|[.!?:;][ \t]+)"
 
 #: Words that hand a decision to the owner. They are an ask only beside a pull
-#: request, since "the colour is your call" asks for no read.
+#: request, since "the colour is your call" asks for no read. A hand-off just
+#: after a quote mark is a mention, as in a reply listing what the hook counts,
+#: which this hook refused on 2026-10-19 (`PL-XR8B`).
 _HANDOFF = (
-    r"\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you|your[ \t]+(?:call|decision|choice|go)"
+    r"(?<![\"'])\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you|your[ \t]+(?:call|decision|choice|go)"
     r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
 )
 
