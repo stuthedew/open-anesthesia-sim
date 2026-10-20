@@ -1120,3 +1120,41 @@ def test_the_hook_is_wired_into_settings() -> None:
         for hook in entry["hooks"]
     ]
     assert any("gate-status-guard.sh" in command for command in commands)
+
+
+ARM_PIPED = (
+    # The command `#1676`'s session ran, and `#1612`'s.
+    "bin/docket arm 2>&1 | head -2",
+    "bin/docket arm | head -4",
+    # `pipefail` keeps the status and still cuts the output.
+    "set -o pipefail; bin/docket arm --no-fetch | tail -3",
+    "uv run bin/docket arm | grep hold",
+    "{ bin/docket arm; git status; } | head",
+    "(bin/docket arm) | head -1",
+)
+
+
+@pytest.mark.parametrize("command", ARM_PIPED)
+def test_bin_docket_arm_into_any_pipe_is_refused(command: str) -> None:
+    """A filter after `arm` can drop the line that says to send the owner nothing (`PL-TLPH`)."""
+    decision = _decision(command)
+    assert decision is not None
+    assert decision["permissionDecision"] == "deny"
+    assert "bin/docket arm 2>&1 | head -2" in decision["permissionDecisionReason"]
+    assert "Run it on its own" in decision["permissionDecisionReason"]
+
+
+ARM_WHOLE = (
+    "bin/docket arm",
+    "bin/docket arm --no-fetch --owner-ask",
+    'bin/docket arm; echo "exit=$?"',
+    # A file read back short is a known gap; the reply hook refuses what it would send.
+    "bin/docket arm > /tmp/arm.log 2>&1; head -2 /tmp/arm.log",
+    "git commit -m 'never run bin/docket arm | head'",
+    "bin/docket next | head -30",
+)
+
+
+@pytest.mark.parametrize("command", ARM_WHOLE)
+def test_bin_docket_arm_read_whole_or_named_in_text_is_allowed(command: str) -> None:
+    assert _decision(command) is None

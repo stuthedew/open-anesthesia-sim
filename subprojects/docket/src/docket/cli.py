@@ -5403,19 +5403,28 @@ def cmd_arm(args: argparse.Namespace) -> int:
 
     Exit 0 is `arm`, 1 is `hold`, `behind N` or `landed` - the line printed
     says which - and 2 is `unknown`: something the answer rests on could not be
-    read. `newest_pull_request_command`, where the project names one, is how
-    it learns that the pull request has already merged (`PL-8BR0`).
+    read. 3 is a `hold` for the owner's read that no `Owner-ask` record says
+    what to ask about, so nothing may be sent to the owner (`PL-TLPH`).
+    `newest_pull_request_command`, where the project names one, is how it
+    learns that the pull request has already merged (`PL-8BR0`).
+
+    With `--owner-ask` it answers one question for `.claude/hooks/owner_ask_guard.py`:
+    what may be sent to the owner about this pull request. It prints the
+    recorded ask's opening line and exits 0, or prints why nothing may be sent,
+    led by the answer's first line, and exits 3.
     """
     inv = _invocation(args)
+    unknown = arming.NO_ASK if args.owner_ask else arming.EXIT[arming.UNKNOWN]
+    nothing = "send the owner nothing: " if args.owner_ask else ""
     if inv.git is None:
-        print("unknown - `--no-git` asks git nothing, and the answer is read from git")
-        return arming.EXIT[arming.UNKNOWN]
+        print(f"{nothing}unknown - `--no-git` asks git nothing, and the answer is read from git")
+        return unknown
     if not inv.tracked:
         print(
-            "unknown - the store is not below the repository root, so no path can be told "
-            "apart from it"
+            f"{nothing}unknown - the store is not below the repository root, so no path can be "
+            "told apart from it"
         )
-        return arming.EXIT[arming.UNKNOWN]
+        return unknown
     verdict = arming.arm(
         inv.root,
         items_dir=inv.tracked,
@@ -5426,6 +5435,13 @@ def cmd_arm(args: argparse.Namespace) -> int:
         auto_merge=_auto_merge(inv.root, inv.config),
         prose_count=_prose_count(inv.root, inv.config),
     )
+    if args.owner_ask:
+        line = verdict.sendable
+        if line is not None:
+            print(line)
+            return 0
+        print(f"{nothing}{verdict.lines[0]}")
+        return arming.NO_ASK
     for line in verdict.lines:
         print(line)
     return verdict.code
@@ -5886,6 +5902,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     yield_cmd.set_defaults(func=cmd_yield)
     arm_cmd = add("arm", "whether this branch's pull request may be armed for auto-merge")
+    arm_cmd.add_argument(
+        "--owner-ask",
+        action="store_true",
+        help="print only the line the owner may be sent about this pull request and exit 0, or "
+        "say why nothing may be sent and exit 3",
+    )
     arm_cmd.set_defaults(func=cmd_arm)
     ci_scope_cmd = add(
         "ci-scope", "whether this branch changed item files alone, for CI's item-only fast path"

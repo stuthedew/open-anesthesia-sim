@@ -484,6 +484,7 @@ workflow_paths = [
   "tests/unit/test_no_prune_guard.py",
   "tests/unit/test_push_check_guard.py",
   "tests/unit/test_open_pull_requests.py",
+  "tests/unit/test_owner_ask_guard.py",
   "tests/unit/test_pr_title_check.py",
   "tests/unit/test_quality_step_order.py",
   "tests/unit/test_worksteal_dealing.py",

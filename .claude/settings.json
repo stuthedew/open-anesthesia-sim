@@ -87,6 +87,16 @@
         ]
       },
       {
+        "matcher": "^mcp__hearthbot__(reply|update_message|ask_decision)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/owner_ask_guard.py\"",
+            "timeout": 60
+          }
+        ]
+      },
+      {
         "matcher": "^mcp__.+__(create|update)_pull_request$",
         "hooks": [
           {
