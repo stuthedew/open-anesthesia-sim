@@ -1,9 +1,14 @@
 ---
 id: PL-JLB4
 title: Exempt an item whose priority the owner set from the advisory telling sessions to demote process work in a band
-status: untriaged
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/README.md
+priority: P2
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, docs/items/PL-8349-outside-contributor-accessibility-find-what.md, docs/items/PL-JRVV-review-claude-md-for-instructions-that-a-script.md
 added: 2026-10-20
+payoff: the band advisory stops telling sessions to demote items the owner placed on purpose, so obeying it can no longer overturn the owner's decision
+verify: grep -q 'def test_owner_set_priority' subprojects/docket/tests/test_checks.py
 ---
 
 **Skeleton, to be fleshed out** (project owner, 2026-10-20: "Owner designated
@@ -46,3 +51,7 @@ the advisory. An item without one still does. A test pins both cases, and
 any open workflow-lane item carries `generator: live`, `CLAUDE.md` § "What this
 project is" pauses new mechanisms unless the owner lifts the pause for this
 request. Check that before building.
+
+**Generator check.** One-off, asked for by the owner. No head's `misread:` states who set an item's priority, and no other open item misreads it.
+
+**Triage 2026-10-20:** the field's name and form are the building session's to settle, under the read-the-record rule cited above. The generator pause does not apply: `bin/docket generators` lists no head still generating, and the owner asked for this.
