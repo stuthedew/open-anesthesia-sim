@@ -6168,7 +6168,7 @@ removed, and this file's history before that change holds their text.
    that creates the adapter, because a boundary over a tree that does not exist
    is an `empty` error by construction.
 
-7. **The unconditional region** (queue items `PL-NWTM` and `PL-W54S`). A named
+7. **The unconditional region** (queue items `PL-NWTM`, `PL-W54S` and `PL-NNML`). A named
    region outside the layout container, holding every unconditional value, that
    the model has no address for - so the adapter cannot place an Area there and
    no serialized Workspace can name it. `PL-NWTM` also supplies the pure-Python,
@@ -6182,10 +6182,10 @@ removed, and this file's history before that change holds their text.
    v0.6.0 opens one window, and building the region in that shape now is what
    stops break-out, item 34's unscheduled second half, rebuilding it.
     Where the region sits and what it looks like is entry 20's (`PL-J8K2`),
-    within the budget `PL-84QX` sets. `PL-NNML` joined this entry on
-    2026-10-20, when the check of the Definition of done found the page still
-    scrolling the region and the use disclaimer out of view: the region now
-    sits above the part of the page that scrolls, and the disclaimer below it.
+    within the budget `PL-84QX` sets. `PL-NNML` joined on 2026-10-20, when
+    the check of the Definition of done found the page still scrolling the
+    region and the use disclaimer out of view. The region now sits above the
+    part of the page that scrolls, and the disclaimer below it.
 
 8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
    second of the three properties `docs/interface-provenance.md` records Blender
