@@ -1,0 +1,20 @@
+{
+  "item": "PL-70M6",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "branch": "claude/pl-70m6-worker",
+  "started": "2026-10-20T21:45:47.528226+00:00",
+  "finished": "2026-10-20T22:07:21.773860+00:00",
+  "exit_code": 0,
+  "cost_usd": 3.612662999999998,
+  "is_error": false,
+  "subtype": "success",
+  "turns": 7,
+  "denials": 1,
+  "reason": null,
+  "input_tokens": 14,
+  "cache_read_tokens": 1276593,
+  "cache_write_tokens": 6428,
+  "output_tokens": 4258,
+  "review": null
+}
