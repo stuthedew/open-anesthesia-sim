@@ -1,7 +1,7 @@
 """Write, review and check the repository's record of each headless worker run.
 
 `tools/headless_worker.py` runs one `claude -p` worker per item on the monthly
-API credit. Its ledger stays on the project owner's Mac, so nothing in the
+API credit. Its output stays on the project owner's Mac, so nothing in the
 repository said which items a headless worker did or how their reviews went.
 This module owns that record (`PL-87BR`). The owner wants headless work and
 chat-session work compared, so a difference in quality between them shows up
@@ -11,8 +11,8 @@ Each run whose branch reached the remote gets one file,
 `docs/worker-runs/<branch without claude/>-<started, %Y%m%dT%H%M%S>.json`. The
 runner writes it with `write`, commits it to the worker's branch and pushes
 it. One file per run means no two worker branches edit the same file. The
-file holds what the runner's ledger holds, without the clone's local path,
-plus the run's four token counts. Its `review` starts as `null`.
+file holds the run's outcome as the runner reports it, without the clone's
+local path, plus the run's four token counts. Its `review` starts as `null`.
 
 The session that reviews the branch then runs
 

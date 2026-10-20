@@ -6,9 +6,7 @@ organization, and expires unused at the end of each billing cycle
 (https://support.claude.com/en/articles/17154008, read 2026-10-19). This
 script spends it on the queue (`PL-80R5`). For each item it clones the
 repository, makes a branch named for the item, and starts one `claude -p`
-run that follows `docs/worker.md` on that one item. It writes each run's
-reported cost to a ledger and stops before a run that the cycle's remaining
-credit cannot cover.
+run that follows `docs/worker.md` on that one item.
 
 It runs on the project owner's machine, never in a cloud session: cloud
 sessions bill the subscription whatever key is set
@@ -28,8 +26,9 @@ credential; the owner's machine has none, and nothing here can detect one.
 denied (`--permission-mode auto --permission-prompts none`), so nothing waits
 on a person and the classifier still reviews each action. Where auto mode is
 unavailable, as for a model that does not support it, Claude Code starts in
-Manual instead and every prompt is denied; the ledger's `denials` count shows
-that (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
+Manual instead and every prompt is denied; the `denials` count in the run's
+record and its log shows that
+(https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
 **Effort is the project's own level.** Every run takes `effortLevel` from
 `.claude/settings.json`, the level an interactive session opens at, and passes
@@ -59,10 +58,33 @@ keeps its log. Every other run keeps both, so a failure can be read where it
 happened, and the report line names the clone (`PL-TX7K`). Each clone is a
 full copy of the repository, so keeping every one filled the owner's disk.
 
+**The credit left comes from the Console, typed in at each launch.** The
+runner refuses to start without `--credit-left`, the figure the Console's
+billing page shows. During the batch it subtracts each finished run's
+reported cost from that figure, and it stops before a run that the rest
+cannot cover. Nothing stores spend between launches, so the Console stays the
+only record of it. This account cannot read the Console's Cost API, so the
+owner reads the figure (project owner, 2026-10-20, ratified, over a ledger on
+this machine, `PL-NQ0M`).
+
 The cost is `total_cost_usd` from `--output-format json`, which Claude Code
 calls a client-side estimate that can differ from the bill
 (https://code.claude.com/docs/en/headless). A run whose cost could not be read
 stops the batch, because the remaining credit is then unknown.
+
+**Any failed run stops the batch.** An empty credit, a lost connection and a
+Mac that slept each fail the next run the same way, so carrying on would
+start and fail every item left, each leaving a clone behind. A failure that is
+one item's own still wants a person to look before more credit is spent
+(`PL-44SP`).
+
+**On macOS the runner keeps the Mac awake.** It starts `caffeinate -i -w` with
+its own process id. `-i` prevents idle sleep, and `-w` releases that when the
+runner exits (caffeinate(8), mirrored at
+https://www.sudo.is/docs/macos/man_caffeinate.html, read 2026-10-20). The
+manual does not say that this holds when the lid is closed, so the runner says
+to keep it open. Off macOS it says that nothing keeps the machine awake
+(`PL-BT70`).
 
 Standard library only, like every tool under `tools/`. It reads git through
 `docket.vcs` and the delegable list through `bin/docket delegable --ids`, the
@@ -75,13 +97,14 @@ import argparse
 import contextlib
 import io
 import json
+import math
 import os
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -137,7 +160,7 @@ class Refused(Exception):
 
 @dataclass(frozen=True)
 class Run:
-    """One headless run's record, as the ledger stores it."""
+    """One headless run's outcome, as Claude Code reported it."""
 
     item: str
     model: str
@@ -168,10 +191,6 @@ class Run:
     #: Why a pushed run's record could not be committed and pushed.
     record_failure: str | None = None
 
-    def line(self) -> str:
-        """The run as one JSON line of the ledger."""
-        return json.dumps(self.__dict__, sort_keys=True)
-
 
 def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
     """The run's environment: this one, less any credential that outranks the key.
@@ -188,40 +207,6 @@ def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
         )
     dropped = (*OUTRANKING_CREDENTIALS, *OUTRANKING_EFFORT)
     return {key: value for key, value in environ.items() if key not in dropped}
-
-
-def cycle_start(today: date, cycle_day: int) -> date:
-    """The first day of the billing cycle that `today` falls in."""
-    if today.day >= cycle_day:
-        return today.replace(day=cycle_day)
-    year, month = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
-    return date(year, month, cycle_day)
-
-
-def spent_since(ledger: Path, start: date) -> float:
-    """The cost the ledger records for runs started on or after `start`.
-
-    A recorded run with no readable cost is refused rather than counted as
-    nothing, because the remaining credit is then unknown.
-    """
-    if not ledger.exists():
-        return 0.0
-    total = 0.0
-    for number, text in enumerate(split_lines(ledger.read_text(encoding="utf-8")), 1):
-        if not text.strip():
-            continue
-        record = json.loads(text)
-        if date.fromisoformat(record["started"][:10]) < start:
-            continue
-        if record["cost_usd"] is None:
-            raise Refused(
-                f"{ledger}:{number} records a run of {record['item']} whose cost "
-                "could not be read, so this cycle's spend is unknown. Read the "
-                "Console's usage page, then edit that line's cost_usd to the "
-                "amount it shows."
-            )
-        total += float(record["cost_usd"])
-    return total
 
 
 def delegable_ids(docket: Callable[[], str]) -> list[str]:
@@ -547,22 +532,48 @@ def describe(run: Run) -> str:
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
 
+def keep_awake(
+    platform: str = sys.platform,
+    which: Callable[[str], str | None] = shutil.which,
+    start: Callable[[list[str]], object] = subprocess.Popen,
+) -> str:
+    """Hold an idle-sleep assertion until this process exits, and say what was done.
+
+    On macOS it starts `caffeinate -i -w <this pid>`. `-i` prevents idle sleep,
+    and `-w` releases the assertion once this process exits, so nothing is left
+    to stop (caffeinate(8), https://www.sudo.is/docs/macos/man_caffeinate.html,
+    read 2026-10-20). The manual does not say that this holds when the lid is
+    closed, so the line asks the owner to keep it open (`PL-BT70`).
+    """
+    caffeinate = which("caffeinate") if platform == "darwin" else None
+    if caffeinate is None:
+        return (
+            "Nothing keeps this machine awake: caffeinate is macOS's, and it was not "
+            "found. If the machine sleeps, the run in progress fails and the batch stops."
+        )
+    start([caffeinate, "-i", "-w", str(os.getpid())])
+    return "Keeping this Mac awake with caffeinate until the batch ends. Keep the lid open."
+
+
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument(
+        "--credit-left",
+        type=float,
+        required=True,
+        help="the credit left, in US dollars, as the Console's billing page shows it now",
+    )
     parser.add_argument("--model", default=WORKER_MODEL, help=f"default {WORKER_MODEL}")
     parser.add_argument("--item", action="append", default=[], help="an item to run; repeatable")
     parser.add_argument("--runs", type=int, default=1, help="without --item, how many to run")
     parser.add_argument("--per-run-usd", type=float, default=15.0, help="cap on one run")
-    parser.add_argument("--credit-usd", type=float, default=200.0, help="the cycle's credit")
-    parser.add_argument("--cycle-day", type=int, default=1, help="the day the billing cycle starts")
     parser.add_argument("--no-push", action="store_true", help="a trial run: the clone cannot push")
-    parser.add_argument("--ledger", type=Path, default=STATE_DIR / "api-credit-ledger.jsonl")
     parser.add_argument("--workdir", type=Path, default=STATE_DIR / "workers")
     parser.add_argument("--claude", default="claude", help="the claude executable")
     parser.add_argument("--dry-run", action="store_true", help="say what would run, and stop")
     args = parser.parse_args(argv)
-    if not 1 <= args.cycle_day <= 28:
-        parser.error("--cycle-day must be 1 to 28")
+    if not math.isfinite(args.credit_left) or args.credit_left < 0:
+        parser.error("--credit-left must be a dollar amount of 0 or more")
     return args
 
 
@@ -573,7 +584,7 @@ def main(
     docket: Callable[[], str] = run_docket_delegable,
     effort_level: Callable[[], str] = read_effort_level,
     tools: Callable[[Mapping[str, str]], None] = check_tools,
-    today: Callable[[], date] = lambda: datetime.now(UTC).date(),
+    awake: Callable[[], str] = keep_awake,
 ) -> int:
     args = parse_args(argv)
     try:
@@ -583,17 +594,15 @@ def main(
         level = effort_level()
         efforts = {item: level for item in items}
         origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
-        start = cycle_start(today(), args.cycle_day)
+        left = args.credit_left
         if args.dry_run:
-            left = args.credit_usd - spent_since(args.ledger, start)
             chosen = ", ".join(f"{item} at {efforts[item]}" for item in items) or "nothing"
-            print(f"Would run {chosen} effort on {args.model}; ${left:.2f} left.")
+            print(f"Would run {chosen} effort on {args.model}; ${left:.2f} of credit left.")
             return 0
-        runs: list[Run] = []
+        print(awake())
         for item in items:
-            left = args.credit_usd - spent_since(args.ledger, start)
             if left < args.per_run_usd:
-                print(f"Stopped: ${left:.2f} of credit left since {start}, below one run's cap.")
+                print(f"Stopped: ${left:.2f} of credit left, below one run's cap.")
                 break
             run = work(
                 item,
@@ -606,18 +615,22 @@ def main(
                 claude=args.claude,
                 env=env,
             )
-            args.ledger.parent.mkdir(parents=True, exist_ok=True)
-            with args.ledger.open("a", encoding="utf-8") as ledger:
-                ledger.write(run.line() + "\n")
-            runs.append(run)
             print(describe(run))
             if run.cost_usd is None:
                 print("Stopped: that run's cost could not be read, so the credit left is unknown.")
-                break
+                return 1
+            left -= run.cost_usd
+            if run.reason is not None:
+                print(
+                    f"Stopped: that run failed, with ${left:.2f} of credit left. An empty "
+                    "credit, a lost connection or a sleeping Mac fails every later run "
+                    "too, so read the reason above before starting again."
+                )
+                return 1
     except Refused as refusal:
         print(f"headless_worker: {refusal}", file=sys.stderr)
         return 2
-    return 1 if any(run.cost_usd is None for run in runs) else 0
+    return 0
 
 
 if __name__ == "__main__":

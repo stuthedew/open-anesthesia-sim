@@ -1,8 +1,16 @@
 ---
 id: PL-NQ0M
 title: tools/headless_worker.py should read the credit left from the Console's Cost API rather than sum a local ledger, which printed $200.00 on a second Mac when the Console showed $197.72
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md, docs/apparatus.md, tools/worker_runs.py
 added: 2026-10-19
+closed: 2026-10-20
+pr: 1698
+payoff: the runner's credit-left figure is the Console's own, so a second Mac or spend outside the runner can no longer make it overstate what is left
+verify: uv run pytest -q tests/unit/test_headless_worker.py -k 'credit_left or cost_comes_off or cannot_cover'
 ---
 
 **Problem.** tools/headless_worker.py states the credit left from this machine's ledger alone, so on a second Mac it printed $200.00 left after a $2.10 run on the first; it should say the figure covers only runs recorded on this machine, or read the spend from a record both machines share
@@ -33,3 +41,7 @@ added: 2026-10-19
 **Recommendation: A.** It is the only option that keeps the Console as the single record without the Cost API, and a missing figure stops the runner rather than letting it guess.
 
 **Decided: A** (project owner, 2026-10-20, ratified, over keeping the labelled ledger and over turning the account into an organization). The runner refuses to start without `--credit-left`, the figure from the Console's billing page, and subtracts each finished run's reported cost from it during the batch. The ledger no longer decides anything. Build it together with PL-44SP, which changes the same loop in `main()`.
+
+**Built, 2026-10-20.** `--credit-left` is required and must be a dollar amount of 0 or more. The loop subtracts each finished run's `total_cost_usd` from it and stops before a run that the rest cannot cover. The ledger, `--credit-usd`, `--cycle-day`, `cycle_start` and `spent_since` are removed, so nothing stores spend between launches. `docs/maintainer.md` § "Spend the monthly API credit on delegable items" now says where on the Console the figure is, and that the old ledger file can be deleted.
+
+**Generator check.** A one-off. The fact misread was the credit left, and its only reader was this runner, which now takes it from the Console at each launch.

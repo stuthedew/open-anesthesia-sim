@@ -11,7 +11,6 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, date, datetime
 from pathlib import Path
 
 import headless_worker
@@ -27,9 +26,7 @@ from headless_worker import (
     check_tools,
     child_environment,
     choose,
-    cycle_start,
     run_docket_delegable,
-    spent_since,
     work,
 )
 
@@ -127,7 +124,7 @@ def _work(
 
 def test_a_run_without_an_api_key_is_refused(capsys: pytest.CaptureFixture[str]) -> None:
     """Without a key the run would bill the subscription, so nothing starts."""
-    assert headless_worker.main([], environ={}, docket=lambda: "PL-B7K2\n") == 2
+    assert _main(["--credit-left", "50"], environ={}) == 2
     assert "ANTHROPIC_API_KEY is not set" in capsys.readouterr().err
 
 
@@ -246,15 +243,7 @@ def test_output_that_is_not_a_result_records_no_cost(
     assert _work(origin, fake_claude, tmp_path, no_push=True, output="junk").cost_usd is None
 
 
-def _ledger(path: Path, *costs: float | None, started: str = "2026-10-05T12:00:00+00:00") -> Path:
-    lines = [
-        json.dumps({"item": "PL-B7K2", "started": started, "cost_usd": cost}) for cost in costs
-    ]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return path
-
-
-def _run(cost: float | None) -> Run:
+def _run(cost: float | None, reason: str | None = None) -> Run:
     return Run(
         "PL-B7K2",
         "m",
@@ -263,55 +252,143 @@ def _run(cost: float | None) -> Run:
         "2026-10-19T00:00:00+00:00",
         "f",
         True,
-        0,
+        0 if reason is None else 1,
         cost,
-        False,
+        reason is not None,
         "success",
         1,
         0,
+        reason=reason,
     )
 
 
-def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    ledger = _ledger(tmp_path / "ledger.jsonl", 120.0, 70.0)
+def _main(args: list[str], items: str = "PL-B7K2\n", **overrides: object) -> int:
+    """`main` with no key, tools, queue or caffeinate of this machine's."""
+    common: dict[str, object] = {
+        "environ": {"ANTHROPIC_API_KEY": "sk-test"},
+        "tools": lambda env: None,
+        "docket": lambda: items,
+        "effort_level": lambda: "high",
+        "awake": lambda: "awake",
+    }
+    return headless_worker.main(args, **{**common, **overrides})  # type: ignore[arg-type]
+
+
+def _recording(started: list[str], run: Run) -> object:
+    """A stand-in for `work` that notes each item it was given and returns `run`."""
+
+    def fake_work(item: str, **_: object) -> Run:
+        started.append(item)
+        return run
+
+    return fake_work
+
+
+@pytest.fixture
+def no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(headless_worker, "read_git", lambda *a, **k: "origin-url\n")
+
+
+def test_the_runner_will_not_start_without_the_credit_left() -> None:
+    """The Console holds the credit left, so the runner never guesses it (`PL-NQ0M`)."""
+    with pytest.raises(SystemExit) as refused:
+        _main([])
+    assert refused.value.code == 2
+
+
+@pytest.mark.parametrize("figure", ["-1", "nan", "inf"])
+def test_a_credit_left_that_is_not_a_dollar_amount_is_refused(figure: str) -> None:
+    with pytest.raises(SystemExit) as refused:
+        _main(["--credit-left", figure])
+    assert refused.value.code == 2
+
+
+@pytest.mark.usefixtures("no_origin")
+def test_the_batch_stops_before_a_run_the_credit_cannot_cover(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(headless_worker, "work", lambda *a, **k: pytest.fail("a run started"))
-    code = headless_worker.main(
-        ["--ledger", str(ledger), "--per-run-usd", "15"],
-        environ={"ANTHROPIC_API_KEY": "sk-test"},
-        tools=lambda env: None,
-        docket=lambda: "PL-B7K2\n",
-        effort_level=lambda: "high",
-        today=lambda: date(2026, 10, 19),
-    )
-    assert code == 0
+    assert _main(["--credit-left", "10", "--per-run-usd", "15"]) == 0
     assert "$10.00 of credit left" in capsys.readouterr().out
 
 
-def test_a_run_whose_cost_cannot_be_read_stops_the_batch_and_the_next_one(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+@pytest.mark.usefixtures("no_origin")
+def test_each_run_s_cost_comes_off_the_credit_left_before_the_next(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """$20 less a $6 run leaves $14, below the $15 cap, so the second item never starts."""
+    started: list[str] = []
+    monkeypatch.setattr(headless_worker, "work", _recording(started, _run(6.0)))
+    args = ["--credit-left", "20", "--per-run-usd", "15", "--runs", "3"]
+    assert _main(args, items="PL-B7K2\nPL-C8M3\nPL-D9N4\n") == 0
+    assert started == ["PL-B7K2"]
+    assert "$14.00 of credit left" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("no_origin")
+def test_a_failed_run_stops_the_batch(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty credit failed every later run the same way, each leaving a clone (`PL-44SP`)."""
+    started: list[str] = []
+    failed = _run(0.0, reason="Your credit balance is too low to access the Anthropic API.")
+    monkeypatch.setattr(headless_worker, "work", _recording(started, failed))
+    args = ["--credit-left", "100", "--runs", "3"]
+    assert _main(args, items="PL-B7K2\nPL-C8M3\nPL-D9N4\n") == 1
+    assert started == ["PL-B7K2"]
+    out = capsys.readouterr().out
+    assert "why: Your credit balance is too low" in out
+    assert "Stopped: that run failed, with $100.00 of credit left" in out
+
+
+@pytest.mark.usefixtures("no_origin")
+def test_a_run_whose_cost_cannot_be_read_stops_the_batch(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """With one cost unknown, the credit left is unknown, so no later run may start."""
-    ledger = tmp_path / "ledger.jsonl"
     started: list[str] = []
-    monkeypatch.setattr(headless_worker, "read_git", lambda *a, **k: "origin-url\n")
-    monkeypatch.setattr(
-        headless_worker, "work", lambda item, **k: started.append(item) or _run(None)
-    )
-    args = ["--ledger", str(ledger), "--runs", "2"]
-    common = {
-        "environ": {"ANTHROPIC_API_KEY": "sk-test"},
-        "tools": lambda env: None,
-        "docket": lambda: "PL-B7K2\nPL-C8M3\n",
-        "effort_level": lambda: "high",
-        "today": lambda: date(2026, 10, 19),
-    }
-    assert headless_worker.main(args, **common) == 1
+    monkeypatch.setattr(headless_worker, "work", _recording(started, _run(None)))
+    args = ["--credit-left", "100", "--runs", "2"]
+    assert _main(args, items="PL-B7K2\nPL-C8M3\n") == 1
     assert started == ["PL-B7K2"]
-    assert headless_worker.main(args, **common) == 2
-    assert "cost could not be read" in capsys.readouterr().err
+    assert "cost could not be read" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("no_origin")
+def test_a_batch_keeps_the_machine_awake_and_a_dry_run_does_not(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(headless_worker, "work", _recording([], _run(1.0)))
+
+    def awake() -> str:
+        calls.append("awake")
+        return "awake"
+
+    assert _main(["--credit-left", "100", "--dry-run"], awake=awake) == 0
+    assert calls == []
+    assert _main(["--credit-left", "100"], awake=awake) == 0
+    assert calls == ["awake"]
+
+
+def test_on_macos_caffeinate_holds_idle_sleep_off_until_the_runner_exits() -> None:
+    """`-i` prevents idle sleep and `-w` ends it with this process (`PL-BT70`)."""
+    started: list[list[str]] = []
+    line = headless_worker.keep_awake("darwin", lambda name: f"/usr/bin/{name}", started.append)
+    assert started == [["/usr/bin/caffeinate", "-i", "-w", str(os.getpid())]]
+    assert "Keep the lid open" in line
+
+
+@pytest.mark.parametrize(
+    ("platform", "found"), [("linux", "/usr/bin/caffeinate"), ("darwin", None)]
+)
+def test_without_caffeinate_the_runner_says_nothing_keeps_it_awake(
+    platform: str, found: str | None
+) -> None:
+    started: list[list[str]] = []
+    line = headless_worker.keep_awake(platform, lambda name: found, started.append)
+    assert started == []
+    assert line.startswith("Nothing keeps this machine awake")
 
 
 def test_a_worker_runs_at_the_level_the_project_settings_hold(
@@ -320,16 +397,11 @@ def test_a_worker_runs_at_the_level_the_project_settings_hold(
     """Every run takes the settings file's `effortLevel`, whatever its item's lane (`PL-4N0K`)."""
     settings = tmp_path / "settings.json"
     settings.write_text('{"effortLevel": "xhigh"}', encoding="utf-8")
-    code = headless_worker.main(
-        ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
-        environ={"ANTHROPIC_API_KEY": "sk-test"},
-        tools=lambda env: None,
-        docket=lambda: "PL-B7K2\n",
-        effort_level=lambda: headless_worker.read_effort_level(settings),
-        today=lambda: date(2026, 10, 19),
-    )
-    assert code == 0
-    assert "PL-B7K2 at xhigh effort" in capsys.readouterr().out
+    level = lambda: headless_worker.read_effort_level(settings)  # noqa: E731
+    assert _main(["--dry-run", "--credit-left", "50"], effort_level=level) == 0
+    out = capsys.readouterr().out
+    assert "PL-B7K2 at xhigh effort" in out
+    assert "$50.00 of credit left" in out
 
 
 def test_the_project_settings_set_high_for_every_run() -> None:
@@ -340,48 +412,13 @@ def test_the_project_settings_set_high_for_every_run() -> None:
 def test_a_settings_file_with_no_effort_level_is_refused_before_any_spend(tmp_path: Path) -> None:
     settings = tmp_path / "settings.json"
     settings.write_text("{}", encoding="utf-8")
-    code = headless_worker.main(
-        ["--dry-run", "--ledger", str(tmp_path / "ledger.jsonl")],
-        environ={"ANTHROPIC_API_KEY": "sk-test"},
-        tools=lambda env: None,
-        docket=lambda: "PL-B7K2\n",
-        effort_level=lambda: headless_worker.read_effort_level(settings),
-        today=lambda: date(2026, 10, 19),
-    )
-    assert code == 2
-
-
-def test_spend_counts_only_the_current_cycle(tmp_path: Path) -> None:
-    ledger = _ledger(tmp_path / "l.jsonl", 50.0, started="2026-09-30T23:00:00+00:00")
-    with ledger.open("a", encoding="utf-8") as f:
-        f.write(
-            json.dumps({"item": "x", "started": "2026-10-01T00:30:00+00:00", "cost_usd": 4.0})
-            + "\n"
-        )
-    assert spent_since(ledger, date(2026, 10, 1)) == 4.0
-
-
-@pytest.mark.parametrize(
-    ("today", "day", "start"),
-    [
-        (date(2026, 10, 19), 1, date(2026, 10, 1)),
-        (date(2026, 10, 19), 25, date(2026, 9, 25)),
-        (date(2026, 1, 5), 10, date(2025, 12, 10)),
-    ],
-)
-def test_cycle_start(today: date, day: int, start: date) -> None:
-    assert cycle_start(today, day) == start
+    level = lambda: headless_worker.read_effort_level(settings)  # noqa: E731
+    assert _main(["--dry-run", "--credit-left", "50"], effort_level=level) == 2
 
 
 def test_an_item_the_queue_does_not_offer_is_refused() -> None:
     with pytest.raises(Refused, match="PL-ZZZZ"):
         choose(["PL-B7K2"], ["PL-ZZZZ"], 1)
-
-
-def test_run_lines_are_json_the_ledger_reads_back(tmp_path: Path) -> None:
-    ledger = tmp_path / "l.jsonl"
-    ledger.write_text(_run(2.5).line() + "\n", encoding="utf-8")
-    assert spent_since(ledger, datetime(2026, 10, 1, tzinfo=UTC).date()) == 2.5
 
 
 @pytest.mark.reads_item_store
