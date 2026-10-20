@@ -93,9 +93,8 @@ spirit of the question rather than the letter.
 
 `ROADMAP.md` item 34 records that the workspace / area / editor model is
 modelled on Blender's, studied from its published source and design
-documentation, and `README.md` does not yet — deliberately, for the reason
-§ "Attribution" below gives and until the release that makes the sentence
-true. The three words *Area*, *Editor* and *Workspace* are Blender's
+documentation, and `README.md` § "Acknowledgements" says so too, since the
+release that made the sentence true (v0.6.0, `PL-RTG9`). The three words *Area*, *Editor* and *Workspace* are Blender's
 and are used here for the same three things deliberately, so that this
 project's code and its roadmap do not drift into a private vocabulary.
 
@@ -1007,11 +1006,8 @@ Documentation Team and the Blender Developer Documentation Team respectively.
 reproduced here.** What was taken is a design, described in this project's own
 words.
 
-`README.md` does not yet carry this line, deliberately. The area and workspace
-model is a *planned* milestone and nothing in the shipped application
-implements it, so a README sentence saying the interface is modelled on
-Blender's would describe software that does not exist. The attribution lives
-here until the area system ships — v0.6.0, "the layout is the reader's", which
-is the release in which the shipped interface actually becomes this model — and
-then moves to `README.md` as well;
-`PL-RTG9` is the item that does it.
+`README.md` § "Acknowledgements" carries this attribution too, since v0.6.0,
+"the layout is the reader's", the release in which the shipped interface
+became this model (`PL-RTG9`). Until then it lived only here, because a README
+sentence saying the interface is modelled on Blender's would have described
+software that did not exist.

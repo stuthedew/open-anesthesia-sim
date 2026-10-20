@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, test
 feature: interface-areas
+milestone: v0.6.0
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_qt_rendering.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19

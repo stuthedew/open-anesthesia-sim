@@ -3,12 +3,15 @@ id: PL-RTG9
 title: README carries no attribution line for the Blender-derived workspace/area model, which docs/interface-provenance.md records as belonging there once the area system actually ships
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: docs
 feature: interface-areas
+milestone: v0.6.0
 touches: README.md
-blocked-by: v0.6.0
 added: 2026-09-16
+closed: 2026-10-20
+pr: 1700
+verify: grep -q 'Blender is developed by the Blender Foundation' README.md
 ---
 
 **Problem.** README carries no attribution line for the Blender-derived workspace/area model, which docs/interface-provenance.md records as belonging there once the area system actually ships
@@ -26,3 +29,5 @@ moment this item waits for is the release in which the shipped interface
 actually is the area/workspace model, which is v0.6.0's ship. `PL-9PD6` is the
 separate defect: line 94 of the same file already asserts the attribution has
 been made.
+
+**Done when.** `README.md` carries the attribution in a section of its own, and `docs/interface-provenance.md` § "Attribution" says it does.

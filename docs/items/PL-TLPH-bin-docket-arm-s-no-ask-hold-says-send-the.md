@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: review-hold
+milestone: v0.6.0
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/hooks/gate-status-guard.sh, .claude/hooks/owner_ask_guard.py, .claude/settings.json, tests/unit/test_gate_status_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, docs/apparatus.md, docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; the owner agreed to the fix on 2026-10-19
 added: 2026-10-19

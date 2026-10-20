@@ -16,19 +16,21 @@ After each operation the test checks three things:
   shown, and its text must be among the strings a reader can see.
 - No value of the set is drawn inside the Area container, so closing or
   replacing an Area cannot take one away with the surface that drew it.
-- Every Area's View chooser offers the agent accounting. The chooser is the
-  route to the accounting that `tests/integration/test_view_chooser.py`
-  checks.
+- Every Area's View chooser offers the agent accounting. The chooser is how a
+  reader reaches the accounting, and `tests/integration/test_view_chooser.py`
+  checks that route.
 
 The expected set is read from the declaration in `app/unconditional_set.py`,
-not from the dashboard under test. The halt reason is left out of it, because
-the run here never halts and the dashboard shows that line only when it has
-something to say. The test still checks that every value on screen before an
-operation is on screen after it, so a halt reason that was shown could not be
-lost either.
+not from the dashboard under test. The dashboard shows the halt reason only
+when a run has halted. So the test whose run never halts leaves the halt reason
+out of the expected set. A second test halts a run at the supported run length
+and requires the halt reason. Each test also checks that every value on screen
+before an operation is still on screen after it. A third test rearranges a case
+with a branch, so that the two compared runs are checked through the same
+operations (`PL-ZK09`).
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -42,7 +44,7 @@ from anesthesia_sim.app.area_layout import (
     SWAP_WITH_LABEL,
     AreaOperation,
 )
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.main import open_workspaces
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -56,7 +58,7 @@ from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
 from anesthesia_sim.layout.tree import AreaId
-from anesthesia_sim.layout.workspace import WorkspaceName
+from anesthesia_sim.layout.workspace import WorkspaceName, WorkspaceSet
 
 # The chooser's entry for the accounting View, as a reader reads it.
 _ACCOUNTING_ENTRY = "Agent accounting"
@@ -99,14 +101,36 @@ def _paused_run() -> SimulationController:
     return controller
 
 
+def _halted_run() -> SimulationController:
+    """Return `_paused_run`'s run, halted at the end of the supported domain.
+
+    The dashboard draws a halt reason only for a run that failed or that reached
+    the supported run length (`dashboard_frame.notice`). Stepping to the 24-hour
+    limit would take 864,000 steps. So this helper records the halt directly, the
+    same way the interface records a halt that it detected on another code path.
+    """
+
+    controller = _paused_run()
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    return controller
+
+
 def _launch(
-    application: QApplication, controller: SimulationController, directory: Path
+    application: QApplication,
+    controller: SimulationController,
+    directory: Path,
+    case: BranchedCase | None = None,
 ) -> SimulationView:
     """Open a dashboard as `main()` does, with its Workspaces loaded from `directory`."""
 
     launch = open_workspaces("", {USER_DIRECTORY_VARIABLE: str(directory)})
     view = SimulationView(
-        (controller,), workspaces=launch.workspaces, store=launch.store, notice=launch.notice
+        (controller,),
+        case=case,
+        workspaces=launch.workspaces,
+        store=launch.store,
+        notice=launch.notice,
     )
     view.resize(*_WINDOW_PX)
     view.show()
@@ -131,20 +155,33 @@ def _texts(widget: QWidget) -> tuple[str, ...]:
     return tuple(label.text() for label in labels if isinstance(label, QLabel) and label.text())
 
 
-def _on_screen(view: SimulationView) -> frozenset[UnconditionalValue]:
-    """The unconditional values a reader can see now, checked through `visible_strings`."""
+def _on_screen_by_run(view: SimulationView) -> tuple[frozenset[UnconditionalValue], ...]:
+    """Each run's unconditional values that a reader can see now, in drawing order.
+
+    "Can see" is checked through `visible_strings`.
+    """
 
     visible = set(view.visible_strings())
-    seen: set[UnconditionalValue] = set()
+    by_run: list[frozenset[UnconditionalValue]] = []
 
     for run in view.runs:
+        seen: set[UnconditionalValue] = set()
+
         for value, widget in run.unconditional_widgets().items():
             texts = _texts(widget)
 
             if widget.isVisible() and texts and all(text in visible for text in texts):
                 seen.add(value)
 
-    return frozenset(seen)
+        by_run.append(frozenset(seen))
+
+    return tuple(by_run)
+
+
+def _on_screen(view: SimulationView) -> frozenset[UnconditionalValue]:
+    """The unconditional values a reader can see now, for any run."""
+
+    return frozenset().union(*_on_screen_by_run(view))
 
 
 def _check(
@@ -152,6 +189,7 @@ def _check(
     view: SimulationView,
     step: str,
     before: frozenset[UnconditionalValue],
+    required: frozenset[UnconditionalValue] = _REQUIRED,
 ) -> frozenset[UnconditionalValue]:
     """Assert what every operation must leave true, and return the values on screen."""
 
@@ -159,7 +197,7 @@ def _check(
     seen = _on_screen(view)
     container = view.layout_container
 
-    assert _REQUIRED <= seen, f"after {step}, these are not on screen: {sorted(_REQUIRED - seen)}"
+    assert required <= seen, f"after {step}, these are not on screen: {sorted(required - seen)}"
     assert before <= seen, f"after {step}, these left the screen: {sorted(before - seen)}"
 
     for run in view.runs:
@@ -229,6 +267,50 @@ def _drag_only_border(application: QApplication, view: SimulationView, by_px: in
     application.processEvents()
 
 
+def _rearrange(
+    application: QApplication, view: SimulationView, directory: Path, check: Callable[[str], None]
+) -> WorkspaceSet:
+    """Split, swap, join and close the chart's Area, switch Workspaces, then save the set.
+
+    `check` runs after each operation and is given the operation's name. The
+    saved file goes to `directory`, so a dashboard launched from it reloads
+    what was arranged. Returns the Workspace set that was saved.
+    """
+
+    chart_area = _area_showing_chart(view)
+    view.layout_container.perform(_operation(view, chart_area, None, SPLIT_SIDE_BY_SIDE_LABEL))
+    assert len(view.layout_container.model.areas()) == 3
+    check("a split")
+
+    view.layout_container.perform(_operation(view, chart_area, SWAP_WITH_LABEL, ""))
+    check("a swap")
+
+    view.layout_container.perform(_operation(view, chart_area, JOIN_WITH_LABEL, ""))
+    assert len(view.layout_container.model.areas()) == 2
+    check("a join")
+
+    view.layout_container.perform(_operation(view, chart_area, None, _CLOSE_LABEL))
+    assert len(view.layout_container.model.areas()) == 1
+    check("closing an Area")
+
+    strip = view.tab_strip
+
+    for name in ("Induction", "Maintenance", "Default"):
+        strip.activate(view.workspaces.position_of(WorkspaceName(name)))
+        assert view.workspaces.current.name == WorkspaceName(name)
+        check(f"switching to {name}")
+
+    saved = view.workspaces
+    strip.save_as_default(strip.save_entry())
+    question = strip.question
+    assert question is not None, "Save as default did not ask"
+    question.accept()
+    assert (directory / WORKSPACES_FILE_NAME).is_file()
+    check("saving")
+
+    return saved
+
+
 def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
     application: QApplication, tmp_path: Path
 ) -> None:
@@ -265,36 +347,11 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
         assert _widest_chord_px(view) <= 1, "the redrawn frame is not sampled for the new width"
         seen = _check(application, view, "widening the chart's Area", seen)
 
-        chart_area = _area_showing_chart(view)
-        view.layout_container.perform(_operation(view, chart_area, None, SPLIT_SIDE_BY_SIDE_LABEL))
-        assert len(view.layout_container.model.areas()) == 3
-        seen = _check(application, view, "a split", seen)
+        def check(step: str) -> None:
+            nonlocal seen
+            seen = _check(application, view, step, seen)
 
-        view.layout_container.perform(_operation(view, chart_area, SWAP_WITH_LABEL, ""))
-        seen = _check(application, view, "a swap", seen)
-
-        view.layout_container.perform(_operation(view, chart_area, JOIN_WITH_LABEL, ""))
-        assert len(view.layout_container.model.areas()) == 2
-        seen = _check(application, view, "a join", seen)
-
-        view.layout_container.perform(_operation(view, chart_area, None, _CLOSE_LABEL))
-        assert len(view.layout_container.model.areas()) == 1
-        seen = _check(application, view, "closing an Area", seen)
-
-        strip = view.tab_strip
-
-        for name in ("Induction", "Maintenance", "Default"):
-            strip.activate(view.workspaces.position_of(WorkspaceName(name)))
-            assert view.workspaces.current.name == WorkspaceName(name)
-            seen = _check(application, view, f"switching to {name}", seen)
-
-        saved = view.workspaces
-        strip.save_as_default(strip.save_entry())
-        question = strip.question
-        assert question is not None, "Save as default did not ask"
-        question.accept()
-        assert (tmp_path / WORKSPACES_FILE_NAME).is_file()
-        seen = _check(application, view, "saving", seen)
+        saved = _rearrange(application, view, tmp_path, check)
     finally:
         _close(application, view)
 
@@ -306,3 +363,92 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
         _check(application, reloaded, "reloading the saved Workspaces", seen)
     finally:
         _close(application, reloaded)
+
+
+def test_a_halted_run_keeps_its_halt_reason_on_screen(
+    application: QApplication, tmp_path: Path
+) -> None:
+    """A halted run's halt reason survives every layout operation and a reload.
+
+    The test above leaves the halt reason out of what it requires, because its
+    run never halts. Here the run has halted at the end of the supported domain,
+    so the reason is on screen at launch. The same operations must leave it
+    there (`PL-ZK09`).
+    """
+
+    controller = _halted_run()
+    assert controller.snapshot().supported_limit_reason is not None
+    required = _REQUIRED | {UnconditionalValue.HALT_REASON}
+    view = _launch(application, controller, tmp_path)
+
+    try:
+        seen = _check(application, view, "launch", frozenset(), required)
+
+        def check(step: str) -> None:
+            nonlocal seen
+            seen = _check(application, view, step, seen, required)
+
+        _rearrange(application, view, tmp_path, check)
+    finally:
+        _close(application, view)
+
+    reloaded = _launch(application, controller, tmp_path)
+
+    try:
+        _check(application, reloaded, "reloading the saved Workspaces", seen, required)
+    finally:
+        _close(application, reloaded)
+
+
+def test_a_branched_case_keeps_both_runs_drawn_and_named(
+    application: QApplication, tmp_path: Path
+) -> None:
+    """Two compared runs both stay drawn, named and complete through every layout operation.
+
+    v0.6.0's Definition of done asks that everything a learner could do with two
+    runs still works now that the reader controls the layout (`PL-ZK09`). After
+    each operation, each run's own unconditional values must be on screen, its
+    alveolar curve must be drawn, and its name must be visible. The test writes
+    the names as literals rather than reading them from `run_label`, because the
+    dashboard reads `run_label` too.
+    """
+
+    case = BranchedCase(_paused_run())
+    view = _launch(application, case.trunk, tmp_path, case=case)
+
+    try:
+        panel = view._fork_panel
+        index = panel.point_selector.findData(_HISTORY_S)
+        assert index >= 0, f"the branch control does not offer {_HISTORY_S} s"
+        panel.point_selector.setCurrentIndex(index)
+        panel.take_button.click()
+        application.processEvents()
+        view.present(False)
+        assert len(view.runs) == 2
+
+        def check(step: str) -> None:
+            _check(application, view, step, frozenset())
+            view.present(False)
+            application.processEvents()
+
+            for run, seen in enumerate(_on_screen_by_run(view)):
+                assert _REQUIRED <= seen, (
+                    f"after {step}, run {run + 1} lacks on screen: {sorted(_REQUIRED - seen)}"
+                )
+
+            visible = set(view.visible_strings())
+
+            for name in ("Run 1", "Run 2"):
+                assert name in visible, f"after {step}, {name!r} is not named on screen"
+
+            for chart in (
+                v for v in view.layout_container.views() if isinstance(v, ConcentrationView)
+            ):
+                for run in (0, 1):
+                    times, _ = chart.chart.drawn_points(run, RecordedQuantity.ALVEOLAR)
+                    assert times, f"after {step}, run {run + 1}'s alveolar curve is not drawn"
+
+        check("taking the branch")
+        _rearrange(application, view, tmp_path, check)
+    finally:
+        _close(application, view)

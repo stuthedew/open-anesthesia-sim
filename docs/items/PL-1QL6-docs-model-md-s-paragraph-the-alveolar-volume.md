@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.6.0
 touches: docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

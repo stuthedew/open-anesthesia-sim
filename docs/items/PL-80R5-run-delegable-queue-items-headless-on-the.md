@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 feature: api-credit-runs
+milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/maintainer.md, docs/worker.md, docs/items/PL-80R5-run-delegable-queue-items-headless-on-the.md
 added: 2026-10-19
 closed: 2026-10-19

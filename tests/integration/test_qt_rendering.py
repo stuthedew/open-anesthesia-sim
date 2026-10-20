@@ -507,19 +507,25 @@ def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationVi
 def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: SimulationView) -> None:
     """Nothing a reader is meant to see is laid out beyond the page's right edge.
 
-    The page is asserted no wider than the viewport as well, so a row that
-    fits the page only because the page grew past the window cannot pass.
+    The page is the whole dashboard column. It holds the region pinned above the
+    scrolling middle, the scrolling middle itself, and the disclaimer below the
+    middle (`PL-NNML`). The test asserts that the page is no wider than the window,
+    and that the scrolling middle is no wider than its viewport. So a row that
+    fits only because the page grew wider than the window fails the test.
     """
 
-    scroll, page = _page(dashboard)
+    scroll, middle = _page(dashboard)
+    page = dashboard.findChild(QWidget, "dashboardPage")
     run = dashboard.runs[0]
     accounting_panel = run._accounting_panels[0]._agent_accounting_status_text.parentWidget()
     timeline_panel = run._control_timeline_text.parentWidget()
 
+    assert page is not None
     assert accounting_panel is not None
     assert timeline_panel is not None
     assert scroll.horizontalScrollBar().maximum() == 0
-    assert page.width() <= scroll.viewport().width()
+    assert middle.width() <= scroll.viewport().width()
+    assert page.width() <= dashboard.width()
     assert all(_within(panel, page) for panel in run._readout_row.panels)
     assert _within(accounting_panel, page)
     assert _within(timeline_panel, page)

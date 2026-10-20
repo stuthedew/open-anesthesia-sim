@@ -157,6 +157,8 @@ _RECORD_COLUMN_STRETCH: Final = 18
 
 #: Object names the page and the case's controls are styled through.
 _PAGE_NAME: Final = "dashboardPage"
+# The scrolling part of the page, between the region and the disclaimer.
+_MIDDLE_NAME: Final = "dashboardMiddle"
 _REGION_NAME: Final = "unconditionalRegion"
 _RECORD_COLUMN_NAME: Final = "controlRecordColumn"
 _CASE_SECTION_NAME: Final = "caseSection"
@@ -510,28 +512,35 @@ class SimulationView(QWidget):
     # -------------------------------------------------------------- layout
 
     def _build_page(self) -> None:
-        """Lay the dashboard out, top to bottom, inside a scrolling page.
+        """Lay the dashboard out from top to bottom, with only its middle scrolling.
 
-        The unconditional region comes first. For each run it holds the
-        transport row, the notice banner and the readouts, and every run's
-        control-change record sits in a column to their right (`PL-J8K2` Q1
-        and Q3). The notice banners sit under the transport rows and above
-        every displayed value. So a reader sees a halted run's notice before
-        the values that the notice explains. Under the region comes the
-        Workspace tab strip, directly above the Areas it switches (`PL-QW1Z`
-        Q1). Then come the Areas, which take the spare height.
-        `app/area_layout.py` draws them from the current Workspace's layout. It
-        builds each Area's View through the View registry, from the state the
-        Workspace keeps for it (`PL-TH35`). So a reader can drag the borders
-        between the Areas and choose any View for any Area. Under the Areas
-        come the case's controls, the marks and the branch control. The use
-        disclaimer is the page's last line.
+        The unconditional region comes first and stays at the top of the window.
+        It holds the values that no Workspace may remove. The use disclaimer is the
+        last line and stays at the foot of the window. Everything between them
+        scrolls when the window is too short to show it all. So no window height
+        and no amount of scrolling can move the region or the disclaimer out of
+        view (`PL-NNML`).
 
-        No run is placed here. Instead, every layout that a run adds widgets
-        to is kept, so that `_place_run` can fill the layouts in the same
-        order at construction and when a learner takes a branch. A page laid
-        out for the run set it was first built with could not gain a run
-        without being rebuilt.
+        For each run, the region holds the transport row, the notice banner and
+        the readouts. Every run's record of control changes sits in a column to
+        their right (`PL-J8K2` Q1 and Q3). The notice banners sit under the
+        transport rows and above every displayed value. So a reader sees a halted
+        run's notice before the values that the notice explains.
+
+        Under the region comes the Workspace tab strip, directly above the Areas
+        that it switches (`PL-QW1Z` Q1). Then come the Areas, which take the spare
+        height. `app/area_layout.py` draws the Areas from the current Workspace's
+        layout. It builds each Area's View through the View registry, from the
+        state that the Workspace keeps for that Area (`PL-TH35`). This is how a
+        reader can drag the borders between the Areas and choose any View for any
+        Area. Under the Areas come the case's controls, the marks and the branch
+        control. The use disclaimer follows them, outside the scrolling part.
+
+        This method places no run. Instead, it keeps every layout that a run adds
+        widgets to. `_place_run` then fills those layouts in the same order, both
+        at construction and when a learner takes a branch. A page laid out for
+        the set of runs it was first built with could not gain a run without
+        being rebuilt.
         """
 
         page = QWidget()
@@ -543,6 +552,13 @@ class SimulationView(QWidget):
         column.setSpacing(PAGE_SPACING)
 
         column.addWidget(self._build_unconditional_region())
+
+        # The part between the region and the disclaimer, which scrolls.
+        middle = QWidget()
+        middle.setObjectName(_MIDDLE_NAME)
+        middle.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        middle.setStyleSheet(page_stylesheet(_MIDDLE_NAME))
+        middle_column = _spaced_column(middle, PAGE_SPACING)
 
         self._tabs = WorkspaceTabs(
             self._workspaces,
@@ -562,15 +578,14 @@ class SimulationView(QWidget):
         workspace_column = _spaced_column(workspace, 0)
         workspace_column.addWidget(self._tabs)
         workspace_column.addWidget(self._areas, 1)
-        column.addWidget(workspace, 1)
-        column.addWidget(self._build_case_section())
-        column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
+        middle_column.addWidget(workspace, 1)
+        middle_column.addWidget(self._build_case_section())
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
-        scroll.setWidget(page)
+        scroll.setWidget(middle)
         # `actionTriggered` fires for the reader's own scrolling - wheel,
         # keys, the bar - and not for a scroll this view makes, so it is
         # what tells the view to stop holding the chart in view.
@@ -579,8 +594,10 @@ class SimulationView(QWidget):
         # chart, so the bar's range changing is when to follow it.
         scroll.verticalScrollBar().rangeChanged.connect(self._follow_chart)
         self._page_scroll = scroll
+        column.addWidget(scroll, 1)
+        column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
         outer = _spaced_column(self, 0)
-        outer.addWidget(scroll)
+        outer.addWidget(page)
 
     def _build_unconditional_region(self) -> QWidget:
         """Build the band that holds every run's unconditional values, with no runs in it yet.

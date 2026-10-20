@@ -139,7 +139,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.39 | Completed | **The release where `bin/docket arm` holds a simulator branch that adds long prose until a commit records its fresh review.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.38 tag and here. The item merged in `#1645`, before the v0.5.38 cut landed, so its change is inside the v0.5.38 tag and v0.5.38's notes now point here. A simulator branch that adds a long docstring or comment holds until a commit after it carries a `Prose-review:` trailer, and close-out step 8 tells a session to record one (`PL-W04Z`). **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.38 tag. `PL-VRQ9`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.5.40 | Completed | **The release where every `bin/docket` command that reads the queue answers from the same copy of each item, the default branch's newer one, so `delegable` and `triage` no longer offer an item `main` has already closed or triaged.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 33 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.5.39 tag and here. The item merged in `#1647`, after the v0.5.39 tag. `triage`, `delegable`, `wave`, `feature`, `gate` and `generators` now load the store through `cli._load_to_read` and say when they read the base's copy, and docket's README names the commands that still read the working tree's copy and why (`PL-4T32`). **It finishes `one-snapshot`**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 238 of 246 cleared, as at the v0.5.39 tag. `PL-06S3`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.5.41 | Completed | **The release where the dashboard opens on the shipped Workspaces with a tab strip to switch between them, and where each run keeps a number that is never given out twice, so a Workspace can pin the run it shows and says so when that run is gone, and where every layout operation can be done from a menu and the keyboard.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 36 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.40 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/`, whose three Workspaces gain a schema version and an empty pin. `app/` and `layout/` changed because each run is named by an identity that is never reused and a Workspace can pin one (`PL-7Z84`), the dashboard opens on the shipped Workspaces under a tab strip where a reader sets a pin (`PL-2KXB`), each Area border can be moved from the keyboard and a Layout menu switches Workspace (`PL-M352`), and `AreaLayout` refuses a layout of two windows before it builds its widget, which had crashed a test worker on `main` (`PL-H9VT`). `docs/MODEL.md` states the run identity and the pin. **It finishes `owner-attention`**, and closes no generator head. **One is a Gate 2 entry**, `PL-7Z84`, and the gate stands at 239 of 246 cleared, from 238 of 246 at the v0.5.40 tag. `PL-5VTL`, the cut, ships in no release under `PL-KRS6`. | 6 items |
-| v0.5.42 | Completed / current baseline | **The release where each chart keeps its own time window, so the shipped Induction Workspace opens its concentration chart on the first 15 minutes of the case while the other charts keep theirs.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 37 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored scientific value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.41 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/induction.json`, which saves its concentration chart at the 15-minute window. `app/` changed because each chart View now saves its own window, the F_A/F_I plot gains the same control, and the off-scale notice, the wash-in state line and the count of unmarked control changes now describe each chart's own window (`PL-L59K`). `docs/MODEL.md` and `README.md` say the window is chosen for each chart. **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 239 of 246 cleared, as at the v0.5.41 tag. `PL-9354`, the cut, ships in no release under `PL-KRS6`. | 1 item |
+| v0.5.42 | Completed | **The release where each chart keeps its own time window, so the shipped Induction Workspace opens its concentration chart on the first 15 minutes of the case while the other charts keep theirs.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 37 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored scientific value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.41 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/induction.json`, which saves its concentration chart at the 15-minute window. `app/` changed because each chart View now saves its own window, the F_A/F_I plot gains the same control, and the off-scale notice, the wash-in state line and the count of unmarked control changes now describe each chart's own window (`PL-L59K`). `docs/MODEL.md` and `README.md` say the window is chosen for each chart. **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 239 of 246 cleared, as at the v0.5.41 tag. `PL-9354`, the cut, ships in no release under `PL-KRS6`. | 1 item |
+| v0.6.0 | Completed / current baseline | **The release where the layout is the reader's: the dashboard is divided into Areas that a reader splits, joins, swaps, resizes and closes, each Area holds any View the build registers, the arrangements are kept as Workspaces that a reader saves and restores, and the values needed to read any number on screen stay in view outside the Areas, with the use disclaimer.** 64 items, and the capability boundary § "Versioning decision" gives a minor number to: all 40 ids in v0.6.0's Required scope are closed. **No equation, parameter or stored scientific value changed, and no run differs**: `core/` moved (`92e04de` to `d482c41`) because its refusals now name the object that refused and reject a capacity that underflows or overflows (`#1676`), and the trajectory comparison against the v0.5.42 tag found every state, halt, readout and hover string identical over 81 cases and three 24-hour runs. `data/` resolves to `bd5d496` at both ends. A learner can now save, restore and reset Workspaces from the Layout menu (`PL-DWHG`), open the Area and Layout menus by right-click and swap two Areas by Ctrl-drag (`PL-R5G4`), and no longer meets an Area too thin to see (`PL-391Y`). The region holding time, run state, agent and concentrations sits above the part of the page that scrolls and the disclaimer sits below it, so neither leaves the window at any height (`PL-NNML`). **It finishes five features**, among them `layout-sliver-areas` and `v0.6.0-done-check`, the check of the Definition of done bullet by bullet that found `PL-NNML`. **Gate 2 is clear**: 241 of its 247 entries are cleared and 6 are deferred, from 239 of 246 at the v0.5.42 tag. `PL-9CS6`, the cut, ships in no release under `PL-KRS6`. | 64 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -244,82 +245,88 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.42
+## Current baseline: v0.6.0
 
-v0.5.42 is the release where each chart keeps its own time window, so the
-shipped Induction Workspace opens its concentration chart on the first 15
-minutes of the case. It has one item, and it is a patch on both halves of §
-"Versioning decision"'s test. No capability boundary is crossed, because
-v0.6.0's capability, a layout the reader arranges, is not finished: 37 of the
-39 ids in its Required scope are closed, and `PL-G5SX` and `PL-RTG9` are
-open. The next three minor numbers, v0.6.0 through v0.8.0, are given to
-milestone sections. The item is not a Gate 2 entry, so `bin/docket wave` puts
-the gate at 239 of 246 cleared at this cut, as at the v0.5.41 tag.
+v0.6.0 is the release where the layout is the reader's. The dashboard is
+divided into Areas, each holding one View: the concentration chart, the wash-in
+plot, the parameter controls or the agent accounting. A reader splits, joins,
+swaps, resizes and closes Areas, by mouse, by menu or by keyboard. The
+arrangements are kept as Workspaces. Three ship, Default, Induction and
+Maintenance, and a reader can save their own as the default, restore the
+shipped set, or reset it. The design follows Blender's window system, and
+`docs/interface-provenance.md` records what was adopted from it and where this
+interface does something else.
 
-**No equation, parameter or stored scientific value changed, and no run can
-differ:**
+It has 64 items, and it is the milestone the version table's v0.6.0 row was
+reserved for: all 40 ids in v0.6.0's Required scope are closed, so § "Versioning
+decision" gives it a minor number. Before the cut, one pass checked each bullet
+of the milestone's Definition of done against the tree. Seven bullets held. Two held only in part, because no test checked the halt
+reason or two compared runs through the layout operations, and one did not
+hold, because four passages still described the layout as planned. That pass
+filed `PL-ZK09`, `PL-DZL0`, `PL-NTT9` and `PL-NNML`, and all four close here.
 
-| Tree | v0.5.41 tag | This cut | What moved |
+**No equation, parameter or stored scientific value changed, and no run
+differs:**
+
+| Tree | v0.5.42 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `4bf5a52` | `e680356` | `app/` and `data/workspaces/induction.json` |
-| `core/` | `92e04de` | `92e04de` | nothing |
-| `app/` | `01166a5` | `96ea17c` | each chart's own time window, and the three advisories that depend on it |
-| `layout/` | `0968a0f` | `0968a0f` | nothing |
-| `data/workspaces/` | `3967ab7` | `ad685b7` | the Induction concentration chart's saved 15-minute window |
-| `tests/reference/` | `b0c7cb3` | `b0c7cb3` | nothing |
-| `docs/MODEL.md` | `c28243f` | `7bb2ab1` | § "The chart's time base" and the hazard row for compared runs |
-| `README.md` | `98a0d7f` | `e6c1cff` | the time base is chosen for each chart |
-| `.github/` | `453b943` | `453b943` | nothing |
+| `src/` | `e680356` | `cb5c697` | `core/`, `app/` and `layout/` |
+| `core/` | `92e04de` | `d482c41` | refusals that name the object, and capacity bounds |
+| `data/` | `bd5d496` | `bd5d496` | nothing |
+| `app/` | `96ea17c` | `cb68ed4` | the Area menus, saved Workspaces, the pinned region and disclaimer |
+| `layout/` | `0968a0f` | `bf45d1f` | sliver Areas refused, the border-chain join, the typed schema version |
+| `tests/reference/` | `b0c7cb3` | `3c0f417` | two stale statements corrected, no expected value moved |
+| `docs/MODEL.md` | `7bb2ab1` | `543147f` | the disclaimer is always in view, and the shipped Area interface |
+| `README.md` | `e6c1cff` | `ac729ff` | the Area interface, and the Blender acknowledgement |
+| `.github/` | `453b943` | `affa886` | CI checks that a headless worker run record carries its review |
 
-`core/` resolves to the same tree at the v0.5.41 tag and at this cut, and the
-only stored value that moved is the Induction Workspace file, which holds
-layout and View state and no scientific value. So this cut did not measure the
-trajectories again. The item merged on `main` after the v0.5.41 tag, so no
-earlier release's notes need a pointer to it.
+`core/` changed in `#1676`. Its refusals now name the compartment that refused,
+a compartment refuses a volume and coefficient whose capacity would underflow
+to zero or overflow to infinity, and a compartment advanced on its own refuses
+a step below the floor the system already applies. None of that changes a
+value a valid run computes. To show it, this cut ran the trajectory comparison
+against the v0.5.42 tag over 81 cases and three 24-hour runs, one for each
+agent. Every captured state, halt, drawn window, readout string and hover
+string was identical, as were all 2,592,000 hashed steps of the 24-hour runs.
+`tests/reference/` changed in `#1683` only to correct a figure in a docstring
+table, +2.10 SD where the test computes +2.11 SD (`PL-CLVM`).
 
-**What a learner sees change** (`PL-L59K`). Each chart now has its own
-time-base control, and a choice in one chart no longer moves the others. The
-Induction tab opens its concentration chart on the 15-minute window, where the
-inspired, alveolar and vessel-rich curves separate fastest. The window follows
-the run: it shows exactly the first 15 minutes until the newest sample reaches
-882 s, then slides so the newest sample stays on the plot, so the current
-values never leave the right edge unannounced. The F_A/F_I plot gains the same
-control and a caption naming the window in force. The project owner chose this
-on 2026-10-19 over one shared window saved per Workspace, and syncing chart
-windows the way Blender's timeline areas sync is later work (`PL-1RFZ`).
+**What a learner sees change.** The Layout menu saves, restores and resets
+Workspaces (`PL-DWHG`). The Area and Layout menus open by right-click, as in
+Blender, and Ctrl-drag swaps two Areas (`PL-R5G4`). An Area too thin to show
+anything is refused rather than created (`PL-391Y`). The region that holds
+time, run state, agent and concentrations now sits above the part of the page
+that scrolls, and the educational-use disclaimer sits below it, so only the
+Workspace tabs, the Areas and the case controls scroll between them
+(`PL-NNML`). Before this, the page scrolled whole: at 1366 px wide the Default
+Workspace was 1087 px tall and Induction and Maintenance 1505 px, so at laptop
+heights the disclaimer sat below the fold and scrolling moved the region off
+the top. The Areas also take their size from the first frame drawn, so the page
+no longer changes height after it opens (`PL-PHPZ`, `PL-MXMG`), and hidden
+notice banners take no room (`PL-T91K`).
 
-**Three advisories now describe each chart's own window.** The off-scale
-notice, the wash-in state line and the count of control changes the chart
-could not mark used to sit in each run's panel. They now sit under each chart,
-one line per run, and name only what that chart draws. So a 15-minute chart
-whose window starts after a clipped excursion does not name it, while a chart
-that fits the run does. The project owner chose that from three screenshots on
-2026-10-19. `docs/MODEL.md` § "The chart's time base" states the rule, and
-`test_each_chart_names_only_the_clipped_traces_its_own_window_shows` is the
-regression test that pins the case.
+**The Area minimum sizes are placeholders.** `app/view_registry.py` declares
+the least size each View kind needs, and the project owner wants to revisit
+them. Changing them is a one-line change to that file. The values that
+`docs/MODEL.md` requires on screen are held elsewhere: in the pinned region,
+in the readout panel's reserved width, and in the notice an Area shows when it
+cannot be given its size.
 
-**The code.** A View tells the adapter which frame it draws through
-`View.frame_request`, which returns the window and the plot width and replaces
-`frame_width_px`. The dashboard assembles one frame for each distinct window,
-at the widest plot that asks for it, so charts at one window still share a
-frame and draw the same instants. A chart saves its window as
-`{"state_version": 2, "time_base_s": 900.0}`, or `"fit"` for "Fit run". A
-version 1 state reads as "Fit run" with no notice, and an unreadable window
-starts the chart on "Fit run" with the unreadable-state notice.
-
-The release finishes no feature and closes no generator head. The release item
-is `PL-9354`, whose `resource: release-train` keeps it out of every later
-release. The closure carried its `pr:` number before the cut, so the bullet
-cites its pull request. `tools/pr_body_check.py` found no squash commit that
-lost its body. `bin/docket release` reported again that apparatus inflow missed
-a prediction pre-registered in `PL-04KR`. From 2026-10-12 to 2026-10-18, 25 new
-apparatus paths arrived over 107 filings, which is 0.23 a filing against a
-ceiling of 0.13, so the apparatus surface is still growing. `bin/docket inflow`
-has the table.
+The release finishes five features: `every-control-restates-the-halt`,
+`layout-sliver-areas`, `planning-cadence`, `qt-teardown-crashes` and
+`v0.6.0-done-check`. Gate 2 is clear: `bin/docket wave` reads 241 of its 247
+entries as cleared and 6 as deferred to later gates, against 239 of 246 at the
+v0.5.42 tag. The release item is `PL-9CS6`, whose `resource: release-train`
+keeps it out of every later release. `tools/pr_body_check.py` found no squash
+commit that lost its body. `bin/docket release` reported again that apparatus
+inflow missed a prediction pre-registered in `PL-04KR`. From 2026-10-12 to
+2026-10-18, 28 new apparatus paths arrived over 107 filings, which is 0.26 a
+filing against a ceiling of 0.13, so the apparatus surface is still growing.
+`bin/docket inflow` has the table.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.5.42 tag. It is described in the
-next release, and v0.5.42's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.0 tag. It is described in the
+next release, and v0.6.0's notes take a pointer to it at that release's cut.
 
 ## The plan
 
@@ -419,7 +426,7 @@ adds no capability and exists to clear the ground they are built on:
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **Shipped 2026-09-21**, all 20 Required-scope ids closed (`PL-4B1G`), and its own section below records what each one delivered. **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 185 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
 | — | **MVP complete** | **Reached 2026-09-21, with v0.5.0.** A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
+| 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. Not yet scoped or sized. | — |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
@@ -5704,6 +5711,14 @@ project owner. Entry 20's budget names it, so it is cleared by v0.6.0 itself.
 run's transport row and heading into one line to give the chart back what
 layout can, and entry 20 names it too.
 
+**`PL-NNML` joined this list on 2026-10-20, after the freeze, as a `safety`
+entry.** The check of this milestone's Definition of done before its cut found
+that the dashboard page still scrolled. So at laptop window heights the use
+disclaimer was below the fold, and scrolling down to it moved the unconditional
+region off the top. A `safety` finding re-enters whenever it is found, as
+`PL-TBMX` did. It is cleared by v0.6.0 itself, because `docs/MODEL.md` had
+recorded the gap as closing in this milestone.
+
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
 presence of the fix and never for the presence of the fault, so an entry whose
@@ -5713,7 +5728,7 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 17 entries**
+**Cleared by v0.6.0 itself - 18 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -5725,6 +5740,7 @@ named here, for the reason beat 3 gives.
 - PL-G5SX (M) Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
+- PL-NNML (M) The dashboard page still scrolls at laptop window heights, so the use disclaimer is below the fold and scrolling to it moves the unconditional region out of view
 - PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
 - PL-QLZ5 (M) In compare mode, fold each run's transport row and readout heading line into one line, so the 1366 by 700 laptop reference gives the concentration chart back roughly 70 to 80 px (PL-JG82)
 - PL-TH35 (M) Define the common View contract every app/ view implements so any view is interchangeable in any area
@@ -6159,7 +6175,7 @@ removed, and this file's history before that change holds their text.
    that creates the adapter, because a boundary over a tree that does not exist
    is an `empty` error by construction.
 
-7. **The unconditional region** (queue items `PL-NWTM` and `PL-W54S`). A named
+7. **The unconditional region** (queue items `PL-NWTM`, `PL-W54S` and `PL-NNML`). A named
    region outside the layout container, holding every unconditional value, that
    the model has no address for - so the adapter cannot place an Area there and
    no serialized Workspace can name it. `PL-NWTM` also supplies the pure-Python,
@@ -6173,7 +6189,10 @@ removed, and this file's history before that change holds their text.
    v0.6.0 opens one window, and building the region in that shape now is what
    stops break-out, item 34's unscheduled second half, rebuilding it.
     Where the region sits and what it looks like is entry 20's (`PL-J8K2`),
-    within the budget `PL-84QX` sets.
+    within the budget `PL-84QX` sets. `PL-NNML` joined on 2026-10-20, when
+    the check of the Definition of done found the page still scrolling the
+    region and the use disclaimer out of view. The region now sits above the
+    part of the page that scrolls, and the disclaimer below it.
 
 8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
    second of the three properties `docs/interface-provenance.md` records Blender

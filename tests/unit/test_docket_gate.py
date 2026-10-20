@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from docket.checks import analyze
 from docket.config import load
-from docket.roadmap import milestone_states
+from docket.roadmap import baseline_train, milestone_states
 from docket.store import read_items
 
 REPO = Path(__file__).resolve().parents[2]
@@ -41,12 +41,20 @@ def test_this_repository_records_a_disposition_for_every_open_debt_item() -> Non
 
     It also holds the gate to being *read*, so the assertion cannot pass by
     finding nothing to check: a roadmap this reader could not place a gate in
-    would otherwise report every tree clean.
+    would otherwise report every tree clean. Between milestones there is
+    genuinely no gate. A milestone has shipped and the next one is not scoped
+    yet, so no section ahead of the baseline records a frozen list, as after
+    v0.6.0 shipped on 2026-10-20 with v0.7.0 unscoped. So the read is held to
+    finding the baseline's release train, and a missing gate is accepted only
+    where that train holds no section that records one.
     """
     config = load(REPO)
-    states = milestone_states((REPO / config.roadmap_file).read_text(encoding="utf-8"))
+    text = (REPO / config.roadmap_file).read_text(encoding="utf-8")
+    states = milestone_states(text)
     report = analyze(read_items(REPO / config.items_dir), date.today(), config, milestones=states)
+    train = baseline_train(text)
 
-    assert states.gate is not None
+    assert train is not None, "the roadmap's version table marks no single row current"
+    assert (states.gate is None) == (not any(s.records_a_gate for s in train.ahead))
     assert [e for e in report.errors if "neither places nor defers" in e] == []
     assert [e for e in report.errors if "deferred-from" in e] == []

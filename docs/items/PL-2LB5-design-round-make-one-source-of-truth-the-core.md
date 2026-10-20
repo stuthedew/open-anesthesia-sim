@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning, docs
 feature: one-source-of-truth
+milestone: v0.6.0
 touches: CLAUDE.md, docs/resident-instructions.md
 deferred-from: v0.6.0 - captured after the freeze on the owner's 2026-10-19 ask; the fixes are proposed as their own milestone once the inventory sizes them
 added: 2026-10-19

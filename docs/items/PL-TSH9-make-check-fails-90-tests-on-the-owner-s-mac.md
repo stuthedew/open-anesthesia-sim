@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.0
 touches: tests/unit/test_branch_sweep.py, tests/unit/test_makefile_reference.py, docs/maintainer.md
 deferred-from: v0.6.0 - a workflow-lane test defect outside the layout release
 added: 2026-10-19

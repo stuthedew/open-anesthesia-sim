@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: api-credit-runs
+milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/maintainer.md, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
