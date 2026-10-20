@@ -26,3 +26,5 @@ moment this item waits for is the release in which the shipped interface
 actually is the area/workspace model, which is v0.6.0's ship. `PL-9PD6` is the
 separate defect: line 94 of the same file already asserts the attribution has
 been made.
+
+**Done when.** `README.md` carries the attribution in a section of its own, and `docs/interface-provenance.md` § "Attribution" says it does.

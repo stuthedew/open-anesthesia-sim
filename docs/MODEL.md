@@ -7081,8 +7081,8 @@ in force.
 
 ### What this list requires once the layout is the reader's
 
-This list is written against one fixed layout, and `ROADMAP.md`
-planned-milestone item 34 makes the interface's areas the reader's to add,
+This list was written against one fixed layout. Since v0.6.0, `ROADMAP.md`
+planned-milestone item 34 has made the interface's areas the reader's to add,
 resize and remove. The two meet at the paragraph above: hiding a compartment
 trace is safe *because* the value stays in the numeric readouts, so a layout
 that can remove the readouts removes the floor that sentence stands on, and
@@ -7175,8 +7175,8 @@ top of the dashboard, outside the Areas that `app/area_layout.py` lays out.
 Since `PL-W9P6` (2026-10-18) the setting sections sit in a plain column
 between the region and the Areas, so they are not in an Area either. The
 dashboard refuses to place a run whose region lacks a declared value, so a
-value moved into an Area fails at once rather than becoming closeable when the
-area system's docking operations arrive (`PL-NWTM`, laid out to `PL-J8K2`).
+value moved into an Area fails at once rather than becoming closeable by the
+reader's own Area operations (`PL-NWTM`, laid out to `PL-J8K2`).
 
 **Where the educational-use disclaimer lives** (`PL-JSY5`, 2026-10-18). The
 use disclaimer, `USE_DISCLAIMER_TEXT`, is a standing statement rather than one
@@ -7190,20 +7190,22 @@ top-level window can exist, each window carries the line in its own frame,
 beside its invariant tier, because a window read alone needs the statement of
 what the tool is for as much as it needs the run's time and agent.
 
-*Present, and not yet always in view* (measured 2026-10-18). Until v0.6.0's
-tiled layout replaces the scrolling page, the line is the page's last line, and
-the page scrolls. On the offscreen platform the page is 1571 px tall, so at a
-window 700, 900 or 1100 px high the line is below the visible part until the
-reader scrolls. When the Areas fill the window and the page stops scrolling,
-the foot line is in view at every window height, which is what the colour
-section below means by "always". The unconditional region at the top of the
+*Present, and not yet always in view* (measured 2026-10-20). v0.6.0's tiled
+layout did not stop the page scrolling. The line is the page's last line. On
+the offscreen platform at 1366 px wide, the page is 1087 px tall in the Default
+Workspace and 1505 px tall in the Induction and Maintenance Workspaces. So at a
+window 700 or 900 px high the line is below the visible part until the reader
+scrolls, and in Induction and Maintenance it is at 1100 px too. `PL-NNML`
+makes the Areas fill the window so that the page stops scrolling. Then the foot
+line is in view at every window height, which is what the colour section below
+means by "always". The unconditional region at the top of the
 same page has the mirror of this gap, and so does the interpretation
 statement, `INTERPRETATION_DISCLAIMER_TEXT`, on its readout heading row. Both
 are in view when the window opens. They partly or wholly leave the view when
 the reader scrolls down to the wash-in chart, or takes a branch, which scrolls
 the page to the concentration chart (`PL-562Z`). Measured on 2026-10-18, that
 scroll at a 1366 by 700 window leaves 27 px of a one-run readout row's 103 px
-in view. Both gaps close when the page stops scrolling.
+in view. Both gaps close when the page stops scrolling (`PL-NNML`).
 
 **The rule all three rest on is about occlusion, not about window types.** No
 value this list requires may be covered while the application still believes it

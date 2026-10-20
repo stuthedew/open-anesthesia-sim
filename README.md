@@ -61,6 +61,13 @@ would simulate and display a case nobody asked for. A change the model cannot
 continue past halts the run and says why, instead of leaving the display
 reading "Running" over numbers that have stopped advancing.
 
+The window is divided into Areas that the reader can split, join, resize, swap
+and close, and each Area holds one View: the concentration chart, the wash-in
+plot, the parameter controls or the agent accounting. Arrangements are kept as
+Workspaces, switched by tab, and three ship: Default, Induction and
+Maintenance. The values a reader needs to read any other number are drawn in a
+region outside the Areas, so no arrangement can remove them.
+
 While a case runs, the interface shows:
 
 - every compartment concentration, in percent **and** as a multiple of the
@@ -68,12 +75,15 @@ While a case runs, the interface shows:
   percentage is a different MAC multiple for each agent, so neither unit is
   safe alone;
 - the agent that is running, by name and by its ISO 5360 vaporizer color;
-- agent delivered, exhausted and stored, with the mass-balance residual;
+- agent delivered, exhausted and stored, with the mass-balance residual,
+  in the agent accounting View, which no shipped Workspace shows but every
+  Area's View chooser offers;
 - every setting changed during the run, marked on the chart at the simulated
   time it took effect;
 - the wash-in curve the literature is taught from, $`F_A/F_I`$, on a
   dimensionless axis of its own, drawn against the *modeled* inspired
-  concentration rather than the vaporizer dial;
+  concentration rather than the vaporizer dial, in the wash-in View that the
+  Induction and Maintenance Workspaces show;
 - the running agent's population MAC-awake as a labelled band, and its nominal
   1 MAC as a line;
 - on hovering a drawn point of a compartment trace, which compartment and
@@ -237,6 +247,16 @@ be about a measurement rather than about a recollection.
 If you use this software, cite it through
 [`CITATION.cff`](CITATION.cff) — GitHub renders it into APA and BibTeX from the
 **Cite this repository** button in the sidebar.
+
+## Acknowledgements
+
+The interface's layout model is modelled on Blender's workspace, area and
+editor model. The design was studied from Blender's published source and its
+design documentation. Blender is developed by the Blender Foundation and its
+contributors. No Blender code is used in this project, and none of its
+documentation is reproduced here.
+[`docs/interface-provenance.md`](docs/interface-provenance.md) records what was
+adopted, what was changed and what was refused, with Blender's licences.
 
 ## License
 
