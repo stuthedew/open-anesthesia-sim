@@ -9,6 +9,7 @@ feature: ci-cost
 touches: .github/workflows/quality.yml
 added: 2026-10-20
 closed: 2026-10-20
+pr: 1703
 payoff: a pull request's tests take about 5 minutes on every run instead of about 9 on the 4 in 10 that draw a slow x64 runner
 not-delegable: the end state is the runner GitHub assigns to quality.yml's jobs, which no local command can observe
 ---
