@@ -10,7 +10,10 @@ itself, so that a change here fails before any type does (`PL-LLMN`,
 
 import importlib
 import itertools
+import pickle
 import pkgutil
+import re
+import struct
 import sys
 from decimal import Decimal
 from fractions import Fraction as RationalFraction
@@ -355,3 +358,71 @@ def test_negative_zero_is_held_as_zero_and_every_other_number_as_itself() -> Non
 
     for number in (5e-324, -5e-324, 0.1, 10.0, 1, nan, inf, -inf):
         assert negative_zero_as_zero(number) is number
+
+
+OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
+    FreshGasFlow: 1000.0,
+    AlveolarVentilation: 1000.0,
+    CardiacOutput: 1000.0,
+    SimulationStep: 5.0,
+    CaseInstant: -1.0,
+    Fraction: 1.5,
+    Percent: 150.0,
+    StepCount: -5,
+}
+"""A number each checked type's own range refuses, written into a saved pickle by hand."""
+
+
+def _tampered(pickled: bytes, held: float, written: float, protocol: int) -> bytes:
+    """Return `pickled` with the number it holds overwritten, as a hand edit would leave it.
+
+    Protocol 0 writes a number as text, after `F` for a `float` and `I` for an
+    `int`. Later protocols write a `float` as eight big-endian bytes after `G`,
+    and a small nonnegative `int` as one byte after `K`. This function replaces
+    that `K` and its byte with `J` and a signed four-byte `int`.
+    """
+
+    if protocol == 0:
+        opcode = b"I" if isinstance(held, int) else b"F"
+        old, new = opcode + repr(held).encode() + b"\n", opcode + repr(written).encode() + b"\n"
+    elif isinstance(held, int):
+        old, new = b"K" + bytes([held]), b"J" + struct.pack("<i", int(written))
+    else:
+        old, new = b"G" + struct.pack(">d", held), b"G" + struct.pack(">d", written)
+
+    assert pickled.count(old) == 1
+
+    return pickled.replace(old, new)
+
+
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+@pytest.mark.parametrize("checked", list(INSIDE_EVERY_RANGE), ids=lambda checked: checked.__name__)
+def test_every_checked_type_unpickled_at_any_protocol_is_rebuilt_through_its_check(
+    checked: type[Any], protocol: int
+) -> None:
+    """`PL-5D1Z`: a pickle at protocol 0 or 1 rebuilt a checked type, bypassing its own check.
+
+    Those protocols rebuilt a `float` or `int` subclass through `float.__new__`
+    or `int.__new__`. So a hand-edited file loaded a `Fraction` of 1.5 or a
+    `StepCount` of -5, as the type whose job is to guarantee its range. The
+    expected refusal is the one the constructor gives when it is called
+    directly with the edited number. An unedited pickle loads as the type and
+    value it saved.
+    """
+
+    held = INSIDE_EVERY_RANGE[checked]
+    pickled = pickle.dumps(checked(held), protocol=protocol)
+    loaded = pickle.loads(pickled)
+
+    assert type(loaded) is checked
+    assert loaded == held
+
+    written = OUTSIDE_ITS_RANGE[checked]
+
+    with pytest.raises(AnesthesiaSimulationError) as built_directly:
+        checked(written)
+
+    with pytest.raises(
+        type(built_directly.value), match=f"^{re.escape(str(built_directly.value))}$"
+    ):
+        pickle.loads(_tampered(pickled, held, written, protocol))

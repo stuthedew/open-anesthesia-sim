@@ -3,12 +3,14 @@ id: PL-5GVL
 title: A FreshGasFlow written straight onto BreathingCircuit.fresh_gas_flow_l_min past set_fresh_gas_flow is held to its type alone by __setattr__ (PL-LBQY), so one outside the machine's deliverable_fresh_gas_flow_range is admitted where the constructor and the setter refuse it through _require_deliverable_flow; it binds nothing while no shipped profile declares a range, and is the flow side of the range guard PL-19Y0 folded in from PL-HJ7L (found in PL-KFNP's design round)
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/circuit.py, tests/unit/test_circuit.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-12
+closed: 2026-10-19
+reason: already fixed by PL-19Y0 (#1480): BreathingCircuit.__setattr__ checks a written fresh gas flow against the machine's declared range, pinned by test_circuit.py's flow-the-machine-cannot-set case
 payoff: once any machine profile declares a deliverable flow range, a flow that machine cannot set can no longer be written onto the circuit and run, charted and shown as if accepted
 verify: grep -q 'def test_a_flow_written_past_the_setter_is_held_to_the_machines_range' tests/unit/test_circuit.py
 ---
@@ -64,3 +66,14 @@ docstring and `docs/MODEL.md` § "Supported input ranges" say the write meets
 the machine's range. `test_a_flow_written_past_the_setter_is_held_to_the_machines_range`
 in `tests/unit/test_circuit.py` pins the refusal, the unchanged field, an
 in-range rewrite admitted, and a circuit with no declared range unaffected.
+
+**Checked 2026-10-19: already fixed by `PL-19Y0` (#1480), so dropped.** On
+`main` at `6fd84bd5`, `BreathingCircuit.__setattr__` checks a written
+`fresh_gas_flow_l_min` against `deliverable_fresh_gas_flow_range` once the
+range is held, and writing `FreshGasFlow(8.0)` onto a circuit declaring 1 to
+5 L/min raises the `SimulationConfigurationError` that `_require_deliverable_flow`
+raises. The case `flow-the-machine-cannot-set` in
+`tests/unit/test_circuit.py`'s `test_a_direct_write_is_held_to_the_constructors_checks`
+pins the refusal and the unchanged field. The `__setattr__` docstring and
+`docs/MODEL.md` § "Supported input ranges" already say that the write checks
+the machine's range. Nothing is left for this item.

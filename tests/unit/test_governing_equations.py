@@ -18,6 +18,7 @@ from dataclasses import fields
 from math import inf, nan, nextafter
 from typing import NamedTuple
 
+import numpy
 import pytest
 
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
@@ -36,6 +37,7 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
+from anesthesia_sim.core.matrix_exponential import matrix_exponential
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -722,3 +724,47 @@ def test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name() -> None:
     )
 
     assert build_system_matrix(_settings(tissues=renamed)) == build_system_matrix(_settings())
+
+
+def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them() -> None:
+    """`PL-5BD7`: a record stores plain floats and a tuple, so equal records make one cache key.
+
+    Both propagator caches key on the record by value. A `numpy.float64`
+    volume compares and hashes equal to the plain `float`. But CPython's `sum`
+    adds values of exact type `float` with compensation, and adds a subclass
+    without it. So before the record stored its fields as exact floats, the
+    propagator built from a subclass differed in 39 of 81 entries at 7 s. A
+    list of tissue groups was accepted, and it could not be hashed. The
+    expected propagator here is the one built from plain floats and a tuple,
+    which is what every record built by `AgentUptakeSystem.equation_settings`
+    holds.
+    """
+
+    plain = _settings()
+    built_otherwise = _settings(
+        circuit_volume_l=numpy.float64(CIRCUIT_VOLUME_L),
+        alveolar_volume_l=numpy.float64(ALVEOLAR_VOLUME_L),
+        venous_volume_l=numpy.float64(VENOUS_VOLUME_L),
+        blood_gas_partition_coefficient=numpy.float64(BLOOD_GAS),
+        tissues=[
+            TissueGroupEquationSettings(
+                name=tissue.name,
+                volume_l=numpy.float64(tissue.volume_l),
+                blood_flow_l_min=numpy.float64(tissue.blood_flow_l_min),
+                tissue_blood_partition_coefficient=numpy.float64(
+                    tissue.tissue_blood_partition_coefficient
+                ),
+            )
+            for tissue in plain.tissues
+        ],
+    )
+
+    assert type(built_otherwise.tissues) is tuple
+    assert type(built_otherwise.circuit_volume_l) is float
+    assert all(type(tissue.volume_l) is float for tissue in built_otherwise.tissues)
+    assert hash(built_otherwise) == hash(plain)
+
+    for interval_s in (0.84, 7.0, 600.0):
+        assert matrix_exponential(build_system_matrix(built_otherwise), interval_s) == (
+            matrix_exponential(build_system_matrix(plain), interval_s)
+        )

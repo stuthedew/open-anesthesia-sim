@@ -3,14 +3,16 @@ id: PL-2TZT
 title: Five more guard names in core/ are passed unqualified by several classes, so most refusals still cannot say which object refused
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: core-guard-coverage
-touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_governing_equations.py
+touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_governing_equations.py, tests/unit/test_concentration.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
+closed: 2026-10-19
+pr: 1676
 payoff: a refusal a learner sees in the banner names the tissue or compartment that refused, not a parameter three objects hold
-verify: ! grep -rqE 'require_[a-z_]+\("(agent_amount_l|blood_flow_l_min|volume_l|simulation_step_s|blood_gas_partition_coefficient|perfusion_fraction|tissue_gas_partition_coefficient|arterial_partial_pressure_fraction)"' src/anesthesia_sim/core/
+verify: ! grep -rqE --include='*.py' --exclude=simulation_step.py 'require_[a-z_]+\("(agent_amount_l|blood_flow_l_min|volume_l|simulation_step_s|blood_gas_partition_coefficient|perfusion_fraction|tissue_gas_partition_coefficient|arterial_partial_pressure_fraction)"' src/anesthesia_sim/core/ && grep -q '"^venous volume_l must be positive and finite$"' tests/unit/test_blood.py && grep -q '"^test volume_l must be positive and finite$"' tests/unit/test_tissue.py
 ---
 
 **Problem.** Five more guard names in core/ are passed unqualified by several classes, so most refusals still cannot say which object refused
@@ -86,3 +88,33 @@ in the table above, and the `TissueGroup` and `VenousBloodCompartment`
 a message that does not say which object refused. So when this item adds the
 owner prefixes, it also pins each reworded message as an anchored whole
 string, `match=r"^...$"`, in the tests it already touches.
+
+**Checked 2026-10-19, and fixed on `claude/core-guard-defects-u39w8s`.** On
+`main` at `6fd84bd5` the bare names were still there, now mostly as
+`require_*(name, value)` in the `__setattr__` of `TissueGroup` and
+`VenousBloodCompartment`. Each tissue group's writes and closed-form
+arguments now name the group, as `"muscle volume_l"`, and the venous pool's
+name the pool, as `"venous volume_l"`. The alveolar compartment's and the
+circuit's agent amounts and the circuit's own step say `alveolar` and
+`circuit`. Two bare names are left on purpose, because once the compartments
+name theirs only one object can raise each: `simulation_step_s` in
+`core/simulation_step.py` is the run's step, and `blood_gas_partition_coefficient`
+in `UptakeEquationSettings` is the agent's. The `verify:` skips
+`simulation_step.py` for that reason, reads only `.py` files (the old pattern
+also matched the compiled `__pycache__` files), and greps a whole anchored
+message from each of the two test files that pin the `__setattr__`
+refusals, which the old pattern could not see. Each reworded message is
+pinned as an anchored whole string, as `PL-79PK` asked.
+
+**Owner ask, 2026-10-19:** #1676 carries this item with PL-8LQZ, PL-FNH3,
+PL-XVCV, PL-HPKK, PL-5BD7, PL-5D1Z and PL-WP52, and is held for the owner's
+review of one risk. A new or reworded refusal could fire on something a
+learner does and halt a run that ran before. The full suite, the reference
+trajectories included, passes unchanged. The 1 ms floor the compartments now
+take is the floor the run already had, and the capacity refusals need a
+factor near 1e200 or 1e-200. What is left to judge is whether the reworded
+refusal messages read clearly to a learner.
+None of the reworded refusals is reachable from the app with the shipped
+files. The agent-amount refusals can appear only inside the halted-run
+notice, when a step fails numerically. The field refusals need a notebook or
+an edited data file.

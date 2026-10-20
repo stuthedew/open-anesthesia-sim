@@ -3,14 +3,16 @@ id: PL-HPKK
 title: AgentParameters built directly admits a zero max_delivered_concentration_percent and a mac_percent above it: the loader's PositivePercent and _mac_percent_must_not_exceed_vaporizer_max hold for a file and for nothing past it, the shape PL-0FJ8 closed for the MAC's sign alone
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
+closed: 2026-10-19
+pr: 1676
 payoff: an agent record built outside the loader is held to the same vaporizer maximum and MAC relation a file is, so no second route admits a MAC the dial cannot reach
-verify: grep -q 'def test_a_zero_vaporizer_maximum_is_refused_at_construction' tests/unit/test_parameters.py && grep -q 'def test_a_mac_above_the_vaporizer_maximum_is_refused_at_construction' tests/unit/test_parameters.py
+verify: grep -q 'def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built' tests/unit/test_parameters.py
 ---
 
 **Problem.** AgentParameters built directly admits a zero max_delivered_concentration_percent and a mac_percent above it: the loader's PositivePercent and _mac_percent_must_not_exceed_vaporizer_max hold for a file and for nothing past it, the shape PL-0FJ8 closed for the MAC's sign alone
@@ -37,3 +39,13 @@ one field whose failure reaches a screen; this is the rest of the record.
 **Done when.** Building `AgentParameters` with a zero `max_delivered_concentration_percent`,
 or with `mac_percent` above it, raises, shown by unit tests, and the loader's
 checks are unchanged.
+
+**Checked 2026-10-19, and fixed on `claude/core-guard-defects-u39w8s`.** Still
+real on `main` at `6fd84bd5`: `dataclasses.replace` built both records.
+`AgentParameters.__post_init__` now refuses a zero maximum through
+`require_positive_finite` and a MAC above the maximum with a message naming
+both. The loader's checks are unchanged, so a file is still refused by the
+payload first. One test covers both refusals and the admitted edge, a MAC
+equal to the maximum, so the `verify:` greps that one name.
+
+**Run against the code before the fix, 2026-10-19:** `git checkout origin/main -- src/anesthesia_sim/core` and then `uv run pytest -q -p no:randomly tests/unit/test_tissue.py tests/unit/test_blood.py tests/unit/test_parameters.py -k "overflows or however_it_is_built"` failed all three selected tests with `Failed: DID NOT RAISE SimulationConfigurationError`.

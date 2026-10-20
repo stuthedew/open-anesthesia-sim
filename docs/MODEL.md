@@ -1875,13 +1875,33 @@ $`9.6\times10^{-12}`$ s a day is more steps than that, and `elapsed_s` would
 round the count before multiplying it by the step (§ "Simulated time is a count
 of steps, not a running total").
 
-**It binds the run and not a compartment stepped on its own**, like the
-ceiling, though for a different reason. Rounding would cost a compartment
-stepped alone the same, but a compartment is stepped at a run's step only by
+**It binds a compartment stepped on its own too, and the ceiling does not**
+(`PL-WP52`, 2026-10-19). A compartment is stepped at a run's step only by
 `AgentUptakeSystem.advance()`, which takes a `SimulationStep`, so no step below
-the floor reaches a compartment through a run. A compartment stepped on its own
-takes a plain `float`, and whether it should refuse one below the floor too is
-`PL-WP52`. The step a playback tick counts in is the run's own, so
+the floor reaches a compartment through a run. But each compartment is public,
+and rounding costs one stepped alone the same as it costs the run. Measured
+over 10 000 steps, each held at a fraction of 0.01 and stepped toward 0.02,
+for a tissue group with a time constant of 480 s, the venous pool at 7.8 s and
+the breathing circuit at 60 s:
+
+| Step | Largest error in what the three changed by, as a share of the change |
+| --- | --- |
+| 0.1 s | 2e-14 |
+| 1 ms | 3e-13 |
+| 1 µs | 3e-11 |
+| 1e-10 s | 3e-5 |
+| 1e-14 s | 4% for the pool and the circuit; the tissue did not change at all |
+
+So `TissueGroup.advance`, `VenousBloodCompartment.advance` and
+`BreathingCircuit.advance_fresh_gas`, which `BreathingCircuit.advance` calls,
+each refuse a step below the floor through
+`require_at_least_the_smallest_step` in `core/simulation_step.py`. That is the
+same check, in the same words, that `require_supported_simulation_step` makes
+for the run. A compartment still takes a plain `float` rather than a
+`SimulationStep`, because the ceiling is how long the run holds its settings,
+and a compartment stepped alone at 1 s is correct.
+
+The step a playback tick counts in is the run's own, so
 `PlaybackRate.steps_per_tick` takes a `SimulationStep` as the run does.
 The chart's grid is deliberately not held to it: `RunDefinition` chains a
 column spacing at most once per column, so the rounding cannot accumulate past

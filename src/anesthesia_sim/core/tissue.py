@@ -11,12 +11,15 @@ from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
+from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
+    require_a_capacity,
     require_nonnegative_finite,
     require_positive_finite,
     require_room_for_the_agent_held,
+    require_within_the_capacity,
 )
 
 PERFUSION_FRACTION_UPPER_BOUND = 1.0
@@ -60,47 +63,55 @@ class TissueGroup:
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the tissue's constructor would refuse.
 
-            Each field is stored in one place, its slot, so its check is made
-            here, for the constructor, the setters, `advance` and an assignment
-            made past them alike, as `BreathingCircuit.__setattr__` explains
-            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
-            it, and says why. Nothing is written when a value is refused, and
-            the constructor makes no check of its own.
+            Each field is stored in one place, its slot. So the field's check runs here,
+            and it applies alike to the constructor, the setters, `advance` and any
+            direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
+            this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
+            this method, and its docstring says why. Nothing is written when a value is
+            refused, and the constructor makes no check of its own.
 
-            The tissue's partial pressure is its agent amount divided by its
-            capacity, the volume times the tissue:gas coefficient, so the three
-            are held together: an amount above the capacity is refused, and so
-            is a volume or a coefficient too small for the amount already held,
-            which would put the partial pressure above one atmosphere with the
-            amount's own check never consulted (`PL-544D`, found at review;
-            `require_room_for_the_agent_held`). The constructor writes the
-            amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one.
+            The tissue's partial pressure is its agent amount divided by its capacity, and
+            the capacity is the volume times the tissue:gas partition coefficient. So the
+            three values are checked together. An amount above the capacity is refused.
+            So is a volume or a coefficient too small for the amount the tissue already
+            holds. Such a value would put the partial pressure above one atmosphere
+            without the amount's own check ever running (`PL-544D`, found at review;
+            `require_room_for_the_agent_held`). The constructor writes the amount last,
+            after the volume and the coefficient have passed their own checks. So a factor
+            is checked against the amount only once an amount exists. The volume and the
+            coefficient are also checked against each other. Whichever is written second
+            must leave a capacity that is positive and finite. Two positive finite factors
+            can fail this by underflowing to zero or overflowing to `inf`
+            (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`).
 
-            The perfusion fraction is written once, when the group is built,
-            and a later write is refused (`PL-Z0HN`). The patient checks that
-            its three fractions sum to 1 only when it is built, and a tissue
-            group does not know which patient it belongs to. So a fraction
-            changed afterwards would move the group's blood flow, which is its
-            fraction of the cardiac output, with no check that the flows still
-            add up to the output. The new value is checked first, so a value
-            the constructor would refuse is refused in the constructor's
-            words. A copy and a pickle write the fraction onto a new group,
+            Each refusal names the group as well as the field, as in `"muscle volume_l"`,
+            because all three groups hold every field (`PL-2TZT`).
+
+            The perfusion fraction is written once, when the group is built, and a later
+            write is refused (`PL-Z0HN`). The patient checks that its three fractions sum
+            to 1 only when the patient is built, and a tissue group does not know which
+            patient it belongs to. A fraction changed afterwards would change the group's
+            blood flow, which is its fraction of the cardiac output. Nothing would then
+            check that the flows still add up to the cardiac output. The new value is
+            checked first, so a value the constructor would refuse is refused in the
+            constructor's words. A copy and a pickle write the fraction onto a new group,
             which has none yet, so both still work.
 
             Raises:
-                TypeError: `name` is `name` and `value` is not a `str`, or the
-                    value written to any other field is not an `int` or a
+                TypeError: the field written is `name` and `value` is not a `str`, or
+                    the value written to any other field is not an `int` or a
                     `float` (`require_a_number`).
-                SimulationConfigurationError: the name is blank; the volume, a
-                    partition coefficient or the perfusion fraction is not
-                    positive and finite, or the perfusion fraction is above 1;
-                    the perfusion fraction is written to a group that already
-                    has one; the agent amount is negative or not finite; or
-                    the agent amount would be more than the tissue
-                    holds at a partial pressure of one atmosphere, whichever of
-                    the amount, the volume and the tissue:gas coefficient is
-                    the one written.
+                SimulationConfigurationError: the name is blank. Also raised when
+                    the volume, a partition coefficient or the perfusion fraction
+                    is not positive and finite, or when the perfusion fraction is
+                    above 1. Also raised when the volume and the tissue:gas
+                    coefficient multiply to a capacity that is zero or not finite,
+                    or when the perfusion fraction is written to a group that
+                    already has one. Also raised when the agent amount is negative
+                    or not finite, or would be more than the tissue holds at a
+                    partial pressure of one atmosphere. That last check applies
+                    whichever of the amount, the volume and the tissue:gas
+                    coefficient is written.
             """
 
             if name == "name":
@@ -111,23 +122,44 @@ class TissueGroup:
 
                 if not value.strip():
                     raise SimulationConfigurationError("name must be a nonempty string")
-            elif name == "volume_l":
-                require_positive_finite(name, value)
+
+                super().__setattr__(name, value)
+
+                return
+
+            # All three groups hold every field below, so a refusal names the group as
+            # well as the field (`core/validation.py`, `PL-2TZT`). The constructor writes
+            # the name first, so `self.name` is already set here.
+            field = f"{self.name} {name}"
+            compartment = f"{self.name} tissue"
+
+            if name == "volume_l":
+                require_positive_finite(field, value)
+
+                if hasattr(self, "tissue_gas_partition_coefficient"):
+                    require_a_capacity(
+                        field,
+                        value,
+                        value,
+                        self.tissue_gas_partition_coefficient,
+                        compartment,
+                        "Tissue compartments",
+                    )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         value * self.tissue_gas_partition_coefficient,
                         self.agent_amount_l,
-                        f"{self.name} tissue",
+                        compartment,
                         "Tissue compartments",
                     )
             elif name == "perfusion_fraction":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
 
                 if value > PERFUSION_FRACTION_UPPER_BOUND:
-                    raise SimulationConfigurationError("perfusion_fraction must not exceed 1")
+                    raise SimulationConfigurationError(f"{field} must not exceed 1")
 
                 if hasattr(self, "perfusion_fraction"):
                     raise SimulationConfigurationError(
@@ -138,27 +170,29 @@ class TissueGroup:
                         '"Tissue groups"): build a new patient with the new fractions'
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
             elif name == "tissue_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+                # The constructor, a copy and a pickle write the volume
+                # first, so it is always there to multiply.
+                require_a_capacity(
+                    field, value, self.volume_l, value, compartment, "Tissue compartments"
+                )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         self.volume_l * value,
                         self.agent_amount_l,
-                        f"{self.name} tissue",
+                        compartment,
                         "Tissue compartments",
                     )
             elif name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-
-                if value > self.capacity_l:
-                    raise SimulationConfigurationError(
-                        "agent_amount_l exceeds the tissue capacity for a concentration "
-                        "fraction of 1"
-                    )
+                require_nonnegative_finite(field, value)
+                require_within_the_capacity(
+                    field, value, self.capacity_l, compartment, "Tissue compartments"
+                )
 
             super().__setattr__(name, value)
 
@@ -274,7 +308,7 @@ class TissueGroup:
             SimulationConfigurationError: the flow is negative or not finite.
         """
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        require_nonnegative_finite(f"{self.name} blood_flow_l_min", blood_flow_l_min)
 
         if blood_flow_l_min == 0.0:
             return inf
@@ -307,13 +341,14 @@ class TissueGroup:
     ) -> float:
         """Advance exactly for a constant arterial fraction and blood flow.
 
-        This tissue group's own closed form, and not how a run advances: the
-        arterial fraction a run presents changes continuously, and the step
-        that follows it is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction;
-        `core/exponential_approach.py` is the form the amount is advanced in,
-        exact at zero flow with no branch here; `docs/MODEL.md` § "Tissue
-        uptake and return" is the equation.
+        This method is the tissue group's own closed-form solution. It is not how
+        a run advances. In a run, the arterial fraction changes continuously, and
+        `AgentUptakeSystem.advance()` is the step that follows that change. The
+        package docstring in `core/__init__.py` explains the distinction.
+        `core/exponential_approach.py` holds the form in which the amount is
+        advanced. That form is exact at zero flow, so this method needs no
+        separate branch for it. `docs/MODEL.md` § "Tissue uptake and return"
+        gives the equation.
 
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return
@@ -321,19 +356,24 @@ class TissueGroup:
 
         Raises:
             TypeError: the arterial fraction was not built as a `Fraction`,
-                which is what checks it against 0 to 1
+                which is the type that checks it lies in the range 0 to 1
                 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or `blood_flow_l_min` is negative or not finite.
-                All three are checked before anything changes. Or the amount
-                held is already past the capacity, which only a write past
-                `__setattr__` can have stored: the amount advanced is written
-                through it, at zero flow too, where it is the amount held,
-                unchanged.
+                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
+                (`core/simulation_step.py`, `PL-WP52`), or `blood_flow_l_min` is
+                negative or not finite. These checks run before anything
+                changes. The error is also raised when the amount held is
+                already more than the capacity. Only a write that bypasses
+                `__setattr__` can have stored such an amount. The new amount is
+                always written through `__setattr__`, which refuses an amount
+                past the capacity. That includes zero flow, where the new amount
+                is the amount held, unchanged.
         """
 
-        require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_fraction(
+            f"{self.name} arterial_partial_pressure_fraction", arterial_partial_pressure_fraction
+        )
+        require_at_least_the_smallest_step(f"{self.name} simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l
