@@ -48,7 +48,9 @@ docket claim PL-K7QX --push  # ...publishing it where the remote has the branch,
 docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
 docket yield PL-K7QX         # end this branch's claim without closing the item
 docket arm                   # whether this branch's pull request may be armed: arm,
-                             # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2
+                             # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2,
+                             # and 3 for a hold for the owner's read with no ask recorded
+docket arm --owner-ask       # only the line the owner may be sent: exit 0, or 3 for none
 docket ci-scope --base origin/main   # items or full: whether this branch changed item
                              # files alone, for CI's item-only fast path
 docket branch                # where this branch stands against the default one

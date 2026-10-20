@@ -145,6 +145,17 @@
 # argument past the interpreter's options - and never a file handed to that
 # script to read (`PL-6X0C`).
 #
+# **`bin/docket arm` is refused into any pipe, a separate rule** (`PL-TLPH`).
+# It is not a gate, and its status is not what a pipe loses there: a filter
+# drops the lines that say what to do. On `#1612` and `#1676` a session ran
+# `bin/docket arm 2>&1 | head -2`, missed the line saying to send the owner
+# nothing, and sent a bare read ask. Listing it as a gate would not have helped,
+# since the remedy above keeps the status and still cuts the output. So any
+# pipe after it is refused, directly or around a group, with or without
+# `pipefail`, and the remedy is to run it alone. A copy written to a file and
+# read back short is a known gap; `.claude/hooks/owner_ask_guard.py` refuses
+# the ask that such a read would send.
+#
 # **A dry run is no gate run** (`PL-RC4S`). `make -n check` - `-n` spelled
 # `--just-print`, `--dry-run` or `--recon` too - prints each recipe and runs
 # none, so a pipe after it loses no status a gate produced, and a session
@@ -553,6 +564,51 @@ def leaves(segment):
             return closes
     return None
 
+
+def runs_arm(segment):
+    """True where this segment runs `bin/docket arm`, read as `gate` reads a docket gate (`PL-TLPH`)."""
+    rest = strip_prefixes(segment)
+    found = shell_split.invocation(rest) if rest else None
+    if found is None or found[0] != "docket":
+        return False
+    return [word for word in rest[found[1]:] if not word.startswith("-")][:1] == ["arm"]
+
+
+def output_piped(index):
+    """Whether the output of segment `index` goes into a pipe, itself or through a group around it."""
+    if separators[index] == "|":
+        return True
+    return any(end is not None and separators[end] == "|" for end, _ in inside[index])
+
+
+# `bin/docket arm` is refused into any pipe, `pipefail` or not (`PL-TLPH`). Its
+# exit status is not what is lost: a filter drops the lines that say what to
+# do. On #1612 and #1676 a session read it through `head` and missed the line
+# saying to send the owner nothing.
+ARM_TRUNCATED = (
+    "This command pipes the output of `bin/docket arm` into another command, which "
+    "can drop the lines that say what to do. On #1612 and #1676 a session ran "
+    "`bin/docket arm 2>&1 | head -2`, missed the line saying to send the owner "
+    "nothing, and sent the owner a bare read ask (PL-TLPH). `set -o pipefail` does "
+    "not help here, because the status is not what is lost.\n\n"
+    "Run it on its own and read every line it prints. Its output is a few lines:\n\n"
+    "    bin/docket arm\n\n"
+    "To ask only what may be sent to the owner, `bin/docket arm --owner-ask` prints "
+    "one line and exits 0 when an ask is recorded, or 3 when nothing may be sent."
+)
+if any(runs_arm(segment) and output_piped(index) for index, segment in enumerate(segments)):
+    sys.stdout.write(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": ARM_TRUNCATED,
+                }
+            }
+        )
+    )
+    sys.exit(0)
 
 offender = swallowed_by = None
 for index, segment in enumerate(segments):
