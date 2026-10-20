@@ -1,7 +1,11 @@
 ---
 id: PL-HNRP
 title: Anthropic's page on API credits for Max plans lists Claude Code as not covered, yet the headless worker runs claude -p on an API key and the Console's credit fell by the run's cost; find out whether the headless runner's use is covered before relying on it
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
+touches: tools/headless_worker.py
 added: 2026-10-20
 ---
 
@@ -14,3 +18,11 @@ added: 2026-10-20
 **Next step.** Read the program terms. If they do not settle it, the project owner asks Anthropic support. If the use is not covered, the runner could call the Agent SDK instead, which the page lists as covered.
 
 **2026-10-20:** the project owner agreed to ask Anthropic support. Suggested wording: "Does the monthly API credit included with Max 20x cover running `claude -p` (Claude Code in print mode) with a Console API key from the linked organization?" Record the answer here.
+
+**Done when.** The answer from the program terms or from Anthropic support is recorded here with its date. If the use is covered, this item closes. If it is not, the runner is moved to the Agent SDK under a new item.
+
+**Decision needed.** Whether the headless runner keeps calling `claude -p` on the Console API key, or moves to the Claude Agent SDK, which the page lists as covered. It turns on support's answer.
+
+**Recommended:** keep `claude -p` until support answers, and start no new runner work that depends on the credit in the meantime. Move to the Agent SDK only if support says the use is not covered.
+
+**Generator check.** One-off. An external terms question, not a misread fact in the tree.
