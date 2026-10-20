@@ -232,6 +232,26 @@ def require_canonical_state(state: object) -> None:
         )
 
 
+def _hold_as_exact_floats(record: object, fields: tuple[str, ...]) -> None:
+    """Replace each named field of a frozen settings record with the exact `float` it equals.
+
+    Both propagator caches key on a settings record by value. That is safe only if two
+    equal records build the same propagator bit for bit. A `numpy.float64` or another
+    `float` subclass compares and hashes equal to the plain `float`. But CPython's `sum`
+    adds values of exact type `float` with Neumaier compensation, and adds a subclass
+    without it. So the matrix exponential built from a subclass differed in 39 of its 81
+    entries at 7 s (`PL-5BD7`, measured 2026-10-05). An `int` is stored as the `float` it
+    equals, for the same reason. Each field has passed `require_positive_finite`, so it
+    is an `int` or a `float` within the range a `float` can represent, and `float()`
+    changes no value. The fields that hold the checked flow and concentration types are
+    not passed here. Each of those fields has the same type in every record, so it cannot
+    be stored in two ways.
+    """
+
+    for field in fields:
+        object.__setattr__(record, field, float(getattr(record, field)))
+
+
 @dataclass(frozen=True, slots=True)
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
@@ -258,6 +278,9 @@ class TissueGroupEquationSettings:
         require_positive_finite(
             f"{self.name} tissue_blood_partition_coefficient",
             self.tissue_blood_partition_coefficient,
+        )
+        _hold_as_exact_floats(
+            self, ("volume_l", "blood_flow_l_min", "tissue_blood_partition_coefficient")
         )
 
     @property
@@ -374,6 +397,11 @@ class UptakeEquationSettings:
     tissues: tuple[TissueGroupEquationSettings, ...]
 
     def __post_init__(self) -> None:
+        # Store `tissues` as a tuple, and the fields `_hold_as_exact_floats` is given as
+        # plain floats, whatever sequence and float subclass the record was built from.
+        # Then two equal records build the same propagator bit for bit, and every record
+        # can be a cache key (`PL-5BD7`).
+        object.__setattr__(self, "tissues", tuple(self.tissues))
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         require_positive_finite("alveolar_volume_l", self.alveolar_volume_l)
         require_positive_finite("venous_volume_l", self.venous_volume_l)
@@ -394,6 +422,15 @@ class UptakeEquationSettings:
             "delivered_concentration_percent",
             self.delivered_concentration_percent,
             self.max_delivered_concentration_percent,
+        )
+        _hold_as_exact_floats(
+            self,
+            (
+                "circuit_volume_l",
+                "alveolar_volume_l",
+                "venous_volume_l",
+                "blood_gas_partition_coefficient",
+            ),
         )
 
         if len(self.tissues) != TISSUE_GROUP_COUNT:

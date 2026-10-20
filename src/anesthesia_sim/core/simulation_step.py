@@ -1,19 +1,22 @@
 """The step a run is taken at: the range the coupled system supports, and a
 type that cannot hold a step outside it.
 
-A run's step is one fact - the simulated seconds each call to
-`AgentUptakeSystem.advance()` moves - and it used to be a bare `float` checked
-by hand at each entry point that took one, so an entry point the check had not
-reached took a step nothing had checked, and each was found as a defect of its
-own (`PL-0GJC` counts them). `SimulationStep` checks it once, when the step is
-chosen, and a function that takes one says so in its signature, where
+A run's step is one fact: the simulated seconds that each call to
+`AgentUptakeSystem.advance()` moves. It used to be a bare `float`, checked by hand
+at each entry point that took one. An entry point that the check had not reached
+then took a step that nothing had checked, and each such entry point was found as
+a separate defect (`PL-0GJC` counts them). `SimulationStep` checks the step once,
+when it is chosen. A function that takes one says so in its signature, where
 `mypy --strict` refuses a bare `float`.
 
-**It is the run's step, not a compartment's.** The ceiling is how long the
-coupled system's settings are held constant for, which is a property of the
-step the whole system takes, so a compartment stepped on its own takes a plain
-`float` and checks only that it is positive and finite. Whether a
-compartment's own step should keep the floor is `PL-WP52`.
+**It is the run's step, not a compartment's.** The supported range has a ceiling,
+`MAXIMUM_SIMULATION_STEP_S`, and a floor, `MINIMUM_SIMULATION_STEP_S`. The ceiling
+is how long the coupled system holds its settings constant, so it is a property of
+the step that the whole system takes. A compartment stepped on its own therefore
+takes a plain `float`, and a step longer than the ceiling is correct for it. The
+floor is different. Rounding error grows as the step shrinks, in a compartment
+stepped alone just as in a run. So each compartment's own `advance` refuses a step
+below the floor, through `require_at_least_the_smallest_step` (`PL-WP52`).
 
 **Why a `float` subclass rather than either neighbour in `core/`.** A
 `NewType`, which `concentration.py` keeps for `MacMultiple` alone, is a
@@ -28,13 +31,14 @@ guarantee by mistake.
 
 **What the type cannot reach, and the check that does.** `mypy` reads `src/`
 but not `tests/`, and it passes a value typed `Any`, so a bare `float` can
-still arrive at runtime. Each of the run's entry points - `SimulationState`,
-at every write to its step field (`PL-8W1W`), `AgentUptakeSystem.advance()`
-and `PlaybackRate.steps_per_tick()` - calls `require_simulation_step` first,
-which refuses anything that is not a `SimulationStep` as the programming
-error it is, and names a value built as another checked quantity as the
-swapped argument it is rather than prescribing a rebuild from it (`PL-848D`).
-Every function behind them takes the step as checked.
+still arrive at runtime. Each of the run's entry points calls
+`require_simulation_step` first. The entry points are `SimulationState`, at every
+write to its step field (`PL-8W1W`), `AgentUptakeSystem.advance()` and
+`PlaybackRate.steps_per_tick()`. `require_simulation_step` refuses anything that
+is not a `SimulationStep` as a programming error. When the value was built as a
+different checked quantity, it names the value as a swapped argument rather than
+telling the caller to rebuild a step from it (`PL-848D`). Every function behind
+these entry points takes the step as already checked.
 """
 
 from __future__ import annotations
@@ -109,7 +113,9 @@ from anesthesia_sim.core.validation import require_positive_finite
 # tolerance the code no longer held, with make check passing.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
-# The smallest simulation step `AgentUptakeSystem.advance()` accepts (PL-YZ17).
+# This is the smallest simulation step that `AgentUptakeSystem.advance()` accepts
+# (PL-YZ17). It is also the smallest step that a compartment stepped on its own
+# accepts (PL-WP52).
 #
 # Unlike the ceiling above, this bound is numerical. The exact step has no
 # truncation error at any step size, so what a finer step costs is rounding:
@@ -123,12 +129,12 @@ MAXIMUM_SIMULATION_STEP_S = 0.1
 # step is the one at which the answer "becomes wrong", and this constant is
 # declared rather than derived.
 #
-# It is declared at the finest step the solution has been shown to be the
-# shipped one at: the bottom of the step sweep PL-X9KD took. A test beside the
-# step-refinement gate in tests/reference/test_sevo_patient.py drives it, and
-# pins this constant to the value its figures were measured at. Nothing runs
-# finer: apart from the tests of this floor itself, the finest step any test
-# takes is 0.02304 s.
+# It is declared at the finest step at which the solution has been shown to match
+# the shipped one. That step is the bottom of the step sweep that PL-X9KD took. A
+# test beside the step-refinement gate in tests/reference/test_sevo_patient.py
+# drives the gate at this step, and pins this constant to the value its figures
+# were measured at. Nothing runs finer: apart from the tests of this floor itself,
+# the finest step any test takes is 0.02304 s.
 #
 # It also keeps the run's own arithmetic exact. At this step the supported run
 # length is 86 400 000 steps, well inside the 2**53 below which a float holds
@@ -137,28 +143,67 @@ MAXIMUM_SIMULATION_STEP_S = 0.1
 # run length divided by the step overflows, which `maximum_step_count` met as
 # an `OverflowError` from outside the simulator's own exceptions.
 #
+# A compartment stepped on its own shows the same growth. This was measured on
+# 2026-10-19 over 10 000 steps of each of three compartments: a tissue group (time
+# constant 480 s), the venous pool (7.8 s) and the breathing circuit (60 s). The
+# change in each compartment was wrong by at most 3e-13 of its own size at 1 ms,
+# 3e-11 at 1 us and 3e-5 at 1e-10 s. At 1e-14 s it was 4% wrong for the pool and
+# the circuit. The tissue did not move at all, so its whole change was lost
+# (PL-WP52). The floor therefore applies to each compartment's own `advance` too,
+# but the ceiling does not.
+#
 # Lowering it is a measurement rather than an edit: drive the gate at the new
 # floor and re-measure the figures above. docs/MODEL.md "Supported simulation
 # step" carries the measurement in full.
 MINIMUM_SIMULATION_STEP_S = 1e-3
 
 
+def require_at_least_the_smallest_step(name: str, simulation_step_s: float) -> None:
+    """Require a positive finite step no shorter than `MINIMUM_SIMULATION_STEP_S`.
+
+    This function checks the floor and not the ceiling,
+    `MAXIMUM_SIMULATION_STEP_S`. A compartment stepped on its own calls it. Rounding
+    error grows as the compartment's step shrinks, but the compartment may take a
+    step longer than the run's ceiling (`PL-WP52`).
+    `require_supported_simulation_step` calls it too, so the run and the
+    compartments refuse a step below the floor with the same message. `name` is the
+    step's name. Where several objects can raise the error, `name` starts with the
+    step's owner, as `core/validation.py` says of `name`.
+
+    Raises:
+        TypeError: the step is not an `int` or a `float`, or is a `bool`, as
+            `require_a_number` says.
+        SimulationConfigurationError: the step is not positive and finite, is
+            an `int` outside the range a `float` holds, or is shorter than
+            `MINIMUM_SIMULATION_STEP_S`.
+    """
+
+    require_positive_finite(name, simulation_step_s)
+
+    if simulation_step_s < MINIMUM_SIMULATION_STEP_S:
+        raise SimulationConfigurationError(
+            f"{name} of {simulation_step_s} s is shorter than the "
+            f"smallest supported step of {MINIMUM_SIMULATION_STEP_S} s, below which "
+            "rounding is a growing share of what each step changes "
+            '(docs/MODEL.md, "Supported simulation step")'
+        )
+
+
 def require_supported_simulation_step(simulation_step_s: float) -> None:
     """Require a step inside the interval the coupled system is supported over.
 
-    The guard belongs to the coupled system rather than to a compartment, and
-    for a different reason at each end. The ceiling is how long settings are
-    held constant for, which is a property of the step the whole system takes.
-    The floor is where the solution has been verified, and a compartment is
-    stepped at a run's step only by `AgentUptakeSystem.advance()`, which takes
-    a `SimulationStep` and so a step this has already checked.
+    The ceiling belongs to the coupled system rather than to a compartment,
+    because it is how long settings are held constant for, which is a property
+    of the step the whole system takes. The floor is where the solution has
+    been verified. It is checked by `require_at_least_the_smallest_step`, which
+    each compartment's own `advance` also calls (`PL-WP52`).
 
-    The step is required to be a number first, through
-    `require_positive_finite` (`core/validation.py`), which refuses a `bool`,
-    a `Decimal` or a string with `require_a_number`'s `TypeError` and an
-    `int` past the float range by name (`PL-3800`): until then
-    `SimulationStep(True)` was refused as a step of 1 s, `Decimal('0.05')`
-    was converted and held as a step, and `SimulationStep(10**400)` escaped as
+    The step must first be a number. `require_positive_finite`
+    (`core/validation.py`) checks this. It refuses a `bool`, a `Decimal` or a
+    string with `require_a_number`'s `TypeError`, and it refuses an `int` past
+    the float range by name (`PL-3800`). Before that change,
+    `SimulationStep(True)` was refused as a step of 1 s, `Decimal('0.05')` was
+    converted and held as a step, and `SimulationStep(10**400)` escaped as
     `OverflowError` from `math.isfinite`, outside the simulator's own
     exceptions (`PL-21V4`).
 
@@ -174,15 +219,7 @@ def require_supported_simulation_step(simulation_step_s: float) -> None:
             run it already has.
     """
 
-    require_positive_finite("simulation_step_s", simulation_step_s)
-
-    if simulation_step_s < MINIMUM_SIMULATION_STEP_S:
-        raise SimulationConfigurationError(
-            f"simulation_step_s of {simulation_step_s} s is shorter than the "
-            f"smallest supported step of {MINIMUM_SIMULATION_STEP_S} s, below which "
-            "rounding is a growing share of what each step changes "
-            '(docs/MODEL.md, "Supported simulation step")'
-        )
+    require_at_least_the_smallest_step("simulation_step_s", simulation_step_s)
 
     if simulation_step_s > MAXIMUM_SIMULATION_STEP_S:
         raise SimulationConfigurationError(

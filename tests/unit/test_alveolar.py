@@ -1,6 +1,7 @@
 import copy
 import json
 import pickle
+import re
 from dataclasses import astuple, replace
 from importlib.resources import files
 from math import inf, nan
@@ -25,7 +26,10 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 def test_rejects_agent_amount_above_alveolar_capacity() -> None:
     with pytest.raises(
         SimulationConfigurationError,
-        match="^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$",
+        match=(
+            r"^alveolar agent_amount_l of 2.6 L is more than the 2.5 L the alveolar compartment "
+            r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+        ),
     ):
         AlveolarCompartment(agent_amount_l=2.6)
 
@@ -49,7 +53,11 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     held = alveoli.agent_amount_l
     past_capacity = alveoli.gas_volume_l * 1.0000001
-    refused = "^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$"
+    refused = (
+        rf"^alveolar agent_amount_l of {re.escape(repr(past_capacity))} L is more than the "
+        r"2.5 L the alveolar compartment holds at a partial pressure of one atmosphere "
+        r'\(docs/MODEL.md, "Gas compartments"\)$'
+    )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         alveoli.agent_amount_l = past_capacity
@@ -175,7 +183,10 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
 
     alveoli = AlveolarCompartment()
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
-    refused = "^agent_amount_l exceeds the alveolar capacity for a concentration fraction of 1$"
+    refused = (
+        r"^alveolar agent_amount_l of 0.625 L is more than the 0.5 L the alveolar compartment "
+        r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+    )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         replace(alveoli, gas_volume_l=0.5)

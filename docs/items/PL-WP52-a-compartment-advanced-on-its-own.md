@@ -3,12 +3,15 @@ id: PL-WP52
 title: A compartment advanced on its own (BreathingCircuit.advance_fresh_gas, TissueGroup.advance, the blood compartment's advance) accepts any positive finite step, so it takes steps below MINIMUM_SIMULATION_STEP_S, where rounding is a growing share of what a step changes (measured on the coupled system, PL-YZ17); only AgentUptakeSystem.advance refuses them, and whether a compartment should too is undecided
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/simulation_step.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_circuit.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-19
+pr: 1676
+verify: grep -q 'def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone' tests/unit/test_tissue.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone' tests/unit/test_blood.py && grep -q 'def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone' tests/unit/test_circuit.py
 payoff: a compartment stepped on its own either refuses a step below the floor by name or is shown by measurement not to need one, so a caller stepping it finely cannot be handed a plausible number nothing checked
 not-delegable: the item ends in one of two states chosen on a measurement - a floor each compartment refuses below, with a test per compartment, or the measured error against step recorded with why none is needed - and a command written before the measurement could pin only the state chosen in advance; its touches reach src/anesthesia_sim/core besides, which delegation may never modify
 ---
@@ -74,3 +77,40 @@ type beside `SimulationStep`, which is the larger change.
 compartment pinning it, or this brief records the measured error against step
 for a compartment alone and why it needs no floor; `docs/MODEL.md` §
 "Supported simulation step" says which.
+
+**Checked 2026-10-19:** still real on `08f0f825`. Each compartment took a
+1e-14 s step without error. `exponential_approach` now uses `expm1`, so one
+step of a tissue no longer rounds to nothing, but the error still grows as the
+step shrinks once steps accumulate.
+
+**Measured 2026-10-19** with 10 000 steps of each compartment alone, each held
+at a fraction of 0.01 and stepped toward 0.02. The tissue group was built as
+`tests/unit/test_tissue.py` builds one, at 1 L/min (time constant 480 s). The
+venous pool was built as `tests/unit/test_blood.py` builds one, at 5 L/min
+(7.8 s). The circuit was 6 L at 6 L/min (60 s). The error is in what each
+compartment changed by, as a share of the exact change computed with `expm1`
+over the whole interval:
+
+| Step | Tissue | Venous pool | Circuit |
+| --- | --- | --- | --- |
+| 0.1 s | 3.4e-15 | 1.6e-14 | 1.4e-15 |
+| 1 ms | 2.7e-13 | 3.2e-15 | 1.5e-14 |
+| 1 µs | 2.5e-11 | 8.4e-12 | 8.9e-13 |
+| 1e-10 s | 3.3e-5 | 1.4e-6 | 3.3e-5 |
+| 1e-14 s | 1.0 (no change at all) | 3.9e-2 | 4.1e-2 |
+
+A compartment alone shares the coupled system's growth, so the decision this
+brief deferred follows from the measurement. Each compartment's own `advance`
+now refuses a step below the floor. It does so through one new guard,
+`require_at_least_the_smallest_step` in `core/simulation_step.py`, which
+`require_supported_simulation_step` also calls, so the floor and its message
+have one home. A floor check was chosen over a floor-only type. A type would
+need `SimulationStep` to become its subclass so the run could pass one to a
+compartment, and the floor check refuses the same steps with nothing else
+changed. `docs/MODEL.md` § "Supported simulation step" records the table and
+the decision.
+
+**Run against the code before the fix:** with `src/` stashed, `pytest
+tests/unit/test_tissue.py tests/unit/test_blood.py tests/unit/test_circuit.py
+-k below_the_floor` gave 12 failed, each `Failed: DID NOT RAISE
+SimulationConfigurationError`.

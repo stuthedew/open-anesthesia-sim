@@ -125,6 +125,25 @@ class CheckedQuantity:
 
     __slots__ = ()
 
+    def __reduce__(self) -> tuple[type[CheckedQuantity], tuple[float | int]]:
+        """Rebuild the value through its own type's constructor, at every pickle protocol.
+
+        At protocols 0 and 1, a `float` or `int` subclass is pickled through
+        `copyreg._reduce_ex`. Without this method, loading it calls `float.__new__` or
+        `int.__new__` directly, so the type's own `__new__`, which runs the range check,
+        never runs. A hand-edited protocol-0 pickle loaded a `Fraction` of 1.5 and a
+        `StepCount` of -5 (`PL-5D1Z`, measured 2026-10-05). Protocol 2 and later,
+        `copy.copy` and `copy.deepcopy` already called the type itself. This method
+        makes every protocol call it, so a value edited outside its range is refused on
+        load with the constructor's own exception. A `Fraction` or `Percent` is rebuilt
+        under its type's default `name`, because neither stores the name it was built
+        with.
+        """
+
+        number: float | int = int(self) if isinstance(self, int) else float(self)  # type: ignore[arg-type]
+
+        return (type(self), (number,))
+
 
 def shown(value: object) -> str:
     """A value as a refusal names it: its `repr`, or an `int` too long to print by how long it is.

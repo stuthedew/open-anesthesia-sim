@@ -3,12 +3,14 @@ id: PL-5BD7
 title: UptakeEquationSettings keeps whatever numeric and container types it is given, so as the propagator caches' key two equal records can form different bits (a float subclass or numpy scalar sums without CPython's compensation) and a list of tissues is unhashable; nothing in src/ builds either today (found reviewing #1359)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-05 triage pass
 added: 2026-10-04
+closed: 2026-10-19
+pr: 1676
 payoff: a run is served the same propagator however its equal settings were built, so identical inputs give identical results bit for bit and no accepted settings record breaks the cache
 verify: grep -q 'def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them' tests/unit/test_governing_equations.py
 ---
@@ -82,3 +84,13 @@ concentration types are held as they are, since each is one type in every
 record. A test in `tests/unit/test_governing_equations.py` named
 `test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them`
 pins it for an `np.float64` volume and a list of tissues.
+
+**Checked 2026-10-19, and fixed on `claude/core-guard-defects-u39w8s`.** Still
+real on `main` at `6fd84bd5`: an `np.float64` volume was held as given and a
+list of tissues could not be hashed. Both records now normalize in
+`__post_init__`, after their checks: the plain-float fields are held as exact
+`float`s by `_hold_as_exact_floats`, and the tissues as a `tuple`. The test
+builds every plain-float field from `numpy.float64` and the tissues as a list,
+and compares the propagators at 0.84, 7 and 600 s with the plain record's.
+
+**Run against the code before the fix, 2026-10-19:** with `core/governing_equations.py` taken from `origin/main`, `uv run pytest -q -p no:randomly tests/unit/test_governing_equations.py -k bit_for_bit` failed with `AssertionError: assert <class 'list'> is tuple`.

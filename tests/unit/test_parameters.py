@@ -425,6 +425,44 @@ def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
     assert replace(sevoflurane, mac_percent=Percent(2.0)).mac_percent == 2.0
 
 
+def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() -> None:
+    """`PL-HPKK`: the record, and not only the loader, refuses a zero maximum and a MAC above it.
+
+    The loader's `PositivePercent` and `_mac_percent_must_not_exceed_vaporizer_max`
+    refuse both for a file. Until `PL-HPKK`, a record built by `dataclasses.replace`
+    was checked by neither. A run opens at 1 MAC, so a MAC above the agent's own
+    vaporizer maximum would open the run at a dial setting the vaporizer cannot
+    deliver. Each record below sets both values itself, so the expected refusal does
+    not depend on the shipped file. A MAC equal to the maximum is accepted, as the
+    loader accepts it.
+    """
+
+    sevoflurane = load_sevoflurane_parameters()
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^max_delivered_concentration_percent must be positive and finite$",
+    ):
+        replace(sevoflurane, max_delivered_concentration_percent=Percent(0.0))
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"vaporizer could not deliver 1 MAC, which is where a run opens$"
+        ),
+    ):
+        replace(
+            sevoflurane, max_delivered_concentration_percent=Percent(8.0), mac_percent=Percent(9.0)
+        )
+
+    at_the_maximum = replace(
+        sevoflurane, max_delivered_concentration_percent=Percent(2.5), mac_percent=Percent(2.5)
+    )
+
+    assert at_the_maximum.mac_percent == at_the_maximum.max_delivered_concentration_percent == 2.5
+
+
 def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> None:
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 8.0

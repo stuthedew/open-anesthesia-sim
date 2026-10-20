@@ -8,13 +8,15 @@ from math import inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
+from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
+    require_a_capacity,
     require_nonnegative_finite,
     require_positive_finite,
     require_room_for_the_agent_held,
+    require_within_the_capacity,
 )
 
 
@@ -51,41 +53,61 @@ class VenousBloodCompartment:
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the pool's constructor would refuse.
 
-            Each field is stored in one place, its slot, so its check is made
-            here, for the constructor, the setters, `advance` and an assignment
-            made past them alike, as `BreathingCircuit.__setattr__` explains
-            (`PL-LBQY`, `PL-19Y0`); `restore_state` is the one write made past
-            it, and says why. Nothing is written when a value is refused, and
-            the constructor makes no check of its own. Until `PL-19Y0` the
-            constructor was the only check, so an amount past the capacity
-            written onto a built pool was stored and read back as a fraction of
-            1.0000001.
+            Each field is stored in one place, its slot. So the field's check runs here,
+            and it applies alike to the constructor, the setters, `advance` and any
+            direct assignment that bypasses them. `BreathingCircuit.__setattr__` explains
+            this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
+            this method, and its docstring says why. Nothing is written when a value is
+            refused, and the constructor makes no check of its own. Until `PL-19Y0`, the
+            constructor made the only check. So an agent amount larger than the capacity,
+            written onto a pool already built, was stored, and the pool then reported a
+            partial pressure fraction of 1.0000001.
 
-            The pool's partial pressure is its agent amount divided by its
-            capacity, the volume times the blood:gas coefficient, so the three
-            are held together: an amount above the capacity is refused, and so
-            is a volume or a coefficient too small for the amount already held
-            (`require_room_for_the_agent_held`). The constructor writes the
-            amount last, after both factors have passed their own checks, so a
-            factor is held to the amount only once there is one.
+            The pool's partial pressure is its agent amount divided by its capacity, and
+            the capacity is the volume times the blood:gas partition coefficient. So the
+            three values are checked together. An amount above the capacity is refused.
+            So is a volume or a coefficient too small for the amount the pool already
+            holds (`require_room_for_the_agent_held`). The constructor writes the amount
+            last, after the volume and the coefficient have passed their own checks. So
+            a factor is checked against the amount only once an amount exists. The volume
+            and the coefficient are also checked against each other, as a tissue group's
+            are. Whichever is written second must leave a capacity that is positive and
+            finite (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`). Each refusal names the
+            pool as well as the field, as in `"venous volume_l"` (`PL-2TZT`).
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`
                     (`require_a_number`).
                 SimulationConfigurationError: the volume or the partition
-                    coefficient is not positive and finite; the agent amount
-                    is negative or not finite; or the agent
-                    amount would be more than the pool holds at a partial
-                    pressure of one atmosphere, whichever of the amount, the
-                    volume and the coefficient is the one written.
+                    coefficient is not positive and finite, or the two multiply
+                    to a capacity that is zero or not finite. Also raised when
+                    the agent amount is negative or not finite, or would be more
+                    than the pool holds at a partial pressure of one atmosphere.
+                    That last check applies whichever of the amount, the volume
+                    and the coefficient is written.
             """
 
+            # Every compartment holds an agent amount, and the tissue groups also hold a
+            # volume and a blood:gas coefficient. So a refusal names the pool as well as
+            # the field (`core/validation.py`, `PL-2TZT`).
+            field = f"venous {name}"
+
             if name == "volume_l":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+
+                if hasattr(self, "blood_gas_partition_coefficient"):
+                    require_a_capacity(
+                        field,
+                        value,
+                        value,
+                        self.blood_gas_partition_coefficient,
+                        "venous blood",
+                        "Blood compartments",
+                    )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         value * self.blood_gas_partition_coefficient,
                         self.agent_amount_l,
@@ -93,11 +115,17 @@ class VenousBloodCompartment:
                         "Blood compartments",
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(name, value)
+                require_positive_finite(field, value)
+
+                # The constructor, a copy and a pickle write the volume
+                # first, so it is always there to multiply.
+                require_a_capacity(
+                    field, value, self.volume_l, value, "venous blood", "Blood compartments"
+                )
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
+                        field,
                         value,
                         self.volume_l * value,
                         self.agent_amount_l,
@@ -105,12 +133,10 @@ class VenousBloodCompartment:
                         "Blood compartments",
                     )
             elif name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-
-                if value > self.capacity_l:
-                    raise SimulationConfigurationError(
-                        "agent_amount_l exceeds venous blood capacity"
-                    )
+                require_nonnegative_finite(field, value)
+                require_within_the_capacity(
+                    field, value, self.capacity_l, "venous blood", "Blood compartments"
+                )
 
             super().__setattr__(name, value)
 
@@ -149,7 +175,7 @@ class VenousBloodCompartment:
             SimulationConfigurationError: the flow is negative or not finite.
         """
 
-        require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
+        require_nonnegative_finite("venous blood_flow_l_min", blood_flow_l_min)
 
         if blood_flow_l_min == 0.0:
             return inf
@@ -177,33 +203,38 @@ class VenousBloodCompartment:
     ) -> float:
         """Mix tissue return into venous blood exactly, for a constant return and flow.
 
-        This pool's own closed form, and not how a run advances: the tissue
-        return a run presents changes continuously as the tissues fill, and
-        the step that follows it is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction;
-        `core/exponential_approach.py` is the form the amount is advanced in,
-        exact at zero flow with no branch here; `docs/MODEL.md` § "Venous
-        blood" is the equation.
+        This method is the venous pool's own closed-form solution. It is not how a
+        run advances. In a run, the tissue return changes continuously as the
+        tissues fill, and `AgentUptakeSystem.advance()` is the step that follows
+        that change. The package docstring in `core/__init__.py` explains the
+        distinction. `core/exponential_approach.py` holds the form in which the
+        amount is advanced. That form is exact at zero flow, so this method needs
+        no separate branch for it. `docs/MODEL.md` § "Venous blood" gives the
+        equation.
 
         Returns the signed change in venous agent amount.
 
         Raises:
             TypeError: the tissue return fraction was not built as a
-                `Fraction`, which is what checks it against 0 to 1
-                (`core/concentration.py`).
+                `Fraction`, which is the type that checks it lies in the range
+                0 to 1 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or `blood_flow_l_min` is negative or not finite.
-                All three are checked before anything changes. Or the amount
-                held is already past the capacity, which only a write past
-                `__setattr__` can have stored: the amount advanced is written
-                through it, at zero flow too, where it is the amount held,
-                unchanged.
+                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
+                (`core/simulation_step.py`, `PL-WP52`), or `blood_flow_l_min` is
+                negative or not finite. These checks run before anything
+                changes. The error is also raised when the amount held is
+                already more than the capacity. Only a write that bypasses
+                `__setattr__` can have stored such an amount. The new amount is
+                always written through `__setattr__`, which refuses an amount
+                past the capacity. That includes zero flow, where the new amount
+                is the amount held, unchanged.
         """
 
         require_fraction(
-            "tissue_return_partial_pressure_fraction", tissue_return_partial_pressure_fraction
+            "venous tissue_return_partial_pressure_fraction",
+            tissue_return_partial_pressure_fraction,
         )
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_at_least_the_smallest_step("venous simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l

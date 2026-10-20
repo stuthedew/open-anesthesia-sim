@@ -16,12 +16,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_positive_finite,
     require_room_for_the_agent_held,
+    require_within_the_capacity,
 )
 
 
@@ -133,13 +133,16 @@ class AlveolarCompartment:
             elif name == "alveolar_ventilation_l_min":
                 require_alveolar_ventilation(value)
             elif name == "agent_amount_l":
-                require_nonnegative_finite(name, value)
-
-                if value > self.gas_volume_l:
-                    raise SimulationConfigurationError(
-                        "agent_amount_l exceeds the alveolar capacity for a concentration "
-                        "fraction of 1"
-                    )
+                # Every compartment holds an agent amount, so the refusal
+                # names this one (`core/validation.py`, `PL-2TZT`).
+                require_nonnegative_finite("alveolar agent_amount_l", value)
+                require_within_the_capacity(
+                    "alveolar agent_amount_l",
+                    value,
+                    self.gas_volume_l,
+                    "alveolar compartment",
+                    "Gas compartments",
+                )
 
             super().__setattr__(name, value)
 

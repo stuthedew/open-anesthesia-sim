@@ -47,6 +47,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -57,6 +58,7 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_positive_finite,
+    require_within_the_capacity,
     require_within_vaporizer_maximum,
 )
 
@@ -449,8 +451,19 @@ class BreathingCircuit:
             elif name == "max_delivered_concentration_percent":
                 require_percent(name, value)
                 require_positive_finite(name, value)
+                # If a maximum written onto a circuit already built is refused, it was
+                # lowered below the dial, so the refusal is worded for the maximum. The
+                # first write comes from a constructor, a copy or a pickle, just after the
+                # dial is written. Its refusal is worded for the dial, and that message
+                # names both values (`PL-XVCV`).
+                rewritten = hasattr(self, "max_delivered_concentration_percent")
                 require_within_vaporizer_maximum(
-                    "delivered_concentration_percent", self.delivered_concentration_percent, value
+                    "max_delivered_concentration_percent"
+                    if rewritten
+                    else "delivered_concentration_percent",
+                    self.delivered_concentration_percent,
+                    value,
+                    maximum_written=rewritten,
                 )
             elif name == "deliverable_fresh_gas_flow_range":
                 _require_a_machine_range(value)
@@ -615,31 +628,44 @@ class BreathingCircuit:
         self.inspired_partial_pressure_fraction = inspired_partial_pressure_fraction
 
     def set_agent_amount(self, agent_amount_l: float) -> None:
-        """Set circuit state using equivalent agent gas amount."""
+        """Set circuit state using equivalent agent gas amount.
 
-        require_nonnegative_finite("agent_amount_l", agent_amount_l)
+        Raises:
+            TypeError: the amount is not an `int` or a `float`.
+            SimulationConfigurationError: the amount is negative or not
+                finite, or is more than the circuit volume, which is what the
+                circuit holds at a partial pressure of one atmosphere.
+        """
 
-        if agent_amount_l > self.circuit_volume_l:
-            raise SimulationConfigurationError("agent_amount_l exceeds circuit capacity")
+        require_nonnegative_finite("circuit agent_amount_l", agent_amount_l)
+        require_within_the_capacity(
+            "circuit agent_amount_l",
+            agent_amount_l,
+            self.circuit_volume_l,
+            "breathing circuit",
+            "Gas compartments",
+        )
 
         self.inspired_partial_pressure_fraction = Fraction(agent_amount_l / self.circuit_volume_l)
 
     def advance_fresh_gas(self, simulation_step_s: float) -> FreshGasExchange:
         """Advance exact circuit wash-in and report external exchange.
 
-        The circuit's own closed form with no patient connected, and not how a
-        run advances: a connected patient adds the ventilation term
-        `docs/MODEL.md` § "Breathing circuit" carries beside this one, and the
-        step that solves both is `AgentUptakeSystem.advance()`. The package
-        docstring in `core/__init__.py` states the distinction, and why zero
-        flow needs no branch here.
+        This method is the circuit's own closed-form solution with no patient
+        connected. It is not how a run advances. A connected patient adds a
+        ventilation term, which `docs/MODEL.md` § "Breathing circuit" gives beside
+        this one, and `AgentUptakeSystem.advance()` is the step that solves both.
+        The package docstring in `core/__init__.py` explains the distinction. It
+        also explains why zero flow needs no separate branch here.
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite. Nothing is changed when it is refused.
+                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
+                (`core/simulation_step.py`, `PL-WP52`). Nothing changes when the
+                step is refused.
         """
 
-        require_positive_finite("simulation_step_s", simulation_step_s)
+        require_at_least_the_smallest_step("circuit simulation_step_s", simulation_step_s)
 
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction
