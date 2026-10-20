@@ -10282,6 +10282,12 @@ class TestAskingTheForgeWhichBranchesAreOpen:
 #: base sits a month earlier, and every read is given `--now` a minute after
 #: `ARM_T0`, so no lease is judged against the clock.
 ARM_BRANCH = "claude/arm-work-q7x2m4"
+#: What a hold for the owner's read with no recorded ask opens with, before the
+#: branch, so that its first line alone says to send the owner nothing (`PL-TLPH`).
+ARM_NO_ASK = (
+    "send the owner nothing about this pull request yet, because no Owner-ask record says "
+    "what to ask. "
+)
 ARM_T0 = "2026-09-01T12:00:00+00:00"
 ARM_NOW = "2026-09-01T12:01:00+00:00"
 
@@ -11242,11 +11248,11 @@ def test_arm_holds_the_gate_brought_in_at_a_path_the_base_does_not_hold(
     root, git = _arm_repo(tmp_path)
     _put(git, root, ARM_GATE, ARM_T0)
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it brings in {ARM_GATE}, the gate itself, at a path the base "
-        "does not hold it at"
+        f"hold - {ARM_NO_ASK}{ARM_BRANCH}: it brings in {ARM_GATE}, the gate itself, "
+        "at a path the base does not hold it at"
     )
     assert out.splitlines()[0].endswith("so its pull request waits on the owner's read")
 
@@ -11353,9 +11359,9 @@ def test_arm_holds_a_simulator_change_until_an_owner_read_record_covers_it(
 
     _record_read(git, "needed - it changes the uptake equation", "2026-09-01T12:03:00+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     first, *rest = capsys.readouterr().out.splitlines()
-    assert first.startswith(f"hold - {ARM_BRANCH}: the Owner-read record on ")
+    assert first.startswith(f"hold - {ARM_NO_ASK}{ARM_BRANCH}: the Owner-read record on ")
     assert first.endswith(
         "asks for the owner's read: it changes the uptake equation, so its pull request "
         "waits on the owner's read"
@@ -11372,7 +11378,7 @@ def test_an_owner_read_record_saying_needed_holds_any_change_and_the_newest_deci
     _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
     _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     out = capsys.readouterr().out
     assert "asks for the owner's read: a rule sessions run under" in out
     assert "simulator path" not in out
@@ -11419,9 +11425,9 @@ def test_a_change_to_the_gate_waits_on_the_owner_only_as_any_change_does(
 
     _record_read(git, "needed - it changes what arms", "2026-09-01T12:02:00+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     out = capsys.readouterr().out
-    assert out.startswith(f"hold - {ARM_BRANCH}: the Owner-read record on ")
+    assert out.startswith(f"hold - {ARM_NO_ASK}{ARM_BRANCH}: the Owner-read record on ")
     assert arming.READ_ASK in out.splitlines()
 
 
@@ -11461,7 +11467,7 @@ def test_a_read_hold_asks_once_no_claim_holds_the_branch(
     closed = _item_document("PL-B1B1", "done")
     _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:40+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     first, *rest = capsys.readouterr().out.splitlines()
     assert first.endswith("so its pull request waits on the owner's read")
     assert arming.READ_ASK in rest
@@ -11553,7 +11559,7 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
     _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
     _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     out = capsys.readouterr().out
     assert arming.READ_ASK in out.splitlines()
     assert arming.ASK_LINE not in out
@@ -11578,14 +11584,14 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
 
     _commit_file(git, root, "CLAUDE.md", "X = 2\n", "2026-09-01T12:00:40+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     lines = capsys.readouterr().out.splitlines()
     assert arming.READ_ASK in lines
     assert arming.ASK_LINE not in lines
 
     _record_ask(git, "none - held by rule", "2026-09-01T12:00:50+00:00")
 
-    assert _arm(root) == 1
+    assert _arm(root) == arming.NO_ASK
     lines = capsys.readouterr().out.splitlines()
     assert arming.READ_ASK in lines
     assert any(
@@ -11623,6 +11629,73 @@ def test_arm_keeps_a_recorded_ask_through_a_merge_of_the_base(
     lines = capsys.readouterr().out.splitlines()
     assert arming.ASK_LINE in lines
     assert arming.READ_ASK not in lines
+
+
+def test_arm_no_ask_hold_leads_with_send_nothing_and_exits_3(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A hold for the owner's read with no ask says so on line 1 and in its exit status.
+
+    On `#1612` and `#1676` a session read `arm` through `head`, missed the
+    line saying to send nothing, and sent the owner a bare read ask
+    (`PL-TLPH`). So the first line leads with it, and the status is 3 rather
+    than the 1 every other hold gives.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root) == arming.NO_ASK == 3
+    first = capsys.readouterr().out.splitlines()[0]
+    assert first.startswith("hold - send the owner nothing about this pull request yet, ")
+
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root) == 1
+    first = capsys.readouterr().out.splitlines()[0]
+    assert first.startswith(f"hold - {ARM_BRANCH}: ")
+    assert "send the owner nothing" not in first
+
+
+def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--owner-ask` prints the recorded ask and exits 0, or says why nothing may go and exits 3.
+
+    It is what `.claude/hooks/owner_ask_guard.py` asks before a thread's reply
+    may ask the owner to read or merge (`PL-TLPH`). A branch that arms, one a
+    claim holds and one with no recorded ask all send nothing.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+
+    assert _arm(root, "--owner-ask") == arming.NO_ASK
+    assert capsys.readouterr().out.startswith(
+        f"send the owner nothing: arm - {ARM_BRANCH} waits on no read from the owner"
+    )
+
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+
+    assert _arm(root, "--owner-ask") == arming.NO_ASK
+    out = capsys.readouterr().out
+    assert out.startswith(f"send the owner nothing: hold - {ARM_NO_ASK}{ARM_BRANCH}: ")
+    assert len(out.splitlines()) == 1
+
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root, "--owner-ask") == 0
+    assert capsys.readouterr().out == (
+        'Which view opens first? Option "Chooser": the learner picks a view each run. '
+        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
+        "every view.\n"
+    )
+
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root, "--owner-ask") == arming.NO_ASK
+    assert capsys.readouterr().out.startswith(
+        f"send the owner nothing: hold - {ARM_BRANCH}: a merge would erase its open claim"
+    )
 
 
 @pytest.mark.parametrize(
@@ -11776,10 +11849,10 @@ def test_arm_holds_a_change_to_an_existing_test_arm_test(
         return
     count = len(held.split(", "))
     tests = "test" if count == 1 else "tests"
-    assert code == 1
+    assert code == arming.NO_ASK
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes or deletes {count} {tests} in {pins} pinning the "
-        f"gate's answers: {held}, so its pull request waits on the owner's read\n"
+        f"hold - {ARM_NO_ASK}{ARM_BRANCH}: it changes or deletes {count} {tests} in {pins} "
+        f"pinning the gate's answers: {held}, so its pull request waits on the owner's read\n"
     )
 
 

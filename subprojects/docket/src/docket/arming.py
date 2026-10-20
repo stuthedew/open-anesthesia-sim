@@ -40,7 +40,10 @@ every later push while a pull request is open.
   does a switch of auto-merge off that no commit records as the session's
   (`AUTO_MERGE`). Once no claim holds it, that hold prints the ask's opening
   line from the session's `Owner-ask` record (`ASK_LINE`), or, with no record,
-  says that nothing goes to the owner until there is one (`READ_ASK`).
+  says that nothing goes to the owner until there is one (`READ_ASK`). With no
+  record it also opens its first line with "send the owner nothing" and exits
+  3 (`NO_ASK`) rather than 1, so that a session reading only the first line,
+  or only the exit status, still learns it (`PL-TLPH`).
   Long docstrings and comments that a simulator change adds, and that no
   `Prose-review` record covers, hold it until the session records close-out
   step 8's review (`PROSE_ASK`), and so does a count that could not be read.
@@ -237,6 +240,14 @@ UNKNOWN = "unknown"
 #: The exit status of each answer. `behind` and `landed` share `hold`'s: all
 #: three say "not now", and the line printed says which.
 EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
+
+#: The exit status of a `hold` that waits on the owner's read while no
+#: `OWNER_ASK` record says what to ask, so that nothing may be sent to the
+#: owner yet. It differs from `hold`'s 1 so that the status alone says so: on
+#: `#1612` and `#1676` a session read `arm` through `head`, missed the line
+#: saying to send nothing, and sent the owner a bare read ask (`PL-TLPH`).
+#: `--owner-ask` exits with it too, whenever nothing may be sent.
+NO_ASK = 3
 
 #: How many paths outside the store, the tooling and the records a `hold`
 #: names before counting the rest.
@@ -809,7 +820,30 @@ class Verdict:
 
     @property
     def code(self) -> int:
-        return EXIT[self.answer]
+        return NO_ASK if self.unasked else EXIT[self.answer]
+
+    @property
+    def asks_owner(self) -> bool:
+        """Whether this is a hold that may go to the owner: one for their read, with no claim.
+
+        A claim keeps the pull request a draft, which nobody is asked to read.
+        """
+        return self.answer == HOLD and self.needs_owner and not self.claims
+
+    @property
+    def unasked(self) -> bool:
+        """Whether it waits on the owner's read and no valid `OWNER_ASK` record says what to ask."""
+        return self.asks_owner and self.ask is None
+
+    @property
+    def sendable(self) -> str | None:
+        """The ask's opening line, where something may be sent to the owner; None otherwise.
+
+        This is what `bin/docket arm --owner-ask` prints, and what
+        `.claude/hooks/owner_ask_guard.py` requires in a reply that asks the
+        owner to read or merge the pull request (`PL-TLPH`).
+        """
+        return self.ask.line if self.asks_owner and self.ask is not None else None
 
     @property
     def unjudged(self) -> bool:
@@ -910,7 +944,15 @@ class Verdict:
                 )
             return (*said, *notes)
         read = ", so its pull request waits on the owner's read" if self.needs_owner else ""
-        said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
+        # The instruction leads the first line, so that a session reading only
+        # that line still sees it (`PL-TLPH`).
+        lead = (
+            f"send the owner nothing about this pull request yet, because no {OWNER_ASK} "
+            "record says what to ask. "
+            if self.unasked
+            else ""
+        )
+        said = [f"hold - {lead}{self.branch}: " + " and ".join(self._holding()) + read]
         if self.unpulled:
             said.append(f"  {self.unpulled}")
         for hold in self.claims:
