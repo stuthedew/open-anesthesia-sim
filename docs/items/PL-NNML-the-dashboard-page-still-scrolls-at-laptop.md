@@ -24,3 +24,5 @@ verify: grep -q 'def test_the_region_and_the_use_disclaimer_stay_in_the_viewport
 **Fix** (2026-10-20). The region now sits above the part of the dashboard that scrolls and the use disclaimer below it, so only the Workspace tabs, the Areas and the case's controls scroll (`SimulationView._build_page`). Making the Areas fill the window with no scrolling at all was the larger alternative. It was not taken, because it needs a decision on what happens when the shipped Workspaces' Area minimums do not fit, which the project owner wants to revisit separately.
 
 **Regression test against the code before the fix.** `uv run pytest -q -p no:randomly tests/integration/test_simulation_view.py -k viewport`, with `simulation_view.py` at `fc94e996`, fails all 9 cases with, for example, `on opening: the disclaimer at PySide6.QtCore.QRect(16, 1484, 1320, 15) is not inside the PySide6.QtCore.QRect(0, 0, 1366, 900) window`. With the fix all 9 pass.
+
+**Decision** (project owner, 2026-10-20, ratified, over shipping v0.6.0 as test-driven and over making the Areas fill the window). The owner chose "Pin, then ship" on the thread's card, so the pin ships in v0.6.0.
