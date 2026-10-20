@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
       - name: cpu
         run: |
           uname -m
@@ -36,3 +38,6 @@ jobs:
         run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part ${{ matrix.part }}
         env:
           PYTHONUNBUFFERED: "1"
+      - name: cpu again, so the log's tail carries it
+        if: always()
+        run: grep -m1 -E 'model name' /proc/cpuinfo || lscpu | grep -E 'Model name' || true
