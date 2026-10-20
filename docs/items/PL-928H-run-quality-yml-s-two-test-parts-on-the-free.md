@@ -3,12 +3,14 @@ id: PL-928H
 title: Run quality.yml's two test parts on the free arm64 runner for pull requests and keep x64 for pushes to main, since arm64 took 284 s against x64's 545 s median for the slower part
 priority: P3
 effort: S
-status: needs-decision
-feature: ci-cost
+status: done
 classes: infra, perf
+feature: ci-cost
 touches: .github/workflows/quality.yml
 added: 2026-10-20
+closed: 2026-10-20
 payoff: a pull request's tests take about 5 minutes on every run instead of about 9 on the 4 in 10 that draw a slow x64 runner
+not-delegable: the end state is the runner GitHub assigns to quality.yml's jobs, which no local command can observe
 ---
 
 **Problem.** `PL-JWBW`'s trial measured `quality.yml`'s two pytest parts on
@@ -48,3 +50,9 @@ the chosen runner, `quality.yml`'s comments that state x64 times are restated,
 and one pull request's run shows both parts on arm64.
 
 **Generator check.** A follow-up to a measured trial, not a defect: no reader misread a fact.
+
+**Decided** (project owner, 2026-10-20, ratified, option A, over moving both
+events to arm64 and over staying on x64). Both parts' `runs-on` now read
+`${{ github.event_name == 'push' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}`,
+and `quality.yml`'s timeout comment restates the arm64 times beside the x64
+ones. The pull request that carries this change is its first run on arm64.
