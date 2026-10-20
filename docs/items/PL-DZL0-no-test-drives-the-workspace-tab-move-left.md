@@ -9,6 +9,7 @@ feature: v0.6.0-done-check
 touches: tests/integration/test_layout_keyboard.py
 added: 2026-10-20
 closed: 2026-10-20
+pr: 1700
 payoff: a regression that drops the keyboard route to moving a Workspace tab or stacking a split fails a test
 verify: grep -q 'Move right' tests/integration/test_layout_keyboard.py && grep -q 'Split stacked' tests/integration/test_layout_keyboard.py
 ---

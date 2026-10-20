@@ -9,6 +9,7 @@ feature: v0.6.0-done-check
 touches: tests/integration/test_layout_safety.py
 added: 2026-10-20
 closed: 2026-10-20
+pr: 1700
 payoff: a layout change that hid the halt reason or broke compare mode fails a test instead of reaching a learner
 verify: grep -q 'def test_a_halted_run_keeps_its_halt_reason_on_screen' tests/integration/test_layout_safety.py && grep -q 'def test_a_branched_case_keeps_both_runs_drawn' tests/integration/test_layout_safety.py
 ---

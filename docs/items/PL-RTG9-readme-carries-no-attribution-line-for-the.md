@@ -9,6 +9,7 @@ feature: interface-areas
 touches: README.md
 added: 2026-09-16
 closed: 2026-10-20
+pr: 1700
 verify: grep -q 'Blender is developed by the Blender Foundation' README.md
 ---
 

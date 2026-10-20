@@ -9,6 +9,7 @@ feature: v0.6.0-done-check
 touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, ROADMAP.md, tests/integration/test_simulation_view.py, tests/integration/test_qt_rendering.py
 added: 2026-10-20
 closed: 2026-10-20
+pr: 1700
 payoff: the use disclaimer and the time, run state, agent and concentrations stay in view at every window height, so no learner reads a value with its context scrolled away
 verify: grep -q 'def test_the_region_and_the_use_disclaimer_stay_in_the_viewport' tests/integration/test_simulation_view.py
 ---
