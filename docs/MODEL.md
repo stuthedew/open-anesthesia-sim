@@ -7190,22 +7190,20 @@ top-level window can exist, each window carries the line in its own frame,
 beside its invariant tier, because a window read alone needs the statement of
 what the tool is for as much as it needs the run's time and agent.
 
-*Present, and not yet always in view* (measured 2026-10-20). v0.6.0's tiled
-layout did not stop the page scrolling. The line is the page's last line. On
-the offscreen platform at 1366 px wide, the page is 1087 px tall in the Default
-Workspace and 1505 px tall in the Induction and Maintenance Workspaces. So at a
-window 700 or 900 px high the line is below the visible part until the reader
-scrolls, and in Induction and Maintenance it is at 1100 px too. `PL-NNML`
-makes the Areas fill the window so that the page stops scrolling. Then the foot
-line is in view at every window height, which is what the colour section below
-means by "always". The unconditional region at the top of the
-same page has the mirror of this gap, and so does the interpretation
-statement, `INTERPRETATION_DISCLAIMER_TEXT`, on its readout heading row. Both
-are in view when the window opens. They partly or wholly leave the view when
-the reader scrolls down to the wash-in chart, or takes a branch, which scrolls
-the page to the concentration chart (`PL-562Z`). Measured on 2026-10-18, that
-scroll at a 1366 by 700 window leaves 27 px of a one-run readout row's 103 px
-in view. Both gaps close when the page stops scrolling (`PL-NNML`).
+*Always in view* (`PL-NNML`, 2026-10-20). The line sits at the foot of the
+window, below the part of the dashboard that scrolls, and the unconditional
+region sits at the top, above that part. Only the Workspace tabs, the Areas and
+the case's controls scroll between them. So neither the window's height nor any
+scrolling takes the line out of view, and neither takes out the region or the
+interpretation statement, `INTERPRETATION_DISCLAIMER_TEXT`, on the region's
+readout heading row. That includes the scroll to the concentration chart that
+taking a branch makes (`PL-562Z`). This is what the colour section below means
+by "always". Before this change the whole page scrolled. Measured offscreen at
+1366 px wide on 2026-10-20, the page was 1087 px tall in the Default Workspace
+and 1505 px in Induction and Maintenance. So at a 700 or 900 px window the line
+was below the visible part, and scrolling down to it moved the region off the
+top. `test_the_region_and_the_use_disclaimer_stay_in_the_viewport` checks both
+at 700, 900 and 1100 px in each shipped Workspace.
 
 **The rule all three rest on is about occlusion, not about window types.** No
 value this list requires may be covered while the application still believes it

@@ -5704,6 +5704,14 @@ project owner. Entry 20's budget names it, so it is cleared by v0.6.0 itself.
 run's transport row and heading into one line to give the chart back what
 layout can, and entry 20 names it too.
 
+**`PL-NNML` joined this list on 2026-10-20, after the freeze, as a `safety`
+entry.** The check of this milestone's Definition of done before its cut found
+that the dashboard page still scrolled. So at laptop window heights the use
+disclaimer was below the fold, and scrolling down to it moved the unconditional
+region off the top. A `safety` finding re-enters whenever it is found, as
+`PL-TBMX` did. It is cleared by v0.6.0 itself, because `docs/MODEL.md` had
+recorded the gap as closing in this milestone.
+
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
 presence of the fix and never for the presence of the fault, so an entry whose
@@ -5713,7 +5721,7 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 17 entries**
+**Cleared by v0.6.0 itself - 18 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
@@ -5725,6 +5733,7 @@ named here, for the reason beat 3 gives.
 - PL-G5SX (M) Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
+- PL-NNML (M) The dashboard page still scrolls at laptop window heights, so the use disclaimer is below the fold and scrolling to it moves the unconditional region out of view
 - PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
 - PL-QLZ5 (M) In compare mode, fold each run's transport row and readout heading line into one line, so the 1366 by 700 laptop reference gives the concentration chart back roughly 70 to 80 px (PL-JG82)
 - PL-TH35 (M) Define the common View contract every app/ view implements so any view is interchangeable in any area
@@ -6173,7 +6182,10 @@ removed, and this file's history before that change holds their text.
    v0.6.0 opens one window, and building the region in that shape now is what
    stops break-out, item 34's unscheduled second half, rebuilding it.
     Where the region sits and what it looks like is entry 20's (`PL-J8K2`),
-    within the budget `PL-84QX` sets.
+    within the budget `PL-84QX` sets. `PL-NNML` joined this entry on
+    2026-10-20, when the check of the Definition of done found the page still
+    scrolling the region and the use disclaimer out of view: the region now
+    sits above the part of the page that scrolls, and the disclaimer below it.
 
 8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
    second of the three properties `docs/interface-provenance.md` records Blender

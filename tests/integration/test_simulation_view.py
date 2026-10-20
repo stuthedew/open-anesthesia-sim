@@ -30,7 +30,7 @@ from dataclasses import replace
 from typing import Any, NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, Qt
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
@@ -396,14 +396,27 @@ def _widest_chord_px(view: SimulationView) -> int:
 
 
 def _page_of(view: SimulationView) -> QWidget:
-    """The scrolling page the dashboard lays itself out on."""
+    """The whole page the dashboard lays itself out on.
+
+    It holds the unconditional region at the top, the scrolling middle and
+    the use disclaimer at the foot (`PL-NNML`).
+    """
+
+    page = view.findChild(QWidget, "dashboardPage")
+    assert page is not None, "the dashboard has no page"
+
+    return page
+
+
+def _middle_of(view: SimulationView) -> tuple[QScrollArea, QWidget]:
+    """The scroll area between the region and the disclaimer, and the middle it scrolls."""
 
     scroll = view.findChild(QScrollArea)
     assert scroll is not None, "the dashboard has no scroll area"
-    page = scroll.widget()
-    assert page is not None, "the scroll area holds no page"
+    middle = scroll.widget()
+    assert middle is not None, "the scroll area holds no middle"
 
-    return page
+    return scroll, middle
 
 
 def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
@@ -4856,13 +4869,13 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    scroll = view.findChild(QScrollArea)
-    assert scroll is not None
+    scroll, middle = _middle_of(view)
     page = _page_of(view)
 
-    assert page.minimumSizeHint().width() <= scroll.viewport().width()
-    assert page.width() == scroll.viewport().width()
+    assert middle.minimumSizeHint().width() <= scroll.viewport().width()
+    assert middle.width() == scroll.viewport().width()
     assert scroll.horizontalScrollBar().maximum() == 0
+    assert page.width() <= view.width()
     assert _concentration(view).minimumSizeHint().width() < 1000
 
     for slider in view.runs[0]._setting_controls[0].sliders:
@@ -5008,8 +5021,9 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
     spare height. From the first frame on, the Areas then have the height that
     they ask for, which is their size hint. Before `PL-PHPZ`, the page laid out
     the Areas from a hint read before the Views had drawn. So their height
-    depended on when the page was laid out. A window taller than the page's own
-    size hint has spare height. Every pixel of that spare height makes the Areas
+    depended on when the page was laid out. A window tall enough that the
+    scrolling middle shows all of itself, and taller still, has spare height.
+    Every pixel of that spare height makes the Areas
     taller, while the region that holds the readouts keeps its height. The test
     measures the readout section inside the region, where the section has been
     since `PL-NWTM`. The setting controls have been a View in an Area since
@@ -5020,7 +5034,7 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
     view = _shown_view(application, controller)
     chart_row = view.layout_container
     readout_section = view.unconditional_region
-    page = _page_of(view)
+    scroll, middle = _middle_of(view)
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
     assert chart_row.height() >= chart_row.minimumSizeHint().height()
@@ -5028,7 +5042,8 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 
     settled_chart_row_height = chart_row.height()
     spare = 400
-    view.resize(_WINDOW_WIDTH_PX, page.sizeHint().height() + spare)
+    hidden = max(0, middle.sizeHint().height() - scroll.viewport().height())
+    view.resize(_WINDOW_WIDTH_PX, view.height() + hidden + spare)
     application.processEvents()
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
@@ -5311,6 +5326,63 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
     view = _shown_view(application, SimulationController())
 
     assert USE_DISCLAIMER_TEXT in view.visible_strings()
+
+
+@pytest.mark.parametrize("height_px", [700, 900, 1100])
+@pytest.mark.parametrize("workspace", ["Default", "Induction", "Maintenance"])
+def test_the_region_and_the_use_disclaimer_stay_in_the_viewport(
+    application: QApplication, workspace: str, height_px: int
+) -> None:
+    """`PL-NNML`: the region and the use disclaimer stay inside the window, however it scrolls.
+
+    The whole page used to scroll. Measured offscreen on 2026-10-20 at
+    1366 px wide, it was 1087 px tall in the Default Workspace and 1505 px in
+    Induction and Maintenance. So at these window heights the disclaimer at
+    its foot was below the visible part, and scrolling down to it moved the
+    region off the top. Now only the part between them scrolls. The test
+    checks the window at opening, scrolled to the end of the scrolling part,
+    and after a branch is taken, which scrolls to the chart. The disclaimer is
+    found by its text, so the test also runs against the code before the fix.
+    """
+
+    from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
+    from anesthesia_sim.layout.shipped import shipped_workspaces
+
+    case = _branched_case()
+    _delete_shown_views(application)
+    view = SimulationView((case.trunk,), case=case, workspaces=shipped_workspaces())
+    _SHOWN_VIEWS.append(view)
+    view.resize(_LAPTOP_WIDTH_PX, height_px)
+    view.show()
+    application.processEvents()
+    view.present(False)
+    view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+    _settle(application)
+    (disclaimer,) = (
+        label for label in view.findChildren(QLabel) if label.text() == USE_DISCLAIMER_TEXT
+    )
+
+    def assert_in_view(step: str) -> None:
+        window = view.rect()
+
+        for name, widget in (("region", view.unconditional_region), ("disclaimer", disclaimer)):
+            placed = QRect(widget.mapTo(view, QPoint(0, 0)), widget.size())
+            assert widget.isVisible(), f"{step}: the {name} is hidden"
+            assert window.contains(placed), (
+                f"{step}: the {name} at {placed} is not inside the {window} window"
+            )
+
+    assert_in_view("on opening")
+
+    bar = view._page_scroll.verticalScrollBar()
+    bar.setValue(bar.maximum())
+    application.processEvents()
+    assert_in_view("scrolled to the end")
+
+    _take_fork(view, 60.0)
+    _settle(application)
+    assert len(view.runs) == 2
+    assert_in_view("after taking a branch")
 
 
 def test_a_value_hidden_from_the_reader_is_not_counted_as_shown(application: QApplication) -> None:
