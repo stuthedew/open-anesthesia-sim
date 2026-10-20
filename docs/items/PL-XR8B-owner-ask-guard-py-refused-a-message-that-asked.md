@@ -9,6 +9,7 @@ feature: review-hold
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-10-20
 closed: 2026-10-20
+pr: 1688
 verify: grep -q 'quote mark is a mention' .claude/hooks/owner_ask_guard.py && grep -q 'PL-XR8B' tests/unit/test_owner_ask_guard.py
 reenters: PL-TLPH
 ---
