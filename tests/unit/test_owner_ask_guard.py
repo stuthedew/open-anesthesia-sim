@@ -277,3 +277,24 @@ def test_a_coordinator_post_is_read_whatever_field_carries_its_text(tmp_path: Pa
     """`post_message`'s schema was not readable when it was wired, so every string field counts."""
     post = {"channel": "project", "message": "Read #1700 and merge it."}
     assert _decision(tmp_path, "", tool=POST, tool_input=post) is not None
+
+
+@pytest.mark.parametrize(
+    "post",
+    [
+        {"channel": "project", "blocks": [{"type": "text", "text": "Read #1700 and merge it."}]},
+        {"channel": "project", "message": {"body": {"markdown": "Read #1700 and merge it."}}},
+    ],
+)
+def test_a_coordinator_post_with_its_text_in_a_nested_field_is_refused(
+    tmp_path: Path, post: dict[str, object]
+) -> None:
+    """A string at any depth of the post's input is read, in a list or in a dictionary.
+
+    Nobody has read `post_message`'s schema, so its text may sit below the top
+    level. The hook read only the top-level strings and let both of these posts
+    through (`PL-646J`).
+    """
+    decision = _decision(tmp_path, "", tool=POST, tool_input=post)
+    assert decision is not None
+    assert "carries no Owner-ask line" in decision["permissionDecisionReason"]

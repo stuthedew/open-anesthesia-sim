@@ -3,12 +3,14 @@ id: PL-8MZ9
 title: The effort trial has put no session in either arm: the cloud environment runs its setup script once and reuses a snapshot, and the snapshot was taken before the trial started
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
-touches: docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh, docs/maintainer.md, docs/apparatus.md
+touches: docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh, docs/maintainer.md, docs/apparatus.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-24
-verify: grep -qE '^\*\*Probe result' docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md && grep -q 'session_id' tools/effort_trial.py
+closed: 2026-10-24
+pr: 1743
 payoff: the effort trial assigns each cloud session its own arm, so its result can say whether high effort causes real problems, and sessions stop opening with a line the owner cannot decode
+verify: grep -qE '^\*\*Probe result' docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md && grep -q 'session_id' tools/effort_trial.py
 ---
 
 **Problem.** The effort trial has put no session in either arm: the cloud environment runs its setup script once and reuses a snapshot, and the snapshot was taken before the trial started
@@ -46,6 +48,28 @@ payoff: the effort trial assigns each cloud session its own arm, so its result c
 
 **The probe.** Branch `claude/pl-8mz9-probe-hook-cap` is never merged. Its first `SessionStart` hook writes `"maxEffortLevel": "medium"` to `.claude/settings.local.json` and logs the time to `/tmp/probe-cap.log`. `medium` is below both the app's `xhigh` and `.claude/settings.json`'s `high`, so it tells a capped turn from an uncapped one in a session the app opened and in one `create_session` started. Each probe session reports `CLAUDE_EFFORT` and the top-level `perTurnEffort` field of every assistant record in its own transcript, `/root/.claude/projects/-home-user-open-anesthesia-sim/*.jsonl`.
 
-**Done when.** The probe's result is recorded here. If the cap applies from the first turn, the `SessionStart` hook assigns the arm, `tests/unit/test_effort_trial.py` covers the hash draw and the reworded lines, `docs/maintainer.md` and `docs/apparatus.md` describe the hook route, and the owner has removed the setup-script line. If it does not, this item records what the first turn costs and the owner's answer.
+**Probe result, 2026-10-24: the cap applies from the first turn, in a session `create_session` started.** Probe session `session_016eGqySSBtxtxrF4322XB3i` (transcript `c2bd5b4d-bd26-512d-9475-541af23fdd0e`) ran on `claude/pl-8mz9-probe-hook-cap`. The hook wrote the cap at 3:09:00.7 pm CDT, and the first request went out 23 seconds later. Every assistant record, the first at 3:09:23.8 pm CDT included, carries `"perTurnEffort": "medium"`, and `CLAUDE_EFFORT` read `medium`. Without the cap, `.claude/settings.json`'s `high` would have applied. So a cap that the `SessionStart` hook writes holds from the first turn.
+
+Two things the fix must handle, both seen in the same probe:
+
+- **The hooks run in parallel.** The digest's effort line, run from `.claude/hooks/docket-digest.sh`, reported "none" even though the probe hook had written the file. So the draw and the line that reports it must be one script that writes first and reports second, not two hook entries.
+- **`digest_line` gives the wrong reason for a value outside the two arms.** It says the file "sets no maxEffortLevel" whenever the value is not `high` or `xhigh`, including when the file sets `medium`.
+
+**Probe result in a session opened from the app, 2026-10-24: the cap applies from the first turn there too.** The app passes `--effort xhigh` on Claude Code's command line. The owner opened probe session `session_01VDYJtx5U5qqed37FQZtXwF` from the app on the probe branch, with the picker at `xhigh`. The hook wrote the cap at 3:28:43.6 pm CDT. The session's first and only assistant record, at 3:29:07.3 pm CDT, carries `"perTurnEffort": "medium"`, and `CLAUDE_EFFORT` read `medium`. Its digest again reported "none" although the file held the cap, which is the parallel-hook race below.
+
+**Built, 2026-10-24, on `claude/pl-8mz9-hook-draws-effort-arm`.** `.claude/hooks/docket-digest.sh` pipes the hook's JSON input into `python3 tools/effort_trial.py session-start`. That one command writes the arm as `effortLevel` and `maxEffortLevel` in `.claude/settings.local.json`, and then prints the line naming it. The arm is `xhigh` when the SHA-256 digest of the hook's `session_id`, read as a whole number, is divisible by 4, and `high` otherwise. The hook's `session_id` is the transcript's id: this session's is `0ab1bc6b-c99e-5501-9804-99cdd5de3c71`, the name of its transcript file. A resumed or compacted session keeps its id, so it gets the same arm again. The model review can also recompute an arm from that id.
+
+The lines now read "Effort trial: this session is in the high arm. The session-start hook capped its effort at high, so it runs at high unless the app's effort picker is set lower." or, with no arm, "Effort trial: this session is in neither arm, because" followed by the real reason. That reason is the hook's own outcome, not a re-read of the file, so the wrong "sets no maxEffortLevel" reason cannot recur.
+
+Four choices made while building it, each the session's own:
+
+- **Cloud sessions only.** The script does nothing unless `CLAUDE_CODE_REMOTE` is `true`. The docs say that variable is `true` in a cloud session and "never `true` locally" (*Configure cloud environments*, § "Install dependencies with a SessionStart hook", https://code.claude.com/docs/en/cloud-environments.md, read 2026-10-24). A hook runs on the owner's own computer too. Without the check it would have written a cap into their local settings file, where it would have capped every later local session.
+- **No random fallback.** A hook input with no session id draws nothing and says so, because a random draw would give a resumed session a new arm.
+- **The `CLAUDE_EFFORT` clause is gone from the line.** This session's line carried no "running at" clause, so the hook's environment did not hold `CLAUDE_EFFORT`, while this session's Bash environment reads `xhigh`. And where the hook does see it, the value predates the cap the hook has just written. The review's second result now takes the level a session ran at as the lower of its arm and the app's requested level (`PL-63CB` § "Effort monitoring", step 6, updated here).
+- **`/tmp/effort-trial.log` is no longer written.** The printed line carries the outcome and any error, which the log only repeated.
+
+Running the script with no arguments, which the setup script still does, now does nothing but print a note to standard error. That setup-script line can be removed at any time. Until then it is harmless.
+
+**Done when.** The probe's result is recorded here. If the cap applies from the first turn, the `SessionStart` hook assigns the arm, `tests/unit/test_effort_trial.py` covers the hash draw and the reworded lines, `docs/maintainer.md` and `docs/apparatus.md` describe the hook route, and the owner has the steps to remove the setup-script line, which no longer does anything. If it does not, this item records what the first turn costs and the owner's answer.
 
 **Generator check.** One defect in one mechanism, found while answering the owner's question. It explains no other open item.

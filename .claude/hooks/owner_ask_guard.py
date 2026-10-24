@@ -38,7 +38,9 @@ checkout is on no pull request's branch, so `arm` cannot answer for it there,
 and this hook does not run `arm` for that tool. It refuses a post that matches
 `ASKS` and carries no line in the form `bin/docket arm --owner-ask` renders.
 `docket.arming.renders_owner_ask` recognizes that form from the templates the
-renderer uses, so the hook holds no copy of it. The check cannot tell the
+renderer uses, so the hook holds no copy of it. Nobody has read the tool's
+schema, so the hook reads every string in the post's input, at any depth
+(`PL-646J`). The check cannot tell the
 recorded line from a well-formed wrong one. Having `arm` answer for a named
 pull request would, at the cost of a fetch and a worktree per post (project
 owner, 2026-10-24, ratified, over building that now). Nobody has seen that
@@ -77,9 +79,10 @@ from docket.lines import split_lines
 COORDINATOR_POST = "mcp__hearthbot__post_message"
 
 #: The tools whose text reaches the owner, with the fields that carry it.
-#: `None` reads every string field: `post_message`'s schema could not be read
-#: from the session that wired it on 2026-10-24, so the hook does not guess
-#: which field holds the text.
+#: `None` reads every string in the call's input, at any depth of its
+#: dictionaries and lists. `post_message`'s schema could not be read from the
+#: session that wired it on 2026-10-24, so the hook does not guess which field
+#: holds the text, or how deep that field sits (`PL-646J`).
 TEXT_FIELDS: dict[str, tuple[str, ...] | None] = {
     "mcp__hearthbot__reply": ("text",),
     "mcp__hearthbot__update_message": ("text",),
@@ -177,12 +180,25 @@ ASKS = tuple(
 ARM_TIMEOUT_S = 45
 
 
+def every_string(value: object) -> list[str]:
+    """Every string in `value`, at any depth of its dictionaries and lists, in order."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [found for item in value.values() for found in every_string(item)]
+    if isinstance(value, list):
+        return [found for item in value for found in every_string(item)]
+    return []
+
+
 def message_text(tool_name: str, tool_input: object) -> str | None:
     """The text a call would show the owner, or None for a tool this hook does not read."""
     if tool_name not in TEXT_FIELDS or not isinstance(tool_input, dict):
         return None
     fields = TEXT_FIELDS[tool_name]
-    parts = list(tool_input.values()) if fields is None else [tool_input.get(f) for f in fields]
+    if fields is None:
+        return "\n".join(every_string(tool_input))
+    parts = [tool_input.get(f) for f in fields]
     options = tool_input.get("options")
     if isinstance(options, list):
         for option in options:

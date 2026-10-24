@@ -6,54 +6,77 @@ The project owner chose a randomized trial of Claude's effort level on
 `PL-HYRM` holds the measurements behind the design, and `PL-63CB`
 § "Effort monitoring" analyzes the result.
 
-**`assign` draws the arm.** The cloud environment's setup script runs
-`python3 tools/effort_trial.py` after the repository is cloned and before
-Claude starts. It draws `xhigh` with probability 1/4 using `secrets`. From the
-start time it writes the arm into `.claude/settings.local.json`, which git
-ignores, as both `effortLevel` and `maxEffortLevel`. `effortLevel` alone loses
-to the app's effort picker, which counts as an explicit choice.
-`maxEffortLevel` caps every source of level, the picker included, so the arm
-holds whatever the picker shows (measured in `PL-HYRM` § "The cap route,
-measured"). Every run appends one tab-separated line to `/tmp/effort-trial.log`
-with the time, the arm and what it did, before the start time too.
+**The session-start hook draws the arm and reports it, in one step.**
+`.claude/hooks/docket-digest.sh` runs `python3 tools/effort_trial.py
+session-start` and pipes in the JSON that Claude Code gives the hook. The
+script writes the arm into `.claude/settings.local.json`, which git ignores,
+as both `effortLevel` and `maxEffortLevel`. Then it prints the line that
+names the arm. Claude Code runs a session's hooks in parallel, so a second
+hook reading the file could run before this one wrote it. Writing and
+reporting in one process is what makes the line match the cap (`PL-8MZ9`).
 
-**Why the draw is random rather than a hash of the session id.** A hash would
-let the model review recompute every arm from the ledger. But the setup script
-runs in a container built before any session claims it, so it never sees the
-session id (measured 2026-10-19, `PL-HYRM`).
+`effortLevel` alone loses to the app's effort picker, which counts as an
+explicit choice. `maxEffortLevel` caps every source of level, the picker
+included (measured in `PL-HYRM` § "The cap route, measured"). Claude Code
+reloads its settings when the file changes and applies the cap before each
+request. A probe session measured a cap written by this hook on its first
+request (`PL-8MZ9` § "Probe result").
 
-**`digest` records the arm.** The `SessionStart` hook runs
-`python3 tools/effort_trial.py digest`, which prints the arm in the
-session-start digest. The digest is stored in the session's transcript as a
-hook event, so the model review reads each session's arm from there by session
-id. A container rebuilt for a resumed session draws again, so the review uses
-the first arm a session's transcript shows.
+**The arm is a hash of the hook's `session_id`, not a random draw.** The
+session is in the `xhigh` arm when the SHA-256 digest of its `session_id`,
+read as a whole number, is divisible by 4. That is about one session in four.
+The hook runs again when a session resumes or compacts, and a hash gives the
+same session the same arm each time. The draw used to run in the cloud
+environment's setup script. That script runs only when the environment's
+snapshot is built, about once a week, so it assigned no session an arm
+(`PL-8MZ9`). Its line now does nothing and can be removed.
+
+**Only cloud sessions are in the trial.** Claude Code sets
+`CLAUDE_CODE_REMOTE=true` in a cloud container. On the owner's own computer
+the script writes nothing and prints nothing, so it never caps the owner's
+local sessions.
+
+**The printed line is the trial's record of the arm.** The digest is stored
+in the session's transcript as a hook event, and the model review reads each
+session's arm from there by session id. The line also says why when a
+session is in neither arm, so no separate log is kept.
 
 **What it refuses.** An existing `.claude/settings.local.json` that is not a
-JSON object is left alone: `assign` logs the failure and exits 1 rather than
-overwrite settings it cannot read, and `digest` then reports no arm. The
-setup-script line ends in `|| true`, so a failure here never stops a session
+JSON object is left alone, and the printed line says the session is in
+neither arm and why. A hook input with no session id draws nothing, because a
+random fallback would give a resumed session a new arm. The digest hook
+ignores this script's exit status, so a failure here never stops a session
 from starting.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import secrets
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 TRIAL_START = datetime(2026, 10, 24, 4, 0, tzinfo=UTC)
 ARMS = ("high", "xhigh")
-LOG_PATH = Path("/tmp/effort-trial.log")
 SETTINGS_PATH = Path(__file__).resolve().parent.parent / ".claude" / "settings.local.json"
 
 
-def draw() -> str:
-    """Return `xhigh` with probability 1/4 and `high` otherwise."""
-    return ARMS[1] if secrets.randbelow(4) == 0 else ARMS[0]
+def arm_for(session_id: str) -> str:
+    """Return `xhigh` when SHA-256 of `session_id` is divisible by 4, and `high` otherwise."""
+    digest = hashlib.sha256(session_id.encode("utf-8")).digest()
+    return ARMS[1] if int.from_bytes(digest, "big") % 4 == 0 else ARMS[0]
+
+
+def hook_session_id(hook_input: str) -> str | None:
+    """Return the `session_id` in the hook's JSON input, or `None` where it has none."""
+    try:
+        payload = json.loads(hook_input)
+    except ValueError:
+        return None
+    session_id = payload.get("session_id") if isinstance(payload, dict) else None
+    return session_id if isinstance(session_id, str) and session_id else None
 
 
 def read_settings(settings_path: Path) -> dict[str, object]:
@@ -75,59 +98,61 @@ def write_arm(settings_path: Path, arm: str) -> None:
     settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
 
-def assign(
-    now: datetime, arm: str, settings_path: Path = SETTINGS_PATH, log_path: Path = LOG_PATH
-) -> int:
-    """Write the arm once the trial has started, and log the run either way."""
-    status = 0
-    if now < TRIAL_START:
-        action = "not-written: before the trial start"
-    else:
-        try:
-            write_arm(settings_path, arm)
-            action = f"written to {settings_path}"
-        except (OSError, ValueError) as error:
-            action = f"not-written: {error}"
-            status = 1
-    with log_path.open("a", encoding="utf-8") as log:
-        log.write("\t".join([now.isoformat(timespec="seconds"), arm, action]) + "\n")
-    if status:
-        print(f"effort_trial: {action}", file=sys.stderr)
-    return status
-
-
-def digest_line(now: datetime, running: str, settings_path: Path = SETTINGS_PATH) -> str:
-    """Return the session-start line naming this session's arm, or "" before the start.
-
-    `running` is the level Claude Code reports in `CLAUDE_EFFORT`, or "" where
-    the hook's environment does not hold it. The review analyzes the arm and
-    reports the level a session actually ran at beside it.
-    """
-    if now < TRIAL_START:
-        return ""
-    ran = f" Claude Code reports it running at {running}." if running else ""
-    try:
-        arm = read_settings(settings_path).get("maxEffortLevel")
-    except (OSError, ValueError) as error:
-        arm, reason = None, str(error)
-    else:
-        reason = f"{settings_path} sets no maxEffortLevel"
-    if arm not in ARMS:
-        return (
-            f"Effort trial arm: none ({reason}; {LOG_PATH} says what the setup script did). "
-            "This session runs at the level the app's picker sets, and the model review "
-            f"leaves it out.{ran} Tell the owner this in your first reply."
-        )
+def arm_line(arm: str) -> str:
+    """Return the digest line for a session in `arm`."""
     return (
-        f"Effort trial arm: {arm}. The setup script capped this session at {arm}, "
-        f"whatever the app's effort picker shows.{ran} Tell the owner this arm in your first reply."
+        f"Effort trial: this session is in the {arm} arm. The session-start hook capped "
+        f"its effort at {arm}, so it runs at {arm} unless the app's effort picker is set "
+        "lower. Tell the owner this in your first reply."
     )
 
 
+def no_arm_line(reason: str) -> str:
+    """Return the digest line for a cloud session that is in neither arm, and why."""
+    return (
+        f"Effort trial: this session is in neither arm, because {reason}. The hook set "
+        "no effort cap, so the session runs at the level it was started with, and the "
+        "trial's review leaves it out. Tell the owner this in your first reply."
+    )
+
+
+def session_start(
+    now: datetime, hook_input: str, remote: bool, settings_path: Path = SETTINGS_PATH
+) -> str:
+    """Write this session's arm as its effort cap, and return the line that reports it.
+
+    Return "" before the trial start and outside a cloud session, where
+    nothing is written. `hook_input` is the JSON Claude Code gives the
+    `SessionStart` hook, and `remote` is whether `CLAUDE_CODE_REMOTE` is
+    `true`.
+    """
+    if now < TRIAL_START or not remote:
+        return ""
+    session_id = hook_session_id(hook_input)
+    if session_id is None:
+        return no_arm_line("the session-start hook was given no session id to draw the arm from")
+    arm = arm_for(session_id)
+    try:
+        write_arm(settings_path, arm)
+    except (OSError, ValueError) as error:
+        return no_arm_line(f"the session-start hook could not write the effort cap ({error})")
+    return arm_line(arm)
+
+
 if __name__ == "__main__":
-    if sys.argv[1:] == ["digest"]:
-        line = digest_line(datetime.now(UTC), os.environ.get("CLAUDE_EFFORT", ""))
+    if sys.argv[1:] == ["session-start"]:
+        line = session_start(
+            datetime.now(UTC), sys.stdin.read(), os.environ.get("CLAUDE_CODE_REMOTE") == "true"
+        )
         if line:
             print(line)
         sys.exit(0)
-    sys.exit(assign(datetime.now(UTC), draw()))
+    # The cloud environment's setup script still runs this file with no
+    # arguments until the owner removes its line. The draw moved to the
+    # session-start hook, so that run does nothing.
+    print(
+        "effort_trial: the session-start hook draws the arm now (PL-8MZ9); "
+        "this setup-script line does nothing and can be removed",
+        file=sys.stderr,
+    )
+    sys.exit(0)
