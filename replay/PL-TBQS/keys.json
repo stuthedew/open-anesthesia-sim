@@ -1,0 +1,198 @@
+{
+ "1451": [
+  [
+   "PL-1ZQ4",
+   "`SimulationController._resume_point_at_mark` in `app/controller.py` rebuilds a branch's opening crossing once, at the fork, from the marks as they stand then, while the trunk reads its MAC targets from the crossings it recorded at the time. So a MAC target added after the step that crossed it reads \"reached\" on the branch and \"still running\" on the trunk at the same instant."
+  ]
+ ],
+ "1292": [
+  [
+   "PL-7N8P",
+   "The new `require_supported_case_instant` in `core/supported_ranges.py` tests only finiteness and range, with no type test. It admits `True` as 1.0 s, and an int past the float range raises `OverflowError` instead of the `SimulationConfigurationError` its docstring promises."
+  ]
+ ],
+ "1585": [
+  [
+   "PL-F2YS",
+   "`SimulationView._build_unconditional_region` in `app/simulation_view.py` weights the record column so that it takes about 306 px of a 1366 px window, not the ratified sidebar width of about 228 px. The readout column is left 3 px short of the 1005 px that seven readouts need, so a 1366 px laptop opens the readout row on four columns, though the docstring says all seven stand in one row."
+  ]
+ ],
+ "331": [
+  [
+   "PL-NBWP",
+   "`app/playback.py` says a faster playback is never a modelling change, but the tick handler takes `steps_per_tick` steps in a loop that no control event can interrupt, so a setting change is invisible to the model for the multiplier times 0.1 s, which is 30 simulated seconds at 300x."
+  ],
+  [
+   "PL-BPRK",
+   "`PlaybackRate.steps_per_tick` computes `round(exact)` on a quotient that is infinite for a tiny step, and raises a bare `OverflowError`."
+  ]
+ ],
+ "1350": [
+  [
+   "PL-979Z (flow half)",
+   "The new `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` in `core/supported_ranges.py` check only range, so `CardiacOutput(FreshGasFlow(5.0))` builds silently as a valid flow."
+  ],
+  [
+   "PL-848D",
+   "`_require_built` in `core/supported_ranges.py` names only the other two flow types as swapped arguments, and its messages print `{value!r}`, which raises `ValueError` for an int of more than 4,300 digits."
+  ]
+ ],
+ "1365": [
+  [
+   "PL-979Z (concentration half)",
+   "The new `Fraction` and `Percent` in `core/concentration.py` refuse only each other, so `Fraction(SimulationStep(0.05))` builds silently as a valid concentration."
+  ]
+ ],
+ "775": [
+  [
+   "PL-N3N5",
+   "The new mark standings in `app/bookmarks.py` take a flag for the run's length cap and nothing for a failed run, so every outstanding mark on a failed run reads \"still running\"."
+  ],
+  [
+   "PL-3K9B",
+   "A time mark exactly at a run's opening instant reads \"still running\" for good, though no step can cross it (`app/bookmarks.py`)."
+  ],
+  [
+   "PL-4KZD",
+   "`SimulationView._refresh_bookmarks` draws the per-run standings from the reference run for every row, so with two runs shown the panel states one run's answer as the case's."
+  ],
+  [
+   "PL-LHBY",
+   "Because `SimulationView._refresh_bookmarks` reads only the reference run's standings, a branch that halts on a mark shows no \"reached\" row."
+  ]
+ ],
+ "204": [
+  [
+   "PL-BNPY",
+   "`AgentUptakeSystem.advance` in `core/uptake_system.py` captures the state before a step but restores it only inside `except SimulationConfigurationError` and `except Exception`, though its docstring promises a bit-identical system on any failure. A `BaseException` such as `KeyboardInterrupt` raised mid-step skips both clauses and leaves a partly applied step."
+  ]
+ ],
+ "578": [
+  [
+   "PL-TCR5",
+   "In the new pyqtgraph hover, the direct pointer slot reads the position that the rate-limited proxy stored one event earlier, so the first move answers nothing."
+  ],
+  [
+   "PL-LTKL",
+   "Nothing clears the stored hover position when the pointer leaves, so the hover box keeps printing values for a pointer that is gone."
+  ],
+  [
+   "PL-9BVQ",
+   "The hover box flips below its point only above 75% of the axis, though it is a fixed 53 px tall, so on the 200 px wash-in plot its first line is cut off."
+  ],
+  [
+   "PL-JVHL",
+   "`nearest_trace_point` in `app/chart_frame.py` keeps one nearest point across every run, so with two runs a 2 px move silently switches which run's value is reported."
+  ],
+  [
+   "PL-MN4J",
+   "The hover line names no run on a frame that holds several runs."
+  ],
+  [
+   "PL-1K9G",
+   "`_pixel_distance` picks the answering time column in two dimensions, so a purely vertical pointer move can change the instant reported."
+  ]
+ ],
+ "1354": [
+  [
+   "PL-979Z (CaseInstant half)",
+   "The new `CaseInstant.__new__` in `core/supported_ranges.py` checks only range, so `CaseInstant(StepCount(600))` is held as 600 s, though the same pull request's `require_case_instant` refuses that quantity when an instant is stored."
+  ]
+ ],
+ "1448": [
+  [
+   "PL-391Y",
+   "In `layout/model.py` at b7a092afb, `LayoutModel.split` checks that a part has no size only on the same-axis branch. A nested cut such as `split(AreaId(1), Orientation.ROW, 5e-324)` on a single Area is taken, giving sizes `(5e-324, 1.0)` and an Area whose two edges `borders()` treats as one line. `Split` in `layout/tree.py`, and so `layout_from_dict`, accept sizes `(1.0, 5e-10)` because they sum to one within `LAYOUT_SIZE_SUM_TOLERANCE`, and `_boundaries` then places the second Area at left 1.0 and right 1.0, with no width."
+  ]
+ ],
+ "430": [
+  [
+   "PL-3LZB",
+   "In `core/run_score.py` (later renamed `run_definition.py`), the new `RunScore._require_within_run` refuses only `elapsed_s < 0.0`, the literal zero rather than the first segment's opening. The new `_segment_index_at` returns `bisect_right(self._segments, elapsed_s, key=_opening_of) - 1`, which is -1 for an instant before the first opening and so indexes the last segment. A score opening after zero would therefore answer `state_at`/`evaluate` at an instant before its opening with the last segment's keyframe, because `_propagator` returns None for the non-positive interval, instead of refusing."
+  ]
+ ],
+ "568": [
+  [
+   "PL-NC62",
+   "In `app/controller.py`, the new `SimulationController.resumed_at` compares the replayed `equation_settings()` with `resume_point.segment.settings` by whole-object equality. On any difference it raises one fixed message ending 'the recorded timeline does not reproduce its own segments', so an agent or patient mismatch (for example, a data file edited between building the trunk and taking the branch) is blamed on the timeline, and no differing field or value is named. The agent's MAC, display name and vaporizer maximum, which the branch re-reads, are not compared at all."
+  ]
+ ],
+ "376": [
+  [
+   "PL-2MD9",
+   "In `core/matrix_exponential.py`, the new `matrix_exponential` shifts the matrix by `shift*I`, sums the series at the scaled interval, multiplies by `exp(-shift*scaled_interval_s)` and then squares `squarings` times. It never restores a zero row of A to its identity row and puts no cap on the squarings. The constant `UNIT_STATE` row's diagonal therefore comes back as 1+delta, and the squarings raise it to (1+delta)^(2^s). With `AlveolarCompartment.gas_volume_l` driven small at the 0.1 s step, `propagator[UNIT_STATE][UNIT_STATE]` reads 2.28e+222 at 1e-19 L, and the propagator is about 100% wrong at 1e-18 L while accounting passes. This contradicts `governing_equations.UNIT_STATE`'s docstring promise that no step can perturb it."
+  ],
+  [
+   "PL-3PRZ",
+   "In `core/matrix_exponential.py`, the new `matrix_exponential` checks only that the squared propagator is finite. When the squarings drive it to the all-zero matrix (sevoflurane at 0.1 s with `gas_volume_l` at 1e-300 L) it is returned anyway, `propagate` yields the zero state, and the run reports a concentration of exactly 0 with the mass-balance check passing. In addition, `_squarings_for` returns `ceil(log2(norm / MAXIMUM_SERIES_ARGUMENT_NORM))` without checking that the quotient is finite, so at 1e-309 L it overflows and a bare `OverflowError` escapes instead of a `SimulationConfigurationError`."
+  ]
+ ],
+ "288": [
+  [
+   "PL-90Y6",
+   "In `app/simulation_view.py`, the new MAC-awake band is a single `chart_series.build_reference_line` series stroked only at its upper edge, filled through `below_line_bgcolor` down to the `below_line_cutoff_y` that `chart_series.redraw_reference_band` sets. The legend swatch is ruled only with `Border(top=...)`. With no stroke on the lower edge, the +/-0.05 MAC band, about 3.3% of plot height on the 3 MAC axis, draws as a line with a shadow rather than as an interval."
+  ]
+ ],
+ "1328": [
+  [
+   "PL-5D1Z (counted part only)",
+   "The new `SimulationStep(float)` in `core/simulation_step.py` checks the step's range only in `__new__` and defines no `__reduce__`. A protocol-0 or protocol-1 pickle is therefore rebuilt through `copyreg._reconstructor`, which calls `float.__new__` and skips the check. A pickle of `SimulationStep(0.05)` edited to 5.0 loads as a `SimulationStep` holding 5.0, and `require_simulation_step` then accepts it, although protocol 2 refuses it. Counted part: The SimulationStep instance only. The other checked types the item names (the flows, CaseInstant, StepCount and the class-based Fraction and Percent) were added later, after this pull request."
+  ]
+ ],
+ "784": [
+  [
+   "PL-K5NY",
+   "The new `SimulationView.add_run` in `app/simulation_view.py` checks only the displayed-run cap and that the agent matches. A controller that is not a branch of `self._case`, such as a fresh `SimulationController()` on the same agent, is therefore placed, drawn and named 'Run 2' of a case whose `runs` does not contain it."
+  ],
+  [
+   "PL-J12Z",
+   "The new `ForkPanel.set_offer` in `app/qt_widgets.py` restores the reader's selection with `setCurrentIndex(max(findData(selected_s), 0))`. When the selected instant is no longer a keyframe, for example after a dial is returned to its previous value at the same paused instant, `findData` returns -1 and the selector is moved to index 0 (induction). 'Branch here' then forks at induction."
+  ],
+  [
+   "PL-WG73",
+   "#784 added `COMPARING_FORK_LOCK_TEXT` in `app/dashboard_frame.py`, which reads 'One comparison at a time. Reset the case to end this one.' No control is labelled that way; the only label is `RESET_LABEL` = 'Reset'. In a two-run comparison the branch's Reset, the one a learner is likely to press, returns the branch to its fork and discards its progress while the lock stays in place."
+  ],
+  [
+   "PL-T91K",
+   "In `SimulationView`'s page builder in `app/simulation_view.py`, #784 added an always-visible `notices` widget to the 12 px-spaced page column, and `_place_run` wraps each run's banner in a `_holder` placed in it. With every banner hidden, the empty container still costs one 12 px column spacing with one run, and each further visible holder costs another 12 px with two runs."
+  ],
+  [
+   "PL-LQ19",
+   "In `app/simulation_view.py`, #784's `_place_run` connects the first run's `case_restarted` to `_handle_case_restarted`, and that handler's only guard is `len(self._runs) == 1`. On a dashboard built over loose controllers with no case, Reset on run 1 therefore removes every other run and its recorded history."
+  ],
+  [
+   "PL-75P5",
+   "#784's `SimulationView._handle_case_restarted` in `app/simulation_view.py` returns at `if len(self._runs) == 1` before it reaches `self._fork_refusal = None`. On a one-run case dashboard, the banner of a refused 'Branch here' press therefore stays after the trunk's Reset, naming an instant the restarted run no longer holds."
+  ]
+ ],
+ "805": [
+  [
+   "PL-1ZQ4 (counted part only)",
+   "#805 made `SimulationController._resume_point_at` in `app/controller.py` open a branch at a keyframe with `self._resume_point(segment, segment.opening, None)`, which carries no crossing, while the halt door seeds the halt's crossing. On a trunk halted on a mark at 118.1 s with a setting changed there, `resumed_at(118.1)` reads the 118.05 s time mark as before_this_branch and the MAC target as still_running, while the halt-door branch at the same instant reads them as passed and reached. Counted part: Case 3 only: fork_at (`resumed_at`) at a keyframe the trunk is halted on opens on no crossing, where the halt door opens on the halt's crossing."
+  ]
+ ],
+ "1622": [
+  [
+   "PL-4L8B (counted part only)",
+   "#1622's `AreaLayout._settle` in `app/area_layout.py` holds each Area frame at its View's need, which it reads only from build, resizeEvent, showEvent and drags, never after `refresh` draws the Views. The setting controls' Area is therefore fixed at the 220 px need read before their first frame and drawn 336 px wide. It jumps to the 590 px it needs once a later re-settle reads the filled-in View, so the first border move shifts the chart Area by about 250 px. Counted part: The launch-width half (the late re-settle after the first frame). The arrow-key half, where `border_stepped` steps from the model position, involves keyboard border stepping that was added after #1622."
+  ],
+  [
+   "PL-YJ21",
+   "#1622's `AreaLayout._settle` in `app/area_layout.py` reads each View's `minimumSizeHint` only from build, resize, show and drags, and `AreaLayout.refresh` draws the Views without settling again. A View that builds or hides widgets on its first frame, such as ParameterControlsView's per-run copies or the concentration chart's per-run lines, leaves the Areas and the page sized from its pre-frame need."
+  ],
+  [
+   "PL-PHPZ",
+   "#1622 overrides `AreaLayout.minimumSizeHint` in `app/area_layout.py` with `_least`, which `_settle` recomputes, calling `updateGeometry`, only on build, resize, show or drag. After the Views draw their first frame and their needs grow, nothing tells the parent layout, so the scrolling page lays the Areas out from the stale pre-draw hint."
+  ]
+ ],
+ "421": [
+  [
+   "PL-BMY5",
+   "In `core/simulation.py`, #421 added the 24 h run-length guard `require_supported_run_length` only to `SimulationState.advance`, not to `__post_init__`. So `SimulationState(step_count=1_000_000, simulation_step_s=0.1)` builds without complaint and reports 100 000 s (27.8 h) elapsed, past `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, and only the next `advance()` refuses it with `SimulationDomainLimitError`."
+  ],
+  [
+   "PL-5291 (counted part only)",
+   "In `app/controller.py`, #421 records the 24 h limit only in the latch `_supported_limit_reason`. Only `halt_at_supported_limit` sets it, after the core refuses a step, and `snapshot()`, `start()` and the view's Start button and limit notice read only that latch. So a run standing exactly on 86 400 s with no step yet refused (for example, paused after the tick whose last step lands on 24:00:00) reads Paused, offers Start and shows no limit notice until Start is pressed and one tick is refused. Counted part: The latch design and the trunk route (a run standing on 24:00:00 before any step has been refused). The fork, branch-reset and time-mark routes in the item arrived with later pull requests that reused the latch."
+  ]
+ ]
+}
