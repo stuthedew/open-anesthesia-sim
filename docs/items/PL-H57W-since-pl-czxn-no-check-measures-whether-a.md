@@ -3,9 +3,10 @@ id: PL-H57W
 title: Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 priority: P1
 effort: L
-status: needs-decision
+status: blocked
 classes: defect, safety
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml
+blocked-by: PL-7FPD
 added: 2026-10-24
 reenters: PL-CZXN
 ---
@@ -22,6 +23,8 @@ Split from `PL-7FPD` while triaging it on 2026-10-24. `PL-7FPD`'s problem covers
 
 **Why it is the owner's call.** It reaches the safety-critical standard, and it reopens the cost side of the owner's 2026-10-19 ratified decision on `PL-CZXN`, which accepted leaving these tests unmeasured.
 
-**Done when.** Either `docket verify` refuses a branch that changes a core unit test so that a core mutant its base version kills survives the branch's version, with `tests/unit/test_diff_mutation.py` holding `test_a_branch_that_weakens_a_core_test_is_refused`, or the owner's answer is recorded here and the item closes.
+**Answered 2026-10-24: yes, scoped as recommended** (project owner, 2026-10-24, ratified, over leaving core unit tests unmeasured as `PL-CZXN`'s 2026-10-19 decision did, and over comparing every mutant a changed test reaches). The comparison covers only the mutants in the core modules that the changed test file imports by name. Its scoped cost is measured on `tests/unit/test_formatting.py` and the two `#1572` dashboard tests before it is built, and it is built after `PL-7FPD`, whose comparison of base and branch mutants it reuses.
+
+**Done when.** `docket verify` refuses a branch that changes a core unit test so that a mutant in a core module the test imports by name, which the test's base version kills, survives the branch's version. It passes a branch whose changed test still kills every such mutant. `tests/unit/test_diff_mutation.py` has `test_a_branch_that_weakens_a_core_test_is_refused`, and the brief records the scoped cost measured on the files named above.
 
 **Generator check.** An instance of `PL-4W2L`'s fact, "whether a branch's diff weakens its tests", reached through `PL-CZXN`, which closed on 2026-10-24, like `PL-7FPD`. Recorded as `reenters: PL-CZXN`.
