@@ -168,7 +168,7 @@ ROADMAP = """# Roadmap
 | \u2014 | **v0.3.x \u2014 a readability pass** | A patch, not a milestone. | \u2014 |
 | 2 | **v0.4.0 \u2014 the teachable case** | Scoped below. | 5 M |
 | 3 | **Gate 1** | Frozen when v0.5.0 is scoped. | \u2014 |
-| 4 | **v0.5.0 \u2014 the case you can branch** | Not yet scoped. | \u2014 |
+| 4 | **v0.5.0 \u2014 the case you can branch** | The intended order. | \u2014 |
 | \u2014 | **MVP complete** | Run, branch, compare. | \u2014 |
 
 ## Planned milestones
@@ -2338,6 +2338,38 @@ def test_an_unnumbered_marker_is_accepted(tmp_path: Path) -> None:
     """ "MVP complete" is a boundary on the timeline, not a step, and must not
     have to invent a version or a number to sit there."""
     assert not any("MVP complete" in e for e in _errors(_repo(tmp_path)))
+
+
+def _line_holding(text: str, fragment: str) -> int:
+    """The 1-based number of the first line of `text` that holds `fragment`."""
+    return next(n for n, line in enumerate(text.splitlines(), 1) if fragment in line)
+
+
+def test_a_timeline_row_that_says_not_yet_is_an_error(tmp_path: Path) -> None:
+    """`PL-0B22`: a row said "Not yet scoped or sized." five days after its
+    inventory had sized it, because the inventory's brief never named the row."""
+    roadmap = ROADMAP.replace("The intended order.", "Not yet scoped or sized.")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    line = _line_holding(roadmap, "Not yet scoped or sized.")
+    assert any(e.startswith(f'ROADMAP.md:{line}: "Not yet" under') for e in errors)
+
+
+def test_a_not_yet_wrapped_across_lines_under_the_timeline_is_an_error(tmp_path: Path) -> None:
+    """Prose wraps between any two words, so a line-by-line search would miss
+    the paragraphs under the table that say which rows are scoped."""
+    paragraph = "Row 4 is the intended order and is not\nyet scoped.\n\n"
+    roadmap = ROADMAP.replace("## Planned milestones", paragraph + "## Planned milestones")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    line = _line_holding(roadmap, "Row 4 is the intended order")
+    assert any(e.startswith(f'ROADMAP.md:{line}: "not yet" under') for e in errors)
+
+
+def test_a_not_yet_outside_the_timeline_is_not_read(tmp_path: Path) -> None:
+    """The rolling-wave section defines what a row not yet scoped carries, and
+    that definition stays true however the rows move."""
+    roadmap = ROADMAP.replace("Nothing yet.", "A row not yet scoped carries no size.")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert not any('under § "The timeline"' in e for e in errors)
 
 
 def test_a_timeline_that_has_vanished_is_an_error(tmp_path: Path) -> None:

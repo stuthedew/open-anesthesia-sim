@@ -2308,6 +2308,72 @@ def check_timeline(root: Path, report: Report) -> None:
         report.errors.append(f"{roadmap_name}: the timeline names no milestone version")
 
 
+#: A "not yet" states a status that the next step of the work makes false.
+#: The pattern allows any whitespace between the two words, because prose wraps
+#: between any two words.
+NOT_YET_RE = re.compile(r"\bnot\s+yet\b", re.IGNORECASE)
+
+
+def check_timeline_status(root: Path, report: Report) -> None:
+    """Fail each "not yet" under `ROADMAP.md`'s § "The timeline".
+
+    A "not yet" there restates a row's current status, such as not yet scoped,
+    sized, frozen or shipped. Each of those facts already has a home. A
+    milestone's section records whether it is scoped and when its gate froze,
+    the Size column records its size, and the version table records whether a
+    release shipped. The copy goes false at the next step of the work,
+    and nothing tells the session taking that step to edit it. On 2026-10-24 the
+    one-source-of-truth row still said "Not yet scoped or sized." five days
+    after its inventory had sized it, because the inventory's brief named only
+    planned-milestone item 43 (`PL-0B22`).
+
+    A status is written instead as a dated event, such as "Scoped 2026-09-16",
+    or as a condition, such as "Frozen when v0.6.0 ships". Both stay true as the
+    work moves on. The prose under the table is read as well as the table,
+    because those paragraphs say which rows are scoped too. A heading at the
+    timeline's depth or above ends the section, so the definitions in § "The
+    planning model: a rolling wave" are not read.
+    """
+    roadmap_name = roadmap_path(root)
+    roadmap = root / roadmap_name
+    if not roadmap.is_file():
+        return
+    lines = split_lines(roadmap.read_text(encoding="utf-8"))
+    opening = next(
+        (
+            heading
+            for heading in read_headings(lines)
+            if heading.level == 3 and heading.title == TIMELINE_HEADING
+        ),
+        None,
+    )
+    if opening is None:
+        # `check_timeline` already fails a roadmap that has no timeline.
+        return
+    end = _subsection_end(lines, opening.end)
+    for first, last in statement_lines(lines, PROSE):
+        if not opening.end <= first < end:
+            continue
+        # A paragraph is joined into one string so that a "not" at the end of
+        # one line and a "yet" at the start of the next still match. `starts`
+        # maps a match back to the line it begins on.
+        starts: list[int] = []
+        joined = ""
+        for index in range(first, last):
+            starts.append(len(joined))
+            joined += lines[index] + " "
+        for match in NOT_YET_RE.finditer(joined):
+            line = first + bisect.bisect_right(starts, match.start())
+            report.errors.append(
+                f'{roadmap_name}:{line}: "{match.group(0)}" under § "{TIMELINE_HEADING}" '
+                "states a status that the next step of the work makes false, and nothing "
+                "tells that step to edit it. Write what happened as a dated event, such as "
+                '"Scoped 2026-09-16", or a condition, such as "Frozen when v0.6.0 ships". '
+                "A milestone's section, the Size column and the version table already "
+                "record whether a row is scoped, sized and shipped (PL-0B22)."
+            )
+
+
 def check_milestone_lists(root: Path, report: Report) -> None:
     """Fail each frozen-list or `Required scope` entry docket could not read whole.
 
@@ -8875,6 +8941,7 @@ def _analyze(root: Path) -> Report:
     check_line_citations(root, documents, report)
     check_quoted_sources(root, documents, report)
     check_timeline(root, report)
+    check_timeline_status(root, report)
     check_milestone_lists(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
