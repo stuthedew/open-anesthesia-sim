@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: ready
 classes: planning
+feature: review-panel
 touches: docs/items/PL-TCBJ-replay-a-panel-of-specialist-reviewer-subagents.md
 added: 2026-10-24
 payoff: whether a specialist reviewer panel would have caught real simulator defects is measured before anyone builds one
