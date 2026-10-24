@@ -31,7 +31,7 @@ page and decides which file a session reads.
    **Write `pr` before you push the closure, with `bin/docket record N`.** `N`
    is this branch's own pull request, so the number exists as soon as the pull
    request is open - which the start mode permits at the claim push, and which
-   the commit-and-push rule requires no later than the first push of work. Run
+   the `pull-request` skill requires no later than the first push of work. Run
    it after `bin/docket set --status done` and before the closure commit, and
    the number rides the same commit as the work. It writes onto every closure
    this checkout introduces, committed or not, and onto nothing the base

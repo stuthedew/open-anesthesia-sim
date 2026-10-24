@@ -62,7 +62,7 @@ squash merge folds the commit away.
 hand or otherwise. `#978` was merged by hand six minutes after it
 opened, with its claimed cut still uncommitted (`PL-H14W`). Mark it ready
 (`draft: false`) in the push that closes or blocks the claimed item, which is
-also the push that arms it under `CLAUDE.md`'s commit-and-push bullet.
+also the push that arms it under `.claude/skills/pull-request/SKILL.md`.
 
 **A session has two things to remember: `claim` at pickup and for every rider,
 and `bin/docket yield <id>` when it stops without closing.** A rider is a second
@@ -287,8 +287,8 @@ answer: `.claude/skills/docket/modes/design.md`.
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
 diagnosed it). When the session is only long, reset it in place: push, then
-ask for `/compact` (`CLAUDE.md` § "Session and tool-use efficiency",
-`PL-YJG1`). Start fresh when this session already completed something else, or
+ask for `/compact`, as § "Check the spend before starting, and reset in
+place" below says (`PL-YJG1`). Start fresh when this session already completed something else, or
 when the item wants a model this session is not running.
 
 Then name the work after the item, because a session list is unsearchable
@@ -324,3 +324,62 @@ Write a `payoff:` if the item has none, as `picking.md`'s paragraph on
 `payoff:` says. Rewrite a `verify:` that selects nothing or still carries a
 trailing selector clause, as `.claude/skills/docket/modes/triage.md` § "The
 `verify:` command, and running it before writing it down" says (`PL-B1R4`).
+
+## Check the spend before starting, and reset in place
+
+**Reset at 150,000 tokens of spend, and check that budget before starting an
+item, not on reaching it** (project owner, 2026-09-16; re-anchored from the
+absolute reading to spend 2026-09-21, ratified, over a budget that is mostly a
+budget on the apparatus and moves whenever the resident set does). `CLAUDE.md`
+§ "Session and tool-use efficiency" keeps that sentence resident. A session
+decides whether to keep going while it works, and no read comes before that
+decision. This section holds the procedure, which `PL-Z90G` moved here.
+
+*Spend* is what this session added over the context it started with.
+`python3 tools/context_reading.py` prints it from the session's own
+transcript. Read it as you pick up the next item. If the item will not fit in
+what is left, reset instead of starting. Checked before the work, the budget
+cannot be overshot, and work never started cannot be cut off half-done
+(`PL-NW76`).
+
+**Do not read the spend from `get_session`.** Its `context_usage.used_tokens`
+is written at turn boundaries. So it never moves inside a turn, and it reads 0
+before the first (`PL-W80S`, `PL-BZVY`).
+
+**The reset is in place, not a new session** (project owner, 2026-09-25,
+ratified, over a handoff the owner carries by pasting a prompt into a new
+session, `PL-YJG1`):
+
+1. Write down what only the conversation holds: the item file, and
+   `docs/WORKING_NOTES.md` for a thread that spans items.
+2. Commit and push it.
+3. Ask the project owner to type `/compact`, which a session cannot run on
+   itself. Name the clock time an hour on, in Central time. After that hour,
+   the summary re-reads the whole history uncached (`docs/maintainer.md`).
+
+A Projects thread cannot have `/compact` typed into it. It writes its next
+steps into the item file instead, commits and pushes that, says so in one line
+and stops. The coordinator then starts a fresh thread on the branch (the
+Projects trial's instructions, read 2026-10-03, kind unrecorded, `PL-PDVF`).
+
+Pushed first, compaction lands where a handoff did: the resident floor, a
+summary, and files re-read, with `CLAUDE.md` and the unscoped rules
+re-injected. It keeps the branch, the claim and the pull request watch. A file
+it restores counts as already read, but that file's path-scoped rules may not
+have come back. So read the file again before the first edit to it, as
+`.claude/hooks/docket-digest.sh` also says after a compaction (`PL-384P`). The
+resident floor measured 81,048–115,320 tokens on 2026-09-21 (`PL-W80S`), and
+it moves whenever the resident set does.
+
+**Past the budget anyway**, because an item ran long or a design round holds
+its reasoning in the conversation: finish the item in hand, reset the same
+way, and say in the reply that you stopped for length rather than for the
+work.
+
+**Resetting matters more than trimming the instructions.** It is the largest
+adherence lever the project has. The resident set measured 2.5–5.6% of the
+263k–519k contexts that seven concurrent sessions carried on 2026-09-16, so no
+cut to it substitutes for resetting the session (`PL-H253`).
+
+After a reset, pick up cold from the session-start digest, `bin/docket next`
+and the one item being worked, not by reading the queue whole.

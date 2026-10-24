@@ -1,8 +1,8 @@
 """Whether a pull request may be armed for auto-merge: `bin/docket arm`'s answer for `HEAD`.
 
-`CLAUDE.md` arms a pull request whose branch carries only item files, so a
-capture reaches the default branch even when its session ends before any work
-does (project owner, 2026-09-23, ratified, over "a branch carrying only
+`.claude/skills/pull-request/SKILL.md` arms a pull request whose branch
+carries only item files, so a capture reaches the default branch even when its
+session ends before any work does (project owner, 2026-09-23, ratified, over "a branch carrying only
 captured items is not a pull request", `PL-WNCT`). Which pushes could be armed
 was a catalog of claim shapes each session applied by judgment - the empty
 start commit, a queue-only commit start mode read as one - and every shape it

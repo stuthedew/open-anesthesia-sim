@@ -58,6 +58,12 @@ preceded by a read.
 | Which claim shapes hold a captures-only pull request unarmed, and the five decisions behind them | 1,095 characters of `CLAUDE.md`'s commit-and-push bullet, from "A claim on the branch leaves it unarmed" to "merge half the work" | `bin/docket arm`, from `subprojects/docket/src/docket/arming.py`, whose docstring now carries the decision records, pinned by the `test_arm_` tests in `subprojects/docket/tests/test_cli.py` | A claim is a recorded fact since `PL-3FYK`, so whether one rides a branch is read from the tree instead of recognized by each session from a catalog of shapes - and each shape the catalog missed had been an item (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`). What stays resident, at 520 characters, is the trigger - ask before arming and before every later push - and what each answer does to the pull request, because a push is preceded by no read. The same pass rewrote three sentences, in the housekeeping and naming bullets and in rule 14, that described every in-flight guard as matching commit subjects, which the claim record ends (`PL-MB2W` § "Deleted"); net across both files, 709 fewer characters (`PL-DDYD`). |
 | "Keep scientific/simulation code independent of the UI toolkit" | 65 characters with its newline, § "Architecture and development discipline" | `tools/import_boundary_check.py`: `PySide6`, `pyqtgraph`, `numpy` and `anesthesia_sim.app` permitted in no module under `core/`, and `flet` and `flet_charts` in none under `src/`, pinned by `tests/unit/test_import_boundary_check.py` | Retired under § "When a resident rule is retired", below. Its failure is an import, which the check reads from the tracked tree at every `make check` and in CI, where the sentence fired only when a session remembered it. Observed firing on 2026-10-17, before the line was removed: with a staged one-line module under `core/` holding `from PySide6 import QtWidgets`, the tool reported 56 modules read and 1 error naming that line and exited 1; without it, 55 modules and 0 errors; its 70 tests passed. The check, `docs/apparatus.md` and `docs/ARCHITECTURE.md` cited `CLAUDE.md` as the rule's source, which the 2026-09-16 correction below had warned would strand the citation, so all three now cite `docs/ARCHITECTURE.md` § "Layering", the section that states the layering the boundaries enforce (`PL-ZYHX`). |
 | "Put no simulation calculations in UI callbacks" | 50 characters with its newline, § "Architecture and development discipline" | `.claude/rules/ui-calculations.md`, loaded by `paths: /src/anesthesia_sim/app/**` | A callback is written only with a file under `app/` open, so the rule reaches the one moment it binds, every time, which is the promise the refused path-scoping of every invariant to `src/**` could not make. It stays prose there, because whether an expression is a simulation calculation is the judgment half no check decides, and the rule now also says where the line sits, `docs/ARCHITECTURE.md` § "Layering", and what is checked around it (`PL-ZYHX`). |
+| The pull request procedure: opening on approval without asking, the web harness's "only when asked", item-only arming, `bin/docket arm`'s three answers, bringing `main` in once, the three stops on failed checks, and reading the body back | the commit-and-push bullet after its first sentence, and the whole base-merge bullet, § "The queue": `CLAUDE.md` 4,387 characters shorter, net of the trigger sentence that replaced them | `.claude/skills/pull-request/SKILL.md`, whose 441-character description loads at launch. `.claude/hooks/push-check-guard.sh` names it after a push it lets through, and `.claude/hooks/pr-body-email-guard.sh` after a pull request call, pinned by `test_a_push_it_lets_through_names_the_pull_request_skill` and `test_a_pull_request_call_the_guard_lets_through_names_the_read_back` | A session needs it only at a push, a pull request call or a failed check. A hook sees the first two. A failed check arrives as an event that names it, which is the case `PL-SN2Z` measured: a resident sentence and a skill description started the `docket` skill on 8 of 8 requests that named the moment. Section "The pull request procedure, routed to a skill 2026-10-24", below, has what stayed and why (`PL-S2NL`). |
+| The generator rules: how a generator is recorded, why a live one ranks above everything but `P0`, the tier of a defect in the machinery that finds them, and the pause's history and end condition | the generator bullet and its `impairs-generators` paragraph, § "The queue", and the pause paragraph, § "What this project is": `CLAUDE.md` 2,363 characters shorter, net of the two paragraphs that replaced them | `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set", with the rules unchanged | Triage is where a generator is recorded and ranked. Two rules apply earlier, so they stay resident: the two endings, in the reply that finds a generator, and the pause, before any workflow mechanism is built. Section "The generator rules, routed to the triage mode 2026-10-24", below, has what stayed and why (`PL-6VJ3`). |
+| "New tools use the standard library only, so a hook or a bare checkout can run them without the project virtualenv" | 120 characters, § "Prefer deterministic tooling over repeated model work" | `test_no_tool_imports_outside_the_standard_library` in `tests/unit/test_tools_portability.py`, run by `make check` and CI, which reads every Python file under `tools/` and `.claude/hooks/` | Retired under § "When a resident rule is retired". Its failure is an import, which the test reads from the tree. Observed firing on 2026-10-24: with a throwaway probe file under `tools/` holding `import yaml`, the test failed, naming the file and the import and saying the tool "cannot run in a checkout with no virtualenv". Without the probe, it passed. The sentence after it, on why a script beats model work, stays (`PL-JRVV`). |
+| "A commit closing more than one item leads with all of them, comma-separated", and its reason, that `docket check` recovers a closed item's pull request from the newest subject naming it | 272 characters, the naming bullet in § "The queue" | `tools/pr_title_check.py`, run in the required `pr-title` job and by `make check`, which refuses a pull request whose title does not lead with every id it closes. Its tests `test_the_incident_this_exists_for_is_refused`, `test_an_id_mentioned_but_not_leading_does_not_count` and `test_a_title_leading_with_every_id_passes` pin that. Step 1 of `.claude/skills/docket/modes/close-out.md` states the rule when the closing commit is written | A squash merge makes the pull request title the only subject that reaches `main`, and the check holds that title to every closed id. The stated reason had also stopped being true. Since `PL-HMZZ`, `bin/docket record` writes the pull request number onto the item, and `tools/pr_record_check.py` refuses a closure without it, so nothing recovers a number from a subject. The three tests passed on 2026-10-24 (`PL-JRVV`). |
+| The context-budget reset procedure: what spend is, why `get_session` cannot read it, the reset in place and its Projects-thread variant, what compaction keeps, the case of a session past the budget, and the measurement against trimming instead | the budget bullet in § "Session and tool-use efficiency" after its first sentence | `.claude/skills/docket/modes/start.md` § "Check the spend before starting, and reset in place" | A reset happens when an item starts or a session runs long. The resident sentence keeps the budget, the command and the moment to check, and points to the procedure. § "The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24". |
+| Why housekeeping is filed first, what is too small to file, and the two ratified records on deleting remote branches | the housekeeping bullet in § "The queue", after its first sentence | `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed", which already held most of it | The mode applies when a session files work that no item names. The resident sentence keeps the rule, the branch exception and a pointer. Same section. |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -94,6 +100,11 @@ carries its own measurement (2.5–5.6% of a 263k–519k context) because the
 alternative is every later session re-deriving the trim proposal this pass
 refuted; a rule that does not carry its refutation gets re-opened, which is the
 cost `docs/resident-instructions.md` exists to stop paying (`PL-H253`).
+Since 2026-10-24 the resident sentence keeps only the cap, the command that
+reads spend and the moment to check it. The reset procedure and that
+measurement moved to `.claude/skills/docket/modes/start.md` § "Check the spend
+before starting, and reset in place", as § "The reset procedure and the
+housekeeping rule, routed to the docket skill 2026-10-24" records (`PL-Z90G`).
 
 It was reshaped on 2026-09-16, same number and a different moment: the budget
 is read *before starting an item* rather than on reaching the cap, and an
@@ -758,9 +769,11 @@ reply, so disposition 2 cannot; and a reply is not preceded by a read, which
 rules out a `paths:` scope. Resident is what is left, as for the rest of this
 file.
 
-**Why nothing is cut.** No resident sentence names a time zone, so nothing is
-superseded. `CLAUDE.md`'s "name the clock time an hour on" says which time
-and not in which zone, and takes its zone from rule 15 now.
+**Why nothing is cut.** No resident sentence named a time zone, so nothing was
+superseded. The reset procedure's "name the clock time an hour on" said which
+time and not in which zone, and took its zone from rule 15. `PL-Z90G` moved
+that procedure to `.claude/skills/docket/modes/start.md`, which names the zone
+itself.
 
 **What it costs and what should retire it.** About 430 characters, and 30 more
 in the scope line. It retires only if the zone replies are read in changes.
@@ -1207,3 +1220,197 @@ for the same reason as the first sentence, because a question is written in a
 reply that no read precedes. No resident sentence said where such a session
 sends its questions, so nothing is superseded. With both sentences the rules
 file grows by 1,157 characters.
+
+## The pull request procedure, routed to a skill 2026-10-24
+
+`PL-S2NL` moved the pull request procedure out of `CLAUDE.md` into
+`.claude/skills/pull-request/SKILL.md`. The commit-and-push bullet and the
+base-merge bullet had carried it, and a rough split measured them at 4,008 and
+1,190 characters. Every session loaded them, but a session needs them only when
+it pushes, opens or updates a pull request, or meets a failed check.
+
+**What stayed resident, and why.** One bullet stays. It keeps three things:
+
+- "Commit and push as you go", because it applies before the first push.
+- The owner's standing request to open the pull request on approved, green
+  work without asking. The web harness tells a session not to open one unless
+  the owner asks, so a session that had not loaded the skill would follow the
+  harness and stop with the work unopened. The sentence is that ask, and it
+  must be in place before the session decides.
+- A trigger that names the skill and the moments it covers.
+
+The rules a session applies before its first commit stay where they were, in
+the bullet that names the work after the item: the id at the front of every
+commit subject and the `Co-authored-by` line. The read-only rule that a
+session disarms its own armed pull requests stays too, because it applies
+before any push. It now points at the skill for the item-only auto-merge.
+
+**How each moment reaches the skill.**
+
+- **A push.** `.claude/hooks/push-check-guard.sh` already decides whether a
+  Bash call is a push of this repository. After a push it lets through, it adds
+  a note naming the skill and `bin/docket arm`. Claude Code puts a pre-tool
+  hook's `additionalContext` "alongside the tool result"
+  (https://code.claude.com/docs/en/hooks, section "PreToolUse decision control",
+  read 2026-10-24). So the note arrives after the push that carries it, which
+  is before the pull request is opened or armed and before the next push. A
+  session that armed a pull request has already had the note, because arming
+  follows a push. A claim pushed onto an armed pull request is the one case
+  the note would reach too late, and `bin/docket claim` already refuses that
+  push until auto-merge is off.
+- **A pull request call.** `.claude/hooks/pr-body-email-guard.sh` adds a note
+  after a create or update call it lets through: read the body back, and the
+  skill has the rest.
+- **A failed check.** It arrives as an event that names the check, so the
+  moment is in the request, which is the case `PL-SN2Z` measured. The trigger
+  sentence names "acting on a failed check".
+- **A pull request behind `main`.** `bin/docket arm` answers `behind N`, and
+  `bin/docket branch` prints when to bring `main` in, as before.
+
+**What was replaced, and the cost.** The new bullet replaced both old ones.
+`CLAUDE.md` went from 55,984 to 51,597 characters. The skill's description adds
+441 characters at launch, so the resident set is 3,946 characters smaller. The
+skill's body loads only when it is used.
+
+**Order.** `PL-S2NL` had been filed to wait for `PL-6VJ3` and `PL-JRVV`,
+which also edit `CLAUDE.md`. The project owner named it first, and the wait
+was a sequencing preference: the three items edit different paragraphs and
+only had to run one after another. Their briefs now say that this one went
+first.
+
+## The generator rules, routed to the triage mode 2026-10-24
+
+`PL-6VJ3` moved the reasoning and history of three `CLAUDE.md` paragraphs into
+`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
+pause they set". The three were the generator bullet, "A root cause of more
+than two items is pulled, not queued"; its paragraph on defects in the
+machinery that finds and ranks generators; and the generator pause. Triage is
+where a generator is recorded and ranked. The new section sits just before the
+check that asks each apparatus item where it came from.
+
+**What stayed resident, and why.** Two of the rules apply before any triage.
+Moving them wholesale would have loaded them too late, which is the failure
+`PL-WWDT` and `PL-4S6C` record.
+
+- **The two endings.** A session that finds a generator must fix it, or end
+  its reply with a prompt that starts a fresh session on it. The moment is the
+  reply that finds the generator, and no read comes before a reply. The
+  resident paragraph keeps the definition of a generator, which items the
+  endings bind, the case of a product session, and a pointer.
+- **The pause.** It applies before a workflow mechanism is built, which can be
+  a session's first write. The resident paragraph keeps what the pause holds,
+  what needs no lift, the command that says whether it applies, the owner's
+  lift, and a pointer. The standing-approval sentence in § "Prefer
+  deterministic tooling over repeated model work" still points at the pause in
+  § "What this project is", where the paragraph stays.
+
+**The retirement test, applied to the same paragraphs.** `PL-JRVV` asks of
+each `CLAUDE.md` block whether a check now enforces it. Its brief asked that it
+and this item be settled together, so that no paragraph is moved by one and
+deleted by the other. Two sentences in the moved text describe what
+`bin/docket check` enforces: it asks every open generator for its `generator:`
+line, and it refuses an `impairs-generators:` claim on code the item never goes
+near. They moved rather than being retired, because they explain the rule
+around them and moving them costs no resident characters. What stayed resident
+is what no check can enforce: how a reply ends, and whether a change is a new
+mechanism. So `PL-JRVV` has nothing left to retire in these paragraphs.
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 51,597 to 49,234
+characters, and the resident total from 93,730 to 91,367, as
+`tools/doc_check.py` reported on 2026-10-24. The triage mode grew by about
+4,800 characters, which load only when a session reads that file. The docket
+skill's dispatch table now names recording a generator in the triage row, so a
+session that records one is sent to the section.
+
+## The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24
+
+`PL-Z90G` moved two `CLAUDE.md` blocks into the docket skill's mode files, and
+left one trigger sentence for each in `CLAUDE.md`. The text went into the mode
+files, not the skill's front page. Compaction re-attaches only the first 5,000
+tokens of an invoked skill, and the front page is sized to come back whole.
+
+- **The context-budget reset procedure**, from § "Session and tool-use
+  efficiency", went to `.claude/skills/docket/modes/start.md` § "Check the
+  spend before starting, and reset in place". It covers what spend is, why
+  `get_session` cannot measure it, the three steps of a reset in place, the
+  Projects-thread variant, what compaction keeps, the case of a session past
+  the budget, and the measurement that refutes trimming as a substitute.
+- **The housekeeping-filing rule**, from § "The queue, and how the project
+  owner works", went to `.claude/skills/docket/modes/capture.md` § "Mode:
+  housekeeping nobody filed". That mode already held the reason, the line at a
+  commit of its own, and the fix-now exception. The move added what only
+  `CLAUDE.md` had stated: the two ratified records on deleting remote branches,
+  and the step that runs `python3 tools/branch_sweep.py`.
+
+**What stayed resident, and why.** Each rule applies at a moment that no read
+comes before.
+
+- **The budget.** A session decides whether to start an item, or to keep
+  going, while it works. The resident sentence keeps the 150,000-token budget,
+  the command that reads spend, the moment to check it, and a pointer to the
+  procedure. The argument in § "What stays resident, and on what argument"
+  still applies to that sentence.
+- **Housekeeping.** The rule applies at the first edit to work that no item
+  names, and that edit can be a session's first write.
+  `.claude/hooks/docket-branch-guard.sh` also fires there, when the branch
+  claims nothing. The resident sentence keeps the rule, its examples, the
+  exception for deleting remote branches, and a pointer.
+
+**Evidence that the pointer is followed.** `PL-SN2Z` found that a skill named
+by a resident trigger started first in 8 of 8 sessions whose request named its
+moment, starting a named item among them. Nothing measured a moment that
+arrives mid-task, which is the housekeeping case. The hook covers that moment.
+
+**What cited the moved text.** Five passages were pointed at the new homes:
+the start mode's own reset line, the picking mode's reset line, the docstring
+of `tools/context_reading.py`, the deny message in
+`.claude/hooks/no-prune-guard.sh`, and rule 14's line on remote branches in
+`.claude/rules/instruction-writing.md`. Dated records that quote the old text
+were left as written: the pull request bodies under `docs/pr-bodies/`,
+`docs/WORKING_NOTES.md`, and the table in § "The check-enforced review,
+2026-10-24".
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 48,842 to 45,636
+characters, 3,206 fewer. Rule 14 grew by 3 characters for its new pointer. The
+resident instruction files fell by 3,203 characters, from 83,862 to 80,659, as
+`tools/doc_check.py` reported on 2026-10-24. The total with the session-start
+digest's output varies with the queue, so it is not quoted here. The brief estimated about 4,000, from a rough split;
+the trigger sentences kept more than it assumed. The start mode grew by 3,275
+characters and the capture mode by 539, and both load only when a session
+reads them.
+
+## The check-enforced review, 2026-10-24
+
+`PL-JRVV` asked of every `CLAUDE.md` block whether a script, hook or check now
+enforces it, and retired the blocks that one does. A check counted as
+enforcing a rule only where a run against a violation was seen to fail, by an
+existing test or by a probe. Reading the code was not enough, for the reason
+§ "When a resident rule is retired" gives. The review covered `CLAUDE.md`
+only, as the item's done-when says. The three resident rules files govern a
+reply's shape, its wording and design judgment, which no check reads.
+Retiring prose builds no mechanism, so the generator pause did not apply.
+
+| Block | What checks it | Outcome |
+| --- | --- | --- |
+| The preamble, and § "What this project is" apart from the pause | Nothing. They state the project's purpose and judgment. | Kept |
+| The generator pause, and the generator bullet in § "The queue" | Reviewed by `PL-6VJ3` the same day. No check can read how a reply ends or tell whether a change is a new mechanism. | Kept |
+| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only a Projects thread's asks to read or merge. | Kept |
+| Simulation time as explicit state, and deterministic results | `tools/import_boundary_check.py` bars `time`, `datetime`, `random`, `secrets` and `uuid` under `core/` only. `app/` holds the clock legitimately and must keep a tick's real duration out of the run, which nothing checks. | Kept |
+| Tests with every core behavior change | CI's 100% coverage gate catches new code that no test runs. It does not catch a changed behavior that the old tests still pass. | Kept |
+| One source of truth | `tools/literal_home_check.py` and `tools/fact_home_check.py`, which the bullet already names. It keeps only what neither check reaches, and the owner specified it on 2026-10-12. | Kept |
+| Parameters in validated, versioned data files | `tools/literal_home_check.py` accepts a named constant in code, so it does not require a data file. | Kept |
+| Executable equations out of data files | The numeric payload types in `core/parameters.py` refuse a string where a number belongs. A new text field holding an expression would pass. | Kept, already a pointer |
+| Nothing beyond the current milestone | Nothing. | Kept |
+| § "Session and tool-use efficiency" | `tools/context_reading.py` prints the spend, and nothing enforces the reset. `.claude/hooks/push-check-guard.sh` runs `doc_check`, `branch_id_check` and the store check before a push, but not Ruff, mypy or pytest. | Kept |
+| § "Prefer deterministic tooling over repeated model work", its bullets | Nothing. Each is a judgment about what to build. | Kept |
+| The same section's standard-library sentence | `tests/unit/test_tools_portability.py` | Retired, § "What was routed out" |
+| § "The queue": the two modes, the division of labour, when to involve the owner, capture, fix-now, behavior changes, read only, capturing intent, compounding friction and the docs sweep | Nothing. `tools/doc_check.py` checks a sweep's citations, not whether the sentences around them are still true. | Kept |
+| Housekeeping is filed before it is done | `tools/branch_id_check.py`, which the push guard also runs, refuses a branch with no id at its first push. That comes after the work the rule exists to make visible. | Kept |
+| Name the work after the item | `tools/pr_title_check.py` holds a closing pull request's title, and `tools/branch_id_check.py` needs one id on the branch. The claim, the session's name, each commit subject's id and the co-author line have no check. | Shortened: the sentence on commits closing several items retired, § "What was routed out" |
+| Commit and push as you go | Already a pointer to `.claude/skills/pull-request/SKILL.md`. | Kept |
+| The safety-critical standard, expert review, and `## Compact Instructions` | Nothing. | Kept |
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 49,234 to 48,842
+characters, 392 fewer. Nothing was added to another resident file. The cut is
+small because most of `CLAUDE.md` governs a reply, a design choice or an
+action taken before any file is read, and no check sees those moments.

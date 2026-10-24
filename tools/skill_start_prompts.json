@@ -1,0 +1,19 @@
+{
+  "skill": "docket",
+  "source": "PL-SN2Z: the docket skill's own description in .claude/skills/docket/SKILL.md names the workflows it covers. Each should_start prompt is one of them, and several never say queue, item or docket. Each should_not prompt is an ordinary request in this repository that no queue workflow covers.",
+  "prompts": [
+    {"id": "pick-next", "should_start": true, "prompt": "What should I work on next?"},
+    {"id": "free-hour", "should_start": true, "prompt": "I've got about an hour tonight. Anything worth picking up?"},
+    {"id": "start-named", "should_start": true, "prompt": "Let's do PL-8YBS."},
+    {"id": "note-bug", "should_start": true, "prompt": "Quick note so we don't lose it: on a narrow window the trend chart's y-axis label overlaps the legend. Not now, just make sure it's recorded."},
+    {"id": "triage", "should_start": true, "prompt": "Triage what came in today."},
+    {"id": "release", "should_start": true, "prompt": "Is there enough finished to cut a release?"},
+    {"id": "idea", "should_start": true, "prompt": "What if a learner could compare two patients side by side? Break that into pieces of work."},
+    {"id": "close-out", "should_start": true, "prompt": "PL-8YBS is finished. Wrap it up."},
+    {"id": "mac-concept", "should_start": false, "prompt": "In one paragraph, what does MAC mean and how does this simulator use it?"},
+    {"id": "solver", "should_start": false, "prompt": "Which numerical method does the uptake model use, and why?"},
+    {"id": "git-question", "should_start": false, "prompt": "What's the difference between git merge and git rebase?"},
+    {"id": "run-tests", "should_start": false, "prompt": "Run the unit tests for the tissue module and tell me whether they pass."},
+    {"id": "find-code", "should_start": false, "prompt": "Where in the code is the fresh gas flow set?"}
+  ]
+}

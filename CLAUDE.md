@@ -52,24 +52,19 @@ pre-registered apparatus-convergence baseline) holds its numbers and
 predictions; `bin/docket release` names any that break (`PL-WXKD`).
 
 **While any open workflow-lane item carries `generator: live`, no new workflow
-mechanism is built** (project owner, 2026-09-22, ratified, over adding them
-under standing approval and ratified recommendations while six closed generator
-heads were still producing, which is how at least nine mechanisms and their
-tails arrived on 09-20 and 09-21, `PL-KVDK`; narrowed to the workflow lane - a
-head whose `touches` lie in `workflow_paths`, the lane `Item.lane` reads - by
-the project owner, 2026-10-17, ratified, over binding on a head of either lane,
-after `PL-X7D5`, a run-view defect, froze `PL-ZYHX`, `PL-KBVW`). **It holds apparatus work unrelated to fixing
-the generators: new features and housekeeping** (project owner, 2026-09-23). A
-new command, check, field or rule of that kind, or a re-specification of the
-generator rule, is captured and not built, nor offered as the answer to a
-finding. Work on the generators is what the pause is for, and needs no lift:
-fixing a live generator, a defect in what exists, or the machinery that finds
-and ranks generators, including what a head records (`PL-5MYR`). The pause ends when no open workflow-lane item carries `generator: live` — no
-head in that lane that `bin/docket generators` marks "still generating". Not `next`'s
-generator tier, which leaves out whatever is in flight, blocked or untriaged,
-and counts `impairs-generators:` items the rule does not name (`PL-CT07`). A
-request from the project owner lifts it for that request, and the session says
-so (`PL-6Q9L`).
+mechanism is built** (project owner, 2026-09-22, ratified, and narrowed to the
+workflow lane 2026-10-17, ratified; the triage mode records what each was
+chosen over). The pause holds apparatus work unrelated to fixing the
+generators, both new features and housekeeping. A new command, check, field or
+rule of that kind, or a re-specification of the generator rule, is captured
+and not built, and is not offered as the answer to a finding. Work on the
+generators needs no lift: fixing a live generator, fixing a defect in what
+exists, or fixing the machinery that finds and ranks generators. The pause
+applies while `bin/docket generators` marks a workflow-lane head "still
+generating", not while `next` shows a generator tier (`PL-CT07`). A request
+from the project owner lifts it for that request, and the session says so
+(`PL-6Q9L`). `.claude/skills/docket/modes/triage.md` § "Generators, how they
+rank, and the pause they set" has the full rule and its history (`PL-6VJ3`).
 
 **Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
 a fix batch before the switch and over working each root cause in the owner's
@@ -256,44 +251,12 @@ before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. **Reset at
-  150,000 tokens of spend — and check that budget before starting an item,
-  not on reaching it** (project owner, 2026-09-16; re-anchored from the
-  absolute reading to spend 2026-09-21, ratified, over a budget that is mostly
-  a budget on the apparatus and moves whenever the resident set does).
-  *Spend* is what this session added over the context it started with;
-  `python3 tools/context_reading.py` prints it from the session's own
-  transcript. Read it as you pick up the next item, and if the item will not
-  fit in what is left, reset instead of starting. **Not `get_session`:**
-  `context_usage.used_tokens` is written at turn boundaries, so it never moves
-  inside a turn and reads 0 before the first (`PL-W80S`, `PL-BZVY`). Checked
-  before the spend the budget cannot be overshot, and work never started cannot
-  be cut off half-done (`PL-NW76`). **The reset is in place, not a new session**
-  (project owner, 2026-09-25, ratified, over a handoff the owner carries by
-  pasting a prompt into a new session, `PL-YJG1`): externalize what only the
-  conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
-  then ask the project owner to type `/compact`, which a session cannot run on
-  itself, and name the clock time an hour on, after which the summary re-reads
-  the whole history uncached (`docs/maintainer.md`). A Projects thread, into
-  which the owner cannot type `/compact`, instead writes its next steps into
-  the item file, commits and pushes that, says so in one line and stops, and
-  the coordinator starts a fresh thread on the branch (the Projects trial's
-  instructions, read 2026-10-03, kind unrecorded, `PL-PDVF`). Pushed first, compaction
-  lands where a handoff did — the floor, a summary, files re-read, with
-  `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
-  pull-request watch. A file it restores counts as already read, but its
-  path-scoped rules may not have come back, so read it again before the first
-  edit to it (`PL-384P`). That floor measured 81,048–115,320 tokens on 2026-09-21 (`PL-W80S`),
-  and it moves whenever the resident set does.
-  Past the budget anyway — an item that ran
-  long, or a design round holding its reasoning in the conversation — finish
-  the item in hand, reset the same way, and say in your reply that you stopped
-  for length rather than for the work. This is the largest adherence lever
-  the project has, and the reason trimming these instructions is not: the
-  resident set measured 2.5–5.6% of
-  the 263k–519k contexts seven concurrent sessions were carrying on
-  2026-09-16, so no cut to it substitutes for resetting the session (`PL-H253`).
-  Pick up cold from the session-start digest, `bin/docket next`, and the one
-  item being worked — not by reading the queue whole.
+  150,000 tokens of spend, and check that budget with
+  `python3 tools/context_reading.py` before starting an item, not on reaching
+  it** (project owner, 2026-09-16; re-anchored to spend 2026-09-21, ratified). When
+  the item will not fit in what is left, or a session passes the budget anyway,
+  reset in place as `.claude/skills/docket/modes/start.md` § "Check the spend
+  before starting, and reset in place" says (`PL-Z90G`).
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
@@ -355,8 +318,7 @@ context in every session that needs it. `tools/doc_check.py` and
   is fluff and goes. Nobody reading it is the symptom, not the test (project
   owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
 
-New tools use the standard library only, so a hook or a bare checkout can run
-them without the project virtualenv. A script also answers identically every
+A script answers identically every
 run and states its rule where a reviewer can read it, which is the
 safety-critical standard's determinism and auditability arriving free.
 
@@ -444,8 +406,8 @@ deviating from a described deliverable, not acting without one.
      `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md`,
      or any finding the safety-critical standard reaches, is filed: the item is
      what ranks it `P1`, offers it to the strongest model and stands as its
-     provenance. A fix that needs the owner's read (the arm bullet below says
-     which) is taken only where the branch already waits on that read, so a fix
+     provenance. A fix that needs the owner's read (the `pull-request` skill
+     says which) is taken only where the branch already waits on that read, so a fix
      never turns a pull request that would merge on green into one that waits
      on the owner (project owner, 2026-10-12, ratified, over holding the pull
      request for the read, and over opening the clinical paths with a
@@ -474,64 +436,26 @@ deviating from a described deliverable, not acting without one.
   ratified, over leaving that licence in the path-scoped citation-drift rule,
   which loads only after the decision to file; eleven such repairs became items
   in three days, `PL-G40Z`).
-- **Housekeeping you are about to do yourself is filed before you do it.** The
-  capture rule records what a session will *not* fix; this one covers repository
-  work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
-  lint fix, recovering a stranded item. Every in-flight guard matches a `PL-`
-  id, so unfiled work reads as nobody's to all of them and keeps reading that
-  way after both sessions have pushed. So file the item first, then claim it
-  and work under its id. Not for a fix riding inside a commit an id already
-  leads: the line is whether the work takes a commit of its own (`PL-CP74`) —
-  and not for one the fix-now rule admits, which rides the current item's
-  claim. Not for deleting remote branches either, or clearing this clone's
-  tracking refs for them: that changes nothing in the repository, so nothing
-  is filed, claimed or committed and no pull request opens (project owner,
-  2026-09-26, ratified, over filing branch cleanup as housekeeping with a pull
-  request of its own, `PL-S8LZ`). `.github/workflows/branch-sweep.yml` deletes
-  finished `claude/*` branches daily, so the reply runs
-  `python3 tools/branch_sweep.py` and hands the owner only a branch it keeps
-  that should go anyway (project owner, 2026-09-26, ratified, over a list
-  built by hand, `PL-X8SV`).
-- **A root cause of more than two items is pulled, not queued** (project owner,
-  2026-09-17). A mechanism a session identifies as the cause of three or more
-  items is a *generator*. Record it on the causing item as `root-cause-of:`
-  naming the items it explains — three or more, or it is an ordinary item — so
-  the claim is a recorded fact rather than the next session's inference.
-  **The count decides the record; expected recurrence decides the rank**
-  (project owner, 2026-09-21, ratified, over keeping the count for both and
-  accepting that any three-item cluster outranks a `safety`-classed `P1`). A
-  generator the store is still handing new members ranks **above everything but
-  `P0`** — including a `safety`-classed `P1`, which was asked and answered
-  rather than overlooked — because every session it stands through pays it
-  again, and that is a claim about future inflow rather than about the damage
-  any one member does. One whose mechanism is spent is recorded all the same,
-  for the audit, and ranks on its own band. Say which it is and why in
-  `generator:`, beside the `root-cause-of:` — `live - <why it is still being
-  handed members>`, or `spent - <why it cannot produce another>`. Recording
-  alone does not rank; `bin/docket check` asks any open generator that has not
-  answered. A *ranking* generator then takes one of exactly two
-  endings: **fix it in this session, or end the reply with a ready-to-paste
-  prompt that starts a fresh session on it.** Filing it and carrying on is not
-  a third — an item alone changes nothing. **Found in a product session, it
-  takes the second, after the product item**, unless it blocks that item
-  (project owner, 2026-09-25, ratified, over holding the ending for heads found
-  in product work and over fixing each one here once the item is done,
-  `PL-2866`). A spent one is ordinary work under
-  the capture rule above. Identifying one is judgment and stays a session's;
-  what follows from it is not.
-
-  **A defect in the machinery that finds and ranks generators ranks with one**
-  (project owner, 2026-09-19). Same tier, below `P0` and above every band,
-  because while identification is broken a generator is never recorded and an
-  unrecorded generator is ranked by nothing — and nothing in the store would
-  ever say one went unfound. Record it as `impairs-generators:` on an item
-  whose `touches` reaches `generator_paths`: prose naming the function that
-  broke, never `yes`, and `bin/docket check` refuses a claim on code the item
-  never goes near. **The two endings above bind it too** — fix it in this
-  session, or end the reply with a prompt starting a fresh one; filing it and
-  carrying on is not a third. Asked and answered against the recommendation to
-  confine them to a measured cluster, so reopening it needs a compelling
-  argument rather than ordinary evidence (`PL-4MPJ`).
+- **Housekeeping you are about to do yourself is filed before you do it.**
+  Repository work that no item names, such as resolving a merge, a docs sweep
+  or recovering a stranded item, gets `bin/docket new` and a claim before its
+  first commit. Deleting remote branches is never filed.
+  `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed"
+  has the reason, what is too small to file, and what a reply does about
+  branches instead (`PL-CP74`, `PL-Z90G`).
+- **A generator takes one of two endings: fix it in this session, or end the
+  reply with a ready-to-paste prompt that starts a fresh session on it**
+  (project owner, 2026-09-17). A generator is a mechanism that causes three or
+  more items. The two endings bind a head recorded `generator: live`, and an
+  item recorded `impairs-generators:`, which is a defect in the machinery that
+  finds and ranks generators. Filing it and carrying on is not a third ending,
+  because an item alone changes nothing. Found in a product session, it takes
+  the prompt, after the product item, unless it blocks that item (project
+  owner, 2026-09-25, ratified, over fixing it in that session once the item is
+  done, `PL-2866`). A spent generator is ordinary work under the capture rule
+  above. How to record a generator, and why a live one ranks above everything
+  but `P0`, is in `.claude/skills/docket/modes/triage.md` § "Generators, how
+  they rank, and the pause they set" (`PL-6VJ3`).
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
@@ -575,10 +499,7 @@ deviating from a described deliverable, not acting without one.
   `bin/docket claim`, rename the session to lead with its id, and put that id
   **at the front of every commit subject** and pull request title. The claim
   tells every other session the item is taken; the leading id attributes each
-  commit to it. **A commit closing more than one item leads with all of
-  them**, comma-separated: `docket check` recovers a closed item's pull request
-  from the newest subject naming it, so a rider whose id never leads one is
-  attributed to its own capture commit instead (`PL-GW37`). Name the branch too
+  commit to it. Name the branch too
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
   cannot be renamed, which is expected rather than a failure. Say in your reply
@@ -587,60 +508,17 @@ deviating from a described deliverable, not acting without one.
   co-author, whatever the harness's attribution reminder names**, since that
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
   line may stay (project owner, 2026-09-24, restating `PL-B11M`).
-- **Commit and push as you go; the pull request arrives with the work**
-  (project owner, 2026-08-31). The container is ephemeral, so an uncommitted
-  thought is one interruption from gone and an unpushed commit dies with it.
-  Once the owner has approved a piece of work, the pull request opens as soon as
-  that work is finished and its checks are green — do not ask first, because the
-  approval *was* the invitation. **A branch carrying only item files opens its
-  pull request at its first push and arms auto-merge**, so a capture reaches
-  `main` even when its session ends before any work does (project owner,
-  2026-09-23, ratified, over "a branch carrying only captured items is not a
-  pull request", `PL-WNCT`), and `update-armed.yml` brings `main` in if `main`
-  moves past it first (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s
-  answer, asked before arming and before every later push while a pull request
-  is open.** `arm`: mark it ready and arm it, and name in the report the paths
-  outside the store it armed. **The owner reads only a real decision or a
-  high-risk change, and housekeeping merges on green** (project owner,
-  2026-10-17, `PL-DKBG`). Which one a change is stays your call, recorded as an
-  `Owner-read:` trailer that `arm` prints the form and the test for. `hold`, for
-  a claim, a simulator change no such record covers, a record saying `needed`,
-  or an edit to a test pinning `arm`'s answers - leave it unarmed, disarming it before the push that
-  brings the hold or green CI merges half the work, a draft while the hold is a
-  claim, and once no claim holds it record the judgment or ask as `arm` says;
-  a pull request held for the owner merges on their word alone. Workflow items
-  need no merge confirmation (project owner, 2026-10-12, `PL-KPM2`). `behind N`: bring `origin/main` in
-  and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
-  and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
-  `PL-H14W`). **`main` red for a reason outside the item stops the session**:
-  say so to the owner before any retry, and wait (project owner, 2026-09-25,
-  ratified, in the Projects trial's instructions, `PL-NZC0`). **A check that
-  fails again on the same pull request stops it too, unless the session
-  reproduced the new failure and found a cause no earlier failure of that
-  check there had.** Then it fixes that cause and carries on. A repeated cause,
-  a failure it cannot explain, or a need for a stronger model stops it, and the
-  reply says what failed, why, and what it wants, asking nothing where nothing
-  needs weighing. **Four failed runs of one check on one pull request stop it
-  whatever the causes.** That reply says the check failed four times and names
-  each cause. It asks the owner a real question with options and a
-  recommendation, such as a retry on a stronger model, a narrower or split
-  change, or setting the item aside, and never only whether to try again
-  (project owner, 2026-10-19, ratified, over a stop at every second failure;
-  the question at four is the owner's own, `PL-M44T`).
-  Where the **web harness
-  says not to open one unless the
-  owner explicitly asks**, this bullet is that ask, standing rather than per
-  pull request, so a session reading both proceeds rather than stalls. A session-level
-  auto-pull-request switch set *off* is that same case and not a third: it
-  stops the harness opening one unasked and does not withdraw this ask
-  (project owner, 2026-09-19, ratified, over treating the switch as a
-  withdrawal and asking per pull request while it is off). Then
-  **read the published body back and compare it against what was sent**: the
-  server rewrites bodies silently and still returns success. An angle-bracket
-  placeholder such as `<id>` is taken for an HTML tag and vanishes, code span
-  or not (`PL-1DN9`). An update also strips a `_Generated by_` footer and puts
-  none back, so end an updated body with the `🤖 Generated with` lines
-  (`PL-N2DN`).
+- **Commit and push as you go, and read the `pull-request` skill before
+  opening, arming, updating or merging a pull request, or acting on a failed
+  check** (project owner, 2026-08-31; moved to
+  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
+  container is ephemeral, so an uncommitted thought is one interruption from
+  gone and an unpushed commit dies with it. Once the owner has approved a piece
+  of work, its pull request opens as soon as the work is finished and green,
+  without asking. That standing request is the explicit ask the web harness
+  waits for. The skill holds when a pull request arms, when to bring `main` in,
+  when failed checks stop the session, and how to check a published body. The
+  push and pull request hooks name it at those moments.
 - **Read only means read only** (project owner, 2026-09-27). Told "read
   only", or anything meaning look but change nothing, a session writes nothing
   until the owner lifts it: no file, commit, push, pull request, comment, claim
@@ -648,26 +526,10 @@ deviating from a described deliverable, not acting without one.
   its own armed pull requests at once and says so, and a check-in it scheduled
   only reads and reports - because letting it finish is a write nobody
   approved, and the owner should never have to confirm a hold to prevent a
-  merge. The capture rule and the item-only auto-merge above are suspended
+  merge. The capture rule and the `pull-request` skill's item-only auto-merge are suspended
   while it holds; a finding goes into the reply, to be filed once the mode
   lifts. `#1213` merged after "Read only for now" because its session left it
   armed and offered a hold (`PL-LK62`).
-- **Bring `origin/main` into an open pull request once, when it is armed or
-  being merged and `behind` is all that stops it; again only if another merge
-  lands first.** `main` refuses a branch that is not up to date (project owner,
-  2026-09-23, ratified, over a merge queue, which a user-owned repository
-  cannot have), and each base merge re-runs `quality.yml`, so one taken while
-  the pull request waits on review is stale by its merge and paid again.
-  Waiting on review behind is neither red nor conflicted, and is not work. At
-  merge time the owner's *Update branch* brings it in (`docs/maintainer.md`);
-  an armed one is brought in by `update-armed.yml` on each push to `main`
-  (`PL-S5MF`), since auto-merge never updates a branch. The refusal binds an
-  admin too. A session's GitHub calls are the owner's, so a session
-  squash-merges a pull request that GitHub will not arm because it is already
-  green and current (project owner, 2026-10-03, ratified, over the owner's
-  click, `PL-NXRJ`). Sooner only on a genuine
-  conflict, a notice that `main` is green again, or before editing work it will
-  push anyway, as `bin/docket branch` prints (`PL-6MW8`, revising `PL-WC72`).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
