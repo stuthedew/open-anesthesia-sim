@@ -89,8 +89,8 @@ def project(tmp_path: Path) -> Path:
     return tree
 
 
-def _decision(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
-    """The hook's `hookSpecificOutput` for one Bash call, or `None` if it let the call through."""
+def _output(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
+    """The hook's `hookSpecificOutput` for one Bash call, or `None` if it printed nothing."""
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)})
     result = subprocess.run(
         ["bash", str(HOOK)],
@@ -104,6 +104,12 @@ def _decision(command: str, *, cwd: Path, project: Path) -> dict[str, str] | Non
     if not result.stdout.strip():
         return None
     return json.loads(result.stdout)["hookSpecificOutput"]
+
+
+def _decision(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
+    """The hook's refusal for one Bash call, or `None` if it let the call through."""
+    output = _output(command, cwd=cwd, project=project)
+    return output if output is not None and "permissionDecision" in output else None
 
 
 def test_a_push_whose_doc_check_fails_is_refused(project: Path) -> None:
@@ -209,6 +215,20 @@ def test_a_tree_whose_path_holds_a_carriage_return_is_checked(tmp_path: Path) ->
 
 def test_a_push_every_check_passes_goes_through(project: Path) -> None:
     assert _decision("git push -u origin claude/x", cwd=project, project=project) is None
+
+
+def test_a_push_it_lets_through_names_the_pull_request_skill(project: Path) -> None:
+    """`PL-S2NL`: the pull request procedure applies from a push, so its pointer arrives then.
+
+    The note is context beside the push's result, never a decision, so the
+    push goes ahead. A push that sends nothing gets no note.
+    """
+    output = _output("git push -u origin claude/x", cwd=project, project=project)
+    assert output is not None
+    assert "permissionDecision" not in output
+    assert ".claude/skills/pull-request/SKILL.md" in output["additionalContext"]
+    assert "`bin/docket arm`" in output["additionalContext"]
+    assert _output("git push --dry-run", cwd=project, project=project) is None
 
 
 def test_a_refusal_names_uncommitted_work_the_checks_read(project: Path) -> None:

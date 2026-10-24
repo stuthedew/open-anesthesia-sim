@@ -51,3 +51,5 @@ both together, so a paragraph is not moved and then deleted.
 - Whether the generator pause applies. Retiring prose builds no new
   mechanism, but any gap the review finds and wants a new check for would be
   captured, not built, while the pause holds.
+
+**`PL-S2NL` went first, 2026-10-24.** It moved `CLAUDE.md`'s pull request procedure, the commit-and-push and base-merge bullets, into `.claude/skills/pull-request/SKILL.md`, and left one trigger bullet in their place. `docs/resident-instructions.md` § "The pull request procedure, routed to a skill 2026-10-24" records what stayed and why. Measure this item's cut against that smaller `CLAUDE.md`. The `bin/docket arm` rules this review might have retired from `CLAUDE.md` now live in the skill, which loads only when used, so they no longer cost resident context.

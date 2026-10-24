@@ -58,6 +58,7 @@ preceded by a read.
 | Which claim shapes hold a captures-only pull request unarmed, and the five decisions behind them | 1,095 characters of `CLAUDE.md`'s commit-and-push bullet, from "A claim on the branch leaves it unarmed" to "merge half the work" | `bin/docket arm`, from `subprojects/docket/src/docket/arming.py`, whose docstring now carries the decision records, pinned by the `test_arm_` tests in `subprojects/docket/tests/test_cli.py` | A claim is a recorded fact since `PL-3FYK`, so whether one rides a branch is read from the tree instead of recognized by each session from a catalog of shapes - and each shape the catalog missed had been an item (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`). What stays resident, at 520 characters, is the trigger - ask before arming and before every later push - and what each answer does to the pull request, because a push is preceded by no read. The same pass rewrote three sentences, in the housekeeping and naming bullets and in rule 14, that described every in-flight guard as matching commit subjects, which the claim record ends (`PL-MB2W` § "Deleted"); net across both files, 709 fewer characters (`PL-DDYD`). |
 | "Keep scientific/simulation code independent of the UI toolkit" | 65 characters with its newline, § "Architecture and development discipline" | `tools/import_boundary_check.py`: `PySide6`, `pyqtgraph`, `numpy` and `anesthesia_sim.app` permitted in no module under `core/`, and `flet` and `flet_charts` in none under `src/`, pinned by `tests/unit/test_import_boundary_check.py` | Retired under § "When a resident rule is retired", below. Its failure is an import, which the check reads from the tracked tree at every `make check` and in CI, where the sentence fired only when a session remembered it. Observed firing on 2026-10-17, before the line was removed: with a staged one-line module under `core/` holding `from PySide6 import QtWidgets`, the tool reported 56 modules read and 1 error naming that line and exited 1; without it, 55 modules and 0 errors; its 70 tests passed. The check, `docs/apparatus.md` and `docs/ARCHITECTURE.md` cited `CLAUDE.md` as the rule's source, which the 2026-09-16 correction below had warned would strand the citation, so all three now cite `docs/ARCHITECTURE.md` § "Layering", the section that states the layering the boundaries enforce (`PL-ZYHX`). |
 | "Put no simulation calculations in UI callbacks" | 50 characters with its newline, § "Architecture and development discipline" | `.claude/rules/ui-calculations.md`, loaded by `paths: /src/anesthesia_sim/app/**` | A callback is written only with a file under `app/` open, so the rule reaches the one moment it binds, every time, which is the promise the refused path-scoping of every invariant to `src/**` could not make. It stays prose there, because whether an expression is a simulation calculation is the judgment half no check decides, and the rule now also says where the line sits, `docs/ARCHITECTURE.md` § "Layering", and what is checked around it (`PL-ZYHX`). |
+| The pull request procedure: opening on approval without asking, the web harness's "only when asked", item-only arming, `bin/docket arm`'s three answers, bringing `main` in once, the three stops on failed checks, and reading the body back | the commit-and-push bullet after its first sentence, and the whole base-merge bullet, § "The queue": `CLAUDE.md` 4,387 characters shorter, net of the trigger sentence that replaced them | `.claude/skills/pull-request/SKILL.md`, whose 441-character description loads at launch. `.claude/hooks/push-check-guard.sh` names it after a push it lets through, and `.claude/hooks/pr-body-email-guard.sh` after a pull request call, pinned by `test_a_push_it_lets_through_names_the_pull_request_skill` and `test_a_pull_request_call_the_guard_lets_through_names_the_read_back` | A session needs it only at a push, a pull request call or a failed check. A hook sees the first two. A failed check arrives as an event that names it, which is the case `PL-SN2Z` measured: a resident sentence and a skill description started the `docket` skill on 8 of 8 requests that named the moment. Section "The pull request procedure, routed to a skill 2026-10-24", below, has what stayed and why (`PL-S2NL`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -1207,3 +1208,60 @@ for the same reason as the first sentence, because a question is written in a
 reply that no read precedes. No resident sentence said where such a session
 sends its questions, so nothing is superseded. With both sentences the rules
 file grows by 1,157 characters.
+
+## The pull request procedure, routed to a skill 2026-10-24
+
+`PL-S2NL` moved the pull request procedure out of `CLAUDE.md` into
+`.claude/skills/pull-request/SKILL.md`. The commit-and-push bullet and the
+base-merge bullet had carried it, and a rough split measured them at 4,008 and
+1,190 characters. Every session loaded them, but a session needs them only when
+it pushes, opens or updates a pull request, or meets a failed check.
+
+**What stayed resident, and why.** One bullet stays. It keeps three things:
+
+- "Commit and push as you go", because it applies before the first push.
+- The owner's standing request to open the pull request on approved, green
+  work without asking. The web harness tells a session not to open one unless
+  the owner asks, so a session that had not loaded the skill would follow the
+  harness and stop with the work unopened. The sentence is that ask, and it
+  must be in place before the session decides.
+- A trigger that names the skill and the moments it covers.
+
+The rules a session applies before its first commit stay where they were, in
+the bullet that names the work after the item: the id at the front of every
+commit subject and the `Co-authored-by` line. The read-only rule that a
+session disarms its own armed pull requests stays too, because it applies
+before any push. It now points at the skill for the item-only auto-merge.
+
+**How each moment reaches the skill.**
+
+- **A push.** `.claude/hooks/push-check-guard.sh` already decides whether a
+  Bash call is a push of this repository. After a push it lets through, it adds
+  a note naming the skill and `bin/docket arm`. Claude Code puts a pre-tool
+  hook's `additionalContext` "alongside the tool result"
+  (https://code.claude.com/docs/en/hooks, section "PreToolUse decision control",
+  read 2026-10-24). So the note arrives after the push that carries it, which
+  is before the pull request is opened or armed and before the next push. A
+  session that armed a pull request has already had the note, because arming
+  follows a push. A claim pushed onto an armed pull request is the one case
+  the note would reach too late, and `bin/docket claim` already refuses that
+  push until auto-merge is off.
+- **A pull request call.** `.claude/hooks/pr-body-email-guard.sh` adds a note
+  after a create or update call it lets through: read the body back, and the
+  skill has the rest.
+- **A failed check.** It arrives as an event that names the check, so the
+  moment is in the request, which is the case `PL-SN2Z` measured. The trigger
+  sentence names "acting on a failed check".
+- **A pull request behind `main`.** `bin/docket arm` answers `behind N`, and
+  `bin/docket branch` prints when to bring `main` in, as before.
+
+**What was replaced, and the cost.** The new bullet replaced both old ones.
+`CLAUDE.md` went from 55,984 to 51,597 characters. The skill's description adds
+441 characters at launch, so the resident set is 3,946 characters smaller. The
+skill's body loads only when it is used.
+
+**Order.** `PL-S2NL` had been filed to wait for `PL-6VJ3` and `PL-JRVV`,
+which also edit `CLAUDE.md`. The project owner named it first, and the wait
+was a sequencing preference: the three items edit different paragraphs and
+only had to run one after another. Their briefs now say that this one went
+first.
