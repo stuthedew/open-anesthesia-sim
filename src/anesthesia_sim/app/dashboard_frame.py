@@ -59,6 +59,7 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
+    DECIMAL_BASE,
     FLOW_DISPLAY_DECIMALS,
     format_agent_residual,
     format_agent_volume,
@@ -1309,7 +1310,7 @@ def slider_position(value: float, decimals: int) -> int:
         `value` in counts of `10**-decimals`, rounded to the nearest.
     """
 
-    return round(value * 10.0**decimals)
+    return round(value * DECIMAL_BASE**decimals)
 
 
 def slider_value(position: int, decimals: int) -> float:
@@ -1323,7 +1324,7 @@ def slider_value(position: int, decimals: int) -> float:
         The setting, in the control's unit.
     """
 
-    return position / 10.0**decimals
+    return position / DECIMAL_BASE**decimals
 
 
 def offered_range(minimum: float, maximum: float, decimals: int) -> tuple[float, float] | None:

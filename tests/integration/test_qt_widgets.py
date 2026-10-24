@@ -1,13 +1,17 @@
-"""The dashboard's leaf widgets, driven headless against real controllers.
+"""These tests run the dashboard's leaf widgets without a display, using real controllers.
 
-`app/qt_widgets.py` moves Qt widgets to match `dashboard_frame` values and
-decides nothing; these tests hold the few things the widgets *do* own -
-that a readout value cannot wrap away from its unit (`PL-3355`), that a
-slider position is exactly the printed value (`PL-25KS`, D4), that a
-snapshot written into a slider never comes back out as a change, that the
-new-case dialog's default keeps the case, and where the window opens
-(`PL-005`). They render under the
-`offscreen` platform `tests/conftest.py` selects.
+`app/qt_widgets.py` updates Qt widgets to match `dashboard_frame` values and makes no
+decisions of its own. These tests check the few behaviors that belong to the widgets
+themselves:
+
+- that a readout's value cannot wrap onto a different line from its unit (`PL-3355`)
+- that a slider's position is exactly the printed value (`PL-25KS`, D4)
+- that a value written into a slider from a snapshot is never reported back as a change
+- that the new-case dialog's default choice keeps the current case
+- which cell of the bookmark editor each field sits in, and the order in which Tab visits them
+- where the window opens (`PL-005`)
+
+The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
@@ -29,9 +33,15 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    COMPARTMENT_FIELD_LABEL,
     EMPTY_METRIC_QUALIFIER,
+    HEIGHT_FIELD_LABEL,
+    INSTANT_FIELD_LABEL,
+    MAC_TARGET_HEADING,
+    MARK_NAME_FIELD_LABEL,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
+    TIME_BOOKMARK_HEADING,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     Readout,
@@ -47,6 +57,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    BookmarkDialog,
     FlowLayout,
     MetricPanel,
     NewCaseDialog,
@@ -760,6 +771,143 @@ def test_the_discard_button_is_drawn_before_the_keep_button(application: QApplic
 
     assert dialog.discard_button.geometry().right() < dialog.keep_button.geometry().left()
     assert dialog.discard_button.geometry().top() == dialog.keep_button.geometry().top()
+
+
+# ----------------------------------------------------- the bookmark editor
+
+
+def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
+    """The editor's form at this place in its column: 0 for times, 1 for targets."""
+
+    column = dialog.layout()
+    item = None if column is None else column.itemAt(index)
+    form = None if item is None else item.layout()
+    assert isinstance(form, QGridLayout)
+
+    return form
+
+
+def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[int, ...]]:
+    """Return the cell that each widget of one form spans, keyed by the widget's name.
+
+    A cell is the widget's row and column and the number of rows and columns it
+    spans. A widget is named by the dialog attribute that holds it. No attribute
+    holds a heading or the label that shows a field's name, so each of those is
+    named by its text. A widget placed in the grid twice fails the test.
+    """
+
+    attributes = {id(value): name for name, value in vars(dialog).items()}
+    cells: dict[str, tuple[int, ...]] = {}
+
+    for index in range(form.count()):
+        item = form.itemAt(index)
+        widget = None if item is None else item.widget()
+        name = attributes.get(id(widget))
+
+        if name is None:
+            assert isinstance(widget, QLabel)
+            name = widget.text()
+
+        assert name not in cells, f"{name} is placed in the form twice"
+        position = form.getItemPosition(index)
+        assert isinstance(position, tuple)
+        cells[name] = position
+
+    return cells
+
+
+def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
+    application: QApplication,
+) -> None:
+    """Each widget of both forms keeps the cell that the editor gave it by number.
+
+    Before `PL-4X5B`, the editor's code set each widget's row and column by
+    number. The expected cells are transcribed from those numbers, so the test
+    does not read them from the grid code that it checks. That code now places a
+    widget by where it is written in its form, and a widget written in two or
+    three neighbouring columns spans them.
+    """
+
+    dialog = BookmarkDialog()
+
+    assert _form_cells(dialog, _form(dialog, 0)) == {
+        TIME_BOOKMARK_HEADING: (0, 0, 1, 3),
+        INSTANT_FIELD_LABEL: (1, 0, 1, 1),
+        "instant_spin": (1, 1, 1, 1),
+        "instant_preview": (1, 2, 1, 1),
+        MARK_NAME_FIELD_LABEL: (2, 0, 1, 1),
+        "time_label_edit": (2, 1, 1, 2),
+        "add_time_button": (3, 1, 1, 1),
+        "time_list": (4, 0, 1, 3),
+        "remove_time_button": (5, 1, 1, 1),
+    }
+    assert _form_cells(dialog, _form(dialog, 1)) == {
+        MAC_TARGET_HEADING: (0, 0, 1, 3),
+        COMPARTMENT_FIELD_LABEL: (1, 0, 1, 1),
+        "compartment_combo": (1, 1, 1, 2),
+        HEIGHT_FIELD_LABEL: (2, 0, 1, 1),
+        "height_spin": (2, 1, 1, 1),
+        MARK_NAME_FIELD_LABEL: (3, 0, 1, 1),
+        "target_label_edit": (3, 1, 1, 2),
+        "add_target_button": (4, 1, 1, 1),
+        "target_list": (5, 0, 1, 3),
+        "remove_target_button": (6, 1, 1, 1),
+    }
+
+
+def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
+    application: QApplication,
+) -> None:
+    """The Tab key visits the editor's controls in the order a reader reads them.
+
+    A keyboard user fills in the editor with Tab alone. WCAG 2.2 SC 2.4.3, Focus
+    Order, asks for a focus order that "preserves meaning and operability". For the
+    editor's two forms, that is the order in which they are read, from top to bottom.
+    Qt's default Tab order is the order in which widgets were added to the dialog.
+    In this dialog, the grid code adds them. So a grid that added its rows in any
+    other order would fail here, even if every cell were correct.
+    """
+
+    dialog = BookmarkDialog()
+    attributes = {id(value): name for name, value in vars(dialog).items()}
+    dialog.show()
+    application.processEvents()
+    first = application.focusWidget()
+    visited: list[str] = []
+    widget = first
+
+    # Qt's focus chain is a ring, so the walk ends back at the first widget. The limit
+    # on the loop makes a chain that never closes fail the test instead of hanging it.
+    for _ in range(len(dialog.findChildren(QWidget)) + 1):
+        assert widget is not None
+        name = attributes.get(id(widget))
+
+        if name is not None and widget.focusPolicy() & Qt.FocusPolicy.TabFocus:
+            visited.append(name)
+
+        widget = widget.nextInFocusChain()
+
+        if widget is first:
+            break
+    else:
+        pytest.fail("the editor's focus chain never came back to its first control")
+
+    dialog.close()
+
+    assert visited == [
+        "instant_spin",
+        "time_label_edit",
+        "add_time_button",
+        "time_list",
+        "remove_time_button",
+        "compartment_combo",
+        "height_spin",
+        "target_label_edit",
+        "add_target_button",
+        "target_list",
+        "remove_target_button",
+        "close_button",
+    ]
 
 
 # ------------------------------------------------------------- the window
