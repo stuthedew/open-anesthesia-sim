@@ -3,11 +3,13 @@ id: PL-ZZ03
 title: Triage classes a second copy of a fact the repository already holds as refactor, though CLAUDE.md's one-source-of-truth rule makes it a defect, and no document says when to use defect and when refactor
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
-touches: .claude/skills/docket/modes/triage.md, docs/dead-ends.md, docs/items/PL-84G1-core-circuit-py-set-circuit-volume-checks-the.md, docs/items/PL-F9TC-src-anesthesia-sim-app-re-checks-quantities.md, docs/items/PL-YHWH-core-parameters-py-restates-three-rules-that.md, docs/items/PL-M85T-three-core-class-defaults-restate-data-file.md, docs/items/PL-Q3G9-app-dashboard-frame-py-s-parameter-controls.md
+touches: .claude/skills/docket/modes/triage.md, docs/dead-ends.md, tools/dead_ends.py, docs/items/PL-84G1-core-circuit-py-set-circuit-volume-checks-the.md, docs/items/PL-F9TC-src-anesthesia-sim-app-re-checks-quantities.md, docs/items/PL-YHWH-core-parameters-py-restates-three-rules-that.md, docs/items/PL-M85T-three-core-class-defaults-restate-data-file.md, docs/items/PL-Q3G9-app-dashboard-frame-py-s-parameter-controls.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1735
 payoff: a search for open defects finds every second copy of a shared fact, and each one ranks as owed work rather than as optional cleanup
 verify: grep -qF 'even while the copies agree' .claude/skills/docket/modes/triage.md && grep -qF 'Working out a fact by hand where the repository already holds it' docs/dead-ends.md
 ---
@@ -55,6 +57,21 @@ that did not survive checking". `PL-84G1`, `PL-F9TC`,
 `PL-YHWH`, `PL-M85T` and `PL-Q3G9` carry `defect` in place of `refactor`.
 `PL-4X5B` is left to `claude/pl-4x5b-name-layout-literals`, the branch that
 claimed it on 2026-10-24.
+
+**Room made 2026-10-24.** The owner's entry is 325 bytes. The file had emitted
+3,175 bytes, 25 below the 3,200-byte nudge, and
+`tests/unit/test_dead_ends.py` keeps the shipped file below that nudge. So this
+item removed two entries, each in an edit of its own, as the file's preamble
+asks. The coordinator chose which two. "Writing `pr` from a CI job fired by the
+merge" (`PL-N5WZ`) came out because `bin/docket record` and the close-out mode
+now carry that mechanism. "Raising the apparatus capture bar on the
+self-generation rate" (`PL-LKGL`) came out because its refutation already loads
+in every session, as the worked example in `.claude/rules/expert-review.md`. The
+file now emits 3,101 bytes. The test is intended, and the prose around it was
+what was missing. So the "Size warns" paragraph of `docs/dead-ends.md` and the
+"Size never fails" paragraph of `tools/dead_ends.py`'s docstring now say that
+the test keeps the file below the nudge, and that a session adding an entry
+makes room for it in the same commit.
 
 **Generator check.** One-off. The fact this item's readers misread is which
 class a second copy of a fact takes while the copies still agree, and no head's

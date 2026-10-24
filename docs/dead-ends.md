@@ -39,6 +39,8 @@ anything.
 **Size warns; it never fails the build.** `tools/dead_ends.py` nudges at 80% of
 either budget, naming the headroom and the three repairs, so the decision
 arrives with slack rather than being forced on whoever trips the cap mid-task.
+`tests/unit/test_dead_ends.py` keeps the shipped file below the nudge, so a
+session that adds an entry makes room for it in the same commit.
 Going over warns louder and still does not go red — a blocked commit on an
 unrelated task is how a session learns to raise the cap, which is the one
 repair that is never right. Only a structural fault fails: an entry citing an
@@ -64,7 +66,6 @@ have to rediscover by building the thing.
 ## Provenance and merge detection
 
 - **Commit-containment (`git branch --merged`) for in-flight and stranded detection** — rejected: a squash merge contains none of the branch's commits, so every squash-merged branch reads as unmerged forever.
-- **Writing `pr` from a CI job fired by the merge** — cannot land: a push made with `GITHUB_TOKEN` starts no workflow, so a protected default branch never sees required checks report. `PL-N5WZ`
 
 ## Classification and concurrency
 
@@ -73,7 +74,7 @@ have to rediscover by building the thing.
 
 ## Process claims that did not survive checking
 
-- **Raising the apparatus capture bar on the self-generation rate** — refuted: the count never run came back 67% still-real findings. Name the number and count it before tightening anything. `PL-LKGL`
 - **Detecting duplicate captures by shared cited referents (item ids, shas, `#NNN`, paths)** — refuted 2026-09-16: fires on 84% of open items and ranks the true original in the top 3 for only 3 of 5 confirmed pairs; same-day narrowing is worse, 95%. This store is 86.1% cross-referenced, so referent overlap cannot separate a duplicate from an ordinary citation. Title terms are worse again. `PL-85NT`
 - **A pull request template to make filing more reliable** — refuted 2026-09-20: the four-path search runs whether one exists or not, GitHub applies no template to an API-created body, and the harness reads one as layout and ignores its rules. 30 of 30 recent bodies already carry the id, the rationale and the verification claim. `PL-NDQD`
 - **A cheaper model or lower effort for a subagent** — refused by the owner 2026-10-19: price, even zero, never justifies a setting that may be less correct. Reopen only on a measurement that it is no less correct at that task. `PL-2D28`
+- **Working out a fact by hand where the repository already holds it** — refuted: a second regex or hand-written test of one predicate gave three heads 22, 15 and 26 items (PL-PVW2, PL-KGYT, PL-5DZ8), and sweeps alone never stopped them. Read the module that owns the fact, and make a check refuse the next copy. `PL-4S6C`
