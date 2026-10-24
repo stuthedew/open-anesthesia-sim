@@ -1,0 +1,24 @@
+{
+  "item": "PL-K88Z",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "branch": "claude/pl-k88z-worker",
+  "started": "2026-10-20T04:26:27.249232+00:00",
+  "finished": "2026-10-20T04:56:13.186338+00:00",
+  "exit_code": 0,
+  "cost_usd": 25.425469399999997,
+  "is_error": false,
+  "subtype": "success",
+  "turns": 1,
+  "denials": 0,
+  "reason": null,
+  "input_tokens": 2,
+  "cache_read_tokens": 10843,
+  "cache_write_tokens": 123574,
+  "output_tokens": 648,
+  "review": {
+    "outcome": "fixed",
+    "note": "All 14 captures checked against the tree: 13 hold as written (PL-JT7Y and PL-TSXD undercount sites on today's main, real all the same); PL-M85T wrongly called the 100% maximum delivered concentration a data-file value and was corrected. None counts a test's expected value or a value beside its citation, and none is a clinical-path wrong-value defect; all 14 stay untriaged, so none sits below P1.",
+    "reviewed": "2026-10-24"
+  }
+}
