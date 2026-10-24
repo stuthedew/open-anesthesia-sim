@@ -62,6 +62,8 @@ preceded by a read.
 | The generator rules: how a generator is recorded, why a live one ranks above everything but `P0`, the tier of a defect in the machinery that finds them, and the pause's history and end condition | the generator bullet and its `impairs-generators` paragraph, § "The queue", and the pause paragraph, § "What this project is": `CLAUDE.md` 2,363 characters shorter, net of the two paragraphs that replaced them | `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set", with the rules unchanged | Triage is where a generator is recorded and ranked. Two rules apply earlier, so they stay resident: the two endings, in the reply that finds a generator, and the pause, before any workflow mechanism is built. Section "The generator rules, routed to the triage mode 2026-10-24", below, has what stayed and why (`PL-6VJ3`). |
 | "New tools use the standard library only, so a hook or a bare checkout can run them without the project virtualenv" | 120 characters, § "Prefer deterministic tooling over repeated model work" | `test_no_tool_imports_outside_the_standard_library` in `tests/unit/test_tools_portability.py`, run by `make check` and CI, which reads every Python file under `tools/` and `.claude/hooks/` | Retired under § "When a resident rule is retired". Its failure is an import, which the test reads from the tree. Observed firing on 2026-10-24: with a throwaway probe file under `tools/` holding `import yaml`, the test failed, naming the file and the import and saying the tool "cannot run in a checkout with no virtualenv". Without the probe, it passed. The sentence after it, on why a script beats model work, stays (`PL-JRVV`). |
 | "A commit closing more than one item leads with all of them, comma-separated", and its reason, that `docket check` recovers a closed item's pull request from the newest subject naming it | 272 characters, the naming bullet in § "The queue" | `tools/pr_title_check.py`, run in the required `pr-title` job and by `make check`, which refuses a pull request whose title does not lead with every id it closes. Its tests `test_the_incident_this_exists_for_is_refused`, `test_an_id_mentioned_but_not_leading_does_not_count` and `test_a_title_leading_with_every_id_passes` pin that. Step 1 of `.claude/skills/docket/modes/close-out.md` states the rule when the closing commit is written | A squash merge makes the pull request title the only subject that reaches `main`, and the check holds that title to every closed id. The stated reason had also stopped being true. Since `PL-HMZZ`, `bin/docket record` writes the pull request number onto the item, and `tools/pr_record_check.py` refuses a closure without it, so nothing recovers a number from a subject. The three tests passed on 2026-10-24 (`PL-JRVV`). |
+| The context-budget reset procedure: what spend is, why `get_session` cannot read it, the reset in place and its Projects-thread variant, what compaction keeps, the case of a session past the budget, and the measurement against trimming instead | the budget bullet in § "Session and tool-use efficiency" after its first sentence | `.claude/skills/docket/modes/start.md` § "Check the spend before starting, and reset in place" | A reset happens when an item starts or a session runs long. The resident sentence keeps the budget, the command and the moment to check, and points to the procedure. § "The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24". |
+| Why housekeeping is filed first, what is too small to file, and the two ratified records on deleting remote branches | the housekeeping bullet in § "The queue", after its first sentence | `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed", which already held most of it | The mode applies when a session files work that no item names. The resident sentence keeps the rule, the branch exception and a pointer. Same section. |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -98,6 +100,11 @@ carries its own measurement (2.5–5.6% of a 263k–519k context) because the
 alternative is every later session re-deriving the trim proposal this pass
 refuted; a rule that does not carry its refutation gets re-opened, which is the
 cost `docs/resident-instructions.md` exists to stop paying (`PL-H253`).
+Since 2026-10-24 the resident sentence keeps only the cap, the command that
+reads spend and the moment to check it. The reset procedure and that
+measurement moved to `.claude/skills/docket/modes/start.md` § "Check the spend
+before starting, and reset in place", as § "The reset procedure and the
+housekeeping rule, routed to the docket skill 2026-10-24" records (`PL-Z90G`).
 
 It was reshaped on 2026-09-16, same number and a different moment: the budget
 is read *before starting an item* rather than on reaching the cap, and an
@@ -762,9 +769,11 @@ reply, so disposition 2 cannot; and a reply is not preceded by a read, which
 rules out a `paths:` scope. Resident is what is left, as for the rest of this
 file.
 
-**Why nothing is cut.** No resident sentence names a time zone, so nothing is
-superseded. `CLAUDE.md`'s "name the clock time an hour on" says which time
-and not in which zone, and takes its zone from rule 15 now.
+**Why nothing is cut.** No resident sentence named a time zone, so nothing was
+superseded. The reset procedure's "name the clock time an hour on" said which
+time and not in which zone, and took its zone from rule 15. `PL-Z90G` moved
+that procedure to `.claude/skills/docket/modes/start.md`, which names the zone
+itself.
 
 **What it costs and what should retire it.** About 430 characters, and 30 more
 in the scope line. It retires only if the zone replies are read in changes.
@@ -1312,6 +1321,63 @@ characters, and the resident total from 93,730 to 91,367, as
 4,800 characters, which load only when a session reads that file. The docket
 skill's dispatch table now names recording a generator in the triage row, so a
 session that records one is sent to the section.
+
+## The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24
+
+`PL-Z90G` moved two `CLAUDE.md` blocks into the docket skill's mode files, and
+left one trigger sentence for each in `CLAUDE.md`. The text went into the mode
+files, not the skill's front page. Compaction re-attaches only the first 5,000
+tokens of an invoked skill, and the front page is sized to come back whole.
+
+- **The context-budget reset procedure**, from § "Session and tool-use
+  efficiency", went to `.claude/skills/docket/modes/start.md` § "Check the
+  spend before starting, and reset in place". It covers what spend is, why
+  `get_session` cannot measure it, the three steps of a reset in place, the
+  Projects-thread variant, what compaction keeps, the case of a session past
+  the budget, and the measurement that refutes trimming as a substitute.
+- **The housekeeping-filing rule**, from § "The queue, and how the project
+  owner works", went to `.claude/skills/docket/modes/capture.md` § "Mode:
+  housekeeping nobody filed". That mode already held the reason, the line at a
+  commit of its own, and the fix-now exception. The move added what only
+  `CLAUDE.md` had stated: the two ratified records on deleting remote branches,
+  and the step that runs `python3 tools/branch_sweep.py`.
+
+**What stayed resident, and why.** Each rule applies at a moment that no read
+comes before.
+
+- **The budget.** A session decides whether to start an item, or to keep
+  going, while it works. The resident sentence keeps the 150,000-token budget,
+  the command that reads spend, the moment to check it, and a pointer to the
+  procedure. The argument in § "What stays resident, and on what argument"
+  still applies to that sentence.
+- **Housekeeping.** The rule applies at the first edit to work that no item
+  names, and that edit can be a session's first write.
+  `.claude/hooks/docket-branch-guard.sh` also fires there, when the branch
+  claims nothing. The resident sentence keeps the rule, its examples, the
+  exception for deleting remote branches, and a pointer.
+
+**Evidence that the pointer is followed.** `PL-SN2Z` found that a skill named
+by a resident trigger started first in 8 of 8 sessions whose request named its
+moment, starting a named item among them. Nothing measured a moment that
+arrives mid-task, which is the housekeeping case. The hook covers that moment.
+
+**What cited the moved text.** Five passages were pointed at the new homes:
+the start mode's own reset line, the picking mode's reset line, the docstring
+of `tools/context_reading.py`, the deny message in
+`.claude/hooks/no-prune-guard.sh`, and rule 14's line on remote branches in
+`.claude/rules/instruction-writing.md`. Dated records that quote the old text
+were left as written: the pull request bodies under `docs/pr-bodies/`,
+`docs/WORKING_NOTES.md`, and the table in § "The check-enforced review,
+2026-10-24".
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 48,842 to 45,636
+characters, 3,206 fewer. Rule 14 grew by 3 characters for its new pointer. The
+resident instruction files fell by 3,203 characters, from 83,862 to 80,659, as
+`tools/doc_check.py` reported on 2026-10-24. The total with the session-start
+digest's output varies with the queue, so it is not quoted here. The brief estimated about 4,000, from a rough split;
+the trigger sentences kept more than it assumed. The start mode grew by 3,275
+characters and the capture mode by 539, and both load only when a session
+reads them.
 
 ## The check-enforced review, 2026-10-24
 

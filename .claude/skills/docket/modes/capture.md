@@ -234,7 +234,8 @@ commands, which is why `CLAUDE.md` does not state the prohibition
 Triggered by the session being about to *do* repository work that no item
 names: resolving a merge, clearing a stale `origin/<branch>` ref, a docs
 sweep, a lint fix, recovering a stranded item, backfilling a field the store
-wants.
+wants. `CLAUDE.md` § "The queue, and how the project owner works" keeps the
+rule and a pointer here, and this mode holds the rest (`PL-Z90G`).
 
 **The rule: file the item first, then start it under its id** — `docket new`,
 then **Mode: start an item**, in
@@ -299,10 +300,17 @@ filed by that id and needs nothing more. A fix `CLAUDE.md`'s fix-now rule
 admits needs nothing more either, even though it takes a commit of its own:
 that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
-branch of its own. Not deleting remote branches, even when that is why the
-session exists: it takes no commit at all, so there is nothing for an id to
-lead, and the daily branch sweep deletes finished ones, so the reply hands the
-owner only a branch it keeps (`PL-S8LZ`, `PL-X8SV`).
+branch of its own.
+
+**Deleting remote branches is never filed**, even when that is why the session
+exists, and neither is clearing this clone's tracking refs for them. Neither
+changes anything in the repository, so nothing is filed, claimed or committed,
+and no pull request opens (project owner, 2026-09-26, ratified, over filing
+branch cleanup as housekeeping with a pull request of its own, `PL-S8LZ`).
+`.github/workflows/branch-sweep.yml` deletes finished `claude/*` branches
+daily. So the reply runs `python3 tools/branch_sweep.py` and hands the owner
+only a branch the sweep keeps that should go anyway (project owner,
+2026-09-26, ratified, over a list built by hand, `PL-X8SV`).
 
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and

@@ -3,13 +3,14 @@ id: PL-Z90G
 title: Move CLAUDE.md's context-budget reset procedure and its housekeeping-filing rule into the docket skill, keeping one always-loaded trigger sentence for each
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost
 feature: skill-routing
-touches: CLAUDE.md, .claude/skills/docket/modes, docs/resident-instructions.md
+touches: CLAUDE.md, .claude/skills/docket/modes, docs/resident-instructions.md, tools/context_reading.py, .claude/hooks/no-prune-guard.sh, .claude/rules/instruction-writing.md
 added: 2026-10-24
+closed: 2026-10-24
 payoff: every session loads about 4,000 fewer resident characters, and the reset and housekeeping procedures arrive when a session starts an item or files unnamed work
-verify: ! grep -q 'That floor measured 81,048' CLAUDE.md && ! grep -q 'Every in-flight guard matches a' CLAUDE.md
+verify: grep -q '^## Check the spend before starting, and reset in place' .claude/skills/docket/modes/start.md && ! grep -q 'That floor measured 81,048' CLAUDE.md && ! grep -q 'Every in-flight guard matches a' CLAUDE.md
 ---
 
 **Problem.** Move CLAUDE.md's context-budget reset procedure and its housekeeping-filing rule into the docket skill, keeping one always-loaded trigger sentence for each
@@ -23,5 +24,7 @@ verify: ! grep -q 'That floor measured 81,048' CLAUDE.md && ! grep -q 'Every in-
 **What stays always loaded.** One sentence for each rule: check spend with `python3 tools/context_reading.py` before starting an item, and file an item before doing work that no item names. The moved text goes into the mode files rather than the skill's front page. The front page is sized to come back whole after compaction, which keeps only the first 5,000 tokens of a skill.
 
 **Done when.** Each procedure lives in one docket mode file. `CLAUDE.md` keeps one trigger sentence for each. `docs/resident-instructions.md` records the move, and `make check`'s resident total shows the cut.
+
+**Done 2026-10-24.** The reset procedure is in `.claude/skills/docket/modes/start.md` § "Check the spend before starting, and reset in place". The housekeeping rule's remaining text is in `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed", which gained the two ratified records on deleting remote branches and the `python3 tools/branch_sweep.py` step. `CLAUDE.md` keeps one trigger sentence for each, with a pointer. Five passages that cited the old text now point at the new homes: the start and picking modes' reset lines, the docstring of `tools/context_reading.py`, the deny message in `.claude/hooks/no-prune-guard.sh`, and rule 14's line on remote branches. `docs/resident-instructions.md` records the move in two rows of § "What was routed out" and in § "The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24". `CLAUDE.md` went from 48,842 to 45,636 characters, and the resident instruction files fell by 3,203 characters, from 83,862 to 80,659, against the brief's estimate of about 4,000.
 
 **Generator check.** None. The owner asked for this work after the comparison with testdouble/han, and no fact was misread to produce it.
