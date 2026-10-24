@@ -4731,6 +4731,63 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
 
 
 @dataclass(frozen=True)
+class SquashMessage:
+    """The squash commit that landed one pull request, and its whole message.
+
+    `found` is False and `declined` empty when git answered and no commit on
+    the default branch carries the number: that is a fact about the history.
+    `declined` holds the reason when git could not say, so a caller does not
+    report "no squash commit" from a read that never happened.
+    """
+
+    commit: str = ""
+    message: str = ""
+    declined: str = ""
+
+    @property
+    def found(self) -> bool:
+        return bool(self.commit)
+
+
+def squash_message(root: Path, number: int, *, runner: Runner | None = None) -> SquashMessage:
+    """The message of the squash commit on the default branch whose subject ends `(#number)`.
+
+    The commit is chosen by `subject_pull_request`, the one reading of a pull
+    request number in a subject. `--grep` only narrows the log to the commits
+    that mention the number anywhere in their message. A merge commit's
+    `Merge pull request #N` subject is not taken, because it carries no pull
+    request body. The newest match wins, though GitHub writes one squash per
+    pull request.
+
+    A miss declines rather than answering "none" where the history may be
+    incomplete: a shallow clone, a checkout that cannot say whether it is one,
+    or a default branch that was guessed rather than resolved.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    log = run(
+        ["log", "-z", "--fixed-strings", f"--grep=(#{number})", "--format=%H%x01%B", base], root
+    )
+    if not answered(log):
+        return SquashMessage(declined=f"git did not answer a log of `{base}`")
+    for record in log.split("\0"):
+        commit, _, message = record.lstrip("\n").partition("\x01")
+        named = subject_pull_request(message.split("\n", 1)[0])
+        if named is not None and named.squash and named.number == number:
+            return SquashMessage(commit=commit.strip(), message=message)
+    if not resolved(base):
+        return SquashMessage(declined=unresolved_base_cause(base))
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return SquashMessage(
+            declined="the checkout is a shallow clone, so the merge may be older than its horizon"
+        )
+    if shallow is None:
+        return SquashMessage(declined="git cannot say whether this checkout is complete")
+    return SquashMessage()
+
+
+@dataclass(frozen=True)
 class ItemAddition:
     """One commit that added item files to the store: its sha, its subject and the ids it added."""
 
