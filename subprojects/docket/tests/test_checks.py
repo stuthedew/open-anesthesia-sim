@@ -2261,13 +2261,13 @@ def test_process_work_a_session_promoted_is_still_told_to_demote_beside_the_owne
     band = [
         _item("PL-B1B1", priority="P1", classes=("session-cost",), owner_priority="P1, 2026-10-20"),
         _item("PL-C2C2", priority="P1", classes=("docs",)),
-        _item("PL-E4E4", priority="P1", classes=("infra",)),
+        _item("PL-F4F4", priority="P1", classes=("infra",)),
         _item("PL-D3D3", priority="P1", classes=("science",)),
     ]
 
     advisories = analyze(band, TODAY).advisories
 
-    assert _has(advisories, "process work (PL-C2C2, PL-E4E4) outnumbers the product work")
+    assert _has(advisories, "process work (PL-C2C2, PL-F4F4) outnumbers the product work")
 
 
 def test_an_owner_priority_record_naming_another_priority_is_an_error_and_exempts_nothing() -> None:
