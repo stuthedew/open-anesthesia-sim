@@ -87,7 +87,7 @@
         ]
       },
       {
-        "matcher": "^mcp__hearthbot__(reply|update_message|ask_decision)$",
+        "matcher": "^mcp__hearthbot__(reply|update_message|ask_decision|post_message)$",
         "hooks": [
           {
             "type": "command",

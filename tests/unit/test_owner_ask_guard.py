@@ -230,4 +230,50 @@ def test_the_hook_is_wired_on_a_threads_reply_tools() -> None:
         for hook in entry["hooks"]
         if "owner_ask_guard.py" in hook["command"]
     ]
-    assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision)$"]
+    assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision|post_message)$"]
+
+
+POST = "mcp__hearthbot__post_message"
+
+#: The risk-review form of the line `arm --owner-ask` prints.
+RISK_LINE = (
+    "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests pin "
+    "the unit. Please look at: the infusion panel's label."
+)
+
+
+def test_a_bare_ask_from_the_coordinator_is_refused_without_running_arm(tmp_path: Path) -> None:
+    """The coordinator's checkout is on no pull request's branch, so `arm` is not asked.
+
+    The stand-in for `arm` exits 0 with the recorded line, which would let a
+    thread's message through only if it carried that line. The post is refused
+    all the same, and the refusal does not quote that line, so `arm` was not run.
+    """
+    decision = _decision(tmp_path, "Read #1700 and merge it.", code=0, said=ASK_LINE, tool=POST)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert "carries no Owner-ask line" in reason
+    assert "Forward the thread's Owner-ask line word for word" in reason
+    assert ASK_LINE not in reason
+    assert MISTAKEN in reason
+
+
+@pytest.mark.parametrize("line", [ASK_LINE, RISK_LINE])
+def test_a_coordinator_post_carrying_a_rendered_owner_ask_line_is_let_through(
+    tmp_path: Path, line: str
+) -> None:
+    """Either form passes, with emphasis and a line break inside it, and whatever `arm` says."""
+    wrapped = line.replace(". ", ".\n", 1)
+    text = f"The thread on #1700 asks:\n\n**{wrapped}**\n\nReply Merge it if you agree."
+    assert _decision(tmp_path, text, tool=POST) is None
+
+
+def test_a_coordinator_post_asking_for_nothing_is_let_through(tmp_path: Path) -> None:
+    text = "#1700 merged on green, and the thread on #1701 is working PL-JLB4."
+    assert _decision(tmp_path, text, tool=POST) is None
+
+
+def test_a_coordinator_post_is_read_whatever_field_carries_its_text(tmp_path: Path) -> None:
+    """`post_message`'s schema was not readable when it was wired, so every string field counts."""
+    post = {"channel": "project", "message": "Read #1700 and merge it."}
+    assert _decision(tmp_path, "", tool=POST, tool_input=post) is not None
