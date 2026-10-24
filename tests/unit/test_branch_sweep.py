@@ -14,7 +14,6 @@ import os
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from types import SimpleNamespace
 
 import branch_sweep
 import pytest
@@ -31,7 +30,8 @@ from branch_sweep import (
     read_stranded,
     sweep,
 )
-from docket.vcs import StrandedEdit, StrandedItem, StrandedReport
+from docket.model import parse_item
+from docket.vcs import RemoteHeads, StrandedEdit, StrandedItem, StrandedReport
 from open_pull_requests import PullRequest
 
 NOW = datetime(2026, 9, 27, 6, 17, tzinfo=UTC)
@@ -97,8 +97,8 @@ def test_an_edit_keeps_its_branch_only_while_main_holds_the_item_open(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     items = [
-        SimpleNamespace(identifier="PL-QP7N", status="ready"),
-        SimpleNamespace(identifier="PL-D9NX", status="done"),
+        parse_item("---\nid: PL-QP7N\nstatus: ready\n---\n"),
+        parse_item("---\nid: PL-D9NX\nstatus: done\n---\n"),
     ]
     report = StrandedReport(
         items=(StrandedItem("PL-K3ST", "lost", "p", ("origin/claude/lost-a1b2c3",)),),
@@ -209,3 +209,53 @@ def test_an_agent_branch_named_in_another_case_is_listed(forge: Path) -> None:
     _git(forge, "push", "-q", "origin", "HEAD:refs/heads/Claude/upper-q7x2kd")
     _git(forge, "fetch", "-q", "origin")
     assert sorted(branch.name for branch in branches(forge)) == ["Claude/upper-q7x2kd", NAME]
+
+
+def test_a_dry_run_reports_a_branch_the_remote_deleted_as_gone_not_as_kept(
+    forge: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # GitHub deletes a pull request's branch at merge, and a session's clone,
+    # which never prunes, keeps its tracking ref. The branch was inside its
+    # grace period, so the dry run listed it as kept, and sessions asked the
+    # project owner to delete a branch that no longer existed (`PL-TL6T`).
+    fresh = "claude/merged-r5t6y7"
+    _git(forge, "commit", "-q", "--allow-empty", "-m", "fresh")
+    _git(forge, "push", "-q", "origin", f"HEAD:refs/heads/{fresh}")
+    _git(forge, "fetch", "-q", "origin")
+    other = _clone(tmp_path / "origin.git", tmp_path / "other")
+    _git(other, "push", "-q", "origin", f":refs/heads/{fresh}", f":refs/heads/{NAME}")
+    _git(forge, "fetch", "-q", "origin")  # no --prune, as `vcs.fetch_remote` fetches
+    assert {branch.name for branch in branches(forge)} == {fresh, NAME}
+    monkeypatch.setattr(branch_sweep, "READERS", ())
+    assert main(["--apply"], root=forge) == 0
+    out = capsys.readouterr().out
+    assert "Swept 0 of 0" in out
+    gone = out.split("Already deleted on origin (2)")[1].split("Kept 0:")[0]
+    assert f"  {fresh}\n" in gone and f"  {NAME}\n" in gone
+    assert "grace period" not in out
+    assert "restore:" not in out
+
+
+def test_a_branch_kept_only_by_its_grace_period_is_reported_apart() -> None:
+    fresh = _branch(NOW - GRACE + timedelta(minutes=1))
+    held = Branch("claude/held-u8i9o0", "b" * 40, NOW - GRACE + timedelta(minutes=1))
+    readings = Readings()
+    readings.keep(held.name, "pull request #7 is open from it")
+    verdicts = decide([fresh, held], readings, NOW)
+    assert [v.only_grace for v in verdicts] == [True, False]
+    lines = branch_sweep.report(verdicts, {}, applied=False)
+    waiting = lines.index(
+        "Kept only by the grace period (1); the daily sweep deletes each "
+        "once it ends, unless something else holds it by then:"
+    )
+    assert lines[waiting + 1].startswith(f"  {NAME}  last commit 71h ago")
+    assert lines[waiting + 2] == "Kept 1:"
+    assert lines[waiting + 3].startswith("  claude/held-u8i9o0  pull request #7 is open from it")
+
+
+def test_an_unanswered_remote_listing_is_said_and_nothing_is_dropped() -> None:
+    heads = RemoteHeads(asked=True, failed="`git ls-remote --heads origin` did not answer")
+    found = [_branch(NOW - 2 * GRACE)]
+    assert branch_sweep.still_on_remote(found, heads) == (found, [])
+    lines = branch_sweep.report(decide(found, Readings(), NOW), {}, applied=False, heads=heads)
+    assert lines[0].startswith("The remote's branch list could not be read")

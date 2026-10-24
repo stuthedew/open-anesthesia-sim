@@ -4,7 +4,7 @@ title: app/dashboard_frame.py's PARAMETER_CONTROLS types the unit L/min for fres
 priority: P1
 effort: S
 status: needs-decision
-classes: safety, refactor
+classes: safety, defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/control_record.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-24

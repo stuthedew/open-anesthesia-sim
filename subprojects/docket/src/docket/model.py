@@ -100,6 +100,22 @@ OPEN_STATUSES = ("untriaged", "ready", "needs-decision", "blocked")
 CLOSED_STATUSES = ("done", "dropped")
 STATUSES = OPEN_STATUSES + CLOSED_STATUSES
 
+
+def is_closed_status(status: str) -> bool:
+    """Whether a copy's `status:` value, read as text, records the item as closed.
+
+    The one test of a status string, for a reader that holds a copy of an item
+    at a ref rather than an `Item`: the base's copy, a branch's, a claim's.
+    There the empty string means the copy holds no status or there is no copy,
+    and that is not closed. A reader holding an `Item` asks `Item.is_open`
+    instead, which is `not is_closed_status(item.status)`, so the two cannot
+    disagree about an item. `tools/fact_home_check.py` refuses a membership
+    test of either set outside this module, so a status added to neither set
+    cannot read as open to one command and closed to another (`PL-TSXD`).
+    """
+    return status in CLOSED_STATUSES
+
+
 # Classes whose subject matter is safety-critical, and so may not sit in the
 # lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
@@ -947,7 +963,18 @@ class Item:
 
     @property
     def is_open(self) -> bool:
-        return self.status in OPEN_STATUSES
+        """Whether this item is open: the one answer every command and check reads.
+
+        Open means not recorded closed, and a closed item is one that is not
+        open. A status in neither set, such as a misspelt status or the empty
+        status of an item with no `status:` line, is therefore open to every
+        reader alike. `docket check` refuses that status, and meanwhile every
+        check keeps holding the item to the rules for open work, which is the
+        direction that hides nothing. `is_startable` offers it to nobody.
+        Before `PL-TSXD`, readers that tested `in OPEN_STATUSES` read it as
+        closed and readers that tested `not in CLOSED_STATUSES` read it as open.
+        """
+        return not is_closed_status(self.status)
 
     @property
     def is_untriaged(self) -> bool:
@@ -960,9 +987,15 @@ class Item:
         `next`, the generator tier, `show` and `status` each ask this, so what
         one offers and another calls startable cannot disagree about a status.
         Each had its own copy until `PL-RJLQ`, and `status` named an untriaged
-        item as a feature's next (`PL-4DK2`).
+        item as a feature's next (`PL-4DK2`). A status in neither set is open
+        but not startable, so a misspelt status is never offered as work.
         """
-        return self.is_open and not self.is_untriaged and self.status != "blocked"
+        return (
+            self.is_open
+            and self.status in STATUSES
+            and not self.is_untriaged
+            and self.status != "blocked"
+        )
 
     @property
     def waits_anticipated(self) -> bool:
@@ -1463,7 +1496,7 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     sound_claim = is_generator(item, known)
 
     if not item.generator:
-        if sound_claim and item.status not in CLOSED_STATUSES:
+        if sound_claim and item.is_open:
             return (
                 "is absent, so this generator is recorded and unranked; write "
                 f"`{GENERATOR_VERDICTS[0]}` with the evidence the store is still handing "
@@ -1577,7 +1610,7 @@ def ranks_as_generator(item: Item, known: Collection[str]) -> bool:
     (`PL-BBT8`). `recommend` passes only open items, so for it this is a no-op.
     """
     return (
-        item.status not in CLOSED_STATUSES
+        item.is_open
         and is_generator(item, known)
         and split_generator_verdict(item.generator)[0] == "live"
     )
@@ -1699,7 +1732,7 @@ def ranks_as_generator_defect(item: Item, generator_paths: tuple[str, ...]) -> b
     soundness predicate the rank question is how `docket show` came to report
     a done defect as ranked (`PL-BBT8`).
     """
-    return item.status not in CLOSED_STATUSES and impairs_generators_soundly(item, generator_paths)
+    return item.is_open and impairs_generators_soundly(item, generator_paths)
 
 
 def covers(one: str, other: str) -> bool:

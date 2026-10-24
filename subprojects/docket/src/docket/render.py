@@ -31,7 +31,6 @@ from .duplicates import Candidate
 from .inflow import UNBANDED, Inflow
 from .lines import split_lines
 from .model import (
-    CLOSED_STATUSES,
     LANE_CROSSING,
     LANE_PRODUCT,
     LANE_UNPLACED,
@@ -1678,7 +1677,7 @@ def _verdict_phrase(head: Item, standing: Standing | None) -> str:
     (`PL-Q4DF`) - so where a live head stands is `standing`, the caller's
     reading of `plan.tier_standings`, rather than a status tested here.
     """
-    if head.status in CLOSED_STATUSES:
+    if not head.is_open:
         return ""
     verdict, _ = split_generator_verdict(head.generator)
     if verdict == "live" and standing is not None and standing.why == "blocked":
@@ -1892,7 +1891,7 @@ def _outside_clusters(
     outside = [i for i in defects if i.identifier not in heads]
     ranking = [i for i in outside if i.identifier in tier and tier[i.identifier].state == HELD]
     waiting = [i for i in outside if i.identifier in tier and tier[i.identifier].state != HELD]
-    closed = [i for i in outside if i.status in CLOSED_STATUSES]
+    closed = [i for i in outside if not i.is_open]
     if ranking:
         named = ", ".join(f"{i.identifier} ({i.status})" for i in ranking)
         lines.append("")
@@ -2926,7 +2925,7 @@ def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str,
     if before.touches == after.touches and before.status == after.status:
         return []
     if not after.touches:
-        if not before.is_untriaged or after.is_untriaged or after.status in CLOSED_STATUSES:
+        if not before.is_untriaged or after.is_untriaged or not after.is_open:
             return []
         return [
             f"{after.identifier}: leaves triage declaring no `touches`, so whether it owes a "

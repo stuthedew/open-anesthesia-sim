@@ -100,10 +100,10 @@ from pathlib import Path
 
 from .config import Config
 from .lines import split_lines
-from .model import CLOSED_STATUSES, parse_front_matter
+from .model import CLOSED_STATUSES, is_closed_status, parse_front_matter
 from .release import NOTES_DIR
-from .store import ID_PATTERN
 from .vcs import (
+    ANY_ID_RE,
     BRANCH_ID_RE,
     ITEM_FILE_RE,
     Branch,
@@ -236,7 +236,6 @@ _LOG_FORMAT = (
 )
 _FIELDS = 7
 
-_ID = re.compile(ID_PATTERN, re.I)
 _HASH = re.compile(r"[0-9a-f]{7,64}", re.I)
 _VERSION = re.compile(r"(\d+)\.(\d+)")
 
@@ -643,7 +642,7 @@ def holdings(
             state, released_by = RELEASED, BY_YIELD
         elif releases(current, status(base, key)):
             state, released_by = RELEASED, BY_STATUS
-        elif status(base, key) in CLOSED_STATUSES:
+        elif is_closed_status(status(base, key)):
             state, released_by = RELEASED, BY_CLOSED
         elif not unspent:
             state, released_by = RELEASED, BY_LANDING
@@ -685,7 +684,7 @@ def holdings(
                 continue
             moved = status(tips[branch], key)
             there = status(base, key)
-            if not moved or moved == there or there in CLOSED_STATUSES:
+            if not moved or moved == there or is_closed_status(there):
                 continue
             forked = status(fork, key)
             if not forked or moved == forked:
@@ -734,7 +733,7 @@ def holdings(
             continue
         history = histories.get(branch, [])
         dates = renewals.get(branch, [])
-        if status(base, key) in CLOSED_STATUSES:
+        if is_closed_status(status(base, key)):
             state, released_by = RELEASED, BY_CLOSED
         else:
             state = LIVE if not dates or moment - dates[-1] <= term else LAPSED
@@ -896,7 +895,7 @@ def unfinished_work(read: Holdings) -> dict[str, tuple[str, ...]]:
         if not _finished_claim(hold):
             held.setdefault(hold.ref, set()).add(hold.key)
     for hold in (*read.dispositions, *read.named):
-        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+        if hold.state == LIVE and not is_closed_status(hold.status):
             held.setdefault(hold.ref, set()).add(hold.key)
     return {ref: tuple(sorted(keys)) for ref, keys in held.items()}
 
@@ -916,7 +915,7 @@ def _finished_claim(hold: Hold) -> bool:
     """
     if hold.state != RELEASED:
         return False
-    return hold.released_by != BY_STATUS or hold.status in CLOSED_STATUSES
+    return hold.released_by != BY_STATUS or is_closed_status(hold.status)
 
 
 # A work branch that claims nothing: `PL-MB2W`'s third "Forgetful session"
@@ -1258,7 +1257,7 @@ def _events(
 def _parse_claim(text: str) -> tuple[str, str, str, str] | None:
     """`<ID> <branch> [<session>] [over <ref>@<hash>]`, or `None` where it does not parse."""
     tokens = text.split()
-    if len(tokens) < 2 or _ID.fullmatch(tokens[0]) is None:
+    if len(tokens) < 2 or ANY_ID_RE.fullmatch(tokens[0]) is None:
         return None
     key, branch, rest = tokens[0].upper(), tokens[1], tokens[2:]
     session = ""
@@ -1277,7 +1276,7 @@ def _parse_claim(text: str) -> tuple[str, str, str, str] | None:
 def _parse_yield(text: str) -> tuple[str, str] | None:
     """`<ID> <branch>`, or `None` where it does not parse."""
     tokens = text.split()
-    if len(tokens) != 2 or _ID.fullmatch(tokens[0]) is None:
+    if len(tokens) != 2 or ANY_ID_RE.fullmatch(tokens[0]) is None:
         return None
     return tokens[0].upper(), tokens[1]
 

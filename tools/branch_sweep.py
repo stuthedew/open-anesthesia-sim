@@ -39,6 +39,20 @@ network, a shallow checkout - it pushes nothing, says which reading failed, and
 exits 1, since a sweep that quietly stopped would let the branches build up
 again unseen.
 
+**It lists only what the remote still holds** (`PL-TL6T`). The branches come
+from this clone's tracking refs, and a clone's fetch never prunes, so a
+session's clone keeps a ref for every branch deleted since it started,
+including the branch of a pull request that GitHub deleted at merge. Each
+listed branch is checked against one `git ls-remote --heads`
+(`vcs.remote_heads`). A branch the remote no longer holds is reported as
+already deleted and never judged. Where the remote does not answer, the report
+says the listing may name deleted branches.
+
+The report also separates a branch kept only by `GRACE` from one kept for any
+other reason. The daily run deletes the first kind once its grace period ends,
+so neither it nor an already-deleted branch is a branch to ask anyone to
+delete.
+
 Lists by default; `--apply` pushes. `.github/workflows/branch-sweep.yml` runs it
 daily with a token that may delete branches. It reads the refs already fetched
 and fetches nothing itself. Standard library only.
@@ -60,9 +74,17 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.claims import AGENT_BRANCH_PREFIX, agent_branch, holdings, unfinished_work  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
-from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import REMOTE, _head_name, orphaned, remote_names, stranded  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    REMOTE,
+    RemoteHeads,
+    _head_name,
+    call_git,
+    orphaned,
+    remote_heads,
+    remote_names,
+    stranded,
+)
 
 import left_behind_check  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
@@ -73,6 +95,9 @@ ARCHIVE = "refs/archive"
 
 #: How long after its last commit a branch is kept whatever else holds.
 GRACE = timedelta(hours=72)
+
+#: Seconds one git call may take, the push that sweeps a branch among them.
+SWEEP_TIMEOUT = 120
 
 
 class Declined(Exception):
@@ -119,13 +144,21 @@ class Verdict:
     branch: Branch
     kept: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
+    #: Whether the grace period is the only reason in `kept`.
+    only_grace: bool = False
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Git's answer, decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`)."""
-    done = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=120, check=False)
+    """Git's answer, decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`).
+
+    Run through `vcs.call_git`, git's one runner, with two minutes for the
+    sweep's push. A git that never ran, or was stopped at that bound, exits
+    `-1` with the reason on stderr, so a caller declines rather than sweeps.
+    """
+    call = call_git(args, root, timeout=SWEEP_TIMEOUT)
+    code = -1 if call.code is None else call.code
     return subprocess.CompletedProcess(
-        done.args, done.returncode, record_text(done.stdout), record_text(done.stderr)
+        ["git", *call.args], code, record_text(call.stdout), call.stderr
     )
 
 
@@ -185,7 +218,7 @@ def read_docket(root: Path, now: datetime, readings: Readings) -> None:
 def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
     items_dir = load_config(root).items_dir
     items = read_items(root / items_dir)
-    held_open = {item.identifier for item in items if item.status not in CLOSED_STATUSES}
+    held_open = {item.identifier for item in items if item.is_open}
     report = stranded(root, {item.identifier for item in items}, items_dir=items_dir)
     if report.declined:
         raise Declined(f"`stranded` could not read the branches: {report.declined}")
@@ -240,12 +273,28 @@ READERS: tuple[Callable[[Path, datetime, Readings], None], ...] = (
 def decide(found: Sequence[Branch], readings: Readings, now: datetime) -> list[Verdict]:
     verdicts = []
     for branch in found:
-        kept = list(readings.kept.get(branch.name, ()))
+        held = list(readings.kept.get(branch.name, ()))
+        kept = list(held)
         age = now - branch.committed
         if age < GRACE:
             kept.append(f"last commit {_hours(age)} ago, inside the {_hours(GRACE)} grace period")
-        verdicts.append(Verdict(branch, tuple(kept), tuple(readings.notes.get(branch.name, ()))))
+        notes = tuple(readings.notes.get(branch.name, ()))
+        verdicts.append(Verdict(branch, tuple(kept), notes, only_grace=bool(kept) and not held))
     return verdicts
+
+
+def still_on_remote(
+    found: Sequence[Branch], heads: RemoteHeads
+) -> tuple[list[Branch], list[Branch]]:
+    """Split the listed branches into those the remote holds and those it has deleted.
+
+    Where the remote did not answer, every branch counts as held, as the
+    sweep read them before `PL-TL6T`, and `report` says so.
+    """
+    if not heads.known:
+        return list(found), []
+    held = [branch for branch in found if branch.name in heads.tips]
+    return held, [branch for branch in found if branch.name not in heads.tips]
 
 
 def archive_ref(branch: Branch) -> str:
@@ -287,14 +336,28 @@ def _hours(span: timedelta) -> str:
     return f"{int(span.total_seconds() // 3600)}h"
 
 
-def report(verdicts: Sequence[Verdict], failed: dict[str, str], *, applied: bool) -> list[str]:
+def report(
+    verdicts: Sequence[Verdict],
+    failed: dict[str, str],
+    *,
+    applied: bool,
+    gone: Sequence[Branch] = (),
+    heads: RemoteHeads | None = None,
+) -> list[str]:
     swept = [v for v in verdicts if not v.kept and v.branch.name not in failed]
-    kept = [v for v in verdicts if v.kept]
+    waiting = [v for v in verdicts if v.only_grace]
+    kept = [v for v in verdicts if v.kept and not v.only_grace]
     verb = "Swept" if applied else "Would sweep (a dry run; --apply pushes)"
-    lines = [
+    lines = []
+    if heads is not None and not heads.known:
+        lines.append(
+            f"The remote's branch list could not be read ({heads.failed}), so this lists "
+            "this clone's tracking refs, which may name branches already deleted."
+        )
+    lines.append(
         f"{verb} {len(swept)} of {len(verdicts)} {AGENT_BRANCH_PREFIX} branches, "
         f"each kept under {ARCHIVE}/:"
-    ]
+    )
     for verdict in swept:
         branch = verdict.branch
         lines.append(f"  {branch.name}  {branch.tip[:10]}  last commit {branch.committed:%Y-%m-%d}")
@@ -305,6 +368,18 @@ def report(verdicts: Sequence[Verdict], failed: dict[str, str], *, applied: bool
             f"Not swept, because the push was refused ({len(failed)}); nothing changed for these:"
         )
         lines.extend(f"  {name}  {why}" for name, why in failed.items())
+    if gone:
+        lines.append(
+            f"Already deleted on {REMOTE} ({len(gone)}); only this clone's tracking refs remain, "
+            "so there is nothing to delete:"
+        )
+        lines.extend(f"  {branch.name}" for branch in gone)
+    if waiting:
+        lines.append(
+            f"Kept only by the grace period ({len(waiting)}); the daily sweep deletes each "
+            "once it ends, unless something else holds it by then:"
+        )
+        lines.extend(f"  {v.branch.name}  {'; '.join(v.kept)}" for v in waiting)
     lines.append(f"Kept {len(kept)}:")
     lines.extend(f"  {v.branch.name}  {'; '.join(v.kept)}" for v in kept)
     return lines
@@ -321,19 +396,21 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     now = datetime.now(UTC)
     readings = Readings(remotes=remote_names(root))
     try:
-        found = branches(root)
+        listed = branches(root)
         for read in READERS:
             read(root, now, readings)
     except Declined as declined:
         print(f"Nothing swept: {declined}.")
         return 1
+    heads = remote_heads(root)
+    found, gone = still_on_remote(listed, heads)
     verdicts = decide(found, readings, now)
     failed: dict[str, str] = {}
     if args.apply:
         for verdict in verdicts:
             if not verdict.kept and (why := sweep(verdict.branch, root)):
                 failed[verdict.branch.name] = why
-    print("\n".join(report(verdicts, failed, applied=args.apply)))
+    print("\n".join(report(verdicts, failed, applied=args.apply, gone=gone, heads=heads)))
     return 1 if failed else 0
 
 

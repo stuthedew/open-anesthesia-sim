@@ -4,7 +4,7 @@ title: core/parameters.py restates three rules that other core modules already o
 priority: P2
 effort: S
 status: ready
-classes: refactor
+classes: defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_parameters.py, tests/unit/test_run_definition.py
 added: 2026-10-19

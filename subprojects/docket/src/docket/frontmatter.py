@@ -78,7 +78,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 #: The line that opens a front matter, and the line that closes it.
-FENCE = "---"
+DELIMITER = "---"
 #: YAML's document-end marker (§ 9.1.2). At the first column, with white space
 #: or the line's end after it, it ends the document, so no key follows it.
 DOCUMENT_END = "..."
@@ -192,7 +192,7 @@ class Quoted:
 
 def opens(lines: Sequence[str]) -> bool:
     """Whether `lines` open with a front matter's `---`."""
-    return bool(lines) and lines[0].strip() == FENCE
+    return bool(lines) and lines[0].strip() == DELIMITER
 
 
 def closing(lines: Sequence[str]) -> int | None:
@@ -209,7 +209,7 @@ def closing(lines: Sequence[str]) -> int | None:
     if not opens(lines):
         return None
     for index in range(1, len(lines)):
-        if lines[index].rstrip() == FENCE:
+        if lines[index].rstrip() == DELIMITER:
             return index
     return None
 

@@ -69,7 +69,7 @@ import re
 from dataclasses import dataclass
 
 from .config import Config
-from .model import CLOSED_STATUSES, Item, covers, is_under, live_recurrences
+from .model import Item, covers, is_under, live_recurrences
 from .store import ID_PATTERN, declared_item_file
 
 #: Tokens carried by so many titles in a work queue that counting them would
@@ -290,7 +290,7 @@ def near_duplicates(
     named = named_items(title, paths, items_dir)
     scored: list[Candidate] = []
     for item in items:
-        if item.status in CLOSED_STATUSES:
+        if not item.is_open:
             continue
         shared = shared_declared(paths, item, items_dir=items_dir)
         reached = tuple(sorted(named & declared_items(item.touches, items_dir)))

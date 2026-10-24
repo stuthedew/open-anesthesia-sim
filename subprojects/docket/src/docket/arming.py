@@ -211,6 +211,7 @@ from .lines import split_lines
 from .python import imports
 from .vcs import (
     PULL_OPEN,
+    RECORDS,
     REMOTE,
     MergedPullRequest,
     PullRequestLookup,
@@ -232,15 +233,18 @@ from .vcs import (
 )
 
 #: The five answers, each the first word of what `arm` prints.
+#: `ALREADY_MERGED` prints as `landed`. Its name differs from `vcs.LANDED`, a
+#: branch's disposition, which is a different fact spelled with the same word
+#: (`PL-LGDV`).
 ARM = "arm"
 HOLD = "hold"
 BEHIND = "behind"
-LANDED = "landed"
+ALREADY_MERGED = "landed"
 UNKNOWN = "unknown"
 
 #: The exit status of each answer. `behind` and `landed` share `hold`'s: all
 #: three say "not now", and the line printed says which.
-EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
+EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, ALREADY_MERGED: 1, UNKNOWN: 2}
 
 #: The exit status of a `hold` that waits on the owner's read while no
 #: `OWNER_ASK` record says what to ask, so that nothing may be sent to the
@@ -414,14 +418,6 @@ JUDGE_ASK = (
     "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
     "a measurement. Then ask again."
 )
-
-#: The pull requests' body files, which arm on green beside the store and the
-#: tooling: `tools/pr_body_check.py --recover` writes one for a squash commit
-#: that landed with no body, and a copy of a body is never a change to read
-#: (`PL-3PH2`). `verify` sanctions the same write as `record`. The path is
-#: this repository's layout. It is spelt here rather than found as `GATE` is,
-#: because it is a directory a tool writes and not a part of the package.
-RECORDS = "docs/pr-bodies/"
 
 #: This module, which decides the answer. Since 2026-10-19 a change to it
 #: waits on a read only when it edits a test pinning its answers or moves it
@@ -603,8 +599,21 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     `PL-KKHD` records the reopening. The rule is spelt here, in the one
     module the gate is, rather than beside `in_queue`, so that widening what
     arms takes an edit to the gate and to its pinned tests (2026-09-26, ratified, over
-    two named predicates in `claims`, `PL-0JGZ`), as `RECORDS` is kept here
-    for `PL-F6MM`, and the import rule for `PL-552M`.
+    two named predicates in `claims`, `PL-0JGZ`), as the import rule is for
+    `PL-552M`.
+
+    The pull requests' body files arm on green too. `tools/pr_body_check.py
+    --recover` writes one for a squash commit that landed with no body, and a
+    copy of a body is never a change to read (`PL-3PH2`). Their directory is
+    `vcs.RECORDS`, read from there rather than spelt here. This module kept a
+    copy until 2026-10-24, so that widening it would wait on a read. Since
+    2026-10-19 an edit to this module waits on a read only when it edits a
+    test pinning its answers or moves the module (`PL-9JHM`), so editing both
+    copies together waited on none. What holds a widening now is
+    `test_arm_holds_for_a_read_a_path_on_the_owners_read_list`, which pins
+    `docs/MODEL.md` and the simulator's paths as held for a read (project
+    owner, 2026-10-24, ratified, over restoring the copy that `PL-F6MM` kept;
+    `PL-LGDV`, `PL-F9WM`).
     """
     return not waits_on_read(path, tooling)
 
@@ -996,7 +1005,7 @@ class Verdict:
                 )
                 said.append(f"  {self._shown(self.outside)}")
             return tuple(said)
-        if self.answer == LANDED and (merged := self.merged) is not None:
+        if self.answer == ALREADY_MERGED and (merged := self.merged) is not None:
             said = [
                 f"landed - #{merged.number} merged {self.branch} at {merged.head[:12]}, and "
                 "nothing merges a merged pull request again, so there is nothing to arm"
@@ -1246,7 +1255,7 @@ def arm(
                 )
             elif merged is not None:
                 return Verdict(
-                    LANDED,
+                    ALREADY_MERGED,
                     branch=name,
                     base=base,
                     unpulled=unpulled,

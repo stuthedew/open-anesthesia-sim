@@ -75,7 +75,6 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -96,9 +95,10 @@ from .claims import (
     releases,
 )
 from .lines import record_text, split_lines
-from .model import CLOSED_STATUSES, parse_front_matter
-from .store import ID_PATTERN, as_identifier
+from .model import is_closed_status, parse_front_matter
+from .store import as_identifier
 from .vcs import (
+    ANY_ID_RE,
     ITEM_FILE_RE,
     REMOTE,
     RemoteHeads,
@@ -109,6 +109,7 @@ from .vcs import (
     _run_git,
     _unlanded_refs,
     base_copies,
+    call_git,
     changed_path_args,
     default_base,
     head_branch,
@@ -137,7 +138,6 @@ WRITE_TIMEOUT = 120.0
 # space, a value, on one line. Anything else in the last paragraph can make git
 # read the whole paragraph as prose, and the claim with it.
 _TRAILER = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*: \S.*")
-_ID = re.compile(ID_PATTERN, re.I)
 
 
 @dataclass(frozen=True)
@@ -497,7 +497,7 @@ def _keys(keys: Sequence[str]) -> tuple[list[str], str]:
     wanted: list[str] = []
     for key in keys:
         identifier = as_identifier(key)
-        if _ID.fullmatch(identifier) is None:
+        if ANY_ID_RE.fullmatch(identifier) is None:
             return [], f"{key!r} is not an item id"
         if identifier not in wanted:
             wanted.append(identifier)
@@ -917,7 +917,7 @@ def _closed_on_base(
             )
         else:
             continue
-        if status not in CLOSED_STATUSES:
+        if not is_closed_status(status):
             continue
         released = f"a claim on an item {base} has closed is released as soon as it is written"
         if copy is not None:
@@ -1558,16 +1558,16 @@ def _taken_whole(root: Path, base: str, branch: _Branch, run: Runner) -> bool:
 def _git(args: list[str], root: Path) -> _Ran:
     """Run one git command whose exit status is the answer, and keep all of what it said.
 
-    Read as bytes and decoded as written, so a raw `\\r` in a subject git
-    prints stays inside it rather than becoming a line end (`PL-0R4M`).
+    Run through `vcs.call_git`, git's one runner, with a write's longer bound.
+    The output is decoded as written, so a raw `\\r` in a subject git prints
+    stays inside it rather than becoming a line end (`PL-0R4M`). A git that
+    never ran, or was stopped at the bound, exits `-1` with the reason as its
+    error text.
     """
-    try:
-        done = subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, timeout=WRITE_TIMEOUT, check=False
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        return _Ran(code=-1, out="", err=str(error))
-    return _Ran(code=done.returncode, out=record_text(done.stdout), err=record_text(done.stderr))
+    call = call_git(args, root, timeout=WRITE_TIMEOUT)
+    if call.code is None:
+        return _Ran(code=-1, out="", err=call.stderr)
+    return _Ran(code=call.code, out=record_text(call.stdout), err=call.stderr)
 
 
 def _indented(text: str) -> tuple[str, ...]:

@@ -158,7 +158,11 @@ rules, "phases," or "closed loops" in the output itself.
       same thing (`PL-H1JD`). So a line that could reasonably outlive this
       sitting is `bin/docket new "..."` as well, and the block then points at
       the item, though a list of remote branches to delete stays in the reply,
-      per the docket skill's housekeeping mode. That is `CLAUDE.md`'s capture rule
+      per the docket skill's housekeeping mode. Name a branch there only when
+      `python3 tools/branch_sweep.py` lists it under "Kept" with a reason other
+      than its grace period, and it should go anyway. A branch GitHub already
+      deleted, or one kept only by the grace period, is never named, because
+      nothing is left for the owner to do (`PL-TL6T`). That is `CLAUDE.md`'s capture rule
       reaching the closing block, not a new obligation of its own. A line the
       reader acts on in this sitting — a decision this reply waits on, a tag to
       run now — needs nothing. Where the line asks them to decide something

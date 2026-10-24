@@ -227,8 +227,9 @@ is not optional.
   its citation. `tools/literal_home_check.py` refuses a second
   copy of a number under `src/`, and `tools/fact_home_check.py` refuses a
   reader of git, the tree, the GitHub API, the default branch or a shell
-  command outside the module that owns it, and a constant defined in two
-  apparatus files. What neither check reaches is this sentence's to catch,
+  command outside the module that owns it, a constant defined in two
+  apparatus files, and a hand test of an item's status set or `pr:` number
+  outside `docket.model`. What neither check reaches is this sentence's to catch,
   which is why it is resident (`PL-4S6C`).
   `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
   where none exists, write one" has the three shapes a new reader takes.

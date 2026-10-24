@@ -1,10 +1,15 @@
 ---
 id: PL-TDV9
 title: Add one more blind generalist review pass on each simulator pull request: in PL-TCBJ's replay one generalist caught the later-filed defect in 5 of 10 merged pull requests, as many as a three-specialist panel at a third of the cost
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: infra
 feature: review-panel
-blocked-by: PL-TBQS
+touches: .claude/skills/pull-request/SKILL.md
 added: 2026-10-24
+payoff: each simulator pull request gets two blind generalist reviews before it merges; in PL-TBQS's replay of 20 merged pull requests, three such runs named 21 of the 39 defects filed later
+verify: grep -qiE 'generalist (review )?pass' .claude/skills/pull-request/SKILL.md
 ---
 
 **Problem.** Add one more blind generalist review pass on each simulator pull request: in PL-TCBJ's replay one generalist caught the later-filed defect in 5 of 10 merged pull requests, as many as a three-specialist panel at a third of the cost
@@ -27,4 +32,10 @@ added: 2026-10-24
 
 **Decision** (project owner, 2026-10-24, ratified, over choosing on `PL-TCBJ`'s ten pull requests, over running the rest of the pool with one generalist only, and over seeded defects). The larger test runs as recommended above. It is `PL-TBQS` (the larger replay of the reviewer test), which holds the protocol and the bar fixed before the count. This item is built, or dropped for the panel, on that item's result.
 
+**Why it matters.** `PL-TCBJ`'s ten pull requests suggest one extra blind pass finds about half of what is later filed against a simulator pull request. A defect caught in review costs one commit, while one found after merge costs an item, a session and possibly a learner misled in between. The sample is too small to choose between this and a panel, which is why it waited on `PL-TBQS`, which has since reported.
+
+**Generator check.** Work the owner asked for: it is the proposed outcome of `PL-TCBJ`'s replay, which the owner requested, and it waits on the larger test the owner chose on 2026-10-24.
+
 **The larger replay chose two passes, 2026-10-24.** `PL-TBQS` (the larger replay of the reviewer test) ran the rest of the pool, 20 merged pull requests and 39 key defects, with one-generalist, three-generalist and panel arms on every pull request, scored blind. The panel named 19 key defects and three generalist runs named 21. That is short of the 3 more the panel needed, so its bar chose generalist passes over the panel. Runs 2 and 3 together named 3 key defects that run 1 missed, which meets the threshold for a second pass exactly. So the build this item describes is two blind generalist passes on each simulator pull request, not one; the title still says one because `bin/docket set` cannot change a title. The second pass rests on exactly 3 defects. One of them, `#376`'s `PL-2MD9`, was a close call the scorer made blind, and without it the bar would have chosen one pass. `PL-TBQS`'s Result has the table and the limitations. The hold above is lifted. `CLAUDE.md`'s pause on new workflow mechanisms still applies, so check `bin/docket generators` before building.
+
+**Done when.** Every simulator pull request gets two blind generalist review passes before it merges, as the larger replay chose. Each pass is a subagent at the session's own model and effort, given only the tree at the head commit, the diff and the brief that `PL-TCBJ` ran. `.claude/skills/pull-request/SKILL.md` says when the passes run and where their findings go.

@@ -57,7 +57,6 @@ from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
 from .lines import split_lines
 from .model import (
-    CLOSED_STATUSES,
     EFFORTS,
     LANE_CROSSING,
     LIST_FIELDS,
@@ -72,9 +71,11 @@ from .model import (
     generator_defect_faults,
     generator_faults,
     generators_explaining,
+    is_closed_status,
     is_under,
     misread_faults,
     parse_item,
+    pr_number,
     recurrence_count,
     recurrences_of,
     render_item,
@@ -693,7 +694,7 @@ def _say_read_from_base(
     closed = [
         f"{item.identifier} (`{copy.status}`)"
         for item, copy in moved
-        if copy.status in CLOSED_STATUSES
+        if is_closed_status(copy.status)
     ]
     if len(moved) == 1:
         said = "1 item has changed status since; its copy was read from there"
@@ -975,11 +976,7 @@ def _complete_report(
             if git is None or config.verify_allowlist_from is None
             else commands_written_here(
                 root,
-                {
-                    i.identifier: i.verify
-                    for i in items
-                    if i.status not in CLOSED_STATUSES and i.verify
-                },
+                {i.identifier: i.verify for i in items if i.is_open and i.verify},
                 items_dir=tracked,
                 runner=git,
             )
@@ -2227,7 +2224,7 @@ def _say_unblocked(
     closure is let through for them, and the advisory that preceded the error
     was named on every run and acted on by nobody (`PL-2349`).
     """
-    if "status" not in changes or updated.status not in CLOSED_STATUSES:
+    if "status" not in changes or updated.is_open:
         return
     held = {candidate.identifier for candidate in promotable(before)}
     freed = [c for c in promotable(after) if c.identifier not in held]
@@ -2380,7 +2377,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     standing = standings.get(item.identifier)
     lifted = {i: s.lifted_by for i, s in standings.items() if s.lifted_by}
     unblocks = standing.lifted_by if standing is not None else ()
-    closed = item.status in CLOSED_STATUSES
+    closed = not item.is_open
     placement = placement_line(
         plan.scope if plan is not None else None,
         item.identifier,
@@ -3710,12 +3707,13 @@ def _release_train(read: Holdings, root: Path, run: Runner) -> _Train:
     return _Train(
         rival=holder if holder is not None and holder not in ours else None,
         ours=next((hold for hold in ours if hold.state == LIVE), None),
-        closed=next((hold for hold in ours if hold.status in CLOSED_STATUSES), None),
+        closed=next((hold for hold in ours if is_closed_status(hold.status)), None),
         idle=next(
             (
                 hold
                 for hold in ours
-                if hold.status not in {"", *CLOSED_STATUSES}
+                if hold.status
+                and not is_closed_status(hold.status)
                 and (hold.state == LAPSED or hold.released_by in {BY_YIELD, BY_STATUS})
             ),
             None,
@@ -5098,7 +5096,7 @@ def _open_pull_requests(
             if not fields:
                 continue
             number = fields[1].lstrip("#") if len(fields) > 1 else ""
-            found.setdefault(fields[0], int(number) if number.isdigit() else None)
+            found.setdefault(fields[0], pr_number(number))
         return found
 
     return ask
@@ -5164,11 +5162,11 @@ def _newest_pull_request(
         fields = said[0].split()
         if (
             len(fields) == 3
-            and fields[0].isdigit()
+            and (number := pr_number(fields[0])) is not None
             and fields[1] in PULL_STATES
             and all(char in "0123456789abcdef" for char in fields[2].lower())
         ):
-            return PullRequestLookup(NewestPullRequest(int(fields[0]), fields[1], fields[2]))
+            return PullRequestLookup(NewestPullRequest(number, fields[1], fields[2]))
         return PullRequestLookup(
             declined=f"`{command}` answered {said[0]!r}, which is not `NUMBER STATE HEAD`"
         )

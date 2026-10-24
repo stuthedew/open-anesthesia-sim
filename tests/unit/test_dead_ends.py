@@ -137,9 +137,11 @@ def test_an_item_s_id_is_read_off_its_file_name_by_docket_s_grammar(
     The split took a file whose name carries no slug for an item, under the id
     `PL-CCCC.md`, which no reader of the store's history calls an item at all.
     """
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
     for name in ("PL-8888-named.md", "PL-CCCC.md"):
-        (tmp_path / name).write_text("---\n---\n", encoding="utf-8")
-    monkeypatch.setattr(dead_ends, "ITEMS", tmp_path)
+        (items / name).write_text("---\n---\n", encoding="utf-8")
+    monkeypatch.setattr(dead_ends, "ROOT", tmp_path)
 
     assert dead_ends.known_ids() == {"PL-8888"}
     problems = dead_ends.check(PREAMBLE + entry("An approach", "refuted. `PL-CCCC`"))

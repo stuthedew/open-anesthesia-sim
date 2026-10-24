@@ -60,7 +60,9 @@ ROADMAP = "roadmap"
 #: A path neither `workflow_paths` nor `product_paths` places. Only a project
 #: declaring `product_paths` has one, and it belongs to neither half, as a
 #: `crossing` item belongs to neither lane, so the churn share leaves it out.
-UNPLACED = "unplaced"
+#: Its name differs from `roadmap.UNPLACED`, an id no milestone places, which
+#: is a different fact spelled with the same word (`PL-LGDV`).
+UNPLACED_PATH = "unplaced"
 
 #: The apparatus half, split so the queue store can be set aside. It is inside
 #: `workflow_paths` and belongs there - editing it is apparatus work - but it
@@ -108,7 +110,7 @@ def bucket(path: str, config: Config) -> str:
     columns are answering with one rule rather than two that can drift.
 
     What is left is product prose where `product_paths` places it, and
-    `UNPLACED` where a project declares that list and it does not: a path
+    `UNPLACED_PATH` where a project declares that list and it does not: a path
     nobody placed is nobody's (`PL-8ZGY`). With none declared, the remainder
     is product prose, as `Item.lane` reads it.
     """
@@ -122,7 +124,7 @@ def bucket(path: str, config: Config) -> str:
         return SIM_CODE
     if not config.product_paths or is_under(path, config.product_paths):
         return SIM_DOCS
-    return UNPLACED
+    return UNPLACED_PATH
 
 
 def _share(workflow: float, product: float) -> float | None:
@@ -195,7 +197,7 @@ class Period:
 
     @property
     def unplaced_lines(self) -> int:
-        return self.churn.get(UNPLACED, 0)
+        return self.churn.get(UNPLACED_PATH, 0)
 
     @property
     def churn_share(self) -> float | None:

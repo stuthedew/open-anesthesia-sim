@@ -1,9 +1,16 @@
 ---
 id: PL-TL6T
 title: Sessions ask the owner to delete branches that are already gone: rule 14 lists remote branches to delete with no qualifier, and tools/branch_sweep.py's dry run reads this clone's unpruned tracking refs, so a pull request's own branch, which GitHub deleted at merge, shows as kept inside the 72 h grace period
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 touches: tools/branch_sweep.py, .claude/rules/instruction-writing.md, .claude/skills/docket/modes/capture.md, tests/unit/test_branch_sweep.py
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1745
+payoff: a closing block never asks the owner to delete a branch GitHub already deleted or one the daily sweep will delete on its own
+verify: uv run pytest -q tests/unit/test_branch_sweep.py
 ---
 
 **Problem.** Sessions ask the owner to delete branches that are already gone: rule 14 lists remote branches to delete with no qualifier, and tools/branch_sweep.py's dry run reads this clone's unpruned tracking refs, so a pull request's own branch, which GitHub deleted at merge, shows as kept inside the 72 h grace period

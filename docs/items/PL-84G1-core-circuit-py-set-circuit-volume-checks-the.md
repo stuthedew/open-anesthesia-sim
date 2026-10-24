@@ -4,7 +4,7 @@ title: core/circuit.py set_circuit_volume checks the stored agent against the ci
 priority: P3
 effort: S
 status: ready
-classes: refactor
+classes: defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/core/circuit.py, tests/unit/test_circuit.py
 added: 2026-10-19

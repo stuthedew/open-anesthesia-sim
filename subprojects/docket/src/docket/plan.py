@@ -22,7 +22,6 @@ from dataclasses import dataclass, field, replace
 from datetime import date
 
 from .model import (
-    CLOSED_STATUSES,
     EFFORTS,
     LANE_CROSSING,
     LANE_UNPLACED,
@@ -728,9 +727,7 @@ def promotable(items: list[Item]) -> list[Item]:
     fail-closed half: a `blocked-by` naming nothing is not evidence that the
     blocker closed.
     """
-    resolved = {
-        item.identifier for item in items if item.identifier and item.status in CLOSED_STATUSES
-    }
+    resolved = {item.identifier for item in items if item.identifier and not item.is_open}
     return sorted(
         (
             item
@@ -1035,14 +1032,14 @@ def recurrence_chains(items: list[Item]) -> dict[str, tuple[str, ...]]:
     by_id = {item.identifier: item for item in items if item.identifier}
     refiled_from: dict[str, set[str]] = {}
     for item in items:
-        if item.status not in CLOSED_STATUSES:
+        if item.is_open:
             continue
         for found in live_recurrences(item):
             if found.identifier:
                 refiled_from.setdefault(found.identifier, set()).add(item.identifier)
     chains: dict[str, tuple[str, ...]] = {}
     for item in items:
-        if item.status in CLOSED_STATUSES or not item.identifier:
+        if not item.is_open or not item.identifier:
             continue
         filings = {found.identifier for found in live_recurrences(item) if found.identifier}
         seen: set[str] = set()
@@ -1139,7 +1136,7 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
         (
             item
             for item in items
-            if item.status not in CLOSED_STATUSES
+            if item.is_open
             and item.identifier not in flight
             and len(chains.get(item.identifier, ())) >= MIN_RECURRENCES
             and not is_generator(item, {i.identifier for i in items if i.identifier})
