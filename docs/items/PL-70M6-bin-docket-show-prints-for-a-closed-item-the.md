@@ -10,7 +10,7 @@ touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/do
 added: 2026-10-19
 payoff: one item reads whole in bin/docket show, and the model review joins items to sessions through the same function instead of re-deriving the join each month
 verify: grep -rq 'session-ledger.tsv' subprojects/docket/src/docket && grep -q 'session-ledger' subprojects/docket/README.md
-recurrences: 2026-10-24 PL-YF16
+recurrences: 2026-10-24 PL-YF16 withdrawn 2026-10-24 PL-YF16
 ---
 
 **Problem.** bin/docket show prints, for a closed item, the sessions that worked it, as one more section of the whole item that the existing command already prints: each session's model, effort, served model and cost, joined from docs/session-ledger.tsv through the item's pull request.
