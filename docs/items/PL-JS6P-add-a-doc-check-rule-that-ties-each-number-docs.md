@@ -3,14 +3,15 @@ id: PL-JS6P
 title: Add a doc_check rule that ties each number docs/MODEL.md and README.md restate to its home in a data file or in code, and fails when they disagree
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, docs
 feature: one-source-of-truth
-touches: tools/doc_check.py, docs/MODEL.md, README.md
+touches: tools/doc_check.py, docs/MODEL.md, README.md, tests/unit/test_doc_check.py
 blocked-by: v0.6.0, PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)
 added: 2026-10-19
 payoff: a number in the authoritative specification can no longer disagree with the data file it restates
+verify: grep -q 'def test_a_restated_number_that_disagrees_with_its_home_fails' tests/unit/test_doc_check.py
 ---
 
 **Problem.** Add a doc_check rule that ties each number docs/MODEL.md and README.md restate to its home in a data file or in code, and fails when they disagree
