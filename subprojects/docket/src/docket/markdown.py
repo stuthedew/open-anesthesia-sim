@@ -168,14 +168,14 @@ class Table:
 # Each pattern is matched where a line's containers end, so its indent is
 # counted from there.
 _QUOTE = re.compile(r" {0,3}>")
-_MARKER = re.compile(r" {0,3}(?:[-+*]|(?P<number>\d{1,9})[.)])(?=[ \t]|$)")
+_LIST_MARKER = re.compile(r" {0,3}(?:[-+*]|(?P<number>\d{1,9})[.)])(?=[ \t]|$)")
 _ATX = re.compile(r" {0,3}(?P<hashes>#{1,6})(?:[ \t]|$)")
 _ATX_CLOSE = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
 _BREAK = re.compile(r" {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$")
 _SETEXT = re.compile(r" {0,3}(?P<rule>=+|-+)[ \t]*$")
 #: A backtick fence's info string holds no backtick (§ 4.5), which is what
 #: keeps a code span wrapped to a line's start from opening one.
-_FENCE = re.compile(r" {0,3}(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
+_FENCE_OPEN = re.compile(r" {0,3}(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
 _FENCE_CLOSE = re.compile(r" {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$")
 #: § 4.6's kinds 1 to 5: the line opening each, and the marker ending it, which
 #: may sit on the opening line itself, as `<!-- absent: ... -->` does.
@@ -787,7 +787,7 @@ def _parse(
             if (atx := _ATX.match(line, at)) is not None:
                 kind, level = HEADING, len(atx["hashes"])
                 break
-            if index < fence_from and (opening := _FENCE.match(line, at)) is not None:
+            if index < fence_from and (opening := _FENCE_OPEN.match(line, at)) is not None:
                 kind, fence = FENCE, opening["fence"]
                 break
             if index not in unread and (until := _html_end(line, at)) is not None:
@@ -802,7 +802,7 @@ def _parse(
             if _BREAK.match(line, at):
                 kind = BREAK
                 break
-            if (marker := _MARKER.match(line, at)) is not None:
+            if (marker := _LIST_MARKER.match(line, at)) is not None:
                 after = marker.end()
                 gap = _indent(line, after)
                 empty = after + gap >= len(line)

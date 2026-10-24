@@ -100,7 +100,7 @@ TREE = "src/anesthesia_sim"
 CORE = "src/anesthesia_sim/core/"
 
 #: Values a bare literal may take anywhere. See the module docstring on 2.
-EXEMPT: frozenset[int] = frozenset({-2, -1, 0, 1, 2})
+EXEMPT_VALUES: frozenset[int] = frozenset({-2, -1, 0, 1, 2})
 
 #: How many constants one finding names before summarising the rest.
 SUGGESTED = 3
@@ -231,7 +231,7 @@ class _Literals(ast.NodeVisitor):
             self._record(node, value)
 
     def _record(self, node: ast.AST, value: Number) -> None:
-        if value in EXEMPT:
+        if value in EXEMPT_VALUES:
             return
         scope = ".".join(self.scope) or "<module>"
         self.found.append(Literal(self.path, getattr(node, "lineno", 0), scope, value))

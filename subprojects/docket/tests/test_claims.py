@@ -44,7 +44,7 @@ from docket.claims import (
     work_outside_queue,
 )
 from docket.config import Config
-from docket.vcs import RECORDS, SILENT, _run_git, in_queue, queue_records, remote_heads
+from docket.vcs import SILENT, _run_git, in_queue, queue_records, remote_heads
 
 #: When the claims under test are made. Each repository's base sits a month
 #: earlier, outside every lease.
@@ -1684,18 +1684,6 @@ def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> 
     assert not in_queue("docs/items-archive.md", QUEUE)
     assert not in_queue("docs/pr-bodies.md", QUEUE)
     assert not in_queue("src/work.py", QUEUE)
-
-
-def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
-    """`arming.RECORDS` spells the body records again, and the two spellings must agree.
-
-    Until 2026-10-19 the gate held `arming.py` for a read so that it could not
-    loosen itself, and this module arms on green. Imported from here, a one-line widening of the
-    records would merge unread and then arm whatever it newly admitted, so the
-    held file keeps its own copy (`PL-F6MM`; project owner, 2026-09-26,
-    ratified, over `arming` importing this one). This keeps the two one answer.
-    """
-    assert RECORDS == arming.RECORDS
 
 
 def test_what_arms_on_green_is_everything_but_the_owners_read_list() -> None:

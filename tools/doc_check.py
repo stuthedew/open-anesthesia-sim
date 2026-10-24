@@ -221,7 +221,16 @@ try:
     # so `def test_ghost():` inside a fixture string defines nothing, and a
     # changed line counts toward the definition whose statement holds it, a
     # signature wrapped over several lines included (`PL-V2HK`).
-    from docket.python import UNTOKENIZABLE, definition, docstrings, read_logical_lines, refusal
+    # What `ast.parse` raises where this interpreter cannot parse a file, which
+    # `verify` names a file for (`PL-LCBQ`), read from where both find it.
+    from docket.python import (
+        UNPARSABLE,
+        UNTOKENIZABLE,
+        definition,
+        docstrings,
+        read_logical_lines,
+        refusal,
+    )
     from docket.release import (
         AUTOLINK_RE,
         CODE_SPAN_AT,
@@ -321,10 +330,6 @@ try:
         tags,
         untracked_path_args,
     )
-
-    # What `ast.parse` raises where this interpreter cannot parse a file, which
-    # `verify` names a file for (`PL-LCBQ`).
-    from docket.verify import UNPARSABLE
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -442,8 +447,8 @@ UNREADABLE = (OSError, UnicodeDecodeError)
 # simulator's map and the apparatus's are separate documents since `PL-KRGY`,
 # and each is held to the tree on its own, so neither can pass on the other's.
 ARCHITECTURE = Path("docs/ARCHITECTURE.md")
-APPARATUS = Path("docs/apparatus.md")
-PACKAGE_MAPS = (ARCHITECTURE, APPARATUS)
+APPARATUS_MAP = Path("docs/apparatus.md")
+PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
 MODEL = Path("docs/MODEL.md")
 
 
@@ -7115,13 +7120,13 @@ def check_floor_list(root: Path, report: Report) -> None:
     if not workflow.is_file():
         return
     read = floor_commands(workflow.read_text(encoding="utf-8"))
-    document = root / APPARATUS
+    document = root / APPARATUS_MAP
     text = document.read_text(encoding="utf-8") if document.is_file() else ""
     opens, closes = text.find(FLOOR_LIST_OPENS), text.find(FLOOR_LIST_CLOSES)
     if read is None:
         if opens != -1:
             report.errors.append(
-                f"{APPARATUS}: lists the floor section's commands, but {QUALITY_WORKFLOW} "
+                f"{APPARATUS_MAP}: lists the floor section's commands, but {QUALITY_WORKFLOW} "
                 f"has no step using {FLOOR_OPENS} followed by one using {FLOOR_CLOSES}"
             )
         return
@@ -7129,11 +7134,11 @@ def check_floor_list(root: Path, report: Report) -> None:
     for declined in unread:
         report.declined.append(
             f"{QUALITY_WORKFLOW}:{declined.line}: a step was not read ({declined.why}), "
-            f"so the floor list in {APPARATUS} may be held to fewer commands than run"
+            f"so the floor list in {APPARATUS_MAP} may be held to fewer commands than run"
         )
     if opens == -1 or closes < opens:
         report.errors.append(
-            f"{APPARATUS}: no list of the floor section's commands between "
+            f"{APPARATUS_MAP}: no list of the floor section's commands between "
             f"{FLOOR_LIST_OPENS} and {FLOOR_LIST_CLOSES}, so nothing holds it to "
             f"{QUALITY_WORKFLOW}"
         )
@@ -7147,12 +7152,12 @@ def check_floor_list(root: Path, report: Report) -> None:
     line = text.count("\n", 0, opens) + 1
     for key in sorted(run.keys() - listed):
         report.errors.append(
-            f"{APPARATUS}:{line}: the floor list leaves out `{key}`, which "
+            f"{APPARATUS_MAP}:{line}: the floor list leaves out `{key}`, which "
             f"{QUALITY_WORKFLOW}:{run[key]} runs in the floor section"
         )
     for key in sorted(listed - run.keys()):
         report.errors.append(
-            f"{APPARATUS}:{line}: the floor list names `{key}`, which the floor section "
+            f"{APPARATUS_MAP}:{line}: the floor list names `{key}`, which the floor section "
             f"of {QUALITY_WORKFLOW} does not run"
         )
 

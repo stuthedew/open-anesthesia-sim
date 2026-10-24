@@ -219,12 +219,15 @@ from docket.vcs import (  # noqa: E402
     subject_pull_request,
 )
 
+from open_pull_requests import GITHUB_API, api_request  # noqa: E402
+
 #: Relative, as a message names a file; `RECOVERY_DIR` is where they are read.
 #: `vcs.RECORDS` is the directory's one spelling (`PL-WCHF`).
 RECORD_PATH = RECORDS.rstrip("/")
 RECOVERY_DIR = ROOT / RECORD_PATH
-API = "https://api.github.com"
-TIMEOUT_S = 15
+#: Seconds one read of the API may take. This script's own bound, and a
+#: different fact from `main_ci_status.TIMEOUT_S`, which bounds a session start.
+READ_TIMEOUT_S = 15
 
 #: Separates the two records inside one recovery file. `---` on its own line is
 #: YAML frontmatter, which is what `docs/items/` uses, so a reader meeting one
@@ -393,10 +396,9 @@ def _get_json(url: str) -> object | None:
     repository is public, so no token is needed, which keeps this runnable from
     a bare checkout and keeps a credential out of it.
     """
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "pr-body-check"}
-    request = urllib.request.Request(url, headers=headers)
+    request = api_request(url, agent="pr-body-check")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
+        with urllib.request.urlopen(request, timeout=READ_TIMEOUT_S) as response:
             payload: object = json.load(response)
     except (OSError, urllib.error.URLError, ValueError, TimeoutError):
         return None
@@ -405,7 +407,7 @@ def _get_json(url: str) -> object | None:
 
 def fetch_body(slug: str, pr: int) -> str | object | None:
     """The pull request's body, `NO_BODY` if it has none, or None if unreadable."""
-    payload = _get_json(f"{API}/repos/{slug}/pulls/{pr}")
+    payload = _get_json(f"{GITHUB_API}/repos/{slug}/pulls/{pr}")
     if not isinstance(payload, dict):
         return None
     body = payload.get("body")
@@ -480,7 +482,7 @@ def listed_bodies(slug: str, wanted: set[int]) -> tuple[dict[int, Listed], str |
         if wanted <= found.keys():
             return found, None
         payload = _get_json(
-            f"{API}/repos/{slug}/pulls?state=closed&sort=created&direction=desc"
+            f"{GITHUB_API}/repos/{slug}/pulls?state=closed&sort=created&direction=desc"
             f"&per_page={PER_PAGE}&page={page}"
         )
         if not isinstance(payload, list):

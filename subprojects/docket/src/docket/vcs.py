@@ -59,6 +59,7 @@ from .model import (
     parse_item,
     pr_number,
 )
+from .python import UNPARSABLE
 from .release import (
     CUT_FLAGS,
     NOTES_DIR,
@@ -1372,11 +1373,10 @@ def leading_ids(line: str) -> tuple[str, ...]:
 #: The pull requests' body files. `tools/pr_body_check.py --recover` writes
 #: `<N>.md` here for a squash commit that landed with no body, at each release
 #: (`PL-3PH2`); from 2026-09-25 to 2026-09-26 `--record` also wrote one on every
-#: pull request's branch (`PL-979D`). `arming.RECORDS` spells the
-#: same directory for what arms on green, in the one module the gate holds for
-#: a read, and is kept there rather than imported from here, so that widening
-#: what arms still takes an edit the gate holds; `test_claims` pins the two
-#: equal (`PL-F6MM`). The path is this repository's layout.
+#: pull request's branch (`PL-979D`). `arming` reads it from here for what
+#: arms on green. It kept a copy of its own until 2026-10-24, so that widening
+#: what arms took an edit the gate held, and that hold ended on 2026-10-19
+#: (`PL-F6MM`, `PL-9JHM`, `PL-LGDV`). The path is this repository's layout.
 RECORDS = "docs/pr-bodies/"
 
 
@@ -1425,8 +1425,8 @@ def in_queue(path: str, config: Config) -> bool:
     and the body records, so a `ROADMAP.md`-only triage pass owes no claim here
     and still waits on a read there (project owner, 2026-09-26, ratified, over
     widening arming to the roadmap and the notes, `PL-0JGZ`). That answer is
-    spelt in the module the gate holds for a read rather than in this one, for
-    the reason `RECORDS` above gives.
+    spelt in `arming`, the module that decides what arms, rather than in this
+    one.
     """
     return any(
         path.startswith(name) if name.endswith("/") else path == name
@@ -1785,10 +1785,6 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
 #: counted apart: the headings over it, then the list items holding it.
 Statement = tuple[str, ...]
 
-#: What the parser raises where this interpreter cannot read a file, as
-#: `verify.UNPARSABLE` names them; that module imports this one.
-_UNPARSABLE = (SyntaxError, ValueError, RecursionError)
-
 
 def _markdown_statements(text: str) -> frozenset[Statement] | None:
     """A Markdown file's statements: each front-matter field, and each of its body's in its place.
@@ -1862,7 +1858,7 @@ def _clauses(value: object) -> bool:
 
 
 def _parsed_statements(text: str) -> frozenset[Statement]:
-    """`_python_statements`' reading, raising one of `_UNPARSABLE` where the parser refuses."""
+    """`_python_statements`' reading, raising one of `UNPARSABLE` where the parser refuses."""
     with warnings.catch_warnings():
         # An invalid escape sequence warns as it compiles: the file's linter's
         # to report, and noise on every page that reads a branch.
@@ -1896,7 +1892,7 @@ def _python_statements(text: str) -> frozenset[Statement] | None:
     """
     try:
         return _parsed_statements(text)
-    except _UNPARSABLE:
+    except UNPARSABLE:
         return None
 
 
@@ -5268,13 +5264,15 @@ def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, st
 
 #: What one ref's copy of an item file holds that the default branch's copy
 #: does not. Three values rather than a boolean because the two mistakes they
-#: separate are opposite in cost: a copy wrongly called `_AHEAD` costs a
-#: reader one diff, and a copy wrongly called `_BEHIND` is a finding nobody
+#: separate are opposite in cost: a copy wrongly called `_COPY_AHEAD` costs a
+#: reader one diff, and a copy wrongly called `_COPY_BEHIND` is a finding nobody
 #: receives - or, where `orphaned` prints a `git checkout` for it, a newer
-#: copy overwritten by an older one.
-_AHEAD = "ahead"
-_BEHIND = "behind"
-_EQUAL = "equal"
+#: copy overwritten by an older one. Each name says `COPY`, because
+#: `arming.BEHIND`, one of `arm`'s answers, is a different fact spelled with
+#: the same word (`PL-LGDV`).
+_COPY_AHEAD = "ahead"
+_COPY_BEHIND = "behind"
+_COPY_EQUAL = "equal"
 
 
 def _standing(base_text: str, ref_text: str) -> str:
@@ -5297,14 +5295,14 @@ def _standing(base_text: str, ref_text: str) -> str:
 
     The three cases:
 
-    - **`_EQUAL`.** The two copies agree.
-    - **`_BEHIND` by removal.** The ref's copy spells no field differently,
+    - **`_COPY_EQUAL`.** The two copies agree.
+    - **`_COPY_BEHIND` by removal.** The ref's copy spells no field differently,
       no line of prose the base's copy lacks, and no statement the base's
       lacks either, so the base holds everything it holds and more. This is
       `_superseded`'s "removals only" read, asked of one item file rather than
-      of a path set, and a line cut out of a paragraph is `_AHEAD` on the same
+      of a path set, and a line cut out of a paragraph is `_COPY_AHEAD` on the same
       reasoning (`PL-F7Z6`).
-    - **`_BEHIND` by closure.** The base's copy is `done` or `dropped` and the
+    - **`_COPY_BEHIND` by closure.** The base's copy is `done` or `dropped` and the
       ref's is not; the ref's prose adds nothing; and every field it spells
       differently is one the base spells too. A field has one value, and on a
       closed item the base's is the one the project settled on - `status:
@@ -5312,9 +5310,9 @@ def _standing(base_text: str, ref_text: str) -> str:
       beside it - so the branch's line is not content the base is missing.
       Its prose stays a line read rather than a statement read: what it meets
       is a stale copy of a paragraph the base has extended since, and a
-      statement read would call that copy `_AHEAD` - eight copies standing on
+      statement read would call that copy `_COPY_AHEAD` - eight copies standing on
       `PL-YBFB`'s and `PL-JW9J`'s branches when `PL-F7Z6` counted, 2026-10-05.
-    - **`_AHEAD` otherwise.** Including two copies that each hold something
+    - **`_COPY_AHEAD` otherwise.** Including two copies that each hold something
       the other lacks: the reader is handed a diff either way, and calling
       that case ahead reports it rather than hiding it. And a copy whose front
       matter the fold declines a line of - a block list, a block scalar, a
@@ -5341,23 +5339,23 @@ def _standing(base_text: str, ref_text: str) -> str:
     all this reads.
     """
     if base_text == ref_text:
-        return _EQUAL
+        return _COPY_EQUAL
     base_fields, base_body, base_declined = parse_front_matter(base_text)
     ref_fields, ref_body, ref_declined = parse_front_matter(ref_text)
     if base_declined or ref_declined:
-        return _AHEAD
+        return _COPY_AHEAD
     held = set(split_lines(base_body))
     if any(line.strip() and line not in held for line in split_lines(ref_body)):
-        return _AHEAD
+        return _COPY_AHEAD
     differing = [key for key, value in ref_fields.items() if base_fields.get(key) != value]
     if not differing:
         held_whole = _within(_markdown_statements(ref_text), _markdown_statements(base_text))
-        return _BEHIND if held_whole else _AHEAD
+        return _COPY_BEHIND if held_whole else _COPY_AHEAD
     closed_on_base = base_fields.get("status", "") in CLOSED_STATUSES
     closed_on_ref = ref_fields.get("status", "") in CLOSED_STATUSES
     if closed_on_base and not closed_on_ref and all(key in base_fields for key in differing):
-        return _BEHIND
-    return _AHEAD
+        return _COPY_BEHIND
+    return _COPY_AHEAD
 
 
 def _behind_on_base(
@@ -5393,7 +5391,7 @@ def _behind_on_base(
             continue
         base_text = run(["show", f"{base}:{recorded[1]}"], root)
         ref_text = run(["show", f"{ref}:{path}"], root)
-        if base_text and ref_text and _standing(base_text, ref_text) == _BEHIND:
+        if base_text and ref_text and _standing(base_text, ref_text) == _COPY_BEHIND:
             behind.add(path)
     return behind
 
@@ -6008,7 +6006,7 @@ def stranded(
             ref_text = run(["show", f"{ref}:{path}"], root)
             base_text = run(["show", f"{base}:{base_path}"], root)
             if ref_text and base_text:
-                if _standing(base_text, ref_text) != _AHEAD:
+                if _standing(base_text, ref_text) != _COPY_AHEAD:
                     continue
                 # Ahead by its text, so asked by its changes: a copy whose
                 # every commit the base took is one the base has been past,

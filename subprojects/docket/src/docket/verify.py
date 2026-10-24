@@ -44,7 +44,6 @@ from pathlib import Path
 from typing import TypeVar
 
 from . import vcs
-from .arming import RECORDS
 from .config import Config
 from .grep import Cache, Wrap, wrapped
 from .lines import ENCODING, file_text, split_lines
@@ -57,7 +56,7 @@ from .model import (
     recurrence_entry_reads,
     split_list,
 )
-from .python import UNTOKENIZABLE, LogicalLine, places, read_logical_lines, refusal
+from .python import UNPARSABLE, UNTOKENIZABLE, LogicalLine, places, read_logical_lines, refusal
 from .release import CODE_SPAN_PATTERN
 from .shell import (
     COMMAND_ENDS,
@@ -72,6 +71,7 @@ from .shell import (
     shell_words,
     simple_commands,
 )
+from .vcs import RECORDS
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -362,12 +362,6 @@ CONFIGURATION_READERS: dict[
     ".cfg": ("configparser", _ini_statements, (configparser.Error, ValueError)),
     ".ini": ("configparser", _ini_statements, (configparser.Error, ValueError)),
 }
-
-
-#: What reading a file with the parser raises where this interpreter cannot:
-#: `SyntaxError`, `ValueError` for a null byte or for text that is not UTF-8,
-#: and `RecursionError` for an expression too deep to parse or to dump.
-UNPARSABLE = (SyntaxError, ValueError, RecursionError)
 
 
 def _parse(source: str) -> ast.Module:

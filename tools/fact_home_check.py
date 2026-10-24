@@ -30,13 +30,14 @@ Two rules over every tracked Python file under `tools/`,
    (`X = other.X`) is an import and not a definition. `EXEMPT_NAMES` holds the
    one name every tool must spell itself, with the reason.
 
-Today's sites sit in `BASELINE`, keyed by file, rule and enclosing scope and
-never by line, and it only shrinks: a count above an entry fails, and so does
-an entry the tree no longer fills, so a copy a member removes cannot return
-and the baseline cannot drift into a list nobody reads. The open members of
-`PL-5DZ8` drain it; `PL-HNXS` and `PL-9NZ3` drained the walks they named, and
-`PL-J4YY` the rest, moving the list into `docket.vcs` beside git's one runner;
-`PL-S9JK` drained the tools' and `verify`'s own git runners into it.
+The sites the tree held when this landed sat in `BASELINE`, keyed by file,
+rule and enclosing scope and never by line. It only shrinks: a count above an
+entry fails, and so does an entry the tree no longer fills, so a copy a member
+removes cannot return and the baseline cannot drift into a list nobody reads.
+`PL-HNXS` and `PL-9NZ3` drained the walks they named, and `PL-J4YY` the rest,
+moving the list into `docket.vcs` beside git's one runner; `PL-S9JK` drained
+the tools' and `verify`'s own git runners into it. `PL-LGDV` drained the last
+57 on 2026-10-24, so `BASELINE` is empty and every site is a finding.
 
 Not read: the hooks written in shell, which call git directly and are held by
 their own tests; the test trees, where a `git init` in a fixture reads no
@@ -145,9 +146,9 @@ HOMES: tuple[Home, ...] = (
         reads="names the GitHub API's host",
         where=(("tools/open_pull_requests.py", None),),
         why=(
-            "`open_pull_requests.py` is the one client, imported by five tools already; a "
-            "second host string is a second place the API's version, headers and paging are "
-            "spelled"
+            "`open_pull_requests.py` is the one client, whose `api_request` every tool that "
+            "asks the API builds its request with; a second host string is a second place "
+            "the API's version, headers and paging are spelled"
         ),
         remedy="read the API through `open_pull_requests`, adding the call there if it is new",
     ),
@@ -198,86 +199,9 @@ LEXER_FUNCTIONS = frozenset({"split", "shlex"})
 GITHUB_HOST = "api.github.com"
 DEFAULT_BRANCH_LITERALS = frozenset({"main", "origin/main", "refs/heads/main"})
 
-#: Every second reader when this landed: file, then `(rule, enclosing scope)`,
-#: then how many. It may only shrink.
-BASELINE: dict[str, dict[tuple[str, str], int]] = {
-    "subprojects/docket/src/docket/arming.py": {
-        ("definition", "BEHIND"): 1,
-        ("definition", "LANDED"): 1,
-        ("definition", "RECORDS"): 1,
-    },
-    "subprojects/docket/src/docket/claiming.py": {("definition", "ID"): 1, ("git", "_git"): 1},
-    "subprojects/docket/src/docket/claims.py": {("definition", "ID"): 1},
-    "subprojects/docket/src/docket/frontmatter.py": {("definition", "FENCE"): 1},
-    "subprojects/docket/src/docket/grep.py": {("definition", "MARKER"): 1},
-    "subprojects/docket/src/docket/markdown.py": {
-        ("definition", "FENCE"): 2,
-        ("definition", "MARKER"): 1,
-    },
-    "subprojects/docket/src/docket/notes.py": {("definition", "ID_RE"): 1},
-    "subprojects/docket/src/docket/roadmap.py": {("definition", "UNPLACED"): 1},
-    "subprojects/docket/src/docket/store.py": {("definition", "ID_RE"): 1},
-    "subprojects/docket/src/docket/trend.py": {
-        ("definition", "APPARATUS"): 1,
-        ("definition", "UNPLACED"): 1,
-    },
-    "subprojects/docket/src/docket/vcs.py": {
-        ("definition", "BEHIND"): 1,
-        ("definition", "LANDED"): 1,
-        ("definition", "RECORDS"): 1,
-        ("definition", "UNPARSABLE"): 1,
-    },
-    "subprojects/docket/src/docket/verify.py": {("definition", "UNPARSABLE"): 1},
-    "tools/agent_identity_check.py": {("definition", "APP"): 1},
-    "tools/branch_sweep.py": {("git", "_git"): 1},
-    "tools/contrast_check.py": {
-        ("definition", "APP"): 1,
-        ("definition", "EXEMPT"): 1,
-        ("definition", "LINE_CITATION_RE"): 1,
-    },
-    "tools/dead_ends.py": {
-        ("definition", "ITEMS"): 1,
-        ("definition", "ITEM_ID"): 1,
-        ("definition", "REPO"): 1,
-    },
-    "tools/doc_check.py": {
-        ("definition", "ABSENT"): 1,
-        ("definition", "APPARATUS"): 1,
-        ("definition", "JSON_KEY_RE"): 1,
-        ("definition", "LINE_CITATION_RE"): 1,
-    },
-    "tools/fixture_id_check.py": {("definition", "JSON_KEY_RE"): 1, ("definition", "MARKER"): 1},
-    "tools/item_reads.py": {
-        ("definition", "ITEMS"): 1,
-        ("definition", "ITEM_ID"): 1,
-        ("definition", "REPO"): 1,
-    },
-    "tools/literal_home_check.py": {("definition", "EXEMPT"): 1},
-    "tools/main_ci_status.py": {
-        ("definition", "API"): 1,
-        ("definition", "TIMEOUT_S"): 1,
-        ("git", "main"): 1,
-        ("github-api", "<module>"): 1,
-    },
-    "tools/open_pull_requests.py": {("definition", "PAGE"): 1, ("git", "_git"): 1},
-    "tools/pr_body_check.py": {
-        ("definition", "API"): 1,
-        ("definition", "TIMEOUT_S"): 1,
-        ("github-api", "<module>"): 1,
-    },
-    "tools/required_checks_check.py": {
-        ("definition", "API_VERSION"): 1,
-        ("git", "_repo_from_git"): 1,
-        ("github-api", "<module>"): 1,
-    },
-    "tools/tag_release.py": {("definition", "ABSENT"): 1, ("git", "_git"): 1},
-    "tools/update_armed.py": {
-        ("definition", "API"): 1,
-        ("definition", "API_VERSION"): 1,
-        ("definition", "PAGE"): 1,
-        ("github-api", "<module>"): 1,
-    },
-}
+#: Every second reader the check tolerates: file, then `(rule, enclosing
+#: scope)`, then how many. It may only shrink, and is empty since `PL-LGDV`.
+BASELINE: dict[str, dict[tuple[str, str], int]] = {}
 
 
 @dataclass(frozen=True)
