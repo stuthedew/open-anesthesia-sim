@@ -82,8 +82,8 @@ answered. So a three-item cluster you judge finished is now written down
 rather than withheld to keep the ranking honest, which is the trade the split
 removed. A third field, `misread:`, states in one line the fact the members
 misread, so later captures and other heads can be compared with it. It ranks
-nothing, and `docket check` asks it of every head, open or closed (`PL-5MYR`). `CLAUDE.md` § "A root cause of more than two items is pulled, not
-queued" is what a session does on finding a *ranking* one;
+nothing, and `docket check` asks it of every head, open or closed (`PL-5MYR`). `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and
+the pause they set" is what a session does on finding a *ranking* one;
 `tools/generator_check.py` prints the clusters worth looking at and decides
 none of them.
 

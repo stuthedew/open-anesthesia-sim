@@ -3,12 +3,15 @@ id: PL-6VJ3
 title: The resident instruction set grew from about 37,000 characters on 2026-09-01 to 90,700 on 2026-10-19: route CLAUDE.md's generator-tier, impairs-generators and pause paragraphs to the docket skill, where triage applies them
 priority: P1
 effort: M
-status: ready
+status: done
 classes: session-cost
-touches: CLAUDE.md, .claude/skills/docket/modes/triage.md, docs/resident-instructions.md
 feature: defect-review-2026-10
+touches: CLAUDE.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/SKILL.md, docs/resident-instructions.md, docs/items/PL-JRVV-review-claude-md-for-instructions-that-a-script.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-19
+closed: 2026-10-24
+pr: 1716
 payoff: every session loads about the generator rules only the two sentences it needs before triage, and reads their reasoning in the skill where triage applies it
+verify: grep -q '^### Generators, how they rank, and the pause they set' .claude/skills/docket/modes/triage.md && grep -q 'A generator takes one of two endings' CLAUDE.md && ! grep -q 'The count decides the record' CLAUDE.md && ! grep -q 'six closed generator' CLAUDE.md
 not-delegable: the work is choosing what the two resident trigger sentences say and where they sit so that they still fire before triage; a command can count characters but not show that the rules still load at the right moment, and a headless worker cannot put that wording to the owner
 ---
 
@@ -33,3 +36,5 @@ The falls in the defect rate lined up with specific code fixes in specific weeks
 **Triage** (project owner, 2026-10-20, ratified, over leaving it eligible for a headless worker). P1, worked in the same interactive session as `PL-JRVV` (retiring `CLAUDE.md` rules a check already enforces), so that no paragraph is moved by one and deleted by the other.
 
 **`PL-S2NL` went first, 2026-10-24.** It moved `CLAUDE.md`'s pull request procedure, the commit-and-push and base-merge bullets, into `.claude/skills/pull-request/SKILL.md`, and left one trigger bullet in their place. `docs/resident-instructions.md` § "The pull request procedure, routed to a skill 2026-10-24" records what stayed and why. Measure this item's cut against that smaller `CLAUDE.md`.
+
+**Done 2026-10-24.** The reasoning and history of the generator bullet, its `impairs-generators` paragraph and the pause now live in `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set", with the rules unchanged. `CLAUDE.md` keeps two short paragraphs, each with a pointer there: the pause, in § "What this project is", and the two endings a generator takes, in § "The queue". `CLAUDE.md` went from 51,597 to 49,234 characters, and the resident total from 93,730 to 91,367 (`tools/doc_check.py`). `PL-JRVV`'s retirement test was applied to the same paragraphs, so that review can skip them. `docs/resident-instructions.md` § "The generator rules, routed to the triage mode 2026-10-24" records what stayed and why. Two documents quoted the old bullet's lead as a `CLAUDE.md` section, `picking.md` and `PL-NZC0`'s brief; both now point at the triage section.

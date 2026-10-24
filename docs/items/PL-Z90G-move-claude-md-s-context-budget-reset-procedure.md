@@ -17,7 +17,7 @@ added: 2026-10-24
 
 **What `PL-SN2Z` found, 2026-10-24.** A skill named by a resident trigger started first in 8 of 8 sessions whose request named its moment, including starting a named item, which is when the reset check fires. The housekeeping rule fires mid-task, at the first edit to unfiled work, and `.claude/hooks/docket-branch-guard.sh` already fires there. Keep a resident sentence for each that names its moment.
 
-**Waits on** `PL-6VJ3` and `PL-JRVV`. Work this item after `PL-6VJ3` and `PL-JRVV`, which also edit `CLAUDE.md`, so that no paragraph is moved by one item and deleted by another.
+**Waits on** `PL-JRVV`, which also edits `CLAUDE.md`, so that no paragraph is moved by one item and deleted by another. `PL-6VJ3`, the other item this waited on, closed on 2026-10-24: it moved `CLAUDE.md`'s generator rules into `.claude/skills/docket/modes/triage.md`, and `CLAUDE.md` is now 49,234 characters.
 
 **What stays always loaded.** One sentence for each rule: check spend with `python3 tools/context_reading.py` before starting an item, and file an item before doing work that no item names. The moved text goes into the mode files rather than the skill's front page. The front page is sized to come back whole after compaction, which keeps only the first 5,000 tokens of a skill.
 

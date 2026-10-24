@@ -52,24 +52,19 @@ pre-registered apparatus-convergence baseline) holds its numbers and
 predictions; `bin/docket release` names any that break (`PL-WXKD`).
 
 **While any open workflow-lane item carries `generator: live`, no new workflow
-mechanism is built** (project owner, 2026-09-22, ratified, over adding them
-under standing approval and ratified recommendations while six closed generator
-heads were still producing, which is how at least nine mechanisms and their
-tails arrived on 09-20 and 09-21, `PL-KVDK`; narrowed to the workflow lane - a
-head whose `touches` lie in `workflow_paths`, the lane `Item.lane` reads - by
-the project owner, 2026-10-17, ratified, over binding on a head of either lane,
-after `PL-X7D5`, a run-view defect, froze `PL-ZYHX`, `PL-KBVW`). **It holds apparatus work unrelated to fixing
-the generators: new features and housekeeping** (project owner, 2026-09-23). A
-new command, check, field or rule of that kind, or a re-specification of the
-generator rule, is captured and not built, nor offered as the answer to a
-finding. Work on the generators is what the pause is for, and needs no lift:
-fixing a live generator, a defect in what exists, or the machinery that finds
-and ranks generators, including what a head records (`PL-5MYR`). The pause ends when no open workflow-lane item carries `generator: live` — no
-head in that lane that `bin/docket generators` marks "still generating". Not `next`'s
-generator tier, which leaves out whatever is in flight, blocked or untriaged,
-and counts `impairs-generators:` items the rule does not name (`PL-CT07`). A
-request from the project owner lifts it for that request, and the session says
-so (`PL-6Q9L`).
+mechanism is built** (project owner, 2026-09-22, ratified, and narrowed to the
+workflow lane 2026-10-17, ratified; the triage mode records what each was
+chosen over). The pause holds apparatus work unrelated to fixing the
+generators, both new features and housekeeping. A new command, check, field or
+rule of that kind, or a re-specification of the generator rule, is captured
+and not built, and is not offered as the answer to a finding. Work on the
+generators needs no lift: fixing a live generator, fixing a defect in what
+exists, or fixing the machinery that finds and ranks generators. The pause
+applies while `bin/docket generators` marks a workflow-lane head "still
+generating", not while `next` shows a generator tier (`PL-CT07`). A request
+from the project owner lifts it for that request, and the session says so
+(`PL-6Q9L`). `.claude/skills/docket/modes/triage.md` § "Generators, how they
+rank, and the pause they set" has the full rule and its history (`PL-6VJ3`).
 
 **Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
 a fix batch before the switch and over working each root cause in the owner's
@@ -492,46 +487,19 @@ deviating from a described deliverable, not acting without one.
   `python3 tools/branch_sweep.py` and hands the owner only a branch it keeps
   that should go anyway (project owner, 2026-09-26, ratified, over a list
   built by hand, `PL-X8SV`).
-- **A root cause of more than two items is pulled, not queued** (project owner,
-  2026-09-17). A mechanism a session identifies as the cause of three or more
-  items is a *generator*. Record it on the causing item as `root-cause-of:`
-  naming the items it explains — three or more, or it is an ordinary item — so
-  the claim is a recorded fact rather than the next session's inference.
-  **The count decides the record; expected recurrence decides the rank**
-  (project owner, 2026-09-21, ratified, over keeping the count for both and
-  accepting that any three-item cluster outranks a `safety`-classed `P1`). A
-  generator the store is still handing new members ranks **above everything but
-  `P0`** — including a `safety`-classed `P1`, which was asked and answered
-  rather than overlooked — because every session it stands through pays it
-  again, and that is a claim about future inflow rather than about the damage
-  any one member does. One whose mechanism is spent is recorded all the same,
-  for the audit, and ranks on its own band. Say which it is and why in
-  `generator:`, beside the `root-cause-of:` — `live - <why it is still being
-  handed members>`, or `spent - <why it cannot produce another>`. Recording
-  alone does not rank; `bin/docket check` asks any open generator that has not
-  answered. A *ranking* generator then takes one of exactly two
-  endings: **fix it in this session, or end the reply with a ready-to-paste
-  prompt that starts a fresh session on it.** Filing it and carrying on is not
-  a third — an item alone changes nothing. **Found in a product session, it
-  takes the second, after the product item**, unless it blocks that item
-  (project owner, 2026-09-25, ratified, over holding the ending for heads found
-  in product work and over fixing each one here once the item is done,
-  `PL-2866`). A spent one is ordinary work under
-  the capture rule above. Identifying one is judgment and stays a session's;
-  what follows from it is not.
-
-  **A defect in the machinery that finds and ranks generators ranks with one**
-  (project owner, 2026-09-19). Same tier, below `P0` and above every band,
-  because while identification is broken a generator is never recorded and an
-  unrecorded generator is ranked by nothing — and nothing in the store would
-  ever say one went unfound. Record it as `impairs-generators:` on an item
-  whose `touches` reaches `generator_paths`: prose naming the function that
-  broke, never `yes`, and `bin/docket check` refuses a claim on code the item
-  never goes near. **The two endings above bind it too** — fix it in this
-  session, or end the reply with a prompt starting a fresh one; filing it and
-  carrying on is not a third. Asked and answered against the recommendation to
-  confine them to a measured cluster, so reopening it needs a compelling
-  argument rather than ordinary evidence (`PL-4MPJ`).
+- **A generator takes one of two endings: fix it in this session, or end the
+  reply with a ready-to-paste prompt that starts a fresh session on it**
+  (project owner, 2026-09-17). A generator is a mechanism that causes three or
+  more items. The two endings bind a head recorded `generator: live`, and an
+  item recorded `impairs-generators:`, which is a defect in the machinery that
+  finds and ranks generators. Filing it and carrying on is not a third ending,
+  because an item alone changes nothing. Found in a product session, it takes
+  the prompt, after the product item, unless it blocks that item (project
+  owner, 2026-09-25, ratified, over fixing it in that session once the item is
+  done, `PL-2866`). A spent generator is ordinary work under the capture rule
+  above. How to record a generator, and why a live one ranks above everything
+  but `P0`, is in `.claude/skills/docket/modes/triage.md` § "Generators, how
+  they rank, and the pause they set" (`PL-6VJ3`).
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
