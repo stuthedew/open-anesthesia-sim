@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: review-hold
+milestone: v0.6.2
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-10-24
 closed: 2026-10-24

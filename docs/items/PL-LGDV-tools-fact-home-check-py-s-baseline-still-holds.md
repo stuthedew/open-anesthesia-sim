@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.2
 touches: tools/fact_home_check.py, tools/, subprojects/docket/src/docket/, subprojects/docket/tests/, tests/unit/test_main_ci_status.py, tests/unit/test_open_pull_requests.py, tests/unit/test_dead_ends.py, tests/unit/test_item_read_log.py, docs/apparatus.md
 added: 2026-10-19
 closed: 2026-10-24

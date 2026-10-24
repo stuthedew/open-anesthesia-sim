@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.2
 touches: .claude/skills/docket/modes/triage.md, docs/dead-ends.md, tools/dead_ends.py, docs/items/PL-84G1-core-circuit-py-set-circuit-volume-checks-the.md, docs/items/PL-F9TC-src-anesthesia-sim-app-re-checks-quantities.md, docs/items/PL-YHWH-core-parameters-py-restates-three-rules-that.md, docs/items/PL-M85T-three-core-class-defaults-restate-data-file.md, docs/items/PL-Q3G9-app-dashboard-frame-py-s-parameter-controls.md
 added: 2026-10-24
 closed: 2026-10-24
