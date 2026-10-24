@@ -87,3 +87,20 @@ The run gave 73 candidates, dropped `#588`, and shuffled 72. All 72 positions ma
 - `#805` (position 70), `PL-1ZQ4`. #805 made `SimulationController._resume_point_at` in `app/controller.py` open a branch at a keyframe with `self._resume_point(segment, segment.opening, None)`, which carries no crossing, while the halt door seeds the halt's crossing. On a trunk halted on a mark at 118.1 s with a setting changed there, `resumed_at(118.1)` reads the 118.05 s time mark as before_this_branch and the MAC target as still_running, while the halt-door branch at the same instant reads them as passed and reached. Counted part: Case 3 only: fork_at (`resumed_at`) at a keyframe the trunk is halted on opens on no crossing, where the halt door opens on the halt's crossing.
 
 With `PL-TCBJ`'s ten, the sample is 20 pull requests and 39 key defects.
+
+**Stage 2, 2026-10-24: 80 reviews ran.** Each new pull request got G1, G2 and G3 and a fresh three-specialist panel. Each of `PL-TCBJ`'s ten got G2 and G3. Every run was a general-purpose subagent at this session's model and effort. Its one-line prompt pointed it at a brief file in its own directory, as `PL-TCBJ`'s runs did. The briefs match `PL-TCBJ`'s word for word, with the role strings recovered from its transcript. The directory held only the tree exported at the squash commit, `tree/REVIEW_DIFF.patch` (the commit message and diff) and the brief. Panel members had a directory each, not one shared directory as in `PL-TCBJ`. The 80 runs used 13.3 million subagent tokens, about 166,000 each. `PL-TCBJ`'s G1 and panel findings for its ten were all recovered from its session's transcript, so all six arms on all 20 pull requests go to the same scorers.
+
+Findings per arm (a run with `NO FINDINGS` counts 0):
+
+| Arm | `PL-TCBJ`'s ten | The ten new | Runs with no findings |
+| --- | --- | --- | --- |
+| G1 | 24 | 21 | 3 |
+| G2 | 20 | 27 | 2 |
+| G3 | 18 | 28 | 3 |
+| Panel: PK/PD | 16 | 18 | 5 |
+| Panel: numerics | 22 | 26 | 1 |
+| Panel: display | 24 | 25 | 3 |
+
+The panel's 62 findings on `PL-TCBJ`'s ten match the count its Result reports, which confirms the recovery. The raw findings are in `replay/PL-TBQS/findings_by_label.json` under blind labels, one label per run within each pull request. The table from label to arm is committed only after scoring.
+
+The sample came to 10 new pull requests, not about 9, so the run needs 80 reviews and, with checkers and scorers, about 110 agents. That is above the about 90 first approved (project owner, 2026-10-24, ratified, over having 4 checkers each check 5 pull requests to stay near 90, which would have broken the brief's one checker per pull request).
