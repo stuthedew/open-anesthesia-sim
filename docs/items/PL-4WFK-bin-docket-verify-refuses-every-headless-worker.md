@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: worker-instructions
+milestone: v0.6.1
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md, docket.toml, tools/worker_runs.py
 added: 2026-10-24
 closed: 2026-10-24

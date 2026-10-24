@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: skill-routing
+milestone: v0.6.1
 touches: CLAUDE.md, .claude/skills, .claude/hooks/push-check-guard.sh, .claude/hooks/pr-body-email-guard.sh, docs/resident-instructions.md, tests/unit/test_push_check_guard.py, tests/unit/test_pr_body_check.py, subprojects/docket/src/docket/arming.py, docs/items/PL-6VJ3-the-resident-instruction-set-grew-from-about-37.md, docs/items/PL-JRVV-review-claude-md-for-instructions-that-a-script.md
 added: 2026-10-24
 closed: 2026-10-24

@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: session-cost
+milestone: v0.6.1
 touches: CLAUDE.md, docs/resident-instructions.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-20
 closed: 2026-10-24
