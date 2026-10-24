@@ -51,6 +51,7 @@ ALLOWED_IMPORTS = {
     "shlex",
     "shutil",
     "statistics",
+    "string",
     "subprocess",
     "sys",
     "tempfile",
