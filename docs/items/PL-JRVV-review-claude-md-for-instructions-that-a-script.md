@@ -3,11 +3,14 @@ id: PL-JRVV
 title: Review CLAUDE.md for instructions that a script, hook or check now enforces, and retire them to cut the resident set and the risk of context rot
 priority: P1
 effort: M
-status: ready
+status: done
 classes: session-cost
-touches: CLAUDE.md, docs/resident-instructions.md
+touches: CLAUDE.md, docs/resident-instructions.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-20
+closed: 2026-10-24
+pr: 1717
 payoff: every session loads shorter resident instructions, so the rules that only judgment can apply are less likely to be missed
+verify: grep -q '^## The check-enforced review, 2026-10-24' docs/resident-instructions.md && ! grep -q 'New tools use the standard library only' CLAUDE.md && ! grep -q 'A commit closing more than one item leads' CLAUDE.md
 not-delegable: deciding whether a check fully enforces a rule, and so whether its prose can go, is judgment that no command can make
 ---
 
