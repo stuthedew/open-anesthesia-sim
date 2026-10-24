@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 feature: ci-cost
+milestone: v0.6.1
 touches: .github/workflows/quality.yml
 added: 2026-10-17
 closed: 2026-10-20
