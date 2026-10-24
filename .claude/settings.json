@@ -36,10 +36,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/probe-cap.sh\""
-          },
-          {
-            "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_hook_patch.py\""
           },
           {
