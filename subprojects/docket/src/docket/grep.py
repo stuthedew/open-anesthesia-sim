@@ -58,7 +58,7 @@ _EXTENDED_SPECIAL = _BASIC_SPECIAL | frozenset("+?(){}|")
 #: A comment's or a quotation's marker at a line's start, outside Markdown,
 #: which holds a carried-on statement rather than belonging to its words: `#`
 #: with the `:` Sphinx gives an attribute's comment, `//`, and `>`.
-_MARKER = re.compile(r"#+:?|//+|>")
+_COMMENT_MARKER = re.compile(r"#+:?|//+|>")
 
 
 @dataclass(frozen=True)
@@ -374,7 +374,7 @@ def _runs(lines: Sequence[str]) -> Iterator[tuple[int, list[str]]]:
     first, kind = 0, ""
     for index, line in enumerate([*lines, ""]):
         text = line.strip()
-        marker = _MARKER.match(text)
+        marker = _COMMENT_MARKER.match(text)
         if marker:
             text = text[marker.end() :].strip()
         this = marker.group()[0] if marker else ""

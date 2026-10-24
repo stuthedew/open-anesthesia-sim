@@ -150,7 +150,6 @@ from __future__ import annotations
 import http.client
 import json
 import statistics
-import subprocess
 import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -164,8 +163,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import record_text  # noqa: E402
-from docket.vcs import REMOTE, default_branch, github_slug  # noqa: E402
+from docket.vcs import default_branch  # noqa: E402
+
+# GitHub's host, the request's headers and which repository `origin` is are
+# each read in one place, the client every tool here shares (`PL-LGDV`).
+from open_pull_requests import GITHUB_API, api_request, repo_slug  # noqa: E402
 
 # Every way a read of the API can fail, and it is a named tuple rather than an
 # inline one because both call sites have to catch the same set: a gap in either
@@ -176,9 +178,11 @@ from docket.vcs import REMOTE, default_branch, github_slug  # noqa: E402
 # `Exception` subclass, and it would otherwise escape both.
 NETWORK_FAILURES = (OSError, ValueError, http.client.HTTPException)
 
-API = "https://api.github.com"
 WORKFLOW = "quality.yml"
 TIMEOUT_S = 8
+#: What this script's requests name in `User-Agent`: the session-start digest
+#: that runs it.
+USER_AGENT = "docket-digest"
 
 #: The conclusions that are a verdict against a commit, for a workflow run here
 #: and for a check run in `update_armed.py`, which imports it (`PL-351H`).
@@ -297,17 +301,6 @@ PYTEST_BASELINE_S = 470
 #: the upper bound would have fired on 2026-09-23, at run #2879. `PL-H9KW` was
 #: filed 24 days later.
 PYTEST_BAND = (0.5, 1.3)
-
-
-def repo_slug(remote_url: str) -> str | None:
-    """Return `owner/repo` for a GitHub remote, or None for anything else.
-
-    Both forms this repository is cloned with reach here — `https://github.com/
-    owner/repo.git` from CI and containers, `git@github.com:owner/repo.git` from
-    a workstation — and a non-GitHub remote returns None so the caller stays
-    silent rather than guessing at an API that is not there.
-    """
-    return github_slug(remote_url)
 
 
 def pick_run(runs: list[object]) -> dict[str, object] | None:
@@ -694,12 +687,10 @@ def _workflow_runs(slug: str, workflow: str, event: str, count: int) -> list[obj
     `event` is a query filter such as `"&event=push"`, or empty for every event.
     """
     url = (
-        f"{API}/repos/{slug}/actions/workflows/{workflow}/runs"
+        f"{GITHUB_API}/repos/{slug}/actions/workflows/{workflow}/runs"
         f"?branch={default_branch(ROOT)}{event}&status=completed&per_page={count}"
     )
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}
-    )
+    request = api_request(url, agent=USER_AGENT)
     with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
         payload = json.load(response)
     runs = payload.get("workflow_runs")
@@ -793,10 +784,8 @@ def fetch_jobs(slug: str, run_id: object) -> list[object]:
     print a line - never on a green `main`, which is every session start but a
     few. Unauthenticated like `fetch_runs`, and for the same reason.
     """
-    url = f"{API}/repos/{slug}/actions/runs/{run_id}/jobs?per_page=50"
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}
-    )
+    url = f"{GITHUB_API}/repos/{slug}/actions/runs/{run_id}/jobs?per_page=50"
+    request = api_request(url, agent=USER_AGENT)
     with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
         payload = json.load(response)
     jobs = payload.get("jobs")
@@ -805,20 +794,9 @@ def fetch_jobs(slug: str, run_id: object) -> list[object]:
 
 def main() -> int:
     """Print the advisory if there is one. Always exits 0; never blocks a session."""
-    try:
-        remote = record_text(
-            subprocess.run(
-                ["git", "remote", "get-url", REMOTE],
-                capture_output=True,
-                timeout=TIMEOUT_S,
-                check=True,
-                cwd=ROOT,
-            ).stdout
-        )
-    except (OSError, subprocess.SubprocessError):
-        return 0
-
-    slug = repo_slug(remote)
+    # No GitHub remote, or none git could name, is silence: there is no Actions
+    # API to read.
+    slug = repo_slug(ROOT)
     if slug is None:
         return 0
 

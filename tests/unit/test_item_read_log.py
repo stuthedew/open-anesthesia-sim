@@ -150,9 +150,9 @@ def test_the_summariser_counts_a_real_citation_edge(tmp_path: Path, monkeypatch,
         encoding="utf-8",
     )
     monkeypatch.setattr(item_reads, "LOG", log)
-    monkeypatch.setattr(item_reads, "ITEMS", items)
+    monkeypatch.setattr(item_reads, "ROOT", tmp_path)
 
-    # In-process, deliberately: the module resolves LOG and ITEMS from its own
+    # In-process, deliberately: the module resolves LOG and the store from its own
     # location, so a subprocess would re-resolve them to the real repository
     # and read the real store no matter what was patched here.
     assert item_reads.main() == 0
@@ -185,7 +185,7 @@ def test_the_summariser_reads_status_from_the_front_matter(tmp_path: Path, monke
         "status: ready\n---\n\n**Problem.** Nothing.\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(item_reads, "ITEMS", items)
+    monkeypatch.setattr(item_reads, "ROOT", tmp_path)
 
     paths, closed = item_reads.store()
 
@@ -210,7 +210,7 @@ def test_the_summariser_tells_an_item_s_file_by_docket_s_grammar(
             f"---\nid: {identifier}\ntitle: t\nstatus: done\n---\n\n**Problem.** Nothing.\n",
             encoding="utf-8",
         )
-    monkeypatch.setattr(item_reads, "ITEMS", items)
+    monkeypatch.setattr(item_reads, "ROOT", tmp_path)
 
     paths, closed = item_reads.store()
 

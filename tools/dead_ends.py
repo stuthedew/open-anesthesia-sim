@@ -97,18 +97,16 @@ import re
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.roadmap import document_entry_lines  # noqa: E402
-from docket.store import ID_PATTERN  # noqa: E402
+from docket.store import CITED_ID_RE  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
-DEAD_ENDS = REPO / "docs" / "dead-ends.md"
-#: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
-ITEMS = REPO / load_config(REPO).items_dir
+DEAD_ENDS = ROOT / "docs" / "dead-ends.md"
 
 # Both budgets bind, and they bind in different directions: many short entries
 # trip the count, one essay trips the bytes. Neither fails the build; both
@@ -133,10 +131,6 @@ ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 #: to three spaces - though `ENTRY` reads only the dash at the margin, so any
 #: other form is refused by name rather than dropped (`PL-K02Q`).
 OPENING = re.compile(r"^ {0,3}[-+*] \*\*")
-#: The store's own grammar, so that "cites X, which is not an item" is
-#: refused on the same tokens `bin/docket check` calls ids. `PL-[A-Z0-9]{3,4}`
-#: stood here and read a three-letter token as an id (`PL-KYW3`).
-ITEM_ID = re.compile(ID_PATTERN)
 
 HEADER = (
     "Dead ends - approaches already tried here and refuted. "
@@ -218,9 +212,12 @@ def known_ids() -> set[str]:
     That is the reading every `docket` reader of the store's history makes of
     a name. A split on hyphens stood here and took a file whose name carries
     no slug for an item, under an id that kept its `.md` (`PL-5QG4`).
+
+    The store is where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
     """
+    items = ROOT / load_config(ROOT).items_dir
     return {
-        found.group(1) for path in ITEMS.glob("*.md") if (found := ITEM_FILE_RE.match(path.name))
+        found.group(1) for path in items.glob("*.md") if (found := ITEM_FILE_RE.match(path.name))
     }
 
 
@@ -267,7 +264,9 @@ def check(text: str) -> list[str]:
 
     ids = known_ids()
     for number, line in found:
-        for cited in ITEM_ID.findall(line):
+        # The store's own grammar, so that "cites X, which is not an item" is
+        # refused on the same tokens `bin/docket check` calls ids (`PL-KYW3`).
+        for cited in CITED_ID_RE.findall(line):
             if cited not in ids:
                 problems.append(
                     f"docs/dead-ends.md:{number}: cites {cited}, which is not an item. "

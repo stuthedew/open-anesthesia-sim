@@ -90,25 +90,6 @@ def _run(conclusion: str | None, number: int = 1550, sha: str = "abcdef1234") ->
     }
 
 
-class TestRepoSlug:
-    @pytest.mark.parametrize(
-        "remote",
-        [
-            "https://github.com/stuthedew/open-anesthesia-sim.git",
-            "https://github.com/stuthedew/open-anesthesia-sim",
-            "git@github.com:stuthedew/open-anesthesia-sim.git",
-            "  https://github.com/stuthedew/open-anesthesia-sim.git\n",
-        ],
-    )
-    def test_reads_every_form_this_repository_is_cloned_with(self, remote: str) -> None:
-        assert main_ci_status.repo_slug(remote) == "stuthedew/open-anesthesia-sim"
-
-    @pytest.mark.parametrize("remote", ["https://gitlab.com/o/r.git", "/srv/local.git", ""])
-    def test_declines_a_remote_that_is_not_github(self, remote: str) -> None:
-        """None rather than a guess: the caller's contract is to stay silent."""
-        assert main_ci_status.repo_slug(remote) is None
-
-
 class TestPickRun:
     def test_passes_over_a_cancelled_run_to_the_newest_real_verdict(self) -> None:
         """A cancelled run never stands in for a verdict.
@@ -281,7 +262,7 @@ _REPLAY_ONLY = _job(_REPLAY_STEPS)
 def _github_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     """Substitute `git remote get-url` with this repository's GitHub remote."""
     monkeypatch.setattr(
-        main_ci_status.subprocess,
+        subprocess,
         "run",
         lambda *a, **k: subprocess.CompletedProcess(
             a[0], 0, stdout=b"https://github.com/stuthedew/open-anesthesia-sim.git\n", stderr=b""
@@ -407,7 +388,7 @@ class TestMain:
         def _raise(*a: object, **k: object) -> None:
             raise subprocess.CalledProcessError(128, "git")
 
-        monkeypatch.setattr(main_ci_status.subprocess, "run", _raise)
+        monkeypatch.setattr(subprocess, "run", _raise)
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
 
@@ -415,7 +396,7 @@ class TestMain:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(
-            main_ci_status.subprocess,
+            subprocess,
             "run",
             lambda *a, **k: subprocess.CompletedProcess(
                 a[0], 0, stdout=b"/srv/r.git\n", stderr=b""

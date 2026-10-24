@@ -49,7 +49,10 @@ ID_PREFIX = "PL-"
 ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|\d{{3}})(?![{ID_ALPHABET}])"
 ID_RE = re.compile(rf"^{ID_PATTERN}$")
 SLUG_RE = re.compile(r"[^a-z0-9]+")
-_CITED_ID_RE = re.compile(ID_PATTERN)
+#: An id anywhere in a text, as a citation names one. The one compiled form
+#: of `ID_PATTERN` for finding ids in prose, which `notes`, `cited_ids` and
+#: the tools that count citations read (`PL-LGDV`).
+CITED_ID_RE = re.compile(ID_PATTERN)
 
 
 def cited_ids(text: str, own: str) -> frozenset[str]:
@@ -61,7 +64,7 @@ def cited_ids(text: str, own: str) -> frozenset[str]:
     `root-cause-of:` or `blocked-by:` is the strongest citation an item makes,
     and the body-only reading in `item_reads` missed it.
     """
-    return frozenset(_CITED_ID_RE.findall(text)) - {own}
+    return frozenset(CITED_ID_RE.findall(text)) - {own}
 
 
 # An item file's whole name, as `filename_for` writes one: the id, then a

@@ -48,19 +48,32 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.release import notes_path, tag_name, version_in  # noqa: E402
-from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    LONG_GIT_TIMEOUT,
+    REMOTE,
+    call_git,
+    default_branch,
+    find_cut,
+    is_shallow,
+)
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
 #: matching ref. Every other failure means it could not be asked, and a tag
 #: deleted then would come back from the tag line as a different object.
-ABSENT = 2
+NO_MATCHING_REF = 2
 
 
 def _git(args: Sequence[str], root: Path) -> subprocess.CompletedProcess[str]:
-    """Git's answer, decoded as written, so a raw `\\r` in a subject stays in it (`PL-0R4M`)."""
-    done = subprocess.run(["git", *args], cwd=root, capture_output=True, check=False)
+    """Git's answer, decoded as written, so a raw `\\r` in a subject stays in it (`PL-0R4M`).
+
+    Run through `vcs.call_git`, git's one runner, with the bound for a long
+    read, since a fetch or a push here waits on the network. A git that never
+    ran, or was stopped at the bound, exits `-1` with the reason on stderr.
+    """
+    call = call_git(args, root, timeout=LONG_GIT_TIMEOUT)
+    code = -1 if call.code is None else call.code
     return subprocess.CompletedProcess(
-        done.args, done.returncode, record_text(done.stdout), record_text(done.stderr)
+        ["git", *call.args], code, record_text(call.stdout), call.stderr
     )
 
 
@@ -79,7 +92,7 @@ def held_on(name: str, root: Path, remote: str = REMOTE) -> tuple[str, str]:
     """
     ref = f"refs/tags/{name}"
     done = _git(["ls-remote", "--exit-code", remote, ref, f"{ref}^{{}}"], root)
-    if done.returncode == ABSENT:
+    if done.returncode == NO_MATCHING_REF:
         return "", ""
     if done.returncode != 0:
         return "", f"`git ls-remote {remote}` failed: {_failure(done)}"
