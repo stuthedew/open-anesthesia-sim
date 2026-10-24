@@ -859,8 +859,9 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
 ) -> None:
     """The Tab key visits the editor's controls in the order a reader reads them.
 
-    A keyboard user fills in the editor with Tab alone, so the focus order has
-    to follow the forms from top to bottom (WCAG 2.2 SC 2.4.3, Focus Order).
+    A keyboard user fills in the editor with Tab alone. WCAG 2.2 SC 2.4.3, Focus
+    Order, asks for a focus order that "preserves meaning and operability", and
+    for these two forms that is the order they are read in, from top to bottom.
     Qt's default order is the order in which the widgets joined the dialog,
     which is the order the grid code adds them in. So a grid that added its
     rows in any other order would fail here, even with every cell correct.

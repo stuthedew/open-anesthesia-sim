@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: one-source-of-truth
-touches: src/anesthesia_sim/app/, tools/literal_home_check.py
+touches: src/anesthesia_sim/app/, tools/literal_home_check.py, tests/integration/test_qt_widgets.py
 added: 2026-10-19
 closed: 2026-10-24
 payoff: each layout spacing in the interface has one name, so changing it cannot leave a copy of the old value elsewhere on screen
