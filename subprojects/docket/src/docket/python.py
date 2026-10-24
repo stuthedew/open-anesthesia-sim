@@ -66,6 +66,13 @@ _STRING_CLOSES = ("FSTRING_END", "TSTRING_END")
 #: `TokenError`, which makes every interpreter refuse the same files.
 UNTOKENIZABLE = (tokenize.TokenError, SyntaxError, ValueError)
 
+#: What reading a file with the parser, `ast.parse`, raises where this
+#: interpreter cannot: `SyntaxError`, `ValueError` for a null byte or for text
+#: that is not UTF-8, and `RecursionError` for an expression too deep to parse
+#: or to dump. `verify` and `vcs` both catch it, and read it from here
+#: (`PL-LGDV`).
+UNPARSABLE = (SyntaxError, ValueError, RecursionError)
+
 
 @dataclass(frozen=True)
 class Piece:

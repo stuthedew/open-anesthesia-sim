@@ -198,7 +198,7 @@ def test_a_remote_that_is_not_github_s_is_not_guessed_at(
     monkeypatch: pytest.MonkeyPatch, url: str
 ) -> None:
     """Not an error: a checkout with another remote, or none, has nothing to look up."""
-    monkeypatch.setattr(open_pull_requests, "_git", lambda args, url=url: url)
+    monkeypatch.setattr(open_pull_requests, "_git", lambda args, root, url=url: url)
     assert open_pull_requests.repo_slug() is None
 
 
@@ -216,7 +216,7 @@ def test_the_slug_is_read_from_every_spelling_of_the_remote(
 ) -> None:
     """All four reach this in practice: a `.gitconfig` rewriting ssh to https
     means which one arrives depends on when the remote is read."""
-    monkeypatch.setattr(open_pull_requests, "_git", lambda args: url)
+    monkeypatch.setattr(open_pull_requests, "_git", lambda args, root: url)
     assert open_pull_requests.repo_slug() == "owner/repo"
 
 
@@ -234,7 +234,7 @@ def test_repo_slug_reads_a_token_bearing_url(monkeypatch: pytest.MonkeyPatch, ur
     The token-bearing URL was None here and `owner/repo` to the other three,
     which `left_behind_check` and `pr_title_check` inherit (`PL-2TV9`).
     """
-    monkeypatch.setattr(open_pull_requests, "_git", lambda args: url)
+    monkeypatch.setattr(open_pull_requests, "_git", lambda args, root: url)
     assert open_pull_requests.repo_slug() == "owner/repo"
 
 

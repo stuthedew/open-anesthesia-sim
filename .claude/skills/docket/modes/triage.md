@@ -74,6 +74,14 @@ the product — does not enter the top band when it would outnumber the product
 work already there, except an item on the generator tier, which the checker
 pins at `P0` or `P1` too and `bin/docket set` raises on its own (`PL-06JJ`).
 
+**An item whose subject is a second copy of a fact the repository already
+holds is classed `defect`, and `safety` as well where the safety-critical
+standard applies, even while the copies agree.** `CLAUDE.md`'s bullet "A shared
+fact has one source of truth" is the stated rule that each copy breaks, so
+`refactor` is left for a change of structure that no stated rule requires
+(project owner, 2026-10-24, ratified, over classing a copy `refactor` until
+the copies disagree, `PL-ZZ03`).
+
 **Write the answers with `bin/docket set`, not into the file.** `bin/docket set
 <id> --priority P2 --effort S --classes defect --touches a.py --status ready
 --verify '...' --payoff '...'` writes the named fields in canonical order, keeps the file's

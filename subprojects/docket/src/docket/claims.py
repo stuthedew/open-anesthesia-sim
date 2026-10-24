@@ -102,8 +102,8 @@ from .config import Config
 from .lines import split_lines
 from .model import CLOSED_STATUSES, is_closed_status, parse_front_matter
 from .release import NOTES_DIR
-from .store import ID_PATTERN
 from .vcs import (
+    ANY_ID_RE,
     BRANCH_ID_RE,
     ITEM_FILE_RE,
     Branch,
@@ -236,7 +236,6 @@ _LOG_FORMAT = (
 )
 _FIELDS = 7
 
-_ID = re.compile(ID_PATTERN, re.I)
 _HASH = re.compile(r"[0-9a-f]{7,64}", re.I)
 _VERSION = re.compile(r"(\d+)\.(\d+)")
 
@@ -1258,7 +1257,7 @@ def _events(
 def _parse_claim(text: str) -> tuple[str, str, str, str] | None:
     """`<ID> <branch> [<session>] [over <ref>@<hash>]`, or `None` where it does not parse."""
     tokens = text.split()
-    if len(tokens) < 2 or _ID.fullmatch(tokens[0]) is None:
+    if len(tokens) < 2 or ANY_ID_RE.fullmatch(tokens[0]) is None:
         return None
     key, branch, rest = tokens[0].upper(), tokens[1], tokens[2:]
     session = ""
@@ -1277,7 +1276,7 @@ def _parse_claim(text: str) -> tuple[str, str, str, str] | None:
 def _parse_yield(text: str) -> tuple[str, str] | None:
     """`<ID> <branch>`, or `None` where it does not parse."""
     tokens = text.split()
-    if len(tokens) != 2 or _ID.fullmatch(tokens[0]) is None:
+    if len(tokens) != 2 or ANY_ID_RE.fullmatch(tokens[0]) is None:
         return None
     return tokens[0].upper(), tokens[1]
 

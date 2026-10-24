@@ -229,9 +229,10 @@ FENCE_OPENING_RE = re.compile(r"(?P<margin> {0,3})(?:`{3,}|~{3,})[ \t]*(?P<info>
 
 #: A token of a JSON document `json` has read whole: a string's literal, or one
 #: character outside every string, white space aside. A string followed by a
-#: `:` is an object's key (RFC 8259 § 4).
+#: `:` is an object's key (RFC 8259 § 4), and that colon is what RFC 8259 calls
+#: the name separator.
 JSON_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|[^\s"]')
-JSON_KEY_RE = re.compile(r"\s*:")
+NAME_SEPARATOR_RE = re.compile(r"\s*:")
 
 
 #: The two rules, and the key each finding is grouped under for reporting.
@@ -476,7 +477,7 @@ def _json_joined(text: str) -> tuple[str, tuple[int, ...]] | None:
                 key = None
             continue
         value = json.loads(literal)
-        if JSON_KEY_RE.match(text, token.end()):
+        if NAME_SEPARATOR_RE.match(text, token.end()):
             key = value
         else:
             if key == "command":

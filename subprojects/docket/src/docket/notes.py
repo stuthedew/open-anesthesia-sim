@@ -39,7 +39,7 @@ from pathlib import Path
 from . import markdown
 from .frontmatter import body_lines
 from .lines import split_lines
-from .store import ID_PATTERN
+from .store import CITED_ID_RE
 
 THREAD_HEADING_LEVEL = 2
 """The heading level a thread is written at: `##`.
@@ -49,8 +49,6 @@ are subsections of a thread, so the level that means "a thread" is the same
 wherever this convention is used, and a knob here would be one more thing to
 get wrong for no reader's benefit.
 """
-
-_ID_RE = re.compile(ID_PATTERN)
 
 _OPEN_HEADING_RE = re.compile(r"^\s*open\b", re.IGNORECASE)
 """The leading word that says a thread is still open: `Open thread:`, `Open:`.
@@ -128,8 +126,10 @@ def read(path: Path) -> tuple[Thread, ...]:
     threads: list[Thread] = []
     for position, heading in enumerate(found):
         end = found[position + 1].line if position + 1 < len(found) else len(lines)
-        named = dict.fromkeys(_ID_RE.findall(heading.title))
-        body = dict.fromkeys(i for line in lines[heading.end : end] for i in _ID_RE.findall(line))
+        named = dict.fromkeys(CITED_ID_RE.findall(heading.title))
+        body = dict.fromkeys(
+            i for line in lines[heading.end : end] for i in CITED_ID_RE.findall(line)
+        )
         threads.append(
             Thread(
                 title=heading.title,

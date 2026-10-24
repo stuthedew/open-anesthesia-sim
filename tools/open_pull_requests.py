@@ -63,7 +63,6 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
-import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -76,20 +75,25 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.lines import record_text  # noqa: E402
 from docket.vcs import (  # noqa: E402
     PULL_CLOSED,
     PULL_MERGED,
     PULL_OPEN,
     REMOTE,
     NewestPullRequest,
+    call_git,
     github_slug,
     github_token,
 )
 
 #: Where the lookup goes. Named here rather than inline so a test can point it
-#: somewhere that is not the network.
+#: somewhere that is not the network. Every tool that asks GitHub's REST API
+#: reads its host from here (`PL-LGDV`).
 GITHUB_API = "https://api.github.com"
+
+#: The REST API version every request names in `X-GitHub-Api-Version`, so that
+#: GitHub answers in the shape this code reads even after its default moves.
+API_VERSION = "2022-11-28"
 
 #: Seconds to wait. Short on purpose: every caller has an answer without this
 #: one and is only sharpening it, so a slow forge must cost seconds rather than
@@ -133,27 +137,52 @@ class PullRequest:
     base: str = ""
 
 
-def _git(args: list[str]) -> str:
-    """Run git from the repository root, returning empty output rather than raising.
+def _git(args: list[str], root: Path) -> str:
+    """Git's answer in `root`, by `vcs.call_git`, never raising.
 
-    Decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`).
+    Empty where git said no or gave no answer, which `answered` tells apart for
+    a caller that must. Decoded as written, so a raw `\\r` in a record stays in
+    it (`PL-0R4M`).
     """
-    try:
-        result = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, timeout=30, check=False
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return record_text(result.stdout) if result.returncode == 0 else ""
+    return call_git(args, root).answer
 
 
-def repo_slug() -> str | None:
-    """`owner/name` for `origin`, or None when it cannot be read as GitHub's.
+def repo_slug(root: Path = ROOT) -> str | None:
+    """`owner/name` for `origin` in `root`, or None when it cannot be read as GitHub's.
 
-    Parsed by `docket`'s one reading, `vcs.github_slug`, which a token-bearing
-    URL does not defeat (`PL-2TV9`).
+    The one reading of which GitHub repository a checkout is, for every tool
+    that asks GitHub about it (`PL-LGDV`). Git is asked through `_git`, and its
+    answer is parsed by `docket`'s one reading, `vcs.github_slug`, which a
+    token-bearing URL does not defeat (`PL-2TV9`). A remote git could not name
+    reads as no GitHub repository, as an empty URL does.
     """
-    return github_slug(_git(["remote", "get-url", REMOTE]))
+    return github_slug(_git(["remote", "get-url", REMOTE], root))
+
+
+def api_request(
+    url: str,
+    *,
+    agent: str,
+    token: str | None = None,
+    method: str = "GET",
+    data: bytes | None = None,
+) -> urllib.request.Request:
+    """A request to GitHub's REST API at `url`, with the headers every call here sends.
+
+    The one spelling of what GitHub is asked with: the JSON media type, the
+    pinned `API_VERSION`, and the token as a bearer where there is one (`PL-LGDV`).
+    `agent` names the tool in `User-Agent`, which GitHub requires. Sending and
+    reading the answer stay with the caller, since each tool has its own bound
+    and its own rule for a failure.
+    """
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": API_VERSION,
+        "User-Agent": agent,
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return urllib.request.Request(url, data=data, headers=headers, method=method)
 
 
 def fetch(slug: str, query: Query, listing: str = "pulls") -> list[object]:
@@ -171,14 +200,10 @@ def fetch(slug: str, query: Query, listing: str = "pulls") -> list[object]:
     token = github_token()
     if not token:
         raise ListingFailed(NO_PERMISSION, "no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
-    request = urllib.request.Request(
+    request = api_request(
         f"{GITHUB_API}/repos/{slug}/{listing}?{urllib.parse.urlencode(query)}",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "open_pull_requests",
-        },
+        agent="open_pull_requests",
+        token=token,
     )
     try:
         with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT) as response:

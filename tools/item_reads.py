@@ -31,31 +31,23 @@ Standard library only, and parses at the floor
 
 from __future__ import annotations
 
-import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.model import parse_item  # noqa: E402
-from docket.store import ID_PATTERN, cited_ids  # noqa: E402
+from docket.store import CITED_ID_RE, cited_ids  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
 #: The hook's `LOG_NAME`, spelled again because a tool may import nothing
 #: outside the standard library and `docket` (`test_tools_portability`);
 #: `test_item_read_log` pins the two equal (`PL-WCHF`).
-LOG = REPO / ".docket-reads.log"
-#: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
-ITEMS = REPO / load_config(REPO).items_dir
-
-#: The store's own grammar. `PL-[A-Z0-9]{3,4}` stood here and read `PL-CAP`
-#: and `PL-B1B` as ids - three characters is an id only when all three are
-#: digits, and no id carries a vowel (`PL-KYW3`).
-ITEM_ID = re.compile(ID_PATTERN)
+LOG = ROOT / ".docket-reads.log"
 
 
 def store() -> tuple[dict[str, Path], set[str]]:
@@ -70,11 +62,12 @@ def store() -> tuple[dict[str, Path], set[str]]:
     Which file is an item's, and whose, is `vcs.ITEM_FILE_RE`'s reading of its
     name, as every `docket` reader of the store's history makes it. A split on
     hyphens stood here and took a file whose name carries no slug for an item,
-    under an id that kept its `.md` (`PL-5QG4`).
+    under an id that kept its `.md` (`PL-5QG4`). The store is where
+    `docket.toml` puts it, as docket reads it (`PL-WCHF`).
     """
     paths: dict[str, Path] = {}
     closed: set[str] = set()
-    for path in ITEMS.glob("*.md"):
+    for path in (ROOT / load_config(ROOT).items_dir).glob("*.md"):
         found = ITEM_FILE_RE.match(path.name)
         if found is None:
             continue
@@ -122,7 +115,9 @@ def main() -> int:
     # for the traversal question below.
     per_session: dict[str, list[str]] = defaultdict(list)
     for _stamp, session, _tool, target in rows:
-        for identifier in ITEM_ID.findall(target):
+        # The store's own grammar. `PL-[A-Z0-9]{3,4}` stood here and read
+        # `PL-CAP` and `PL-B1B` as ids (`PL-KYW3`).
+        for identifier in CITED_ID_RE.findall(target):
             per_session[session].append(identifier)
 
     touched = {i for seq in per_session.values() for i in seq}
