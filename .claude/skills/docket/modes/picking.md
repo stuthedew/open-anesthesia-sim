@@ -316,7 +316,8 @@ both the change and the review of it. Say so before work starts — a model
 switch mid-session costs a cold cache.
 
 When this one is only long, the reset is in place: push, then ask for
-`/compact` (`CLAUDE.md` § "Session and tool-use efficiency", `PL-YJG1`).
+`/compact` (`.claude/skills/docket/modes/start.md` § "Check the spend before
+starting, and reset in place", `PL-YJG1`).
 Recommend a **fresh session** when this one was about something else. Give the
 exact line to paste, on its own:
 

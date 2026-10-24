@@ -251,44 +251,12 @@ before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. **Reset at
-  150,000 tokens of spend — and check that budget before starting an item,
-  not on reaching it** (project owner, 2026-09-16; re-anchored from the
-  absolute reading to spend 2026-09-21, ratified, over a budget that is mostly
-  a budget on the apparatus and moves whenever the resident set does).
-  *Spend* is what this session added over the context it started with;
-  `python3 tools/context_reading.py` prints it from the session's own
-  transcript. Read it as you pick up the next item, and if the item will not
-  fit in what is left, reset instead of starting. **Not `get_session`:**
-  `context_usage.used_tokens` is written at turn boundaries, so it never moves
-  inside a turn and reads 0 before the first (`PL-W80S`, `PL-BZVY`). Checked
-  before the spend the budget cannot be overshot, and work never started cannot
-  be cut off half-done (`PL-NW76`). **The reset is in place, not a new session**
-  (project owner, 2026-09-25, ratified, over a handoff the owner carries by
-  pasting a prompt into a new session, `PL-YJG1`): externalize what only the
-  conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
-  then ask the project owner to type `/compact`, which a session cannot run on
-  itself, and name the clock time an hour on, after which the summary re-reads
-  the whole history uncached (`docs/maintainer.md`). A Projects thread, into
-  which the owner cannot type `/compact`, instead writes its next steps into
-  the item file, commits and pushes that, says so in one line and stops, and
-  the coordinator starts a fresh thread on the branch (the Projects trial's
-  instructions, read 2026-10-03, kind unrecorded, `PL-PDVF`). Pushed first, compaction
-  lands where a handoff did — the floor, a summary, files re-read, with
-  `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
-  pull-request watch. A file it restores counts as already read, but its
-  path-scoped rules may not have come back, so read it again before the first
-  edit to it (`PL-384P`). That floor measured 81,048–115,320 tokens on 2026-09-21 (`PL-W80S`),
-  and it moves whenever the resident set does.
-  Past the budget anyway — an item that ran
-  long, or a design round holding its reasoning in the conversation — finish
-  the item in hand, reset the same way, and say in your reply that you stopped
-  for length rather than for the work. This is the largest adherence lever
-  the project has, and the reason trimming these instructions is not: the
-  resident set measured 2.5–5.6% of
-  the 263k–519k contexts seven concurrent sessions were carrying on
-  2026-09-16, so no cut to it substitutes for resetting the session (`PL-H253`).
-  Pick up cold from the session-start digest, `bin/docket next`, and the one
-  item being worked — not by reading the queue whole.
+  150,000 tokens of spend, and check that budget with
+  `python3 tools/context_reading.py` before starting an item, not on reaching
+  it** (project owner, 2026-09-16; re-anchored to spend 2026-09-21, ratified). When
+  the item will not fit in what is left, or a session passes the budget anyway,
+  reset in place as `.claude/skills/docket/modes/start.md` § "Check the spend
+  before starting, and reset in place" says (`PL-Z90G`).
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
@@ -468,24 +436,13 @@ deviating from a described deliverable, not acting without one.
   ratified, over leaving that licence in the path-scoped citation-drift rule,
   which loads only after the decision to file; eleven such repairs became items
   in three days, `PL-G40Z`).
-- **Housekeeping you are about to do yourself is filed before you do it.** The
-  capture rule records what a session will *not* fix; this one covers repository
-  work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
-  lint fix, recovering a stranded item. Every in-flight guard matches a `PL-`
-  id, so unfiled work reads as nobody's to all of them and keeps reading that
-  way after both sessions have pushed. So file the item first, then claim it
-  and work under its id. Not for a fix riding inside a commit an id already
-  leads: the line is whether the work takes a commit of its own (`PL-CP74`) —
-  and not for one the fix-now rule admits, which rides the current item's
-  claim. Not for deleting remote branches either, or clearing this clone's
-  tracking refs for them: that changes nothing in the repository, so nothing
-  is filed, claimed or committed and no pull request opens (project owner,
-  2026-09-26, ratified, over filing branch cleanup as housekeeping with a pull
-  request of its own, `PL-S8LZ`). `.github/workflows/branch-sweep.yml` deletes
-  finished `claude/*` branches daily, so the reply runs
-  `python3 tools/branch_sweep.py` and hands the owner only a branch it keeps
-  that should go anyway (project owner, 2026-09-26, ratified, over a list
-  built by hand, `PL-X8SV`).
+- **Housekeeping you are about to do yourself is filed before you do it.**
+  Repository work that no item names, such as resolving a merge, a docs sweep
+  or recovering a stranded item, gets `bin/docket new` and a claim before its
+  first commit. Deleting remote branches is never filed.
+  `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed"
+  has the reason, what is too small to file, and what a reply does about
+  branches instead (`PL-CP74`, `PL-Z90G`).
 - **A generator takes one of two endings: fix it in this session, or end the
   reply with a ready-to-paste prompt that starts a fresh session on it**
   (project owner, 2026-09-17). A generator is a mechanism that causes three or
