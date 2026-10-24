@@ -52,3 +52,13 @@ Also report, without letting them change the decision: per-pull-request catches 
 **Limitations known in advance.** If `PL-TCBJ`'s findings cannot be recovered, its G1 and panel results on its ten were scored by a different session with the arm visible, so their scoring differs from the new runs'. Each run is one draw, and a second run of the same reviewer could find different things. The sample is still limited to defects that SZZ can trace to a diff.
 
 **Generator check.** Work the owner asked for, on 2026-10-24. It touches only its own brief, and no head's fact explains it.
+
+**Stage 1, 2026-10-24: the candidate order reproduces.** The brief's prose did not pin the SZZ procedure down closely enough to re-derive the order. Read literally, it gave 85 candidates, and with every id before the colon counted as a fix it gave 132. So `PL-TCBJ`'s own scripts were recovered verbatim from its session's transcript (`session_01JQuNZNYNK5kqZyBxjguXe6`) and run again here, against `origin/main` at `2f0101bb7` (`#1722`), the head that session read. The recovered procedure differs from the prose in five ways:
+
+- A commit counts as a fix when the item's id appears anywhere before the subject's first colon.
+- Only the top 4 blamed commits per item are kept.
+- A commit that is not an item's most-blamed one needs at least 2 blamed lines.
+- An item classed `test` or `infra` is dropped at the candidate step, and a blamed commit whose subject names the item is not a candidate.
+- A pull request of more than 6,000 changed lines, counting every path, is dropped before the shuffle. That is the rule that removed `#588`.
+
+The run gave 73 candidates, dropped `#588`, and shuffled 72. All 72 positions match the order the recovered transcript printed (1 to 44) and the recovered shuffle (45 to 72), and the first 24 match the order recorded in `PL-TCBJ`. The pool therefore ends at position 72, not 73. Positions 40 to 72 are `#308`, `#1428`, `#1448`, `#430`, `#1622`, `#283`, `#561`, `#1592`, `#288`, `#421`, `#488`, `#516`, `#376`, `#399`, `#1361`, `#784`, `#665`, `#568`, `#618`, `#1480`, `#1328`, `#316`, `#671`, `#556`, `#1191`, `#1188`, `#319`, `#306`, `#539`, `#263`, `#805`, `#311` and `#512`. Together they carry 104 pull-request and item pairs to verify.
