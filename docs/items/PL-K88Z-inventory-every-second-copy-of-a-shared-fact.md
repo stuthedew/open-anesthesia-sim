@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: ROADMAP.md
 added: 2026-10-19
 closed: 2026-10-24
+pr: 1712
 payoff: the one-source-of-truth row is sized from a count of every second copy, so its scope is measured rather than guessed
 verify: grep -q 'Inventoried 2026-' ROADMAP.md
 ---
