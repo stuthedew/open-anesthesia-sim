@@ -3,13 +3,14 @@ id: PL-SH0W
 title: Give each configuration fact (Python version, paths, commands, timeouts) one home across pyproject.toml, .github/workflows/, the Makefile, docket.toml and the docs, held by a check
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: infra
 feature: one-source-of-truth
 touches: pyproject.toml, Makefile, .github/workflows/
 blocked-by: v0.6.0, PL-K88Z
 added: 2026-10-19
 payoff: a configuration fact changed in one file cannot leave another running the old value
+verify: grep -q 'config_home_check' Makefile
 ---
 
 **Problem.** Give each configuration fact (Python version, paths, commands, timeouts) one home across pyproject.toml, .github/workflows/, the Makefile, docket.toml and the docs, held by a check
