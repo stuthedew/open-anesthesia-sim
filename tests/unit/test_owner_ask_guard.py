@@ -98,6 +98,12 @@ ASKS = (
     "PR #1688: your call.",
     "Let me know about #1688.",
     "Thoughts on #1688?",
+    # A noun hand-off that only looks like a report of a recorded decision is
+    # still an ask (`PL-YGR6`): a question in the gap, a decision still to come,
+    # or a real hand-off in the same message as a report.
+    "Your call on whether #1688 is applied.",
+    "Your choice on #1700 is applied when you merge it.",
+    "Recorded your choice; #1700 is your call.",
 )
 
 
@@ -139,6 +145,27 @@ PROGRESS = (
 
 @pytest.mark.parametrize("text", PROGRESS)
 def test_a_progress_reply_is_let_through_whatever_arm_says(tmp_path: Path, text: str) -> None:
+    assert _decision(tmp_path, text) is None
+
+
+REPORTS = (
+    # The two status reports the hook refused during the v0.6.0 cut (`PL-YGR6`).
+    "Your choice on the card is recorded on the item, and auto-merge is on for #1700.",
+    "Recorded your choice on PL-9CS6; the release pull request #1700 is armed.",
+    # The same class in other words: the hand-off as the subject of a recording
+    # verb, and as its object.
+    "Your decision on #1700 has been noted, and it merges on green.",
+    "I applied your call to the item, so #1688 is armed.",
+)
+
+
+@pytest.mark.parametrize("text", REPORTS)
+def test_a_report_of_a_choice_already_made_is_let_through(tmp_path: Path, text: str) -> None:
+    """A noun hand-off that reports a recorded decision asks for nothing.
+
+    The asks that only look like such a report, such as "Your call on whether
+    #1688 is applied.", are rows of `ASKS` above.
+    """
     assert _decision(tmp_path, text) is None
 
 
@@ -203,4 +230,50 @@ def test_the_hook_is_wired_on_a_threads_reply_tools() -> None:
         for hook in entry["hooks"]
         if "owner_ask_guard.py" in hook["command"]
     ]
-    assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision)$"]
+    assert wired == ["^mcp__hearthbot__(reply|update_message|ask_decision|post_message)$"]
+
+
+POST = "mcp__hearthbot__post_message"
+
+#: The risk-review form of the line `arm --owner-ask` prints.
+RISK_LINE = (
+    "Risk to review: a dose label could read mg for mcg. Checked: the formatter tests pin "
+    "the unit. Please look at: the infusion panel's label."
+)
+
+
+def test_a_bare_ask_from_the_coordinator_is_refused_without_running_arm(tmp_path: Path) -> None:
+    """The coordinator's checkout is on no pull request's branch, so `arm` is not asked.
+
+    The stand-in for `arm` exits 0 with the recorded line, which would let a
+    thread's message through only if it carried that line. The post is refused
+    all the same, and the refusal does not quote that line, so `arm` was not run.
+    """
+    decision = _decision(tmp_path, "Read #1700 and merge it.", code=0, said=ASK_LINE, tool=POST)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert "carries no Owner-ask line" in reason
+    assert "Forward the thread's Owner-ask line word for word" in reason
+    assert ASK_LINE not in reason
+    assert MISTAKEN in reason
+
+
+@pytest.mark.parametrize("line", [ASK_LINE, RISK_LINE])
+def test_a_coordinator_post_carrying_a_rendered_owner_ask_line_is_let_through(
+    tmp_path: Path, line: str
+) -> None:
+    """Either form passes, with emphasis and a line break inside it, and whatever `arm` says."""
+    wrapped = line.replace(". ", ".\n", 1)
+    text = f"The thread on #1700 asks:\n\n**{wrapped}**\n\nReply Merge it if you agree."
+    assert _decision(tmp_path, text, tool=POST) is None
+
+
+def test_a_coordinator_post_asking_for_nothing_is_let_through(tmp_path: Path) -> None:
+    text = "#1700 merged on green, and the thread on #1701 is working PL-JLB4."
+    assert _decision(tmp_path, text, tool=POST) is None
+
+
+def test_a_coordinator_post_is_read_whatever_field_carries_its_text(tmp_path: Path) -> None:
+    """`post_message`'s schema was not readable when it was wired, so every string field counts."""
+    post = {"channel": "project", "message": "Read #1700 and merge it."}
+    assert _decision(tmp_path, "", tool=POST, tool_input=post) is not None

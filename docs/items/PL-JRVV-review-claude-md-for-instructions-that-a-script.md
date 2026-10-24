@@ -2,9 +2,11 @@
 id: PL-JRVV
 title: Review CLAUDE.md for instructions that a script, hook or check now enforces, and retire them to cut the resident set and the risk of context rot
 priority: P1
+owner-priority: P1, 2026-10-20
 effort: M
 status: done
 classes: session-cost
+milestone: v0.6.1
 touches: CLAUDE.md, docs/resident-instructions.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-20
 closed: 2026-10-24

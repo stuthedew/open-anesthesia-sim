@@ -653,6 +653,15 @@ auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
 # The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
 prose_count_command = "uv run python tools/new_prose.py --count"
 
+# How `bin/docket verify` measures whether the branch's tests still catch a
+# change to its own lines (`PL-CZXN`; project owner, 2026-10-19, ratified, over
+# making the old assertion check an advisory and over keeping it). The package
+# appends the base it audits against, which `--base` takes. `--verdict` prints
+# the mutants of the changed lines that the simulator's unit tests did not
+# catch, and `verify` refuses while there are any. It runs under
+# `uv run --group mutation` because mutmut is installed only with that group.
+mutation_command = "uv run --group mutation python tools/diff_mutation.py --verdict --base"
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it

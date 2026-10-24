@@ -3,10 +3,13 @@ id: PL-TCBJ
 title: Replay a panel of specialist reviewer subagents (PK/PD, numerical solver, clinical display) on about ten merged simulator pull requests that later had a defect filed, and adopt it only if it would have caught at least three
 priority: P3
 effort: M
-status: ready
+status: done
 classes: planning
+feature: review-panel
 touches: docs/items/PL-TCBJ-replay-a-panel-of-specialist-reviewer-subagents.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1727
 payoff: whether a specialist reviewer panel would have caught real simulator defects is measured before anyone builds one
 verify: grep -qE '^\*\*Result' docs/items/PL-TCBJ-*.md
 ---
@@ -24,3 +27,87 @@ verify: grep -qE '^\*\*Result' docs/items/PL-TCBJ-*.md
 **Done when.** The ten pull requests and the defect items matched to them are listed here under a `**Result.**` heading, each with its result. The count is recorded against the bar. Either an item is filed to build the panel into review, or this item records why it was not adopted.
 
 **Generator check.** Work the owner asked for, on 2026-10-24. It touches only its own brief, and no head's fact explains it.
+
+**Protocol, fixed on 2026-10-24 before any panel ran.**
+
+*Finding the pull requests.* The pairs come from the SZZ method, which traces a fix back to the change that introduced the lines it repaired (Śliwerski, Zimmermann and Zeller, "When do changes induce fixes?", MSR 2005, doi:10.1145/1083142.1083147). The population is every `done` item whose classes include `defect` or `safety`, and not `anticipated`, `test` or `infra`. For each one, the session took the commits on `origin/main` whose subject leads with the item's id. It then ran `git blame` at each fix's parent on the `src/anesthesia_sim/` lines that the fix removed or changed. A blamed commit enters as a candidate when it is a squash-merged pull request, is not the item's own fix, and merged before the item's file was first committed. That gave 73 candidate pull requests. One was excluded: `#588`, a 23,444-line port of twelve items, which no reviewer reads as one diff.
+
+*Drawing the sample.* The candidates were shuffled with Python's `random.Random(20261024)`. The session walks that order and verifies each pair before it enters. A pair is verified only when the defect the item describes lives in lines that pull request added, not in lines it merely moved or touched. SZZ is known to blame refactors and moves, so this step is not optional. The first ten pull requests with at least one verified defect are the sample. The first 24 in the drawn order were `#1451`, `#1292`, `#337`, `#1414`, `#1585`, `#1481`, `#811`, `#1619`, `#1465`, `#191`, `#743`, `#1212`, `#331`, `#1413`, `#1350`, `#1365`, `#1653`, `#1370`, `#1337`, `#1453`, `#790`, `#834`, `#775` and `#768`.
+
+*Keeping the panel blind.* Each reviewer gets two things: an export of the tree at the pull request's merge commit, made with `git archive` so it holds no later history, and that pull request's diff. It is told to read nothing outside that directory. The later defect item did not exist at that commit, because the item was filed after the merge.
+
+*The panel.* Three general-purpose subagents review each diff, at the session's own model and effort:
+
+1. A PK/PD and physiologic modelling reviewer: equations, units, parameter provenance, compartment and mass balance, and model applicability.
+2. A numerical methods and simulation state reviewer: solver and timestep behaviour, floating-point edges, determinism, state transitions, and partial or stale state.
+3. A clinical display and human factors reviewer: what a clinician or learner sees, labels, units, stale or wrong-context values, and error and halt presentation.
+
+Each one reviews the whole diff from its own field and returns at most eight findings. Each finding names a file and symbol, the failure, and a severity of `blocking`, `should-fix` or `optional`.
+
+*Scoring.* Before the panel runs, the session writes one sentence per verified defect saying what the defect was. A pull request counts as caught when any finding names the same faulty behaviour in the same code, so that acting on the finding would have fixed or prevented the defect. A finding that points at the right code but a different failure is a near miss. Near misses are recorded and not counted toward the bar. A separate subagent per pull request, also blind to the later defect, checks each finding against the code at merge and marks it correct, incorrect, or not checkable. Incorrect findings are the ones a reviewer would reject, and their share is the noise count.
+
+*A control, only if the bar is met.* If the panel catches three or more, the same ten diffs go to one generalist reviewer with the same instructions and no specialty. If it catches as many, the item to build says to add one more review pass, not a panel of three. Below the bar the panel is not adopted, so the control would decide nothing and is not run.
+
+**Answer key, committed before any panel finding was read.** A subagent checked the first 24 candidates in the drawn order against their diffs. It accepted 7. The other 17 were SZZ false positives. The blamed lines were docstrings, renames or moved code, or the fault predated the pull request, or it came from a later change of requirements, or the "defect" was a feature, refactor or science task. The session checked two of the keys against the diffs itself (`#1292` and `#331`). The accepted pull requests and their verified defects:
+
+- `#1451`, `PL-1ZQ4`. `SimulationController._resume_point_at_mark` in `app/controller.py` rebuilds a branch's opening crossing once, at the fork, from the marks as they stand then. The trunk reads its MAC targets from the crossings it recorded at the time. So a MAC target added after the step that crossed it reads "reached" on the branch and "still running" on the trunk at the same instant.
+- `#1292`, `PL-7N8P`. The new `require_supported_case_instant` in `core/supported_ranges.py` tests only finiteness and range, with no type test. It admits `True` as 1.0 s, and an int past the float range raises `OverflowError` instead of the `SimulationConfigurationError` its docstring promises.
+- `#1585`, `PL-F2YS`. `SimulationView._build_unconditional_region` in `app/simulation_view.py` weights the record column so that it takes about 306 px of a 1366 px window, not the ratified sidebar width of about 228 px. The readout column is left 3 px short of the 1005 px that seven readouts need. A 1366 px laptop therefore opens the readout row on four columns, though the docstring says all seven stand in one row.
+- `#331`, `PL-NBWP` and `PL-BPRK`. `app/playback.py` says a faster playback is "never a modelling" change. But the tick handler takes `steps_per_tick` steps in a loop that no control event can interrupt, so a setting change is invisible to the model for the multiplier times 0.1 s, which is 30 simulated seconds at 300x (`PL-NBWP`). `PlaybackRate.steps_per_tick` computes `round(exact)` on a quotient that is infinite for a tiny step, and raises a bare `OverflowError` (`PL-BPRK`).
+- `#1350`, `PL-979Z` (flow half) and `PL-848D` (`_require_built` half). The new `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` in `core/supported_ranges.py` check only range. So `CardiacOutput(FreshGasFlow(5.0))` builds silently as a valid flow. `_require_built` names only the other two flow types as swapped arguments, and its messages print `{value!r}`, which raises `ValueError` for an int of more than 4,300 digits.
+- `#1365`, `PL-979Z` (concentration half). The new `Fraction` and `Percent` in `core/concentration.py` refuse only each other. So `Fraction(SimulationStep(0.05))` builds silently as a valid concentration.
+- `#775`, `PL-N3N5`, `PL-3K9B`, `PL-4KZD` and `PL-LHBY`. The new mark standings in `app/bookmarks.py` take a flag for the run's length cap and nothing for a failed run. So every outstanding mark on a failed run reads "still running" (`PL-N3N5`). A time mark exactly at a run's opening instant reads "still running" for good, though no step can cross it (`PL-3K9B`). `SimulationView._refresh_bookmarks` draws the per-run standings from the reference run for every row. So with two runs shown, the panel states one run's answer as the case's, and a branch that halts on a mark shows no "reached" row (`PL-4KZD`, `PL-LHBY`).
+
+The same subagent then checked candidates 25 to 39 in the drawn order and accepted 3 more, which fills the sample at 10 of 39 examined. These three keys were committed before their panels ran:
+
+- `#204`, `PL-BNPY`. `AgentUptakeSystem.advance` in `core/uptake_system.py` captures the state before a step but restores it only inside `except SimulationConfigurationError` and `except Exception`. Its docstring promises a bit-identical system on any failure. A `BaseException` such as `KeyboardInterrupt` raised mid-step skips both clauses and leaves a partly applied step.
+- `#578`, six defects in the new pyqtgraph hover. The direct pointer slot reads the position that the rate-limited proxy stored one event earlier, so the first move answers nothing (`PL-TCR5`). Nothing clears the stored position when the pointer leaves, so the hover box keeps printing values for a pointer that is gone (`PL-LTKL`). The box flips below its point only above 75% of the axis, though it is a fixed 53 px tall, so on the 200 px wash-in plot its first line is cut off (`PL-9BVQ`). `nearest_trace_point` in `app/chart_frame.py` keeps one nearest point across every run, so with two runs a 2 px move silently switches which run's value is reported (`PL-JVHL`). The hover line names no run on a frame that holds several (`PL-MN4J`). `_pixel_distance` picks the answering time column in two dimensions, so a purely vertical move can change the instant reported (`PL-1K9G`).
+- `#1354`, `PL-979Z` (`CaseInstant` half). The new `CaseInstant.__new__` in `core/supported_ranges.py` checks only range. So `CaseInstant(StepCount(600))` is held as 600 s, though the same pull request's `require_case_instant` refuses that quantity when an instant is stored.
+
+`#1354` enters on the rule fixed before any result, which counts a defect against a pull request when that pull request added its own faulty lines. Under that rule `#1350` and `#1365` each count for their half of `PL-979Z` too. Because three of the ten share one defect item, the result is also reported with those three counted as one.
+
+**Result, 2026-10-24.** The panel cleared the bar, but one generalist reviewer did as well, so the panel is not adopted. An item is filed to add one more blind generalist review pass instead.
+
+| Pull request | Defect in the key | Panel | Clean control (one generalist) |
+| --- | --- | --- | --- |
+| `#1451` | `PL-1ZQ4` | missed: all three found a different fault in `_resume_point_at_mark` | missed: the same different fault |
+| `#1292` | `PL-7N8P` | missed: two near misses in `require_supported_case_instant` | missed: no findings |
+| `#1585` | `PL-F2YS` | missed: a near miss on the record column's height, not its width | missed: the same near miss |
+| `#331` | `PL-NBWP`, `PL-BPRK` | missed: three near misses on `steps_per_tick` | caught `PL-NBWP`: the 30 s control resolution at 300x makes a different run |
+| `#1350` | `PL-979Z`, `PL-848D` | missed: a near miss on the flow types (pickle bypass) | missed: no findings |
+| `#1365` | `PL-979Z` | missed: no matching finding | caught: `Fraction(SimulationStep(0.05))` builds |
+| `#775` | `PL-N3N5`, `PL-3K9B`, `PL-4KZD`, `PL-LHBY` | caught by all three: `PL-3K9B`, `PL-4KZD`, `PL-LHBY` | caught: the same three |
+| `#204` | `PL-BNPY` | caught by the numerics reviewer: `KeyboardInterrupt` skips the rollback | missed |
+| `#578` | six hover defects | caught by numerics and display: `PL-TCR5`, `PL-LTKL` | caught: `PL-TCR5`, `PL-LTKL` |
+| `#1354` | `PL-979Z` | caught by the numerics reviewer | caught |
+
+*Against the bar.* The panel caught the later defect in 4 of 10, which meets the bar of 3. It still meets it on the two stricter readings fixed before the count. With the three `PL-979Z` pull requests counted as one, it caught 4 of 8. With `#1354` dropped as the same defect, it caught 3 of 9. It named 7 of the 20 defects in the key. By field, the numerics reviewer made all 4 catches, display made 2 and PK/PD made 1.
+
+*Against the control.* One generalist with the same brief caught 5 of 10 and named 8 of the 20 defects. Only the panel caught `#204`. Only the generalist caught `#331` and `#1365`. The `#331` catch is a judgment call, because the finding cites the slider handler rather than the tick loop. Without it the score is 4 to 4. The rule fixed before the count says that when the generalist catches as many, the build adds one review pass and not a panel. That holds whether or not `#331` counts. With 1 against 2 discordant pull requests, ten pull requests cannot show either arm better. The panel costs three reviews per diff, and each review used about 150,000 to 300,000 subagent tokens.
+
+*Noise.* The panel made 62 findings. A blind checker per pull request marked 59 correct, 3 not checkable and 0 incorrect. The 3 rest on human-factors or pixel estimates. "Correct" means the mechanism is real at the merge commit. It does not mean every finding was worth fixing, and many were called latent by the reviewer itself. The checker ran on the same model as the reviewers and could share their blind spots. The control's findings were not checked.
+
+*What went wrong in the method.* A first control run is discarded. Its reviewers' directories also held the panel's findings files, and one reviewer reported reading them. The clean run used directories holding only the tree, the diff and the brief. The harness refused some subagents' writes, so the session saved those findings from the subagents' replies. Each reviewer ran once, and a second run of the same reviewer could find different things. The key was written by a subagent and spot-checked by the session on two pairs. The session scored every finding against the key itself. The sample is limited to defects visible in a diff, which is what SZZ can trace.
+
+*Findings beyond the key.* Several faults were raised by more than one reviewer and confirmed by the checker at merge. Four look present on `origin/main` from a code read, and each is filed as an item of its own: a mark branch opens with a setting changed at the fork instant, `dashed_pen` keeps Qt's square cap, the wash-in hover prints a ratio above 1, and the circuit restores a fraction across a volume change. The rest are listed for a check against `main` in one item filed under the `replay-findings` feature.
+
+**The reviewer brief, as run.** `{DIR}` was the reviewer's own directory, `{ROLE}` its field and `{SLUG}` its short name. The generalist brief opened "You are the single code reviewer for" and gave the field as "General review, with no specialty. Cover whatever matters most in this change: correctness of the model and its units, numerical and state behaviour, and what a clinician or learner sees on screen."
+
+```text
+You are one specialist on a code-review panel for an open-source anesthesia simulator (inhaled-anesthetic uptake and distribution, with a Qt interface for learners). You are reviewing ONE pull request before it merges.
+
+Your directory is {DIR}. It holds `tree/`, the repository exactly as it stands with this pull request applied, and `tree/REVIEW_DIFF.patch`, the pull request's commit message and diff. Read ONLY inside {DIR}. Do not read any other path on this machine, do not run git, and do not use the network. The project's standards are in `tree/CLAUDE.md`, `tree/.claude/rules/` and `tree/docs/MODEL.md`; read what you need. You may run read-only Python against `tree/` if it helps you check a claim (for example `cd {DIR}/tree && PYTHONPATH=src python3 -c '...'`), but write nothing inside `tree/`.
+
+Your field: {ROLE}
+
+Review the whole diff from your field. Look for faults this change introduces or leaves in the code it adds: wrong results, unhandled cases, state that can go stale or partial, values a learner could misread, and refusals that fail to fire. Do not report style, naming, or documentation polish unless it could mislead a reader about a clinical value. Report only what you would defend to the author; it is better to report three real faults than eight weak ones.
+
+Write at most eight findings, most severe first, in this exact form:
+
+### F<n> [blocking|should-fix|optional] <file path relative to tree/> :: <function, class or symbol>
+<two to four plain sentences: what goes wrong, under what input or sequence of actions, and what the user or the model gets as a result>
+
+If you find nothing worth reporting, write the single line `NO FINDINGS`.
+
+Save exactly that text to `{DIR}/findings-{SLUG}.md`, then return exactly the same text as your final answer, with nothing before or after it.
+```

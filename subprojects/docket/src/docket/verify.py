@@ -30,6 +30,7 @@ import configparser
 import json
 import os
 import re
+import shlex
 import subprocess
 import tempfile
 import time
@@ -48,7 +49,6 @@ from .config import Config
 from .grep import Cache, Wrap, wrapped
 from .lines import ENCODING, file_text, split_lines
 from .model import (
-    CLOSED_STATUSES,
     FrontMatterDeclines,
     Item,
     _front_matter_pairs,
@@ -57,15 +57,7 @@ from .model import (
     recurrence_entry_reads,
     split_list,
 )
-from .python import (
-    UNTOKENIZABLE,
-    LogicalLine,
-    Piece,
-    definition,
-    places,
-    read_logical_lines,
-    refusal,
-)
+from .python import UNTOKENIZABLE, LogicalLine, places, read_logical_lines, refusal
 from .release import CODE_SPAN_PATTERN
 from .shell import (
     COMMAND_ENDS,
@@ -113,8 +105,7 @@ from .shell import (
 # check reported `none` with a disabled test in the diff (`PL-5B88`).
 #
 # `mark.skip` closes that, written without its `pytest.` so that `@mark.skip`
-# after `from pytest import mark` is read too - the reason the assertion check
-# matches a bare `raises`. `unittest.skip` reads the standard library's
+# after `from pytest import mark` is read too. `unittest.skip` reads the standard library's
 # decorators, `skipIf` and `skipUnless` included. A widening owes the count a
 # narrowing does, in the other direction. Replayed on 2026-09-22 over `main`'s
 # 1,115 non-merge commits, of 1,232, the list before these two matched no
@@ -174,16 +165,12 @@ _SUPPRESSION_RE = re.compile(
     )
 )
 
-#: Where a suppression can genuinely live, for `no suppression added`. The
-#: sibling assertion check below narrows the same way and to a narrower set,
-#: and the difference is the reasoning rather than an oversight: an assertion
-#: is a *statement*, so only a file Python executes holds one, while a
-#: suppression is also *configured*. `xfail_strict = false` under
-#: `[tool.pytest.ini_options]` turns every expected failure back into a pass,
-#: and a `.pyi` stub carries a file-level ignore directive, neither of which
-#: changes a line of `.py`. So this list is that one plus the files that
-#: configure a run, and reusing `ASSERTION_BEARING_SUFFIX` here would have
-#: carried the sibling's rule past the argument that earned it.
+#: Where a suppression can genuinely live, for `no suppression added`. A
+#: suppression is written in Python and also *configured*. `xfail_strict =
+#: false` under `[tool.pytest.ini_options]` turns every expected failure back
+#: into a pass, and a `.pyi` stub carries a file-level ignore directive,
+#: neither of which changes a line of `.py`. So this list is `.py` plus the
+#: files that configure a run.
 #:
 #: Counted before it was written, because this narrows a check whose safe
 #: direction is reporting: over 1,109 commits of this repository, the added
@@ -256,8 +243,8 @@ def is_suppression_line(path: str, line: str) -> bool:
     """Whether an added line could suppress anything, for `no suppression added`.
 
     The check used to ask the line alone, so a line *about* a suppression read
-    as one. That is the same defect `PL-7TYC` removed from the sibling
-    assertion check and it was left standing here, on the one check `--self`
+    as one. That is the same defect `PL-7TYC` removed from the assertion check
+    this module once ran, and it was left standing here, on a check `--self`
     may never relax - which makes it the check least able to afford a false
     positive, since a `REJECT` on it says in the tool's strongest terms that
     the branch weakened a test (`PL-BHBZ`).
@@ -279,8 +266,8 @@ def is_suppression_line(path: str, line: str) -> bool:
     matching no line it did not match before. Replayed on `#783` itself, the
     six lines it `REJECT`ed on go to none.
 
-    An unreadable diff header yields `""`, which stays on the reporting side
-    exactly as `is_assertion_line` keeps it: where the file cannot be
+    An unreadable diff header yields `""`, which stays on the reporting side:
+    where the file cannot be
     identified, the line is printed rather than guessed at - and unstripped
     for the same reason, since the strip is what a known Python file earns.
 
@@ -377,186 +364,6 @@ CONFIGURATION_READERS: dict[
 }
 
 
-#: Only a file Python executes can hold an assertion, so a removed line from
-#: anything else is prose whatever words it uses. This is the larger half of
-#: the narrowing by count: every close-out edits its own item's `.md`, and
-#: every release edits `ROADMAP.md`, so the documentation tree is where a
-#: substring grep over the word `assert` met a session most often.
-ASSERTION_BEARING_SUFFIX = ".py"
-
-#: What an assertion *statement* looks like on the line that opens it.
-#: `assert` is a keyword, so it opens its statement: even one wrapped across
-#: five lines carries the keyword on the first, which is the line a
-#: whole-statement deletion puts in the diff - so anchoring gives up none of
-#: the wrapped forms, which is what the item asked to be checked rather than
-#: assumed. The second alternative is the call form, which the keyword anchor
-#: cannot see because the name runs on: `unittest`'s `assertEqual`, `mock`'s
-#: `assert_called_once_with`, `numpy.testing`'s `assert_allclose`.
-#:
-#: The third asserts by *expectation* and carries the word nowhere:
-#: `with pytest.raises(ValueError):` says the block inside must fail, which is
-#: how this project pins every guard that *rejects* an input - so the
-#: assertions the two alternatives above cannot see are disproportionately the
-#: safety ones (`PL-QJQL`). `with` opens its statement exactly as `assert`
-#: does, so the same anchor carries it, and here the anchor is load-bearing
-#: rather than symmetry: `raises` and `warns` are ordinary English verbs which
-#: this tree's own prose uses, so unanchored they reintroduce what `PL-7TYC`
-#: spent a narrowing removing. Two details of that alternative are deliberate
-#: for the same reason. `[^#]*` keeps the match out of a trailing comment, so
-#: an unrelated `with open(path):` whose comment mentions the word is not an
-#: assertion; and the `(` follows the name directly, because `ruff format`
-#: never separates a callable from its parenthesis while prose does - "the
-#: guard raises (ValueError)" is a sentence, not a call.
-ASSERTION_RE = re.compile(
-    r"(?:^|[:;])\s*assert\b"  # `assert x`, and the one-liner `if cond: assert x`
-    r"|\bassert[A-Za-z0-9_]*\s*\("  # assertEqual(, assert_called_once_with(
-    r"|(?:^|[:;])\s*(?:async\s+)?with\b[^#]*\b(?:raises|warns)\("  # with pytest.raises(...)
-)
-
-#: Positions the word occupies where no assertion is being made. A comment and
-#: a decorator cannot assert; a `def` names a helper rather than calling one,
-#: and removing that definition removes its call sites too, which the call
-#: form above catches; an import moves a name without evaluating it.
-NOT_AN_ASSERTION_RE = re.compile(r"^\s*(?:#|@|def\s|async\s+def\s|import\s|from\s)")
-
-
-def is_assertion_line(path: str, line: str) -> bool:
-    """Whether a removed line was an assertion, in a file neither reader here can read.
-
-    **The last fallback, no longer the check.** `no existing assertion
-    removed` reads statements with `ast` (`removed_assertions`, `PL-4W2L`), and
-    a file some version of which the running interpreter cannot parse through
-    the tokenizer (`read_assertion_statements`, `PL-TC2D`) - `bin/docket` runs
-    on the bare `python3`, which can be older than the project's own. This
-    reads only a file the tokenizer refuses too, and the file is named on the
-    page as read this way. What follows is the history of the predicate as it
-    was when it was the check, kept because the counts are what its shape
-    rests on.
-
-    The check used to ask `"assert" in line`, which is true of a comment, a
-    docstring, a release note, an item's brief, a variable called
-    `removed_assertions` and of the matcher itself - so a correct close-out
-    that touched any of them was REJECTed by an integrity check that is
-    supposed to be unarguable, which is the second of `CLAUDE.md`'s
-    compounding-friction tests: a refusal that fires on correct work trains a
-    reader to skim the block where a real weakening is printed (`PL-7TYC`).
-
-    Counted rather than reasoned about, because the safe direction here is
-    *reporting* and a tightening has to earn it. The predicate is wrong if it
-    suppresses a real assertion, so that is what was counted, three ways, with
-    `ast` as the oracle rather than a reading:
-
-    - over 867 commits of this repository's history, 200 removed lines carrying
-      the word stop being reported and **none** of them is an assertion;
-    - across the test trees, where the check is aimed, 271 of 5,574 lines stop
-      being reported and **none** of them is an assertion - 229 prose, 37
-      comments, 5 definitions or imports;
-    - in non-test source the exposure the item measured falls from 91 lines to
-      4, one of which is a genuine `assert` that is meant to be reported.
-
-    It still errs toward reporting where it cannot tell: three of those four
-    are docstring lines that a reflow happened to start with the word
-    `assert`, and they stay on the page rather than being guessed at.
-
-    `PL-QJQL` widened it once, in the opposite direction and on the same
-    evidence, because a narrowing and a widening are the same claim about what
-    an assertion is. `with pytest.raises(...)` asserts without carrying the
-    word, so the 227 of them in this tree - every compartment-rejection guard
-    among them - could be deleted whole and reported as none removed. Counted
-    the same way before the alternative was added, with `ast` as the oracle:
-    227 lines in the tree and 60 removed lines across 902 commits of history
-    start being reported, and **every one** of the 287 is a genuine
-    `with raises/warns(...)` statement, so the widening refuses no work this
-    repository has ever done.
-
-    Two shapes a line cannot carry are left to the parser, which reads both:
-    the parenthesized multi-manager form, where `with (` opens the statement
-    and the `pytest.raises(...)` item sits on a line of its own with no `with`
-    on it (`PL-XQGH`), and an edit on a continuation line of a wrapped
-    assertion, which carries none of the three shapes at all. In a file read
-    this way both are still missed, and the page says the file was read so.
-    """
-    if path and not path.endswith(ASSERTION_BEARING_SUFFIX):
-        return False
-    if NOT_AN_ASSERTION_RE.match(line):
-        return False
-    return bool(ASSERTION_RE.search(line))
-
-
-#: The context managers that assert by expectation, matched on the name they
-#: are called by - `pytest.raises`, or `raises` after `from pytest import
-#: raises` - which is the spelling the line predicate above has always read.
-EXPECTING = ("raises", "warns")
-
-#: How the parser splits source into lines, which is not `str.splitlines`: a
-#: form feed or a line separator inside a string is one line to the parser and
-#: two to `splitlines`, and a column offset read against the wrong split points
-#: into the wrong text.
-PARSER_LINE_RE = re.compile(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+\Z")
-
-
-@dataclass(frozen=True)
-class Assertion:
-    """One assertion as `ast` reads it, which is the unit the check compares.
-
-    `form` is what makes it that assertion: its kind and the `ast.dump` of the
-    expression that asserts. A dump carries no position, spacing, quoting,
-    wrapping or comment, so reformatting an assertion, wrapping it or moving it
-    within its file leaves the form as it was - and any edit to what it
-    asserts changes it, on whichever line of a wrapped statement the edit
-    falls. An `assert`'s message is left out, because the message asserts
-    nothing.
-    """
-
-    form: str
-    #: The classes and functions around it, joined as pytest joins a node id -
-    #: `TestX::test_y` - or "" at module level. Context for the report only:
-    #: moving an assertion between functions is not a change.
-    where: str
-    #: Its source as written: the whole statement for an `assert`, the call
-    #: for the other two kinds. `falsifies:` is matched against this.
-    source: str
-    #: The same on one line, as the report prints it.
-    shown: str
-
-
-@dataclass(frozen=True)
-class AssertionReading:
-    """What one version of one file asserts, and the classes and functions it defines."""
-
-    assertions: tuple[Assertion, ...] = ()
-    defines: frozenset[str] = frozenset()
-
-    def forms(self) -> Counter[str]:
-        return Counter(assertion.form for assertion in self.assertions)
-
-
-def _called(func: ast.expr) -> str:
-    """The name a call is made by: `f` for `f(...)`, `m` for `x.y.m(...)`."""
-    if isinstance(func, ast.Name):
-        return func.id
-    if isinstance(func, ast.Attribute):
-        return func.attr
-    return ""
-
-
-def _segment(lines: Sequence[str], node: ast.expr | ast.stmt) -> str:
-    """`ast.get_source_segment`, over lines split once rather than once per call.
-
-    The standard library's re-splits the whole source on every call, character
-    by character, which is quadratic in a test file's assertions: a 3,000-line
-    test module holds a thousand of them. Column offsets are UTF-8 byte
-    offsets, which is why each line is encoded before it is cut.
-    """
-    first, last = node.lineno - 1, (node.end_lineno or node.lineno) - 1
-    start, end = node.col_offset, node.end_col_offset or 0
-    if first == last:
-        return lines[first].encode()[start:end].decode(errors="replace")
-    head = lines[first].encode()[start:].decode(errors="replace")
-    tail = lines[last].encode()[:end].decode(errors="replace")
-    return "".join([head, *lines[first + 1 : last], tail])
-
-
 #: What reading a file with the parser raises where this interpreter cannot:
 #: `SyntaxError`, `ValueError` for a null byte or for text that is not UTF-8,
 #: and `RecursionError` for an expression too deep to parse or to dump.
@@ -575,184 +382,6 @@ def _parses(source: str) -> bool:
     """`True`, or one of `UNPARSABLE` raised: whether a page must name the file."""
     _parse(source)
     return True
-
-
-def read_assertions(source: str) -> AssertionReading:
-    """Every assertion `source` holds, as `ast` reads it.
-
-    Three kinds, which are the three shapes the line predicate above matched:
-    an `assert` statement, a call whose name begins `assert` - `assertEqual`,
-    `assert_called_once_with`, `assert_allclose` - and a `raises` or `warns`
-    item of a `with`, which asserts by expectation and carries the word
-    nowhere. The third is read wherever the formatter puts it, which a line
-    could not do: in the parenthesized multi-manager form the item sits on a
-    line of its own with no `with` on it (`PL-XQGH`).
-
-    Raises one of `UNPARSABLE`, so that the caller can read the file another
-    way and say that it did.
-    """
-    tree = _parse(source)
-    lines = PARSER_LINE_RE.findall(source)
-    found: list[Assertion] = []
-    defines: set[str] = set()
-
-    def keep(
-        kind: str, asserting: ast.AST, written: ast.expr | ast.stmt, where: str, prefix: str = ""
-    ) -> None:
-        text = _segment(lines, written)
-        found.append(
-            Assertion(f"{kind}:{ast.dump(asserting)}", where, text, prefix + " ".join(text.split()))
-        )
-
-    # An explicit stack rather than recursion, and children pushed reversed so
-    # they come off in source order: the report lists what it found in the
-    # order a reader meets it in the file.
-    stack: list[tuple[ast.AST, str]] = [(tree, "")]
-    while stack:
-        node, where = stack.pop()
-        if isinstance(node, ast.Assert):
-            keep("assert", node.test, node, where)
-        elif isinstance(node, ast.Call) and _called(node.func).startswith("assert"):
-            keep("call", node, node, where)
-        elif isinstance(node, (ast.With, ast.AsyncWith)):
-            for item in node.items:
-                expr = item.context_expr
-                if isinstance(expr, ast.Call) and _called(expr.func) in EXPECTING:
-                    keep("with", expr, expr, where, "with ")
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            where = f"{where}::{node.name}" if where else node.name
-            defines.add(where)
-        stack.extend((child, where) for child in reversed(list(ast.iter_child_nodes(node))))
-    return AssertionReading(tuple(found), frozenset(defines))
-
-
-def read_assertion_statements(source: str) -> AssertionReading:
-    """Every assertion `source` holds, read from its logical lines rather than parsed.
-
-    `read_assertions`' reading for a file some version of which this
-    interpreter cannot parse (project owner, 2026-10-04, ratified, over keeping
-    `PL-4W2L`'s line fallback for it, `PL-TC2D`). The same three kinds, found
-    among the pieces of each statement the tokenizer builds, so a docstring is
-    a string and never an assertion, and an assertion wrapped across lines is
-    one statement however it was wrapped. Its form is its kind and the tokens
-    that assert - an `assert`'s test without its message, a call or a `with`
-    item whole - so a re-wrap, a re-indent or a comment leaves it as it was,
-    and an edit to any token of it, on any of its lines, changes it. `where`
-    is `python.places`', the definition the statement belongs to, which holds a
-    decorator in the definition it decorates as `ast` does.
-
-    Raises one of `UNTOKENIZABLE` where the tokenizer refuses the file.
-    """
-    found: list[Assertion] = []
-    defines: set[str] = set()
-    lines = read_logical_lines(source)
-    for line, where in zip(lines, places(lines), strict=True):
-        if definition(line)[1]:
-            defines.add(where)
-        for kind, asserting, written in _asserted(line):
-            text = line.text(written[0].start, written[-1].end)
-            prefix = "with " if kind == "with" else ""
-            form = " ".join(piece.text for piece in asserting)
-            found.append(Assertion(f"{kind}:{form}", where, text, prefix + " ".join(text.split())))
-    return AssertionReading(tuple(found), frozenset(defines))
-
-
-_OPENERS, _CLOSERS = ("(", "[", "{"), (")", "]", "}")
-
-
-def _asserted(line: LogicalLine) -> Iterator[tuple[str, Sequence[Piece], Sequence[Piece]]]:
-    """Each assertion a logical line holds: its kind, the pieces that assert, and those written.
-
-    `read_assertions`' three kinds, by the words that make each: `assert`,
-    which is a keyword and so opens its statement, asserting its test - which
-    runs to the first comma outside brackets, where its message begins; a call
-    whose name begins `assert`, its dotted receiver included; and a `raises` or
-    `warns` call in a `with` statement's header, which runs to the colon
-    outside brackets, so the parenthesized multi-manager form is read as the
-    one header it is. A string is one piece holding no code, so none of the
-    three is ever found in one.
-    """
-    pieces = line.pieces
-    words = [piece.code for piece in pieces]
-    closing: dict[int, int] = {}
-    opened: list[int] = []
-    for at, word in enumerate(words):
-        if word in _OPENERS:
-            opened.append(at)
-        elif word in _CLOSERS and opened:
-            closing[opened.pop()] = at
-    header = 0
-    if words[:1] == ["with"] or words[:2] == ["async", "with"]:
-        header = _ends_at(words, words.index("with") + 1, ":")
-    for at, word in enumerate(words):
-        if word == "assert":
-            end = _ends_at(words, at + 1, ";")
-            yield "assert", pieces[at + 1 : _ends_at(words, at + 1, ",", end)], pieces[at:end]
-            continue
-        if words[at + 1 : at + 2] != ["("] or words[at - 1 : at] in (["def"], ["class"]):
-            continue
-        if word.startswith("assert") and word.isidentifier():
-            kind = "call"
-        elif at < header and word in EXPECTING:
-            kind = "with"
-        else:
-            continue
-        start = at
-        while start >= 2 and words[start - 1] == "." and words[start - 2].isidentifier():
-            start -= 2
-        call = pieces[start : closing.get(at + 1, len(words) - 1) + 1]
-        yield kind, call, call
-
-
-def _ends_at(words: Sequence[str], start: int, stop: str, end: int | None = None) -> int:
-    """Where the first `stop` outside brackets falls from `start`, or `end` where none does."""
-    end = len(words) if end is None else end
-    depth = 0
-    for at in range(start, end):
-        if not depth and words[at] == stop:
-            return at
-        depth += (words[at] in _OPENERS) - (words[at] in _CLOSERS)
-    return end
-
-
-@dataclass(frozen=True)
-class FileAbsence:
-    """The existing assertions one file lost to the item's own commits."""
-
-    #: The file as the base names it. A commit that renamed it is followed, as
-    #: `git show` follows it for every other check here, so a renamed test
-    #: module is compared with its old self rather than charged in full.
-    path: str
-    #: Its name after the item's commits, where one of them renamed it.
-    renamed_to: str
-    #: Each form gone, and how many of the base's copies of it went, in the
-    #: order the base's copy of the file holds them.
-    charged: tuple[tuple[str, int], ...]
-    #: The base's copy, and the copy after the last of the item's commits to
-    #: touch the file - what the report pairs nothing between.
-    before: AssertionReading
-    after: AssertionReading
-
-
-@dataclass(frozen=True)
-class AssertionAudit:
-    """What the item's own commits did to the assertions the base holds."""
-
-    absent: tuple[FileAbsence, ...] = ()
-    #: Files a version of which neither this interpreter's parser nor its
-    #: tokenizer could read, and why. Each is read line by line instead, and
-    #: named on the page as read so.
-    unparsed: tuple[tuple[str, str], ...] = ()
-    #: The removed lines from those files that `is_assertion_line` flags and
-    #: that the base's copy holds, as `(path, line)`.
-    lines: tuple[tuple[str, str], ...] = ()
-    #: Why nothing could be read, where that is the answer. The check refuses
-    #: on it: "could not look" is not "looked, found nothing".
-    unread: str = ""
-    #: Files a version of which this interpreter could not parse, and why. Each
-    #: is read through the tokenizer instead, every version of it alike, and
-    #: named on the page as read so (`PL-TC2D`).
-    tokenized: tuple[tuple[str, str], ...] = ()
 
 
 def _short(spec: str) -> str:
@@ -801,7 +430,7 @@ def _blobs(root: Path, specs: Collection[str]) -> dict[str, tuple[str, bytes] | 
         oid, kind, size = header
         body = out[at : at + size]
         at += size + 1  # git ends every object with a newline
-        # A tree or a submodule at the path is not a file an assertion lives in.
+        # A tree or a submodule at the path is not a file a suppression lives in.
         found[spec] = (oid, body) if kind == "blob" else None
     return found
 
@@ -818,7 +447,7 @@ class _FileStep:
 
 
 def _changed_python(
-    listing: str, statuses: bool, suffixes: tuple[str, ...] = (ASSERTION_BEARING_SUFFIX,)
+    listing: str, statuses: bool, suffixes: tuple[str, ...]
 ) -> list[tuple[str, str]]:
     """`(old, new)` for each file `suffixes` names in a `-z` listing, "" for a side it does not."""
     fields = listing.split("\0")
@@ -849,10 +478,7 @@ def _changed_python(
 
 
 def _file_steps(
-    root: Path,
-    base: str,
-    commits: tuple[str, ...],
-    suffixes: tuple[str, ...] = (ASSERTION_BEARING_SUFFIX,),
+    root: Path, base: str, commits: tuple[str, ...], suffixes: tuple[str, ...]
 ) -> tuple[list[_FileStep], dict[str, str], str]:
     """The item's changes to the files `suffixes` names, oldest first, and their keys.
 
@@ -910,149 +536,6 @@ def _file_steps(
                 )
             )
     return steps, keys, ""
-
-
-def _decoded_lines(blob: bytes) -> list[str]:
-    """A blob's lines as the diff beside it names them.
-
-    `_diff_text` passes the diff through `lines.file_text`, which turns `\\r\\n`
-    and a lone `\\r` into `\\n`, so a removed line of a CRLF file arrives without
-    its `\\r`. The blob is decoded here by hand, so the same translation runs
-    before the split, or no line of such a file would match its removal.
-    """
-    return split_lines(file_text(blob.decode("utf-8", errors="replace")))
-
-
-def removed_assertions(
-    root: Path, base: str, commits: tuple[str, ...], removed_lines: Sequence[tuple[str, str]]
-) -> AssertionAudit:
-    """The assertions the base holds that the item's own commits leave absent.
-
-    What `no existing assertion removed` decides, and all it decides: an
-    assertion present in the base's copy of a `.py` file - an `assert`
-    statement's test, a call whose name begins `assert`, or a `raises` or
-    `warns` item of a `with` - is absent, as `ast` reads it, after the item's
-    commits (project owner, 2026-09-22, ratified, over refusing only an
-    assertion that left its test and over patching the line matcher that came
-    before this, `PL-4W2L`). Whether a changed assertion is stronger, weaker or
-    restated is the judgment half, and every rule over the shape of an edit
-    has been a guess at it; `falsifies:` is how a commission declares one.
-
-    Each file is parsed before and after each of the item's commits, and the
-    forms each commit removed and added are folded per file across them -
-    `PL-VP40`'s fold at statement altitude, so an assertion cut in one commit
-    and restored in the next is no change. A form is then charged only where
-    the base's copy of the file holds it, and only as many copies as are gone
-    after the item's commits: an assertion a sibling commit added on the same
-    branch was never an existing one, however the commits naming this id
-    treat it (`PL-2DTK`). Nor is one the branch's tip still holds in the same
-    file, which a later commit naming another item put back - the response
-    this check asks for, which a session cannot always lead with this id
-    (`PL-087W`). The tip is read per file, so an assertion restored into
-    another file excuses nothing, and it is one copy, so no commit order
-    changes the answer.
-
-    **A file some version of which this interpreter cannot parse is read
-    through the tokenizer** (`read_assertion_statements`, `PL-TC2D`), every
-    version of it, since forms two readers produced are not comparable -
-    `bin/docket` runs on the bare `python3`, which can be older than the
-    project's own. Its absences are charged as a parsed file's are, and the
-    file is named. `removed_lines` is `_net_line_changes`' removed half, read
-    only for a file the tokenizer refuses too: there the line predicate reads
-    it, the base's copy still decides what existed, and the file is named.
-    """
-    steps, keys, unread = _file_steps(root, base, commits)
-    if unread:
-        return AssertionAudit(unread=unread)
-    if not vcs.call_git(["rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"], root).answer:
-        return AssertionAudit(
-            unread=f"{base} does not name a commit to read the base's copies from"
-        )
-    order = list(dict.fromkeys(step.key for step in steps))
-    # Where each file stands after the item's last change to it - the path it
-    # was renamed to, or the one a deletion left - which is where the tip is
-    # read: a later rename elsewhere reads as no copy, and charges as before.
-    tip: dict[str, str] = {}
-    for step in steps:
-        path = (step.after or next((spec for spec in step.before if spec), "")).partition(":")[2]
-        tip[step.key] = f"HEAD:{path}" if path else ""
-    blobs = _blobs(
-        root,
-        {spec for step in steps for spec in (*step.before, step.after) if spec}
-        | {f"{base}:{key}" for key in order}
-        | {spec for spec in tip.values() if spec},
-    )
-    if blobs is None:
-        return AssertionAudit(unread="git could not be asked for the files' contents")
-
-    versions = _versions(order, steps)
-    for key in order:
-        versions[key] += [f"{base}:{key}", tip[key]]
-    parsed: dict[str, AssertionReading] = {}  # by object id: one version, one read
-    read_so: dict[str, AssertionReading] = {}  # the same, through the tokenizer
-    tokenized: dict[str, str] = {}
-    unparsed: dict[str, str] = {}
-    for key in order:
-        refused = _read_versions(blobs, versions[key], read_assertions, UNPARSABLE, parsed)
-        if refused is None:
-            continue
-        why = _unparsable(*refused)
-        refused = _read_versions(
-            blobs, versions[key], read_assertion_statements, UNTOKENIZABLE, read_so
-        )
-        if refused is None:
-            tokenized[key] = why
-        else:
-            unparsed[key] = _untokenizable(why, *refused)
-
-    def reading(key: str, spec: str) -> AssertionReading:
-        held = blobs.get(spec) if spec else None
-        if held is None or key in unparsed:
-            return AssertionReading()
-        return (read_so if key in tokenized else parsed)[held[0]]
-
-    removed: dict[str, Counter[str]] = {key: Counter() for key in order}
-    added: dict[str, Counter[str]] = {key: Counter() for key in order}
-    last: dict[str, str] = {}
-    for step in steps:
-        parents = [reading(step.key, spec).forms() for spec in step.before]
-        now = reading(step.key, step.after).forms()
-        for form in set(now).union(*parents):
-            removed[step.key][form] += max(0, min(p[form] for p in parents) - now[form])
-            added[step.key][form] += max(0, now[form] - max(p[form] for p in parents))
-        last[step.key] = step.after
-
-    absent: list[FileAbsence] = []
-    for key in order:
-        before, after = reading(key, f"{base}:{key}"), reading(key, last[key])
-        if key in unparsed:
-            continue
-        held, net = before.forms(), removed[key] - added[key]
-        kept = after.forms() | reading(key, tip[key]).forms()  # the larger count of each
-        charged = tuple(
-            (form, min(net[form], held[form] - kept[form]))
-            for form in dict.fromkeys(a.form for a in before.assertions)
-            if net[form] and held[form] > kept[form]
-        )
-        if charged:
-            renamed = last[key].partition(":")[2]
-            absent.append(
-                FileAbsence(
-                    key, renamed if renamed not in ("", key) else "", charged, before, after
-                )
-            )
-
-    lines: list[tuple[str, str]] = []
-    for key in unparsed:
-        held_lines = blobs.get(f"{base}:{key}")
-        existing = Counter(_decoded_lines(held_lines[1]) if held_lines else ())
-        for path, line in removed_lines:
-            if keys.get(path, path) == key and is_assertion_line(path, line) and existing[line]:
-                existing[line] -= 1
-                lines.append((path, line))
-    return AssertionAudit(
-        tuple(absent), tuple(unparsed.items()), tuple(lines), tokenized=tuple(tokenized.items())
-    )
 
 
 _Read = TypeVar("_Read")
@@ -1156,7 +639,7 @@ def added_suppressions(
     A suppression is written in a statement, and Python continues a statement
     across physical lines, so a diff line holds a fragment of one: `@pytest.mark.\\`
     over `skip(reason="flaky")` matched on neither line, and the check said
-    `none`. Each Python file is read as `removed_assertions` reads it - every
+    `none`. Each Python file is read whole - every
     version before and after each of the item's commits, through
     `_file_steps` - and split into logical lines. The lines each commit added
     and removed are folded per file across the commits, as `PL-VP40` folds
@@ -1305,143 +788,23 @@ def _tokenized(path: str, why: str) -> str:
     return f"read through the tokenizer, not parsed: {path} - {why}"
 
 
-#: How many functions the report prints - or lines, where a check reads lines
-#: rather than functions - and how many assertions on each side of one. The
-#: counts on the check's own line are never capped, and a capped list ends by
-#: counting what it left out, so the count and the lines under it reconcile
-#: (`PL-7NKD`).
-SHOWN_FUNCTIONS, SHOWN_PER_SIDE, SHOWN_WIDTH = 5, 5, 140
-
-
-def _clip(text: str) -> str:
-    return text if len(text) <= SHOWN_WIDTH else text[: SHOWN_WIDTH - 3] + "..."
+#: How many lines a check prints under itself. The counts on the check's own
+#: line are never capped, and a capped list ends by counting what it left out,
+#: so the count and the lines under it reconcile (`PL-7NKD`).
+SHOWN_LINES = 5
 
 
 def _capped(lines: Sequence[str]) -> list[str]:
-    """The first `SHOWN_FUNCTIONS` of `lines`, then one line counting the rest.
+    """The first `SHOWN_LINES` of `lines`, then one line counting the rest.
 
     A bounded display says it is bounded. A block printing five lines under a
     count of six left the reader unable to tell which line was missing, and
     reading it back took a `git show` per commit (`PL-7NKD`).
     """
-    shown = list(lines[:SHOWN_FUNCTIONS])
-    if len(lines) > SHOWN_FUNCTIONS:
-        shown.append(f"and {len(lines) - SHOWN_FUNCTIONS} more line(s)")
+    shown = list(lines[:SHOWN_LINES])
+    if len(lines) > SHOWN_LINES:
+        shown.append(f"and {len(lines) - SHOWN_LINES} more line(s)")
     return shown
-
-
-def _absence_lines(absence: FileAbsence, counted: Collection[str]) -> list[tuple[str, list[str]]]:
-    """Each function an absence reaches, with what left it and what arrived.
-
-    Grouped by function and paired by nobody: the check names what left each
-    function and what arrived in it, and a reader who can tell a restatement
-    from a weakening matches them up. `PL-K4R5` measured why the pairing is not
-    the check's to make - 15 of 20 changed strings had more than one candidate.
-    What stayed is counted rather than printed, since it pairs with itself.
-    """
-    was = Counter((a.where, a.form) for a in absence.before.assertions)
-    now = Counter((a.where, a.form) for a in absence.after.assertions)
-    groups: dict[str, list[str]] = {}
-    for where, form in was:
-        if form in counted and was[where, form] > now[where, form]:
-            groups.setdefault(where, [])
-    out: list[tuple[str, list[str]]] = []
-    for where in groups:
-        left = [
-            a.shown
-            for a in absence.before.assertions
-            if a.where == where and a.form in counted and was[where, a.form] > now[where, a.form]
-        ]
-        arrived = [
-            a.shown
-            for a in absence.after.assertions
-            if a.where == where and now[where, a.form] > was[where, a.form]
-        ]
-        stayed = sum(min(count, now[place]) for place, count in was.items() if place[0] == where)
-        body = [f"    was  {_clip(text)}" for text in left[:SHOWN_PER_SIDE]]
-        if len(left) > SHOWN_PER_SIDE:
-            body.append(f"    and {len(left) - SHOWN_PER_SIDE} more that left")
-        if where and where not in absence.after.defines:
-            body.append(f"    now  no `{where}` in the file")
-        else:
-            body += [f"    now  {_clip(text)}" for text in arrived[:SHOWN_PER_SIDE]]
-            if len(arrived) > SHOWN_PER_SIDE:
-                body.append(f"    and {len(arrived) - SHOWN_PER_SIDE} more that arrived")
-            if not arrived:
-                body.append("    now  nothing in its place")
-        if stayed:
-            body.append(f"    ({stayed} unchanged)")
-        label = f"{absence.path}::{where}" if where else f"{absence.path} (module level)"
-        if absence.renamed_to:
-            label += f", now {absence.renamed_to}"
-        out.append((label, body))
-    return out
-
-
-def assertion_check(
-    audit: AssertionAudit, declared: str, self_declared: str, base: str
-) -> tuple[Check, int]:
-    """`no existing assertion removed`, from an audit - and how many `falsifies:` folded.
-
-    A charged form folds where the declaration is a substring of a base copy's
-    source, which keeps every declaration written against the line matcher
-    matching: a statement's source holds its opening line. It stays on the
-    page as declared rather than counted, so the removal reads as a
-    commissioned act and not an unexplained one (`PL-K82G`).
-    """
-    name = "no existing assertion removed"
-    if audit.unread:
-        return Check(name, False, f"not read: {audit.unread}"), 0
-    counted = folded = 0
-    shown: list[str] = []
-    declared_lines: list[str] = []
-    groups: list[tuple[str, list[str]]] = []
-    for absence in audit.absent:
-        kept: set[str] = set()
-        for form, count in absence.charged:
-            copies = [a for a in absence.before.assertions if a.form == form]
-            if declared and any(declared in a.source or declared in a.shown for a in copies):
-                folded += count
-                declared_lines.append(f"declared falsified, not counted: {_clip(copies[0].shown)}")
-            else:
-                counted += count
-                kept.add(form)
-        groups += _absence_lines(absence, kept) if kept else []
-    for label, body in groups[:SHOWN_FUNCTIONS]:
-        shown += [label, *body]
-    if len(groups) > SHOWN_FUNCTIONS:
-        shown.append(f"and {len(groups) - SHOWN_FUNCTIONS} more function(s)")
-    unfolded: list[str] = []
-    for path, line in audit.lines:
-        if declared and declared in line:
-            folded += 1
-            declared_lines.append(f"declared falsified, not counted: {line.strip()}")
-        else:
-            unfolded.append(f"{path}: {line.strip()}")
-    by_line = len(unfolded)
-    shown += _capped(unfolded)
-    shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
-    shown += [_tokenized(path, why) for path, why in audit.tokenized]
-    parts = [f"{counted} assertion(s)"] if counted else []
-    parts += [f"{by_line} line(s) in a file read line by line"] if by_line else []
-    detail = ", ".join(parts) or "none"
-    if folded:
-        detail += f", {folded} declared falsified" + (" by this closure" if self_declared else "")
-    if counted:
-        shown.append(
-            "which of these restates, tightens or loosens what it asserted is not decided "
-            "here, so nothing is paired; `falsifies:` on the base's copy is what declares one"
-        )
-    if self_declared and folded:
-        # The whole worth of `falsifies:` is that the base declared it, so the
-        # one case where the branch's own line is honoured names itself on the
-        # page it is honoured on (`PL-ZMGR`).
-        declared_lines.append(
-            f"the declaration above is this closure's own: {base} holds the item at "
-            "`status: needs-decision`, so which assertions the answer falsifies was "
-            "this branch's to say"
-        )
-    return Check(name, not (counted or by_line), detail, tuple(shown + declared_lines)), folded
 
 
 RESIDUAL = (
@@ -2123,9 +1486,8 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     # Through `_git`, so a diff git would not produce raises instead of
-    # reading as one that added no suppression and removed no assertion. A
-    # patch's `+` and `-` lines are file lines, translated as `_decoded_lines`
-    # translates the blobs they are paired with (`PL-0R4M`).
+    # reading as one that added no suppression. A patch's `+` and `-` lines are
+    # file lines, so their line ends are translated (`PL-0R4M`).
     if commits:
         return file_text(_git(["show", "--format=", *commits], root))
     return file_text(_git(["diff", f"{base}...HEAD"], root))
@@ -2134,7 +1496,7 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
 #: The post-image path out of a `diff --git a/x b/x` header. Git quotes either
 #: side that holds a byte it will not print, so the quoted post-image is read
 #: first and its quoting taken off by `vcs.unquoted_path` (`PL-MR8Z`). A
-#: header this cannot read yields `""`, which `is_assertion_line` reads as
+#: header this cannot read yields `""`, which `is_suppression_line` reads as
 #: "could be code" rather than as "is not" - an unreadable header stays on the
 #: reporting side.
 DIFF_HEADER_RE = re.compile(
@@ -2156,43 +1518,36 @@ def _header_path(header: re.Match[str] | None) -> str:
     return header.group("path")
 
 
-def _net_line_changes(
-    root: Path, base: str, commits: tuple[str, ...]
-) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
-    """The lines the work added and removed, with cancelling pairs folded out per file.
+def _net_line_changes(root: Path, base: str, commits: tuple[str, ...]) -> list[tuple[str, str]]:
+    """The lines the work added, with lines it also removed folded out per file.
 
-    Each line comes back paired with the path it came from. The fold below was
-    already keyed by file; what changed is that the key stops being discarded,
-    because whether a removed line can be an assertion at all depends on
-    whether Python executes the file (`PL-7TYC`).
+    Each line comes back paired with the path it came from, because whether an
+    added line can be a suppression at all depends on the kind of file it is
+    in (`PL-7TYC`).
 
     `git show` over an item's commits concatenates one patch per commit rather
     than producing the branch's net change, because an item's commits need not
     be contiguous and `git diff <first>^ <last>` would sweep in whatever
     another item committed in between - which is why the per-commit form is
-    there. So a line a branch added in one commit and removed in the next
-    appeared in both lists, and both checks reading them - "no suppression
-    added" and "no existing assertion removed" - reported work the branch had
+    there. So a line a branch added in one commit and removed in the next was
+    read as added, and "no suppression added" reported work the branch had
     already undone. The error ran in the safe direction, which is why it
-    survived: nothing that reaches `HEAD` escapes either check. What it cost was
+    survived: nothing that reaches `HEAD` escapes the check. What it cost was
     the report's credibility, because the cancelling commit is not in the output
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as what consumes this - both checks' fallback
-    for a Python file the tokenizer refuses, and the suppression check's for a
-    configuration file its format's reader refuses, all of which read a line's
-    text rather than the statement it belongs to - and it costs no extra git
-    call. Both checks
-    proper make the same fold over statements instead (`removed_assertions`,
-    `added_suppressions`). Counting rather than
-    de-duplicating is what keeps it safe: a file whose patches remove one
-    `# type: ignore` and add two still reports one added. A line merely *moved*
-    within a file cancels too, which is the right answer to both questions -
-    the suppression was already there, and the assertion still is.
+    file is exactly as precise as what consumes this: the suppression check's
+    fallback for a Python file the tokenizer refuses, or a configuration file
+    its format's reader refuses, which reads a line's text rather than the
+    statement it belongs to. It costs no extra git call. The check proper makes
+    the same fold over statements instead (`added_suppressions`). Counting
+    rather than de-duplicating is what keeps it safe: a file whose patches
+    remove one marker and add two still reports one added. A line merely
+    *moved* within a file cancels too, since the suppression was already there.
 
-    Per file, never across: an assertion deleted from one file and an identical
-    one added to another is two facts, not a move, and is reported as both.
+    Per file, never across: a marker deleted from one file and an identical one
+    added to another is two facts, not a move, and the added one is reported.
 
     **A merge's patch is a combined diff, and is read as one** (`PL-W6ZD`).
     `git show` writes it under `diff --cc`, each line prefixed by one column
@@ -2275,13 +1630,11 @@ def _net_line_changes(
         per_file[current][1][side][line[1:]] += 1
     fold()
     added: list[tuple[str, str]] = []
-    removed: list[tuple[str, str]] = []
     for where, (added_here, removed_here) in per_file.values():
         # `Counter.__sub__` keeps only positive counts, which is multiset
-        # difference: the fold each check wants.
+        # difference: the fold the check wants.
         added.extend((where, text) for text in (added_here - removed_here).elements())
-        removed.extend((where, text) for text in (removed_here - added_here).elements())
-    return added, removed
+    return added
 
 
 def _store_at(root: Path, base: str, items_dir: str) -> dict[str, str] | None:
@@ -2668,17 +2021,13 @@ class Commission:
        base's with the base's own result, never substituted silently. A
        delegated audit refuses the correction outright, through
        `front_matter_check`.
-    3. **What the work may waive** - `falsifies:` and `not-delegable:`. A
-       *waiver* removes a refusal: `falsifies:` folds a removed assertion out
-       of an integrity check against the base *tree*, `not-delegable:`
-       excuses the command check. A waiver waives only what the base holds,
-       so the base's copy is the only word on it. Where the base holds
-       nothing to waive - no commissioned command - the check has nothing to
-       refuse and says why (`PL-KSV2`). The base hands a waiver to the branch
-       by exactly one written statement, `status: needs-decision` on its own
-       copy with the branch closing the item, because there the answer was
-       the branch's to make and what it falsifies follows from the answer
-       (`PL-ZMGR`, `self_declared_falsification`).
+    3. **What the work may waive** - `not-delegable:`. A *waiver* removes a
+       refusal: `not-delegable:` excuses the command check. A waiver waives
+       only what the base holds, so the base's copy is the only word on it.
+       Where the base holds nothing to waive - no commissioned command - the
+       check has nothing to refuse and says why (`PL-KSV2`). `falsifies:`
+       was the other waiver, and went with the assertion check it folded
+       (`PL-CZXN`).
 
     In one sentence: a correction supplies evidence and is honoured and
     printed; a waiver removes a refusal and is the base's; an outcome is the
@@ -2691,9 +2040,7 @@ class Commission:
     target reworded, a test that never existed under the commissioned name, a
     moved file - so reading `verify:` from the base and refusing where its
     command fails would have refused 163 correct close-outs and caught
-    nothing. Honouring the branch's `falsifies:` instead would have bought
-    about 2 folds in 502 close-outs (`PL-YZJD`) at the cost of the property
-    the field exists for. A wrong correction leaves every integrity check
+    nothing. A wrong correction leaves every integrity check
     running over the diff; a wrong waiver switches one off. That is why the
     two kinds cannot share a copy, and why "one copy" was the wrong altitude
     for the rule.
@@ -2708,24 +2055,14 @@ class Commission:
     fields: Mapping[str, str] = field(default_factory=dict)
     #: Why nothing could be read. Non-empty only where `fields` is empty
     #: *because nothing was looked at*, which is the distinction a caller
-    #: needs: an empty `falsifies` otherwise means "read it, it declares
-    #: nothing".
+    #: needs: an empty `verify` otherwise means "read it, it commissions no
+    #: command".
     unread: str = ""
 
     @property
     def held(self) -> bool:
         """Whether the base holds a copy of the item at all."""
         return bool(self.fields)
-
-    @property
-    def falsifies(self) -> str:
-        """The waiver: enough of the assertion the item was commissioned to make untrue."""
-        return self.fields.get("falsifies", "").strip()
-
-    @property
-    def status(self) -> str:
-        """Whose the decision was; `needs-decision` here is the hand-off of a waiver."""
-        return self.fields.get("status", "").strip()
 
     @property
     def verify(self) -> str:
@@ -2745,30 +2082,25 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     `Commission` carrying no `unread` means the commission was read and holds
     nothing. Keeping "could not look" apart from "looked, found nothing" is
     the same distinction `front_matter_check` makes below, for the same
-    reason: folding is suppressed identically by both, and only one of them is
+    reason: a waiver is withheld identically by both, and only one of them is
     a finding.
 
     **Read from the base rather than from the working tree**, which is the
-    whole of what makes a waiver worth having. `PL-K82G` argued the field was
-    safe because `front_matter_check` refuses a branch that edits its own
-    item's front matter - true of a delegated review, and not of the self-audit
-    the close-out actually runs, where that guard is an advisory by design
+    whole of what makes a waiver worth having. `front_matter_check` refuses a
+    branch that edits its own item's front matter in a delegated review, but
+    in the self-audit the close-out runs that guard is an advisory by design
     (the close-out sets `status: done` in the same commit as the work). A
-    session could otherwise write the declaration beside the deletion it
-    excuses and fold its own integrity check. Reading the base holds the
-    property in both modes and needs no second guard: a line added on the
-    branch changes what a *later* branch is measured against, and nothing about
-    the branch that writes it.
+    session could otherwise write a `not-delegable:` reason beside the
+    deletion of its command and skip the command check (`PL-KSV2`). Reading
+    the base holds the property in both modes and needs no second guard: a
+    line added on the branch changes what a *later* branch is measured
+    against, and nothing about the branch that writes it.
 
     A base holding no copy of this item is not a failure to read - the item is
-    new on the branch, which is what every capture looks like. It declares
-    nothing, and the caller says so only where the branch claims otherwise.
-    Its `status` comes back empty for the same reason, which is also what stops
-    an item captured *and* closed on one branch from reaching the exemption
-    `self_declared_falsification` grants: there is no base copy to have left
-    the decision to it. Its `verify` comes back empty too, and there the
-    emptiness is what lets that same item close on a `not-delegable:` reason:
-    no command was commissioned for the branch to have removed.
+    new on the branch, which is what every capture looks like. Its `verify`
+    comes back empty, and the emptiness is what lets such an item close on a
+    `not-delegable:` reason: no command was commissioned for the branch to
+    have removed.
     """
     if not item.path:
         return Commission(unread="the item names no file, so no commission could be read")
@@ -2785,55 +2117,6 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     if declined:
         return Commission(unread=f"{base}:{was} declines {declined}")
     return Commission(fields=fields)
-
-
-def self_declared_falsification(commission: Commission, item: Item) -> str:
-    """The branch's own `falsifies:`, where the commission left the answer to it.
-
-    Empty in every other case, and the emptiness is the point: a `falsifies:`
-    line a branch writes beside the deletion it excuses is the worker's own
-    word for it, which is why `read_commission` reads the base at
-    all.
-
-    **The one commission that cannot declare in advance.** A `ready` item's
-    work is settled before the branch opens, so a reviewer can write the field
-    first and `PL-K82G`'s rule holds without exception. A `needs-decision`
-    item's cannot: the answer is the session's to make, and which assertions
-    become false depends on which answer it makes. `PL-G6J5` asked whether an
-    advisory should be re-based or retired, the count said retire, and the
-    close-out that deleted the advisory and its 29 assertions printed `FAIL no
-    existing assertion removed` with every other guard green. The guard fired
-    by construction on a whole class of correct close-outs, which is the shape
-    `CLAUDE.md` calls a check being routed around.
-
-    **The gate is the base's status, never the branch's**, and that is what
-    stops the exemption being self-granted. The base's copy reading
-    `status: needs-decision` *is* the standing statement that the question is
-    open and the answer is the session's; a session cannot write that on its
-    own branch and walk through, because it is read from the same base copy the
-    field would otherwise be. A `ready` item is untouched, so a delegated
-    worker still cannot add `falsifies:` to excuse deleting tests - which is
-    the property relaxing the check for every self-audited branch would have
-    given away (project owner, 2026-09-19, ratified, over adding the assertion
-    check to the four guards `--self` already relaxes).
-
-    Two further conditions, each narrowing it to the case that has no other
-    route:
-
-    - **The branch must be closing the item.** A `needs-decision` item still
-      open is mid-decision, and a declaration written then is not yet an
-      answer. Both closed statuses count, `dropped` as well as `done`: the
-      store has no third word for a closure, and neither is self-grantable
-      while the base's status is what opens the door.
-    - **The base must declare nothing.** Where it does, the commission already
-      said what becomes untrue and the ordinary path applies unchanged - there
-      is nothing this exemption exists to repair.
-    """
-    if not item.falsifies or commission.unread or commission.falsifies:
-        return ""
-    if commission.status != "needs-decision" or item.status not in CLOSED_STATUSES:
-        return ""
-    return item.falsifies
 
 
 def commissioned_result(root: Path, base: str, commission: Commission, correction: str) -> str:
@@ -3053,29 +2336,19 @@ def verify_item(
     So in self-audit the four **commission** checks report as advisories -
     still printed, still naming every path, with the reason they are not
     refusing - while the four **integrity** checks stay absolute: no
-    suppression added, no assertion removed, the item's own command passes,
-    and the project's own checks pass. That line is the whole design. A
+    suppression added and the item's own command passes, here, and, once for
+    the branch in `verify`, the unit tests catch a mutation of each changed
+    line and the project's own checks pass. That line is the whole design. A
     session may legitimately re-scope its own commission; it may not weaken
     the thing that measures it, and it may not skip the test.
 
-    Two of the four have a **declared** exemption, which is not a relaxation
+    The command check has a **declared** exemption, which is not a relaxation
     of that line but the reason it can stay absolute. Which copy of the item
-    each field behind them is read from follows one rule, stated on
+    each field behind it is read from follows one rule, stated on
     `Commission`: an outcome is the branch's and excuses nothing, a prediction
     is measured against the base's with the branch's correction run and
     printed, a waiver is the base's (`PL-B8HZ`).
 
-    - `falsifies:` is a waiver. It names an assertion the item was
-      commissioned to make untrue, and a matching removal folds out of the
-      assertion check and is printed beside it (`PL-K82G`). It turns on the
-      item as the *base* holds it - the commission - rather than on the
-      branch, so it is nothing a session can grant itself mid-work. One
-      commission cannot write the field in advance and hands the waiver to
-      the branch instead: a `needs-decision` item's answer is the session's
-      to make, so which assertions it falsifies is not known until it is
-      made. There the *base's status* is the gate, which a branch can no more
-      set than it can the field - `self_declared_falsification` holds the line
-      and says on the page that it did (`PL-ZMGR`).
     - A `dropped` item, or one carrying `not-delegable:`, has no command to
       run by construction, and the command check reports which applies
       (`PL-L4KX`). A dropped item that still carries one has it printed and
@@ -3114,7 +2387,8 @@ def verify_item(
     lines. Unlike `already_passing` this may not decline: the command is the
     thing being asked about, so "could not run it" rejects the work rather than
     abstaining. What exit 0 does not prove is that the work is right;
-    `project_check` and the reviewer's reading of the diff carry that.
+    `mutation_check`, `project_check` and the reviewer's reading of the diff
+    carry that.
 
     **A read git did not answer ends the audit, and never passes it**
     (`PL-9RFP`). Every check here is a claim about what the branch changed,
@@ -3180,8 +2454,8 @@ def _check_item(
     # Advisory unconditionally rather than under `self_audit`, because what
     # excuses the command is a fact about the item and not about who is asking.
     # And it does not stop early: that no command was recorded says nothing
-    # about whether the diff stayed inside `touches` or whether an assertion
-    # went missing, which is the half a hard stop was throwing away.
+    # about whether the diff stayed inside `touches` or whether a suppression
+    # arrived, which is the half a hard stop was throwing away.
     commission = read_commission(root, base, config.items_dir, item)
     exemption, missing = "", "none recorded"
     unexcused: tuple[str, ...] = ()
@@ -3352,70 +2626,13 @@ def _check_item(
         )
     )
 
-    # One diff read for both checks, where there were two. Each reads the
-    # statements of a Python file rather than its lines, and the lines only
-    # where the statements could not be read (`PL-4W2L`, `PL-CFWP`).
-    added, removed = _net_line_changes(root, base, commits)
+    # Each Python file is read as statements rather than lines, and as lines
+    # only where its statements could not be read (`PL-CFWP`). Whether the
+    # branch's tests still catch a change is not read from the diff at all:
+    # `mutation_check` runs mutants of the changed lines, once per run, beside
+    # the project's own check (`PL-CZXN`).
+    added = _net_line_changes(root, base, commits)
     report.checks.append(suppression_check(added_suppressions(root, base, commits, added)))
-
-    # Read at statement altitude rather than line by line (`PL-4W2L`). An
-    # assertion the base holds that the item's commits leave absent is the one
-    # fact decided; everything a line matcher used to guess from the shape of
-    # an edit - a reflow, a call site gaining an argument, a changed string -
-    # is either no change at all to the parser or a change put in front of the
-    # reader unpaired. What the check still cannot decide is intent, so an
-    # assertion the item was commissioned to *falsify* is declared, in the
-    # item, before the work (`PL-K82G`).
-    audit = removed_assertions(root, base, commits, removed)
-    unread = commission.unread
-    # `falsifies:` is a *waiver* and is the base's. The one declaration read
-    # from the branch rather than from the base is the hand-off, where the
-    # base's own copy left the answer to this session (`PL-ZMGR`). Empty on
-    # every other branch, so `declared` is the base's word in the ordinary case
-    # exactly as before.
-    self_declared = self_declared_falsification(commission, item)
-    declared = commission.falsifies or self_declared
-    check, folded = assertion_check(audit, declared, self_declared, base)
-    report.checks.append(check)
-
-    # Said only where there is something to say, so an ordinary branch - which
-    # declares nothing and has nothing to declare - sees no extra line. Each
-    # case is a declaration that did not do what it looks like it did, and all
-    # three are advisory: none of them folds anything, so whatever the diff
-    # removed is already being refused by the check above.
-    if item.falsifies and unread:
-        claim = (
-            f"this branch declares `falsifies: {item.falsifies}`, but {unread}, "
-            "so nothing was folded"
-        )
-    elif item.falsifies and not declared:
-        # The second sentence is the actionable half, and it was missing
-        # (`PL-YZJD`). The first says the declaration did not count and why the
-        # rule exists; a session reading only that concludes it made an
-        # avoidable procedural slip and looks for the step it skipped. The base's
-        # copy is read at its tip when this runs, not as of the fork, so a line
-        # merged onto the base mid-work does fold, and the sentence names that
-        # route (`PL-PLV0`, `PL-TKFD`).
-        claim = (
-            f"`{item.falsifies}` is declared on this branch and not in {base}'s copy of the "
-            "item, so nothing was folded: the declaration is the commission's, written "
-            "before the work, and one added beside the deletion it excuses is the worker's "
-            f"own word for it. To fold it, declare the line on {base} from an item-only "
-            f"branch, let that merge, bring {base} into this branch and re-audit. Triage, "
-            "before this branch's first commit, is the pass that writes it for nothing"
-        )
-    elif declared and not folded:
-        source = "this closure declares" if self_declared else f"{base} declares"
-        claim = (
-            f"{source} `{declared}` falsified, but no assertion matching it was "
-            "removed - the item is describing work this branch did not do"
-        )
-    else:
-        claim = ""
-    if claim:
-        report.checks.append(
-            Check("the `falsifies:` declaration holds", False, claim, advisory=True)
-        )
 
     report.checks.append(
         front_matter_check(root, base, config.items_dir, item, advisory=self_audit)
@@ -3514,6 +2731,136 @@ def _check_item(
     return report
 
 
+#: The mutation check's name on the page.
+MUTATION_CHECK = "the unit tests catch a mutation of each changed line"
+#: How long the mutation run may take before the check says it has no answer.
+#: On four cores on 2026-10-24 a run spent about five minutes before its first
+#: mutant, eight minutes on 186 mutants, and 36 minutes on 340, the largest
+#: batch of the 40 merges since 2026-10-01 that changed a mutated function.
+#: Two hours leaves room for a larger one, and for a busier machine, while a
+#: run that never ends still ends the check.
+MUTATION_TIMEOUT_S = 7200.0
+
+
+@dataclass(frozen=True)
+class MutationVerdict:
+    """What `mutation_command` printed, in the shape its contract names.
+
+    `uncaught` and `undecided` hold one entry per mutant of a changed line, as
+    the command wrote it for a reader; an entry may run over several lines.
+    `caught` counts the mutants the tests caught. `notes` says what the run did
+    not measure.
+    """
+
+    caught: int
+    uncaught: tuple[str, ...]
+    undecided: tuple[str, ...]
+    notes: tuple[str, ...]
+
+
+def read_verdict(text: str) -> MutationVerdict:
+    """The verdict `text` holds, or `ValueError` where it is not the shape the contract names.
+
+    Refused rather than read as far as it goes: a verdict missing its
+    `uncaught` list would otherwise read as one in which every mutant was
+    caught.
+    """
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError("the output is not a JSON object")
+    caught = data.get("caught")
+    if not isinstance(caught, int) or isinstance(caught, bool) or caught < 0:
+        raise ValueError("`caught` is not a count")
+    lists: dict[str, tuple[str, ...]] = {}
+    for key in ("uncaught", "undecided", "notes"):
+        value = data.get(key)
+        if not isinstance(value, list) or not all(isinstance(entry, str) for entry in value):
+            raise ValueError(f"`{key}` is not a list of strings")
+        lists[key] = tuple(value)
+    return MutationVerdict(caught, lists["uncaught"], lists["undecided"], lists["notes"])
+
+
+def mutation_check(root: Path, config: Config, base: str) -> Check:
+    """Whether the unit tests catch a mutation of each line the branch changed (`PL-CZXN`).
+
+    This replaced the check that no existing assertion was removed, which read
+    the diff's text to decide whether the branch weakened its tests. It refused rewrites the
+    work was meant to make, and sessions waived about 15 of its 17 refusals
+    since 2026-10-01, which teaches a reader to skim past a `REJECT`. A mutant
+    asks the question by behaviour instead: alter a line the branch changed,
+    and see whether a test fails (project owner, 2026-10-19, ratified, over
+    making the old check an advisory and over keeping it). Nothing here reads
+    the diff, so no reading of its text can be wrong.
+
+    `mutation_command` owns what a mutant is and when the tests caught one,
+    because the mutation tool is the project's. The package appends the base
+    as the last argument, and the command owes exit 0 and one JSON object:
+    `caught`, a count, and `uncaught`, `undecided` and `notes`, each a list of
+    strings. The check passes only where `uncaught` and `undecided` are both
+    empty. A command that exits non-zero, runs past `MUTATION_TIMEOUT_S`, or
+    prints anything else has given no answer, and the check refuses, because
+    "could not measure" is not "measured, and all caught".
+
+    Run once per `verify` run, beside `project_check`, because the answer is a
+    property of the branch and not of one item. Empty by default, which turns
+    the check into a note saying nothing measured the tests: docket names no
+    mutation tool, so the project supplies one.
+    """
+    if not config.mutation_command:
+        return Check(
+            MUTATION_CHECK,
+            False,
+            "not run: `docket.toml` sets no `mutation_command`, so nothing measured whether "
+            "the tests catch a change to the branch's lines",
+            advisory=True,
+        )
+    command = f"{config.mutation_command} {shlex.quote(base)}"
+    status, out, err = _run([command], root, shell=True, timeout=MUTATION_TIMEOUT_S)
+    if status == TIMED_OUT:
+        return Check(
+            MUTATION_CHECK,
+            False,
+            f"no answer: `{command}` did not finish in {MUTATION_TIMEOUT_S / 60:.0f} minutes",
+        )
+    if status != 0:
+        return Check(
+            MUTATION_CHECK,
+            False,
+            f"no answer: `{command}` exited {status}",
+            failure_evidence(out, err),
+        )
+    try:
+        verdict = read_verdict(out)
+    except ValueError as error:
+        return Check(
+            MUTATION_CHECK,
+            False,
+            f"no answer: `{command}` printed no verdict the check can read ({error})",
+            failure_evidence(out, err),
+        )
+    if verdict.uncaught:
+        detail = f"{len(verdict.uncaught)} mutant(s) of changed lines not caught"
+        if verdict.undecided:
+            detail += f", and {len(verdict.undecided)} undecided"
+    elif verdict.undecided:
+        detail = (
+            f"no answer for {len(verdict.undecided)} mutant(s) of changed lines, so whether "
+            "the tests catch them is not known"
+        )
+    elif verdict.caught:
+        detail = f"{verdict.caught} mutant(s) caught, and none on a changed line missed"
+    else:
+        detail = "no mutant of a changed line to run"
+    lines = [
+        line
+        for entry in (*verdict.uncaught, *verdict.undecided, *verdict.notes)
+        for line in split_lines(entry)
+    ]
+    return Check(
+        MUTATION_CHECK, not verdict.uncaught and not verdict.undecided, detail, tuple(lines)
+    )
+
+
 def project_check(root: Path, config: Config) -> Check:
     """Run the project's own full check once, whoever is asking.
 
@@ -3533,9 +2880,10 @@ def project_check(root: Path, config: Config) -> Check:
 def verify(
     root: Path, item: Item, config: Config, base: str, self_audit: bool = False
 ) -> Verification:
-    """Run every check against one item's branch, project-wide check included."""
+    """Run every check against one item's branch, the branch-wide two included."""
     report = verify_item(root, item, config, base, base_warning(root, base), self_audit)
     if not report.stopped_early:
+        report.checks.append(mutation_check(root, config, base))
         report.checks.append(project_check(root, config))
     return report
 
@@ -3543,7 +2891,7 @@ def verify(
 def verify_batch(
     root: Path, items: Sequence[Item], config: Config, base: str, self_audit: bool = False
 ) -> list[Verification]:
-    """Verify several items, running the project's own check exactly once.
+    """Verify several items, running the mutation run and the project's own check once each.
 
     The item's own command still runs per item, because that is what makes
     each one individually acceptable or rejectable - a batch that could only
@@ -3554,9 +2902,9 @@ def verify_batch(
     reports = [verify_item(root, item, config, base, note, self_audit) for item in items]
     outstanding = [report for report in reports if not report.stopped_early]
     if outstanding:
-        shared = project_check(root, config)
+        shared = (mutation_check(root, config, base), project_check(root, config))
         for report in outstanding:
-            report.checks.append(shared)
+            report.checks.extend(shared)
     return reports
 
 

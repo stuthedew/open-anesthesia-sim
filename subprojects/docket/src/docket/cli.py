@@ -18,7 +18,7 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-from . import arming, claiming, instructions, notes, render
+from . import arming, claiming, instructions, notes, render, sessions
 from .checks import (
     TIER_BANDS,
     Report,
@@ -1905,6 +1905,7 @@ def _capture(directory: Path, item: Item) -> str:
 #: items, which is as far as a check can go (`PL-X5JR`).
 SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("priority", "priority"),
+    ("owner-priority", "owner_priority"),
     ("effort", "effort"),
     ("status", "status"),
     ("classes", "classes"),
@@ -1918,7 +1919,6 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("payoff", "payoff"),
     ("verify", "verify"),
     ("not-delegable", "not_delegable"),
-    ("falsifies", "falsifies"),
     ("root-cause-of", "root_cause_of"),
     ("generator", "generator"),
     ("misread", "misread"),
@@ -2509,6 +2509,15 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(_since_filed(args, item, root, config))
     print()
     print(item.body.strip())
+    # The sessions that worked a closed item, joined from the session ledger
+    # at read time, so the item reads whole without a second copy of each
+    # session's facts on it (`PL-70M6`). Not for an open item, which no
+    # session has finished.
+    if closed:
+        git = _invocation(args).git
+        joined = sessions.item_sessions(item, root, git, ask_git=git is not None)
+        print()
+        print(sessions.format_item_sessions(joined))
     # An id on a gate entry the walker declined reads as placed by no section
     # in the plan line above, so that line is qualified here, beside the other
     # reads this answer went without (`PL-L4X3`).
@@ -6006,6 +6015,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     setter.add_argument("item")
     setter.add_argument("--priority", choices=PRIORITIES)
+    setter.add_argument(
+        "--owner-priority",
+        metavar="P1, YYYY-MM-DD[, ratified]",
+        help="record that the project owner set this priority, and when",
+    )
     setter.add_argument("--effort", choices=EFFORTS)
     setter.add_argument("--status", choices=STATUSES)
     for flag, metavar in (
@@ -6027,7 +6041,6 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--deferred-from", metavar="vX.Y.Z - WHY")
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
-    setter.add_argument("--falsifies", metavar="FRAGMENT")
     setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--misread", metavar="FACT")
     setter.add_argument("--impairs-generators", metavar="WHY")
@@ -6081,7 +6094,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     generators.set_defaults(func=cmd_generators)
 
-    show = add("show", "print one item")
+    show = add(
+        "show",
+        "print one item, and for a closed item the sessions that worked it: model, effort and cost",
+        epilog=(
+            f"A closed item ends with a section headed '{sessions.SECTION_HEADING}': one line per "
+            "session joined through the item's pull request, giving the session id, the "
+            f"model that last served it, its effort level and its cost in USD, from "
+            f"{sessions.LEDGER_NAME}. This is where to find which model and effort worked "
+            "an item."
+        ),
+    )
     show.add_argument("item")
     show.set_defaults(func=cmd_show)
 

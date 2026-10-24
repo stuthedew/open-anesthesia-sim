@@ -1,4 +1,4 @@
-"""PreToolUse hook on a Projects thread's reply tools: refuse an unrecorded read or merge ask.
+"""PreToolUse hook on the Projects reply and post tools: refuse an unrecorded read or merge ask.
 
 **What it refuses** (`PL-TLPH`). A `reply`, an `update_message` or an
 `ask_decision` card whose text asks the owner to read or merge a pull request,
@@ -24,14 +24,25 @@ asks only about its own pull request.
 **What an ask is, is a list, not an inference.** `ASKS` names the phrasings
 sessions have used, the closing-block lines that carry them, and close
 variants of each. A hand-off such as "over to you" or "your call" counts only
-in a sentence that also names a pull request. A wording the list does not
+in a sentence that also names a pull request. A noun hand-off that reports a
+decision already recorded, such as "recorded your choice" or "your choice is
+recorded", does not count (`PL-YGR6`). A wording the list does not
 name still passes, so a new one seen in a thread is added to `ASKS` with a
 test row. A message that matches by accident is told to reword. A false
 refusal costs a rewording, while a missed ask costs the owner's attention, so
 the list leans toward refusing.
 
-**Not wired on the coordinator's `post_message`.** The coordinator's checkout
-is not the pull request's branch, so `arm` cannot answer for it there.
+**The coordinator's `post_message` gets a partial check** (`PL-YV90`). The
+coordinator relays a thread's ask to the owner in the project chat. Its
+checkout is on no pull request's branch, so `arm` cannot answer for it there,
+and this hook does not run `arm` for that tool. It refuses a post that matches
+`ASKS` and carries no line in the form `bin/docket arm --owner-ask` renders.
+`docket.arming.renders_owner_ask` recognizes that form from the templates the
+renderer uses, so the hook holds no copy of it. The check cannot tell the
+recorded line from a well-formed wrong one. Having `arm` answer for a named
+pull request would, at the cost of a fetch and a worktree per post (project
+owner, 2026-10-24, ratified, over building that now). Nobody has seen that
+failure, and this check would become that route's first stage.
 
 **Fails open where it cannot answer**: a payload it cannot read, a `bin/docket`
 that is missing, times out or exits with anything but 0 or 3. A guard that
@@ -39,7 +50,8 @@ breaks a thread's replies costs more than the round it saves. `arm`'s own
 `unknown` exits 3 under `--owner-ask`, and is refused, because then nobody can
 say an ask is recorded. `OWNER_ASK_GUARD_ARM` names a Python script run in place of
 `arm` for the tests, and is set nowhere else. `NO_ASK` is read from
-`docket.arming`, found through `shell_split.py` as the Bash guards find it.
+`docket.arming`, found through `shell_split.py` as the Bash guards find it,
+and so is `renders_owner_ask`.
 
 Standard library only, since a hook runs before any virtualenv is known.
 """
@@ -58,27 +70,66 @@ import hook_input
 import shell_split  # noqa: F401 - puts docket's src on sys.path
 
 # isort: split
-from docket.arming import NO_ASK
+from docket.arming import NO_ASK, renders_owner_ask
 from docket.lines import split_lines
 
-#: The tools whose text reaches the owner in a thread, with the fields that carry it.
-TEXT_FIELDS = {
+#: The coordinator's post to the project chat, which gets the partial check.
+COORDINATOR_POST = "mcp__hearthbot__post_message"
+
+#: The tools whose text reaches the owner, with the fields that carry it.
+#: `None` reads every string field: `post_message`'s schema could not be read
+#: from the session that wired it on 2026-10-24, so the hook does not guess
+#: which field holds the text.
+TEXT_FIELDS: dict[str, tuple[str, ...] | None] = {
     "mcp__hearthbot__reply": ("text",),
     "mcp__hearthbot__update_message": ("text",),
     "mcp__hearthbot__ask_decision": ("question", "context", "reason"),
+    COORDINATOR_POST: None,
 }
 
 #: Where an imperative starts: a line, a list item or a sentence.
 _START = r"(?:^[ \t]*(?:[-*+]|\d+[.)])?[ \t]*|[.!?:;][ \t]+)"
 
+#: Verbs that report a decision the owner has already made, as in "recorded
+#: your choice" or "your choice is recorded". A noun hand-off in either of
+#: those forms is a status report, not an ask. The hook refused two such
+#: reports during the v0.6.0 cut on 2026-10-20 (`PL-YGR6`). The list is short
+#: on purpose: a report worded some other way is still refused, which is the
+#: direction this hook leans.
+_RECORDED = ("recorded", "noted", "applied", "logged", "saved", "followed", "implemented")
+
+#: A noun hand-off that is the subject of a recording verb in the passive:
+#: "your choice on the card is recorded", "your call has been noted". At most
+#: three words may come between the noun and the verb, and none of them may
+#: start a question, so "your call on whether #1688 is applied" is still an ask.
+#: A verb followed by "when", "once", "after", "if" or "as soon" describes a
+#: decision still to come, so "your choice is applied when you merge #1700" is
+#: still an ask too.
+_REPORTED_AFTER = (
+    r"(?!(?:[ \t]+(?:on|for|about|in|from|at)"
+    r"(?:[ \t]+(?!(?:whether|if|which|what|how|who|when)\b)[\w#'-]+){1,3})?"
+    r"[ \t]+(?:is|was|has[ \t]+been|have[ \t]+been)[ \t]+(?:now[ \t]+)?"
+    r"(?:" + "|".join(_RECORDED) + r")\b"
+    r"(?![ \t]+(?:when|once|after|if|as[ \t]+soon)\b))"
+)
+
+#: A noun hand-off that is the object of a recording verb: "recorded your
+#: choice". Python's lookbehind needs a fixed width, so each verb gets its own,
+#: with exactly one space or tab before "your".
+_REPORTED_BEFORE = "".join(rf"(?<!\b{verb}[ \t])" for verb in _RECORDED)
+
 #: Words that hand a decision to the owner. They are an ask only beside a pull
 #: request, since "the colour is your call" asks for no read. A hand-off just
 #: after a quote mark is a mention, as in a reply listing what the hook counts,
-#: which this hook refused on 2026-10-19 (`PL-XR8B`).
+#: which this hook refused on 2026-10-19 (`PL-XR8B`). A noun hand-off that
+#: reports a recorded decision is not one either (`_RECORDED`).
 _HANDOFF = (
     r"(?<![\"'])\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you"
-    r"|your[ \t]+(?:call|decision|choice|go)"
-    r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
+    r"|"
+    + _REPORTED_BEFORE
+    + r"your[ \t]+(?:call|decision|choice|go)\b"
+    + _REPORTED_AFTER
+    + r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
 )
 
 #: A pull request named by number or by name.
@@ -128,10 +179,10 @@ ARM_TIMEOUT_S = 45
 
 def message_text(tool_name: str, tool_input: object) -> str | None:
     """The text a call would show the owner, or None for a tool this hook does not read."""
-    fields = TEXT_FIELDS.get(tool_name)
-    if fields is None or not isinstance(tool_input, dict):
+    if tool_name not in TEXT_FIELDS or not isinstance(tool_input, dict):
         return None
-    parts = [tool_input.get(field) for field in fields]
+    fields = TEXT_FIELDS[tool_name]
+    parts = list(tool_input.values()) if fields is None else [tool_input.get(f) for f in fields]
     options = tool_input.get("options")
     if isinstance(options, list):
         for option in options:
@@ -157,13 +208,14 @@ def asked(text: str) -> str | None:
     return None
 
 
+def squeezed(said: str) -> str:
+    """`said` without emphasis, its quote marks straight and its spacing single, for matching."""
+    return " ".join(plain(said).split())
+
+
 def carries(text: str, line: str) -> bool:
     """Whether `text` holds `line` word for word, ignoring emphasis, case and spacing."""
-
-    def squeezed(said: str) -> str:
-        return " ".join(plain(said).split()).casefold()
-
-    return squeezed(line) in squeezed(text)
+    return squeezed(line).casefold() in squeezed(text).casefold()
 
 
 def owner_ask(root: Path) -> tuple[int, str] | None:
@@ -209,6 +261,25 @@ def mistaken(phrase: str) -> str:
     )
 
 
+def coordinator_refusal(text: str) -> str | None:
+    """Why the coordinator's post may not go to the owner, or None to let it through.
+
+    It runs no `arm`, because the coordinator's checkout is on no pull
+    request's branch. It checks only that an ask carries a line in a rendered
+    `Owner-ask:` form (`PL-YV90`).
+    """
+    phrase = asked(text)
+    if phrase is None or renders_owner_ask(squeezed(text)):
+        return None
+    return (
+        f'This post asks the owner to read or merge a pull request ("{phrase}"), and it '
+        "carries no Owner-ask line. Forward the thread's Owner-ask line word for word, the "
+        "line `bin/docket arm --owner-ask` prints on the thread's branch, or send the owner "
+        "nothing about that pull request. A bare 'read #N' relayed from here costs the owner "
+        "as much attention as one sent from a thread (PL-YV90)." + mistaken(phrase)
+    )
+
+
 def refusal(text: str, root: Path) -> str | None:
     """Why this message may not go to the owner, or None to let it through."""
     phrase = asked(text)
@@ -248,10 +319,14 @@ def main() -> int:
         return 0
     if not isinstance(payload, dict):
         return 0
-    text = message_text(str(payload.get("tool_name", "")), payload.get("tool_input"))
+    tool_name = str(payload.get("tool_name", ""))
+    text = message_text(tool_name, payload.get("tool_input"))
     if not text:
         return 0
-    reason = refusal(text, hook_input.project_root())
+    if tool_name == COORDINATOR_POST:
+        reason = coordinator_refusal(text)
+    else:
+        reason = refusal(text, hook_input.project_root())
     if reason is None:
         return 0
     sys.stdout.write(

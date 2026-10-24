@@ -5,10 +5,18 @@ of `-` or `<` in place of `<=`. The tests kill a mutant when at least one of
 them fails on it. A mutant that every test passes has survived, and it points at
 a fault that the tests would not catch. This tool runs mutmut over the
 functions that the current branch changes and prints each survivor with its
-diff, so the question is asked at review while the change is fresh. It is a
-measurement and not a gate, so it exits 0 whatever survives. The project owner
-chose a measurement over a mutation score to reach (project owner, 2026-10-17,
-ratified, `PL-Y1PS`).
+diff, so the question is asked at review while the change is fresh. The tool
+itself exits 0 whatever survives. The project owner chose this over a mutation
+score to reach (project owner, 2026-10-17, ratified, `PL-Y1PS`).
+
+**`--verdict` is the one gate, and it is narrower than a score.** It prints, as
+JSON, the mutants of the lines the branch changed that the tests did not catch,
+and `docket verify` refuses the branch while there are any. A survivor on a line
+the branch left alone is reported and not counted. This replaced verify's check
+that no existing assertion was removed, which read the diff's text and was
+waived about 15 times in 17 (project owner, 2026-10-19, ratified, over making
+that check an advisory and over keeping it, `PL-CZXN`). `verdict` states the
+rule.
 
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
@@ -68,13 +76,13 @@ import sys
 import tomllib
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import imports_product, is_test_file  # noqa: E402
+from docket.arming import TESTS, imports_product, is_test_file  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
@@ -123,6 +131,26 @@ TIERS_NOT_RUN = (
     'still catch a survivor. docs/mutation-testing.md, section "Second tier", says how to '
     "run a survivor against the whole suite."
 )
+#: The statuses that mean the tests caught a mutant. A timeout counts, as PIT
+#: and Stryker count it, because the mutant made a test run past its limit.
+#: mutmut reports "segfault" when a signal killed the test process, which a
+#: reader sees as plainly as a failed test.
+CAUGHT = frozenset({"killed", "timeout", "caught by type check", "segfault"})
+#: The statuses that mean the tests did not catch a mutant: every test that
+#: reaches its function passed, or no test reaches the function at all. Any
+#: status in neither set is one this tool could not decide, such as
+#: "unsettled" or mutmut's "suspicious".
+MISSED = frozenset({"survived", "no tests"})
+#: Why a changed function can have no mutants.
+NO_MUTANTS = (
+    "mutmut does not mutate a decorated function (other than a staticmethod or classmethod), "
+    "__new__, __setattr__ or __getattribute__, and a function may hold nothing it can change."
+)
+#: How many names a note lists before it counts the rest.
+NOTE_NAMES = 5
+#: One hunk header of the diff `mutmut show` prints. Its old side numbers the
+#: lines of the function's own text, from 1.
+SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
 
 
 @dataclass(frozen=True)
@@ -256,6 +284,22 @@ class Change:
     units: list[Unit]
     #: Lines changed outside any unit, by file, for the report.
     outside: dict[str, list[int]]
+    #: The lines changed in each file that mutmut mutates, or `None` where the
+    #: whole file is new. `verdict` counts a mutant only on one of these.
+    rows: dict[str, set[int] | None] = field(default_factory=dict)
+    #: The changed test files that import the simulator, deleted ones included.
+    #: A mutant measures the code, so nothing here measures whether one of
+    #: these still catches what it caught before, and `verdict` says so.
+    tests: list[str] = field(default_factory=list)
+
+
+def _imports_simulator(root: Path, fork: str, path: str) -> bool:
+    """Whether a test file imports the simulator, read from the fork's copy where it is deleted."""
+    if (root / path).is_file():
+        source = (root / path).read_text(encoding="utf-8")
+    else:
+        source = read_git(["show", f"{fork}:{path}"], root)
+    return imports_product(ast.parse(source))
 
 
 def branch_change(root: Path, base: str, table: Mapping[str, object]) -> Change:
@@ -263,11 +307,20 @@ def branch_change(root: Path, base: str, table: Mapping[str, object]) -> Change:
     fork, against = doc_check._diff_from(root, base)
     changed: list[Unit] = []
     outside: dict[str, list[int]] = {}
+    changed_by_file: dict[str, set[int] | None] = {}
+    tests: list[str] = []
     for path in doc_check._changed_paths(root, fork):
+        if (
+            path.startswith(TESTS)
+            and is_test_file(PurePosixPath(path).name)
+            and _imports_simulator(root, fork, path)
+        ):
+            tests.append(path)
         if not is_mutated(path, table) or not (root / path).is_file():
             continue
         found = units(path, (root / path).read_text(encoding="utf-8"))
         rows = changed_rows(read_git(["diff", "-U0", fork, "--", path], root))
+        changed_by_file[path] = rows
         if rows is None:
             changed.extend(found)
             continue
@@ -277,7 +330,7 @@ def branch_change(root: Path, base: str, table: Mapping[str, object]) -> Change:
         left = sorted(row for row in rows if not any(u.first <= row <= u.last for u in found))
         if left:
             outside[path] = left
-    return Change(against, changed, outside)
+    return Change(against, changed, outside, changed_by_file, tests)
 
 
 def working_files(root: Path, tree: str) -> list[str]:
@@ -330,9 +383,11 @@ def run(root: Path, patterns: Sequence[str], table: Mapping[str, object]) -> tup
     tests = simulator_unit_tests(root)
     (mutants / selection_file(table)).write_text("".join(f"{t}\n" for t in tests), "utf-8")
     log = mutants / RUN_LOG
+    # To stderr, so that stdout holds only the report, or under `--verdict` the JSON.
     print(
         f"Running mutmut against the {len(tests)} simulator test files under {UNIT_TESTS}/. "
         f"Its progress goes to {log.relative_to(root)}.",
+        file=sys.stderr,
         flush=True,
     )
     return _mutmut(root, "run", *patterns, log=log).returncode, log
@@ -444,11 +499,7 @@ def unit_lines(change: Change, found: Mapping[str, str]) -> tuple[list[str], dic
         if names:
             lines.append(f"  {unit.label}: {len(names)} mutants - {counts(mine[n] for n in names)}")
         else:
-            lines.append(
-                f"  {unit.label}: no mutants. mutmut does not mutate a decorated function "
-                "(other than a staticmethod or classmethod), __new__, __setattr__ or "
-                "__getattribute__, and a function may hold nothing it can change."
-            )
+            lines.append(f"  {unit.label}: no mutants. {NO_MUTANTS}")
     for path, rows in change.outside.items():
         lines.append(
             f"  {path}: {len(rows)} changed lines outside any function, from line {rows[0]} "
@@ -473,6 +524,140 @@ def report_branch(root: Path, change: Change, found: Mapping[str, str]) -> str:
     return "\n".join(lines)
 
 
+def mutated_rows(unit: Unit, lines: Sequence[str], shown: str) -> set[int] | None:
+    """The lines of `unit`'s file that one mutant changes, placed from `mutmut show`'s diff.
+
+    `mutmut show` diffs the function's own text, whose line 1 is the first
+    line libcst prints for it: its first decorator or its `def`, or a comment
+    or blank line directly above them, which libcst counts as part of the
+    function. So the diff's context and removed lines are tried at each offset
+    that puts line 1 between `unit.first` and the comments above it. Each is
+    compared with the file's line there, both stripped, because a method
+    prints one indent shallower than it stands in its class. Exactly one
+    offset must fit every line, and the removed lines placed at it are the
+    answer. `None` where no offset fits, or more than one does.
+    """
+    named: list[tuple[int, str, bool]] = []
+    at: int | None = None
+    for line in split_lines(shown):
+        hunk = SHOWN_HUNK_RE.match(line)
+        if hunk:
+            at = int(hunk.group(1))
+        elif at is not None and line[:1] in (" ", "-"):
+            named.append((at, line[1:].strip(), line[:1] == "-"))
+            at += 1
+    if not any(removed for _, _, removed in named):
+        return None
+    above = unit.first - 1
+    while above > 0 and lines[above - 1].strip()[:1] in ("", "#"):
+        above -= 1
+    fits = [
+        offset
+        for offset in range(above, unit.first)
+        if all(
+            0 < row + offset <= len(lines) and lines[row + offset - 1].strip() == text
+            for row, text, _ in named
+        )
+    ]
+    if len(fits) != 1:
+        return None
+    return {row + fits[0] for row, _, removed in named if removed}
+
+
+def _edited_lines(shown: str) -> list[str]:
+    """The removed and added lines of `mutmut show`'s diff, indented for a note."""
+    lines = split_lines(shown)
+    start = next((at for at, line in enumerate(lines) if SHOWN_HUNK_RE.match(line)), len(lines))
+    return [f"    {line}" for line in lines[start:] if line[:1] in ("-", "+")]
+
+
+def _listed(names: Sequence[str]) -> str:
+    """The first `NOTE_NAMES` of `names`, then a count of the rest."""
+    shown = ", ".join(names[:NOTE_NAMES])
+    return shown + (f", and {len(names) - NOTE_NAMES} more" if len(names) > NOTE_NAMES else "")
+
+
+def verdict(root: Path, change: Change, found: Mapping[str, str]) -> dict[str, object]:
+    """What `docket verify` reads: the mutants of changed lines that the tests did not catch.
+
+    A mutant counts only where a line it changes is one the branch changed.
+    One the tests caught, by `CAUGHT`, is counted and needs no line. One they
+    missed, by `MISSED`, or whose status decides nothing, is placed with
+    `mutated_rows`. On a changed line it goes into `uncaught` or `undecided`.
+    On a line the branch did not change it is named in a note and not
+    counted, because that line was not this branch's to test. One that cannot
+    be placed is `undecided`, because a guess at its line could pass a branch
+    on a line it wrote. In a new file every line is changed, so nothing needs
+    placing.
+
+    `notes` says what the run did not measure: a changed line outside any
+    function, a changed function with no mutants, a changed line that carries
+    `# pragma: no mutate`, and each changed test file that imports the
+    simulator. A mutant measures the code, so it cannot say whether a changed
+    test still catches what it caught before.
+    """
+    caught = 0
+    uncaught: list[str] = []
+    undecided: list[str] = []
+    elsewhere: list[str] = []
+    notes: list[str] = []
+    files = {path: split_lines((root / path).read_text(encoding="utf-8")) for path in change.rows}
+    if not change.units:
+        notes.append(f"No function that mutmut mutates changed against {change.against}.")
+    for unit in change.units:
+        names = sorted(name for name in found if fnmatch.fnmatch(name, unit.pattern))
+        if not names:
+            notes.append(f"Not mutated: {unit.label} changed and has no mutants. {NO_MUTANTS}")
+        rows = change.rows.get(unit.path)
+        for name in names:
+            status = found[name]
+            if status in CAUGHT:
+                caught += 1
+                continue
+            shown = _mutmut(root, "show", name)
+            placed = (
+                mutated_rows(unit, files[unit.path], shown.stdout) if not shown.returncode else None
+            )
+            if rows is not None and placed is None:
+                undecided.append(f"{unit.path}: {name} - {status}, on a line not placed")
+                continue
+            if rows is not None and placed is not None and not placed & rows:
+                elsewhere.append(name)
+                continue
+            where = f"{unit.path}:{min(placed)}" if placed else unit.path
+            entry = "\n".join([f"{where} {name} - {status}", *_edited_lines(shown.stdout)])
+            (uncaught if status in MISSED else undecided).append(entry)
+    for path, outside in change.outside.items():
+        notes.append(
+            f"Not mutated: {len(outside)} changed lines of {path} outside any function, from "
+            f"line {outside[0]} to {outside[-1]}, since mutmut never mutates module-level code "
+            "or class attributes."
+        )
+    for path, rows in change.rows.items():
+        lines = files[path]
+        for row in sorted(range(1, len(lines) + 1) if rows is None else rows):
+            if (
+                row <= len(lines)
+                and "# pragma:" in lines[row - 1]
+                and "no mutate" in lines[row - 1]
+            ):
+                notes.append(f"Exempted by `# pragma: no mutate` on a changed line: {path}:{row}")
+    if elsewhere:
+        notes.append(
+            f"Not counted: {len(elsewhere)} mutants that the tests did not catch, on lines of the "
+            f"changed functions that this branch did not change: {_listed(elsewhere)}."
+        )
+    if change.tests:
+        notes.append(
+            f"Not measured: whether {len(change.tests)} changed test files that import the "
+            "simulator still catch what they caught before, since a mutant changes the code "
+            f"and not a test: {_listed(change.tests)}."
+        )
+    if change.units:
+        notes.append(TIERS_NOT_RUN)
+    return {"caught": caught, "uncaught": uncaught, "undecided": undecided, "notes": notes}
+
+
 def report_all(found: Mapping[str, str]) -> str:
     """The report of a run on every mutant: the kill rate of each module, then the totals."""
     # A mutant's name is its module, a dot, and the mangled name of its
@@ -494,9 +679,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to run in")
     parser.add_argument("--base", help="branch to diff against; the default branch by default")
-    parser.add_argument("--all", action="store_true", help="run every mutant, not the changed ones")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--all", action="store_true", help="run every mutant, not the changed ones")
+    modes.add_argument(
+        "--verdict",
+        action="store_true",
+        help="print, as JSON for docket verify, the changed lines' mutants the tests missed",
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
+
+    def answer(change: Change, found: Mapping[str, str]) -> str:
+        if args.verdict:
+            # ASCII, so the reader decodes it the same under any locale.
+            return json.dumps(verdict(root, change, found), indent=1)
+        return report_branch(root, change, found)
 
     try:
         table = mutmut_table(root)
@@ -522,13 +719,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise Refusal(f"the default branch could not be established ({base!r} is a guess)")
         change = branch_change(root, base, table)
         if not change.units:
+            if args.verdict:
+                print(answer(change, {}))
+                return 0
             print(f"No function that mutmut mutates changed against {change.against}.")
             for path, rows in change.outside.items():
                 print(f"  {path}: {len(rows)} changed lines outside any function.")
             return 0
         code, log = run(root, [unit.pattern for unit in change.units], table)
         if code and NOTHING_MATCHES in log.read_text(encoding="utf-8", errors="replace"):
-            print(report_branch(root, change, {}))
+            print(answer(change, {}))
             return 0
         if code:
             raise Refusal(f"mutmut exited {code}. The end of {log}:\n{_tail(log)}")
@@ -540,7 +740,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + LISTING_UNREAD
             )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
-        print(report_branch(root, change, settle(root, found, codes)))
+        print(answer(change, settle(root, found, codes)))
         return 0
     except (Refusal, GitUnanswered, OSError, SyntaxError, ValueError, KeyError) as error:
         reason = str(error) if isinstance(error, Refusal) else repr(error)

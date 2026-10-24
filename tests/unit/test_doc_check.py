@@ -62,9 +62,7 @@ from docket.roadmap import (
 from docket.shell import script_lines
 from docket.verify import (
     added_suppressions,
-    assertion_check,
     is_suppression_statement,
-    removed_assertions,
     sanctioned_queue_edit,
     suppression_check,
 )
@@ -168,7 +166,7 @@ ROADMAP = """# Roadmap
 | \u2014 | **v0.3.x \u2014 a readability pass** | A patch, not a milestone. | \u2014 |
 | 2 | **v0.4.0 \u2014 the teachable case** | Scoped below. | 5 M |
 | 3 | **Gate 1** | Frozen when v0.5.0 is scoped. | \u2014 |
-| 4 | **v0.5.0 \u2014 the case you can branch** | Not yet scoped. | \u2014 |
+| 4 | **v0.5.0 \u2014 the case you can branch** | The intended order. | \u2014 |
 | \u2014 | **MVP complete** | Run, branch, compare. | \u2014 |
 
 ## Planned milestones
@@ -2338,6 +2336,38 @@ def test_an_unnumbered_marker_is_accepted(tmp_path: Path) -> None:
     """ "MVP complete" is a boundary on the timeline, not a step, and must not
     have to invent a version or a number to sit there."""
     assert not any("MVP complete" in e for e in _errors(_repo(tmp_path)))
+
+
+def _line_holding(text: str, fragment: str) -> int:
+    """The 1-based number of the first line of `text` that holds `fragment`."""
+    return next(n for n, line in enumerate(text.splitlines(), 1) if fragment in line)
+
+
+def test_a_timeline_row_that_says_not_yet_is_an_error(tmp_path: Path) -> None:
+    """`PL-0B22`: a row said "Not yet scoped or sized." five days after its
+    inventory had sized it, because the inventory's brief never named the row."""
+    roadmap = ROADMAP.replace("The intended order.", "Not yet scoped or sized.")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    line = _line_holding(roadmap, "Not yet scoped or sized.")
+    assert any(e.startswith(f'ROADMAP.md:{line}: "Not yet" under') for e in errors)
+
+
+def test_a_not_yet_wrapped_across_lines_under_the_timeline_is_an_error(tmp_path: Path) -> None:
+    """Prose wraps between any two words, so a line-by-line search would miss
+    the paragraphs under the table that say which rows are scoped."""
+    paragraph = "Row 4 is the intended order and is not\nyet scoped.\n\n"
+    roadmap = ROADMAP.replace("## Planned milestones", paragraph + "## Planned milestones")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    line = _line_holding(roadmap, "Row 4 is the intended order")
+    assert any(e.startswith(f'ROADMAP.md:{line}: "not yet" under') for e in errors)
+
+
+def test_a_not_yet_outside_the_timeline_is_not_read(tmp_path: Path) -> None:
+    """The rolling-wave section defines what a row not yet scoped carries, and
+    that definition stays true however the rows move."""
+    roadmap = ROADMAP.replace("Nothing yet.", "A row not yet scoped carries no size.")
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    assert not any('under § "The timeline"' in e for e in errors)
 
 
 def test_a_timeline_that_has_vanished_is_an_error(tmp_path: Path) -> None:
@@ -8382,18 +8412,13 @@ def _suppressions(source: str) -> list[str]:
 #: A statement every interpreter tokenizes and none parses, standing in for
 #: syntax newer than the bare `python3` docket runs on (`PL-TC2D`).
 NEWER_SYNTAX = "\n\nnewer = = 'syntax this interpreter cannot parse'\n"
-#: A test whose docstring opens a line with `assert` and whose assertion wraps.
-WRAPPED_TEST = (
-    'def test_b() -> None:\n    """Pins the result.\n\n    assert this reads as {}.\n    """\n'
-    "    assert (\n        result == {}\n    )\n"
-)
 
 
-def _integrity(tmp_path: Path, before: str, after: str, check: str) -> list[str]:
-    """What `docket verify`'s `check` says of a test file rewritten from `before` to `after`.
+def _integrity(tmp_path: Path, before: str, after: str) -> list[str]:
+    """What `docket verify`'s suppression check says of a test file rewritten from `before`.
 
-    Its detail, then the lines under it but the closing note, a file named as
-    read another way cut before the reason, which names a commit.
+    Its detail, then the lines under it, a file named as read another way cut
+    before the reason, which names a commit.
     """
     root = tmp_path / "audited"
     test = root / "tests" / "test_x.py"
@@ -8403,16 +8428,10 @@ def _integrity(tmp_path: Path, before: str, after: str, check: str) -> list[str]
     test.write_text(after, encoding="utf-8")
     _git(root, "commit", "-qam", "PL-K7QX rewrite it")
     commits = (_git(root, "rev-parse", "HEAD"),)
-    added, removed = docket_verify._net_line_changes(root, "HEAD~1", commits)
-    if check == "assertions":
-        audit = removed_assertions(root, "HEAD~1", commits, removed)
-        found, _ = assertion_check(audit, "", "", "HEAD~1")
-    else:
-        found = suppression_check(added_suppressions(root, "HEAD~1", commits, added))
+    added = docket_verify._net_line_changes(root, "HEAD~1", commits)
+    found = suppression_check(added_suppressions(root, "HEAD~1", commits, added))
     return [found.detail] + [
-        line.partition(" - ")[0] if line.startswith("read ") else line
-        for line in found.lines
-        if not line.startswith("which of these")
+        line.partition(" - ")[0] if line.startswith("read ") else line for line in found.lines
     ]
 
 
@@ -10637,55 +10656,14 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _suppressions('NOTE = f"""\n{pytest.mark.skip}\n"""\n'),
         [],
     ),
-    # Both integrity checks again, on a file the parser refuses and the
-    # tokenizer reads (`PL-TC2D`): through the tokenizer, a docstring is one
-    # string and a bracketed `assert` one statement, so neither is a fragment.
-    "assertions, a docstring line opening assert where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
-            WRAPPED_TEST.format("plainer prose", 1) + NEWER_SYNTAX,
-            "assertions",
-        ),
-        ["none", "read through the tokenizer, not parsed: tests/test_x.py"],
-    ),
-    "assertions, a bracketed assert loosened where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
-            WRAPPED_TEST.format("prose", 2) + NEWER_SYNTAX,
-            "assertions",
-        ),
-        [
-            "1 assertion(s)",
-            "tests/test_x.py::test_b",
-            "    was  assert ( result == 1 )",
-            "    now  assert ( result == 2 )",
-            "read through the tokenizer, not parsed: tests/test_x.py",
-        ],
-    ),
-    "assertions, a deleted assert a docstring repeats where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            "def test_b() -> None:\n    assert value == 1\n" + NEWER_SYNTAX,
-            'def test_b() -> None:\n    """Once held:\n\n    assert value == 1\n    """\n'
-            + NEWER_SYNTAX,
-            "assertions",
-        ),
-        [
-            "1 assertion(s)",
-            "tests/test_x.py::test_b",
-            "    was  assert value == 1",
-            "    now  nothing in its place",
-            "read through the tokenizer, not parsed: tests/test_x.py",
-        ],
-    ),
+    # The suppression check again, on a file the parser refuses and the
+    # tokenizer reads (`PL-TC2D`): through the tokenizer, a marker split by a
+    # backslash is one statement, so it is no fragment.
     "suppressions, a mark split by a backslash where the parser refuses": (
         lambda tmp_path: _integrity(
             tmp_path,
             "def test_b(): ...\n" + NEWER_SYNTAX,
             "@pytest.mark.\\\n    skip(reason='flaky')\ndef test_b(): ...\n" + NEWER_SYNTAX,
-            "suppressions",
         ),
         [
             "1 line(s)",

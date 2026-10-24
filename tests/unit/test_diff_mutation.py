@@ -32,6 +32,7 @@ from diff_mutation import (
     is_mutated,
     main,
     module_name,
+    mutated_rows,
     mutmut_table,
     recorded_exit_codes,
     report_all,
@@ -41,6 +42,7 @@ from diff_mutation import (
     simulator_unit_tests,
     statuses,
     units,
+    verdict,
     working_files,
 )
 
@@ -500,3 +502,206 @@ def test_main_refuses_a_tree_with_no_table(
     _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\n')
     assert main(["--root", str(tmp_path), "--base", "main"]) == 1
     assert "no [tool.mutmut] table" in capsys.readouterr().err
+
+
+def _shown(name: str, hunk: str, *lines: str) -> str:
+    """What `mutmut show` prints for one mutant: its status, two headers, then one hunk."""
+    path = "src/pkg/core/model.py"
+    return "\n".join([f"# {name}: survived", f"--- {path}", f"+++ {path}", hunk, *lines]) + "\n"
+
+
+#: `Model.step` of `SOURCE` with its body's one line mutated, as `mutmut show`
+#: prints a method: one indent shallower than it stands in the class.
+STEP_SHOWN = _shown(
+    "pkg.core.model.xǁModelǁstep__mutmut_1",
+    "@@ -1,2 +1,2 @@",
+    " def step(self, dt):",
+    "-    return self.rate * dt",
+    "+    return self.rate / dt",
+)
+
+#: A function with a comment directly above it, which libcst prints as its first line.
+COMMENTED = "X = 1\n\n\n# The doubling.\ndef double(x):\n    y = x * 2\n    return y\n"
+
+
+def test_a_mutant_is_placed_on_the_line_of_the_file_it_changes() -> None:
+    step = Unit("src/pkg/core/model.py", "Model", "step", 21, 22)
+    assert mutated_rows(step, SOURCE.splitlines(), STEP_SHOWN) == {22}
+
+
+def test_a_comment_above_the_function_is_its_first_line_in_the_diff() -> None:
+    double = Unit("src/pkg/core/model.py", None, "double", 5, 7)
+    shown = _shown(
+        "pkg.core.model.x_double__mutmut_1",
+        "@@ -1,4 +1,4 @@",
+        " # The doubling.",
+        " def double(x):",
+        "-    y = x * 2",
+        "+    y = x / 2",
+        "     return y",
+    )
+    assert mutated_rows(double, COMMENTED.splitlines(), shown) == {6}
+
+
+@pytest.mark.parametrize(
+    ("unit", "lines", "hunk"),
+    [
+        # The removed line reads as nothing in the function.
+        (
+            Unit("src/pkg/core/model.py", "Model", "step", 21, 22),
+            SOURCE.splitlines(),
+            ["@@ -2 +2 @@", "-    return self.rate - dt", "+    return 0"],
+        ),
+        # Two offsets fit, so the line it changes cannot be told.
+        (
+            Unit("src/pkg/core/model.py", None, "f", 3, 5),
+            ["", "", "def f():", "    pass", "    pass"],
+            ["@@ -3 +3 @@", "-    pass", "+    ..."],
+        ),
+    ],
+)
+def test_a_mutant_no_single_offset_places_is_not_placed(
+    unit: Unit, lines: list[str], hunk: list[str]
+) -> None:
+    assert mutated_rows(unit, lines, _shown("pkg.core.model.x_f__mutmut_1", *hunk)) is None
+
+
+@pytest.fixture
+def judged(repo: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+    """`mutmut show`'s output by mutant name, answered from this table during the test."""
+    shown: dict[str, str] = {}
+
+    def mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+        assert args[0] == "show"
+        return _completed(shown[args[1]])
+
+    monkeypatch.setattr(diff_mutation, "_mutmut", mutmut)
+    return shown
+
+
+STEP = Unit("src/pkg/core/model.py", "Model", "step", 21, 22)
+OUTER = Unit("src/pkg/core/model.py", None, "outer", 11, 15)
+
+
+def _outer_shown(name: str) -> str:
+    """A mutant of `outer`'s last line, which the tests in `verdict`'s table did not change."""
+    return _shown(
+        name,
+        "@@ -3,3 +3,3 @@",
+        "         return y * 2",
+        " ",
+        "-    return inner(x)",
+        "+    return None",
+    )
+
+
+def test_the_verdict_counts_only_a_mutant_of_a_changed_line(
+    repo: Path, judged: dict[str, str]
+) -> None:
+    judged["pkg.core.model.xǁModelǁstep__mutmut_1"] = STEP_SHOWN
+    judged["pkg.core.model.x_outer__mutmut_1"] = _outer_shown("pkg.core.model.x_outer__mutmut_1")
+    judged["pkg.core.model.xǁModelǁstep__mutmut_3"] = STEP_SHOWN
+    change = Change(
+        "main", [OUTER, STEP], {}, {"src/pkg/core/model.py": {12, 22}}, ["tests/unit/test_m.py"]
+    )
+    found = {
+        "pkg.core.model.xǁModelǁstep__mutmut_1": "survived",
+        "pkg.core.model.xǁModelǁstep__mutmut_2": "killed",
+        "pkg.core.model.xǁModelǁstep__mutmut_3": "unsettled, pytest exited 4",
+        "pkg.core.model.x_outer__mutmut_1": "survived",
+        "pkg.core.model.x_outer__mutmut_2": "timeout",
+    }
+
+    found_verdict = verdict(repo, change, found)
+
+    # A timeout is a catch, as PIT and Stryker count one.
+    assert found_verdict["caught"] == 2
+    assert found_verdict["uncaught"] == [
+        "src/pkg/core/model.py:22 pkg.core.model.xǁModelǁstep__mutmut_1 - survived\n"
+        "    -    return self.rate * dt\n"
+        "    +    return self.rate / dt"
+    ]
+    assert [entry.splitlines()[0] for entry in found_verdict["undecided"]] == [
+        "src/pkg/core/model.py:22 pkg.core.model.xǁModelǁstep__mutmut_3 - "
+        "unsettled, pytest exited 4"
+    ]
+    notes = found_verdict["notes"]
+    # `outer`'s survivor is on line 15, which the branch did not change.
+    assert (
+        "Not counted: 1 mutants that the tests did not catch, on lines of the changed "
+        "functions that this branch did not change: pkg.core.model.x_outer__mutmut_1."
+    ) in notes
+    assert any("tests/unit/test_m.py" in note and "still catch" in note for note in notes)
+    assert notes[-1] == TIERS_NOT_RUN
+
+
+def test_a_mutant_whose_line_cannot_be_placed_is_undecided(
+    repo: Path, judged: dict[str, str]
+) -> None:
+    judged["pkg.core.model.xǁModelǁstep__mutmut_1"] = _shown(
+        "pkg.core.model.xǁModelǁstep__mutmut_1", "@@ -9 +9 @@", "-    nowhere", "+    else"
+    )
+    change = Change("main", [STEP], {}, {"src/pkg/core/model.py": {22}})
+    found = {"pkg.core.model.xǁModelǁstep__mutmut_1": "survived"}
+    found_verdict = verdict(repo, change, found)
+    assert found_verdict["uncaught"] == []
+    assert found_verdict["undecided"] == [
+        "src/pkg/core/model.py: pkg.core.model.xǁModelǁstep__mutmut_1 - survived, "
+        "on a line not placed"
+    ]
+
+
+def test_every_mutant_of_a_new_file_is_on_a_changed_line(
+    repo: Path, judged: dict[str, str]
+) -> None:
+    # Placing is not needed, so a diff no offset fits still counts the mutant.
+    judged["pkg.core.model.x_outer__mutmut_1"] = _shown(
+        "pkg.core.model.x_outer__mutmut_1", "@@ -9 +9 @@", "-    nowhere", "+    else"
+    )
+    change = Change("main", [OUTER], {}, {"src/pkg/core/model.py": None})
+    found = {"pkg.core.model.x_outer__mutmut_1": "no tests"}
+    entries = verdict(repo, change, found)["uncaught"]
+    assert [entry.splitlines()[0] for entry in entries] == [
+        "src/pkg/core/model.py pkg.core.model.x_outer__mutmut_1 - no tests"
+    ]
+
+
+def test_the_verdict_names_what_the_run_did_not_measure(repo: Path, judged: dict[str, str]) -> None:
+    model = repo / "src/pkg/core/model.py"
+    model.write_text(
+        SOURCE.replace("return self.rate * dt", "return self.rate * dt  # pragma: no mutate"),
+        encoding="utf-8",
+    )
+    change = Change(
+        "main",
+        [Unit("src/pkg/core/model.py", None, "decorated", 6, 8)],
+        {"src/pkg/core/model.py": [3]},
+        {"src/pkg/core/model.py": {3, 22}},
+    )
+    notes = verdict(repo, change, {})["notes"]
+    assert notes[0].startswith("Not mutated: pkg.core.model.decorated changed and has no mutants.")
+    assert notes[1].startswith("Not mutated: 1 changed lines of src/pkg/core/model.py outside")
+    assert "Exempted by `# pragma: no mutate` on a changed line: src/pkg/core/model.py:22" in notes
+
+
+def test_main_prints_a_verdict_where_nothing_mutmut_mutates_changed(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    _write(repo, "tests/unit/test_core.py", "import anesthesia_sim\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "table and test")
+    _git(repo, "checkout", "-qb", "work")
+    # A deleted simulator test is read from the fork's copy, and still named.
+    # A test of the tooling is not the simulator's.
+    (repo / "tests/unit/test_core.py").unlink()
+    _write(repo, "tests/unit/test_tool.py", "import doc_check\n")
+
+    assert main(["--root", str(repo), "--base", "main", "--verdict"]) == 0
+
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["caught"] == 0
+    assert printed["uncaught"] == printed["undecided"] == []
+    assert printed["notes"][0] == "No function that mutmut mutates changed against main."
+    assert "tests/unit/test_core.py" in printed["notes"][1]
+    assert "tests/unit/test_tool.py" not in printed["notes"][1]

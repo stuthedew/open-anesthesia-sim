@@ -57,14 +57,6 @@ Never hold a finding in conversation until the current work lands. The
 container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
 
-**An item you will close on the branch that captures it, whose work removes
-or rewrites an assertion, is declared before it is worked.** Capture it on a
-branch of its own with `bin/docket set <id> --falsifies '<the assertion>'`,
-let that merge, and work from the merged base. `verify --self` reads the
-declaration from the base, so one written on the work branch is refused.
-`close-out.md` step 5 has the reasons, at "A waiver is amended where the
-commission lives" (`PL-TKFD`, `PL-B1R4`).
-
 Where the branch carries only item files, it opens its pull request at its
 first push and arms auto-merge, as `.claude/skills/pull-request/SKILL.md` says.
 

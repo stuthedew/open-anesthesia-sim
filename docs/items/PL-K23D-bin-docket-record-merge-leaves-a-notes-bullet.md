@@ -13,7 +13,6 @@ closed: 2026-10-18
 pr: 1595
 payoff: a session running record --merge is told which shipped notes bullets it could not give a route back to their change, instead of reading the repair as complete until a later check says otherwise
 verify: grep -q 'def test_record_merge_names_a_notes_bullet_it_declined_to_restate' subprojects/docket/tests/test_cli.py
-falsifies: restate_references(
 ---
 
 **Problem.** bin/docket record --merge leaves a notes bullet that notes_bullets declines unrestated without saying so, so the command's report omits the bullet it could not write; latent

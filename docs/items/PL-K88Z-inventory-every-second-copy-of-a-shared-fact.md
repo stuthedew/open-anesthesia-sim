@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: one-source-of-truth
+milestone: v0.6.1
 touches: ROADMAP.md
 added: 2026-10-19
 closed: 2026-10-24

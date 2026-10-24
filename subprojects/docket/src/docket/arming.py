@@ -198,6 +198,7 @@ from __future__ import annotations
 import ast
 import fnmatch
 import re
+import string
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
@@ -277,6 +278,19 @@ OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
 ASK_RISK = ("risk", "checked", "look")
+
+#: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
+#: is sent. `renders_owner_ask` recognizes a line in either form from these
+#: same templates, so `.claude/hooks/owner_ask_guard.py` can check a
+#: coordinator's post without a second copy of the form (`PL-YV90`). A risk
+#: review is one template. A decision is `ASK_DECISION_SHOWN`, whose
+#: `options` are two or more `ASK_OPTION_SHOWN` joined by
+#: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
+ASK_RISK_SHOWN = "Risk to review: {risk}. Checked: {checked}. Please look at: {look}."
+ASK_DECISION_SHOWN = "{question} {options} {recommend}"
+ASK_OPTION_SHOWN = 'Option "{label}": {change}.'
+ASK_OPTIONS_JOIN = " "
+ASK_RECOMMEND_SHOWN = 'I recommend "{pick}": {why}.'
 
 #: What a hold for the owner's read prints when no `OWNER_ASK` record covers
 #: the change. The ask was prose until 2026-10-18, and sessions skipped it:
@@ -742,7 +756,7 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
         if not all(dash and said.strip() for _, dash, said in named):
             return "", "a risk review needs a value after each of risk, checked and look"
         risk, checked, look = (said.strip().rstrip(".") for _, _, said in named)
-        return f"Risk to review: {risk}. Checked: {checked}. Please look at: {look}.", ""
+        return ASK_RISK_SHOWN.format(risk=risk, checked=checked, look=look), ""
     question, options = fields[0], fields[1:-1]
     recommend = fields[-1] if len(fields) > 1 else ""
     if not question.endswith("?"):
@@ -764,10 +778,78 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
         return "", "two options share a label"
     if pick.strip().lower() not in labels:
         return "", f"it recommends {pick.strip()!r}, which is not one of its options"
-    shown = " ".join(
-        f'Option "{label.strip()}": {change.strip().rstrip(".")}.' for label, _, change in pairs
+    shown = ASK_OPTIONS_JOIN.join(
+        ASK_OPTION_SHOWN.format(label=label.strip(), change=change.strip().rstrip("."))
+        for label, _, change in pairs
     )
-    return f'{question} {shown} I recommend "{pick.strip()}": {why.strip().rstrip(".")}.', ""
+    recommended = ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip("."))
+    return ASK_DECISION_SHOWN.format(question=question, options=shown, recommend=recommended), ""
+
+
+def _shown_pattern(template: str, fields: dict[str, str]) -> str:
+    """A regular expression for `template`, its text literal and each field replaced by a pattern.
+
+    `string.Formatter().parse` splits a template into its literal text and
+    its field names, the same split `str.format` uses, so the pattern cannot
+    drift from what `parse_owner_ask` renders.
+    """
+    pattern = ""
+    for literal, field, _, _ in string.Formatter().parse(template):
+        pattern += re.escape(literal)
+        if field is not None:
+            pattern += fields[field]
+    return pattern
+
+
+#: Any field's text: at least one character, as few as will do.
+_SHOWN_VALUE = r".+?"
+
+#: A label or a recommended pick, which the rendered line puts in quote marks.
+_SHOWN_LABEL = r'[^"]+'
+
+_SHOWN_OPTION = _shown_pattern(ASK_OPTION_SHOWN, {"label": _SHOWN_LABEL, "change": _SHOWN_VALUE})
+
+#: The two forms `parse_owner_ask` renders. A decision needs a question ending
+#: in "?" and at least two options, as `parse_owner_ask` does.
+_SHOWN_ASKS = (
+    re.compile(
+        _shown_pattern(
+            ASK_RISK_SHOWN, {"risk": _SHOWN_VALUE, "checked": _SHOWN_VALUE, "look": _SHOWN_VALUE}
+        ),
+        re.IGNORECASE,
+    ),
+    re.compile(
+        _shown_pattern(
+            ASK_DECISION_SHOWN,
+            {
+                "question": _SHOWN_VALUE + r"\?",
+                "options": _SHOWN_OPTION
+                + "(?:"
+                + re.escape(ASK_OPTIONS_JOIN)
+                + _SHOWN_OPTION
+                + ")+",
+                "recommend": _shown_pattern(
+                    ASK_RECOMMEND_SHOWN, {"pick": _SHOWN_LABEL, "why": _SHOWN_VALUE}
+                ),
+            },
+        ),
+        re.IGNORECASE,
+    ),
+)
+
+
+def renders_owner_ask(text: str) -> bool:
+    """Whether `text` holds a line in one of the forms `parse_owner_ask` renders.
+
+    This recognizes the form and proves nothing more. It cannot say whether
+    the line is the one recorded on the pull request's branch, because only
+    `arm` on that branch can. `.claude/hooks/owner_ask_guard.py` uses it for
+    the coordinator's posts, whose checkout is on no pull request's branch
+    (project owner, 2026-10-24, ratified, over having `arm` answer for a
+    named pull request, `PL-YV90`). Pass the text with its whitespace already
+    squeezed to single spaces, since a message may wrap the line.
+    """
+    return any(pattern.search(text) for pattern in _SHOWN_ASKS)
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,6 @@ added: 2026-09-19
 closed: 2026-10-18
 pr: 1553
 verify: grep -q 'def test_a_drifted_item_filename_is_an_error' subprojects/docket/tests/test_checks.py
-falsifies: _has(advisories
 ---
 
 **Problem.** Promote the stale-slug filename advisory to an error now the count is zero, once PL-Y5JX's touches-coupling warning exists to make renaming safe

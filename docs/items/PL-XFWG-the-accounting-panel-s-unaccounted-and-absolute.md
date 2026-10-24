@@ -11,7 +11,6 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 payoff: the accounting panel states the run's unaccounted agent once, so a learner is not sent looking for a difference between two identical lines
 verify: grep -q 'def test_the_accounting_panel_prints_the_residual_once' tests/unit/test_dashboard_frame.py && ! grep -qF 'Absolute error' src/anesthesia_sim/app/dashboard_frame.py
-falsifies: Absolute error
 ---
 
 **Problem.** The accounting panel's Unaccounted and Absolute error lines always read the same string since PL-3PJZ printed each as the power of ten it lies below and dropped the sign, so the panel shows one fact twice; whether one line should carry it is a change to what a learner sees
