@@ -1,14 +1,16 @@
-"""The dashboard's leaf widgets, driven headless against real controllers.
+"""These tests drive the dashboard's leaf widgets headless, against real controllers.
 
-`app/qt_widgets.py` moves Qt widgets to match `dashboard_frame` values and
-decides nothing; these tests hold the few things the widgets *do* own -
-that a readout value cannot wrap away from its unit (`PL-3355`), that a
-slider position is exactly the printed value (`PL-25KS`, D4), that a
-snapshot written into a slider never comes back out as a change, that the
-new-case dialog's default keeps the case, which cell of the bookmark editor
-each field stands in, and where the window opens (`PL-005`). They render
-under the
-`offscreen` platform `tests/conftest.py` selects.
+`app/qt_widgets.py` updates Qt widgets to match `dashboard_frame` values and makes
+no decisions of its own. These tests check the few things that the widgets *do* own:
+
+- that a readout's value cannot wrap onto a different line from its unit (`PL-3355`)
+- that a slider's position is exactly the printed value (`PL-25KS`, D4)
+- that a snapshot written into a slider never comes back out as a change
+- that the new-case dialog's default keeps the case
+- which cell of the bookmark editor each field sits in
+- where the window opens (`PL-005`)
+
+The widgets render on the `offscreen` platform, which `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
@@ -785,10 +787,11 @@ def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
 
 
 def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[int, ...]]:
-    """The cell each widget of one form spans: row, column, rows and columns.
+    """Return the cell that each widget of one form spans, keyed by the widget's name.
 
-    A widget is named by the dialog attribute that holds it, or by its text
-    where it is a heading or a field's name, which no attribute holds.
+    A cell is the widget's row and column and the number of rows and columns it
+    spans. A widget is named by the dialog attribute that holds it. No attribute
+    holds a heading or a field's name, so each of those is named by its text.
     """
 
     attributes = {id(value): name for name, value in vars(dialog).items()}
@@ -813,12 +816,13 @@ def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[in
 def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
     application: QApplication,
 ) -> None:
-    """Both forms' cells, as the editor wrote them out by number before `PL-4X5B`.
+    """Each widget of both forms keeps the cell that the editor gave it by number.
 
-    The expected cells are transcribed from those numbers, so the test does
-    not read them from the grid code it checks. That code now places a widget
-    by where it is written in its form, and a widget written in two or three
-    neighbouring columns spans them.
+    Before `PL-4X5B`, the editor's code set each widget's row and column by
+    number. The expected cells are transcribed from those numbers, so the test
+    does not read them from the grid code that it checks. That code now places a
+    widget by where it is written in its form, and a widget written in two or
+    three neighbouring columns spans them.
     """
 
     dialog = BookmarkDialog()

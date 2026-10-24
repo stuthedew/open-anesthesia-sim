@@ -174,10 +174,10 @@ __all__ = [
 # than whichever is nearer.
 HOVER_RADIUS_PIXELS: Final = 12.0
 
-# The angles pyqtgraph's `InfiniteLine` takes, in degrees: 90 stands a line
-# upright at a time, and 0 lays it level at a value. Every vertical line on
-# both plots uses the first, whether it is a gridline, a control mark or a fork
-# mark, and every horizontal line uses the second.
+# pyqtgraph's `InfiniteLine` takes its angle in degrees. An angle of 90 gives a
+# vertical line, which marks a time. An angle of 0 gives a horizontal line, which
+# marks a value. Every vertical line on both plots uses 90, whether it is a
+# gridline, a control mark or a fork mark. Every horizontal line uses 0.
 _VERTICAL_LINE_ANGLE_DEG: Final = 90
 _HORIZONTAL_LINE_ANGLE_DEG: Final = 0
 

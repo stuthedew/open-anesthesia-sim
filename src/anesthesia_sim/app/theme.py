@@ -339,15 +339,16 @@ BAND_SWATCH_HEIGHT = 12
 # the words that name it.
 LEGEND_SWATCH_SPACING = 6
 
-# Between two entries side by side on one line of a legend row, and between a
-# row's caption and its first entry. It is wider than the gap above, so each
-# swatch reads as part of the words to its right and not of the entry before.
+# This gap separates two entries side by side on one line of a legend row. It
+# also separates a row's caption from its first entry. It is wider than the
+# swatch gap above, so each swatch looks like part of the words to its right and
+# not part of the entry before it.
 LEGEND_ENTRY_SPACING = 16
 
-# Between two lines of a legend. It is one value whether the second line starts
-# a new row or continues a row that wrapped, so a wrapped row is spaced like the
-# rows around it. Like the other spacings here, the three legend gaps are
-# placeholders until planned-milestone item 33's visual pass.
+# This gap separates two lines of a legend. It is the same whether the second
+# line starts a new row or continues a row that wrapped, so a wrapped row is
+# spaced like the rows around it. The three legend gaps are placeholders until
+# planned-milestone item 33's visual pass.
 LEGEND_LINE_SPACING = 6
 
 # The rule between the concentration panel and the wash-in section below it.
@@ -513,19 +514,19 @@ NEW_CASE_DIALOG_SPACING = 12
 # record column inside it, and the sidebar.
 PAGE_SPACING = 12
 
-# Between neighbouring controls on a row of them, in px: the buttons and
-# selectors of a run's transport row, and those of the Branch panel. It is one
-# value for both, so the two rows of controls a reader works a run from are
-# spaced alike.
+# This gap, in px, separates neighbouring controls in a row. It applies to the
+# buttons and selectors of a run's transport row and to those of the Branch
+# panel. Both rows use the same value, so the two rows of controls that a reader
+# uses to operate a run are spaced alike.
 CONTROL_ROW_SPACING = 8
 
 # Between the four setting sliders, in px.
 PARAMETER_SLIDER_SPACING = 12
 
-# Between a run's readout heading and the row of readouts under it, in px. The
-# heading names the substance, says the values are modelled, and gives the
-# delivered concentration and 1 MAC. The gap is small, so the heading reads as
-# part of the readouts it introduces.
+# This gap, in px, separates a run's readout heading from the row of readouts
+# under it. The heading names the substance, says the values are modelled, and
+# gives the delivered concentration and 1 MAC. The gap is small, so the heading
+# looks like part of the readouts it introduces.
 READOUT_SECTION_SPACING = 4
 
 # Between the texts along that heading, in px.

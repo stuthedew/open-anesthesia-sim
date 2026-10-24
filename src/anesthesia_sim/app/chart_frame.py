@@ -242,11 +242,12 @@ _HOVER_MODELLED_MARKER: Final = "Modelled"
 # from four is punctuated identically.
 _HOVER_CONTEXT_SEPARATOR: Final = " · "
 
-# How far the top of the percent axis divided by its interval may fall short of
-# a whole number, through floating-point rounding, and still count as that
-# whole number in `percent_axis_ticks`. So a top that is an exact multiple of
-# the interval keeps its last tick. It is a billionth of one interval, so a
-# tick it keeps never stands further above the top of the axis than that.
+# `percent_axis_ticks` divides the top of the percent axis by its tick interval.
+# Floating-point rounding can leave the result slightly less than a whole number.
+# When the result falls short by no more than this tolerance, it counts as that
+# whole number. So a top that is an exact multiple of the interval keeps its last
+# tick. The tolerance is a billionth of one interval, so a tick kept this way is
+# never more than that far above the top of the axis.
 _PERCENT_TICK_COUNT_TOLERANCE: Final = 1e-9
 
 

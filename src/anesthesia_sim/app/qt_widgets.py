@@ -1435,12 +1435,13 @@ class ForkPanel(QWidget):
 
 
 def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
-    """Lay a form out on a grid in the order its rows are written.
+    """Lay out a form on a grid, with its rows in the order they are given.
 
     Each row lists the widget in each of its columns, from left to right, with
-    None for an empty cell. A widget listed in neighbouring columns of one row
-    spans those columns. So a widget's row and column are where it is written,
-    and the code that builds a form writes no row or column number.
+    None for an empty cell. The same widget listed in neighbouring columns of
+    one row spans those columns. So each widget's row and column come from its
+    position in the arguments, and the code that builds a form writes no row or
+    column number.
 
     Args:
         rows: The form's rows, from top to bottom.

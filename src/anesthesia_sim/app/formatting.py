@@ -86,8 +86,8 @@ __all__ = [
     "render_mac_multiple",
 ]
 
-# The base that every displayed resolution is a power of. A value shown to `n`
-# decimals is resolved to `DECIMAL_BASE**-n`, and a slider that steps at that
+# Every displayed resolution is a power of this base. A value shown to `n`
+# decimals has a resolution of `DECIMAL_BASE**-n`. A slider that steps at that
 # resolution counts its position in those steps
 # (`dashboard_frame.slider_position`).
 DECIMAL_BASE: Final = 10.0
