@@ -606,10 +606,14 @@ def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:
     --recover` writes one for a squash commit that landed with no body, and a
     copy of a body is never a change to read (`PL-3PH2`). Their directory is
     `vcs.RECORDS`, read from there rather than spelt here. This module kept a
-    copy until 2026-10-24, so that widening it would wait on a read, but since
-    2026-10-19 an edit to this module waits on no read. What still holds a
-    widening is the pinned tests, which name the directory (`PL-9JHM`,
-    `PL-F6MM`, `PL-LGDV`).
+    copy until 2026-10-24, so that widening it would wait on a read. Since
+    2026-10-19 an edit to this module waits on a read only when it edits a
+    test pinning its answers or moves the module (`PL-9JHM`), so editing both
+    copies together waited on none. What holds a widening now is
+    `test_arm_holds_for_a_read_a_path_on_the_owners_read_list`, which pins
+    `docs/MODEL.md` and the simulator's paths as held for a read (project
+    owner, 2026-10-24, ratified, over restoring the copy that `PL-F6MM` kept;
+    `PL-LGDV`, `PL-F9WM`).
     """
     return not waits_on_read(path, tooling)
 
