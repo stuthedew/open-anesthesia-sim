@@ -3,7 +3,7 @@ id: PL-928V
 title: Write a high-level description of the whole working method as one document
 priority: P2
 effort: M
-status: ready
+status: needs-decision
 classes: docs
 feature: project-introduction
 touches: docs/workflow.md, README.md, docs/consultant-brief.md
@@ -64,3 +64,47 @@ returning after a gap has the same problem at lower stakes. And a session
 proposing a new mechanism has no way to check whether one already exists, which
 is how the apparatus grows a second answer to a question it had already
 answered. Verified 2026-09-13: `docs/workflow.md` does not exist.
+
+**Blocked.** (headless worker, 2026-10-20) The item creates a tracked file that
+no entry in `docket.toml` places, and `docket.toml` is not in `touches`. I
+created a one-line `docs/workflow.md`, staged it with `git add`, and ran
+`uv run python tools/workflow_paths_check.py`, which `make check` runs. It
+exited 1 with: `"docs/workflow.md" is tracked (1 file(s)) and neither
+workflow_paths nor product_paths in docket.toml places it, so an item declaring
+it lands on the simulator's side by default rather than by a decision. Add
+"docs/workflow.md" to workflow_paths if it exists so sessions can be
+productive, or to product_paths if a reader of the simulator needs it`. So
+"`make check` passes" in the brief's done-when cannot be met inside `touches`.
+I removed the file again and wrote nothing else. Unblocking needs `docket.toml`
+added to `touches`, and a decision on which of the two lists places the new
+document.
+
+**Reviewed 2026-10-24: the block is correct, and widening `touches` alone
+cannot unblock a rerun.** `docket.toml` is in `gate_paths`, so an item that
+declares it is no longer delegable: `Item.delegability` returns "touches the
+checks themselves". The new entry also cannot land ahead of the document,
+because `tools/workflow_paths_check.py` refuses an entry that places no tracked
+file. So the question is where the document lives, and it is the owner's,
+because it changes the deliverable this brief names.
+
+**Decision needed.** Should the description of the working method be a section
+at the top of `docs/apparatus.md`, which a headless worker can write, or the
+separate `docs/workflow.md` this brief names, which only a chat session can?
+
+**Recommendation:** the section in `docs/apparatus.md`, for the reasons in the
+first option below.
+
+- **Recommended: a "How the work runs" section at the top of
+  `docs/apparatus.md`.** That file is already the apparatus's map and is
+  already in `workflow_paths`. It did not exist when this brief was written
+  (`PL-KRGY` created it on 2026-10-11), so "Homes considered" never weighed
+  it. The item stays delegable, the headless rerun needs no `docket.toml`
+  edit, and the project keeps one apparatus map rather than two. `touches`
+  becomes `docs/apparatus.md, README.md, docs/consultant-brief.md`, and
+  `verify:` greps for the section heading instead of `test -f`. The cost is
+  that the tour sits above a long `tools/` inventory, so `README.md` and
+  `docs/consultant-brief.md` link to the section's anchor.
+- **As written: a separate `docs/workflow.md`.** `touches` gains
+  `docket.toml`, the file goes in `workflow_paths` (it is addressed to
+  participants in the build, as `docs/worker.md` and `docs/maintainer.md`
+  are), and a chat session works it, because no worker may edit a gate path.
