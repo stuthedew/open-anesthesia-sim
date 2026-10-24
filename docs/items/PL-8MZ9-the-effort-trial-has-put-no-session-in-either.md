@@ -3,10 +3,11 @@ id: PL-8MZ9
 title: The effort trial has put no session in either arm: the cloud environment runs its setup script once and reuses a snapshot, and the snapshot was taken before the trial started
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 touches: docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh, docs/maintainer.md, docs/apparatus.md
 added: 2026-10-24
+verify: grep -qE '^\*\*Probe result' docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md && grep -q 'session_id' tools/effort_trial.py
 payoff: the effort trial assigns each cloud session its own arm, so its result can say whether high effort causes real problems, and sessions stop opening with a line the owner cannot decode
 ---
 
@@ -40,6 +41,10 @@ payoff: the effort trial assigns each cloud session its own arm, so its result c
 **Measure before building.** The docs imply the reload applies a cap written mid-start, but they do not state it, and the hook races the first request. One probe settles it. A branch adds a `SessionStart` hook that writes `"maxEffortLevel": "high"`. The owner opens one session on that branch from the app, with the picker at `xhigh`. The session reads `perTurnEffort` from its own transcript for the first turn and a later one. If both read `high`, build the route above. If the first reads `xhigh`, the first turn is uncapped, and that cost goes back to the owner before anything is built. `PL-HYRM`'s auto mode refused a session's commit of a probe settings file without the owner's word, so the probe needs that word.
 
 **Decision needed.** Reopen the trial's ratified mechanism, which drew the arm in the setup script (project owner, 2026-10-19, ratified), on the caching evidence above, and run the probe? **Recommendation: yes.** The trial is collecting nothing as it stands, and from about 2026-10-30 it would assign one arm per week.
+
+**Decision** (project owner, 2026-10-24, ratified, over keeping the draw in the setup script, which a cached environment skips, and over making the setup script too slow to cache, which would add five minutes or more to every session start). Move the draw into the `SessionStart` hook, keyed on the hook's `session_id`, and reword the digest line, once the probe above shows the cap applies from the first turn. The owner also keeps the app's effort picker at `xhigh` for the length of the trial.
+
+**The probe.** Branch `claude/pl-8mz9-probe-hook-cap` is never merged. Its first `SessionStart` hook writes `"maxEffortLevel": "medium"` to `.claude/settings.local.json` and logs the time to `/tmp/probe-cap.log`. `medium` is below both the app's `xhigh` and `.claude/settings.json`'s `high`, so it tells a capped turn from an uncapped one in a session the app opened and in one `create_session` started. Each probe session reports `CLAUDE_EFFORT` and the top-level `perTurnEffort` field of every assistant record in its own transcript, `/root/.claude/projects/-home-user-open-anesthesia-sim/*.jsonl`.
 
 **Done when.** The probe's result is recorded here. If the cap applies from the first turn, the `SessionStart` hook assigns the arm, `tests/unit/test_effort_trial.py` covers the hash draw and the reworded lines, `docs/maintainer.md` and `docs/apparatus.md` describe the hook route, and the owner has removed the setup-script line. If it does not, this item records what the first turn costs and the owner's answer.
 
