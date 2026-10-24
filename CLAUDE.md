@@ -350,8 +350,7 @@ context in every session that needs it. `tools/doc_check.py` and
   is fluff and goes. Nobody reading it is the symptom, not the test (project
   owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
 
-New tools use the standard library only, so a hook or a bare checkout can run
-them without the project virtualenv. A script also answers identically every
+A script answers identically every
 run and states its rule where a reviewer can read it, which is the
 safety-critical standard's determinism and auditability arriving free.
 
@@ -543,10 +542,7 @@ deviating from a described deliverable, not acting without one.
   `bin/docket claim`, rename the session to lead with its id, and put that id
   **at the front of every commit subject** and pull request title. The claim
   tells every other session the item is taken; the leading id attributes each
-  commit to it. **A commit closing more than one item leads with all of
-  them**, comma-separated: `docket check` recovers a closed item's pull request
-  from the newest subject naming it, so a rider whose id never leads one is
-  attributed to its own capture commit instead (`PL-GW37`). Name the branch too
+  commit to it. Name the branch too
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
   cannot be renamed, which is expected rather than a failure. Say in your reply

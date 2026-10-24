@@ -60,6 +60,8 @@ preceded by a read.
 | "Put no simulation calculations in UI callbacks" | 50 characters with its newline, § "Architecture and development discipline" | `.claude/rules/ui-calculations.md`, loaded by `paths: /src/anesthesia_sim/app/**` | A callback is written only with a file under `app/` open, so the rule reaches the one moment it binds, every time, which is the promise the refused path-scoping of every invariant to `src/**` could not make. It stays prose there, because whether an expression is a simulation calculation is the judgment half no check decides, and the rule now also says where the line sits, `docs/ARCHITECTURE.md` § "Layering", and what is checked around it (`PL-ZYHX`). |
 | The pull request procedure: opening on approval without asking, the web harness's "only when asked", item-only arming, `bin/docket arm`'s three answers, bringing `main` in once, the three stops on failed checks, and reading the body back | the commit-and-push bullet after its first sentence, and the whole base-merge bullet, § "The queue": `CLAUDE.md` 4,387 characters shorter, net of the trigger sentence that replaced them | `.claude/skills/pull-request/SKILL.md`, whose 441-character description loads at launch. `.claude/hooks/push-check-guard.sh` names it after a push it lets through, and `.claude/hooks/pr-body-email-guard.sh` after a pull request call, pinned by `test_a_push_it_lets_through_names_the_pull_request_skill` and `test_a_pull_request_call_the_guard_lets_through_names_the_read_back` | A session needs it only at a push, a pull request call or a failed check. A hook sees the first two. A failed check arrives as an event that names it, which is the case `PL-SN2Z` measured: a resident sentence and a skill description started the `docket` skill on 8 of 8 requests that named the moment. Section "The pull request procedure, routed to a skill 2026-10-24", below, has what stayed and why (`PL-S2NL`). |
 | The generator rules: how a generator is recorded, why a live one ranks above everything but `P0`, the tier of a defect in the machinery that finds them, and the pause's history and end condition | the generator bullet and its `impairs-generators` paragraph, § "The queue", and the pause paragraph, § "What this project is": `CLAUDE.md` 2,363 characters shorter, net of the two paragraphs that replaced them | `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set", with the rules unchanged | Triage is where a generator is recorded and ranked. Two rules apply earlier, so they stay resident: the two endings, in the reply that finds a generator, and the pause, before any workflow mechanism is built. Section "The generator rules, routed to the triage mode 2026-10-24", below, has what stayed and why (`PL-6VJ3`). |
+| "New tools use the standard library only, so a hook or a bare checkout can run them without the project virtualenv" | 120 characters, § "Prefer deterministic tooling over repeated model work" | `test_no_tool_imports_outside_the_standard_library` in `tests/unit/test_tools_portability.py`, run by `make check` and CI, which reads every Python file under `tools/` and `.claude/hooks/` | Retired under § "When a resident rule is retired". Its failure is an import, which the test reads from the tree. Observed firing on 2026-10-24: with a throwaway probe file under `tools/` holding `import yaml`, the test failed, naming the file and the import and saying the tool "cannot run in a checkout with no virtualenv". Without the probe, it passed. The sentence after it, on why a script beats model work, stays (`PL-JRVV`). |
+| "A commit closing more than one item leads with all of them, comma-separated", and its reason, that `docket check` recovers a closed item's pull request from the newest subject naming it | 272 characters, the naming bullet in § "The queue" | `tools/pr_title_check.py`, run in the required `pr-title` job and by `make check`, which refuses a pull request whose title does not lead with every id it closes. Its tests `test_the_incident_this_exists_for_is_refused`, `test_an_id_mentioned_but_not_leading_does_not_count` and `test_a_title_leading_with_every_id_passes` pin that. Step 1 of `.claude/skills/docket/modes/close-out.md` states the rule when the closing commit is written | A squash merge makes the pull request title the only subject that reaches `main`, and the check holds that title to every closed id. The stated reason had also stopped being true. Since `PL-HMZZ`, `bin/docket record` writes the pull request number onto the item, and `tools/pr_record_check.py` refuses a closure without it, so nothing recovers a number from a subject. The three tests passed on 2026-10-24 (`PL-JRVV`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -1310,3 +1312,39 @@ characters, and the resident total from 93,730 to 91,367, as
 4,800 characters, which load only when a session reads that file. The docket
 skill's dispatch table now names recording a generator in the triage row, so a
 session that records one is sent to the section.
+
+## The check-enforced review, 2026-10-24
+
+`PL-JRVV` asked of every `CLAUDE.md` block whether a script, hook or check now
+enforces it, and retired the blocks that one does. A check counted as
+enforcing a rule only where a run against a violation was seen to fail, by an
+existing test or by a probe. Reading the code was not enough, for the reason
+§ "When a resident rule is retired" gives. The review covered `CLAUDE.md`
+only, as the item's done-when says. The three resident rules files govern a
+reply's shape, its wording and design judgment, which no check reads.
+Retiring prose builds no mechanism, so the generator pause did not apply.
+
+| Block | What checks it | Outcome |
+| --- | --- | --- |
+| The preamble, and § "What this project is" apart from the pause | Nothing. They state the project's purpose and judgment. | Kept |
+| The generator pause, and the generator bullet in § "The queue" | Reviewed by `PL-6VJ3` the same day. No check can read how a reply ends or tell whether a change is a new mechanism. | Kept |
+| § "Working with the project owner" | Nothing here. `.claude/hooks/owner_ask_guard.py` checks only a Projects thread's asks to read or merge. | Kept |
+| Simulation time as explicit state, and deterministic results | `tools/import_boundary_check.py` bars `time`, `datetime`, `random`, `secrets` and `uuid` under `core/` only. `app/` holds the clock legitimately and must keep a tick's real duration out of the run, which nothing checks. | Kept |
+| Tests with every core behavior change | CI's 100% coverage gate catches new code that no test runs. It does not catch a changed behavior that the old tests still pass. | Kept |
+| One source of truth | `tools/literal_home_check.py` and `tools/fact_home_check.py`, which the bullet already names. It keeps only what neither check reaches, and the owner specified it on 2026-10-12. | Kept |
+| Parameters in validated, versioned data files | `tools/literal_home_check.py` accepts a named constant in code, so it does not require a data file. | Kept |
+| Executable equations out of data files | The numeric payload types in `core/parameters.py` refuse a string where a number belongs. A new text field holding an expression would pass. | Kept, already a pointer |
+| Nothing beyond the current milestone | Nothing. | Kept |
+| § "Session and tool-use efficiency" | `tools/context_reading.py` prints the spend, and nothing enforces the reset. `.claude/hooks/push-check-guard.sh` runs `doc_check`, `branch_id_check` and the store check before a push, but not Ruff, mypy or pytest. | Kept |
+| § "Prefer deterministic tooling over repeated model work", its bullets | Nothing. Each is a judgment about what to build. | Kept |
+| The same section's standard-library sentence | `tests/unit/test_tools_portability.py` | Retired, § "What was routed out" |
+| § "The queue": the two modes, the division of labour, when to involve the owner, capture, fix-now, behavior changes, read only, capturing intent, compounding friction and the docs sweep | Nothing. `tools/doc_check.py` checks a sweep's citations, not whether the sentences around them are still true. | Kept |
+| Housekeeping is filed before it is done | `tools/branch_id_check.py`, which the push guard also runs, refuses a branch with no id at its first push. That comes after the work the rule exists to make visible. | Kept |
+| Name the work after the item | `tools/pr_title_check.py` holds a closing pull request's title, and `tools/branch_id_check.py` needs one id on the branch. The claim, the session's name, each commit subject's id and the co-author line have no check. | Shortened: the sentence on commits closing several items retired, § "What was routed out" |
+| Commit and push as you go | Already a pointer to `.claude/skills/pull-request/SKILL.md`. | Kept |
+| The safety-critical standard, expert review, and `## Compact Instructions` | Nothing. | Kept |
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 49,234 to 48,842
+characters, 392 fewer. Nothing was added to another resident file. The cut is
+small because most of `CLAUDE.md` governs a reply, a design choice or an
+action taken before any file is read, and no check sees those moments.
