@@ -59,6 +59,7 @@ preceded by a read.
 | "Keep scientific/simulation code independent of the UI toolkit" | 65 characters with its newline, § "Architecture and development discipline" | `tools/import_boundary_check.py`: `PySide6`, `pyqtgraph`, `numpy` and `anesthesia_sim.app` permitted in no module under `core/`, and `flet` and `flet_charts` in none under `src/`, pinned by `tests/unit/test_import_boundary_check.py` | Retired under § "When a resident rule is retired", below. Its failure is an import, which the check reads from the tracked tree at every `make check` and in CI, where the sentence fired only when a session remembered it. Observed firing on 2026-10-17, before the line was removed: with a staged one-line module under `core/` holding `from PySide6 import QtWidgets`, the tool reported 56 modules read and 1 error naming that line and exited 1; without it, 55 modules and 0 errors; its 70 tests passed. The check, `docs/apparatus.md` and `docs/ARCHITECTURE.md` cited `CLAUDE.md` as the rule's source, which the 2026-09-16 correction below had warned would strand the citation, so all three now cite `docs/ARCHITECTURE.md` § "Layering", the section that states the layering the boundaries enforce (`PL-ZYHX`). |
 | "Put no simulation calculations in UI callbacks" | 50 characters with its newline, § "Architecture and development discipline" | `.claude/rules/ui-calculations.md`, loaded by `paths: /src/anesthesia_sim/app/**` | A callback is written only with a file under `app/` open, so the rule reaches the one moment it binds, every time, which is the promise the refused path-scoping of every invariant to `src/**` could not make. It stays prose there, because whether an expression is a simulation calculation is the judgment half no check decides, and the rule now also says where the line sits, `docs/ARCHITECTURE.md` § "Layering", and what is checked around it (`PL-ZYHX`). |
 | The pull request procedure: opening on approval without asking, the web harness's "only when asked", item-only arming, `bin/docket arm`'s three answers, bringing `main` in once, the three stops on failed checks, and reading the body back | the commit-and-push bullet after its first sentence, and the whole base-merge bullet, § "The queue": `CLAUDE.md` 4,387 characters shorter, net of the trigger sentence that replaced them | `.claude/skills/pull-request/SKILL.md`, whose 441-character description loads at launch. `.claude/hooks/push-check-guard.sh` names it after a push it lets through, and `.claude/hooks/pr-body-email-guard.sh` after a pull request call, pinned by `test_a_push_it_lets_through_names_the_pull_request_skill` and `test_a_pull_request_call_the_guard_lets_through_names_the_read_back` | A session needs it only at a push, a pull request call or a failed check. A hook sees the first two. A failed check arrives as an event that names it, which is the case `PL-SN2Z` measured: a resident sentence and a skill description started the `docket` skill on 8 of 8 requests that named the moment. Section "The pull request procedure, routed to a skill 2026-10-24", below, has what stayed and why (`PL-S2NL`). |
+| The generator rules: how a generator is recorded, why a live one ranks above everything but `P0`, the tier of a defect in the machinery that finds them, and the pause's history and end condition | the generator bullet and its `impairs-generators` paragraph, § "The queue", and the pause paragraph, § "What this project is": `CLAUDE.md` 2,363 characters shorter, net of the two paragraphs that replaced them | `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set", with the rules unchanged | Triage is where a generator is recorded and ranked. Two rules apply earlier, so they stay resident: the two endings, in the reply that finds a generator, and the pause, before any workflow mechanism is built. Section "The generator rules, routed to the triage mode 2026-10-24", below, has what stayed and why (`PL-6VJ3`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -1265,3 +1266,47 @@ which also edit `CLAUDE.md`. The project owner named it first, and the wait
 was a sequencing preference: the three items edit different paragraphs and
 only had to run one after another. Their briefs now say that this one went
 first.
+
+## The generator rules, routed to the triage mode 2026-10-24
+
+`PL-6VJ3` moved the reasoning and history of three `CLAUDE.md` paragraphs into
+`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
+pause they set". The three were the generator bullet, "A root cause of more
+than two items is pulled, not queued"; its paragraph on defects in the
+machinery that finds and ranks generators; and the generator pause. Triage is
+where a generator is recorded and ranked. The new section sits just before the
+check that asks each apparatus item where it came from.
+
+**What stayed resident, and why.** Two of the rules apply before any triage.
+Moving them wholesale would have loaded them too late, which is the failure
+`PL-WWDT` and `PL-4S6C` record.
+
+- **The two endings.** A session that finds a generator must fix it, or end
+  its reply with a prompt that starts a fresh session on it. The moment is the
+  reply that finds the generator, and no read comes before a reply. The
+  resident paragraph keeps the definition of a generator, which items the
+  endings bind, the case of a product session, and a pointer.
+- **The pause.** It applies before a workflow mechanism is built, which can be
+  a session's first write. The resident paragraph keeps what the pause holds,
+  what needs no lift, the command that says whether it applies, the owner's
+  lift, and a pointer. The standing-approval sentence in § "Prefer
+  deterministic tooling over repeated model work" still points at the pause in
+  § "What this project is", where the paragraph stays.
+
+**The retirement test, applied to the same paragraphs.** `PL-JRVV` asks of
+each `CLAUDE.md` block whether a check now enforces it. Its brief asked that it
+and this item be settled together, so that no paragraph is moved by one and
+deleted by the other. Two sentences in the moved text describe what
+`bin/docket check` enforces: it asks every open generator for its `generator:`
+line, and it refuses an `impairs-generators:` claim on code the item never goes
+near. They moved rather than being retired, because they explain the rule
+around them and moving them costs no resident characters. What stayed resident
+is what no check can enforce: how a reply ends, and whether a change is a new
+mechanism. So `PL-JRVV` has nothing left to retire in these paragraphs.
+
+**What was replaced, and the cost.** `CLAUDE.md` went from 51,597 to 49,234
+characters, and the resident total from 93,730 to 91,367, as
+`tools/doc_check.py` reported on 2026-10-24. The triage mode grew by about
+4,800 characters, which load only when a session reads that file. The docket
+skill's dispatch table now names recording a generator in the triage row, so a
+session that records one is sent to the section.
