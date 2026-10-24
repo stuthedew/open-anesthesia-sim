@@ -3,10 +3,10 @@ id: PL-928V
 title: Write a high-level description of the whole working method as one document
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: docs
 feature: project-introduction
-touches: docs/workflow.md, README.md, docs/consultant-brief.md
+touches: docs/workflow.md, README.md, docs/consultant-brief.md, docket.toml
 added: 2026-09-13
 verify: test -f docs/workflow.md && grep -q 'workflow.md' README.md && python3 tools/doc_check.py check
 ---
@@ -87,14 +87,21 @@ because `tools/workflow_paths_check.py` refuses an entry that places no tracked
 file. So the question is where the document lives, and it is the owner's,
 because it changes the deliverable this brief names.
 
-**Decision needed.** Should the description of the working method be a section
-at the top of `docs/apparatus.md`, which a headless worker can write, or the
-separate `docs/workflow.md` this brief names, which only a chat session can?
+**Decided: a separate `docs/workflow.md`, written by a chat session**
+(project owner, 2026-10-24, ratified, over a section at the top of
+`docs/apparatus.md`). `docs/apparatus.md` is 711 lines and 79,924 characters,
+almost all of it the `tools/` inventory. A tour placed above that inventory
+still hands a cold reader an 80 KB file, which defeats this item's purpose.
+Keeping the item delegable would save only a few dollars of API credit.
+So `touches` now includes `docket.toml`, and the session adds
+`docs/workflow.md` to `workflow_paths` in the same commit that creates the
+file. The file belongs in that lane because it is addressed to participants in
+the build, as `docs/worker.md` and `docs/maintainer.md` are. The item is no
+longer delegable, because `docket.toml` is a gate path.
 
-**Recommendation:** the section in `docs/apparatus.md`, for the reasons in the
-first option below.
+The two options as they were put:
 
-- **Recommended: a "How the work runs" section at the top of
+- **A "How the work runs" section at the top of
   `docs/apparatus.md`.** That file is already the apparatus's map and is
   already in `workflow_paths`. It did not exist when this brief was written
   (`PL-KRGY` created it on 2026-10-11), so "Homes considered" never weighed

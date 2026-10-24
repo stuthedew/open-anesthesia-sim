@@ -54,6 +54,7 @@ __all__ = [
     "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
+    "DECIMAL_BASE",
     "FLOW_DISPLAY_DECIMALS",
     "MAC_AXIS_STEP_LADDER_MAC",
     "MAC_DISPLAY_DECIMALS",
@@ -85,6 +86,12 @@ __all__ = [
     "render_mac_multiple",
 ]
 
+# Every displayed resolution is a power of this base. A value shown to `n`
+# decimals has a resolution of `DECIMAL_BASE**-n`. A slider that steps at that
+# resolution counts its position in those steps
+# (`dashboard_frame.slider_position`).
+DECIMAL_BASE: Final = 10.0
+
 # Displayed resolution for every modeled concentration and relative partial
 # pressure, and for the delivered-agent setting shown beside its slider.
 #
@@ -105,7 +112,7 @@ __all__ = [
 # deliberately not restated here.
 CONCENTRATION_DISPLAY_DECIMALS: Final = 2
 # Smallest percentage-point difference the concentration readouts resolve.
-CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
+CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = DECIMAL_BASE**-CONCENTRATION_DISPLAY_DECIMALS
 
 # Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
 # readouts beside them. Flet's default is 0, which would make a slider's own
@@ -140,7 +147,7 @@ FLOW_DISPLAY_DECIMALS: Final = 1
 # Flet panel printed asserted a resolution nine orders finer than this.
 AGENT_VOLUME_DISPLAY_DECIMALS: Final = 1
 #: Smallest difference in litres of agent gas the accounting panel resolves.
-AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = 10.0**-AGENT_VOLUME_DISPLAY_DECIMALS
+AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = DECIMAL_BASE**-AGENT_VOLUME_DISPLAY_DECIMALS
 
 # Decimals shown on a MAC multiple, and the resolution that follows. This is
 # *derived*, not chosen: a MAC multiple is a percent divided by the agent's
@@ -159,7 +166,7 @@ AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = 10.0**-AGENT_VOLUME_DISPLAY_DECIMALS
 # there rather than silently over-claiming here.
 MAC_DISPLAY_DECIMALS: Final = 2
 #: Smallest difference in MAC multiples the readouts resolve.
-MAC_DISPLAY_RESOLUTION_MAC: Final = 10.0**-MAC_DISPLAY_DECIMALS
+MAC_DISPLAY_RESOLUTION_MAC: Final = DECIMAL_BASE**-MAC_DISPLAY_DECIMALS
 
 # The unit written after a MAC multiple. The multiplication sign is doing
 # safety work rather than typographic work: "0.80 MAC" is read as a depth of

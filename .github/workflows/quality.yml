@@ -224,8 +224,11 @@ jobs:
       # The others took about 9 seconds together on that run. They were
       # measured not to read the store on 2026-10-17, but nothing about what
       # they are guarantees it, so skipping them could miss a tool that starts
-      # reading it. ruff, mypy and `ignore_check.py` read only Python files,
-      # and no item file is one.
+      # reading it. ruff's linter, mypy and `ignore_check.py` read only Python
+      # files, and no item file is one. ruff's formatter also formats fenced
+      # Python blocks in Markdown, so `pyproject.toml` excludes the store from
+      # it. Without that exclusion an item-only pull request could merge green
+      # and turn `main` red (`PL-L9SF`).
       #
       # The step runs before any project command, so nothing has written into
       # the checkout yet. It runs under the floor's interpreter, which is all
