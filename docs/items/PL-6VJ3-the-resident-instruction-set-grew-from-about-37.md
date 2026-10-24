@@ -31,3 +31,5 @@ The falls in the defect rate lined up with specific code fixes in specific weeks
 **Done when.** The reasoning lives in the skill, `CLAUDE.md` keeps the two trigger sentences and a pointer, `docs/resident-instructions.md` records the move, and `make check`'s resident total shows the cut.
 
 **Triage** (project owner, 2026-10-20, ratified, over leaving it eligible for a headless worker). P1, worked in the same interactive session as `PL-JRVV` (retiring `CLAUDE.md` rules a check already enforces), so that no paragraph is moved by one and deleted by the other.
+
+**`PL-S2NL` went first, 2026-10-24.** It moved `CLAUDE.md`'s pull request procedure, the commit-and-push and base-merge bullets, into `.claude/skills/pull-request/SKILL.md`, and left one trigger bullet in their place. `docs/resident-instructions.md` § "The pull request procedure, routed to a skill 2026-10-24" records what stayed and why. Measure this item's cut against that smaller `CLAUDE.md`.

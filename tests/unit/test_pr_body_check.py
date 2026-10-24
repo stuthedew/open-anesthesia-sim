@@ -907,3 +907,24 @@ def test_the_hook_is_wired_to_both_pull_request_tools_and_refuses_from_its_scrip
         cwd=REPO,
     )
     assert "`me@example.com`" in ran.stdout
+
+
+def test_a_pull_request_call_the_guard_lets_through_names_the_read_back() -> None:
+    """`PL-S2NL`: after a pull request is created or updated, its body is read back.
+
+    The server rewrites a body and still returns success, so the guard puts the
+    pointer to the `pull-request` skill beside the call's result. It is context,
+    never a decision, so the call goes ahead.
+    """
+    ran = subprocess.run(
+        ["bash", str(REPO / ".claude" / "hooks" / "pr-body-email-guard.sh")],
+        input=_call("mcp__github__update_pull_request", body="Plain body."),
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=REPO,
+    )
+    output = json.loads(ran.stdout)["hookSpecificOutput"]
+    assert "permissionDecision" not in output
+    assert ".claude/skills/pull-request/SKILL.md" in output["additionalContext"]
+    assert output["additionalContext"].startswith("Read the published title and body back")

@@ -65,8 +65,8 @@ declaration from the base, so one written on the work branch is refused.
 `close-out.md` step 5 has the reasons, at "A waiver is amended where the
 commission lives" (`PL-TKFD`, `PL-B1R4`).
 
-Where the branch carries only item files, `CLAUDE.md`'s commit-and-push rule
-opens its pull request at its first push and arms auto-merge.
+Where the branch carries only item files, it opens its pull request at its
+first push and arms auto-merge, as `.claude/skills/pull-request/SKILL.md` says.
 
 **A diagnosis that produces more than one item files them under one
 `feature:`, in the same call.**

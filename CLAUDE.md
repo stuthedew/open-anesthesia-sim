@@ -444,8 +444,8 @@ deviating from a described deliverable, not acting without one.
      `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md`,
      or any finding the safety-critical standard reaches, is filed: the item is
      what ranks it `P1`, offers it to the strongest model and stands as its
-     provenance. A fix that needs the owner's read (the arm bullet below says
-     which) is taken only where the branch already waits on that read, so a fix
+     provenance. A fix that needs the owner's read (the `pull-request` skill
+     says which) is taken only where the branch already waits on that read, so a fix
      never turns a pull request that would merge on green into one that waits
      on the owner (project owner, 2026-10-12, ratified, over holding the pull
      request for the read, and over opening the clinical paths with a
@@ -587,60 +587,17 @@ deviating from a described deliverable, not acting without one.
   co-author, whatever the harness's attribution reminder names**, since that
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
   line may stay (project owner, 2026-09-24, restating `PL-B11M`).
-- **Commit and push as you go; the pull request arrives with the work**
-  (project owner, 2026-08-31). The container is ephemeral, so an uncommitted
-  thought is one interruption from gone and an unpushed commit dies with it.
-  Once the owner has approved a piece of work, the pull request opens as soon as
-  that work is finished and its checks are green — do not ask first, because the
-  approval *was* the invitation. **A branch carrying only item files opens its
-  pull request at its first push and arms auto-merge**, so a capture reaches
-  `main` even when its session ends before any work does (project owner,
-  2026-09-23, ratified, over "a branch carrying only captured items is not a
-  pull request", `PL-WNCT`), and `update-armed.yml` brings `main` in if `main`
-  moves past it first (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s
-  answer, asked before arming and before every later push while a pull request
-  is open.** `arm`: mark it ready and arm it, and name in the report the paths
-  outside the store it armed. **The owner reads only a real decision or a
-  high-risk change, and housekeeping merges on green** (project owner,
-  2026-10-17, `PL-DKBG`). Which one a change is stays your call, recorded as an
-  `Owner-read:` trailer that `arm` prints the form and the test for. `hold`, for
-  a claim, a simulator change no such record covers, a record saying `needed`,
-  or an edit to a test pinning `arm`'s answers - leave it unarmed, disarming it before the push that
-  brings the hold or green CI merges half the work, a draft while the hold is a
-  claim, and once no claim holds it record the judgment or ask as `arm` says;
-  a pull request held for the owner merges on their word alone. Workflow items
-  need no merge confirmation (project owner, 2026-10-12, `PL-KPM2`). `behind N`: bring `origin/main` in
-  and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
-  and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
-  `PL-H14W`). **`main` red for a reason outside the item stops the session**:
-  say so to the owner before any retry, and wait (project owner, 2026-09-25,
-  ratified, in the Projects trial's instructions, `PL-NZC0`). **A check that
-  fails again on the same pull request stops it too, unless the session
-  reproduced the new failure and found a cause no earlier failure of that
-  check there had.** Then it fixes that cause and carries on. A repeated cause,
-  a failure it cannot explain, or a need for a stronger model stops it, and the
-  reply says what failed, why, and what it wants, asking nothing where nothing
-  needs weighing. **Four failed runs of one check on one pull request stop it
-  whatever the causes.** That reply says the check failed four times and names
-  each cause. It asks the owner a real question with options and a
-  recommendation, such as a retry on a stronger model, a narrower or split
-  change, or setting the item aside, and never only whether to try again
-  (project owner, 2026-10-19, ratified, over a stop at every second failure;
-  the question at four is the owner's own, `PL-M44T`).
-  Where the **web harness
-  says not to open one unless the
-  owner explicitly asks**, this bullet is that ask, standing rather than per
-  pull request, so a session reading both proceeds rather than stalls. A session-level
-  auto-pull-request switch set *off* is that same case and not a third: it
-  stops the harness opening one unasked and does not withdraw this ask
-  (project owner, 2026-09-19, ratified, over treating the switch as a
-  withdrawal and asking per pull request while it is off). Then
-  **read the published body back and compare it against what was sent**: the
-  server rewrites bodies silently and still returns success. An angle-bracket
-  placeholder such as `<id>` is taken for an HTML tag and vanishes, code span
-  or not (`PL-1DN9`). An update also strips a `_Generated by_` footer and puts
-  none back, so end an updated body with the `🤖 Generated with` lines
-  (`PL-N2DN`).
+- **Commit and push as you go, and read the `pull-request` skill before
+  opening, arming, updating or merging a pull request, or acting on a failed
+  check** (project owner, 2026-08-31; moved to
+  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
+  container is ephemeral, so an uncommitted thought is one interruption from
+  gone and an unpushed commit dies with it. Once the owner has approved a piece
+  of work, its pull request opens as soon as the work is finished and green,
+  without asking. That standing request is the explicit ask the web harness
+  waits for. The skill holds when a pull request arms, when to bring `main` in,
+  when failed checks stop the session, and how to check a published body. The
+  push and pull request hooks name it at those moments.
 - **Read only means read only** (project owner, 2026-09-27). Told "read
   only", or anything meaning look but change nothing, a session writes nothing
   until the owner lifts it: no file, commit, push, pull request, comment, claim
@@ -648,26 +605,10 @@ deviating from a described deliverable, not acting without one.
   its own armed pull requests at once and says so, and a check-in it scheduled
   only reads and reports - because letting it finish is a write nobody
   approved, and the owner should never have to confirm a hold to prevent a
-  merge. The capture rule and the item-only auto-merge above are suspended
+  merge. The capture rule and the `pull-request` skill's item-only auto-merge are suspended
   while it holds; a finding goes into the reply, to be filed once the mode
   lifts. `#1213` merged after "Read only for now" because its session left it
   armed and offered a hold (`PL-LK62`).
-- **Bring `origin/main` into an open pull request once, when it is armed or
-  being merged and `behind` is all that stops it; again only if another merge
-  lands first.** `main` refuses a branch that is not up to date (project owner,
-  2026-09-23, ratified, over a merge queue, which a user-owned repository
-  cannot have), and each base merge re-runs `quality.yml`, so one taken while
-  the pull request waits on review is stale by its merge and paid again.
-  Waiting on review behind is neither red nor conflicted, and is not work. At
-  merge time the owner's *Update branch* brings it in (`docs/maintainer.md`);
-  an armed one is brought in by `update-armed.yml` on each push to `main`
-  (`PL-S5MF`), since auto-merge never updates a branch. The refusal binds an
-  admin too. A session's GitHub calls are the owner's, so a session
-  squash-merges a pull request that GitHub will not arm because it is already
-  green and current (project owner, 2026-10-03, ratified, over the owner's
-  click, `PL-NXRJ`). Sooner only on a genuine
-  conflict, a notice that `main` is green again, or before editing work it will
-  push anyway, as `bin/docket branch` prints (`PL-6MW8`, revising `PL-WC72`).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
