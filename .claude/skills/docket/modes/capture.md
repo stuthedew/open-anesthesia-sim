@@ -304,6 +304,18 @@ daily. So the reply runs `python3 tools/branch_sweep.py` and hands the owner
 only a branch the sweep keeps that should go anyway (project owner,
 2026-09-26, ratified, over a list built by hand, `PL-X8SV`).
 
+The dry run sorts the branches so that only one group needs a look. It checks
+each branch against `git ls-remote`, because a session's clone keeps a
+tracking ref for every branch deleted since it started. A pull request's own
+branch is one of those once GitHub deletes it at merge. The dry run lists
+such a branch under "Already deleted on origin", and a branch with no reason
+to stay but its 72-hour grace period under "Kept only by the grace period".
+The daily sweep deletes that second kind on its own. Neither group is ever
+handed to the owner. Only a branch under "Kept", held by something the owner
+may want to end, such as a pull request that should be closed, can be. When
+the dry run says the remote's branch list could not be read, the reply names
+no branch at all (`PL-TL6T`).
+
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and
 leads no commit subject with one. It decides visibility only, never whether the
