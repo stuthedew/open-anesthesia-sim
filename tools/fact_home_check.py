@@ -11,7 +11,7 @@ differently at the moment one was trusted (`PL-4S6C`). This is the decidable
 part of that principle, as `tools/literal_home_check.py` is for a number under
 `src/`.
 
-Two rules over every tracked Python file under `tools/`,
+Three rules over every tracked Python file under `tools/`,
 `subprojects/docket/src/docket/` and `.claude/hooks/`, read through
 `tracked_files` so that this check is not itself a second reader of the tree:
 
@@ -29,6 +29,19 @@ Two rules over every tracked Python file under `tools/`,
    a name; either way one of them changes. An alias of another module's name
    (`X = other.X`) is an import and not a definition. `EXEMPT_NAMES` holds the
    one name every tool must spell itself, with the reason.
+3. **A predicate one module answers is not written again by hand.**
+   `PREDICATES` names each one with its home, one entry per predicate, and
+   the visitor decides its hand form. A membership test (`in` or `not in`)
+   against `OPEN_STATUSES` or `CLOSED_STATUSES` outside `docket.model` is a
+   second answer to whether an item is open (`PL-TSXD`). An `isdigit`, `int`
+   or pattern match applied to the `pr` field itself (`x.pr`, `x["pr"]`,
+   `x.get("pr")`) is a second reading of `model.pr_number` (`PL-4DK2`).
+   Digits read from anywhere else are not refused, because whether a string
+   is a pull request number is decided by where it was read, which the
+   syntax does not show: `isdigit` reads counts and line numbers too, so a
+   forge command's output, a record's file name and a ref name reach
+   `pr_number` by review rather than by this check (`PL-N4FP`). This rule
+   started with an empty baseline.
 
 The sites the tree held when this landed sat in `BASELINE`, keyed by file,
 rule and enclosing scope and never by line. It only shrinks: a count above an
@@ -72,7 +85,7 @@ from pathlib import Path
 
 from workflow_paths_check import tracked_files
 
-#: The trees held to both rules, as the repository-relative prefixes of their files.
+#: The trees held to every rule, as the repository-relative prefixes of their files.
 TREES = ("tools/", "subprojects/docket/src/docket/", ".claude/hooks/")
 
 #: The one file under them this check does not read: its own. See the docstring.
@@ -178,6 +191,47 @@ HOMES: tuple[Home, ...] = (
     ),
 )
 
+#: Rule 3's table: each predicate one module answers, with the hand form of it
+#: that the visitor can decide. One entry per predicate, read by the same
+#: report as `HOMES`.
+PREDICATES: tuple[Home, ...] = (
+    Home(
+        rule="item-status",
+        reads="tests a status against `OPEN_STATUSES` or `CLOSED_STATUSES` by hand",
+        where=((DOCKET + "model.py", None),),
+        why=(
+            "`Item.is_open` is the one answer to whether an item is open, and "
+            "`is_closed_status` the one test of a status read as text from a copy; "
+            "`in OPEN_STATUSES` and `not in CLOSED_STATUSES` disagree about a status in "
+            "neither set, so a hand test is a second answer to the same question (`PL-TSXD`)"
+        ),
+        remedy="read `Item.is_open`, or `model.is_closed_status` for a status read as text",
+    ),
+    Home(
+        rule="pr-number",
+        reads="reads the `pr:` field's number by hand",
+        where=((DOCKET + "model.py", None),),
+        why=(
+            "`model.pr_number` is the one reading of a `pr:` value and refuses `0` and "
+            "leading zeros, which GitHub never gives; `isdigit`, `int` and a pattern of "
+            "digits each accept some of them, so a second reader and `docket check` "
+            "disagree about one item (`PL-4DK2`, `PL-JT7Y`)"
+        ),
+        remedy="read the number with `model.pr_number`",
+    ),
+)
+
+#: The names rule 3's `item-status` entry looks for on the right of `in`.
+STATUS_SETS = frozenset({"OPEN_STATUSES", "CLOSED_STATUSES"})
+#: The item field rule 3's `pr-number` entry looks for, and the calls that read
+#: it by hand: a test of its digits, `int`, or a pattern matched against it.
+PR_FIELD = "pr"
+DIGIT_TESTS = frozenset({"isdigit", "isdecimal", "isnumeric"})
+MATCH_CALLS = frozenset({"match", "fullmatch", "search"})
+#: Methods that trim a string and leave what it reads unchanged, so
+#: `item.pr.strip().isdigit()` is read through to `item.pr`.
+TRIMS = frozenset({"strip", "lstrip", "rstrip", "removeprefix", "removesuffix"})
+
 #: Rule 2's name in a finding and a baseline key.
 DEFINITION = "definition"
 
@@ -241,7 +295,7 @@ class Module:
 
 
 class _Readers(ast.NodeVisitor):
-    """Collects rule 1's sites with the dotted scope that encloses each."""
+    """Collects rule 1's and rule 3's sites with the dotted scope that encloses each."""
 
     def __init__(self, path: str) -> None:
         self.path = path
@@ -310,6 +364,15 @@ class _Readers(ast.NodeVisitor):
                 self._record(node, "walk", 'glob("**")')
             elif module == "shlex" and function in LEXER_FUNCTIONS:
                 self._record(node, "shell-lexer", f"shlex.{function}")
+        if (read := _hand_read_pr(node)) is not None:
+            self._record(node, "pr-number", read)
+        self.generic_visit(node)
+
+    def visit_Compare(self, node: ast.Compare) -> None:
+        for op, right in zip(node.ops, node.comparators, strict=True):
+            if isinstance(op, (ast.In, ast.NotIn)) and (named := _status_set(right)):
+                spelled = "not in" if isinstance(op, ast.NotIn) else "in"
+                self._record(node, "item-status", f"{spelled} {named}")
         self.generic_visit(node)
 
     def visit_Constant(self, node: ast.Constant) -> None:
@@ -344,6 +407,62 @@ def _runs_git(argv: ast.expr) -> bool:
     return False
 
 
+def _status_set(node: ast.expr) -> str:
+    """The status set `node` spells, or an empty string where it spells none.
+
+    A bare name, an attribute (`model.CLOSED_STATUSES`), a set, list or tuple
+    that unpacks one (`{"", *CLOSED_STATUSES}`), and a sum that adds to one.
+    """
+    if isinstance(node, ast.Name) and node.id in STATUS_SETS:
+        return node.id
+    if isinstance(node, ast.Attribute) and node.attr in STATUS_SETS:
+        return node.attr
+    if isinstance(node, (ast.Set, ast.List, ast.Tuple)):
+        for element in node.elts:
+            if isinstance(element, ast.Starred) and (named := _status_set(element.value)):
+                return named
+    if isinstance(node, ast.BinOp):
+        return _status_set(node.left) or _status_set(node.right)
+    return ""
+
+
+def _reads_pr_field(node: ast.expr) -> bool:
+    """Whether `node` is the `pr:` field's text: `x.pr`, `x["pr"]` or `x.get("pr", ...)`.
+
+    Read through any trim (`.strip()`), which leaves the digits as they were.
+    """
+    while (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in TRIMS
+    ):
+        node = node.func.value
+    if isinstance(node, ast.Attribute):
+        return node.attr == PR_FIELD
+    if isinstance(node, ast.Subscript):
+        return isinstance(node.slice, ast.Constant) and node.slice.value == PR_FIELD
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        first = node.args[0] if node.args else None
+        return (
+            node.func.attr == "get" and isinstance(first, ast.Constant) and first.value == PR_FIELD
+        )
+    return False
+
+
+def _hand_read_pr(node: ast.Call) -> str | None:
+    """The hand form `node` reads the `pr:` field's number by, or `None` where it reads none."""
+    func = node.func
+    if isinstance(func, ast.Attribute) and func.attr in DIGIT_TESTS and _reads_pr_field(func.value):
+        return f"the `pr` field's {func.attr}()"
+    if isinstance(func, ast.Name) and func.id == "int" and node.args:
+        if _reads_pr_field(node.args[0]):
+            return "int() of the `pr` field"
+    if isinstance(func, ast.Attribute) and func.attr in MATCH_CALLS:
+        if any(_reads_pr_field(argument) for argument in node.args):
+            return f"a pattern's {func.attr}() of the `pr` field"
+    return None
+
+
 def _recursive(node: ast.Call) -> bool:
     """Whether a glob call reaches below its directory: a `**` pattern or `recursive=True`."""
     for keyword in node.keywords:
@@ -358,7 +477,7 @@ def _recursive(node: ast.Call) -> bool:
 
 
 def read_module(source: str, path: str) -> Module:
-    """Both rules' view of one file.
+    """Every rule's view of one file.
 
     Args:
         source: The module's text.
@@ -431,11 +550,11 @@ def sources(root: Path) -> Iterator[str]:
 
 
 def _home(rule: str) -> Home | None:
-    return next((home for home in HOMES if home.rule == rule), None)
+    return next((home for home in (*HOMES, *PREDICATES) if home.rule == rule), None)
 
 
 def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = BASELINE) -> Report:
-    """Evaluate both rules against the source on disk."""
+    """Evaluate every rule against the source on disk."""
     found: dict[str, Counter[tuple[str, str]]] = defaultdict(Counter)
     sites: dict[tuple[str, tuple[str, str]], list[Site]] = defaultdict(list)
     definitions: list[Definition] = []
@@ -510,7 +629,7 @@ def format_report(report: Report) -> str:
         lines.append("")
         lines.append(f"No tracked Python files under {', '.join(TREES)} - the check read nothing.")
         lines.append(
-            "  A moved tree or a listing git could not give leaves both rules passing over nothing."
+            "  A moved tree or a listing git could not give leaves every rule passing over nothing."
         )
 
     if report.unparsed:
@@ -523,7 +642,7 @@ def format_report(report: Report) -> str:
     for overflow in report.overflows:
         by_rule[overflow.key[0]].append(overflow)
 
-    for home in HOMES:
+    for home in (*HOMES, *PREDICATES):
         overflows = by_rule.get(home.rule)
         if not overflows:
             continue

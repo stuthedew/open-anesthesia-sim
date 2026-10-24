@@ -79,6 +79,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.lines import record_text, split_lines  # noqa: E402
+from docket.model import pr_number  # noqa: E402
 from docket.vcs import (  # noqa: E402
     PULL_MERGED,
     PULL_OPEN,
@@ -220,9 +221,9 @@ def read_remote(run: Runner) -> Remote:
         elif ref.startswith("refs/heads/"):
             heads[ref.removeprefix("refs/heads/")] = value
         elif ref.startswith("refs/pull/") and ref.endswith("/head"):
-            number = ref.removeprefix("refs/pull/").removesuffix("/head")
-            if number.isdigit():
-                frozen[int(number)] = value
+            number = pr_number(ref.removeprefix("refs/pull/").removesuffix("/head"))
+            if number is not None:
+                frozen[number] = value
     if not default or default not in heads:
         raise Declined(f"{UNREADABLE_ANSWER}: {REMOTE} did not name its default branch")
     return Remote(default=default, heads=heads, frozen=frozen)

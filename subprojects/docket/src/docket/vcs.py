@@ -52,8 +52,8 @@ from .config import Config
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import (
-    CLOSED_STATUSES,
     _front_matter_pairs,
+    is_closed_status,
     is_under,
     parse_front_matter,
     parse_item,
@@ -3678,7 +3678,7 @@ class BaseCopy:
         """
         if not self.changed_here:
             return True
-        return self.status in CLOSED_STATUSES and here not in CLOSED_STATUSES
+        return is_closed_status(self.status) and not is_closed_status(here)
 
 
 @dataclass(frozen=True)
@@ -4609,9 +4609,10 @@ def subject_pull_request(subject: str) -> SubjectPullRequest | None:
     if match is None:
         return None
     merged, squashed = match.group(1), match.group(2)
-    if squashed is not None:
-        return SubjectPullRequest(int(squashed), squash=True)
-    return SubjectPullRequest(int(merged), squash=False)
+    number = pr_number(squashed if squashed is not None else merged)
+    if number is None:
+        return None
+    return SubjectPullRequest(number, squash=squashed is not None)
 
 
 def github_slug(url: str) -> str | None:
@@ -5351,8 +5352,8 @@ def _standing(base_text: str, ref_text: str) -> str:
     if not differing:
         held_whole = _within(_markdown_statements(ref_text), _markdown_statements(base_text))
         return _COPY_BEHIND if held_whole else _COPY_AHEAD
-    closed_on_base = base_fields.get("status", "") in CLOSED_STATUSES
-    closed_on_ref = ref_fields.get("status", "") in CLOSED_STATUSES
+    closed_on_base = is_closed_status(base_fields.get("status", ""))
+    closed_on_ref = is_closed_status(ref_fields.get("status", ""))
     if closed_on_base and not closed_on_ref and all(key in base_fields for key in differing):
         return _COPY_BEHIND
     return _COPY_AHEAD

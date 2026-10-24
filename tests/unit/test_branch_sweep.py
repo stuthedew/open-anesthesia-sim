@@ -14,7 +14,6 @@ import os
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from types import SimpleNamespace
 
 import branch_sweep
 import pytest
@@ -31,6 +30,7 @@ from branch_sweep import (
     read_stranded,
     sweep,
 )
+from docket.model import parse_item
 from docket.vcs import RemoteHeads, StrandedEdit, StrandedItem, StrandedReport
 from open_pull_requests import PullRequest
 
@@ -97,8 +97,8 @@ def test_an_edit_keeps_its_branch_only_while_main_holds_the_item_open(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     items = [
-        SimpleNamespace(identifier="PL-QP7N", status="ready"),
-        SimpleNamespace(identifier="PL-D9NX", status="done"),
+        parse_item("---\nid: PL-QP7N\nstatus: ready\n---\n"),
+        parse_item("---\nid: PL-D9NX\nstatus: done\n---\n"),
     ]
     report = StrandedReport(
         items=(StrandedItem("PL-K3ST", "lost", "p", ("origin/claude/lost-a1b2c3",)),),

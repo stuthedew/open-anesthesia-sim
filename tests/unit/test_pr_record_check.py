@@ -199,6 +199,10 @@ def test_a_number_that_is_not_one_fails_rather_than_certifying(
 ) -> None:
     assert _run(monkeypatch, "abc") == 1
     assert "not a pull request number" in capsys.readouterr().err
+    # `07` and `0` are numbers GitHub never gives, as `model.pr_number` reads one (`PL-JT7Y`).
+    for given in ("07", "0"):
+        assert _run(monkeypatch, given) == 1
+        assert "not a pull request number" in capsys.readouterr().err
 
 
 def _git_answering(**refs: dict[str, str]):

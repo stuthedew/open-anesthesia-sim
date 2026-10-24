@@ -33,10 +33,8 @@ from .instructions import Assertion
 from .lines import split_lines
 from .markdown import SOFT_BREAK, statement_lines
 from .model import (
-    CLOSED_STATUSES,
     EFFORTS,
     GENERATOR_VERDICTS,
-    OPEN_STATUSES,
     PRIORITIES,
     RESOURCES,
     STATUSES,
@@ -738,7 +736,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(stub_error(where, stub))
         return
 
-    if item.status in OPEN_STATUSES:
+    if item.is_open:
         if item.priority not in PRIORITIES:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
@@ -830,11 +828,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # the `docket` skill. Open items only: a closed command is a record of what
     # was run on a tree that no longer exists, and rewriting one replaces the
     # command that proved the work with one that never ran it.
-    if (
-        item.status not in CLOSED_STATUSES
-        and item.verify
-        and _verify_prerequisite_refused(item, config)
-    ):
+    if item.is_open and item.verify and _verify_prerequisite_refused(item, config):
         redundant = _redundant_pytest_clause(item.verify, config.collected_test_paths)
         if redundant is not None:
             report.errors.append(
@@ -849,11 +843,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # pytest's 5. A `-k` over the collected trees can give only 0 or 5, and a
     # substring can be satisfied by another item's test; `_k_selector_clause`
     # has the reasoning and what it leaves alone.
-    if (
-        item.status not in CLOSED_STATUSES
-        and item.verify
-        and _verify_k_selector_refused(item, config)
-    ):
+    if item.is_open and item.verify and _verify_k_selector_refused(item, config):
         selector = _k_selector_clause(item.verify, config.collected_test_paths)
         if selector is not None:
             report.errors.append(
@@ -870,7 +860,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # an item whose proof cannot be one of the admitted shapes says why, and is
     # then not handed to a worker whose `docket verify` would trust the command.
     if (
-        item.status not in CLOSED_STATUSES
+        item.is_open
         and item.verify
         and not item.not_delegable
         and _verify_allowlist_applies(item, config)
@@ -936,7 +926,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # binds open work only. Held on a closed item, it refused the drop of an
     # anticipated safety item that waited at P2 until its record was rewritten
     # to a P1 it never held (`PL-9HHC`).
-    exempt = item.status in CLOSED_STATUSES or item.waits_anticipated
+    exempt = not item.is_open or item.waits_anticipated
     if safety and not exempt and item.priority in ("P2", "P3"):
         blocked_hint = (
             "; if the concern does not exist until a later feature is built, class it "
@@ -1022,7 +1012,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: `not-delegable` holds the reason the item is withheld, not a "
             "boolean; write why a cheaper model must not take it"
         )
-    if item.verify and not item.touches and item.status in OPEN_STATUSES:
+    if item.verify and not item.touches and item.is_open:
         report.errors.append(
             f"{where}: names a `verify` command but declares no `touches`; a check "
             "with no declared scope cannot bound what the work may change"
@@ -1039,7 +1029,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: marked dropped but records no `reason`; an item closed without "
             "one gets re-raised by the next person who notices it"
         )
-    if item.status in CLOSED_STATUSES and item.closed is None:
+    if not item.is_open and item.closed is None:
         report.errors.append(f"{where}: marked {item.status} but records no `closed` date")
 
 
@@ -1532,7 +1522,7 @@ def _check_written(
     for item in report.items:
         if (
             item.identifier not in written.identifiers
-            or item.status in CLOSED_STATUSES
+            or not item.is_open
             or not item.verify
             or item.not_delegable
             or _verify_allowlist_applies(item, config)  # `_check_item` has already judged it
@@ -2387,7 +2377,7 @@ def _check_gate_dispositions(
                 "own work rather than deferring it; keep the one that is true - remove the "
                 "field (`--deferred-from ''`), or take the id out of Required scope"
             )
-        if deferred or item.identifier in placed or item.status in CLOSED_STATUSES:
+        if deferred or item.identifier in placed or not item.is_open:
             continue
         debt = [name for name in item.classes if name in config.debt_classes]
         if item.status == "needs-decision":
@@ -2407,7 +2397,7 @@ def _check_gate_dispositions(
     by_id = {item.identifier: item for item in report.items}
     status = gate_status(
         gate,
-        frozenset(item.identifier for item in report.items if item.status in CLOSED_STATUSES),
+        frozenset(item.identifier for item in report.items if not item.is_open),
         frozenset(by_id),
         {item.identifier: item.blocked_by for item in report.items},
         train=milestones.train,
@@ -2483,10 +2473,7 @@ def _check_generator_verdicts(report: Report, known: set[str]) -> None:
     for.
     """
     for item in report.items:
-        if (
-            item.status in CLOSED_STATUSES
-            and split_generator_verdict(item.generator)[0] == GENERATOR_VERDICTS[0]
-        ):
+        if not item.is_open and split_generator_verdict(item.generator)[0] == GENERATOR_VERDICTS[0]:
             # A closed head is asked for no verdict, but one saying `live`
             # disagrees with `docket generators`, which lists the head drained,
             # and a reader believes whichever it opens first (`PL-JLBD`).
@@ -2619,7 +2606,7 @@ def _check_spent_verdicts(report: Report, known: set[str]) -> None:
     what to do about it is not, which is the line `CLAUDE.md` draws.
     """
     for item in report.items:
-        if item.status not in OPEN_STATUSES or not is_generator(item, known):
+        if not item.is_open or not is_generator(item, known):
             continue
         verdict, _reason = split_generator_verdict(item.generator)
         if verdict != "spent":
@@ -2936,7 +2923,7 @@ def _check_gone_touches(report: Report, gone: GoneReport | None, config: Config)
         f"{item.identifier} "
         + ", ".join(f"{entry} (last changed by {last[entry]})" for entry in entries)
         for item in sorted(report.items, key=lambda i: i.identifier)
-        if item.status in OPEN_STATUSES
+        if item.is_open
         and (
             entries := [
                 entry
@@ -3871,13 +3858,11 @@ def _check_stale_open_threads(
     """
     if not threads or notes_changed is False:
         return
-    status = {item.identifier: item.status for item in report.items}
+    closed = {item.identifier for item in report.items if not item.is_open}
     stale = [
         thread
         for thread in threads
-        if thread.declares_open
-        and thread.cites
-        and all(status.get(cited) in CLOSED_STATUSES for cited in thread.cites)
+        if thread.declares_open and thread.cites and all(cited in closed for cited in thread.cites)
     ]
     if not stale:
         return
@@ -4107,7 +4092,7 @@ def _groom(
     # goes false, and the pull request making it is the one that moves it. A
     # milestone blocker clears on a scoping round instead, which is no closure
     # and has no pull request of its own to refuse, so it stays advice here.
-    resolved = {i.identifier for i in report.items if i.status in CLOSED_STATUSES}
+    resolved = {i.identifier for i in report.items if not i.is_open}
     for item in report.items:
         versions = item.blocking_milestones
         if item.status != "blocked" or not versions:
@@ -4347,7 +4332,7 @@ def _check_shared_verify(report: Report, config: Config) -> None:
     """
     holders: dict[str, list[str]] = {}
     for item in report.items:
-        if item.status in OPEN_STATUSES and item.verify and not never_fails(item.verify):
+        if item.is_open and item.verify and not never_fails(item.verify):
             for clause in dict.fromkeys(_discriminating_clauses(item.verify, config)):
                 holders.setdefault(clause, []).append(item.identifier)
     reported: set[tuple[str, ...]] = set()
