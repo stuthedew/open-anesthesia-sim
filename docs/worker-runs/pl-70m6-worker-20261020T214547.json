@@ -16,5 +16,9 @@
   "cache_read_tokens": 1276593,
   "cache_write_tokens": 6428,
   "output_tokens": 4258,
-  "review": null
+  "review": {
+    "outcome": "fixed",
+    "note": "The join, the git read and every declined case work end to end on the real ledger; one comment cited a model-review skill that does not exist and now cites docs/maintainer.md, and the configured-model note firing on a [1m] suffix alone is filed as PL-YF16.",
+    "reviewed": "2026-10-24"
+  }
 }
