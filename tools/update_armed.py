@@ -70,20 +70,27 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.vcs import default_branch, github_token  # noqa: E402
 
 from main_ci_status import FAILED  # noqa: E402
-from open_pull_requests import ListingFailed, every_page, repo_slug  # noqa: E402
-from required_checks_check import required_contexts  # noqa: E402
 
-API = "https://api.github.com"
-API_VERSION = "2022-11-28"
+# GitHub's host, the request's headers and the size of its largest page are
+# each read in one place, the client every tool here shares (`PL-LGDV`).
+from open_pull_requests import (  # noqa: E402
+    GITHUB_API,
+    PAGE,
+    ListingFailed,
+    api_request,
+    every_page,
+    repo_slug,
+)
+from required_checks_check import required_contexts  # noqa: E402
 
 #: The secret the update is made with, read from the environment only.
 #: `tests/unit/test_update_armed.py` holds the workflow to this spelling, since
 #: a misspelt secret reads as an absent one and the run would pass listing.
 WRITE_TOKEN = "UPDATE_BRANCH_TOKEN"
 
-#: GitHub's largest page, for the check runs read below. The pull request
-#: listing is `open_pull_requests.every_page`'s, which pages to a short page.
-PAGE = 100
+# `PAGE`, GitHub's largest page, bounds the check runs read below. The pull
+# request listing is `open_pull_requests.every_page`'s, which pages to a short
+# page.
 
 TIMEOUT = 30.0
 ATTEMPTS = 3
@@ -132,7 +139,7 @@ class GitHub:
     """The calls this makes, each with the token it needs."""
 
     def __init__(
-        self, slug: str, read_token: str | None, write_token: str | None, root: str = API
+        self, slug: str, read_token: str | None, write_token: str | None, root: str = GITHUB_API
     ) -> None:
         self.slug = slug
         self.read_token = read_token
@@ -141,12 +148,9 @@ class GitHub:
 
     def _call(self, method: str, path: str, token: str | None, body: object = None) -> Answer:
         data = None if body is None else json.dumps(body).encode("utf-8")
-        request = urllib.request.Request(f"{self.root}{path}", data=data, method=method)
-        request.add_header("Accept", "application/vnd.github+json")
-        request.add_header("X-GitHub-Api-Version", API_VERSION)
-        request.add_header("User-Agent", "update_armed")
-        if token:
-            request.add_header("Authorization", f"Bearer {token}")
+        request = api_request(
+            f"{self.root}{path}", agent="update_armed", token=token, method=method, data=data
+        )
         try:
             with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
                 return Answer(response.status, _decoded(response.read()))

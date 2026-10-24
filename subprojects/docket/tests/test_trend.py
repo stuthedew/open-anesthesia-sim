@@ -25,7 +25,7 @@ from docket.trend import (
     ROADMAP,
     SIM_CODE,
     SIM_DOCS,
-    UNPLACED,
+    UNPLACED_PATH,
     analyze,
     bucket,
 )
@@ -127,7 +127,7 @@ def test_where_product_paths_is_declared_a_path_neither_list_places_is_nobodys()
     Whatever either list places keeps its bucket, and so does `tests`, which
     `code_paths` settles before the question is asked.
     """
-    assert bucket("docs/pr-bodies/1215.md", PLACED) == UNPLACED
+    assert bucket("docs/pr-bodies/1215.md", PLACED) == UNPLACED_PATH
     assert bucket("docs/MODEL.md", PLACED) == SIM_DOCS
     assert bucket("tests/unit/test_tissue.py", PLACED) == SIM_CODE
     assert bucket("tools/x.py", PLACED) == APPARATUS

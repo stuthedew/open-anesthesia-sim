@@ -62,7 +62,7 @@ from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import REMOTE, _head_name, orphaned, remote_names, stranded  # noqa: E402
+from docket.vcs import REMOTE, _head_name, call_git, orphaned, remote_names, stranded  # noqa: E402
 
 import left_behind_check  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
@@ -73,6 +73,9 @@ ARCHIVE = "refs/archive"
 
 #: How long after its last commit a branch is kept whatever else holds.
 GRACE = timedelta(hours=72)
+
+#: Seconds one git call may take, the push that sweeps a branch among them.
+SWEEP_TIMEOUT = 120
 
 
 class Declined(Exception):
@@ -122,10 +125,16 @@ class Verdict:
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Git's answer, decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`)."""
-    done = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=120, check=False)
+    """Git's answer, decoded as written, so a raw `\\r` in a record stays in it (`PL-0R4M`).
+
+    Run through `vcs.call_git`, git's one runner, with two minutes for the
+    sweep's push. A git that never ran, or was stopped at that bound, exits
+    `-1` with the reason on stderr, so a caller declines rather than sweeps.
+    """
+    call = call_git(args, root, timeout=SWEEP_TIMEOUT)
+    code = -1 if call.code is None else call.code
     return subprocess.CompletedProcess(
-        done.args, done.returncode, record_text(done.stdout), record_text(done.stderr)
+        ["git", *call.args], code, record_text(call.stdout), call.stderr
     )
 
 

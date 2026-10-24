@@ -235,14 +235,16 @@ from itertools import combinations
 from pathlib import Path
 from typing import NamedTuple
 
+# Every module under `APP`, the interface's package, is read; nothing under it
+# is named by path. `agent_identity_check` reads the same tree, and its `APP`
+# is the one spelling of where that tree is (`PL-LGDV`).
+from agent_identity_check import APP
 from workflow_paths_check import tracked_under
 
 # isort: split
 # After `workflow_paths_check`, whose import puts docket on the path.
 from docket.vcs import answered, call_git
 
-#: Every module under this tree is read; nothing under it is named by path.
-APP = Path("src/anesthesia_sim/app")
 #: The one module colors belong in (PL-2CS8), read first so that a name another
 #: module aliases from it resolves to a color.
 THEME = APP / "theme.py"
@@ -294,8 +296,10 @@ SYMBOL_SPAN_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 
 #: `simulation_view.py:320`, and the ranged form `:248-257`. Refused rather
 #: than merely discouraged: a convention against it is exactly what failed
-#: before, and the rotting is silent (PL-GJDW).
-LINE_CITATION_RE = re.compile(r"\b[\w./]+\.py:\d+(?:-\d+)?")
+#: before, and the rotting is silent (PL-GJDW). Any such line number is
+#: refused, in backticks or not, so this is not `doc_check.LINE_CITATION_RE`,
+#: which reads a backticked citation to check that its line exists.
+LINE_NUMBER_RE = re.compile(r"\b[\w./]+\.py:\d+(?:-\d+)?")
 
 #: Ratios are compared at the precision they are printed at. A verdict that
 #: disagrees with the number beside it ("it says 4.50 and it failed") is a
@@ -1761,7 +1765,7 @@ def check_citations(root: Path) -> tuple[str, ...]:
     )
     errors: list[str] = []
     for pair, why in cited:
-        for match in LINE_CITATION_RE.finditer(why):
+        for match in LINE_NUMBER_RE.finditer(why):
             errors.append(
                 f"  {pair}: cites {match.group(0)}, a line number. Name the symbol the "
                 "color is set on instead - a line number is stale by the next edit "

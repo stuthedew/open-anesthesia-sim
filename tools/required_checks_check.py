@@ -148,7 +148,6 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 import urllib.error
@@ -174,11 +173,12 @@ from docket.frontmatter import (  # noqa: E402
     unquote,
 )
 from docket.frontmatter import key as frontmatter_key  # noqa: E402
-from docket.lines import record_text, split_lines  # noqa: E402
-from docket.vcs import REMOTE, default_branch, github_slug, github_token  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
+from docket.vcs import REMOTE, default_branch, github_token  # noqa: E402
 
-API_ROOT = "https://api.github.com"
-API_VERSION = "2022-11-28"
+# GitHub's host, the request's headers and which repository `origin` is are
+# each read in one place, the client every tool here shares (`PL-LGDV`).
+from open_pull_requests import GITHUB_API, api_request, repo_slug  # noqa: E402
 
 # The events that make a job report a status check onto a pull request.
 # `push` is deliberately absent: a job triggered only by `push` reports against
@@ -1255,12 +1255,8 @@ def _get(url: str, token: str | None, attempts: int = 3) -> object:
     runner IP - shared across every runner - to 1,000 per hour for this
     repository, and that is the whole of what it is for.
     """
-    # The URL is always this module's literal API root plus a repo slug.
-    request = urllib.request.Request(url)
-    request.add_header("Accept", "application/vnd.github+json")
-    request.add_header("X-GitHub-Api-Version", API_VERSION)
-    if token:
-        request.add_header("Authorization", f"Bearer {token}")
+    # The URL is always `GITHUB_API` plus a repo slug.
+    request = api_request(url, agent="required_checks_check", token=token)
     last: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -1283,7 +1279,7 @@ def required_contexts(repo: str, branch: str, token: str | None) -> tuple[set[st
     contexts: set[str] = set()
     sources: list[str] = []
 
-    branch_doc = _get(f"{API_ROOT}/repos/{repo}/branches/{branch}", token)
+    branch_doc = _get(f"{GITHUB_API}/repos/{repo}/branches/{branch}", token)
     protection: dict[str, object] = {}
     if isinstance(branch_doc, dict):
         protection = branch_doc.get("protection") or {}
@@ -1293,7 +1289,7 @@ def required_contexts(repo: str, branch: str, token: str | None) -> tuple[set[st
         contexts.update(classic)
         sources.append("classic branch protection")
 
-    rules = _get(f"{API_ROOT}/repos/{repo}/rules/branches/{branch}", token)
+    rules = _get(f"{GITHUB_API}/repos/{repo}/rules/branches/{branch}", token)
     from_rulesets: set[str] = set()
     if isinstance(rules, list):
         for rule in rules:
@@ -1366,20 +1362,12 @@ def reconcile(reporting: dict[str, ReportingJob], required: set[str]) -> list[tu
 
 
 def _repo_from_git(root: Path) -> str:
-    """Return `owner/name` from the origin remote."""
-    try:
-        url = record_text(
-            subprocess.run(
-                ["git", "-C", str(root), "remote", "get-url", REMOTE],
-                capture_output=True,
-                check=True,
-            ).stdout
-        ).strip()
-    except (OSError, subprocess.CalledProcessError) as exc:
-        raise RuntimeError(f"no --repo given and no {REMOTE} remote to read one from") from exc
-    slug = github_slug(url)
+    """Return `owner/name` from the origin remote, by `open_pull_requests.repo_slug`."""
+    slug = repo_slug(root)
     if slug is None:
-        raise RuntimeError(f"cannot read owner/name out of the {REMOTE} remote: {url}")
+        raise RuntimeError(
+            f"no --repo given, and the {REMOTE} remote is missing or is not a GitHub repository"
+        )
     return slug
 
 

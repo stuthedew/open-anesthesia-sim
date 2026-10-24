@@ -1,0 +1,14 @@
+---
+id: PL-MM3Q
+title: tools/fact_home_check.py's rule 2 matches a second copy only by its name, so a fact copied under a new name passes; PL-LGDV's drain found five such copies by reading the code
+status: untriaged
+feature: one-source-of-truth
+touches: tools/fact_home_check.py, tests/unit/test_fact_home_check.py
+added: 2026-10-24
+---
+
+**Problem.** Rule 2 of `tools/fact_home_check.py` reports an upper-case module-level name that two apparatus files define. A copy of the same value under another name passes. `PL-H5T9` lists five such copies that `PL-LGDV` found by reading the code, for example `roadmap.SECTION_ID_RE` and `store.CITED_ID_RE`, which are the same `re.compile(ID_PATTERN)`.
+
+**Why it matters.** `CLAUDE.md` asks that a second copy be fixed by its shape, so that the next one fails a check. The baseline is now empty, so rule 2 refuses every new same-named copy, but a renamed copy is still invisible to it.
+
+**Done when.** A decidable form of "the same fact under another name" is chosen and checked, or the item records why none is decidable. One candidate is two module-level bindings whose values are the same call with the same constant arguments, such as two `re.compile(ID_PATTERN)`. Any such rule must not report two different facts that happen to share a value, such as `trend.UNPLACED_PATH` and `roadmap.UNPLACED`, which are both `"unplaced"` and mean different things.
