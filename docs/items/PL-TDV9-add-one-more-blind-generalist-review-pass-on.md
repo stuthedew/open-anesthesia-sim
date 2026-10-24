@@ -1,8 +1,12 @@
 ---
 id: PL-TDV9
 title: Add one more blind generalist review pass on each simulator pull request: in PL-TCBJ's replay one generalist caught the later-filed defect in 5 of 10 merged pull requests, as many as a three-specialist panel at a third of the cost
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: infra
 feature: review-panel
+touches: .claude/skills/pull-request/SKILL.md
 blocked-by: PL-TBQS
 added: 2026-10-24
 ---
@@ -26,3 +30,7 @@ added: 2026-10-24
 **Recommendation:** run the rest of the pool, about 9 more pull requests, and add two more generalist runs on every pull request. That gives one-generalist, three-generalist and panel results on the same diffs, and the three-generalist arm costs the same as the panel. Score each key defect as well as each pull request. Fix the bar before the count. Build the panel only if it names at least 3 more key defects than three generalist runs. Otherwise build generalist passes, with a second pass only if runs 2 and 3 together name at least 3 key defects that run 1 missed. The cost is about 74 new reviews at 150,000 to 300,000 subagent tokens each, so 11 to 22 million tokens, plus verifying the other candidates and one blind checker per pull request. Seeding planted defects to grow the sample past the pool is not recommended, because it measures how reviewers find planted faults rather than the faults this project ships.
 
 **Decision** (project owner, 2026-10-24, ratified, over choosing on `PL-TCBJ`'s ten pull requests, over running the rest of the pool with one generalist only, and over seeded defects). The larger test runs as recommended above. It is `PL-TBQS` (the larger replay of the reviewer test), which holds the protocol and the bar fixed before the count. This item is built, or dropped for the panel, on that item's result.
+
+**Why it matters.** `PL-TCBJ`'s ten pull requests suggest one extra blind pass finds about half of what is later filed against a simulator pull request. A defect caught in review costs one commit, while one found after merge costs an item, a session and possibly a learner misled in between. The sample is too small to choose between this and a panel, which is why it waits on `PL-TBQS`.
+
+**Generator check.** Work the owner asked for: it is the proposed outcome of `PL-TCBJ`'s replay, which the owner requested, and it waits on the larger test the owner chose on 2026-10-24.
