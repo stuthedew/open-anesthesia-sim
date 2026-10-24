@@ -4,7 +4,7 @@ title: src/anesthesia_sim/app/ re-checks quantities that core already owns: form
 priority: P2
 effort: M
 status: ready
-classes: refactor
+classes: defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/unit/test_playback.py, tests/unit/test_chart_time_base.py
 added: 2026-10-19

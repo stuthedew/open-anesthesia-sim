@@ -4,7 +4,7 @@ title: Three core class defaults restate data-file values (alveolar gas volume 2
 priority: P1
 effort: M
 status: needs-decision
-classes: safety, refactor
+classes: safety, defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, tools/literal_home_check.py, tests/unit/test_circuit.py, tests/unit/test_alveolar.py
 added: 2026-10-19

@@ -24,6 +24,8 @@ in an entry (`PL-F5B9`), which the digest can only name in the entry's place
 budget does not make a commit on an unrelated task wrong, and a red gate that
 blocks one is how a session learns to raise the cap to get moving - which is
 the one repair that is never right. It warns instead, in two bands.
+`tests/unit/test_dead_ends.py` keeps the shipped file below the nudge, so a
+session that adds an entry makes room for it in the same commit.
 
 **Why the entries are resident at all, which is the load-bearing choice here.**
 Not because records like this go unread - that argument comes from human
