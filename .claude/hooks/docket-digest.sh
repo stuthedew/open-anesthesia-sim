@@ -54,11 +54,14 @@ fi
 # The checkout, as every hook finds it (`hook_input.py`, `PL-FB77`).
 root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
 
-# The effort trial's arm for this session, from 2026-10-24 04:00 UTC and
-# silent before. Early, because the session repeats it to the owner in its
-# first reply. This line in the transcript is also the trial's record of the
-# arm, which the model review reads (`PL-HYRM`).
-python3 "$root/tools/effort_trial.py" digest 2>/dev/null || true
+# The effort trial: draw this cloud session's arm from the hook's session id,
+# write it as the effort cap, and print the line that names it (`PL-8MZ9`).
+# The draw and the line are one command because Claude Code runs a session's
+# hooks in parallel, so a separate reader could run before the cap is written.
+# Early, because the session repeats the line to the owner in its first reply.
+# The line in the transcript is also the trial's record of the arm, which the
+# model review reads (`PL-HYRM`). Silent outside a cloud session.
+printf '%s' "$hook_input" | python3 "$root/tools/effort_trial.py" session-start 2>/dev/null || true
 
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0
