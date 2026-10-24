@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/app/, tools/literal_home_check.py, tests/integration/test_qt_widgets.py
 added: 2026-10-19
 closed: 2026-10-24
+pr: 1741
 payoff: each layout spacing in the interface has one name, so changing it cannot leave a copy of the old value elsewhere on screen
 verify: ! grep -qF '"src/anesthesia_sim/app/' tools/literal_home_check.py
 ---
