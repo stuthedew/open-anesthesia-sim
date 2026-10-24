@@ -3,11 +3,12 @@ id: PL-4X5B
 title: tools/literal_home_check.py's baseline holds 29 bare layout literals in src/anesthesia_sim/app/ (14 in qt_widgets.py, 7 in qt_chart.py, among them 90 three times and 6 three times) and no open item names them
 priority: P3
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/, tools/literal_home_check.py
 added: 2026-10-19
+closed: 2026-10-24
 payoff: each layout spacing in the interface has one name, so changing it cannot leave a copy of the old value elsewhere on screen
 verify: ! grep -qF '"src/anesthesia_sim/app/' tools/literal_home_check.py
 ---
@@ -28,3 +29,9 @@ verify: ! grep -qF '"src/anesthesia_sim/app/' tools/literal_home_check.py
 **Done when** (rewritten 2026-10-24 for the four kinds above). No bare literal under `src/anesthesia_sim/app/` is left in `BASELINE`: each is a named constant, or gone where it was a position that the code's own order states. `BASELINE` in `tools/literal_home_check.py` has no `src/anesthesia_sim/app/` entry left. The interface looks the same before and after: the default run at 120 s, at a wide and a narrow width, and the bookmark editor, render to identical pixels.
 
 **Generator check.** Bookkeeping. These are the baseline `tools/literal_home_check.py` recorded when it landed under `PL-40SJ`, so they are not new inflow, and nothing has added to them since.
+
+**Done 2026-10-24.** Every value is unchanged, and the four renders named above are pixel-identical before and after. Three choices were the session's, and each is a placeholder until planned-milestone item 33's visual pass:
+
+- Equal spacings share a name only where they are one quantity on screen. `LEGEND_LINE_SPACING` is the gap between two legend rows and also between the lines of a row that wraps, so a wrapped row is spaced like the rows around it. `CONTROL_ROW_SPACING` is the gap between controls on the transport row and on the Branch panel. The other equal values keep separate names: the 6 px between a swatch and its words is `LEGEND_SWATCH_SPACING`, and the 12 px between the sliders and the 12 px along the readout heading are `PARAMETER_SLIDER_SPACING` and `READOUT_HEADING_SPACING`.
+- The spacings live in `app/theme.py`, even those that one module uses, because that file's display-tokens header names it the home of the interface's spacing constants. The line angles stay in `qt_chart.py`, because they are pyqtgraph's convention rather than a display choice.
+- `DECIMAL_BASE` lives in `formatting.py`, beside the three display resolutions that are powers of it.

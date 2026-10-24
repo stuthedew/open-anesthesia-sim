@@ -5,8 +5,9 @@ decides nothing; these tests hold the few things the widgets *do* own -
 that a readout value cannot wrap away from its unit (`PL-3355`), that a
 slider position is exactly the printed value (`PL-25KS`, D4), that a
 snapshot written into a slider never comes back out as a change, that the
-new-case dialog's default keeps the case, and where the window opens
-(`PL-005`). They render under the
+new-case dialog's default keeps the case, which cell of the bookmark editor
+each field stands in, and where the window opens (`PL-005`). They render
+under the
 `offscreen` platform `tests/conftest.py` selects.
 """
 
@@ -29,9 +30,15 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    COMPARTMENT_FIELD_LABEL,
     EMPTY_METRIC_QUALIFIER,
+    HEIGHT_FIELD_LABEL,
+    INSTANT_FIELD_LABEL,
+    MAC_TARGET_HEADING,
+    MARK_NAME_FIELD_LABEL,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
+    TIME_BOOKMARK_HEADING,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     Readout,
@@ -47,6 +54,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    BookmarkDialog,
     FlowLayout,
     MetricPanel,
     NewCaseDialog,
@@ -760,6 +768,84 @@ def test_the_discard_button_is_drawn_before_the_keep_button(application: QApplic
 
     assert dialog.discard_button.geometry().right() < dialog.keep_button.geometry().left()
     assert dialog.discard_button.geometry().top() == dialog.keep_button.geometry().top()
+
+
+# ----------------------------------------------------- the bookmark editor
+
+
+def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
+    """The editor's form at this place in its column: 0 for times, 1 for targets."""
+
+    column = dialog.layout()
+    item = None if column is None else column.itemAt(index)
+    form = None if item is None else item.layout()
+    assert isinstance(form, QGridLayout)
+
+    return form
+
+
+def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[int, ...]]:
+    """The cell each widget of one form spans: row, column, rows and columns.
+
+    A widget is named by the dialog attribute that holds it, or by its text
+    where it is a heading or a field's name, which no attribute holds.
+    """
+
+    attributes = {id(value): name for name, value in vars(dialog).items()}
+    cells: dict[str, tuple[int, ...]] = {}
+
+    for index in range(form.count()):
+        item = form.itemAt(index)
+        widget = None if item is None else item.widget()
+        name = attributes.get(id(widget))
+
+        if name is None:
+            assert isinstance(widget, QLabel)
+            name = widget.text()
+
+        position = form.getItemPosition(index)
+        assert isinstance(position, tuple)
+        cells[name] = position
+
+    return cells
+
+
+def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
+    application: QApplication,
+) -> None:
+    """Both forms' cells, as the editor wrote them out by number before `PL-4X5B`.
+
+    The expected cells are transcribed from those numbers, so the test does
+    not read them from the grid code it checks. That code now places a widget
+    by where it is written in its form, and a widget written in two or three
+    neighbouring columns spans them.
+    """
+
+    dialog = BookmarkDialog()
+
+    assert _form_cells(dialog, _form(dialog, 0)) == {
+        TIME_BOOKMARK_HEADING: (0, 0, 1, 3),
+        INSTANT_FIELD_LABEL: (1, 0, 1, 1),
+        "instant_spin": (1, 1, 1, 1),
+        "instant_preview": (1, 2, 1, 1),
+        MARK_NAME_FIELD_LABEL: (2, 0, 1, 1),
+        "time_label_edit": (2, 1, 1, 2),
+        "add_time_button": (3, 1, 1, 1),
+        "time_list": (4, 0, 1, 3),
+        "remove_time_button": (5, 1, 1, 1),
+    }
+    assert _form_cells(dialog, _form(dialog, 1)) == {
+        MAC_TARGET_HEADING: (0, 0, 1, 3),
+        COMPARTMENT_FIELD_LABEL: (1, 0, 1, 1),
+        "compartment_combo": (1, 1, 1, 2),
+        HEIGHT_FIELD_LABEL: (2, 0, 1, 1),
+        "height_spin": (2, 1, 1, 1),
+        MARK_NAME_FIELD_LABEL: (3, 0, 1, 1),
+        "target_label_edit": (3, 1, 1, 2),
+        "add_target_button": (4, 1, 1, 1),
+        "target_list": (5, 0, 1, 3),
+        "remove_target_button": (6, 1, 1, 1),
+    }
 
 
 # ------------------------------------------------------------- the window

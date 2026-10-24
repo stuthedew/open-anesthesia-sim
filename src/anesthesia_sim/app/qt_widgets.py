@@ -121,6 +121,7 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
+    CONTROL_ROW_SPACING,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -1328,7 +1329,7 @@ class ForkPanel(QWidget):
         column.setSpacing(BOOKMARK_ROW_SPACING)
         column.addWidget(self.heading_label)
         controls = QHBoxLayout()
-        controls.setSpacing(8)
+        controls.setSpacing(CONTROL_ROW_SPACING)
         controls.addWidget(self._point_label)
         controls.addWidget(self.point_selector)
         controls.addWidget(self.take_button)
@@ -1336,7 +1337,7 @@ class ForkPanel(QWidget):
         controls.addStretch(1)
         column.addLayout(controls)
         here_row = QHBoxLayout()
-        here_row.setSpacing(8)
+        here_row.setSpacing(CONTROL_ROW_SPACING)
         here_row.addWidget(self.here_button)
         here_row.addStretch(1)
         column.addLayout(here_row)
@@ -1431,6 +1432,41 @@ class ForkPanel(QWidget):
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
         self.notice.set_notice(offer.refusal)
+
+
+def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
+    """Lay a form out on a grid in the order its rows are written.
+
+    Each row lists the widget in each of its columns, from left to right, with
+    None for an empty cell. A widget listed in neighbouring columns of one row
+    spans those columns. So a widget's row and column are where it is written,
+    and the code that builds a form writes no row or column number.
+
+    Args:
+        rows: The form's rows, from top to bottom.
+
+    Returns:
+        The grid, with every widget placed.
+    """
+
+    grid = QGridLayout()
+
+    for row, cells in enumerate(rows):
+        column = 0
+
+        while column < len(cells):
+            widget = cells[column]
+            span = 1
+
+            while column + span < len(cells) and cells[column + span] is widget:
+                span += 1
+
+            if widget is not None:
+                grid.addWidget(widget, row, column, 1, span)
+
+            column += span
+
+    return grid
 
 
 class BookmarkDialog(QDialog):
@@ -1546,30 +1582,35 @@ class BookmarkDialog(QDialog):
         column = QVBoxLayout(self)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
 
-        times = QGridLayout()
-        times.addWidget(styled_label(TIME_BOOKMARK_HEADING, color=INK, bold=True), 0, 0, 1, 3)
-        times.addWidget(styled_label(INSTANT_FIELD_LABEL, color=MUTED), 1, 0)
-        times.addWidget(self.instant_spin, 1, 1)
-        times.addWidget(self.instant_preview, 1, 2)
-        times.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 2, 0)
-        times.addWidget(self.time_label_edit, 2, 1, 1, 2)
-        times.addWidget(self.add_time_button, 3, 1)
-        times.addWidget(self.time_list, 4, 0, 1, 3)
-        times.addWidget(self.remove_time_button, 5, 1)
-        column.addLayout(times)
+        times_heading = styled_label(TIME_BOOKMARK_HEADING, color=INK, bold=True)
+        instant_name = styled_label(INSTANT_FIELD_LABEL, color=MUTED)
+        time_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
+        column.addLayout(
+            _form_grid(
+                (times_heading, times_heading, times_heading),
+                (instant_name, self.instant_spin, self.instant_preview),
+                (time_label_name, self.time_label_edit, self.time_label_edit),
+                (None, self.add_time_button, None),
+                (self.time_list, self.time_list, self.time_list),
+                (None, self.remove_time_button, None),
+            )
+        )
 
-        targets = QGridLayout()
-        targets.addWidget(styled_label(MAC_TARGET_HEADING, color=INK, bold=True), 0, 0, 1, 3)
-        targets.addWidget(styled_label(COMPARTMENT_FIELD_LABEL, color=MUTED), 1, 0)
-        targets.addWidget(self.compartment_combo, 1, 1, 1, 2)
-        targets.addWidget(styled_label(HEIGHT_FIELD_LABEL, color=MUTED), 2, 0)
-        targets.addWidget(self.height_spin, 2, 1)
-        targets.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 3, 0)
-        targets.addWidget(self.target_label_edit, 3, 1, 1, 2)
-        targets.addWidget(self.add_target_button, 4, 1)
-        targets.addWidget(self.target_list, 5, 0, 1, 3)
-        targets.addWidget(self.remove_target_button, 6, 1)
-        column.addLayout(targets)
+        targets_heading = styled_label(MAC_TARGET_HEADING, color=INK, bold=True)
+        compartment_name = styled_label(COMPARTMENT_FIELD_LABEL, color=MUTED)
+        height_name = styled_label(HEIGHT_FIELD_LABEL, color=MUTED)
+        target_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
+        column.addLayout(
+            _form_grid(
+                (targets_heading, targets_heading, targets_heading),
+                (compartment_name, self.compartment_combo, self.compartment_combo),
+                (height_name, self.height_spin, None),
+                (target_label_name, self.target_label_edit, self.target_label_edit),
+                (None, self.add_target_button, None),
+                (self.target_list, self.target_list, self.target_list),
+                (None, self.remove_target_button, None),
+            )
+        )
 
         column.addWidget(self.notice)
         actions = QHBoxLayout()

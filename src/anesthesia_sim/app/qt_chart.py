@@ -128,7 +128,10 @@ from anesthesia_sim.app.theme import (
     EQUILIBRIUM_LINE_STROKE_WIDTH,
     GRIDLINE,
     INK,
+    LEGEND_ENTRY_SPACING,
+    LEGEND_LINE_SPACING,
     LEGEND_SWATCH_HEIGHT,
+    LEGEND_SWATCH_SPACING,
     LEGEND_SWATCH_WIDTH,
     MAC_AWAKE_BAND_COLOR,
     MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
@@ -170,6 +173,13 @@ __all__ = [
 # pointer parked in clear space between two traces reports neither rather
 # than whichever is nearer.
 HOVER_RADIUS_PIXELS: Final = 12.0
+
+# The angles pyqtgraph's `InfiniteLine` takes, in degrees: 90 stands a line
+# upright at a time, and 0 lays it level at a value. Every vertical line on
+# both plots uses the first, whether it is a gridline, a control mark or a fork
+# mark, and every horizontal line uses the second.
+_VERTICAL_LINE_ANGLE_DEG: Final = 90
+_HORIZONTAL_LINE_ANGLE_DEG: Final = 0
 
 
 # The dot on the wash-in stretch's last point when it stopped by crossing
@@ -397,8 +407,8 @@ class _GridLines:
     def place(self, x_ticks: Sequence[float], y_ticks: Sequence[float]) -> None:
         """Rule the plot at these positions, and hide the rest of the pools."""
 
-        self._rule(self._vertical, 90, x_ticks)
-        self._rule(self._horizontal, 0, y_ticks)
+        self._rule(self._vertical, _VERTICAL_LINE_ANGLE_DEG, x_ticks)
+        self._rule(self._horizontal, _HORIZONTAL_LINE_ANGLE_DEG, y_ticks)
 
     def _rule(self, pool: list[Any], angle: int, positions: Sequence[float]) -> None:
         while len(pool) < len(positions):
@@ -642,7 +652,9 @@ def _branch_point_mark(item: Any) -> Any:
     opened at it, and a trunk simply never shows its own.
     """
 
-    mark = pg.InfiniteLine(pos=0.0, angle=90, pen=_branch_point_pen(), movable=False)
+    mark = pg.InfiniteLine(
+        pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, pen=_branch_point_pen(), movable=False
+    )
     mark.setZValue(_Z_CONTROL_MARK)
     mark.hide()
     item.addItem(mark, ignoreBounds=True)
@@ -701,7 +713,7 @@ def _control_mark_pool(item: Any) -> list[Any]:
     marks = []
 
     for _ in range(MAX_CHART_CONTROL_MARKS):
-        mark = pg.InfiniteLine(pos=0.0, angle=90, pen=pen, movable=False)
+        mark = pg.InfiniteLine(pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, pen=pen, movable=False)
         mark.setZValue(_Z_CONTROL_MARK)
         mark.hide()
         item.addItem(mark, ignoreBounds=True)
@@ -781,7 +793,7 @@ class ConcentrationChart(QWidget):
         item.addItem(self._band, ignoreBounds=True)
         self._one_mac_line = pg.InfiniteLine(
             pos=0.0,
-            angle=0,
+            angle=_HORIZONTAL_LINE_ANGLE_DEG,
             pen=dashed_pen(
                 ONE_MAC_LINE_COLOR, ONE_MAC_LINE_STROKE_WIDTH, ONE_MAC_LINE_DASH_PATTERN
             ),
@@ -1129,7 +1141,7 @@ class WashInChart(QWidget):
         # a property of the ratio - so there is one whatever the plot holds.
         self._equilibrium_line = pg.InfiniteLine(
             pos=WASH_IN_EQUILIBRIUM_RATIO,
-            angle=0,
+            angle=_HORIZONTAL_LINE_ANGLE_DEG,
             pen=dashed_pen(
                 EQUILIBRIUM_LINE_COLOR, EQUILIBRIUM_LINE_STROKE_WIDTH, EQUILIBRIUM_LINE_DASH_PATTERN
             ),
@@ -1541,7 +1553,7 @@ def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]])
     the right edge starts the next line.
     """
 
-    row = FlowLayout(horizontal_spacing=16, vertical_spacing=6)
+    row = FlowLayout(horizontal_spacing=LEGEND_ENTRY_SPACING, vertical_spacing=LEGEND_LINE_SPACING)
 
     if caption is not None:
         row.addWidget(legend_caption(caption))
@@ -1603,7 +1615,7 @@ def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
     entry = QWidget()
     pair = QHBoxLayout(entry)
     pair.setContentsMargins(0, 0, 0, 0)
-    pair.setSpacing(6)
+    pair.setSpacing(LEGEND_SWATCH_SPACING)
     pair.addWidget(swatch, alignment=Qt.AlignmentFlag.AlignVCenter)
     pair.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
 
@@ -1749,7 +1761,7 @@ class TraceLegend(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(LEGEND_LINE_SPACING)
         layout.addLayout(_legend_row("Compartments:", compartments))
         # The compare row: one entry per curve actually drawn, naming both the
         # compartment and the run, because once a curve carries two dimensions

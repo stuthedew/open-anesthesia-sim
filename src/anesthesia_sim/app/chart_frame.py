@@ -242,6 +242,13 @@ _HOVER_MODELLED_MARKER: Final = "Modelled"
 # from four is punctuated identically.
 _HOVER_CONTEXT_SEPARATOR: Final = " · "
 
+# How far the top of the percent axis divided by its interval may fall short of
+# a whole number, through floating-point rounding, and still count as that
+# whole number in `percent_axis_ticks`. So a top that is an exact multiple of
+# the interval keeps its last tick. It is a billionth of one interval, so a
+# tick it keeps never stands further above the top of the axis than that.
+_PERCENT_TICK_COUNT_TOLERANCE: Final = 1e-9
+
 
 @dataclass(frozen=True, slots=True)
 class TraceStyle:
@@ -1142,9 +1149,7 @@ def percent_axis_ticks(
     if not interval_percent > 0.0:
         raise ValueError(f"interval_percent must be strictly positive, got {interval_percent!r}")
 
-    # `floor` with a hair of tolerance, so a top that is an exact multiple of
-    # the interval keeps its last tick through floating-point rounding.
-    count = floor(top_percent / interval_percent + 1e-9)
+    count = floor(top_percent / interval_percent + _PERCENT_TICK_COUNT_TOLERANCE)
 
     return tuple(
         (index * interval_percent, f"{index * interval_percent:g}") for index in range(count + 1)
@@ -1775,6 +1780,8 @@ def nearest_wash_in_point(
     if not answering:
         return None
 
+    first_run, first_stretch, first_column = answering[0][1:]
+
     return HoverTarget(
         quantities=(RecordedQuantity.WASH_IN_RATIO,),
         readings=tuple(
@@ -1787,7 +1794,7 @@ def nearest_wash_in_point(
             for run_index, _, stretch, column in answering
         ),
         readout=(
-            format_wash_in_hover(answering[0][1], answering[0][2], answering[0][3], frame.run_count)
+            format_wash_in_hover(first_run, first_stretch, first_column, frame.run_count)
             if len(answering) == 1
             else format_compared_wash_in_hover(
                 [(run, stretch, column) for _, run, stretch, column in answering]

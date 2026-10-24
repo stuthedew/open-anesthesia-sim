@@ -161,12 +161,15 @@ from anesthesia_sim.app.stylesheets import (
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
+    CONTROL_ROW_SPACING,
     CONTROL_TIMELINE_ROW_SPACING,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PANEL_PADDING,
     PLAYBACK_RATE_SELECTOR_WIDTH,
+    READOUT_HEADING_SPACING,
+    READOUT_SECTION_SPACING,
     RUNNING_AGENT_DISPLAY_PADDING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
@@ -1438,7 +1441,7 @@ class RunView(QWidget):
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(CONTROL_ROW_SPACING)
         self._transport_layout = layout
         layout.addWidget(self._run_name_text)
         layout.addWidget(self._agent_dropdown)
@@ -1547,11 +1550,11 @@ class RunView(QWidget):
         section = QWidget()
         column = QVBoxLayout(section)
         column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(4)
+        column.setSpacing(READOUT_SECTION_SPACING)
         heading_row = QWidget()
         heading = QHBoxLayout(heading_row)
         heading.setContentsMargins(0, 0, 0, 0)
-        heading.setSpacing(12)
+        heading.setSpacing(READOUT_HEADING_SPACING)
         self._heading_layout = heading
         heading.addWidget(self._compartment_substance_text)
         heading.addWidget(self._interpretation_text)
