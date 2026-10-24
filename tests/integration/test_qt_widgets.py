@@ -1,16 +1,17 @@
-"""These tests drive the dashboard's leaf widgets headless, against real controllers.
+"""These tests run the dashboard's leaf widgets without a display, using real controllers.
 
-`app/qt_widgets.py` updates Qt widgets to match `dashboard_frame` values and makes
-no decisions of its own. These tests check the few things that the widgets *do* own:
+`app/qt_widgets.py` updates Qt widgets to match `dashboard_frame` values and makes no
+decisions of its own. These tests check the few behaviors that belong to the widgets
+themselves:
 
 - that a readout's value cannot wrap onto a different line from its unit (`PL-3355`)
 - that a slider's position is exactly the printed value (`PL-25KS`, D4)
-- that a snapshot written into a slider never comes back out as a change
-- that the new-case dialog's default keeps the case
-- which cell of the bookmark editor each field sits in, and the order Tab visits them
+- that a value written into a slider from a snapshot is never reported back as a change
+- that the new-case dialog's default choice keeps the current case
+- which cell of the bookmark editor each field sits in, and the order in which Tab visits them
 - where the window opens (`PL-005`)
 
-The widgets render on the `offscreen` platform, which `tests/conftest.py` selects.
+The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
@@ -791,8 +792,8 @@ def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[in
 
     A cell is the widget's row and column and the number of rows and columns it
     spans. A widget is named by the dialog attribute that holds it. No attribute
-    holds a heading or a field's name, so each of those is named by its text.
-    A widget placed in the grid twice fails the test.
+    holds a heading or the label that shows a field's name, so each of those is
+    named by its text. A widget placed in the grid twice fails the test.
     """
 
     attributes = {id(value): name for name, value in vars(dialog).items()}
@@ -860,11 +861,11 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
     """The Tab key visits the editor's controls in the order a reader reads them.
 
     A keyboard user fills in the editor with Tab alone. WCAG 2.2 SC 2.4.3, Focus
-    Order, asks for a focus order that "preserves meaning and operability", and
-    for these two forms that is the order they are read in, from top to bottom.
-    Qt's default order is the order in which the widgets joined the dialog,
-    which is the order the grid code adds them in. So a grid that added its
-    rows in any other order would fail here, even with every cell correct.
+    Order, asks for a focus order that "preserves meaning and operability". For the
+    editor's two forms, that is the order in which they are read, from top to bottom.
+    Qt's default Tab order is the order in which widgets were added to the dialog.
+    In this dialog, the grid code adds them. So a grid that added its rows in any
+    other order would fail here, even if every cell were correct.
     """
 
     dialog = BookmarkDialog()
@@ -875,8 +876,8 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
     visited: list[str] = []
     widget = first
 
-    # The chain is a ring, so the walk ends back at the first widget. The bound
-    # turns a chain that never closes into a failure rather than a hung test.
+    # Qt's focus chain is a ring, so the walk ends back at the first widget. The limit
+    # on the loop makes a chain that never closes fail the test instead of hanging it.
     for _ in range(len(dialog.findChildren(QWidget)) + 1):
         assert widget is not None
         name = attributes.get(id(widget))
