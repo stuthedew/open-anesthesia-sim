@@ -98,6 +98,12 @@ ASKS = (
     "PR #1688: your call.",
     "Let me know about #1688.",
     "Thoughts on #1688?",
+    # A noun hand-off that only looks like a report of a recorded decision is
+    # still an ask (`PL-YGR6`): a question in the gap, a decision still to come,
+    # or a real hand-off in the same message as a report.
+    "Your call on whether #1688 is applied.",
+    "Your choice on #1700 is applied when you merge it.",
+    "Recorded your choice; #1700 is your call.",
 )
 
 
@@ -139,6 +145,27 @@ PROGRESS = (
 
 @pytest.mark.parametrize("text", PROGRESS)
 def test_a_progress_reply_is_let_through_whatever_arm_says(tmp_path: Path, text: str) -> None:
+    assert _decision(tmp_path, text) is None
+
+
+REPORTS = (
+    # The two status reports the hook refused during the v0.6.0 cut (`PL-YGR6`).
+    "Your choice on the card is recorded on the item, and auto-merge is on for #1700.",
+    "Recorded your choice on PL-9CS6; the release pull request #1700 is armed.",
+    # The same class in other words: the hand-off as the subject of a recording
+    # verb, and as its object.
+    "Your decision on #1700 has been noted, and it merges on green.",
+    "I applied your call to the item, so #1688 is armed.",
+)
+
+
+@pytest.mark.parametrize("text", REPORTS)
+def test_a_report_of_a_choice_already_made_is_let_through(tmp_path: Path, text: str) -> None:
+    """A noun hand-off that reports a recorded decision asks for nothing.
+
+    The asks that only look like such a report, such as "Your call on whether
+    #1688 is applied.", are rows of `ASKS` above.
+    """
     assert _decision(tmp_path, text) is None
 
 

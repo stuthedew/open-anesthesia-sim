@@ -24,7 +24,9 @@ asks only about its own pull request.
 **What an ask is, is a list, not an inference.** `ASKS` names the phrasings
 sessions have used, the closing-block lines that carry them, and close
 variants of each. A hand-off such as "over to you" or "your call" counts only
-in a sentence that also names a pull request. A wording the list does not
+in a sentence that also names a pull request. A noun hand-off that reports a
+decision already recorded, such as "recorded your choice" or "your choice is
+recorded", does not count (`PL-YGR6`). A wording the list does not
 name still passes, so a new one seen in a thread is added to `ASKS` with a
 test row. A message that matches by accident is told to reword. A false
 refusal costs a rewording, while a missed ask costs the owner's attention, so
@@ -71,14 +73,46 @@ TEXT_FIELDS = {
 #: Where an imperative starts: a line, a list item or a sentence.
 _START = r"(?:^[ \t]*(?:[-*+]|\d+[.)])?[ \t]*|[.!?:;][ \t]+)"
 
+#: Verbs that report a decision the owner has already made, as in "recorded
+#: your choice" or "your choice is recorded". A noun hand-off in either of
+#: those forms is a status report, not an ask. The hook refused two such
+#: reports during the v0.6.0 cut on 2026-10-20 (`PL-YGR6`). The list is short
+#: on purpose: a report worded some other way is still refused, which is the
+#: direction this hook leans.
+_RECORDED = ("recorded", "noted", "applied", "logged", "saved", "followed", "implemented")
+
+#: A noun hand-off that is the subject of a recording verb in the passive:
+#: "your choice on the card is recorded", "your call has been noted". At most
+#: three words may come between the noun and the verb, and none of them may
+#: start a question, so "your call on whether #1688 is applied" is still an ask.
+#: A verb followed by "when", "once", "after", "if" or "as soon" describes a
+#: decision still to come, so "your choice is applied when you merge #1700" is
+#: still an ask too.
+_REPORTED_AFTER = (
+    r"(?!(?:[ \t]+(?:on|for|about|in|from|at)"
+    r"(?:[ \t]+(?!(?:whether|if|which|what|how|who|when)\b)[\w#'-]+){1,3})?"
+    r"[ \t]+(?:is|was|has[ \t]+been|have[ \t]+been)[ \t]+(?:now[ \t]+)?"
+    r"(?:" + "|".join(_RECORDED) + r")\b"
+    r"(?![ \t]+(?:when|once|after|if|as[ \t]+soon)\b))"
+)
+
+#: A noun hand-off that is the object of a recording verb: "recorded your
+#: choice". Python's lookbehind needs a fixed width, so each verb gets its own,
+#: with exactly one space or tab before "your".
+_REPORTED_BEFORE = "".join(rf"(?<!\b{verb}[ \t])" for verb in _RECORDED)
+
 #: Words that hand a decision to the owner. They are an ask only beside a pull
 #: request, since "the colour is your call" asks for no read. A hand-off just
 #: after a quote mark is a mention, as in a reply listing what the hook counts,
-#: which this hook refused on 2026-10-19 (`PL-XR8B`).
+#: which this hook refused on 2026-10-19 (`PL-XR8B`). A noun hand-off that
+#: reports a recorded decision is not one either (`_RECORDED`).
 _HANDOFF = (
     r"(?<![\"'])\b(?:over[ \t]+to[ \t]+you|up[ \t]+to[ \t]+you"
-    r"|your[ \t]+(?:call|decision|choice|go)"
-    r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
+    r"|"
+    + _REPORTED_BEFORE
+    + r"your[ \t]+(?:call|decision|choice|go)\b"
+    + _REPORTED_AFTER
+    + r"|let[ \t]+me[ \t]+know|thoughts[ \t]+on|what[ \t]+do[ \t]+you[ \t]+think)\b"
 )
 
 #: A pull request named by number or by name.
