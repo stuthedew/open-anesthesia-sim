@@ -160,4 +160,11 @@ decidable part - a reader of git, the tree, the GitHub API, the default
 branch or a shell command outside the module that owns it, and an upper-case
 name defined in two apparatus files - is `tools/fact_home_check.py`, with a baseline
 that only shrinks; which of the three shapes a new reader is stays the
-judgment, and stays here.
+judgment, and stays here. Since `PL-N4FP` the check also refuses the
+hand-written forms of a predicate one module owns, where the syntax shows
+them. A membership test of `OPEN_STATUSES` or `CLOSED_STATUSES` outside
+`docket.model` is refused, because `Item.is_open` already answers it. So is
+an `isdigit`, `int` or pattern match applied to the `pr` field, because
+`model.pr_number` already reads it. A predicate that the check cannot
+recognise from its syntax, such as digits that only their source shows to be
+a pull request number, is still the judgment half.
