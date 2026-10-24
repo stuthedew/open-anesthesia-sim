@@ -133,7 +133,7 @@ def classify(stream: str, skill: str, prompt: Prompt, arm: str) -> Run:
     """Read one session's stream-json output into a `Run`."""
     events: list[dict[str, Any]] = []
     bad = 0
-    for line in stream.splitlines():
+    for line in stream.split("\n"):
         if not line.strip():
             continue
         try:
@@ -243,7 +243,7 @@ def summary(runs: list[Run]) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--checkout", type=Path, required=True, help="a scratch clone to run in")
     parser.add_argument("--model", required=True, help="the model the project's sessions run")
     parser.add_argument(
@@ -268,11 +268,11 @@ def main(argv: list[str] | None = None) -> int:
         argv_ = command(prompt, skill, arm, args.model, args.max_turns)
         try:
             done = subprocess.run(
-                argv_, cwd=args.checkout, capture_output=True, text=True, timeout=args.timeout
+                argv_, cwd=args.checkout, capture_output=True, timeout=args.timeout
             )
-            run = classify(done.stdout, skill, prompt, arm)
+            run = classify(done.stdout.decode("utf-8", errors="replace"), skill, prompt, arm)
             raw = args.out.with_name(f"{args.out.stem}.{prompt.id}.{arm}.stream.jsonl")
-            raw.write_text(done.stdout, encoding="utf-8")
+            raw.write_bytes(done.stdout)
         except subprocess.TimeoutExpired:
             run = Run(
                 prompt.id,
