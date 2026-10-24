@@ -62,7 +62,7 @@ squash merge folds the commit away.
 hand or otherwise. `#978` was merged by hand six minutes after it
 opened, with its claimed cut still uncommitted (`PL-H14W`). Mark it ready
 (`draft: false`) in the push that closes or blocks the claimed item, which is
-also the push that arms it under `CLAUDE.md`'s commit-and-push bullet.
+also the push that arms it under `.claude/skills/pull-request/SKILL.md`.
 
 **A session has two things to remember: `claim` at pickup and for every rider,
 and `bin/docket yield <id>` when it stops without closing.** A rider is a second
