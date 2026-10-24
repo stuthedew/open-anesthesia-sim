@@ -3,11 +3,13 @@ id: PL-TBQS
 title: Replay the rest of PL-TCBJ's pool, about 9 more merged simulator pull requests, with one-generalist, three-generalist and specialist-panel arms on every pull request and scored per defect, to choose between a panel and generalist review passes
 priority: P3
 effort: L
-status: ready
+status: done
 classes: planning
 feature: review-panel
 touches: docs/items/PL-TBQS-replay-the-rest-of-pl-tcbj-s-pool-about-9-more.md, docs/items/PL-TDV9-add-one-more-blind-generalist-review-pass-on.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1750
 payoff: the choice between a specialist reviewer panel and generalist review passes rests on about 19 pull requests and an equal-cost comparison, not on ten
 verify: grep -qE '^\*\*Result' docs/items/PL-TBQS-replay-the-rest-of-pl-tcbj-s-pool-about-9-more.md
 ---
@@ -104,3 +106,66 @@ Findings per arm (a run with `NO FINDINGS` counts 0):
 The panel's 62 findings on `PL-TCBJ`'s ten match the count its Result reports, which confirms the recovery. The raw findings are in `replay/PL-TBQS/findings_by_label.json` under blind labels, one label per run within each pull request. The table from label to arm is committed only after scoring.
 
 The sample came to 10 new pull requests, not about 9, so the run needs 80 reviews and, with checkers and scorers, about 110 agents. That is above the about 90 first approved (project owner, 2026-10-24, ratified, over having 4 checkers each check 5 pull requests to stay near 90, which would have broken the brief's one checker per pull request).
+
+**Result, 2026-10-24.** The bar chooses generalist review passes, and two of them. The panel named 19 of the 39 key defects and three generalist runs named 21, so the panel fell short of the 3 more it needed by 5. G2 and G3 together named 3 key defects that G1 missed, which meets the threshold of 3 for a second pass exactly. One of those 3 was a close call, as the second limitation below says.
+
+*How it was scored.* Four scorer subagents scored every arm on all 20 pull requests. Each scored five pull requests, with every run's findings under a random label (`random.Random("PL-TBQS-<pr>")`), against the key. The labels were unmasked by a script only after all four had returned. `PL-TCBJ`'s own findings were recovered, so its ten were scored again with the new runs. The blind rescore matches the table `PL-TCBJ` recorded with the arms visible: on its ten, G1 named 8 key defects in 5 pull requests and the panel 7 in 4. A key defect counts as named by an arm when at least one run in that arm names it. Near misses are recorded and not counted.
+
+| Pull request | Key defects | G1 | G2 | G3 | Panel |
+| --- | --- | --- | --- | --- | --- |
+| `#1451` | 1 | - | - | - | - |
+| `#1292` | 1 | - | - | - | - |
+| `#1585` | 1 | - | - | - | - |
+| `#331` | 2 | `PL-NBWP` | - | - | - |
+| `#1350` | 2 | - | - | - | - |
+| `#1365` | 1 | `PL-979Z` | - | - | - |
+| `#775` | 4 | `PL-3K9B`, `PL-4KZD`, `PL-LHBY` | the same three | the same three | the same three |
+| `#204` | 1 | - | - | - | `PL-BNPY` |
+| `#578` | 6 | `PL-TCR5`, `PL-LTKL` | the same two | the same two | the same two |
+| `#1354` | 1 | `PL-979Z` | `PL-979Z` | - | `PL-979Z` |
+| `#1448` | 1 | `PL-391Y` | - | - | - |
+| `#430` | 1 | - | - | - | - |
+| `#1622` | 3 | `PL-4L8B`, `PL-YJ21`, `PL-PHPZ` | the same three | the same three | the same three |
+| `#288` | 1 | `PL-90Y6` | - | `PL-90Y6` | `PL-90Y6` |
+| `#421` | 2 | - | - | - | `PL-BMY5` |
+| `#376` | 2 | `PL-3PRZ` | `PL-2MD9`, `PL-3PRZ` | - | - |
+| `#784` | 6 | `PL-WG73`, `PL-LQ19`, `PL-75P5` | `PL-WG73` | `PL-K5NY`, `PL-WG73`, `PL-LQ19` | `PL-K5NY`, `PL-J12Z`, `PL-WG73`, `PL-LQ19`, `PL-75P5` |
+| `#568` | 1 | - | - | - | - |
+| `#1328` | 1 | - | - | `PL-5D1Z` | `PL-5D1Z` |
+| `#805` | 1 | `PL-1ZQ4` | `PL-1ZQ4` | `PL-1ZQ4` | `PL-1ZQ4` |
+
+*The bar.* The rule fixed before the count builds the panel only if it names at least 3 more key defects than the three-generalist arm. It named 19 and that arm named 21, a difference of -2, so the build is generalist passes. A second pass is built only if G2 and G3 together name at least 3 key defects that G1 missed. They named exactly 3:
+
+- `#376`'s `PL-2MD9`, named by G2.
+- `#784`'s `PL-K5NY`, named by G3.
+- `#1328`'s `PL-5D1Z`, named by G3.
+
+So the bar chooses two generalist passes.
+
+*Reported, not deciding.*
+
+- **Key defects named across the 39:** G1 18, G2 13 and G3 14. The three generalist runs together named 21. The panel named 19: its PK/PD reviewer 6, its numerics reviewer 15 and its display reviewer 11.
+- **Pull requests caught across the 20:** G1 11, G2 7, G3 7, the three generalist runs together 12, and the panel 10.
+- **Panel against G1 alone:** 19 key defects to 18. The panel alone named 5: `PL-BNPY`, `PL-BMY5`, `PL-K5NY`, `PL-J12Z` and `PL-5D1Z`. G1 alone named 4: `PL-NBWP`, `PL-3PRZ`, `PL-979Z`'s concentration half and `PL-391Y`.
+- **Panel against all three generalist runs:** the panel alone named 3 (`PL-BNPY`, `PL-BMY5`, `PL-J12Z`). The generalist runs alone named 5 (`PL-NBWP`, `PL-2MD9`, `PL-3PRZ`, `PL-979Z`'s concentration half, `PL-391Y`).
+- **What each later run adds to G1:** G2 alone adds 1 (`PL-2MD9`) and G3 alone adds 2 (`PL-K5NY`, `PL-5D1Z`).
+- **Defects no arm named:** 15 of the 39. For 8 of those, some run pointed at the right code with a different failure.
+
+*Noise.* One blind checker per pull request marked every finding that `PL-TCBJ` had not already checked. That covered all generalist findings on all 20 pull requests and the new panels' findings on the new ten. Marked incorrect: G1 0 of 45, G2 1 of 47, G3 0 of 46, and the new panels 1 of 69. Marked not checkable: G1 1, G3 1 and the new panels 1. `PL-TCBJ`'s checker had marked its panel's 62 findings on its ten 59 correct, 3 not checkable and 0 incorrect. Its #1585 record was only partly recovered, so its own totals are used. The checker ran on the same model as the reviewers, as in `PL-TCBJ`, and could share their blind spots.
+
+*Limitations.*
+
+- **This sample is the whole pool.** The SZZ pool is exhausted at 20 pull requests and 39 key defects, so no larger replay of this kind can be run without changing what is measured. The defects cluster: `#578` and `#784` hold 12 of the 39.
+- **The second pass rests on a close call.** It rests on exactly 3 defects. For `#376`'s `PL-2MD9`, the scorer counted a finding that describes the same squaring amplification through a decaying entry rather than a growing one. The scorer recorded this as the same cause through a different symptom. Without it, G2 and G3 add 2 and the bar would choose one pass. The call was made blind and stands as scored.
+- **The earlier runs ran under different conditions.** `PL-TCBJ`'s G1 and panel on its ten ran in another session. Its panel shared one directory, and its G1 ran after a discarded first control. The new runs each had a directory of their own.
+- **Every run is one draw**, and G1 on the new ten is itself one more draw of the same brief as G2 and G3. Scorers and checkers ran at this session's model and effort, and so did the reviewers.
+
+*Cost.* The run used 110 subagents and about 17.5 million subagent tokens:
+
+- 1 recovered `PL-TCBJ`'s records from its transcript.
+- 5 verified the 104 candidate pairs.
+- 80 reviewed.
+- 20 checked.
+- 4 scored.
+
+*Findings beyond the key.* 214 of the 269 findings name no key defect. The checkers marked 261 of the 269 correct, so most of those 214 describe real faults at merge. Many may since have been fixed or filed, and this item does not sort them. One item is filed under the `replay-findings` feature to check them against `main`. The raw findings, the label table, the scores and the checks are in `replay/PL-TBQS/` in this item's pull request commits.
