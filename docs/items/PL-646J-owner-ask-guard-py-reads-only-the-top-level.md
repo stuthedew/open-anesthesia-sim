@@ -3,11 +3,13 @@ id: PL-646J
 title: owner_ask_guard.py reads only the top-level string fields of mcp__hearthbot__post_message, whose input schema no session has read, so a coordinator post carrying its text in a nested field passes unchecked
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: review-hold
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1746
 payoff: a bare read or merge ask relayed by the coordinator is refused wherever its text sits in the post, so the guard no longer depends on a schema nobody has read
 verify: grep -q 'def test_a_coordinator_post_with_its_text_in_a_nested_field_is_refused' tests/unit/test_owner_ask_guard.py
 reenters: PL-YV90
@@ -24,3 +26,5 @@ Found building `PL-YV90` on 2026-10-24. The building session could not read the 
 **Done when.** For `post_message`, the hook reads every string in the call's input at any depth, inside dictionaries and lists, so an ask in a nested field is refused as one in a top-level field already is. A regression test posts the ask in a nested field and sees it refused. This does not need the tool's schema: every string is a superset of any field the schema could name, and the hook already leans toward refusing.
 
 **Generator check.** A re-entry of `PL-YV90`, closed 2026-10-24, whose fix wired the guard on `post_message` but read only the top level of the call's input. The fact is `PL-TLPH`'s: whether the owner may be sent a read or merge ask about a pull request. This reader misread where in a post that ask can sit, because nothing records `post_message`'s input schema. Recorded as `reenters: PL-YV90`.
+
+**Fixed 2026-10-24.** `every_string` in `.claude/hooks/owner_ask_guard.py` collects every string in the call's input at any depth, and `message_text` uses it for `post_message`, the one tool whose fields are not named. Run against the unfixed hook, `pytest tests/unit/test_owner_ask_guard.py -k nested_field` failed both of its cases with `assert None is not None`, and both pass after the fix.
