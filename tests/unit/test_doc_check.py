@@ -62,9 +62,7 @@ from docket.roadmap import (
 from docket.shell import script_lines
 from docket.verify import (
     added_suppressions,
-    assertion_check,
     is_suppression_statement,
-    removed_assertions,
     sanctioned_queue_edit,
     suppression_check,
 )
@@ -8382,18 +8380,13 @@ def _suppressions(source: str) -> list[str]:
 #: A statement every interpreter tokenizes and none parses, standing in for
 #: syntax newer than the bare `python3` docket runs on (`PL-TC2D`).
 NEWER_SYNTAX = "\n\nnewer = = 'syntax this interpreter cannot parse'\n"
-#: A test whose docstring opens a line with `assert` and whose assertion wraps.
-WRAPPED_TEST = (
-    'def test_b() -> None:\n    """Pins the result.\n\n    assert this reads as {}.\n    """\n'
-    "    assert (\n        result == {}\n    )\n"
-)
 
 
-def _integrity(tmp_path: Path, before: str, after: str, check: str) -> list[str]:
-    """What `docket verify`'s `check` says of a test file rewritten from `before` to `after`.
+def _integrity(tmp_path: Path, before: str, after: str) -> list[str]:
+    """What `docket verify`'s suppression check says of a test file rewritten from `before`.
 
-    Its detail, then the lines under it but the closing note, a file named as
-    read another way cut before the reason, which names a commit.
+    Its detail, then the lines under it, a file named as read another way cut
+    before the reason, which names a commit.
     """
     root = tmp_path / "audited"
     test = root / "tests" / "test_x.py"
@@ -8403,16 +8396,10 @@ def _integrity(tmp_path: Path, before: str, after: str, check: str) -> list[str]
     test.write_text(after, encoding="utf-8")
     _git(root, "commit", "-qam", "PL-K7QX rewrite it")
     commits = (_git(root, "rev-parse", "HEAD"),)
-    added, removed = docket_verify._net_line_changes(root, "HEAD~1", commits)
-    if check == "assertions":
-        audit = removed_assertions(root, "HEAD~1", commits, removed)
-        found, _ = assertion_check(audit, "", "", "HEAD~1")
-    else:
-        found = suppression_check(added_suppressions(root, "HEAD~1", commits, added))
+    added = docket_verify._net_line_changes(root, "HEAD~1", commits)
+    found = suppression_check(added_suppressions(root, "HEAD~1", commits, added))
     return [found.detail] + [
-        line.partition(" - ")[0] if line.startswith("read ") else line
-        for line in found.lines
-        if not line.startswith("which of these")
+        line.partition(" - ")[0] if line.startswith("read ") else line for line in found.lines
     ]
 
 
@@ -10637,55 +10624,14 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: _suppressions('NOTE = f"""\n{pytest.mark.skip}\n"""\n'),
         [],
     ),
-    # Both integrity checks again, on a file the parser refuses and the
-    # tokenizer reads (`PL-TC2D`): through the tokenizer, a docstring is one
-    # string and a bracketed `assert` one statement, so neither is a fragment.
-    "assertions, a docstring line opening assert where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
-            WRAPPED_TEST.format("plainer prose", 1) + NEWER_SYNTAX,
-            "assertions",
-        ),
-        ["none", "read through the tokenizer, not parsed: tests/test_x.py"],
-    ),
-    "assertions, a bracketed assert loosened where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            WRAPPED_TEST.format("prose", 1) + NEWER_SYNTAX,
-            WRAPPED_TEST.format("prose", 2) + NEWER_SYNTAX,
-            "assertions",
-        ),
-        [
-            "1 assertion(s)",
-            "tests/test_x.py::test_b",
-            "    was  assert ( result == 1 )",
-            "    now  assert ( result == 2 )",
-            "read through the tokenizer, not parsed: tests/test_x.py",
-        ],
-    ),
-    "assertions, a deleted assert a docstring repeats where the parser refuses": (
-        lambda tmp_path: _integrity(
-            tmp_path,
-            "def test_b() -> None:\n    assert value == 1\n" + NEWER_SYNTAX,
-            'def test_b() -> None:\n    """Once held:\n\n    assert value == 1\n    """\n'
-            + NEWER_SYNTAX,
-            "assertions",
-        ),
-        [
-            "1 assertion(s)",
-            "tests/test_x.py::test_b",
-            "    was  assert value == 1",
-            "    now  nothing in its place",
-            "read through the tokenizer, not parsed: tests/test_x.py",
-        ],
-    ),
+    # The suppression check again, on a file the parser refuses and the
+    # tokenizer reads (`PL-TC2D`): through the tokenizer, a marker split by a
+    # backslash is one statement, so it is no fragment.
     "suppressions, a mark split by a backslash where the parser refuses": (
         lambda tmp_path: _integrity(
             tmp_path,
             "def test_b(): ...\n" + NEWER_SYNTAX,
             "@pytest.mark.\\\n    skip(reason='flaky')\ndef test_b(): ...\n" + NEWER_SYNTAX,
-            "suppressions",
         ),
         [
             "1 line(s)",

@@ -286,6 +286,16 @@ class Config:
     #: which holds the pull request. Empty by default, which turns the hold
     #: off: docket names no repository tool, so the project supplies the count.
     prose_count_command: str = ""
+    #: A command that mutates the lines a branch changed and says which mutants
+    #: the tests did not catch, which `docket verify` runs once per run as an
+    #: integrity check (`PL-CZXN`). The package appends the base it audits
+    #: against. The command owes exit 0 and one JSON object - `caught`, a
+    #: count, and `uncaught`, `undecided` and `notes`, each a list of strings -
+    #: and non-zero where it could not answer, which refuses the work.
+    #: `verify.mutation_check` states the contract. Empty by default, which
+    #: leaves the check a note: docket names no mutation tool, so the project
+    #: supplies one.
+    mutation_command: str = ""
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -598,6 +608,9 @@ def load(root: Path) -> Config:
         ),
         prose_count_command=_str(
             section.get("prose_count_command"), defaults.prose_count_command, "prose_count_command"
+        ),
+        mutation_command=_str(
+            section.get("mutation_command"), defaults.mutation_command, "mutation_command"
         ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths, "code_paths"),
         product_paths=_tuple(section.get("product_paths"), defaults.product_paths, "product_paths"),

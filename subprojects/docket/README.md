@@ -2495,9 +2495,7 @@ its statement (`PL-HKHP`, `PL-FP7J`, `PL-47NJ`). An error rather than an advisor
 labels are exact - none of the 17 was an item still waiting, and each later
 moved off `needs-decision` with no new question posed - and because the design
 round that left `PL-4ZK8` behind did so on purpose, so an advisory would have
-printed beside a choice already made. It also keeps the `falsifies:` fold below
-honest, which reads `needs-decision` on the base's copy as the answer still
-being the closing session's to make.
+printed beside a choice already made.
 
 **The recommendation is the other half of that status, and the half that does
 not survive on its own.** The question is written into the item; the
@@ -2560,9 +2558,8 @@ vocabulary as the title, and which consequence a reader cares about is
 judgment, so `check` holds this field to **presence** and stops there: a
 checker guessing at whether a line states a consequence or restates the title
 would be authoritative and wrong, which is worse than no checker. There is no
-length floor either - the twelve-character one `falsifies` carries exists
-because a short fragment folds assertions it was never meant to, a concrete
-harm, where a thin payoff harms only the reader looking straight at it.
+length floor either, since a thin payoff harms only the reader looking straight
+at it.
 
 The requirement starts at `ready`, from the date `payoff_required_from`
 records, and the dated cutover is the retired `verify_required_from`'s pattern taken whole,
@@ -2596,22 +2593,10 @@ refuses a `verify` continued onto an indented line, because the reader joins the
 lines with a space and a shell continuation then runs as an escaped space. See *Delegation is
 derived, never granted* below.
 
-`falsifies` is read by `docket verify` alone, and is absent from every item
-this store holds - 0 of 1,324 on 2026-09-20, having shipped in `v0.4.27`
-(`PL-K4R5` counted it, and the bullet below says what the check prints instead).
-It holds enough of one assertion to name the single subject this item's work
-makes untrue — a substring rather than the whole line, because an exact line breaks on
-reformatting and on the commas a real assertion carries, and one subject rather
-than a list, because an item falsifying several unrelated assertions is doing
-several things. A fragment shorter than twelve characters is an error: `verify`
-folds every removed assertion containing it, so `assert` would fold the lot.
-Whether the fragment is long enough to name a subject is decidable; whether it
-names the *right* one is left to whoever reads the lines `verify` prints. Write
-it when the item is triaged, not while working it — a declaration only counts
-where the base already holds it. A session that learns mid-work what its work
-falsifies amends the base first, on an item-only branch that merges ahead of
-the work, and re-audits once it has (`.claude/skills/docket/modes/close-out.md`
-carries the route, `PL-TKFD`). See *Verification is scoped, not just green*.
+`falsifies` was a field that waived `docket verify`'s check that no existing
+assertion was removed. The field went with the check when `verify` began
+measuring the tests by mutation instead (`PL-CZXN`), so `check` now refuses it
+as an unrecognized field. See *Verification is scoped, not just green*.
 
 `root-cause-of` names three or more items this one is the cause of.
 `CLAUDE.md` calls such a mechanism a *generator*. `docket check` holds every id
@@ -4013,10 +3998,10 @@ not a `docket.toml` setting, so it has one home.
 `docket verify <id>` answers a narrower question than "do the tests pass":
 did the work that claims to close this item stay inside what the item
 declared? It runs the item's `verify` command and the project's own
-check, and it reads the diff for the ways a green build can be reached
-without doing the work — a file outside `touches`, a protected path, an edit
-to the gate itself, an added suppression, a deleted assertion, a rewritten
-front matter.
+check, it reads the diff for the ways a green build can be reached without
+doing the work — a file outside `touches`, a protected path, an edit to the
+gate itself, an added suppression, a rewritten front matter — and it measures
+whether the tests still catch a change to the lines the branch changed.
 
 Some files outside `touches` are writes the workflow itself asks for, so the
 scope check names them as sanctioned and does not count them: a capture, a
@@ -4044,8 +4029,9 @@ trips `gate_paths`, an item non-delegable *because* it touches protected code is
 one a session works itself, and closing an item edits the very front matter the
 guard watches. So in `--self` those four **commission** checks report instead of
 refusing: still run, still naming every path, with the reason they are not
-refusing. The four **integrity** checks are untouched — no suppression added, no
-assertion removed, the item's own command passes, the project's own checks pass.
+refusing. The four **integrity** checks are untouched — no suppression added,
+the item's own command passes, the unit tests catch a mutation of each changed
+line, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
@@ -4056,9 +4042,8 @@ item's report naming `bin/docket verify --self` for it. Whose claim it is
 decides, not which checks failed, so a reviewer (whose session differs), a claim
 made with no token and a clean run all print nothing (`PL-PFK1`).
 
-What counts as an *added suppression* is narrowed by file rather than by shape,
-and to a wider set of files than the assertion check below. An assertion is a
-statement, so only a file Python executes holds one; a suppression is also
+What counts as an *added suppression* is narrowed by file rather than by shape.
+A suppression is written in Python and also
 *configured*, and `xfail_strict = false` under `[tool.pytest.ini_options]` turns
 every expected failure back into a pass without a line of Python changing - so
 `.py`, `.pyi`, `.toml`, `.cfg` and `.ini` are read and nothing else is. Prose is
@@ -4085,8 +4070,7 @@ so a file the running interpreter cannot parse is read the same way and named
 on the page as read through the tokenizer (`PL-TC2D`). Only a file the
 tokenizer refuses as well - an error token included, which 3.11 hands back
 where 3.12 raises - is read line by line, its quoted spans, backtick spans and
-trailing comment blanked, and named as read that way, as the assertion check
-below does. Replayed under 3.11 over `main`'s 680
+trailing comment blanked, and named as read that way. Replayed under 3.11 over `main`'s 680
 non-merge commits that change a `.py` or `.pyi` file, on 2026-10-04, the
 statement reader finds exactly what the line reader found: the `bash` guard
 below. A configuration file is read through its own format's reader the same
@@ -4136,60 +4120,54 @@ as they see the `bash` guard. A deselection in `addopts` is configuration: in
 `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
 in a `.cfg` or `.ini` file nothing does.
 
-What counts as a *removed assertion* is decided by the parser rather than by a
-line (`PL-4W2L`): an assertion the base's copy of a `.py` file holds - an
-`assert` statement's test, its message excluded; a call whose name begins
-`assert`, such as `assertEqual`, `assert_called_once_with` or
-`assert_allclose`; or a `raises` or `warns` item of a `with`, which asserts by
-expectation and is how this project pins the guards that *reject* an input
-(`PL-QJQL`) - that is absent, as `ast` reads it, after the item's own commits.
-Existing assertions are read-only, so every such absence refuses unless
-`falsifies:` declares it. A reflow, a wrap, a new message and a move within the
-file change nothing the parser reads, so none of them is a removal; an edit to
-what an assertion asserts is one, on whichever line of a wrapped statement it
-falls. A comment, a docstring, a release note or an item's brief carrying the
-word never is (`PL-7TYC`).
+Whether the branch's tests still catch a change is measured by mutation rather
+than read from the diff (`PL-CZXN`; project owner, 2026-10-19, ratified, over
+making the old check an advisory and over keeping it). The check that did this
+before, `no existing assertion removed`, compared the assertions each test file
+held before and after the item's commits. It could not tell a rewrite the work
+was meant to make from an expectation quietly dropped, so it refused both, and
+sessions waived about 15 of its 17 refusals between 2026-10-01 and 2026-10-19.
+The check and its waiver, `falsifies:`, were retired together.
 
-What the check deliberately does not decide is whether a changed assertion is
-stronger, weaker or merely restated, and every rule over the shape of an edit
-had been a guess at it: the insertion fold that paired `f(a, b)` with
-`f(a, b, c)` (`PL-K1WS`) also folded `approx(2.05)` into `approx(2.05,
-rel=0.5)` (`PL-CNJH`), and the listing of one-string candidates (`PL-K4R5`)
-printed up to six because it could not choose. So the report groups each
-refusal under its test function - what left the function and what arrived in
-it, the unchanged ones counted rather than printed - and pairs nothing.
-Replayed over `main`'s 1,127 non-merge commits at the decision, it refuses 124
-where the line matcher refused 121: it stops refusing six, none of which
-changed an assertion, and starts refusing nine, every one of which did
-(project owner, 2026-09-22, ratified, over refusing only an assertion that left
-its test and over patching the line matcher).
+`the unit tests catch a mutation of each changed line` runs `mutation_command`
+once per run, beside `check_command`, with the base appended as its last
+argument. The command owes exit 0 and one JSON object: `caught`, a count, and
+`uncaught`, `undecided` and `notes`, each a list of strings. The check passes
+only when `uncaught` and `undecided` are both empty. A command that exits
+non-zero, runs past two hours or prints anything else has given no answer, and
+the check refuses, because "could not measure" is not "measured, and all
+caught". Empty by default, which makes the check a note saying that nothing
+measured the tests. This repository sets it to `tools/diff_mutation.py
+--verdict`, which mutates the functions the branch changed in the modules that
+`pyproject.toml`'s `[tool.mutmut]` table names, and runs the simulator's unit
+tests against each mutant:
 
-Three details keep that fact about the item. Its commits are folded per file,
-so an assertion cut in one and restored in the next is no change, and a form is
-charged only where the base holds it, so an assertion a sibling commit added on
-the same branch is never this item's to lose (`PL-2DTK`). Nor is one the
-branch's tip still holds in the same file, which a later commit naming another
-item put back, since that is the response the check asks for (`PL-087W`). A
-renamed file is followed as `git show` follows it, and a merge commit is read
-against every parent, as git reads one, its combined diff included where a file
-is read line by line (`PL-W6ZD`). And a file the running interpreter
-cannot parse - `bin/docket` runs on the bare `python3`, which can be older than
-the project's own - is read through the tokenizer instead, every version of it
-alike, so a docstring is one string and a bracketed `assert` one statement, and
-named on the page as read that way (project owner, 2026-10-04, ratified, over
-keeping the line predicate for it, `PL-TC2D`). Every syntax the project has
-adopted past 3.11 adds grammar rather than tokens: on 2026-10-05 the tokenizers
-of 3.11, 3.12, 3.13 and 3.14 split all 225 tracked Python files into the same
-67,740 logical lines. Only a file the tokenizer refuses as well is read line by
-line with the predicate the parser replaced, and named with both refusals. Not
-decided, as before: whether a new test asserts the right value, an assertion
-moved to another file, which stays two facts, and anything outside `.py`.
+- A mutant counts only where a line it changes is one the branch changed. One
+  on a line the branch left alone is named in a note and not counted, since
+  that line was not this branch's to test.
+- A mutant every test passes, or that no test reaches, is `uncaught`. A
+  timeout counts as caught, as PIT and Stryker count one.
+- A mutant whose run mutmut could not settle, or whose line could not be
+  placed, is `undecided`, and refuses as well.
+- `# pragma: no mutate` on a changed line exempts it from mutmut, which is how
+  an equivalent mutant is cleared. The note names each such line, so a
+  reviewer sees the exemption.
+- Only the unit tests run against each mutant, so a mutant an integration test
+  would catch still refuses. The remedy is a unit test that catches it.
 
-Two of the four take a **declared** exemption, which is what lets them stay
-absolute rather than a softening of them. Both were checks a correct close-out
-could trip with no passing route at all, leaving a session to game the fold or
-push through a red integrity check — and either sets the precedent the split
-exists to prevent.
+What the check does not measure, it says in its notes: a changed line outside
+any function, a changed function mutmut gives no mutants, and each changed test
+file that imports the simulator, since a mutant changes the code and not a
+test. Code mutmut does not mutate - the apparatus, and the parts of `app/` that
+are Qt widget code - has no mutants, so on a branch that changes only those the
+check passes with nothing to run. On 2026-10-24 a branch that changed no mutated
+function took seconds. One that did took about five minutes before its first
+mutant, eight minutes for 186 mutants, and 36 minutes for 340, on four cores.
+
+The command check takes a **declared** exemption, which is what lets it stay
+absolute rather than a softening of it. It was a check a correct close-out
+could trip with no passing route at all, leaving a session to push through a
+red integrity check — which sets the precedent the split exists to prevent.
 
 Which copy of the item each field is read from, the base's or the branch's,
 follows **one rule, keyed on what kind of statement the field is and never on
@@ -4212,12 +4190,9 @@ and each reader names the kind it applies.
   reads, and it is printed as a correction beside the base's with the base's
   own result, never substituted silently. A delegated audit refuses the
   correction outright, through the front-matter check.
-- **A waiver** — `falsifies:` and `not-delegable:` — says what the work may
-  waive. A waiver removes a refusal, and it waives only what the base holds, so
-  the **base's** copy is the only word on it. The base hands a waiver to the
-  branch by exactly one written statement, `status: needs-decision` on its own
-  copy with the branch closing the item, because there the answer was the
-  branch's to make and what it falsifies follows from it.
+- **A waiver** — `not-delegable:` — says what the work may waive. A waiver
+  removes a refusal, and it waives only what the base holds, so the **base's**
+  copy is the only word on it.
 
 In one sentence: a correction supplies evidence and is honoured and printed; a
 waiver removes a refusal and is the base's; an outcome is the branch's and
@@ -4226,9 +4201,7 @@ every field was the shape first asked for. Of 1,437 close-outs on `main`, 163
 rewrote a `verify:` the base already held and every one was a correction — a
 grep target reworded, a test that never existed under the commissioned name, a
 moved file — so reading the command from the base and refusing where it fails
-would have refused 163 correct close-outs and caught nothing. Honouring the
-branch's `falsifies:` instead would have bought about 2 folds in 502 close-outs
-at the cost of the property the field exists for. A wrong correction leaves
+would have refused 163 correct close-outs and caught nothing. A wrong correction leaves
 every integrity check running over the diff; a wrong waiver switches one off,
 which is why the two kinds cannot share a copy.
 
@@ -4247,31 +4220,6 @@ which is why the two kinds cannot share a copy.
   holds one, and a path only the branch's own widening declares is named as
   that rather than passing silently: `--self` reports it as it reports every
   commission check, and a delegated audit refuses it.
-- **`falsifies:`** is a waiver. It names enough of an assertion to identify the one subject
-  the item's work makes untrue. Not weakened — *falsified*: the string the
-  assertion pins is what the item was commissioned to delete, so no
-  arrangement of the tests keeps it. An absent assertion whose source contains
-  that substring folds out of "no existing assertion removed" and is printed
-  beside it, so the removal stays on the page and reads as a commissioned act
-  rather than an unexplained one (`PL-K82G`). **One class of removal cannot be
-  folded by anything**: where the item's deliverable *is* a changed output
-  string, the old string is simply gone, and the diff holds nothing separating
-  the commissioned rewrite from an expectation dropped. The refusal stands,
-  printed under its test function beside every assertion that arrived there,
-  and none is chosen - 15 of the 20 such close-outs in this history had more
-  than one candidate, so choosing would print a guess as fact (`PL-K4R5`). **One commission cannot write the field in advance**, and
-  takes it from the branch instead. A `needs-decision` item's answer is the
-  session's to make, so which assertions it falsifies is not known until it is
-  made: `PL-G6J5` asked whether an advisory should be re-based on a different
-  denominator or retired, the count said retire, and the close-out that deleted
-  the advisory and its 29 assertions printed `FAIL no existing assertion
-  removed` with `make check` green and every other guard passing. There the
-  gate is the base's **status** rather than the base's field — `status:
-  needs-decision` on the base's copy *is* the standing statement that the
-  answer is this session's to make — and the branch must be the one closing the
-  item. The fold names itself on the page rather than happening quietly: the
-  check says the declaration is the closure's own, and that the base is what
-  let it be (`PL-ZMGR`).
 - **A `dropped` item, or one carrying `not-delegable:`** — an outcome and a
   waiver — has no `verify:` command by construction: the first built nothing, and the second is what
   `docket check` accepts *instead of* a command. The check names which applies
@@ -4284,19 +4232,14 @@ which is why the two kinds cannot share a copy.
   2026-09-22 on test-name `grep`s that would have passed once another branch
   added those names (`PL-BX1C`).
 
-`falsifies:` is nothing a session can grant itself, because it turns on the
-item as the **base** holds it — the commission — rather than on the branch. A
-`falsifies:` line added beside the deletion it excuses folds nothing and is
-reported as the worker's own word for it, and the one declaration that is read
-from the branch is gated on a base `status: needs-decision`, which a session
-can no more write on its own branch than it can the field. That matters most in
-`--self`, where `front_matter_check` is an advisory by design and so catches
-nothing; reading the base holds the property in both modes and needs no second
-guard. Where the base's copy cannot be read at all, the report says so rather
-than folding nothing silently. Where the base holds no copy — an item captured
-on this branch, which is also the one route by which a session could write both
-halves of the `needs-decision` gate itself — the commission declares nothing
-and carries no status, so the fold is not reached.
+A waiver is nothing a session can grant itself, because it turns on the item
+as the **base** holds it — the commission — rather than on the branch. A
+`not-delegable:` reason added beside the deletion of the command it would
+excuse is reported as the branch's own word for skipping it (`PL-KSV2`). That
+matters most in `--self`, where `front_matter_check` is an advisory by design
+and so catches nothing; reading the base holds the property in both modes and
+needs no second guard. Where the base's copy cannot be read at all, the report
+says so rather than excusing the command silently.
 
 The drop is an outcome and is read the other way, off the **branch's** copy,
 as it has to be: it is what the close-out writes, while the base still holds

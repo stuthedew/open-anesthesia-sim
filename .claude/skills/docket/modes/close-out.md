@@ -134,21 +134,21 @@ page and decides which file a session reads.
    It relaxes those four and nothing else. They still run and still name every
    path, printed as `NOTE` with the reason they are not refusing - read them,
    because a path you did not expect is the finding. The four integrity checks
-   stay absolute: no suppression added, no assertion removed, the item's own
-   command passes, `make check` passes. A session may re-scope its own
-   commission; it may not weaken what measures it, and it may not skip the
-   test.
+   stay absolute: no suppression added, the item's own command passes, the
+   unit tests catch a mutation of each changed line, and `make check` passes.
+   A session may re-scope its own commission; it may not weaken what measures
+   it, and it may not skip the test.
 
-   **Two of the four take an exemption the *item* declares, and which copy
+   **The command check takes an exemption the *item* declares, and which copy
    of the item each field is read from - the base's or your branch's - follows
    one rule, stated on `Commission` in `subprojects/docket/src/docket/verify.py`
    (`PL-B8HZ`).** An *outcome* (`status`, `closed`, `reason`, `pr`) is your
    branch's and excuses nothing. A *prediction* (`verify:`, `touches:`) is
    measured against the base's copy, and your branch's copy is a correction of
    it: honoured, and printed beside the base's with the base's own result. A
-   *waiver* (`falsifies:`, `not-delegable:`) removes a refusal and is the
-   base's alone, so adding one beside the work it would excuse waives nothing
-   and is reported as your own word for it.
+   *waiver* (`not-delegable:`) removes a refusal and is the base's alone, so
+   adding one beside the work it would excuse waives nothing and is reported
+   as your own word for it.
 
    - `verify:` is a prediction, and rewriting it is a correction the audit
      honours and prints: where the base's copy commissions a different
@@ -159,12 +159,6 @@ page and decides which file a session reads.
      will ask about (`PL-PZ6T`). `touches:` is read the same way: the diff is
      measured against the base's, and a path only your own widening declares
      is named as that in the NOTE.
-   - `falsifies:` names enough of an assertion to identify the one subject the
-     item's work makes untrue - the string it pins is what the item was asked
-     to delete, so no arrangement of the tests keeps it. A matching removal
-     folds and is printed beside the check (`PL-K82G`). **One item cannot
-     declare it in advance, and declares it in the closure instead** - see the
-     `needs-decision` exception below (`PL-ZMGR`).
    - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
      and the check says which applies rather than stopping the audit dead
      (`PL-L4KX`). A dropped item that still carries a `verify:` has it printed
@@ -177,89 +171,33 @@ page and decides which file a session reads.
 
    **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
    correct means the commission did not anticipate it: say so to the project
-   owner with the check's own words, and do not add the declaration to the item
-   on this branch to clear it. The whole worth of the field is that a reviewer
+   owner with the check's own words, and do not add a declaration to the item
+   on this branch to clear it. The whole worth of a waiver is that a reviewer
    wrote it first.
 
-   **One exception, and it is the only one: a `needs-decision` item whose
-   answer turned out to be "delete this".** A reviewer could not have written
-   `falsifies:` first, because which assertions the answer makes untrue depends
-   on the answer and the answer was yours to make. So where the *base's* copy
-   reads `status: needs-decision` and this branch is the one closing the item,
-   the closure's own declaration is honoured: `bin/docket set <id> --falsifies
-   '<enough of the assertion to identify it>'` in the same commit that sets
-   `status: done`. The check prints that the declaration is the closure's own
-   and that the base is what let it be, so nothing folds quietly, and the gate
-   is not yours to set - on a `ready` item the identical line folds nothing and
-   is reported as your own word for it, exactly as above. `PL-G6J5` is the
-   instance: an advisory retired on a count, whose close-out printed `FAIL no
-   existing assertion removed - 29 line(s)` with `make check` green and every
-   other guard passing (`PL-ZMGR`).
+   **The mutation check refuses a branch whose unit tests miss a mutant of a
+   line it changed** (`PL-CZXN`; project owner, 2026-10-19, ratified, over
+   making the old assertion check an advisory and over keeping it). It runs
+   `tools/diff_mutation.py --verdict` once for the branch. That takes seconds
+   where the branch changes no function mutmut mutates, five to eight minutes
+   on a typical branch that does, and 36 minutes for the largest batch measured
+   on 2026-10-24, 340 mutants. Iterate with `make mutate`, which prints the
+   same survivors, rather than by re-running the audit. Clear a refusal
+   honestly, in one of two ways:
 
-   **One class of item reaches that `REJECT` every time, and the case is
-   settled - do not re-derive it** (`PL-K4R5`). Where the deliverable *is* a
-   changed output string, the test pinning the old one must change, and the
-   old string is then simply gone: nothing in the diff separates the
-   commissioned rewrite from an expectation quietly dropped. The check prints
-   the removed assertion under its test function, beside every assertion that
-   arrived there, and pairs none of them. Report the `REJECT` with those lines
-   and say which arrival is the rewrite - that is the reading the tool refuses
-   to guess at, and it is one line rather than a reconstruction. Since
-   `PL-4W2L` the same holds for any existing assertion changed in place, a call
-   site gaining an argument included: the check reads statements, refuses the
-   change and prints both sides, where it used to fold an insertion unasked.
+   - **Write the unit test that catches the mutant.** The check prints each
+     mutant's line and its diff, and `uv run --group mutation mutmut show NAME`
+     prints it again. A mutant only an integration test catches still refuses,
+     because only the unit tests run against it.
+   - **Mark an equivalent mutant `# pragma: no mutate`**, on the line, where no
+     input can tell the mutant from the original. The check prints every such
+     line on a changed line, so say in the pull request body why each one is
+     equivalent.
 
-   Three ways out were measured over 502 single-id close-outs, in which 57
-   would `REJECT` this check and 20 are this shape, and all three failed:
-   folding on the pairing reaches a wrong answer, since 15 of the 20 have more
-   than one candidate and `PL-FCM3` has six; keying the fold to the
-   commission's own `verify:` string explains 1 of 20; and having triage copy
-   the old string out of the brief reaches 3 of 20, because the string is
-   usually not in the item. `falsifies:` itself stands at **0 of 1,503**
-   items on 2026-09-22 - written once into the tool in `v0.4.27` and never onto
-   an item.
-
-   **Nothing in that is this session's to repair, and the one case that works
-   is not reachable from here** (`PL-YZJD`). The case is real - the item's own
-   brief already quotes the old string, as `PL-FCM3`'s title did, and then
-   `bin/docket set <id> --falsifies '<the quoted string>'` makes the close-out
-   fold. But "at triage" is a precondition rather than a turn of phrase: the
-   check reads the base's copy, so the declaration counts only once it has
-   *merged*. Writing the line on this branch folds nothing and is reported as
-   your own word for it, whatever the brief says. So the prescription lives
-   where the pass that can act on it cheaply reads it -
-   `.claude/skills/docket/modes/triage.md` § "`falsifies:`, and why triage is
-   the only pass that can write it" - and here the `REJECT` is expected, with
-   reporting it the whole of what is owed unless the round trip below is worth
-   its cost.
-
-   **A waiver is amended where the commission lives, so a mid-work discovery
-   has a route, and so does an item captured and closed on one branch**
-   (`PL-TKFD`; project owner, 2026-09-25, ratified, over accepting a
-   declaration committed to the branch before the removing commit, and over
-   leaving the `REJECT` to carry the conversation). Neither needs a mechanism:
-
-   - **A `ready` item whose work turns out mid-way to falsify an assertion.**
-     Declare it on the base: from `origin/main`, an item-only branch carrying
-     `bin/docket set <id> --falsifies '<enough of the assertion to identify
-     it>'`, which `CLAUDE.md`'s capture rule opens a pull request for at its
-     first push - `bin/docket arm` answers `arm`, since the change lies under
-     the store and no claim is bound to that branch. Once it merges, bring
-     `main` into the work branch and re-audit: `verify --self` reads the
-     declaration from the base. On a solo project this buys visibility and
-     order rather than a second author - the declaration is a commit of its
-     own on `main`, ahead of the work - and that is all that is claimed for it.
-   - **An item captured and closed on one branch.** The same route in its
-     natural order: capture on its own branch with the declaration, let it
-     merge, and work from the merged base. A declaration written on the
-     capturing branch is still refused (`PL-ZMGR`), because the assertion it
-     would waive is in the base tree whether or not the base holds the item.
-
-   Both are the ordering the field always asked for - declare before the
-   commit that removes the assertion - made concrete on the base instead of on
-   the branch. Sized by `PL-YZJD`'s count, about 2 folds in 502 close-outs, the
-   round trip is paid rarely; honouring the branch's waiver instead was refused
-   because a wrong waiver switches an integrity check off.
+   A survivor on a line the branch did not change is listed and not counted.
+   Where the check says it has no answer - the run failed, timed out, or could
+   not place a mutant on a line - fix that cause and re-run. Never read a
+   missing answer as a pass.
 
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.
@@ -313,18 +251,21 @@ page and decides which file a session reads.
    Otherwise file it - grouped under one `feature:` where the findings are one
    problem - and say in the reply what you found and what you left.
 
-7. **Run `make mutate` where the diff changes a function that mutmut
-   mutates.** Those are the modules that the `only_mutate` globs in
-   `pyproject.toml`'s `[tool.mutmut]` table name: `core/` and four
-   presentation modules. The run mutates only the functions that the branch
-   changed, and it took about five minutes on 2026-10-17. Sort each survivor
-   as `docs/mutation-testing.md` § "Read a survivor" says, and list each one
-   with its kind in the pull request body. Write the test that kills a real
-   gap in this change, and file an item for a gap that is not this change's.
-   The run is a measurement and not a gate, so a survivor never holds the pull
-   request (project owner, 2026-10-17, ratified, over a whole-tree mutation
-   score as a target, `PL-Y1PS`). On a branch that changes no such function,
-   `make mutate` says so in one line.
+7. **Sort the survivors that step 5's audit printed, where the diff changes a
+   function that mutmut mutates.** Those are the modules that the
+   `only_mutate` globs in `pyproject.toml`'s `[tool.mutmut]` table name:
+   `core/` and four presentation modules. The audit's mutation check runs
+   `make mutate`'s tool on the functions that the branch changed, so there is
+   no second run to make. A survivor on a changed line has already refused the
+   audit, and one on a line the branch did not change is named in its notes.
+   Sort each survivor as `docs/mutation-testing.md` § "Read a survivor" says,
+   and list each one with its kind in the pull request body.
+   `uv run --group mutation mutmut show NAME` prints a survivor's diff while
+   `mutants/` is left from the run. Write the test that kills a real gap in
+   this change, and file an item for a gap that is not this change's. A
+   survivor on a line the branch did not change never holds the pull request
+   (project owner, 2026-10-17, ratified, over a whole-tree mutation score as a
+   target, `PL-Y1PS`).
 
 8. **Have a fresh reviewer read the branch's new long prose in the simulator,
    before step 5's audit**, because the rewrites change files that the audit
