@@ -1,9 +1,15 @@
 ---
 id: PL-GTHP
 title: Check the 214 findings from PL-TBQS's reviewer replay that name no key defect, most of them marked correct at merge by a blind checker, against main, and file what still holds
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: housekeeping
 feature: replay-findings
+touches: docs/items
 added: 2026-10-24
+payoff: every defect the reviewer replay found that still holds on main is queued, instead of lost when the pull request's head can no longer be fetched
+verify: grep -qE '^Every finding above is checked against main\.$' docs/items/PL-GTHP-*.md
 ---
 
 **Problem.** Check the 214 findings from PL-TBQS's reviewer replay that name no key defect, most of them marked correct at merge by a blind checker, against main, and file what still holds
@@ -13,3 +19,11 @@ added: 2026-10-24
 <!-- absent: replay/PL-TBQS/labels.json -->
 <!-- absent: scores.json -->
 <!-- absent: checks.json -->
+
+**Why it matters.** A blind checker confirmed most of these findings as real at their merge commits. Each one that still reproduces on `main` is a defect that no item records. Many of them are in the simulator's interface, and some may be faults the safety-critical standard covers. The findings exist only on a pull request whose branch is deleted, so the longer they wait, the harder they are to reach.
+
+**How to read them now.** `PL-TBQS`'s branch was deleted when #1750 merged, but GitHub keeps the pull request's head. `git fetch origin pull/1750/head:refs/tmp/pr1750` makes commit `b304302ee` readable, and then `git show b304302ee:replay/PL-TBQS/findings_by_label.json` prints the findings (checked 2026-10-24).
+
+**Done when.** Each of the 214 findings has been checked against `main`. Each one that still reproduces is filed, or named as already covered by an open item, and the brief ends with the line `Every finding above is checked against main.`
+
+**Generator check.** Not owed: the item touches only the queue store. It is a review pass that files findings, not a mechanism.
