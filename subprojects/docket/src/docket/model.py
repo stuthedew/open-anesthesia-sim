@@ -927,6 +927,16 @@ class Item:
     #: claiming branch's own copy by `claims.holdings`, so it takes effect with
     #: the claim and not with a merge (`PL-331V`).
     resource: str = ""
+    #: The record that the project owner set this item's priority, as
+    #: `P1, 2026-10-20`, or `P1, 2026-10-20, ratified` where the owner agreed
+    #: with a session's recommendation. `parse_owner_priority` reads it. Nothing
+    #: recorded who set a priority before `PL-JLB4`, so the band advisory
+    #: telling a session to demote process work fired on items the owner had
+    #: placed on purpose, and obeying it overturned the owner's decision. The
+    #: priority is part of the record so that a later change shows as a
+    #: mismatch, which `checks.py` refuses, rather than leaving a record that
+    #: describes a priority the item no longer has.
+    owner_priority: str = ""
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -1388,6 +1398,58 @@ def split_deferred_from(value: str) -> tuple[str, str]:
     if MILESTONE_BLOCKER_RE.match(word) is None:
         return "", text
     return word, text[len(word) :].strip(" -\u2013\u2014:,;").strip()
+
+
+#: The word an `owner-priority:` record ends with when the owner agreed with a
+#: session's recommendation rather than choosing the priority unprompted.
+#: `CLAUDE.md` § "Working with the project owner" writes a ratified decision
+#: the same way, `(project owner, DATE, ratified)`, and a reopening bar
+#: differs between the two kinds. The band advisory exempts both, because
+#: either way the priority is the owner's decision (`PL-JLB4`).
+RATIFIED = "ratified"
+
+
+@dataclass(frozen=True)
+class OwnerPriority:
+    """An `owner-priority:` record: the priority the owner set, when, and of which kind."""
+
+    priority: str
+    on: date
+    ratified: bool
+
+
+def parse_owner_priority(value: str) -> tuple[OwnerPriority | None, str]:
+    """`(record, "")` from an `owner-priority:` value, or `(None, why)` for one in no form.
+
+    The form is `<priority>, <YYYY-MM-DD>`, with `, ratified` after it where
+    the owner agreed with a session's recommendation. The priority and the
+    date are required, because a record of an owner's decision with no date
+    cannot be audited, and one with no priority cannot be compared with the
+    item's.
+    """
+    parts = [part.strip() for part in value.split(",")]
+    if len(parts) not in (2, 3):
+        return None, (f"is not '<priority>, <YYYY-MM-DD>' with an optional ', {RATIFIED}' after it")
+    priority, written, *kind = parts
+    if priority not in PRIORITIES:
+        return None, f"names priority '{priority}', which is not one of {', '.join(PRIORITIES)}"
+    on = _parse_date(written)
+    if on is None:
+        return None, f"gives '{written}' as its date, which is not YYYY-MM-DD"
+    if kind and kind[0] != RATIFIED:
+        return None, f"ends with '{kind[0]}', where only '{RATIFIED}' may follow the date"
+    return OwnerPriority(priority=priority, on=on, ratified=bool(kind)), ""
+
+
+def owner_set_priority(item: Item) -> bool:
+    """Whether the owner set the priority this item has now, by its `owner-priority:` record.
+
+    A record naming another priority describes a decision the item no longer
+    carries, so it exempts nothing. `checks.py` refuses that mismatch as an
+    error.
+    """
+    record, _ = parse_owner_priority(item.owner_priority) if item.owner_priority else (None, "")
+    return record is not None and record.priority == item.priority
 
 
 def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
@@ -2005,6 +2067,7 @@ def parse_item(text: str, path: str = "") -> Item:
         recurrences=lists["recurrences"],
         deferred_from=fields.get("deferred-from", ""),
         resource=fields.get("resource", ""),
+        owner_priority=fields.get("owner-priority", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - set(FIELD_ORDER))),
@@ -2027,6 +2090,7 @@ FIELD_ORDER = (
     "id",
     "title",
     "priority",
+    "owner-priority",
     "effort",
     "status",
     "classes",
@@ -2066,6 +2130,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "id": item.identifier,
         "title": item.title,
         "priority": item.priority,
+        "owner-priority": item.owner_priority,
         "effort": item.effort,
         "status": item.status,
         "classes": ", ".join(item.classes),

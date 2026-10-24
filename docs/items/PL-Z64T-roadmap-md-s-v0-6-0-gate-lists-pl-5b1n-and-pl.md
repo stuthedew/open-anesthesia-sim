@@ -3,11 +3,13 @@ id: PL-Z64T
 title: ROADMAP.md's v0.6.0 gate lists PL-5B1N and PL-TDBT under the product lane, while docket computes crossing and workflow for them, and nothing holds the three lane groups to the lane each entry's touches computes
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-24
+pr: 1721
 payoff: a session freezing or working a gate reads each entry's lane from bin/docket gate alone, and ROADMAP.md no longer carries a lane copy that goes stale when touches move
 verify: grep -qF 'begins unless deferred - ' ROADMAP.md && grep -qF 'in one group' .claude/skills/docket/modes/release.md
 ---
@@ -101,3 +103,5 @@ milestone's debt gate" says the list is recorded in one group below the
 self-cleared one, with lanes read from `bin/docket gate` when the list is
 worked, in place of "Group the list the way `gate` prints its lanes" and
 "transcribe that group with the others, by lane"; and `make check` passes.
+
+**Re-confirmed and built 2026-10-24.** Still true when started: `ROADMAP.md`'s v0.6.0 frozen list still held three lane groups of 100, 116 and 13 entries. They are now one group, `**Cleared before v0.6.0 begins unless deferred - 229 entries**`, below the "Cleared by v0.6.0 itself" group, and the total is unchanged. The "Two kinds of group" paragraph now says the lane split is `bin/docket gate`'s and `bin/docket picks`' to print. Every sentence in the section that placed an entry in a lane or a lane group now says the entry is on the list. That covers the post-freeze `safety` entries, the thirteen untriaged at the freeze, the deferred entries and `PL-NDKC`, and the nine triage-pass sentences under "Deferred from this gate". `.claude/skills/docket/modes/release.md` § "Mode: freeze a milestone's debt gate" now says to record the list in one group and to read lanes from `bin/docket gate` or `bin/docket picks` when the list is worked. `python3 tools/doc_check.py check` reports 0 errors, so `check_gate_counts` reads the one group's count.

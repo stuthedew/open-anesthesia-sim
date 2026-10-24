@@ -248,3 +248,42 @@ def test_the_prose_count_command_is_read_as_one_whole_number(
         assert answered.declined
     else:
         assert answered == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Which view opens first? | Chooser: the learner picks a view each run | Last used: it "
+        "opens where they left off | recommend Chooser - it names every view",
+        "Which run opens? | A: the newest | B: the oldest | C: the pinned one | recommend C - it "
+        "is the one the case names.",
+        "risk - a dose label could read mg for mcg | checked - the formatter tests pin the unit. "
+        "| look - the infusion panel's label",
+    ],
+)
+def test_renders_owner_ask_recognizes_every_line_parse_owner_ask_renders(value: str) -> None:
+    """The coordinator's guard reads the form through this, not through a copy (`PL-YV90`).
+
+    A line inside a longer message is recognized too, since a post forwards it.
+    """
+    line, why = arming.parse_owner_ask(value)
+    assert line, why
+
+    assert arming.renders_owner_ask(line)
+    assert arming.renders_owner_ask(f"The thread on #1700 asks: {line} Reply Merge it.")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Read #1700 and merge it.",
+        # One option only, which `parse_owner_ask` refuses to render.
+        'Which view opens first? Option "Chooser": it picks. I recommend "Chooser": it names.',
+        # No recommendation.
+        'Which view? Option "A": x. Option "B": y. Reply Merge it.',
+        # A risk review missing its last field.
+        "Risk to review: a dose label. Checked: the tests.",
+    ],
+)
+def test_renders_owner_ask_refuses_a_line_in_neither_form(text: str) -> None:
+    assert not arming.renders_owner_ask(text)
