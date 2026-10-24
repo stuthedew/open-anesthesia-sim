@@ -79,6 +79,7 @@ from docket.vcs import (
     resolved,
     since_filed,
     snapshot,
+    squash_message,
     stranded,
     tags,
     with_newest_pull_request,
@@ -384,6 +385,13 @@ READS: tuple[Read, ...] = (
     ),
     Read(
         "merged_pull_requests", lambda r, g: merged_pull_requests(r, runner=g), _findings("numbers")
+    ),
+    Read(
+        # The fixture's last squash on `main`, which `sessions.item_sessions` reads
+        # a pull request's session links from (`PL-70M6`).
+        "squash_message",
+        lambda r, g: squash_message(r, 4, runner=g),
+        lambda a: frozenset({a.commit}) if a.found else frozenset(),
     ),
     Read(
         "carried_merge",
