@@ -15,3 +15,9 @@ it needs an edit to `docket.toml`. A worker may not edit outside `touches`, so
 the item could only be blocked. Triage or `bin/docket delegable` could catch
 this before the item is handed over: a `touches` path that does not exist yet
 and that neither list places will always need `docket.toml` as well.
+
+**Reviewed 2026-10-24.** Adding `docket.toml` to such an item's `touches` is
+not a fix either: `docket.toml` is in `gate_paths`, so the item stops being
+delegable. The catch this item asks for therefore withholds the item rather
+than proposing a wider `touches`. `PL-928V` carries the decision for its own
+case.

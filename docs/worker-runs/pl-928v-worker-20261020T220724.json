@@ -16,5 +16,9 @@
   "cache_read_tokens": 469852,
   "cache_write_tokens": 3795,
   "output_tokens": 1503,
-  "review": null
+  "review": {
+    "outcome": "sent-back",
+    "note": "Correct block: docs/workflow.md needs a docket.toml lane entry outside touches; docket.toml is a gate path, so the fix is a decision on the item, not a wider touches",
+    "reviewed": "2026-10-24"
+  }
 }
