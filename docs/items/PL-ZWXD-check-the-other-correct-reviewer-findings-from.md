@@ -1,9 +1,15 @@
 ---
 id: PL-ZWXD
 title: Check the other correct reviewer findings from PL-TCBJ's replay against main and file each one that still reproduces
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: housekeeping
 feature: replay-findings
+touches: docs/items
 added: 2026-10-24
+payoff: every still-present defect a blind checker confirmed in the replay is queued, instead of lost with the session that found it
+verify: grep -qE '^Every entry above is checked against main\.$' docs/items/PL-ZWXD-*.md
 ---
 
 **Problem.** Check the other correct reviewer findings from PL-TCBJ's replay against main and file each one that still reproduces
@@ -19,4 +25,8 @@ added: 2026-10-24
 - `#331` (playback, in Flet code the Qt port replaced): the tick sleeps after each burst, so 300x plays at about 270x (4); run history grows about 1.3 GB per wall-clock hour at 300x (3); the rate line still reads "300x" while paused (3); a rate refusal outside the `try` would end the tick loop (4); a modal dialog does not pause the run (1). Check whether the Qt port carries each.
 - `#1451` (mark branches): refusal messages name methods and raw seconds rather than formatted instants (1).
 
-**Done when.** Each entry is checked against `main` and either filed as its own item or recorded here as fixed or not reproducing.
+**Why it matters.** Most of the 59 findings a blind checker marked correct were never filed. Some describe what a learner sees, such as an accounting panel reading "Valid" under a banner saying accounting failed, so each one still present is a misleading display nobody has queued.
+
+**Generator check.** Work the owner asked for: it finishes filing `PL-TCBJ`'s replay, which the owner requested.
+
+**Done when.** Each entry above is checked against `main` and either filed as its own item or recorded here as fixed or not reproducing, and the brief ends with the line "Every entry above is checked against main."
