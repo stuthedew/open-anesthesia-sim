@@ -21,4 +21,4 @@ reenters: PL-4DK2
 
 **Checked 2026-10-24.** `verify.py` defines `PR_VALUE_RE = re.compile(r"[0-9]+")` and `RECORD_NAME_RE = re.compile(r"[0-9]+\.md")`. `cli.py` has three `isdigit()` calls, not two, and the work should check which of them read a pull request number.
 
-**Generator check.** A re-entry of `PL-4DK2`, closed 2026-10-18. It replaced the hand readings of a `pr:` number in `vcs` and `tools/pr_body_check.py` with `model.pr_number`, and missed these sibling sites. The misread fact is the head `PL-5DZ8`'s: "which spelling of a repeated predicate is the answer".
+**Generator check.** A re-entry of `PL-4DK2`, closed 2026-10-18. It replaced the hand readings of a `pr:` number in `vcs` and `tools/pr_body_check.py` with `model.pr_number`, and missed these sibling sites. The misread fact is the head `PL-5DZ8`'s: "which spelling of a repeated predicate is the answer". Recorded 2026-10-24 as a member of the head `PL-N4FP`, because `tools/fact_home_check.py` has no rule that sees this form.
