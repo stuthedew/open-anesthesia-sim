@@ -227,6 +227,14 @@ def selection_file(table: Mapping[str, object]) -> str:
     return files[0]
 
 
+def deselected(table: Mapping[str, object]) -> frozenset[str]:
+    """The test ids that the table's `--deselect` arguments leave out of every mutmut run."""
+    args = _strings(table, "pytest_add_cli_args_test_selection")
+    return frozenset(
+        value for flag, value in zip(args, args[1:], strict=False) if flag == "--deselect"
+    )
+
+
 def is_mutated(path: str, table: Mapping[str, object]) -> bool:
     """Whether mutmut mutates the file at `path`, by the rule it applies to the table.
 
@@ -856,7 +864,10 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
         here = root / path
         branch = here.read_text(encoding="utf-8") if here.is_file() else None
         patch = "" if branch is None else read_git(["diff", "-U0", change.fork, "--", path], root)
-        selections.append((path, base_selection(path, base[path], branch, patch)))
+        # A test the table deselects never runs under mutmut, and a selection
+        # of nothing but such tests would collect none.
+        selection = base_selection(path, base[path], branch, patch)
+        selections.append((path, tuple(t for t in selection if t not in deselected(table))))
     on_branch = [path for path in unit_tests if (root / path).is_file()]
     displays = [
         name

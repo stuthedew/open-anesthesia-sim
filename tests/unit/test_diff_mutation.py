@@ -33,6 +33,7 @@ from diff_mutation import (
     changed_rows,
     compare_tests,
     counts,
+    deselected,
     edited_rows,
     is_mutated,
     main,
@@ -936,4 +937,23 @@ def test_a_changed_test_outside_the_unit_tests_is_named_and_not_compared(
         "Not measured: whether 1 changed test files outside tests/unit/ still catch what they "
         "caught before: tests/integration/test_run.py."
     ]
+    assert runs.asked == []
+
+
+def test_deselected_names_each_test_the_table_deselects() -> None:
+    assert deselected(TABLE) == {"tests/unit/test_slow.py::test_walk"}
+
+
+def test_a_changed_test_the_table_deselects_is_not_compared(repo: Path, runs: Runs) -> None:
+    change = _weakened(repo)
+    table = {
+        **mutmut_table(repo),
+        "pytest_add_cli_args_test_selection": [
+            "@selected-tests.txt",
+            "--deselect",
+            "tests/unit/test_d.py::test_label",
+        ],
+    }
+
+    assert compare_tests(repo, change, table) == Compared()
     assert runs.asked == []
