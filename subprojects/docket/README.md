@@ -3993,6 +3993,37 @@ that is not a TOML date, and an `n` below 1. An entry that matched nothing
 while looking applied would hide the recommendation it holds. The table is
 not a `docket.toml` setting, so it has one home.
 
+### Which sessions worked a closed item
+
+`docket show` ends a closed item with a section headed "Sessions that worked
+it". It prints one line per session: the session id, the model that last
+served it, its effort level and its cost in USD. Where the configured model
+differs from the served one, the line names both. The section is where to
+find which model and effort worked an item.
+
+The facts come from `docs/session-ledger.tsv`, at the project root. It is a
+tab-separated file with one row per session, and the model review is its only
+writer (`PL-92ZN`). `docket` reads five of its columns: `session_id`,
+`configured_model`, `last_served_model`, `effort_level` and `cost_usd`. It
+splits the file on tabs and newlines alone, because titles hold double quotes
+that no writer escaped. A ledger missing one of those columns is not read, and
+the section says so on each session's line.
+
+The join runs at read time, so no item carries a copy of a session's facts.
+It starts from the item's `pr:` and finds the squash commit on the default
+branch whose subject ends `(#N)`, by `vcs.subject_pull_request`. Every
+`claude.ai/code/session_...` link in that commit's message names a session,
+whether it stands in a `Claude-Session:` trailer or in the pull request body.
+Where the commit names none, `docs/pr-bodies/<N>.md` is read instead. Each
+session id found is then looked up in the ledger.
+
+The section never prints an empty list. It says plainly when the item has no
+`pr:`, when neither the commit nor the body record names a session, when the
+history could not be read (a shallow clone, a guessed default branch, or
+`--no-git`), and when a joined session has no ledger row. An open item gets no
+section. `sessions.item_sessions` is the join itself, and the model review
+calls it rather than writing its own (`PL-63CB`).
+
 ### Verification is scoped, not just green
 
 `docket verify <id>` answers a narrower question than "do the tests pass":

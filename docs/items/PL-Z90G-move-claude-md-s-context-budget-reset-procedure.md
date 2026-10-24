@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: skill-routing
+milestone: v0.6.1
 touches: CLAUDE.md, .claude/skills/docket/modes, docs/resident-instructions.md, tools/context_reading.py, .claude/hooks/no-prune-guard.sh, .claude/rules/instruction-writing.md
 added: 2026-10-24
 closed: 2026-10-24
