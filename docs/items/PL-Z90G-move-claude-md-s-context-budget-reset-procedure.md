@@ -9,6 +9,7 @@ feature: skill-routing
 touches: CLAUDE.md, .claude/skills/docket/modes, docs/resident-instructions.md, tools/context_reading.py, .claude/hooks/no-prune-guard.sh, .claude/rules/instruction-writing.md
 added: 2026-10-24
 closed: 2026-10-24
+pr: 1718
 payoff: every session loads about 4,000 fewer resident characters, and the reset and housekeeping procedures arrive when a session starts an item or files unnamed work
 verify: grep -q '^## Check the spend before starting, and reset in place' .claude/skills/docket/modes/start.md && ! grep -q 'That floor measured 81,048' CLAUDE.md && ! grep -q 'Every in-flight guard matches a' CLAUDE.md
 ---
