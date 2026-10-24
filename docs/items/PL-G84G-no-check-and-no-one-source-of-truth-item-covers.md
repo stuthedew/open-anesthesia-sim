@@ -1,9 +1,14 @@
 ---
 id: PL-G84G
 title: No check and no one-source-of-truth item covers a text fact restated under src/ (a unit label, a display name): tools/literal_home_check.py reads numbers only and PL-K88Z's inventory surveyed no strings; on 2026-10-24, 112 distinct short string literals sit in two or more modules under src/anesthesia_sim/, 12 of them unit-like
-status: untriaged
+priority: P1
+effort: M
+status: needs-decision
+classes: safety, planning
 feature: one-source-of-truth
+touches: src/anesthesia_sim/app/, src/anesthesia_sim/core/units.py, tools/literal_home_check.py
 added: 2026-10-24
+payoff: a unit label shown beside a value cannot change in one module and stay old in another
 ---
 
 **Problem.** No check and no one-source-of-truth item covers a text fact restated under src/ (a unit label, a display name): tools/literal_home_check.py reads numbers only and PL-K88Z's inventory surveyed no strings; on 2026-10-24, 112 distinct short string literals sit in two or more modules under src/anesthesia_sim/, 12 of them unit-like
@@ -38,3 +43,15 @@ multi = {s: f for s, f in seen.items() if len(f) > 1}
 units = {s: f for s, f in multi.items() if unitish.search(s)}
 print(len(multi), len(units))
 ```
+
+**Why it matters.** A unit label shown beside a value is part of the displayed value under `CLAUDE.md`'s safety-critical standard, and the correct number with the wrong unit is still a safety failure. A label typed in two modules can change in one and not the other, and no check under `src/` reads strings, so nothing would notice. `PL-Q3G9` is one confirmed instance.
+
+**Decision needed.** How should a unit label or display name under `src/` be held to one home: extend `tools/literal_home_check.py` to a defined class of strings, add a unit type that carries its own label, or leave strings to review?
+
+**Recommendation:** a unit type that carries its label, for units only, and review for every other string. `CLAUDE.md` already asks for unit-aware types on safety-critical paths, so the type is the rule applied rather than a new mechanism. A string check would have to guess which strings are units, which is the judgment half `CLAUDE.md` refuses to script. Take the count the capture names first: read each of the 12 unit-like strings and say which are real second copies. If none but `PL-Q3G9`'s are, fix that one and drop the rest of this item. This applies stated rules, so the session that starts the item can take it.
+
+**Done when** (under the recommendation). The 12 unit-like strings are each listed here as a second copy or not. Each unit shown in the interface reads its label from one unit type, and a test shows a control's label and its recorded unit coming from that type.
+
+**Checked 2026-10-24.** `PL-Q3G9`'s copy is present: `"L/min"` is typed three times in `PARAMETER_CONTROLS` in `app/dashboard_frame.py` and three times in `CONTROL_INPUT_UNITS` in `app/control_record.py`.
+
+**Generator check.** A one-off. `PL-K88Z`'s inventory surveyed no strings, so this is a gap in the sweep rather than new inflow. Its fact, "the unit a displayed value is stated in", is stated by no head.
