@@ -16,6 +16,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import subprocess
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import diff_mutation
@@ -24,11 +25,15 @@ from diff_mutation import (
     NOTHING_MATCHES,
     TIERS_NOT_RUN,
     Change,
+    Compared,
     Refusal,
     Unit,
+    base_selection,
     branch_change,
     changed_rows,
+    compare_tests,
     counts,
+    edited_rows,
     is_mutated,
     main,
     module_name,
@@ -631,7 +636,6 @@ def test_the_verdict_counts_only_a_mutant_of_a_changed_line(
         "Not counted: 1 mutants that the tests did not catch, on lines of the changed "
         "functions that this branch did not change: pkg.core.model.x_outer__mutmut_1."
     ) in notes
-    assert any("tests/unit/test_m.py" in note and "still catch" in note for note in notes)
     assert notes[-1] == TIERS_NOT_RUN
 
 
@@ -685,7 +689,7 @@ def test_the_verdict_names_what_the_run_did_not_measure(repo: Path, judged: dict
 
 
 def test_main_prints_a_verdict_where_nothing_mutmut_mutates_changed(
-    repo: Path, capsys: pytest.CaptureFixture[str]
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _write(repo, "pyproject.toml", TABLE_TOML)
     _write(repo, "tests/unit/test_core.py", "import anesthesia_sim\n")
@@ -696,6 +700,8 @@ def test_main_prints_a_verdict_where_nothing_mutmut_mutates_changed(
     # A test of the tooling is not the simulator's.
     (repo / "tests/unit/test_core.py").unlink()
     _write(repo, "tests/unit/test_tool.py", "import doc_check\n")
+    # The deleted file holds no test, so its base version collects none.
+    monkeypatch.setattr(diff_mutation, "_clean_run", lambda tree, tests: 5)
 
     assert main(["--root", str(repo), "--base", "main", "--verdict"]) == 0
 
@@ -705,3 +711,229 @@ def test_main_prints_a_verdict_where_nothing_mutmut_mutates_changed(
     assert printed["notes"][0] == "No function that mutmut mutates changed against main."
     assert "tests/unit/test_core.py" in printed["notes"][1]
     assert "tests/unit/test_tool.py" not in printed["notes"][1]
+
+
+#: A display test file. The selection tests below change one part of it each.
+DISPLAY_TEST = """\
+from anesthesia_sim.app import formatting
+
+
+def helper():
+    return 1
+
+
+def test_label():
+    assert formatting.label() == "MAC"
+    assert formatting.unit() == "%"
+
+
+class TestReadout:
+    def test_value(self):
+        assert formatting.value() == 1.0
+"""
+#: The line `test_label` loses on the weakening branch below.
+UNIT_ASSERTION = '    assert formatting.unit() == "%"\n'
+UNIT_MUTANT = "anesthesia_sim.app.formatting.x_unit__mutmut_1"
+LABEL_MUTANT = "anesthesia_sim.app.formatting.x_label__mutmut_1"
+
+
+def _patch(base: str, branch: str, tmp_path: Path) -> str:
+    """The `-U0` patch that git writes from `base` to `branch`."""
+    (tmp_path / "a.py").write_text(base, encoding="utf-8")
+    (tmp_path / "b.py").write_text(branch, encoding="utf-8")
+    return subprocess.run(
+        ["git", "diff", "--no-index", "-U0", "a.py", "b.py"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "selected"),
+    [
+        # A loosened assertion selects the test that held it.
+        (UNIT_ASSERTION, "", ("tests/unit/test_d.py::test_label",)),
+        # A line added to a test selects the base test of the same name.
+        (
+            "        assert formatting.value() == 1.0\n",
+            "        assert formatting.value() == 1.0\n        return\n",
+            ("tests/unit/test_d.py::TestReadout::test_value",),
+        ),
+        # A changed helper can change every test, so the whole file is selected.
+        ("    return 1\n", "    return 2\n", ("tests/unit/test_d.py",)),
+        # A new test leaves the base version's tests as they were.
+        ("", "\n\ndef test_more():\n    assert formatting.more()\n", ()),
+        # A comment cannot change what a test does.
+        ("def test_label():\n", "# Pins the label.\ndef test_label():\n", ()),
+    ],
+)
+def test_base_selection_is_the_base_tests_the_branch_changed(
+    old: str, new: str, selected: tuple[str, ...], tmp_path: Path
+) -> None:
+    branch = DISPLAY_TEST.replace(old, new) if old else DISPLAY_TEST + new
+    patch = _patch(DISPLAY_TEST, branch, tmp_path)
+    assert base_selection("tests/unit/test_d.py", DISPLAY_TEST, branch, patch) == selected
+
+
+def test_a_deleted_test_file_is_compared_whole() -> None:
+    assert base_selection("tests/unit/test_d.py", DISPLAY_TEST, None, "") == (
+        "tests/unit/test_d.py",
+    )
+
+
+def test_edited_rows_leave_out_blank_lines_and_comments(tmp_path: Path) -> None:
+    branch = DISPLAY_TEST.replace("    return 1\n", "    # One.\n\n    return 1\n")
+    patch = _patch(DISPLAY_TEST, branch, tmp_path)
+    assert edited_rows(patch, DISPLAY_TEST.splitlines(), branch.splitlines()) == (set(), set())
+
+
+@dataclass
+class Runs:
+    """What the stubbed mutmut runs of `compare_tests` report, and what they were asked."""
+
+    base: dict[str, str] = field(default_factory=dict)
+    branch: dict[str, str] = field(default_factory=dict)
+    clean: int = 0
+    #: Each run's tree name, patterns, tests, and the changed test file's text there.
+    asked: list[tuple[str, list[str], list[str], str]] = field(default_factory=list)
+
+
+@pytest.fixture
+def runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Runs:
+    """`repo` with a display test on `main` and a branch `work`, and mutmut runs stubbed."""
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    _write(repo, "tests/unit/test_d.py", DISPLAY_TEST)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "display test")
+    _git(repo, "checkout", "-qb", "work")
+    stubbed = Runs()
+
+    def display_statuses(
+        tree: Path, patterns: list[str], tests: list[str], table: object, files: object
+    ) -> dict[str, str]:
+        text = (tree / "tests/unit/test_d.py").read_text(encoding="utf-8")
+        stubbed.asked.append((tree.name, list(patterns), list(tests), text))
+        return stubbed.base if tree.name == "base" else stubbed.branch
+
+    shown = "@@ -1,1 +1,1 @@\n-    return unit\n+    return None\n"
+    monkeypatch.setattr(diff_mutation, "_display_statuses", display_statuses)
+    monkeypatch.setattr(diff_mutation, "_clean_run", lambda tree, tests: stubbed.clean)
+    monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: _completed(shown))
+    return stubbed
+
+
+def _weakened(repo: Path) -> Change:
+    """The branch's change once it drops the unit assertion from `test_label`."""
+    _write(repo, "tests/unit/test_d.py", DISPLAY_TEST.replace(UNIT_ASSERTION, ""))
+    return branch_change(repo, "main", mutmut_table(repo))
+
+
+def test_a_branch_that_weakens_a_display_test_is_refused(repo: Path, runs: Runs) -> None:
+    runs.base = {
+        UNIT_MUTANT: "killed",
+        LABEL_MUTANT: "killed",
+        "anesthesia_sim.app.formatting.x_value__mutmut_1": "survived",
+    }
+    runs.branch = {UNIT_MUTANT: "survived", LABEL_MUTANT: "killed"}
+    change = _weakened(repo)
+
+    found = verdict(repo, change, {}, compare_tests(repo, change, mutmut_table(repo)))
+
+    # The base run holds the base version, and runs every display mutant
+    # against the test the branch changed. The branch run takes only the
+    # mutants that the base run caught, against the whole changed file.
+    assert runs.asked == [
+        ("base", ["anesthesia_sim.app.*"], ["tests/unit/test_d.py::test_label"], DISPLAY_TEST),
+        (
+            "branch",
+            [LABEL_MUTANT, UNIT_MUTANT],
+            ["tests/unit/test_d.py"],
+            DISPLAY_TEST.replace(UNIT_ASSERTION, ""),
+        ),
+    ]
+    assert found["uncaught"] == [
+        f"tests/unit/test_d.py: {UNIT_MUTANT} - caught by the base version, survived on this "
+        "branch's version\n"
+        "    -    return unit\n"
+        "    +    return None"
+    ]
+    assert found["undecided"] == []
+
+
+def test_a_branch_whose_changed_test_still_catches_every_mutant_passes(
+    repo: Path, runs: Runs
+) -> None:
+    runs.base = runs.branch = {UNIT_MUTANT: "killed"}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert compared.uncaught == compared.undecided == []
+    assert compared.notes[-1].startswith("Compared: 1 mutants of anesthesia_sim.app")
+
+
+@pytest.mark.parametrize(
+    ("status", "uncaught"), [("no tests", True), ("suspicious", False), ("timeout", None)]
+)
+def test_the_branch_runs_status_decides_where_a_mutant_goes(
+    repo: Path, runs: Runs, status: str, uncaught: bool | None
+) -> None:
+    runs.base = {UNIT_MUTANT: "killed"}
+    runs.branch = {UNIT_MUTANT: status}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    # A timeout is a catch on the branch's side too, and an unknown status
+    # decides nothing.
+    assert len(compared.uncaught) == (uncaught is True)
+    assert len(compared.undecided) == (uncaught is False)
+
+
+def test_a_mutant_the_branch_run_does_not_list_counts_as_untested(repo: Path, runs: Runs) -> None:
+    runs.base = {UNIT_MUTANT: "killed"}
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert compared.uncaught[0].startswith(f"tests/unit/test_d.py: {UNIT_MUTANT} - caught by")
+    assert "no tests on this branch's version" in compared.uncaught[0]
+
+
+def test_a_base_test_that_fails_on_the_branchs_source_is_not_compared(
+    repo: Path, runs: Runs
+) -> None:
+    runs.clean = 1
+
+    compared = compare_tests(repo, _weakened(repo), mutmut_table(repo))
+
+    assert runs.asked == []
+    assert compared == Compared(
+        notes=[
+            "Not compared: tests/unit/test_d.py, because the tests of its base version that "
+            "this branch changed fail on this branch's source with no mutant applied, so the "
+            "branch changed what they check."
+        ]
+    )
+
+
+def test_a_branch_that_only_adds_a_test_runs_nothing(repo: Path, runs: Runs) -> None:
+    _write(repo, "tests/unit/test_d.py", DISPLAY_TEST + "\n\ndef test_more():\n    assert 1\n")
+    change = branch_change(repo, "main", mutmut_table(repo))
+
+    assert compare_tests(repo, change, mutmut_table(repo)) == Compared()
+    assert runs.asked == []
+
+
+def test_a_changed_test_outside_the_unit_tests_is_named_and_not_compared(
+    repo: Path, runs: Runs
+) -> None:
+    _write(repo, "tests/integration/test_run.py", "import anesthesia_sim\n")
+    change = branch_change(repo, "main", mutmut_table(repo))
+
+    compared = compare_tests(repo, change, mutmut_table(repo))
+
+    assert compared.notes == [
+        "Not measured: whether 1 changed test files outside tests/unit/ still catch what they "
+        "caught before: tests/integration/test_run.py."
+    ]
+    assert runs.asked == []
