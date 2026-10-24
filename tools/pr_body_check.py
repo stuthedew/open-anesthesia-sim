@@ -351,8 +351,8 @@ def recovered() -> set[int]:
         return set()
     found: set[int] = set()
     for path in RECOVERY_DIR.glob("*.md"):
-        if path.stem.isdigit():
-            found.add(int(path.stem))
+        if (number := pr_number(path.stem)) is not None:
+            found.add(number)
     return found
 
 
@@ -710,7 +710,7 @@ def anchors(ref: str | None) -> int:
         # Only a record is anchored, and only a record is named for its number,
         # as `recovered()` reads them; the README beside them is the
         # directory's statement of what a record is (`PL-TDBT`).
-        if not path.stem.isdigit():
+        if pr_number(path.stem) is None:
             continue
         parsed = parse_record(path.read_text(encoding="utf-8"))
         # A record with no `commit:` at all was `recorded:` before its merge

@@ -40,7 +40,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.model import CLOSED_STATUSES, parse_item  # noqa: E402
+from docket.model import parse_item  # noqa: E402
 from docket.store import CITED_ID_RE, cited_ids  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
@@ -73,7 +73,7 @@ def store() -> tuple[dict[str, Path], set[str]]:
             continue
         identifier = found.group(1)
         paths[identifier] = path
-        if parse_item(path.read_text(encoding="utf-8")).status in CLOSED_STATUSES:
+        if not parse_item(path.read_text(encoding="utf-8")).is_open:
             closed.add(identifier)
     return paths, closed
 

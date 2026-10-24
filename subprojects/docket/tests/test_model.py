@@ -27,6 +27,7 @@ from docket.model import (
     generator_defect_faults,
     generator_faults,
     impairs_generators_soundly,
+    is_closed_status,
     is_generator,
     live_recurrences,
     misread_faults,
@@ -1525,6 +1526,27 @@ def test_startable_is_open_triaged_and_not_blocked() -> None:
     assert not _item(status="blocked").is_startable
     assert not _item(status="untriaged").is_startable
     assert not _item(status="done", closed=date(2026, 8, 2)).is_startable
+
+
+def test_open_means_not_recorded_closed_and_a_status_in_neither_set_is_never_startable() -> None:
+    """`PL-TSXD`: one answer to whether an item is open, for every status.
+
+    Readers that tested `in OPEN_STATUSES` read a status in neither set as
+    closed, and readers that tested `not in CLOSED_STATUSES` read it as open.
+    Now every reader asks `is_open`, which is `not is_closed_status(status)`.
+    A misspelt or missing status stays open, so every check keeps holding the
+    item, and is never offered as work.
+    """
+    for status in ("untriaged", "ready", "needs-decision", "blocked"):
+        assert _item(status=status).is_open
+        assert not is_closed_status(status)
+    for status in ("done", "dropped"):
+        assert not _item(status=status, closed=date(2026, 8, 2)).is_open
+        assert is_closed_status(status)
+    for status in ("", "redy"):
+        assert _item(status=status).is_open
+        assert not is_closed_status(status)
+        assert not _item(status=status).is_startable
 
 
 def test_a_quoted_value_continued_on_a_hash_led_line_is_read_whole() -> None:

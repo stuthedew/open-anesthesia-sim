@@ -219,6 +219,106 @@ def test_a_name_defined_in_two_modules_fails_and_an_import_or_alias_does_not(
     assert analyze(tmp_path, baseline=drained).errors == 0
 
 
+def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) -> None:
+    """`PL-TSXD`: about 48 sites asked whether an item is open by hand, two ways.
+
+    `in OPEN_STATUSES` and `not in CLOSED_STATUSES` disagree about a status in
+    neither set. The forms below are the ones the sweep removed: a bare name,
+    a set display that unpacks one, and a module attribute.
+    """
+    _tree(
+        tmp_path,
+        tools__queue=(
+            "from docket.model import OPEN_STATUSES\n\n"
+            "def pick(item):\n    return item.status in OPEN_STATUSES\n"
+        ),
+        docket__cli=(
+            "from .model import CLOSED_STATUSES\n\n"
+            "def idle(hold):\n"
+            '    return hold.status not in {"", *CLOSED_STATUSES}\n'
+        ),
+        docket__plan="from . import model\n\nresolved = [s in model.CLOSED_STATUSES for s in ()]\n",
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 3
+    assert "tools/queue.py:4: in OPEN_STATUSES in pick" in printed
+    assert "subprojects/docket/src/docket/cli.py:4: not in CLOSED_STATUSES in idle" in printed
+    assert "subprojects/docket/src/docket/plan.py:3: in CLOSED_STATUSES in <module>" in printed
+    assert "Home: subprojects/docket/src/docket/model.py, because `Item.is_open`" in printed
+    assert "So read `Item.is_open`, or `model.is_closed_status`" in printed
+
+
+def test_item_is_open_and_the_sets_own_module_are_accepted(tmp_path: Path) -> None:
+    """The readers the rule sends a session to, and the tests it does not own, all pass.
+
+    `model.py` holds both sets and may test them. A test against `STATUSES`
+    asks whether a status is valid, which is another question, and a set
+    built from a status set is a definition rather than a test of one.
+    """
+    _tree(
+        tmp_path,
+        docket__model=(
+            'OPEN_STATUSES = ("ready",)\nCLOSED_STATUSES = ("done",)\n'
+            "STATUSES = OPEN_STATUSES + CLOSED_STATUSES\n\n"
+            "def is_closed_status(status):\n    return status in CLOSED_STATUSES\n"
+        ),
+        docket__claims=(
+            "from .model import CLOSED_STATUSES, STATUSES, is_closed_status\n\n"
+            'RELEASING_STATUSES = CLOSED_STATUSES + ("blocked",)\n\n'
+            "def held(item, hold):\n"
+            "    return item.is_open and not is_closed_status(hold.status)"
+            " and hold.status in STATUSES\n"
+        ),
+    )
+
+    assert analyze(tmp_path, baseline={}).errors == 0
+
+
+def test_a_pr_field_read_by_hand_is_refused(tmp_path: Path) -> None:
+    """`PL-4DK2` and `PL-JT7Y`: a `pr:` value read by `isdigit`, `int` or a pattern.
+
+    Each accepts `07`, and `isdigit` accepts `²`, which `model.pr_number`
+    refuses, so the reader and `docket check` disagree about one item.
+    """
+    _tree(
+        tmp_path,
+        tools__body=(
+            "import re\n\n"
+            "def number(item, fields):\n"
+            "    if item.pr.strip().isdigit():\n"
+            '        return int(fields["pr"])\n'
+            '    return re.fullmatch("[0-9]+", fields.get("pr", ""))\n'
+        ),
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 1
+    assert "tools/body.py:4: the `pr` field's isdigit() in number" in printed
+    assert "tools/body.py:5: int() of the `pr` field in number" in printed
+    assert "tools/body.py:6: a pattern's fullmatch() of the `pr` field in number" in printed
+    assert "So read the number with `model.pr_number`" in printed
+
+
+def test_pr_number_of_the_pr_field_and_other_digit_tests_are_accepted(tmp_path: Path) -> None:
+    """The one reader passes, and so do a presence test and digits that are not a `pr:` value."""
+    _tree(
+        tmp_path,
+        tools__body=(
+            "from docket.model import pr_number\n\n"
+            "def number(item, count, number):\n"
+            "    if item.pr and pr_number(item.pr.strip()) is not None and count.isdigit():\n"
+            "        return item.pr == number, int(item.priority[1:])\n"
+        ),
+    )
+
+    assert analyze(tmp_path, baseline={}).errors == 0
+
+
 def test_the_baseline_covers_what_it_names_and_refuses_one_more(tmp_path: Path) -> None:
     path = "tools/branch.py"
     baseline = {path: {("git", "_git"): 1}}
