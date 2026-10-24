@@ -46,6 +46,15 @@ payoff: the effort trial assigns each cloud session its own arm, so its result c
 
 **The probe.** Branch `claude/pl-8mz9-probe-hook-cap` is never merged. Its first `SessionStart` hook writes `"maxEffortLevel": "medium"` to `.claude/settings.local.json` and logs the time to `/tmp/probe-cap.log`. `medium` is below both the app's `xhigh` and `.claude/settings.json`'s `high`, so it tells a capped turn from an uncapped one in a session the app opened and in one `create_session` started. Each probe session reports `CLAUDE_EFFORT` and the top-level `perTurnEffort` field of every assistant record in its own transcript, `/root/.claude/projects/-home-user-open-anesthesia-sim/*.jsonl`.
 
+**Probe result, 2026-10-24: the cap applies from the first turn, in a session `create_session` started.** Probe session `session_016eGqySSBtxtxrF4322XB3i` (transcript `c2bd5b4d-bd26-512d-9475-541af23fdd0e`) ran on `claude/pl-8mz9-probe-hook-cap`. The hook wrote the cap at 3:09:00.7 pm CDT, and the first request went out 23 seconds later. Every assistant record, the first at 3:09:23.8 pm CDT included, carries `"perTurnEffort": "medium"`, and `CLAUDE_EFFORT` read `medium`. Without the cap, `.claude/settings.json`'s `high` would have applied. So a cap that the `SessionStart` hook writes holds from the first turn.
+
+Two things the fix must handle, both seen in the same probe:
+
+- **The hooks run in parallel.** The digest's effort line, run from `.claude/hooks/docket-digest.sh`, reported "none" even though the probe hook had written the file. So the draw and the line that reports it must be one script that writes first and reports second, not two hook entries.
+- **`digest_line` gives the wrong reason for a value outside the two arms.** It says the file "sets no maxEffortLevel" whenever the value is not `high` or `xhigh`, including when the file sets `medium`.
+
+Not yet measured: a session opened from the app, which passes `--effort xhigh` on its command line. `PL-HYRM` measured that a cap present at startup beats that flag, so the remaining doubt is small. The owner was asked for one app-opened session on the probe branch to close it.
+
 **Done when.** The probe's result is recorded here. If the cap applies from the first turn, the `SessionStart` hook assigns the arm, `tests/unit/test_effort_trial.py` covers the hash draw and the reworded lines, `docs/maintainer.md` and `docs/apparatus.md` describe the hook route, and the owner has removed the setup-script line. If it does not, this item records what the first turn costs and the owner's answer.
 
 **Generator check.** One defect in one mechanism, found while answering the owner's question. It explains no other open item.
