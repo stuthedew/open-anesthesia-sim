@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: one-source-of-truth
+milestone: v0.6.2
 touches: src/anesthesia_sim/app/, tools/literal_home_check.py, tests/integration/test_qt_widgets.py
 added: 2026-10-19
 closed: 2026-10-24

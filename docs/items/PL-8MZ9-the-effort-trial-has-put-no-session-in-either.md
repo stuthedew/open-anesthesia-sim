@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
+milestone: v0.6.2
 touches: docs/items/PL-8MZ9-the-effort-trial-has-put-no-session-in-either.md, tools/effort_trial.py, tests/unit/test_effort_trial.py, .claude/hooks/docket-digest.sh, docs/maintainer.md, docs/apparatus.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-24
 closed: 2026-10-24

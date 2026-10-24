@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: review-panel
+milestone: v0.6.2
 touches: docs/items/PL-TCBJ-replay-a-panel-of-specialist-reviewer-subagents.md
 added: 2026-10-24
 closed: 2026-10-24

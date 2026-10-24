@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: model-evidence
+milestone: v0.6.2
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-10-19
 closed: 2026-10-24
