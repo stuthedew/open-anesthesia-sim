@@ -216,17 +216,25 @@ they not have to set the level by hand. The effort trial starts on Friday
 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC). Until then every session
 runs at `high`.
 
-How it works (`PL-HYRM`): the cloud environment's setup script runs
-`tools/effort_trial.py` before Claude starts. The script draws the session's
-arm and writes it as both `effortLevel` and `maxEffortLevel` in
-`.claude/settings.local.json`. The `maxEffortLevel` cap outranks the app's
-effort picker, so the arm holds whatever the picker shows. Keep the picker at
-`xhigh`. The app keeps its last level, so it needs no reset per session. Each
-session's start-of-session digest names its arm, and the session tells you the
-arm in its first reply. That digest line is kept in the session's transcript,
-and it is the trial's record of the arm: the model review reads it from there
-by session id. Sessions on your own computer do not run the setup script, so
-they are not in the trial.
+How it works (`PL-HYRM`, `PL-8MZ9`): the session-start hook runs
+`tools/effort_trial.py session-start` in every cloud session, including a
+resumed one. The script takes the session's arm from a hash of its session
+id, so a resumed session keeps the same arm. It writes the arm as both
+`effortLevel` and `maxEffortLevel` in `.claude/settings.local.json`, and then
+prints the line that names it. The `maxEffortLevel` cap applies from the
+session's first request, and it outranks the app's effort picker. A cap only
+lowers a level, though. A session in the `xhigh` arm whose picker sent `high`
+runs at `high`, so keep the picker at `xhigh` for the length of the trial.
+Each session's start-of-session digest names its arm, and the session tells
+you the arm in its first reply. That digest line is kept in the session's
+transcript, and it is the trial's record of the arm: the model review reads
+it from there by session id. Sessions on your own computer are not in the
+trial, and the script writes nothing there.
+
+Until 2026-10-24 the cloud environment's setup script drew the arm. That
+script runs only when the environment's snapshot is built, about once a week,
+so it put no session in either arm (`PL-8MZ9`). Its `effort_trial.py` line
+now does nothing and can be removed from the environment's settings.
 
 The trial runs until the owner ends it. The monthly model review puts the
 question of ending it to the owner once both arms have adequate data, and in
