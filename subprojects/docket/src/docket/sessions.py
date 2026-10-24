@@ -30,7 +30,8 @@ from .model import Item, pr_number
 from .vcs import RECORDS, Runner, squash_message
 
 #: The ledger, relative to the project root. The model review is its only
-#: writer, and `.claude/skills/model-review` says how it is refreshed.
+#: writer, and `docs/maintainer.md` § "The session ledger records what model
+#: and effort worked each item" says how it is refreshed.
 LEDGER_NAME = "docs/session-ledger.tsv"
 
 #: A session's link, as a commit trailer or a pull request body writes it.
