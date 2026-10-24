@@ -1,7 +1,9 @@
 """Read this session's own context size, live, from its transcript.
 
 `CLAUDE.md` § "Session and tool-use efficiency" tells a session to check its
-context before starting an item. The instrument it names - `get_session`, field
+spend before starting an item, and `.claude/skills/docket/modes/start.md`
+§ "Check the spend before starting, and reset in place" has the procedure. The
+instrument those instructions first named - `get_session`, field
 `external_metadata.context_usage.used_tokens` - cannot answer that question,
 and this script exists because of how it fails rather than because a second
 opinion is nice to have.

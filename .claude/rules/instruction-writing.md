@@ -158,7 +158,7 @@ rules, "phases," or "closed loops" in the output itself.
       same thing (`PL-H1JD`). So a line that could reasonably outlive this
       sitting is `bin/docket new "..."` as well, and the block then points at
       the item, though a list of remote branches to delete stays in the reply,
-      per `CLAUDE.md`'s housekeeping bullet. That is `CLAUDE.md`'s capture rule
+      per the docket skill's housekeeping mode. That is `CLAUDE.md`'s capture rule
       reaching the closing block, not a new obligation of its own. A line the
       reader acts on in this sitting — a decision this reply waits on, a tag to
       run now — needs nothing. Where the line asks them to decide something
