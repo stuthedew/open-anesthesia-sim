@@ -48,6 +48,13 @@
 # `cd` or `-C` built from a variable, `--git-dir` or `--work-tree`, and a push
 # inside `bash -c "..."` are not followed, so they are let through unchecked.
 #
+# **After a push it lets through**, it names the `pull-request` skill beside
+# the push's result, as `additionalContext`. That skill's procedure applies
+# from this moment: open the pull request, ask `bin/docket arm`, read the body
+# back. `PL-SN2Z` found that a moment arriving in the middle of a task needs a
+# hook to name it (`PL-S2NL`). A push of another repository, or one that sends
+# nothing, gets no note.
+#
 # Fails open in every error path - no python3, an unreadable payload, a check
 # that crashes (a traceback, or an exit other than 1) or runs past its
 # deadline - because a guard that blocks a correct push costs more than the red
@@ -82,6 +89,13 @@ PUSH_VALUED = frozenset(("--repo", "--recurse-submodules", "--receive-pack", "--
 SENDS_NOTHING = frozenset(("--delete", "--dry-run", "--no-verify"))
 READS_THE_TREE = frozenset(("doc_check", "docket check"))
 DEADLINE = 100
+SKILL_NOTE = (
+    "This was a push of this repository. Opening, arming, updating or merging "
+    "its pull request follows .claude/skills/pull-request/SKILL.md, the "
+    "pull-request skill: read it once if this session has not. Ask "
+    "`bin/docket arm` before arming, and again before each later push while a "
+    "pull request is open (`PL-S2NL`)."
+)
 SHOWN = 40
 
 
@@ -242,6 +256,9 @@ for top, name, argv, process in running:
             readers.add(name)
             read_trees.add(top)
 if not refusals:
+    if trees:
+        note = {"hookEventName": "PreToolUse", "additionalContext": SKILL_NOTE}
+        sys.stdout.write(json.dumps({"hookSpecificOutput": note}))
     sys.exit(0)
 
 reason = (

@@ -448,7 +448,8 @@ push_reason = (
     "left to the branch sweep and the project owner: `branch-sweep.yml` deletes "
     "a finished `claude/*` branch daily, and `python3 tools/branch_sweep.py` "
     "names any it keeps. Name any of those that should go anyway in the reply "
-    "(`CLAUDE.md`, the housekeeping bullet), for the project owner to delete "
+    "(`.claude/skills/docket/modes/capture.md`, Mode: housekeeping nobody "
+    "filed), for the project owner to delete "
     "with " + owner_delete
 )
 prune_reason = (

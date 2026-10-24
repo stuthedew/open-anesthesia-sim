@@ -3110,6 +3110,89 @@ def test_a_file_under_the_records_that_is_not_a_new_record_is_still_outside_touc
     assert path in check.lines, check.lines
 
 
+RUNS = "docs/worker-runs"
+RUN = f"{RUNS}/pl-k7qx-worker-20261020T042627.json"
+
+
+def _run(item: str = "PL-K7QX", review: str = "null") -> str:
+    """A run record as `tools/worker_runs.py` writes one, cut to what the kind reads."""
+    return (
+        f'{{\n  "item": "{item}",\n  "branch": "claude/pl-k7qx-worker",\n  "review": {review}\n}}\n'
+    )
+
+
+def test_a_worker_run_record_the_branch_added_is_not_outside_touches(tmp_path: Path) -> None:
+    """`PL-4WFK`: the headless runner commits its run record to the worker's branch.
+
+    The commit leads with the item's id, so `item_commits` counts it, and
+    every worker branch came back `REJECT` on the record alone. The reviewer
+    then writes the review into the same file, which is still the record the
+    branch added.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX do the thing", "tests/test_thing.py", KEPT + "\ndef test_more():\n    pass\n"
+    )
+    _work(root, "PL-K7QX: record the headless run", RUN, _run())
+    _work(root, "PL-K7QX: review the run", RUN, _run(review='{"outcome": "accepted"}'))
+
+    check = _check(verify(root, _item(), _config(worker_runs_dir=RUNS), "HEAD~3"), TOUCHES)
+    assert check.passed, check
+    assert f"{RUN} - run record, not counted" in check.lines, check.lines
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "held", "folder"),
+    [
+        (RUN, _run(item="PL-N3W2"), False, RUNS),
+        (RUN, "not json\n", False, RUNS),
+        (RUN, "[]\n", False, RUNS),
+        (f"{RUNS}/old/run.json", _run(), False, RUNS),
+        (f"{RUNS}/run.txt", _run(), False, RUNS),
+        (RUN, _run(), True, RUNS),
+        (RUN, _run(), False, ""),
+    ],
+    ids=[
+        "another-item",
+        "not-json",
+        "not-an-object",
+        "nested",
+        "not-json-by-name",
+        "held",
+        "no-folder-configured",
+    ],
+)
+def test_a_file_under_the_run_records_that_is_not_this_items_new_record_is_outside_touches(
+    tmp_path: Path, path: str, text: str, held: bool, folder: str
+) -> None:
+    """Each condition of the `run record` kind, failing alone.
+
+    A record the base holds is a merged run's history, so a branch rewriting
+    it is not recording a run of its own. A project that names no folder has
+    no run records at all.
+    """
+    root = _repo(tmp_path)
+    if held:
+        _work(root, "base: a merged run's record", path, text)
+        text = _run(review='{"outcome": "fixed"}')
+    _work(root, "PL-K7QX write under the run records", path, text)
+
+    check = _check(verify(root, _item(), _config(worker_runs_dir=folder), "HEAD~1"), TOUCHES)
+    assert not check.passed, check
+    assert path in check.lines, check.lines
+
+
+def test_an_uncommitted_run_record_is_outside_touches(tmp_path: Path) -> None:
+    """Only a commit's change can be sanctioned, as for every other kind (`PL-W6ZD`)."""
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX: record the headless run", RUN, _run())
+    (root / RUN).write_text(_run(review='{"outcome": "accepted"}'))
+
+    check = _check(verify(root, _item(), _config(worker_runs_dir=RUNS), "HEAD~1"), TOUCHES)
+    assert not check.passed, check
+    assert any(line.startswith(f"{RUN} - uncommitted") for line in check.lines), check.lines
+
+
 # --- the self-audit, which is a different question (PL-69JZ, PL-B5YN, PL-4LT9)
 
 

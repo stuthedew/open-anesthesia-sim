@@ -42,6 +42,7 @@ ALLOWED_IMPORTS = {
     "functools",
     "glob",
     "io",
+    "json",
     "locale",
     "os",
     "pathlib",

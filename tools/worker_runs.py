@@ -39,9 +39,17 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-#: Where the records live, relative to the repository root.
-RECORDS_DIR = Path("docs") / "worker-runs"
+from docket.config import load as load_config  # noqa: E402
+
+#: Where the records live, relative to the repository root. `docket.toml`'s
+#: `worker_runs_dir` is the one place the folder is spelled, because
+#: `docket verify` reads it too, to treat a run's record as a sanctioned edit
+#: (`PL-4WFK`).
+RECORDS_DIR = Path(load_config(ROOT).worker_runs_dir)
+if RECORDS_DIR == Path():
+    raise SystemExit("worker-runs: docket.toml names no worker_runs_dir")
 
 #: The run's fields and the JSON types each may hold. `None` stands for `null`.
 #: The names match `headless_worker.Run`'s, so the runner copies them across.
