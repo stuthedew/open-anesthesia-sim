@@ -3,11 +3,12 @@ id: PL-K88Z
 title: Inventory every second copy of a shared fact across the tree, sorted by the four shapes (a value copied, state with two writers, a rule made in several places, configuration restated), and file each finding under one-source-of-truth
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: one-source-of-truth
 touches: ROADMAP.md
 added: 2026-10-19
+closed: 2026-10-24
 payoff: the one-source-of-truth row is sized from a count of every second copy, so its scope is measured rather than guessed
 verify: grep -q 'Inventoried 2026-' ROADMAP.md
 ---
