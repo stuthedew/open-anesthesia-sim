@@ -100,7 +100,7 @@ from pathlib import Path
 
 from .config import Config
 from .lines import split_lines
-from .model import CLOSED_STATUSES, parse_front_matter
+from .model import CLOSED_STATUSES, is_closed_status, parse_front_matter
 from .release import NOTES_DIR
 from .store import ID_PATTERN
 from .vcs import (
@@ -643,7 +643,7 @@ def holdings(
             state, released_by = RELEASED, BY_YIELD
         elif releases(current, status(base, key)):
             state, released_by = RELEASED, BY_STATUS
-        elif status(base, key) in CLOSED_STATUSES:
+        elif is_closed_status(status(base, key)):
             state, released_by = RELEASED, BY_CLOSED
         elif not unspent:
             state, released_by = RELEASED, BY_LANDING
@@ -685,7 +685,7 @@ def holdings(
                 continue
             moved = status(tips[branch], key)
             there = status(base, key)
-            if not moved or moved == there or there in CLOSED_STATUSES:
+            if not moved or moved == there or is_closed_status(there):
                 continue
             forked = status(fork, key)
             if not forked or moved == forked:
@@ -734,7 +734,7 @@ def holdings(
             continue
         history = histories.get(branch, [])
         dates = renewals.get(branch, [])
-        if status(base, key) in CLOSED_STATUSES:
+        if is_closed_status(status(base, key)):
             state, released_by = RELEASED, BY_CLOSED
         else:
             state = LIVE if not dates or moment - dates[-1] <= term else LAPSED
@@ -896,7 +896,7 @@ def unfinished_work(read: Holdings) -> dict[str, tuple[str, ...]]:
         if not _finished_claim(hold):
             held.setdefault(hold.ref, set()).add(hold.key)
     for hold in (*read.dispositions, *read.named):
-        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+        if hold.state == LIVE and not is_closed_status(hold.status):
             held.setdefault(hold.ref, set()).add(hold.key)
     return {ref: tuple(sorted(keys)) for ref, keys in held.items()}
 
@@ -916,7 +916,7 @@ def _finished_claim(hold: Hold) -> bool:
     """
     if hold.state != RELEASED:
         return False
-    return hold.released_by != BY_STATUS or hold.status in CLOSED_STATUSES
+    return hold.released_by != BY_STATUS or is_closed_status(hold.status)
 
 
 # A work branch that claims nothing: `PL-MB2W`'s third "Forgetful session"

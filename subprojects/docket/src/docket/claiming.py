@@ -96,7 +96,7 @@ from .claims import (
     releases,
 )
 from .lines import record_text, split_lines
-from .model import CLOSED_STATUSES, parse_front_matter
+from .model import is_closed_status, parse_front_matter
 from .store import ID_PATTERN, as_identifier
 from .vcs import (
     ITEM_FILE_RE,
@@ -917,7 +917,7 @@ def _closed_on_base(
             )
         else:
             continue
-        if status not in CLOSED_STATUSES:
+        if not is_closed_status(status):
             continue
         released = f"a claim on an item {base} has closed is released as soon as it is written"
         if copy is not None:

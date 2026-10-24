@@ -52,8 +52,8 @@ from .config import Config
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import (
-    CLOSED_STATUSES,
     _front_matter_pairs,
+    is_closed_status,
     is_under,
     parse_front_matter,
     parse_item,
@@ -3682,7 +3682,7 @@ class BaseCopy:
         """
         if not self.changed_here:
             return True
-        return self.status in CLOSED_STATUSES and here not in CLOSED_STATUSES
+        return is_closed_status(self.status) and not is_closed_status(here)
 
 
 @dataclass(frozen=True)
@@ -5354,8 +5354,8 @@ def _standing(base_text: str, ref_text: str) -> str:
     if not differing:
         held_whole = _within(_markdown_statements(ref_text), _markdown_statements(base_text))
         return _BEHIND if held_whole else _AHEAD
-    closed_on_base = base_fields.get("status", "") in CLOSED_STATUSES
-    closed_on_ref = ref_fields.get("status", "") in CLOSED_STATUSES
+    closed_on_base = is_closed_status(base_fields.get("status", ""))
+    closed_on_ref = is_closed_status(ref_fields.get("status", ""))
     if closed_on_base and not closed_on_ref and all(key in base_fields for key in differing):
         return _BEHIND
     return _AHEAD
