@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: session-cost
 feature: skill-routing
-touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py
+touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py, docket.toml
 added: 2026-10-24
 payoff: the owner learns from a measurement, not a guess, whether a procedure can leave the always-loaded instructions for a skill and still be followed
-verify: grep -q 'def test_counts_a_docket_skill_call_as_a_start' tests/unit/test_skill_start_eval.py
+verify: grep -q 'def test_counts_a_docket_skill_call_as_a_start' tests/unit/test_skill_start_eval.py && grep -qE '^[*][*]Result, 20' docs/items/PL-SN2Z-*.md
 ---
 
 **Problem.** Test whether the docket skill starts on the requests it should and stays out of the ones it should not, running each test prompt in a fresh session with the skill on and again with it off
