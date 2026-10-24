@@ -1919,7 +1919,6 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("payoff", "payoff"),
     ("verify", "verify"),
     ("not-delegable", "not_delegable"),
-    ("falsifies", "falsifies"),
     ("root-cause-of", "root_cause_of"),
     ("generator", "generator"),
     ("misread", "misread"),
@@ -6042,7 +6041,6 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--deferred-from", metavar="vX.Y.Z - WHY")
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
-    setter.add_argument("--falsifies", metavar="FRAGMENT")
     setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--misread", metavar="FACT")
     setter.add_argument("--impairs-generators", metavar="WHY")

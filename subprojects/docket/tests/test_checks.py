@@ -3531,10 +3531,8 @@ def test_the_checker_never_judges_whether_the_line_is_a_consequence() -> None:
 
     Whether a line states a consequence or merely restates the title is the
     judgment this project refuses to script: a checker guessing at it would be
-    authoritative and wrong, which is worse than no checker. `falsifies` earns
-    its twelve-character floor because a short fragment folds assertions it was
-    never meant to - a concrete harm - where a thin payoff harms only the
-    reader looking straight at it.
+    authoritative and wrong, which is worse than no checker. A thin payoff
+    harms only the reader looking straight at it.
     """
     report = analyze([_item(added=date(2026, 8, 2), payoff="faster")], TODAY, PAYOFF)
 

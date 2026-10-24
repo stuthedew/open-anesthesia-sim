@@ -14,7 +14,6 @@ closed: 2026-10-18
 pr: 1588
 payoff: a session whose branch declares a falsifies: the base lacks is told the route that still works - declare it on the base and re-audit - instead of that nothing could have been done
 verify: ! grep -qF 'so triage is the only pass' subprojects/docket/src/docket/verify.py && ! grep -qF 'why triage is the only pass that can write it' .claude/skills/docket/modes/triage.md
-falsifies: triage is the only pass that can write it
 ---
 
 **Problem.** verify's falsifies: advisory says the line had to reach the base before the branch's first commit and that triage is the only pass that can write it, though PL-TKFD's route amends the base mid-work from an item-only branch

@@ -227,10 +227,7 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
         ("definition", "RECORDS"): 1,
         ("definition", "UNPARSABLE"): 1,
     },
-    "subprojects/docket/src/docket/verify.py": {
-        ("definition", "ASSERTION_RE"): 1,
-        ("definition", "UNPARSABLE"): 1,
-    },
+    "subprojects/docket/src/docket/verify.py": {("definition", "UNPARSABLE"): 1},
     "tools/agent_identity_check.py": {("definition", "APP"): 1},
     "tools/branch_sweep.py": {("git", "_git"): 1},
     "tools/contrast_check.py": {
@@ -246,7 +243,6 @@ BASELINE: dict[str, dict[tuple[str, str], int]] = {
     "tools/doc_check.py": {
         ("definition", "ABSENT"): 1,
         ("definition", "APPARATUS"): 1,
-        ("definition", "ASSERTION_RE"): 1,
         ("definition", "JSON_KEY_RE"): 1,
         ("definition", "LINE_CITATION_RE"): 1,
     },

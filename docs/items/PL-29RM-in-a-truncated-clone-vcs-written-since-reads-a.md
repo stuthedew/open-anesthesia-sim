@@ -14,7 +14,6 @@ closed: 2026-10-18
 pr: 1559
 payoff: stops a shallow agent clone telling a session its unmerged work has landed when a branch restores a file to the history horizon's version
 verify: grep -q 'def test_a_restore_to_the_horizon_tree_does_not_read_as_landed' subprojects/docket/tests/test_vcs.py
-falsifies: for hold in read.holds} == {
 ---
 
 **Problem.** In a truncated clone, vcs._written_since reads a grafted commit's whole tree as written since the fork, because git shows a shallow boundary commit as a root, so a restore to content the base holds at the horizon reads as landed - the ever-held misread again, bounded to the horizon's tree; test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_took passes through it

@@ -6,11 +6,14 @@ fails on it. A mutant that every test passes has survived, and it points at a
 fault that the tests would not catch. This page records how the project runs
 mutation testing, what can go wrong with it, and what it has measured.
 
-Mutation testing here is a measurement and not a gate. The project owner chose
+Mutation testing here is a measurement with one gate. The project owner chose
 to run it on the functions that a pull request changes, rather than to set a
 mutation score as a target (project owner, 2026-10-17, ratified, over keeping
 the recipe as a one-off record and over a whole-tree score as a target,
-`PL-Y1PS`).
+`PL-Y1PS`). The gate is narrower than a score: `bin/docket verify` refuses a
+branch while a mutant of a line it changed survives the unit tests (project
+owner, 2026-10-19, ratified, `PL-CZXN`). A survivor on a line the branch did
+not change is reported and not counted.
 
 A high mutation score does not show that the tests catch a wrong clinical
 value. mutmut never changes the data files or the module-level constants, and a
@@ -33,10 +36,16 @@ must come from, and that rule applies whatever the score.
   time limit.
 - `make mutate ARGS="--base origin/main"` compares the branch with a named
   branch instead of the default branch.
+- `bin/docket verify` runs the same tool with `--verdict`, which prints the run
+  as JSON for its check `the unit tests catch a mutation of each changed line`.
+  `docket.toml`'s `mutation_command` names it. A survivor on a changed line
+  refuses the audit. Write the test that kills it, or, where no input can tell
+  the mutant from the original, mark its line `# pragma: no mutate`, which the
+  check prints.
 
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
-`uv sync` leaves it out and no test or check needs it. The tool's docstring
+`uv sync` leaves it out and no test needs it. The tool's docstring
 explains the three things that it decides and mutmut's settings cannot: which
 tests run, which functions changed, and what a "timeout" really was.
 `pyproject.toml`'s `[tool.mutmut]` table says why each mutmut setting is there.

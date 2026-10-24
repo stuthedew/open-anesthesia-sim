@@ -14,7 +14,6 @@ closed: 2026-10-18
 pr: 1577
 payoff: Every git read of a path in docket and the tools gets the file's real name even where git would quote it, and a new read that forgets -z fails a test, so this fact stops yielding a member one reader at a time
 verify: grep -q 'def test_an_item_file_git_would_quote_is_read_by_its_path' subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_path_listing_read_in_docket_asks_for_z' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_whose_path_git_would_quote_is_read' tests/unit/test_pr_title_check.py
-falsifies: "--name-only", BASE, "docs/releases/"
 root-cause-of: PL-JTCQ, PL-MR8Z, PL-PXT7
 generator: spent - every member was found by a sweep or a review and none in use, and no tracked path is one git quotes, so ordinary work cannot meet one
 misread: How git spells a path in its output, and when it quotes one
