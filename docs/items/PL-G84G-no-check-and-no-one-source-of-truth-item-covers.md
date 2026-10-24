@@ -23,15 +23,23 @@ Reproduce the count with this script, run as `.venv/bin/python -I script.py src/
 
 ```python
 import ast, pathlib, re, collections, sys
+
 root = pathlib.Path(sys.argv[1])
 seen = collections.defaultdict(set)
 for p in root.rglob("*.py"):
     tree = ast.parse(p.read_text())
     doc_ids = set()
     for n in ast.walk(tree):
-        if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and n.body:
+        if (
+            isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and n.body
+        ):
             f = n.body[0]
-            if isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str):
+            if (
+                isinstance(f, ast.Expr)
+                and isinstance(f.value, ast.Constant)
+                and isinstance(f.value.value, str)
+            ):
                 doc_ids.add(id(f.value))
     for n in ast.walk(tree):
         if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in doc_ids:
