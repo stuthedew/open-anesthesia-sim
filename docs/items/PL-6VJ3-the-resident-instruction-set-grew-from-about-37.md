@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: defect-review-2026-10
+milestone: v0.6.1
 touches: CLAUDE.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/SKILL.md, docs/resident-instructions.md, docs/items/PL-JRVV-review-claude-md-for-instructions-that-a-script.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-19
 closed: 2026-10-24
