@@ -7,7 +7,7 @@ no decisions of its own. These tests check the few things that the widgets *do* 
 - that a slider's position is exactly the printed value (`PL-25KS`, D4)
 - that a snapshot written into a slider never comes back out as a change
 - that the new-case dialog's default keeps the case
-- which cell of the bookmark editor each field sits in
+- which cell of the bookmark editor each field sits in, and the order Tab visits them
 - where the window opens (`PL-005`)
 
 The widgets render on the `offscreen` platform, which `tests/conftest.py` selects.
@@ -792,6 +792,7 @@ def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[in
     A cell is the widget's row and column and the number of rows and columns it
     spans. A widget is named by the dialog attribute that holds it. No attribute
     holds a heading or a field's name, so each of those is named by its text.
+    A widget placed in the grid twice fails the test.
     """
 
     attributes = {id(value): name for name, value in vars(dialog).items()}
@@ -806,6 +807,7 @@ def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[in
             assert isinstance(widget, QLabel)
             name = widget.text()
 
+        assert name not in cells, f"{name} is placed in the form twice"
         position = form.getItemPosition(index)
         assert isinstance(position, tuple)
         cells[name] = position
@@ -850,6 +852,60 @@ def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
         "target_list": (5, 0, 1, 3),
         "remove_target_button": (6, 1, 1, 1),
     }
+
+
+def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
+    application: QApplication,
+) -> None:
+    """The Tab key visits the editor's controls in the order a reader reads them.
+
+    A keyboard user fills in the editor with Tab alone, so the focus order has
+    to follow the forms from top to bottom (WCAG 2.2 SC 2.4.3, Focus Order).
+    Qt's default order is the order in which the widgets joined the dialog,
+    which is the order the grid code adds them in. So a grid that added its
+    rows in any other order would fail here, even with every cell correct.
+    """
+
+    dialog = BookmarkDialog()
+    attributes = {id(value): name for name, value in vars(dialog).items()}
+    dialog.show()
+    application.processEvents()
+    first = application.focusWidget()
+    visited: list[str] = []
+    widget = first
+
+    # The chain is a ring, so the walk ends back at the first widget. The bound
+    # turns a chain that never closes into a failure rather than a hung test.
+    for _ in range(len(dialog.findChildren(QWidget)) + 1):
+        assert widget is not None
+        name = attributes.get(id(widget))
+
+        if name is not None and widget.focusPolicy() & Qt.FocusPolicy.TabFocus:
+            visited.append(name)
+
+        widget = widget.nextInFocusChain()
+
+        if widget is first:
+            break
+    else:
+        pytest.fail("the editor's focus chain never came back to its first control")
+
+    dialog.close()
+
+    assert visited == [
+        "instant_spin",
+        "time_label_edit",
+        "add_time_button",
+        "time_list",
+        "remove_time_button",
+        "compartment_combo",
+        "height_spin",
+        "target_label_edit",
+        "add_target_button",
+        "target_list",
+        "remove_target_button",
+        "close_button",
+    ]
 
 
 # ------------------------------------------------------------- the window
