@@ -1,9 +1,15 @@
 ---
 id: PL-R4Y2
 title: Simulator defects per product item closed have stayed at about 0.7 to 0.8 a week while apparatus defects fell, and a recorded head explains only 16% of product defects: run the generator question over the open product defects, starting with stale state after a halt
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: housekeeping
 feature: defect-review-2026-10
+touches: docs/items
 added: 2026-10-19
+payoff: the stale-state defects a learner can see get their root cause fixed once, instead of each one being found and patched separately
+verify: grep -qE '^\*\*Re-measured\.' docs/items/PL-R4Y2-*.md
 ---
 
 **Problem.** Simulator defects per product item closed have stayed at about 0.7 to 0.8 a week while apparatus defects fell, and a recorded head explains only 16% of product defects: run the generator question over the open product defects, starting with stale state after a halt
@@ -17,3 +23,7 @@ added: 2026-10-19
 **What to do.** Ask every product defect triage's generator question (`.claude/skills/docket/modes/triage.md`): which fact did it misread? Record a head wherever three or more share one, open or closed. Delegate the reading to subagents and keep only their verdicts here. Start with stale state, because `PL-X7D5` and `PL-5JTH` landed only on 2026-10-17 and 2026-10-19.
 
 **Done when.** Every product defect has an answer to the generator question, heads are recorded where they exist, and the product rate is re-measured two weeks after `PL-5JTH`.
+
+**Why it matters.** Product defects are the ones a learner can see, and stale state after a halt is a failure the safety-critical standard names. While no head explains 84% of them, each is found and patched one at a time, and the rate does not fall.
+
+**Generator check.** One-off. This item asks the generator question; it does not misread a fact itself. Record the re-measured rate under a `**Re-measured.**` heading here.

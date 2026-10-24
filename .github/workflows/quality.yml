@@ -112,17 +112,25 @@ jobs:
   #
   # not-required: gated by `checks`, which needs this job and fails unless it succeeded
   checks-part-1:
-    runs-on: ubuntu-latest
+    # A pull request runs both parts on GitHub's free arm64 runner, and a push
+    # to `main` runs them on x64. Over five paired runs on 2026-10-20, part 2
+    # took a median 284 s on arm64 and 545 s on x64, because 4 of x64's 10 jobs
+    # drew a slow AMD EPYC 7763 runner, and every test passed on both
+    # (`PL-JWBW`). x64 stays on `main` so that every merged change is still
+    # tested on the architecture most users run, minutes after it lands, and
+    # so that `tools/main_ci_status.py`'s `PYTEST_BASELINE_S`, which times
+    # `main`'s runs, stays an x64 figure (project owner, 2026-10-20, `PL-928H`).
+    runs-on: ${{ github.event_name == 'push' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
     # The default is 360 minutes. `bin/docket check --verify` shells out to
     # every `ready` or `needs-decision` item's own `verify:` command - 216 of
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
     # else here would bound (`PL-FSH9`).
     #
-    # 15 minutes was sized against the single job's times on 2026-10-17: a
+    # 15 minutes was sized against the single x64 job's times on 2026-10-17: a
     # median of 621 s (10m21s) on slow runners and 352 s on fast ones, and
     # 639 s (10m39s) at the longest. Each part now runs less than that job did,
-    # so the bound is loose until it is re-timed from the parts' own runs
-    # (`PL-T9X9`). A timeout that fires on a healthy run is a defect in the
+    # and arm64's pytest steps took 138 s and 284 s (`PL-JWBW`), so the bound is
+    # loose until it is re-timed from the parts' own runs (`PL-T9X9`). A timeout that fires on a healthy run is a defect in the
     # timeout rather than a saving, so re-time the job and restate these
     # figures when the pytest step grows (`PL-H9KW`).
     timeout-minutes: 15
@@ -523,7 +531,8 @@ jobs:
   #
   # not-required: gated by `checks`, which needs this job and fails unless it succeeded
   checks-part-2:
-    runs-on: ubuntu-latest
+    # The first part's runner, for the first part's reasons (`PL-928H`).
+    runs-on: ${{ github.event_name == 'push' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
     # The first part's bound, for the first part's reasons.
     timeout-minutes: 15
     # The fast path's answer, for `checks` (`PL-DXD4`).
