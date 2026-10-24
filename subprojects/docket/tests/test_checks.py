@@ -2236,6 +2236,83 @@ def test_process_work_crowding_the_top_band_is_an_advisory() -> None:
     assert _has(analyze(band, TODAY).advisories, "outnumbers")
 
 
+def test_owner_set_priority_keeps_process_work_from_being_told_to_demote() -> None:
+    """The owner's placement is a decision, not a session's promotion (`PL-JLB4`).
+
+    Both kinds of record exempt the item. Before the record existed, the three
+    items below drew "demote it" for the two the owner had placed.
+    """
+    band = [
+        _item("PL-B1B1", priority="P1", classes=("session-cost",), owner_priority="P1, 2026-10-20"),
+        _item(
+            "PL-C2C2", priority="P1", classes=("docs",), owner_priority="P1, 2026-10-20, ratified"
+        ),
+        _item("PL-D3D3", priority="P1", classes=("science",)),
+    ]
+
+    report = analyze(band, TODAY)
+
+    assert not _has(report.advisories, "outnumbers")
+    assert not report.errors
+
+
+def test_process_work_a_session_promoted_is_still_told_to_demote_beside_the_owners() -> None:
+    """Only the promoted item is named, and only it is weighed against the product work."""
+    band = [
+        _item("PL-B1B1", priority="P1", classes=("session-cost",), owner_priority="P1, 2026-10-20"),
+        _item("PL-C2C2", priority="P1", classes=("docs",)),
+        _item("PL-E4E4", priority="P1", classes=("infra",)),
+        _item("PL-D3D3", priority="P1", classes=("science",)),
+    ]
+
+    advisories = analyze(band, TODAY).advisories
+
+    assert _has(advisories, "process work (PL-C2C2, PL-E4E4) outnumbers the product work")
+
+
+def test_an_owner_priority_record_naming_another_priority_is_an_error_and_exempts_nothing() -> None:
+    """A session that moved a priority the owner set is told to restore it."""
+    band = [
+        _item("PL-B1B1", priority="P1", classes=("session-cost",), owner_priority="P2, 2026-10-20"),
+        _item("PL-C2C2", priority="P1", classes=("docs",)),
+        _item("PL-D3D3", priority="P1", classes=("science",)),
+    ]
+
+    report = analyze(band, TODAY)
+
+    assert _has(report.errors, "records the owner setting P2 on 2026-10-20, but the item is at P1")
+    assert _has(report.advisories, "process work (PL-B1B1, PL-C2C2) outnumbers")
+
+
+@pytest.mark.parametrize(
+    ("value", "why"),
+    [
+        ("owner (2026-10-20)", "is not '<priority>, <YYYY-MM-DD>'"),
+        ("P5, 2026-10-20", "names priority 'P5'"),
+        ("P1, 20 October", "gives '20 October' as its date"),
+        ("P1, 2026-10-20, specified", "ends with 'specified'"),
+    ],
+)
+def test_an_owner_priority_record_in_no_form_is_an_error(value: str, why: str) -> None:
+    report = analyze([_item(priority="P2", owner_priority=value)], TODAY)
+
+    assert _has(report.errors, f"`owner-priority: {value}` {why}")
+
+
+def test_an_owner_priority_record_is_read_and_written_back_after_the_priority() -> None:
+    text = (
+        "---\nid: PL-K7QX\ntitle: t\npriority: P1\nowner-priority: P1, 2026-10-20, ratified\n"
+        "effort: S\n---\n"
+    )
+
+    item = parse_item(text)
+
+    assert item.owner_priority == "P1, 2026-10-20, ratified"
+    assert "priority: P1\nowner-priority: P1, 2026-10-20, ratified\neffort: S\n" in render_item(
+        item
+    )
+
+
 def test_a_multiline_verify_command_is_rejected() -> None:
     """A `verify:` that is not one command is a check nobody can reproduce."""
     item = _item(verify="pytest\nmypy")
