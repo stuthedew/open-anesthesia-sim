@@ -218,6 +218,14 @@ target-version = "py314"
 line-length = 100
 [tool.ruff.format]
 skip-magic-trailing-comma = true
+# Ruff formats fenced Python blocks in Markdown files by default. An item brief
+# under `docs/items/` quotes code but does not ship it, so the formatter
+# leaves the store alone. CI's item-only fast path skips this check, and a
+# brief out of ruff's format once merged green and turned `main` red
+# (`PL-L9SF`). The glob names the files rather than the directory, because
+# this setting is matched against each file's path: `"docs/items"` alone
+# excluded nothing when measured with ruff 0.16.4.
+exclude = ["docs/items/**"]
 
 [tool.ruff.lint]
 # `RUF100` is enabled on its own rather than through the whole `RUF` family:
