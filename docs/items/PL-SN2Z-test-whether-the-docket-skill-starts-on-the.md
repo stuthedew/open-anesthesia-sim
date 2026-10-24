@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: skill-routing
+milestone: v0.6.1
 touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py, docket.toml, docs/apparatus.md, docs/items/PL-S2NL-move-claude-md-s-pull-request-procedure-opening.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-24
 closed: 2026-10-24
