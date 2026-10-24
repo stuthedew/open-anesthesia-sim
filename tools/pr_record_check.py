@@ -58,6 +58,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.model import pr_number  # noqa: E402
 from docket.vcs import default_base, landed_closure  # noqa: E402
 
 from open_pull_requests import repo_slug  # noqa: E402
@@ -119,14 +120,14 @@ def main() -> int:
     elif given is None:
         print("pr-record: PR_NUMBER is not set; nothing to check", file=sys.stderr)
         return 0
-    elif not given.strip().isdigit() or int(given) < 1:
+    elif (asked := pr_number(given.strip())) is None:
         print(
             f"pr-record: PR_NUMBER is {given!r}, which is not a pull request number",
             file=sys.stderr,
         )
         return 1
     else:
-        number = int(given)
+        number = asked
 
     try:
         closing = closures(args.base, head)

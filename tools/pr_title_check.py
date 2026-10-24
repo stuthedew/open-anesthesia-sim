@@ -85,7 +85,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
+from docket.model import Item, parse_item  # noqa: E402
 from docket.store import read_items  # noqa: E402
 
 # `GitUnanswered` is docket's, raised for a ref git did not read and for a
@@ -138,7 +138,7 @@ def closed_items_at(ref: str) -> dict[str, Item]:
     for path in _items_at(ref, ROOT, ITEMS_DIR, lambda args, _root: _git(args)).values():
         text = _git(["show", f"{ref}:{path}"])
         item = parse_item(text, path.rsplit("/", 1)[-1])
-        if item.status in CLOSED_STATUSES and item.identifier:
+        if not item.is_open and item.identifier:
             closed[item.identifier] = item
     return closed
 
@@ -158,11 +158,7 @@ def _closed_on_disk() -> dict[str, Item]:
         items = read_items(directory)
     except (OSError, UnicodeDecodeError) as error:
         raise GitUnanswered(f"`{ITEMS_DIR}` could not be read from disk: {error}") from error
-    return {
-        item.identifier: item
-        for item in items
-        if item.status in CLOSED_STATUSES and item.identifier
-    }
+    return {item.identifier: item for item in items if not item.is_open and item.identifier}
 
 
 def closes(base: str, head: str) -> list[str]:

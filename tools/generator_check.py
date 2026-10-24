@@ -92,13 +92,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.model import (  # noqa: E402
-    CLOSED_STATUSES,
-    MIN_ROOT_CAUSE_ITEMS,
-    OPEN_STATUSES,
-    Item,
-    parse_item,
-)
+from docket.model import MIN_ROOT_CAUSE_ITEMS, Item, parse_item  # noqa: E402
 from docket.store import cited_ids  # noqa: E402
 from docket.vcs import (  # noqa: E402
     ITEM_FILE_RE,
@@ -290,7 +284,7 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
             items[item.identifier] = item
 
     parents = creation_parents(repo) if attributed else {}
-    open_ids = {i for i, item in items.items() if item.status in OPEN_STATUSES}
+    open_ids = {i for i, item in items.items() if item.is_open}
     cited = citations(repo, open_ids)
 
     # Ids already inside a recorded claim - carrying `root-cause-of:` or named
@@ -331,7 +325,7 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
             continue
         # Dropped counts as closed: it leaves the open set as surely as done
         # does, which is what the ratio asks about (`PL-DHGC`).
-        closed = [i for i in ids if items[i].status in CLOSED_STATUSES]
+        closed = [i for i in ids if not items[i].is_open]
         features = Counter(items[i].feature for i in here if items[i].feature)
         name, count = features.most_common(1)[0] if features else ("", 0)
         found.append(

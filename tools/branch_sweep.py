@@ -74,7 +74,6 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.claims import AGENT_BRANCH_PREFIX, agent_branch, holdings, unfinished_work  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
-from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     REMOTE,
@@ -219,7 +218,7 @@ def read_docket(root: Path, now: datetime, readings: Readings) -> None:
 def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
     items_dir = load_config(root).items_dir
     items = read_items(root / items_dir)
-    held_open = {item.identifier for item in items if item.status not in CLOSED_STATUSES}
+    held_open = {item.identifier for item in items if item.is_open}
     report = stranded(root, {item.identifier for item in items}, items_dir=items_dir)
     if report.declined:
         raise Declined(f"`stranded` could not read the branches: {report.declined}")

@@ -2606,6 +2606,30 @@ def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches(tmp_pat
     assert any("pr" in line for line in check.lines), check.lines
 
 
+@pytest.mark.parametrize("value", ["0", "07"])
+def test_verify_refuses_a_pr_value_github_never_gives(tmp_path: Path, value: str) -> None:
+    """`PL-JT7Y`: `verify` read `pr: 0` and `pr: 07` as the number `record` writes.
+
+    `docket check` refuses both through `model.pr_number`, so the two commands
+    disagreed about one item. Now `verify` reads the value through the same
+    function, and the edit is work outside the commission like any other.
+    """
+    root = _repo(tmp_path)
+    neighbour = root / "docs" / "items" / "PL-B2B2-do-the-other.md"
+    neighbour.write_text(
+        neighbour.read_text().replace("verify: true\n", f"verify: true\npr: {value}\n")
+    )
+    (root / "tests" / "test_thing.py").write_text(KEPT + "\ndef test_more():\n    pass\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX close it out, and write a pr GitHub never gives")
+
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) != "pr"
+    check = _check(verify(root, _item(), _config(), "HEAD~1"), TOUCHES)
+    assert not check.passed, check
+    assert path in check.lines, check.lines
+
+
 def test_record_on_non_canonical_key_order_classifies_as_pr(tmp_path: Path) -> None:
     """`PL-7K8Y`: the exemption above held only for a block a tool had written.
 
@@ -3063,8 +3087,18 @@ def test_a_body_file_the_branch_added_is_not_outside_touches(tmp_path: Path, hea
         ("docs/pr-bodies/draft.md", _record(pr="draft"), False),
         ("docs/pr-bodies/old/1059.md", _record(), False),
         (RECORD, _record(), True),
+        ("docs/pr-bodies/0.md", _record(pr="0"), False),
+        ("docs/pr-bodies/07.md", _record(pr="07"), False),
     ],
-    ids=["pr-disagrees-with-its-name", "no-date-line", "not-a-number", "nested", "held"],
+    ids=[
+        "pr-disagrees-with-its-name",
+        "no-date-line",
+        "not-a-number",
+        "nested",
+        "held",
+        "zero",
+        "leading-zero",
+    ],
 )
 def test_a_file_under_the_records_that_is_not_a_new_record_is_still_outside_touches(
     tmp_path: Path, path: str, text: str, held: bool

@@ -214,7 +214,7 @@ try:
     # `front_matter_spans` is the item grammar's reading of where each field of
     # a brief's front matter ends, so a brief's readers take one at a time
     # (`PL-CZ28`).
-    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item, front_matter_spans
+    from docket.model import SEMVER_PATTERN, Item, front_matter_spans
 
     # `python` is the one reading of where a Python statement ends (`PL-R417`):
     # a test is defined by a `def` statement rather than by a line opening one,
@@ -3753,7 +3753,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     owed = [
         item
         for item in store.items.values()
-        if item.status not in CLOSED_STATUSES
+        if item.is_open
         and item.identifier not in placed
         and not item.waits_anticipated
         and any(name in config.safety_classes for name in item.classes)
@@ -5554,7 +5554,7 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
         return
     items = root / store.config.items_dir
     for item in sorted(store.items.values(), key=lambda entry: entry.path):
-        if item.status in CLOSED_STATUSES:
+        if not item.is_open:
             continue
         path = items / item.path
         yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
