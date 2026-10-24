@@ -1,0 +1,132 @@
+131
+2026-09-02 | PL-8M05 | safety, ux | 46 | 54 | 8d1eb5b71 | 2026-09-01 | PL-NV9W: label the alveolar readout end-tidal-equivalent (#194)
+2026-09-02 | PL-BNPY | defect | 15 | 18 | d381dfc0b | 2026-09-02 | PL-026 Make the simulation step transactional so a halt leaves no partial state (#204)
+2026-09-02 | PL-VYXP | defect | 15 | 18 | d381dfc0b | 2026-09-02 | PL-026 Make the simulation step transactional so a halt leaves no partial state (#204)
+2026-09-03 | PL-X9KD | science, safety | 26 | 73 | 74783be6a | 2026-09-01 | PL-0MLQ refuse a setting outside the documented supported input range (#191)
+2026-09-04 | PL-90Y6 | defect, ux | 22 | 23 | f76b5bf55 | 2026-09-03 | PL-F52R, PL-TJJY: draw the MAC-awake band and the 1 MAC line on the chart (#288)
+2026-09-04 | PL-YBWT | defect | 5 | 5 | e5aea2c3b | 2026-09-04 | PL-CC23: scale the chart's vertical axis in MAC, at one ruler for every agent (#319)
+2026-09-05 | PL-4RBD | defect, ux, safety | 823 | 1210 | d43394048 | 2026-09-04 | PL-D9WD: build an M4 aggregate cache on a fixed dyadic grid (#311)
+2026-09-06 | PL-3PRZ | defect | 6 | 7 | d8deea50b | 2026-09-05 | PL-GS5X, PL-3TLK, PL-ZHTT, PL-Y5BV, PL-2HTF, PL-LKRP: replace the operator split with the exact matrix exponen
+2026-09-06 | PL-L7JB | docs, defect | 1 | 1 | b89b962ca | 2026-09-06 | PL-6Q8N: source the reference adult's eleven physiologic parameters against reachable primary literature (#399
+2026-09-06 | PL-NBWP | safety, docs | 7 | 9 | 9123d3868 | 2026-09-04 | PL-SN2C: add the playback multiplier as steps per tick, with the rate always visible (#331)
+2026-09-06 | PL-RC0M | defect, infra | 34 | 47 | a608e49da | 2026-09-04 | PL-ZRSP: plot the F_A/F_I ratio the uptake literature plots (#306)
+2026-09-07 | PL-9LXK | defect, infra, docs | 20 | 35 | 3da43997e | 2026-09-07 | PL-1JDD: make the source tier machine-readable so doc_check can decide it (#446)
+2026-09-08 | PL-MMWX | safety, docs, planning | 1 | 1 | b89b962ca | 2026-09-06 | PL-6Q8N: source the reference adult's eleven physiologic parameters against reachable primary literature (#399
+2026-09-08 | PL-WSDY | defect, docs | 1 | 1 | b89b962ca | 2026-09-06 | PL-6Q8N: source the reference adult's eleven physiologic parameters against reachable primary literature (#399
+2026-09-10 | PL-L0K3 | defect, infra | 2 | 4 | eac687713 | 2026-09-08 | PL-7HDS Read Lowe and Ernst 1981 at the source: the book collects its volumes and flows and cites them onward 
+2026-09-12 | PL-DZFJ | safety, docs | 1 | 1 | b89b962ca | 2026-09-06 | PL-6Q8N: source the reference adult's eleven physiologic parameters against reachable primary literature (#399
+2026-09-13 | PL-D143 | defect, planning | 36 | 75 | c47ec872c | 2026-09-07 | PL-T691: The run is its control-input timeline: hold keyframes at every event and answer any window in closed 
+2026-09-13 | PL-V13T | defect, infra | 36 | 75 | c47ec872c | 2026-09-07 | PL-T691: The run is its control-input timeline: hold keyframes at every event and answer any window in closed 
+2026-09-14 | PL-27H0 | safety, docs | 2 | 2 | 83deee385 | 2026-09-03 | PL-WB0X: split simulation_view.py into formatting and chart-series modules (#263)
+2026-09-14 | PL-2MD9 | defect | 16 | 44 | c47ec872c | 2026-09-07 | PL-T691: The run is its control-input timeline: hold keyframes at every event and answer any window in closed 
+2026-09-14 | PL-3LZB | defect, safety | 62 | 141 | c47ec872c | 2026-09-07 | PL-T691: The run is its control-input timeline: hold keyframes at every event and answer any window in closed 
+2026-09-14 | PL-59WB | defect | 22 | 33 | e1777a664 | 2026-09-04 | PL-SSBP: give the chart a selectable time base, and derive its ruling from it (#337)
+2026-09-14 | PL-73ZN | defect | 13 | 15 | b473b9d35 | 2026-09-07 | PL-Y5WR: halt a run at the supported 24-hour run length instead of extrapolating (#421)
+2026-09-14 | PL-7TBQ | defect, ux | 3 | 5 | 0c310c407 | 2026-09-04 | PL-R3KB: ask before a change of agent discards a recorded run (#326)
+2026-09-14 | PL-9KP5 | docs, defect | 2 | 2 | 83deee385 | 2026-09-03 | PL-WB0X: split simulation_view.py into formatting and chart-series modules (#263)
+2026-09-14 | PL-BMY5 | defect | 13 | 15 | b473b9d35 | 2026-09-07 | PL-Y5WR: halt a run at the supported 24-hour run length instead of extrapolating (#421)
+2026-09-14 | PL-J0F7 | defect, ux | 16 | 19 | 6a823696d | 2026-09-14 | PL-G59B: port the concentration chart and the wash-in plot to pyqtgraph (#578)
+2026-09-14 | PL-NC62 | defect, ux | 8 | 14 | f692f51c4 | 2026-09-14 | PL-J2TD: open a live run at a canonical keyframe state, which is what a fork resumes into (#568)
+2026-09-14 | PL-SM5V | defect | 16 | 28 | d8deea50b | 2026-09-05 | PL-GS5X, PL-3TLK, PL-ZHTT, PL-Y5BV, PL-2HTF, PL-LKRP: replace the operator split with the exact matrix exponen
+2026-09-14 | PL-W3Q5 | defect | 2 | 7 | 6a823696d | 2026-09-14 | PL-G59B: port the concentration chart and the wash-in plot to pyqtgraph (#578)
+2026-09-14 | PL-YVHK | safety, ux | 2793 | 3366 | 5d6b9e2fd | 2026-09-14 | PL-B9PY: decompose SimulationView so two runs can be rendered at once (#567)
+2026-09-15 | PL-QRD1 | defect, ux | 60 | 77 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-15 | PL-TCR5 | defect, ux | 16 | 19 | 6a823696d | 2026-09-14 | PL-G59B: port the concentration chart and the wash-in plot to pyqtgraph (#578)
+2026-09-16 | PL-L8RN | defect, infra | 49 | 122 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-16 | PL-MN4J | safety, ux | 11 | 11 | 6a823696d | 2026-09-14 | PL-G59B: port the concentration chart and the wash-in plot to pyqtgraph (#578)
+2026-09-16 | PL-Y4YX | defect | 166 | 288 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-17 | PL-FXBS | defect | 1 | 1 | 05dec9292 | 2026-09-15 | PL-8PSW, PL-LH18: overlay two runs on one axis, capped at two compartments, each run named in text (#618)
+2026-09-17 | PL-JVHL | safety, ux | 56 | 61 | 6a823696d | 2026-09-14 | PL-G59B: port the concentration chart and the wash-in plot to pyqtgraph (#578)
+2026-09-19 | PL-5MT4 | defect | 5 | 5 | d8deea50b | 2026-09-05 | PL-GS5X, PL-3TLK, PL-ZHTT, PL-Y5BV, PL-2HTF, PL-LKRP: replace the operator split with the exact matrix exponen
+2026-09-20 | PL-0NVN | defect, ux | 7 | 8 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-20 | PL-0RZ0 | safety, ux | 65 | 65 | f5d6b322d | 2026-09-19 | PL-JVHL: answer the hover for every run inside the radius (#743)
+2026-09-20 | PL-1K9G | safety, ux | 50 | 102 | f5d6b322d | 2026-09-19 | PL-JVHL: answer the hover for every run inside the radius (#743)
+2026-09-20 | PL-25DD | defect, safety, ux | 2 | 2 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-20 | PL-3K9B | defect, safety | 31 | 37 | 7d7d5906f | 2026-09-20 | PL-CTD7 Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome (#775)
+2026-09-20 | PL-4KZD | defect, safety | 30 | 44 | 7d7d5906f | 2026-09-20 | PL-CTD7 Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome (#775)
+2026-09-20 | PL-7W9N | defect, ux | 7 | 8 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-20 | PL-FPY2 | defect | 15 | 15 | a09e75011 | 2026-09-20 | PL-LPLD: Add time bookmarks and MAC targets as two separately listed collections (#758)
+2026-09-20 | PL-J12Z | defect, ux | 9 | 9 | d048aca87 | 2026-09-20 | PL-VKJW, PL-QRD1: a learner takes a fork from the dashboard, and no control on it can destroy the case (#784)
+2026-09-20 | PL-K5NY | defect, safety | 9 | 9 | d048aca87 | 2026-09-20 | PL-VKJW, PL-QRD1: a learner takes a fork from the dashboard, and no control on it can destroy the case (#784)
+2026-09-20 | PL-LHBY | defect, safety | 30 | 44 | 7d7d5906f | 2026-09-20 | PL-CTD7 Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome (#775)
+2026-09-20 | PL-LQ19 | defect, ux | 9 | 9 | d048aca87 | 2026-09-20 | PL-VKJW, PL-QRD1: a learner takes a fork from the dashboard, and no control on it can destroy the case (#784)
+2026-09-20 | PL-N3N5 | defect, safety | 6 | 11 | 7609f7de3 | 2026-09-20 | PL-3K9B: a mark the run's clock is at or behind reads passed, not still running (#805)
+2026-09-20 | PL-RKRY | defect, ux | 7 | 8 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-20 | PL-WG73 | defect, ux | 4 | 5 | d048aca87 | 2026-09-20 | PL-VKJW, PL-QRD1: a learner takes a fork from the dashboard, and no control on it can destroy the case (#784)
+2026-09-21 | PL-C3GS | defect, safety, ux | 2 | 3 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-21 | PL-N67T | defect | 2 | 3 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-21 | PL-TSZM | defect, safety, ux | 2 | 2 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-22 | PL-75P5 | defect, ux | 4 | 5 | d048aca87 | 2026-09-20 | PL-VKJW, PL-QRD1: a learner takes a fork from the dashboard, and no control on it can destroy the case (#784)
+2026-09-27 | PL-LK62 | defect | 9 | 19 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-09-30 | PL-R1VD | defect, docs | 20 | 35 | 3da43997e | 2026-09-07 | PL-1JDD: make the source tier machine-readable so doc_check can decide it (#446)
+2026-10-01 | PL-B1R9 | defect, perf | 4 | 6 | 05dec9292 | 2026-09-15 | PL-8PSW, PL-LH18: overlay two runs on one axis, capped at two compartments, each run named in text (#618)
+2026-10-03 | PL-3PJZ | defect, ux | 20 | 20 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-03 | PL-5291 | defect, safety | 25 | 48 | b473b9d35 | 2026-09-07 | PL-Y5WR: halt a run at the supported 24-hour run length instead of extrapolating (#421)
+2026-10-03 | PL-5F76 | defect | 2 | 4 | 692f0dc23 | 2026-10-03 | PL-73ZN, PL-BMY5: refuse a run opened or built past the 24-hour supported run length (#1292)
+2026-10-03 | PL-8H2R | defect | 33 | 37 | 692f0dc23 | 2026-10-03 | PL-73ZN, PL-BMY5: refuse a run opened or built past the 24-hour supported run length (#1292)
+2026-10-03 | PL-BPRK | defect | 10 | 25 | 9123d3868 | 2026-09-04 | PL-SN2C: add the playback multiplier as steps per tick, with the rate always visible (#331)
+2026-10-03 | PL-YZ17 | defect, science | 10 | 25 | 9123d3868 | 2026-09-04 | PL-SN2C: add the playback multiplier as steps per tick, with the rate always visible (#331)
+2026-10-04 | PL-0YYV | refactor, safety | 18 | 45 | 3c4ffe57b | 2026-09-20 | PL-8PS6: give the model's flow envelope and a machine's deliverable range separate names and refusals (#768)
+2026-10-04 | PL-1MGB | defect, refactor | 26 | 37 | 435699ba5 | 2026-09-27 | PL-NC62: a refused branch names each value that differs, with both values, and the agent's displayed reference
+2026-10-04 | PL-848D | defect | 34 | 87 | 74c8384a6 | 2026-10-04 | PL-CN5S: the case instant and the step count become checked types, built only through their checks (#1354)
+2026-10-04 | PL-8W1W | safety, defect | 17 | 41 | 74c8384a6 | 2026-10-04 | PL-CN5S: the case instant and the step count become checked types, built only through their checks (#1354)
+2026-10-04 | PL-B26Y | safety, defect | 10 | 26 | 4d55c66a4 | 2026-09-13 | PL-74R0, PL-79YX, PL-WVSK, PL-8GV5, PL-4T90, PL-1YDK: four Gate 1 decisions about what core/ exposes, one hand
+2026-10-04 | PL-BBMG | defect, safety | 9 | 26 | 8f24fe789 | 2026-10-04 | PL-0YYV, PL-HSFV: the three flows become checked types, built only through their guards (#1350)
+2026-10-04 | PL-HSFV | defect, safety | 18 | 45 | 3c4ffe57b | 2026-09-20 | PL-8PS6: give the model's flow envelope and a machine's deliverable range separate names and refusals (#768)
+2026-10-04 | PL-LBQY | safety, defect | 33 | 77 | 8f24fe789 | 2026-10-04 | PL-0YYV, PL-HSFV: the three flows become checked types, built only through their guards (#1350)
+2026-10-04 | PL-LLMN | safety, defect | 33 | 77 | 8f24fe789 | 2026-10-04 | PL-0YYV, PL-HSFV: the three flows become checked types, built only through their guards (#1350)
+2026-10-04 | PL-LTKL | safety, defect | 10 | 26 | 4d55c66a4 | 2026-09-13 | PL-74R0, PL-79YX, PL-WVSK, PL-8GV5, PL-4T90, PL-1YDK: four Gate 1 decisions about what core/ exposes, one hand
+2026-10-05 | PL-3800 | safety, defect | 2 | 6 | 1eb957d6d | 2026-10-03 | PL-0GJC: the run's step is a SimulationStep, checked once when it is built (#1328)
+2026-10-05 | PL-7DJK | safety, defect | 41 | 71 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-05 | PL-979Z | safety, defect | 34 | 87 | 74c8384a6 | 2026-10-04 | PL-CN5S: the case instant and the step count become checked types, built only through their checks (#1354)
+2026-10-05 | PL-CLW5 | defect | 2 | 3 | ffa956cb0 | 2026-09-17 | PL-DHBX: declare the transport buttons' colours, which the host palette was supplying (#671)
+2026-10-05 | PL-CX2C | defect | 34 | 87 | 74c8384a6 | 2026-10-04 | PL-CN5S: the case instant and the step count become checked types, built only through their checks (#1354)
+2026-10-05 | PL-SWD1 | safety, defect | 12 | 17 | eb6d6d878 | 2026-10-05 | PL-LLMN, PL-LBQY: the flow and concentration types refuse what is not a number and hold -0.0 as 0.0; a bare fl
+2026-10-05 | PL-YT8N | safety, defect | 30 | 46 | 9258a2ef8 | 2026-10-04 | PL-T4FK, PL-B26Y, PL-LTKL: the specification's four-organ sum renders as one paragraph, the circuit's own exha
+2026-10-11 | PL-0FJ8 | safety, defect | 26 | 57 | 045fe5e29 | 2026-09-20 | PL-4KZD, PL-GHMB, PL-LHBY, PL-Q0W8: draw a mark's standing from every displayed run, not the reference run (#8
+2026-10-11 | PL-1DP1 | safety, defect | 25 | 54 | 3d0855913 | 2026-10-11 | PL-SWD1: fraction_from_percent and percent_from_fraction refuse a value already in the form they return, and a
+2026-10-11 | PL-544D | safety, defect | 17 | 47 | eb6d6d878 | 2026-10-05 | PL-LLMN, PL-LBQY: the flow and concentration types refuse what is not a number and hold -0.0 as 0.0; a bare fl
+2026-10-11 | PL-7694 | refactor, defect | 24 | 76 | 05dec9292 | 2026-09-15 | PL-8PSW, PL-LH18: overlay two runs on one axis, capped at two compartments, each run named in text (#618)
+2026-10-11 | PL-J39J | safety, defect | 22 | 58 | e2d43eb7d | 2026-10-05 | PL-65HT, PL-DBGT, PL-Z0T3: a patient copy at another cardiac output is refused, desflurane's provenance note n
+2026-10-11 | PL-KFNP | safety, defect | 22 | 58 | e2d43eb7d | 2026-10-05 | PL-65HT, PL-DBGT, PL-Z0T3: a patient copy at another cardiac output is refused, desflurane's provenance note n
+2026-10-11 | PL-V2HC | safety, defect | 17 | 47 | eb6d6d878 | 2026-10-05 | PL-LLMN, PL-LBQY: the flow and concentration types refuse what is not a number and hold -0.0 as 0.0; a bare fl
+2026-10-11 | PL-VCP4 | safety, defect | 22 | 58 | e2d43eb7d | 2026-10-05 | PL-65HT, PL-DBGT, PL-Z0T3: a patient copy at another cardiac output is refused, desflurane's provenance note n
+2026-10-11 | PL-XWFP | science, defect | 29 | 80 | 25c4d6bba | 2026-10-11 | PL-YT8N: the circuit's closed-form exhaust is never negative, and its balance closes to the rounding of what e
+2026-10-12 | PL-1YDD | defect, ux | 41 | 92 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-12 | PL-1ZQ4 | safety, defect | 55 | 108 | 7609f7de3 | 2026-09-20 | PL-3K9B: a mark the run's clock is at or behind reads passed, not still running (#805)
+2026-10-12 | PL-2N43 | defect | 104 | 238 | 0e13e11be | 2026-10-12 | PL-W4XQ, PL-54V0, PL-ZW0J, PL-8XMV: a learner can branch at a mark the run has passed, and returning to a mark
+2026-10-12 | PL-85LJ | safety, defect | 29 | 80 | 25c4d6bba | 2026-10-11 | PL-YT8N: the circuit's closed-form exhaust is never negative, and its balance closes to the rounding of what e
+2026-10-12 | PL-DTJQ | defect, ux | 41 | 92 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-12 | PL-G3K7 | defect, ux | 41 | 92 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-12 | PL-MMNX | defect, ux | 41 | 92 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-12 | PL-NC0D | defect, ux | 14 | 22 | 0e13e11be | 2026-10-12 | PL-W4XQ, PL-54V0, PL-ZW0J, PL-8XMV: a learner can branch at a mark the run has passed, and returning to a mark
+2026-10-12 | PL-T995 | safety, defect | 14 | 38 | 16a20a4fb | 2026-10-11 | PL-7DJK: show the halt when a displayed fraction is refused, naming the compartment (#1408)
+2026-10-17 | PL-1QL6 | docs, defect | 26 | 37 | 435699ba5 | 2026-09-27 | PL-NC62: a refused branch names each value that differs, with both values, and the agent's displayed reference
+2026-10-17 | PL-8JV2 | refactor, defect | 63 | 188 | 6d4fd4dd9 | 2026-10-17 | PL-WV9K, PL-SSQW: the Workspace set, and the file it is saved to (#1481)
+2026-10-17 | PL-8LQZ | defect | 70 | 168 | 87a2539cd | 2026-10-17 | PL-19Y0: every checked field of the five run records refuses a bad value at the write (#1480)
+2026-10-17 | PL-T2Q2 | ux, defect | 11 | 32 | 74c8384a6 | 2026-10-04 | PL-CN5S: the case instant and the step count become checked types, built only through their checks (#1354)
+2026-10-17 | PL-X7D5 | safety, refactor | 43 | 118 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-17 | PL-XVCV | defect, ux | 70 | 168 | 87a2539cd | 2026-10-17 | PL-19Y0: every checked field of the five run records refuses a bad value at the write (#1480)
+2026-10-17 | PL-YHR3 | defect, ux | 8 | 16 | 045fe5e29 | 2026-09-20 | PL-4KZD, PL-GHMB, PL-LHBY, PL-Q0W8: draw a mark's standing from every displayed run, not the reference run (#8
+2026-10-17 | PL-Z0HN | safety, defect | 130 | 211 | 9ea87a3c6 | 2026-10-17 | PL-KFNP, PL-VCP4, PL-J39J: refuse a cardiac output that the blood flows do not match, and write back a refused
+2026-10-18 | PL-01GY | defect | 24 | 26 | d69a9d7de | 2026-10-11 | PL-M4M0 Refuse a Reset before it clears anything, and halt the run on the refusal (#1414)
+2026-10-18 | PL-25D9 | defect | 63 | 188 | 6d4fd4dd9 | 2026-10-17 | PL-WV9K, PL-SSQW: the Workspace set, and the file it is saved to (#1481)
+2026-10-18 | PL-391Y | defect, ux | 63 | 188 | 6d4fd4dd9 | 2026-10-17 | PL-WV9K, PL-SSQW: the Workspace set, and the file it is saved to (#1481)
+2026-10-18 | PL-8GLZ | defect | 63 | 188 | 6d4fd4dd9 | 2026-10-17 | PL-WV9K, PL-SSQW: the Workspace set, and the file it is saved to (#1481)
+2026-10-18 | PL-96SQ | defect, ux | 24 | 76 | 05dec9292 | 2026-09-15 | PL-8PSW, PL-LH18: overlay two runs on one axis, capped at two compartments, each run named in text (#618)
+2026-10-18 | PL-CLVM | defect, docs | 26 | 37 | 435699ba5 | 2026-09-27 | PL-NC62: a refused branch names each value that differs, with both values, and the agent's displayed reference
+2026-10-18 | PL-CW51 | defect, test | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-18 | PL-F2YS | defect, safety | 14 | 32 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-18 | PL-JG82 | safety | 14 | 32 | ae8fc7bc2 | 2026-09-15 | PL-25KS, PL-2K1R, PL-3355, PL-TG60, PL-005, PL-YVHK, PL-YCWZ, PL-2QMK, PL-Q4VH, PL-THXF, PL-GMM7, PL-JFYT: por
+2026-10-18 | PL-Q18P | defect, test | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-18 | PL-QLZ5 | safety | 15 | 21 | 024c11bd6 | 2026-10-18 | PL-F2YS, PL-JG82: give the record column the sidebar's width, pair two runs' readouts in one row, and accept c
+2026-10-18 | PL-T91K | defect, ux | 14 | 22 | 0e13e11be | 2026-10-12 | PL-W4XQ, PL-54V0, PL-ZW0J, PL-8XMV: a learner can branch at a mark the run has passed, and returning to a mark
+2026-10-18 | PL-XRN8 | defect, safety | 1 | 2 | 6a744d825 | 2026-10-04 | PL-BBMG: the settings record carries the vaporizer maximum and refuses a dial above it through the circuit's g
+2026-10-19 | PL-4L8B | defect, ux | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-19 | PL-9BVQ | defect, ux | 24 | 76 | 05dec9292 | 2026-09-15 | PL-8PSW, PL-LH18: overlay two runs on one axis, capped at two compartments, each run named in text (#618)
+2026-10-19 | PL-F5KT | defect, ux | 21 | 57 | 6fd84bd5b | 2026-10-19 | PL-YHR3: restate the bookmark panel when a halt's frame fails (#1670)
+2026-10-19 | PL-MXMG | defect, test | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-19 | PL-PHPZ | defect, ux | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-19 | PL-TLH4 | defect, ux | 21 | 57 | 6fd84bd5b | 2026-10-19 | PL-YHR3: restate the bookmark panel when a halt's frame fails (#1670)
+2026-10-19 | PL-YJ21 | defect, ux | 1 | 2 | 8ae7824c6 | 2026-10-18 | PL-K285: hold each Area at its View's minimum size, and state the size it needs where it cannot be given it (#
+2026-10-20 | PL-NNML | safety | 16 | 27 | 2026b35f5 | 2026-10-19 | PL-2KXB: add the Workspace tab strip, open on the shipped Workspaces, and let a Workspace pin a run (#1653)

@@ -1,0 +1,5 @@
+2042
+2f0101bb7 2026-10-24 PL-Q3G9, PL-G84G, PL-0B22: file three gaps in the one-source-of-truth inventory (#1722)
+345e8bb21 2026-10-24 PL-Z90G: move CLAUDE.md's spend-reset procedure and housekeeping rule into the docket skill (#1718)
+612066844 2026-10-24 PL-JRVV: retire two CLAUDE.md rules that a check already enforces (#1717)
+1604
