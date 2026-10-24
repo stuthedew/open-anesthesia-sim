@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import configparser
+import json
 import os
 import re
 import subprocess
@@ -2606,6 +2607,40 @@ def _added_record(root: Path, base: str, path: str) -> bool:
     return fields.get("pr", "").strip() == number and dated
 
 
+def worker_run_record(root: Path, base: str, folder: str, identifier: str, path: str) -> bool:
+    """Whether `path` is the headless runner's record of a run on the item under review.
+
+    `tools/headless_worker.py` commits one JSON record per run to the worker's
+    branch, under the folder `docket.toml` names as `worker_runs_dir`, and
+    `docs/maintainer.md` makes `verify` the first step of reviewing that
+    branch. Counted as work outside `touches`, the record turned every worker
+    branch into a `REJECT` (`PL-4WFK`). So a file is sanctioned here when it
+    sits directly in that folder, ends in `.json`, is committed, is absent
+    from the base's tip, and its copy at `HEAD` is a JSON object whose `item`
+    names the item being verified. The record names its item itself, so this
+    reads that field rather than working the item out from the file name.
+
+    Like a body record it cannot weaken anything: the base holds no prior
+    content for it to have changed, and nothing reads the record to decide
+    what a check measures. A record for another item, a nested file, a file
+    the base holds, and an uncommitted record each stay outside `touches`. A
+    read git did not answer ends the audit, as `_added_record`'s does.
+    """
+    if not folder or path in vcs.uncommitted_paths(root, _git):
+        return False
+    parent, _, name = path.rpartition("/")
+    if parent != folder.strip().strip("/") or not name.endswith(".json"):
+        return False
+    if _git(["ls-tree", "-z", "--name-only", base, "--", path], root).strip("\0"):
+        return False
+    text = vcs.call_git(["show", f"HEAD:{path}"], root).answer
+    try:
+        record = json.loads(text) if text else None
+    except json.JSONDecodeError:
+        return False
+    return isinstance(record, dict) and record.get("item") == identifier
+
+
 @dataclass(frozen=True)
 class Commission:
     """What the *base* holds for an item - the work as it was commissioned.
@@ -3212,13 +3247,18 @@ def _check_item(
     # An edit the workflow itself asked for is separated from the rest rather
     # than excused silently: the audit says which paths it declined to count
     # and why, so a reader can disagree with the exemption (`PL-66PR`,
-    # `PL-ZYQC`). Only paths under the store and the body files (`PL-3PH2`)
-    # are even considered.
+    # `PL-ZYQC`). Only paths under the store, the body files (`PL-3PH2`) and
+    # the worker run records (`PL-4WFK`) are even considered.
     sanctioned = {
         path: kind
         for path in candidates
-        if is_under(path, (config.items_dir, RECORDS))
-        and (kind := sanctioned_queue_edit(root, base, commits, path))
+        if (
+            kind := sanctioned_queue_edit(root, base, commits, path)
+            if is_under(path, (config.items_dir, RECORDS))
+            else "run record"
+            if worker_run_record(root, base, config.worker_runs_dir, item.identifier, path)
+            else ""
+        )
     }
     outside = [path for path in candidates if path not in sanctioned]
     # Said, since a write the workflow asks for reads as sanctioned once it is
@@ -3226,7 +3266,7 @@ def _check_item(
     unsanctioned = {
         path
         for path in set(vcs.uncommitted_paths(root, _git)).intersection(outside)
-        if is_under(path, (config.items_dir, RECORDS))
+        if is_under(path, (config.items_dir, RECORDS, config.worker_runs_dir))
     }
     widened = [path for path in outside if commission.touches and is_under(path, item.touches)]
     if outside:

@@ -355,6 +355,13 @@ class Config:
     #: unaffected and this package keeps no notion of any particular
     #: repository's layout.
     notes_file: str = ""
+    #: The folder holding one JSON record per headless worker run, if the
+    #: project keeps one. The runner commits a run's record to the worker's
+    #: branch, so `docket verify` treats a record there that names the item
+    #: under review as a sanctioned edit rather than as work outside its
+    #: `touches`. Empty by default, which leaves the exemption off, for the
+    #: reason `notes_file` gives.
+    worker_runs_dir: str = ""
     version_file: str = "pyproject.toml"
     #: The plan `docket wave` reads: the release train, the milestone
     #: sections, and the debt list each one records when it is scoped.
@@ -595,6 +602,9 @@ def load(root: Path) -> Config:
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths, "code_paths"),
         product_paths=_tuple(section.get("product_paths"), defaults.product_paths, "product_paths"),
         notes_file=_str(section.get("notes_file"), defaults.notes_file, "notes_file"),
+        worker_runs_dir=_str(
+            section.get("worker_runs_dir"), defaults.worker_runs_dir, "worker_runs_dir"
+        ),
         version_file=_str(section.get("version_file"), defaults.version_file, "version_file"),
         roadmap_file=_str(section.get("roadmap_file"), defaults.roadmap_file, "roadmap_file"),
         version_policy=_str(
