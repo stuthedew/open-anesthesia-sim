@@ -3,10 +3,12 @@ id: PL-15TY
 title: tools/headless_worker.py reports a failed git clone by the first line of git's stderr, which is the 'Cloning into ...' progress line, so the real cause (authentication, a missing reference repository) is never shown: report the last non-progress line, or the whole stderr
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/headless_worker.py, subprojects/docket/src/docket/vcs.py, tests/unit/test_headless_worker.py
 added: 2026-10-20
+closed: 2026-10-24
+pr: 1720
 payoff: a failed clone says why it failed, so the owner does not rerun it by hand to find out
 verify: grep -q 'PL-15TY' tests/unit/test_headless_worker.py
 ---

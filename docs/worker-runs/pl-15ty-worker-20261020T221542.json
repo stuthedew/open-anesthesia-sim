@@ -16,5 +16,9 @@
   "cache_read_tokens": 3361226,
   "cache_write_tokens": 179381,
   "output_tokens": 17310,
-  "review": null
+  "review": {
+    "outcome": "accepted",
+    "note": "The fix reads git's own fatal: or error: line and falls back to the first line; both tests pin it against stderr that opens with Cloning into, and the worker's only gate failures were the 3.81 make host and the open-item check a reviewer clears.",
+    "reviewed": "2026-10-24"
+  }
 }
