@@ -25,11 +25,19 @@ tests cannot read fails them.
 The steps are split on the indentation the file uses rather than parsed as YAML,
 as `test_ci_concurrency.py` reads the same file. A reshaping this split cannot
 read fails the first test rather than passing the second.
+
+The fast path skips ruff's formatter, which formats fenced Python in Markdown.
+So the last test holds `pyproject.toml`'s exclusion of the store from that
+formatter (`PL-L9SF`).
 """
 
 from __future__ import annotations
 
+import json
 import re
+import subprocess
+import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -336,3 +344,33 @@ def test_checks_combines_coverage_unless_both_parts_answered_items(first: str, s
     """
     gate = _run(WORKFLOW.read_text(encoding="utf-8"), "pull_request", first, second)[_GATE]
     assert [name for name, runs in gate if not runs] == []
+
+
+def test_the_formatter_skips_the_store_that_the_fast_path_does_not_check(tmp_path: Path) -> None:
+    """ruff's formatter skips an item brief and still checks Markdown outside the store.
+
+    An item-only pull request skips `ruff format --check`, and ruff formats
+    fenced Python blocks in Markdown. So a brief out of ruff's format merged
+    green and failed `main`'s run (`PL-L9SF`). The test copies the exclusion
+    from `pyproject.toml` into a scratch project, so ruff's own glob matching
+    decides the answer and nothing is written into the store. The bare pattern
+    `"docs/items"` excluded nothing in ruff 0.16.4, and this test fails on it.
+    """
+    config = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    exclude = config["tool"]["ruff"]["format"]["exclude"]
+    (tmp_path / "ruff.toml").write_text(f"[format]\nexclude = {json.dumps(exclude)}\n", "utf-8")
+    for name in ("docs/items/PL-ZZZZ-probe.md", "docs/probe.md"):
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text('```python\nx = {  "a":1 }\n```\n', encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "format", "--check", "--no-cache", "."],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 1, output
+    assert "probe.md" in output, output
+    assert "PL-ZZZZ" not in output, output
