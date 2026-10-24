@@ -107,40 +107,10 @@ SUGGESTED = 3
 
 #: Every bare literal in the tree when this landed, after `PL-06M7` cleared
 #: its seven `3600`s: file, then `(enclosing scope, value)`, then how many. It
-#: may only shrink. Most of `app/` is layout geometry in pixels and layout
-#: units, which a name would make easier to change consistently; the `core/`
-#: class defaults are the second copies `PL-H8QP` describes.
+#: may only shrink. `PL-4X5B` cleared the 29 in `app/`, most of them layout
+#: spacings and grid positions. What is left is in `core/`, where the class
+#: defaults are the second copies `PL-H8QP` describes.
 BASELINE: dict[str, dict[tuple[str, str], int]] = {
-    "src/anesthesia_sim/app/chart_frame.py": {
-        ("nearest_wash_in_point", "3"): 1,
-        ("percent_axis_ticks", "1e-09"): 1,
-    },
-    "src/anesthesia_sim/app/dashboard_frame.py": {
-        ("slider_position", "10.0"): 1,
-        ("slider_value", "10.0"): 1,
-    },
-    "src/anesthesia_sim/app/qt_chart.py": {
-        ("TraceLegend.__init__", "6"): 1,
-        ("_GridLines.place", "90"): 1,
-        ("_branch_point_mark", "90"): 1,
-        ("_control_mark_pool", "90"): 1,
-        ("_legend_entry", "6"): 1,
-        ("_legend_row", "16"): 1,
-        ("_legend_row", "6"): 1,
-    },
-    "src/anesthesia_sim/app/qt_widgets.py": {
-        ("BookmarkDialog._build_layout", "3"): 7,
-        ("BookmarkDialog._build_layout", "4"): 2,
-        ("BookmarkDialog._build_layout", "5"): 2,
-        ("BookmarkDialog._build_layout", "6"): 1,
-        ("ForkPanel.__init__", "8"): 2,
-    },
-    "src/anesthesia_sim/app/run_surfaces.py": {("ParameterControls.__init__", "12"): 1},
-    "src/anesthesia_sim/app/run_view.py": {
-        ("RunView._lay_out_readout_section", "12"): 1,
-        ("RunView._lay_out_readout_section", "4"): 1,
-        ("RunView._lay_out_transport_row", "8"): 1,
-    },
     "src/anesthesia_sim/core/alveolar.py": {
         ("AlveolarCompartment", "2.5"): 1,
         ("AlveolarCompartment", "4.0"): 1,

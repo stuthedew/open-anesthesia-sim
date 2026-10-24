@@ -46,6 +46,7 @@ from anesthesia_sim.app.theme import (
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PANEL_PADDING,
+    PARAMETER_SLIDER_SPACING,
     WARNING,
 )
 
@@ -157,7 +158,7 @@ class ParameterControls(QWidget):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(PARAMETER_SLIDER_SPACING)
 
         for slider, setting in zip(self.sliders, settings, strict=True):
             layout.addWidget(slider, 1)
