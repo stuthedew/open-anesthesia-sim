@@ -4018,6 +4018,14 @@ without doing the work — a file outside `touches`, a protected path, an edit
 to the gate itself, an added suppression, a deleted assertion, a rewritten
 front matter.
 
+Some files outside `touches` are writes the workflow itself asks for, so the
+scope check names them as sanctioned and does not count them: a capture, a
+`pr:` record, a recurrence, a recovered pull request body, and a headless
+worker's run record. The last is a `.json` file directly under
+`worker_runs_dir` that the branch added, whose `item` field names the item
+being verified. The setting is empty by default, which leaves that exemption
+off (`PL-4WFK`).
+
 The front-matter comparison refuses rather than passes when it cannot be made
 — an item file that resolves to nothing, or a base holding no store at all.
 Both were an empty set of changed keys until `PL-20PT`, and an empty set is
@@ -4424,6 +4432,7 @@ code_paths = ["src", "tests"]      # what `docket trend` counts as code
 product_paths = []                 # the product's side; empty = `docket trend`
                                    # counts every other path as product
 notes_file = ""                    # a threads file `docket show` points into
+worker_runs_dir = ""               # where a headless runner commits run records
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
