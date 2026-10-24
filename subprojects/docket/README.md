@@ -3387,6 +3387,31 @@ carries no `milestone:`; read as unreleased, it was the next release's whole
 content, offered to every session from the moment a cut merged until real work
 closed.
 
+### `owner-priority:` records that the project owner set the priority
+
+```yaml
+owner-priority: P1, 2026-10-20
+owner-priority: P1, 2026-10-20, ratified
+```
+
+Optional. It records that the project owner set the item's priority, which
+priority, and on what day. `ratified` follows the date where the owner agreed
+with a session's recommendation rather than choosing the priority unprompted,
+as `CLAUDE.md` § "Working with the project owner" records any decision of that
+kind. `docket set <id> --owner-priority "P1, 2026-10-20"` writes it.
+
+One check reads it. The top band's advisory that process work outnumbers the
+product work beside it, and should be demoted, leaves out an item whose record
+names the priority it has now, of either kind. That advisory is for work a
+session promoted on its own judgment. Before the field existed, it told every
+session to demote two items the owner had placed on purpose, and obeying it
+would have overturned his decision (`PL-JLB4`).
+
+`docket check` refuses a value in neither form, and a record naming a priority
+other than the item's. The second is what a session moving a priority the owner
+set leaves behind, so `docket set --priority` refuses that move unless the same
+call records the owner's new priority with `--owner-priority ... --overwrite`.
+
 ### `milestone:` records where work went out, never where it is planned
 
 `docket release` stamps `milestone:` onto the items it ships, and that is the

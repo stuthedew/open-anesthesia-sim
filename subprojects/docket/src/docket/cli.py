@@ -1905,6 +1905,7 @@ def _capture(directory: Path, item: Item) -> str:
 #: items, which is as far as a check can go (`PL-X5JR`).
 SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("priority", "priority"),
+    ("owner-priority", "owner_priority"),
     ("effort", "effort"),
     ("status", "status"),
     ("classes", "classes"),
@@ -6014,6 +6015,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     setter.add_argument("item")
     setter.add_argument("--priority", choices=PRIORITIES)
+    setter.add_argument(
+        "--owner-priority",
+        metavar="P1, YYYY-MM-DD[, ratified]",
+        help="record that the project owner set this priority, and when",
+    )
     setter.add_argument("--effort", choices=EFFORTS)
     setter.add_argument("--status", choices=STATUSES)
     for flag, metavar in (

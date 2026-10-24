@@ -5404,9 +5404,9 @@ debt however old its problem. Triaging them the same day gave eleven of them
 had had no way to write. Each describes code that predates the freeze, so they
 re-enter by the presumption in "The gate is a snapshot, not a moving target"
 rather than by the exception that admits a `safety` finding regardless:
-`PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-M6FY`,
-`PL-N0MH`, `PL-NPWP` and `PL-YSMV` in the workflow lane, and `PL-JS0X`,
-`PL-KZR1` and `PL-N67T` in the product lane. What this cost is worth recording
+`PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-JS0X`,
+`PL-KZR1`, `PL-M6FY`, `PL-N0MH`, `PL-N67T`, `PL-NPWP` and `PL-YSMV`. What this
+cost is worth recording
 for the next freeze: a frozen list is computed from the store's *classes*, so
 an untriaged backlog is invisible to it, and a freeze taken while captures are
 waiting understates itself by however many of them turn out to be debt.
@@ -5421,8 +5421,8 @@ carries the history. The project owner reopened it as a `P1` when `PL-HGB6` was
 re-scoped (project owner, 2026-09-27, ratified, over building `PL-HGB6` as
 written). It is `ready` rather than `blocked` behind `PL-2FZ9`, so the
 `anticipated` carve-out does not reach it: its own brief places it before a
-second profile can be loaded, because that gap is the whole of its exposure. It
-is product-lane work and is listed in that group.
+second profile can be loaded, because that gap is the whole of its exposure.
+It is on the list, and its lane is `bin/docket gate`'s to print.
 
 **`PL-5291` joined this list on 2026-10-03, after the freeze, under the same
 exception.** Filed that day by the first review of `#1292`, it is a run standing
@@ -5434,8 +5434,7 @@ it `defect` and `safety`, on the precedent of `PL-N3N5` and on `docs/MODEL.md`
 re-enter by presence as well, read from the code at the `v0.5.0` tag rather than
 measured: that release, cut the day this list froze, already shipped the 24-hour
 stop, branches and step-exact bookmark halts, and its `_open_at` already opened a
-branch without setting the limit's reason. It is product-lane work and is listed
-in that group.
+branch without setting the limit's reason. It is on the list, and its lane is `bin/docket gate`'s to print.
 
 **`PL-HSFV` joined this list on 2026-10-04, after the freeze, under the same
 exception.** Filed that day by `PL-V10T`'s session, it is a run definition
@@ -5448,7 +5447,7 @@ and `safety`, on the precedent of `PL-0MLQ`, the same three flows reached
 through a setter. It would re-enter by presence as well, read from the code at
 the `v0.5.0` tag: that release's settings record checked the three flows for
 sign and finiteness alone, and its `RunDefinition` already opened and recorded
-changes from one. It is product-lane work and is listed in that group.
+changes from one. It is on the list, and its lane is `bin/docket gate`'s to print.
 
 **The `parse-dont-validate` feature joined this list on 2026-10-04, after the
 freeze, at the project owner's direction** (project owner, 2026-10-04: "Add
@@ -5469,9 +5468,9 @@ joined with it, beside `PL-HSFV`, which was already here:
 `PL-BBMG` is classed `safety` and would have joined under the exception on its
 own, and `PL-4R3W`'s `NewType`s and its hand check on a fraction's range were
 both in the code at the `v0.5.0` tag. The feature joined whole on the owner's
-word, though, so none of the five rests on either. All five are product-lane
-work and are listed in that group, and `bin/docket feature parse-dont-validate`
-reads their progress.
+word, though, so none of the five rests on either. All five are on the list,
+each lane is `bin/docket gate`'s to print, and `bin/docket feature
+parse-dont-validate` reads their progress.
 
 **`PL-HQF5` joined this list on 2026-10-17, after the freeze, under the
 exception that admits a `safety` finding whenever it is made.** It was filed on
@@ -5483,8 +5482,7 @@ tissues with their sum unchanged pass the settings record. The readouts then
 step at the moved flows, while the chart is computed from the recorded ones,
 so the two disagree on screen. The project owner classed it `safety` the same
 day (project owner, 2026-10-17, ratified, "Agree", over leaving it a `P2`
-defect deferred from this gate). It is product-lane work and is listed in that
-group.
+defect deferred from this gate). It is on the list, and its lane is `bin/docket gate`'s to print.
 
 **`PL-Z0HN` joined this list on 2026-10-17, after the freeze, under the
 exception that admits a `safety` finding whenever it is made.** It was filed
@@ -5493,7 +5491,7 @@ can be written on a built patient, and nothing checks that the fractions still
 sum to 1. The next cardiac output change is then refused, and its restore moves
 every tissue flow under a banner saying the simulation is unchanged. The triage
 pass of 2026-10-17 classed it `safety`, because the screen states a run the
-model is not running. It is product-lane work and is listed in that group.
+model is not running. It is on the list, and its lane is `bin/docket gate`'s to print.
 
 **Two kinds of group, and only the second is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
@@ -5509,17 +5507,20 @@ them in Required scope after `#850` had grouped this list. They moved into the
 first group when `tools/doc_check.py` began holding it to Required scope
 (`PL-J6HP`), and the three group counts moved with them. The rest clears
 before implementation of this milestone begins, unless this gate defers it, and
-is recorded in three groups rather than one because that is how it is meant to
-be worked: `docket.toml` computes a lane from each item's `touches`, the product
-and workflow lanes share no files and so run concurrently in two sessions, and
-the entries in neither lane cross both and want a session that can hold the
-whole change.
+is recorded in one group. The lane split is `bin/docket gate`'s and
+`bin/docket picks`' to print. `docket.toml` computes a lane from each item's
+`touches`, which triage and every close-out rewrite, so a lane group written
+here goes stale. On 2026-10-03 two of 42 open entries sat in the wrong one, and
+the three groups were collapsed into one on 2026-10-24 (`PL-Z64T`). The lanes
+still say how the list is worked: the product and workflow lanes share no files
+and so run concurrently in two sessions, and the entries in neither lane cross
+both and want a session that can hold the whole change.
 
 **What this gate defers is not a group: it is each entry's `deferred-from:
 v0.6.0`, which `bin/docket wave` prints** (`PL-8QMD`, project owner,
 2026-10-11, ratified, over keeping the deferral group headings, read through
-`blocked-by`, with a check per reader). A deferred entry stays in the lane group
-its `touches` compute and its item says why; `wave` counts it apart from what
+`blocked-by`, with a check per reader). A deferred entry stays on the list and
+its item says why; `wave` counts it apart from what
 this gate can clear, and `bin/docket gate` marks it for the freeze that takes
 it. The paragraphs below record each deferral's decision. Three groups headed
 "Deferred to Gate 3" held the seven entries until 2026-10-12, and `wave` read a
@@ -5554,8 +5555,8 @@ to clear before, and an eventual feature is intent in planned-milestone item
 gate as a fixed one does, per § "What counts". The paragraph above is left as
 the freeze wrote it: its v0.7.0 is the break-out row as it then stood, and
 v0.7.0 has been the schematic since. The group of its own that it names was
-retired on 2026-10-12 with the other deferral groups, and the entry stands in
-the product lane (`PL-8QMD`).
+retired on 2026-10-12 with the other deferral groups, and the entry stands on
+the list with the others (`PL-8QMD`).
 Nothing the entry guarded is lost with it - the rule a break-out build must
 satisfy is `docs/MODEL.md` § "Minimum displayed outputs" -> "What this list
 requires once the layout is the reader's", and item 34's entry cites the
@@ -5565,8 +5566,8 @@ brief for the Qt measurement that build will need first.
 PySide6 `QDataStream` segfault that the Qt code built around the layout model
 could meet - not the JSON persistence path it was first expected in, which
 decodes no Qt blob. It carries the milestone's feature and is not in
-`Required scope`, so it clears before rather than inside, and its `touches`
-put it in the workflow lane.
+`Required scope`, so it clears before rather than inside, and is on the list
+with the others that do.
 
 **`PL-WZVZ` is inherited rather than found here.** It is Gate 1's one deferred
 entry - deferred on § "The cadence" beat 3's terms by `PL-S5Q9`, and still
@@ -5602,8 +5603,8 @@ worked:
 
 The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
 before v0.7.0's implementation begins, and v0.6.0 ships without the five. They
-stay written on this list, in the lane groups their `touches` compute, and each
-item's `deferred-from: v0.6.0` says so and why; from 2026-09-27 to 2026-10-12
+stay written on this list, and each item's `deferred-from: v0.6.0` says so and
+why; from 2026-09-27 to 2026-10-12
 they sat in a group of their own, as `PL-Y04W` did (`PL-8QMD`). Nothing about
 them changes by waiting: unless a release schedules item 28 or machine
 selection before v0.6.0 ships, Gate 3 inherits all five as this gate inherited
@@ -5659,8 +5660,7 @@ than rewrites.
 
 The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
 before v0.7.0's implementation begins, and v0.6.0 ships without it. It stays
-written on this list, in the neither-lane group its `touches` compute, and its
-`deferred-from: v0.6.0` says so and why; from 2026-10-03 to 2026-10-12 it sat
+written on this list, and its `deferred-from: v0.6.0` says so and why; from 2026-10-03 to 2026-10-12 it sat
 in a group of its own, as the five did (`PL-8QMD`). Gate 3's freeze takes it up
 although a `feature` entry is not debt: `bin/docket gate` prints every open
 entry of this list beside the store's open debt, and the freeze carries all of
@@ -5741,7 +5741,7 @@ named here, for the reason beat 3 gives.
 - PL-JG82 (S) Compare mode leaves the concentration chart about 200 px on the 1366 by 700 laptop reference, 159 px under PL-84QX's 360 px minimum, after PL-F2YS paired the readouts
 - PL-JSY5 (S) docs/MODEL.md's readout-row rung and its educational-disclaimer line both assume one window's width and one always-on-screen surface, which the area system makes false
 
-**Cleared before v0.6.0 begins unless deferred, the product lane - 100 entries**
+**Cleared before v0.6.0 begins unless deferred - 229 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0FJ8 (S) A MAC divisor's positivity is checked in five app/formatting.py functions and by nothing that holds it: AgentParameters admits Percent(0.0) built directly, only the loader's PositivePercent refuses one, and format_mac_reference checks nothing, directly or through another
@@ -5843,9 +5843,6 @@ named here, for the reason beat 3 gives.
 - PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 - PL-ZH1F (S) RunDefinition.record_change's dial-moved-back branch is tested only on two-segment runs, the one size where segments[:-1] and segments[:1] agree, so a mutant that silently deletes every later stretch (state_at 600 s alveolar 0.01246 against 0.01867) survives all 5734 simulator tests
-
-**Cleared before v0.6.0 begins unless deferred, the workflow lane - 116 entries**
-
 - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
 - PL-2DTK (M) docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
@@ -5962,9 +5959,6 @@ named here, for the reason beat 3 gives.
 - PL-Z85N (S) bin/docket release cuts whatever version it is handed, so the reserved-version answer exists only in the advisory digest and nothing objects on the cut path
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
-
-**Cleared before v0.6.0 begins unless deferred, in neither lane - 13 entries**
-
 - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-4L49 (M) tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
@@ -5995,28 +5989,27 @@ one's state and the release that took it (`PL-WD5Z`). A frozen entry this gate
 defers carries the same field, and `wave` counts it on the gate's own line
 instead (`PL-8QMD`).
 
-The `safety` or `science` items captured after the cut are placed in the lane
-groups above with the rest, and named here with the date each re-entered.
+The `safety` or `science` items captured after the cut are placed on the list
+above with the rest, and named here with the date each re-entered.
 `PL-WMCJ` (`science`, 2026-09-24) is the missing intertissue-diffusion
-limitation in `docs/MODEL.md`. The triage pass that classed it placed it in the
-product lane. `PL-CBDX` (`safety`, 2026-09-25) is the read of simulator diffs
+limitation in `docs/MODEL.md`. The triage pass that classed it placed it on the
+list. `PL-CBDX` (`safety`, 2026-09-25) is the read of simulator diffs
 merged unread since 2026-09-23, split from `PL-SQTR` on the owner's answer, and
-sits in the product lane with it.
+is on the list with it.
 `PL-HBH2`, `PL-KK1Q` and `PL-YD2V` (`science`, 2026-09-27) are what `PL-WMCJ`'s
 reading of the two Yasuda 1991 papers turned up about the late washout: the
 fat-perfusion note weighed against one source, the 24-hour tail never compared
 with the published fits, and the supported run length silent on the missing
-fourth compartment. The triage pass that classed them placed them in the
-product lane.
+fourth compartment. The triage pass that classed them placed them on the list.
 `PL-921Y` (`science`, 2026-10-03) is what `PL-95NW`'s measurement turned up
 beside its own answer: the subsection compares an isolated muscle time
 constant with a fitted apparent one. The triage pass that classed it placed it
-in the product lane.
+on the list.
 `PL-LTKL` (`safety`, 2026-10-04) is the chart hover that keeps answering for a
 pointer that has left the plot, a modelled concentration that climbs with the
 run as if it were live. `PL-T4FK` (`science`, 2026-10-04) is `docs/MODEL.md`
 rendering the four-organ share of cardiac output as a bullet about brain and
-liver. The triage pass that classed them placed both in the product lane.
+liver. The triage pass that classed them placed both on the list.
 `PL-LBQY`, `PL-LLMN` and `PL-Z0T3` (`safety`, 2026-10-04) are what the review
 of `#1350` turned up in the flows' checked types and the compartments holding
 them: a bare `float` written onto a flow field, which a Reset can leave
@@ -6024,7 +6017,7 @@ standing on a paused run with no notice, put as a decision and answered the
 same day for a write guard; minus zero, a
 `bool` and a `Decimal` admitted as flows; and `dataclasses.replace` rewriting
 the original patient's tissue flows. The triage pass that classed them placed
-them in the product lane.
+them on the list.
 `PL-7N8P` and `PL-8W1W` (`safety`, 2026-10-04) are the review of `#1354`
 finding the same shapes in the case instant and the run's own state: a `bool`,
 a `Decimal` and an `int` past the float range admitted as an instant, worked
@@ -6032,8 +6025,7 @@ with `PL-LLMN`; and a step count or step written onto a built
 `SimulationState` with no check, given `PL-LBQY`'s write guard. `PL-B26Y`
 (`safety`, 2026-10-04) is the circuit's closed form reporting a `nan` exhaust
 at an admitted fresh-gas flow below about 2e-306 L/min, found in `PL-51B7`'s
-session. The triage pass that classed them placed all three in the product
-lane.
+session. The triage pass that classed them placed all three on the list.
 `PL-3800`, `PL-979Z` and `PL-SWD1` (`safety`, 2026-10-05) are the same
 shapes past the checked types already on this list: the positive and
 non-negative guards admitting a `bool` and a `Decimal`, so `True` builds a 1 L
@@ -6045,7 +6037,7 @@ from 1e-15 to 1e-6 L/min, found fixing `PL-B26Y`. `PL-7DJK` and `PL-M4M0`
 (`safety`, 2026-10-05) are halts shown wrong: a refused displayed fraction
 leaves the screen reading Running with no banner, and a Reset over a stale
 cardiac output escapes its slot and leaves a half-reset run with no failure
-recorded. The triage pass that classed them placed all six in the product lane.
+recorded. The triage pass that classed them placed all six on the list.
 `PL-544D` (`safety`, 2026-10-11) is the alveolar and tissue amount admitting a
 direct write past capacity, and `PL-V2HC` (`safety`, 2026-10-11) a halted run
 whose agent selector raises inside its slot when the snapshot refuses, both
@@ -6054,7 +6046,7 @@ admitting a zero MAC, which `format_mac_reference` prints as `1 MAC sevoflurane
 = 0.0%`, and `PL-1DP1` (`safety`, 2026-10-11) the two concentration conversions
 taking a bare float as either form. `PL-QPN8` (`science`, 2026-10-11) is the
 reference adult's Weber et al. 2021 note, whose tables can now be read at the
-source. The triage pass that classed them placed all five in the product lane.
+source. The triage pass that classed them placed all five on the list.
 `PL-QJXS`, `PL-JPS2`, `PL-ZH1F` and `PL-H1JH` (`safety`, 2026-10-17) are the
 test-effectiveness audit's safety findings: no test compares an agent-switched
 run with a fresh run of the new agent; both MAC-awake band tests read their
@@ -6064,18 +6056,16 @@ MAC-awake fractions and spreads carry no pin from their primary source.
 `PL-9YHR` and `PL-R0NL` (`science`, 2026-10-17) are its validation findings: the
 published-data gates cannot resolve most stored parameters, and wash-in is
 compared with published human data at 30 minutes alone. The triage pass that
-classed them placed all six in the product lane.
+classed them placed all six on the list.
 
 `PL-CM1B` (`science`, 2026-10-18) is what `PL-R0NL`'s comparison of the
 early wash-in curve turned up: desflurane rises faster than its 1991 cohort
-from 1 to 10 minutes. The triage pass that classed it placed it in the product
-lane. `PL-4RL2` (`science`, 2026-10-18) is what `PL-SWY5`'s reading of the
+from 1 to 10 minutes. The triage pass that classed it placed it on the list. `PL-4RL2` (`science`, 2026-10-18) is what `PL-SWY5`'s reading of the
 Gas Man study at PMC7943506 turned up: the tree cited it under the wrong
-authors and pages. It also corrects a rule file, so the same pass placed it in
-neither lane.
+authors and pages. The same pass placed it on the list.
 
-`PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
-the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
+`PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and is on
+the list with `PL-VV6N`, which waits on it. It was in the store at the
 cut, but the class filter left it off, so `bin/docket wave` read `PL-VV6N` as
 blocked outside the gate and left it out of what this gate is asked to clear: a
 deferral nobody had decided. What an entry needs is let in and worked with the
