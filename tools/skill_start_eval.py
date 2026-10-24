@@ -37,10 +37,14 @@ from the clone's `.claude/settings.json`, as it does for a real session.
 
 **What counts as a start.** A `Skill` tool call that names the skill, made
 within the first `--max-turns` model requests. Two other signals are recorded
-beside it and never counted as a start. `read_skill_file` is a tool call whose
-input names a path under `.claude/skills/<skill>/`. `ran_docket` is a Bash call
-that runs `bin/docket`, which shows the queue workflow began even without the
-skill. `denied` names each tool call that `dontAsk` mode refused.
+beside it and never counted as a start. `listed` says whether the session's
+`init` event listed the skill, which is how a run shows that the off arm really
+hid it. `read_skill_file` is a tool call whose input names a path under
+`.claude/skills/<skill>/`. `ran_docket` is a Bash call that runs a `bin/docket`
+command other than `branch`, which shows the queue workflow began even without
+the skill. `branch` is left out because every reply runs it before its closing
+block, as rule 14 of `.claude/rules/instruction-writing.md` requires.
+`denied` names each tool call that `dontAsk` mode refused.
 
 **What it refuses to guess.** A run that timed out, ended without a result, or
 printed a line that is not JSON is marked `unread`, with the reason. It is left
@@ -58,14 +62,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = ROOT / "tools" / "skill_start_prompts.json"
+DOCKET_COMMAND = re.compile(r"bin/docket\s+([\w-]+)")
 
 
 @dataclass(frozen=True)
@@ -83,6 +90,7 @@ class Run:
     arm: str
     should_start: bool
     started: bool | None
+    listed: bool | None
     read_skill_file: bool | None
     ran_docket: bool | None
     tool_calls: tuple[str, ...]
@@ -101,9 +109,9 @@ def load_prompts(path: Path) -> tuple[str, list[Prompt]]:
     return data["skill"], prompts
 
 
-def tool_uses(events: list[dict]) -> list[dict]:
+def tool_uses(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return every tool call the session made, in order."""
-    calls = []
+    calls: list[dict[str, Any]] = []
     for event in events:
         if event.get("type") != "assistant":
             continue
@@ -113,7 +121,7 @@ def tool_uses(events: list[dict]) -> list[dict]:
     return calls
 
 
-def is_skill_call(call: dict, skill: str) -> bool:
+def is_skill_call(call: dict[str, Any], skill: str) -> bool:
     """Return whether a tool call starts `skill` through the Skill tool."""
     if call.get("name") != "Skill":
         return False
@@ -123,7 +131,7 @@ def is_skill_call(call: dict, skill: str) -> bool:
 
 def classify(stream: str, skill: str, prompt: Prompt, arm: str) -> Run:
     """Read one session's stream-json output into a `Run`."""
-    events = []
+    events: list[dict[str, Any]] = []
     bad = 0
     for line in stream.splitlines():
         if not line.strip():
@@ -140,21 +148,28 @@ def classify(stream: str, skill: str, prompt: Prompt, arm: str) -> Run:
         unread = "the session ended without a result"
     elif result.get("subtype") not in ("success", "error_max_turns"):
         unread = f"the session ended with {result.get('subtype')}"
-    if unread:
-        return Run(prompt.id, arm, prompt.should_start, None, None, None, (), (), None, unread)
+    if unread or result is None:
+        return Run(
+            prompt.id, arm, prompt.should_start, None, None, None, None, (), (), None, unread
+        )
     calls = tool_uses(events)
+    init: dict[str, Any] = next((e for e in events if e.get("subtype") == "init"), {})
+    skills = init.get("skills")
     skill_dir = f".claude/skills/{skill}/"
     return Run(
         prompt_id=prompt.id,
         arm=arm,
         should_start=prompt.should_start,
         started=any(is_skill_call(c, skill) for c in calls),
+        listed=None if skills is None else skill in skills,
         read_skill_file=any(
             c.get("name") != "Skill" and skill_dir in json.dumps(c.get("input", {})) for c in calls
         ),
         ran_docket=any(
-            c.get("name") == "Bash" and "bin/docket" in str(c.get("input", {}).get("command", ""))
+            name != "branch"
             for c in calls
+            if c.get("name") == "Bash"
+            for name in DOCKET_COMMAND.findall(str(c.get("input", {}).get("command", "")))
         ),
         tool_calls=tuple(str(c.get("name")) for c in calls),
         denied=tuple(str(d.get("tool_name")) for d in result.get("permission_denials", [])),
@@ -204,11 +219,12 @@ def summary(runs: list[Run]) -> list[str]:
             continue
         read = [r for r in group if not r.unread]
         started = sum(bool(r.started) for r in read)
+        listed = sum(bool(r.listed) for r in read)
         file_read = sum(bool(r.read_skill_file) for r in read)
         docket = sum(bool(r.ran_docket) for r in read)
         label = "should start" if should_start else "should not start"
         lines.append(
-            f"{label}, skill {arm}: started {started} of {len(read)}, "
+            f"{label}, skill {arm}: started {started} of {len(read)}, listed in {listed}, "
             f"read a skill file {file_read}, ran bin/docket {docket}"
             + (f"; {len(group) - len(read)} unread" if len(read) < len(group) else "")
         )
@@ -230,7 +246,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--checkout", type=Path, required=True, help="a scratch clone to run in")
     parser.add_argument("--model", required=True, help="the model the project's sessions run")
-    parser.add_argument("--out", type=Path, required=True, help="JSON lines, one per run")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="JSON lines, one per run; each run's raw stream is written beside it",
+    )
     parser.add_argument("--max-turns", type=int, default=5)
     parser.add_argument("--timeout", type=int, default=600, help="seconds per run")
     parser.add_argument("--only", action="append", default=[], help="run only this prompt id")
@@ -250,9 +271,21 @@ def main(argv: list[str] | None = None) -> int:
                 argv_, cwd=args.checkout, capture_output=True, text=True, timeout=args.timeout
             )
             run = classify(done.stdout, skill, prompt, arm)
+            raw = args.out.with_name(f"{args.out.stem}.{prompt.id}.{arm}.stream.jsonl")
+            raw.write_text(done.stdout, encoding="utf-8")
         except subprocess.TimeoutExpired:
             run = Run(
-                prompt.id, arm, prompt.should_start, None, None, None, (), (), None, "timed out"
+                prompt.id,
+                arm,
+                prompt.should_start,
+                None,
+                None,
+                None,
+                None,
+                (),
+                (),
+                None,
+                "timed out",
             )
         runs.append(run)
         with args.out.open("a", encoding="utf-8") as out:

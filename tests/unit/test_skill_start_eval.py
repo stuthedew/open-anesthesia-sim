@@ -35,10 +35,11 @@ def call(name: str, **tool_input: str) -> dict:
     return {"type": "assistant", "message": {"content": [block]}}
 
 
-def stream(*events: dict, subtype: str = "success") -> str:
-    """A session's stream-json output: the events, then its result line."""
+def stream(*events: dict, subtype: str = "success", skills: tuple[str, ...] = ("docket",)) -> str:
+    """A session's stream-json output: its init line, the events, then its result line."""
+    init = {"type": "system", "subtype": "init", "skills": list(skills)}
     result = {"type": "result", "subtype": subtype, "total_cost_usd": 0.5}
-    return "\n".join(json.dumps(e) for e in (*events, result))
+    return "\n".join(json.dumps(e) for e in (init, *events, result))
 
 
 def test_counts_a_docket_skill_call_as_a_start() -> None:
@@ -64,6 +65,20 @@ def test_another_skill_or_a_read_of_the_skill_file_is_not_a_start() -> None:
     assert run.read_skill_file is True
     assert run.ran_docket is True
     assert run.tool_calls == ("Skill", "Read", "Bash")
+
+
+def test_the_init_line_says_whether_the_skill_was_hidden() -> None:
+    shown = skill_start_eval.classify(stream(), "docket", PROMPT, "on")
+    hidden = skill_start_eval.classify(stream(skills=("run-the-app",)), "docket", PROMPT, "off")
+    assert shown.listed is True
+    assert hidden.listed is False
+
+
+def test_the_branch_refresh_every_reply_runs_is_not_a_docket_workflow() -> None:
+    refresh = stream(call("Bash", command="bin/docket branch 2>&1 | head -5"))
+    picked = stream(call("Bash", command="bin/docket branch; bin/docket next product"))
+    assert skill_start_eval.classify(refresh, "docket", PROMPT, "on").ran_docket is False
+    assert skill_start_eval.classify(picked, "docket", PROMPT, "on").ran_docket is True
 
 
 def test_a_run_cut_off_by_the_turn_limit_is_still_read() -> None:
@@ -94,7 +109,7 @@ def test_the_summary_leaves_unread_runs_out_of_the_rate() -> None:
     missed = skill_start_eval.classify(stream(), "docket", PROMPT, "on")
     unread = skill_start_eval.classify("not json", "docket", PROMPT, "on")
     lines = skill_start_eval.summary([started, missed, unread])
-    assert lines[0].startswith("should start, skill on: started 1 of 2,")
+    assert lines[0].startswith("should start, skill on: started 1 of 2, listed in 2,")
     assert lines[0].endswith("; 1 unread")
     assert any(line.startswith("unread: pick-next (on)") for line in lines)
 

@@ -3,11 +3,13 @@ id: PL-SN2Z
 title: Test whether the docket skill starts on the requests it should and stays out of the ones it should not, running each test prompt in a fresh session with the skill on and again with it off
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost
 feature: skill-routing
-touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py, docket.toml
+touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py, docket.toml, docs/apparatus.md, docs/items/PL-S2NL-move-claude-md-s-pull-request-procedure-opening.md, docs/items/PL-Z90G-move-claude-md-s-context-budget-reset-procedure.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1713
 payoff: the owner learns from a measurement, not a guess, whether a procedure can leave the always-loaded instructions for a skill and still be followed
 verify: grep -q 'def test_counts_a_docket_skill_call_as_a_start' tests/unit/test_skill_start_eval.py && grep -qE '^[*][*]Result, 20' docs/items/PL-SN2Z-*.md
 ---
@@ -29,3 +31,24 @@ verify: grep -q 'def test_counts_a_docket_skill_call_as_a_start' tests/unit/test
 **Done when.** The prompt set is committed with the method to rerun it. One run's start rate for each group is recorded in this item. The item says whether that rate is good enough to move a procedure into a skill while leaving only a one-sentence trigger always loaded, or whether a hook is needed as well. `PL-S2NL` and `PL-Z90G` read that answer.
 
 **Generator check.** None. The owner asked for this work after the comparison with testdouble/han, and no fact was misread to produce it.
+
+**Result, 2026-10-24.** One run of all 13 prompts, 21 sessions in all. Each session ran Opus 5.5 at the project's `high` effort, in `dontAsk` mode with at most 5 model requests, in a scratch clone of `main` at 6228be8f. The command is the one in `tools/skill_start_eval.py`'s docstring.
+
+| Prompts | Skill | Sessions that called the `docket` skill |
+| --- | --- | --- |
+| 8 that should start it | on | 8 of 8, each as its first tool call |
+| 5 that should not | on | 0 of 5 |
+| 8 that should start it | off | 1 of 8, though the skill was hidden |
+
+- Every session that started the skill did so with its first tool call, before any call was refused. So `dontAsk` mode cannot have shaped a start.
+- Eight of 8 gives an exact 95% interval of 63% to 100% for the start rate, and 0 of 5 gives 0% to 52% for starts that should not happen (Clopper CJ, Pearson ES, *Biometrika* 1934;26(4):404-413, doi:10.1093/biomet/26.4.404). A set this small shows that misses are uncommon. It cannot show a rate close to 100%.
+- With the skill off, 7 of 8 sessions still began the queue workflow. They ran `bin/docket` commands, and 6 of the 8 read the skill's mode files by their paths, which the resident instructions and the session-start digest name. One session, `free-hour`, called the hidden skill anyway. A rerun of `free-hour` saved the raw output. It showed that the off setting removes `docket` from the skill list in the session's `init` event, and that time the session did not call it.
+- Three of the 5 sessions that should not start the skill ran `bin/docket branch` before replying, as rule 14 of `.claude/rules/instruction-writing.md` requires. The runner now leaves `branch` out of its `ran_docket` signal and records whether the skill was listed. The first run had neither change. The start counts above depend on neither.
+- The 21 sessions cost $13.39 at list price. The pilot and the rerun cost $2.53 more. In a cloud session this is billed to the owner's subscription.
+
+**Answered 2026-10-24.** The start rate is good enough for a procedure whose moment is a request the owner makes. In that case a resident trigger plus the skill's description started the skill first every time. The configuration measured is more than one sentence, though. `CLAUDE.md` names the docket skill in several places, and the skill's description lists every workflow it covers. So a moved procedure keeps a resident sentence that names its moment, and the skill's description names the moment too.
+
+This run did not measure a procedure whose moment arrives in the middle of a task, with no request that names it. Every prompt here put the moment in the request. That case needs a hook as well:
+
+- `PL-S2NL`'s pull request procedure fires when a session is about to push. Its brief already plans hooks on push and on pull request creation, and this result says to keep them.
+- `PL-Z90G`'s reset procedure fires when an item starts, which the `start-named` and `pick-next` prompts covered. Its housekeeping rule fires at the first edit to work that no item names. `.claude/hooks/docket-branch-guard.sh` already fires at that moment, through `tools/branch_id_check.py --hint-changed`, so that half has its hook.
