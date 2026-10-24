@@ -17,6 +17,7 @@ import headless_worker
 import pytest
 from docket.lines import split_lines
 from docket.store import ID_RE
+from docket.vcs import GitCall
 from headless_worker import (
     NO_PUSH_URL,
     OUTRANKING_CREDENTIALS,
@@ -235,6 +236,33 @@ def test_a_checkout_that_is_a_linked_worktree_can_still_clone(
     clone = tmp_path / "workers" / "run"
     headless_worker.prepare_clone(str(origin), clone, "claude/pl-b7k2-worker", no_push=True)
     assert _git("rev-parse", "--abbrev-ref", "HEAD", cwd=clone).strip() == "claude/pl-b7k2-worker"
+
+
+def test_a_failed_clone_names_git_s_error_not_its_progress_line() -> None:
+    """A failed clone was reported by its first stderr line, `Cloning into ...` (`PL-15TY`)."""
+    call = GitCall(
+        ("clone", "https://github.com/o/r", "c"),
+        128,
+        b"",
+        "Cloning into 'c'...\n"
+        "fatal: could not read Username for 'https://github.com': terminal prompts disabled\n",
+    )
+    assert call.reason == (
+        "`git clone` exited 128: fatal: could not read Username for 'https://github.com':"
+        " terminal prompts disabled"
+    )
+
+
+def test_a_real_clone_from_a_missing_reference_is_refused_with_git_s_error(
+    origin: Path, tmp_path: Path
+) -> None:
+    """A missing reference repository, one of the two causes `PL-15TY` names, from git itself."""
+    missing = tmp_path / "no-such-reference"
+    args = ["clone", "--reference", str(missing), "--dissociate", str(origin), str(tmp_path / "c")]
+    with pytest.raises(Refused) as refused:
+        headless_worker.git_or_refuse(args, tmp_path)
+    assert "fatal:" in str(refused.value)
+    assert "Cloning into" not in str(refused.value)
 
 
 def test_output_that_is_not_a_result_records_no_cost(

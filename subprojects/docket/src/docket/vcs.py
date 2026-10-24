@@ -567,6 +567,11 @@ GIT_TIMEOUT = 10
 LONG_GIT_TIMEOUT = 1800
 
 
+#: The prefixes git writes before the message it dies with (`fatal:`) or fails
+#: with (`error:`), as `usage.c` in git's source spells them.
+_GIT_FAILURE_PREFIXES = ("fatal:", "error:")
+
+
 @dataclass(frozen=True)
 class GitCall:
     """One git call as it finished: its exit status and output, or why it did not run.
@@ -593,8 +598,18 @@ class GitCall:
 
     @property
     def said(self) -> str:
-        """Git's reason in a line: the first it wrote to stderr, or why it could not run."""
-        return next((line.strip() for line in split_lines(self.stderr) if line.strip()), "")
+        """Git's reason in a line, or why it could not run.
+
+        The reason is the first stderr line that starts with `fatal:` or
+        `error:`, the prefixes git puts on the message it dies or fails with.
+        Where no line has either prefix, it is the first non-empty line. The
+        first line alone is not enough: `git clone` writes `Cloning into ...`
+        before any error, so every failed clone gave that line as its reason
+        and never named the cause (`PL-15TY`).
+        """
+        lines = [line.strip() for line in split_lines(self.stderr) if line.strip()]
+        failures = [line for line in lines if line.startswith(_GIT_FAILURE_PREFIXES)]
+        return (failures or lines or [""])[0]
 
     @property
     def answer(self) -> str:
