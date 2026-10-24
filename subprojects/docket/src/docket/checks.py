@@ -560,17 +560,6 @@ def answers_generator_check(body: str) -> bool:
     return bool(_section_text(body, GENERATOR_CHECK))
 
 
-#: The shortest `falsifies:` fragment worth folding on. Long enough that the
-#: tokens which would fold indiscriminately - `assert`, `== 0`, a bare name -
-#: are refused, and short enough to leave a real subject writable: the shortest
-#: sentence fragment that identified anything in this store was 24 characters
-#: (`PL-C6XD`'s `Not 0.2.8: the roadmap gives that version`, 40), and the
-#: longest pan-matching token worth refusing is `assert (` at 8. A round number
-#: between the two, chosen to be argued with rather than derived - if a real
-#: declaration is ever refused by it, the fragment wanted more context anyway.
-FALSIFIES_MIN_LENGTH = 12
-
-
 @dataclass(frozen=True)
 class SettingsSource:
     """Which `docket.toml` a run resolved its settings from, and whether it was there.
@@ -806,10 +795,8 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # Presence and nothing else. Whether the line states a *consequence* or
     # merely restates the title is exactly the judgment this project refuses
     # to script: a checker guessing at it would be authoritative and wrong,
-    # which is worse than no checker. No length floor either - the one
-    # `falsifies` carries exists because a short fragment folds assertions it
-    # was never meant to, a concrete harm, where a thin payoff harms only the
-    # reader who is looking straight at it.
+    # which is worse than no checker. No length floor either, since a thin
+    # payoff harms only the reader who is looking straight at it.
     if item.status == "ready" and _payoff_required(item, config):
         if not item.payoff:
             report.errors.append(
@@ -1029,19 +1016,6 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "whether the work is done or not, and an inverted one passes on the "
             "strength of it. Write a `grep` for what the work adds instead, with "
             "nothing ahead of it."
-        )
-    # `verify` folds every removed assertion containing this substring, so a
-    # fragment short enough to appear in assertions it was never about folds
-    # them too - `assert` itself would fold the lot. A length floor is the
-    # exact half of that: whether the fragment is long enough to name one
-    # subject is decidable, while whether it names the *right* one is the
-    # judgment, and is left to the reader of the lines `verify` prints.
-    if item.falsifies and len(item.falsifies) < FALSIFIES_MIN_LENGTH:
-        report.errors.append(
-            f"{where}: `falsifies` is '{item.falsifies}', {len(item.falsifies)} characters; "
-            f"it holds at least {FALSIFIES_MIN_LENGTH} - enough of the assertion to name the "
-            "one subject this item makes untrue, since `docket verify` folds every removed "
-            "assertion containing it"
         )
     if item.not_delegable and item.not_delegable.lower() in ("no", "yes", "true", "false"):
         report.errors.append(

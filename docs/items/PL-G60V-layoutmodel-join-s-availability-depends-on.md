@@ -13,7 +13,6 @@ closed: 2026-10-18
 pr: 1579
 payoff: a join a reader is offered depends only on the rectangles they see, never on which split happened to come first
 verify: grep -q 'def test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first' tests/unit/test_layout_model.py
-falsifies: only where they sit next to each other
 ---
 
 **Problem.** `PL-1FT6`'s close-out review (`#1448`) found that the layout

@@ -14,7 +14,6 @@ closed: 2026-10-18
 pr: 1561
 payoff: a rule or skill whose front matter a YAML parser refuses fails docket's checks, instead of passing while Claude Code may read no paths: from it
 verify: grep -rq 'def test_keys_refuses_the_yaml_test_suite_error_cases' subprojects/docket/tests
-falsifies: _extents("paths: [don't
 ---
 
 **Problem.** docket.frontmatter.keys reads keys out of 23 of the YAML Test Suite's 51 invalid in-domain documents, so a front matter a conformant parser refuses still passes docket's checks
