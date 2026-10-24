@@ -1,11 +1,14 @@
 ---
 id: PL-TN18
 title: Split the effort trial 50/50 between high and xhigh instead of 1 in 4 xhigh, so it reaches the same statistical power with about a quarter fewer sessions
-status: untriaged
+status: done
 feature: model-evidence
-added: 2026-10-24
 touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, docs/maintainer.md, docs/apparatus.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
+added: 2026-10-24
+closed: 2026-10-24
+pr: 1756
 payoff: the effort trial answers whether high causes more rework than xhigh after about a quarter fewer sessions
+verify: grep -q '% 2 == 0' tools/effort_trial.py
 ---
 
 **Problem.** The effort trial puts about one cloud session in four in the

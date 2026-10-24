@@ -131,8 +131,13 @@ choice that needed rework or unintended behavior. Each monthly run does this:
    hook's session id, so a resumed or compacted session prints the same
    arm again. A `/clear` gives a new session id and can change it, so use
    the first such line in a session and count the sessions whose later
-   lines differ. A session with no line, or whose line says it is "in
-   neither arm", has no arm and is counted and left out. Analyze sessions
+   lines differ. The split changed partway through. It was one session in
+   four at `xhigh` until `PL-TN18` merged on 2026-10-24, and one in two
+   after. So analyze the two periods as strata. A session whose digest leaves
+   2 when divided by 4 was `high` under the first rule and is `xhigh` under
+   the second, so it prints a different arm if it resumes on the new code.
+   The first-line rule above assigns it. A session with no line, or whose
+   line says it is "in neither arm", has no arm and is counted and left out. Analyze sessions
    by the level they were assigned (intention to treat), and report as a
    second result the level they actually ran at. A cap lowers a level and
    never raises one, so that is the lower of the arm and the level the app

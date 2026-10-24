@@ -209,10 +209,14 @@ at `xhigh` or `max`. When it finds a statistically significant difference, it
 tells the owner, with the size of the effect and its uncertainty. `PL-63CB`
 holds the method.
 
-**About one session in four runs at `xhigh` as a randomized comparison
-group, assigned automatically** (project owner, 2026-10-19, over `high` for
-every session and an observational comparison only). The owner asked that
-they not have to set the level by hand. The effort trial starts on Friday
+**Half of the sessions run at `xhigh` as a randomized comparison group,
+assigned automatically** (project owner, 2026-10-19, over `high` for every
+session and an observational comparison only). The owner asked that they not
+have to set the level by hand. The split was one session in four until
+2026-10-24. The owner then moved it to 50/50, because an equal split needs
+about a quarter fewer sessions for the same statistical power (project owner,
+2026-10-24, ratified, over keeping 1 in 4 to spend less of the usage allowance
+on `xhigh`, `PL-TN18`). The effort trial starts on Friday
 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC). Until then every session
 runs at `high`.
 
