@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: defect-review-2026-10
+milestone: v0.6.2
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, tools/diff_mutation.py, tools/fact_home_check.py, tests/unit/test_diff_mutation.py, tests/unit/test_doc_check.py, docket.toml, docs/mutation-testing.md, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/capture.md, docs/items/PL-29RM-in-a-truncated-clone-vcs-written-since-reads-a.md, docs/items/PL-3GKR-promote-the-stale-slug-filename-advisory-to-an.md, docs/items/PL-4YDJ-git-path-reads-outside-changed-path-args-take.md, docs/items/PL-BGMK-two-open-items-whose-touches-and-verify-command.md, docs/items/PL-G60V-layoutmodel-join-s-availability-depends-on.md, docs/items/PL-JTCQ-three-git-path-readers-take-git-s-c-quoted.md, docs/items/PL-K23D-bin-docket-record-merge-leaves-a-notes-bullet.md, docs/items/PL-P6LL-docket-frontmatter-keys-reads-keys-out-of-23-of.md, docs/items/PL-PLV0-verify-s-falsifies-advisory-says-the-line-had.md, docs/items/PL-XFWG-the-accounting-panel-s-unaccounted-and-absolute.md
 added: 2026-10-19
 closed: 2026-10-24

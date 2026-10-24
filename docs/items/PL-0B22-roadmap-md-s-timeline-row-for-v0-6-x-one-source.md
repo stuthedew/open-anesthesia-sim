@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: one-source-of-truth
+milestone: v0.6.2
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-24

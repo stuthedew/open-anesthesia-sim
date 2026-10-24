@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: review-hold
+milestone: v0.6.2
 touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, subprojects/docket/src/docket/arming.py, .claude/settings.json, subprojects/docket/tests/test_arming.py, docs/maintainer.md, docs/resident-instructions.md, subprojects/docket/tests/test_portability.py
 added: 2026-10-19
 closed: 2026-10-24

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.2
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, docs/items/PL-8349-outside-contributor-accessibility-find-what.md, docs/items/PL-JRVV-review-claude-md-for-instructions-that-a-script.md
 added: 2026-10-20
 closed: 2026-10-24

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 feature: ci-cost
+milestone: v0.6.2
 touches: pyproject.toml, .github/workflows/quality.yml, tests/unit/test_quality_step_order.py
 added: 2026-10-24
 closed: 2026-10-24
