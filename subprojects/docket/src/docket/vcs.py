@@ -4613,9 +4613,10 @@ def subject_pull_request(subject: str) -> SubjectPullRequest | None:
     if match is None:
         return None
     merged, squashed = match.group(1), match.group(2)
-    if squashed is not None:
-        return SubjectPullRequest(int(squashed), squash=True)
-    return SubjectPullRequest(int(merged), squash=False)
+    number = pr_number(squashed if squashed is not None else merged)
+    if number is None:
+        return None
+    return SubjectPullRequest(number, squash=squashed is not None)
 
 
 def github_slug(url: str) -> str | None:

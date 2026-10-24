@@ -54,6 +54,7 @@ from .model import (
     _front_matter_pairs,
     is_under,
     parse_front_matter,
+    pr_number,
     recurrence_entry_reads,
     split_list,
 )
@@ -1663,16 +1664,6 @@ def _listed_copy(root: Path, spec: str) -> str | None:
     return text if call.code == 0 and vcs.answered(text) else None
 
 
-#: A `pr:` value as `cmd_record` writes it, a number and nothing else, matched
-#: whole against the value the item's reader folds, so that `495 and also
-#: something` is not read as one.
-PR_VALUE_RE = re.compile(r"[0-9]+")
-
-#: A body file's name as `tools/pr_body_check.py` writes it: the pull
-#: request's number, and nothing else.
-RECORD_NAME_RE = re.compile(r"[0-9]+\.md")
-
-
 def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path: str) -> str:
     """Whether an out-of-`touches` queue edit, or a body record, is one the workflow asked for.
 
@@ -1873,7 +1864,9 @@ def _pr_recorded(before: str, after: str) -> bool:
     Every other field has to read the same and stand in the same order, and
     the body the same; neither copy may hold anything the reader declined
     (`_declines`); `before` holds no `pr`, since `record` never replaces the
-    number on a landed closure; and `after` holds one, a number.
+    number on a landed closure; and `after` holds one, a number as
+    `model.pr_number` reads it, so `pr: 0` and `pr: 07`, which `docket check`
+    refuses, are not what `record` wrote (`PL-JT7Y`).
     """
     was, now = _front_matter_pairs(before), _front_matter_pairs(after)
     if was is None or now is None or _declines(was) or _declines(now) or was[1:] != now[1:]:
@@ -1883,7 +1876,7 @@ def _pr_recorded(before: str, after: str) -> bool:
     numbers = [value for key, value in now[0] if key == "pr"]
     return (
         len(numbers) == 1
-        and PR_VALUE_RE.fullmatch(numbers[0]) is not None
+        and pr_number(numbers[0]) is not None
         and [pair for pair in now[0] if pair[0] != "pr"] == was[0]
     )
 
@@ -1944,7 +1937,10 @@ def _added_record(root: Path, base: str, path: str) -> bool:
     outside `touches` like any other such path.
     """
     folder, _, name = path.rpartition("/")
-    if f"{folder}/" != RECORDS or not RECORD_NAME_RE.fullmatch(name):
+    # Named for its pull request's number, as `tools/pr_body_check.py` writes it
+    # and `model.pr_number` reads one, so `07.md` names no record (`PL-JT7Y`).
+    number = pr_number(name.removesuffix(".md")) if name.endswith(".md") else None
+    if f"{folder}/" != RECORDS or number is None:
         return False
     if _git(["ls-tree", "-z", "--name-only", base, "--", path], root).strip("\0"):
         return False
@@ -1955,9 +1951,8 @@ def _added_record(root: Path, base: str, path: str) -> bool:
     # `pr:` or a date written as one makes the file no record here, which
     # leaves it outside `touches` like any other path.
     fields, _body, _declined = parse_front_matter(text)
-    number = name.removesuffix(".md")
     dated = any(fields.get(key, "").strip() for key in ("recovered", "recorded"))
-    return fields.get("pr", "").strip() == number and dated
+    return pr_number(fields.get("pr", "").strip()) == number and dated
 
 
 def worker_run_record(root: Path, base: str, folder: str, identifier: str, path: str) -> bool:

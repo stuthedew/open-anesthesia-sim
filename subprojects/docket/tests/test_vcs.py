@@ -5261,6 +5261,9 @@ def test_pull_request_number_reads_both_subject_shapes() -> None:
     assert subject_pull_request(f"  {squash}  ") == SubjectPullRequest(1069, squash=True)
     assert subject_pull_request("PL-6P0F: a direct push names no pull request") is None
     assert subject_pull_request("PL-6P0F: (#12) mid-subject is not a squash") is None
+    # A number GitHub never gives is read as `model.pr_number` reads one (`PL-JT7Y`).
+    assert subject_pull_request("PL-6P0F: a zero-padded number (#07)") is None
+    assert subject_pull_request("Merge pull request #0 from owner/branch") is None
     for subject, number in ((merge, 71), (squash, 1069)):
         assert Landing("abc1234", subject).pull_request == number
         assert FilingCommit("PL-B1B1", "abc1234", subject, ()).pull_request == number

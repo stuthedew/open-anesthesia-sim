@@ -75,6 +75,7 @@ from .model import (
     is_under,
     misread_faults,
     parse_item,
+    pr_number,
     recurrence_count,
     recurrences_of,
     render_item,
@@ -5098,7 +5099,7 @@ def _open_pull_requests(
             if not fields:
                 continue
             number = fields[1].lstrip("#") if len(fields) > 1 else ""
-            found.setdefault(fields[0], int(number) if number.isdigit() else None)
+            found.setdefault(fields[0], pr_number(number))
         return found
 
     return ask
@@ -5164,11 +5165,11 @@ def _newest_pull_request(
         fields = said[0].split()
         if (
             len(fields) == 3
-            and fields[0].isdigit()
+            and (number := pr_number(fields[0])) is not None
             and fields[1] in PULL_STATES
             and all(char in "0123456789abcdef" for char in fields[2].lower())
         ):
-            return PullRequestLookup(NewestPullRequest(int(fields[0]), fields[1], fields[2]))
+            return PullRequestLookup(NewestPullRequest(number, fields[1], fields[2]))
         return PullRequestLookup(
             declined=f"`{command}` answered {said[0]!r}, which is not `NUMBER STATE HEAD`"
         )
