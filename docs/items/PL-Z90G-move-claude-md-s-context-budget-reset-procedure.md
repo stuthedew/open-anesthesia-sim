@@ -1,8 +1,13 @@
 ---
 id: PL-Z90G
 title: Move CLAUDE.md's context-budget reset procedure and its housekeeping-filing rule into the docket skill, keeping one always-loaded trigger sentence for each
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: session-cost
 feature: skill-routing
+touches: CLAUDE.md, .claude/skills/docket/modes, docs/resident-instructions.md
+blocked-by: PL-SN2Z
 added: 2026-10-24
 ---
 
@@ -15,3 +20,5 @@ added: 2026-10-24
 **What stays always loaded.** One sentence for each rule: check spend with `python3 tools/context_reading.py` before starting an item, and file an item before doing work that no item names. The moved text goes into the mode files rather than the skill's front page. The front page is sized to come back whole after compaction, which keeps only the first 5,000 tokens of a skill.
 
 **Done when.** Each procedure lives in one docket mode file. `CLAUDE.md` keeps one trigger sentence for each. `docs/resident-instructions.md` records the move, and `make check`'s resident total shows the cut.
+
+**Generator check.** None. The owner asked for this work after the comparison with testdouble/han, and no fact was misread to produce it.

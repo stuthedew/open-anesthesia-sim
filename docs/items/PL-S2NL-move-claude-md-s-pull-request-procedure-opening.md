@@ -1,8 +1,13 @@
 ---
 id: PL-S2NL
 title: Move CLAUDE.md's pull request procedure (opening, arming, bringing main in, repeated CI failures) into a skill, keeping one always-loaded trigger sentence and a hook on push and pull request creation
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: session-cost
 feature: skill-routing
+touches: CLAUDE.md, .claude/skills, .claude/hooks/push-check-guard.sh, .claude/hooks/pr-body-email-guard.sh, docs/resident-instructions.md
+blocked-by: PL-SN2Z
 added: 2026-10-24
 ---
 
@@ -15,3 +20,5 @@ added: 2026-10-24
 **What stays always loaded.** Any rule a session must apply before its first commit or push stays: the item id at the front of every commit subject, and the `Co-authored-by` line. The read-only rule that a session disarms its own armed pull requests also stays, because it applies before any push.
 
 **Done when.** The procedure lives in a skill. `CLAUDE.md` keeps one trigger sentence and a pointer. The hooks on push and on pull request creation name the skill. `docs/resident-instructions.md` records the move, and `make check`'s resident total shows the cut.
+
+**Generator check.** None. The owner asked for this work after the comparison with testdouble/han, and no fact was misread to produce it.

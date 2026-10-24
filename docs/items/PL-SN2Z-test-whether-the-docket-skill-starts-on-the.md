@@ -1,9 +1,15 @@
 ---
 id: PL-SN2Z
 title: Test whether the docket skill starts on the requests it should and stays out of the ones it should not, running each test prompt in a fresh session with the skill on and again with it off
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: session-cost
 feature: skill-routing
+touches: tools/skill_start_eval.py, tools/skill_start_prompts.json, tests/unit/test_skill_start_eval.py
 added: 2026-10-24
+payoff: the owner learns from a measurement, not a guess, whether a procedure can leave the always-loaded instructions for a skill and still be followed
+verify: grep -q 'def test_counts_a_docket_skill_call_as_a_start' tests/unit/test_skill_start_eval.py
 ---
 
 **Problem.** Test whether the docket skill starts on the requests it should and stays out of the ones it should not, running each test prompt in a fresh session with the skill on and again with it off
@@ -21,3 +27,5 @@ added: 2026-10-24
 **Scope.** Start with the `docket` skill only. Write a small set of prompts in two groups. The first group should start the skill, including requests that never say "queue" or "docket". The second group should not start it. Run each prompt in a fresh session with the skill on, and again with it off. Record how often the skill starts and on which prompts it does not. Every run is a real model call on the owner's plan, so keep the set small and do not add it to CI in this item.
 
 **Done when.** The prompt set is committed with the method to rerun it. One run's start rate for each group is recorded in this item. The item says whether that rate is good enough to move a procedure into a skill while leaving only a one-sentence trigger always loaded, or whether a hook is needed as well. `PL-S2NL` and `PL-Z90G` read that answer.
+
+**Generator check.** None. The owner asked for this work after the comparison with testdouble/han, and no fact was misread to produce it.
