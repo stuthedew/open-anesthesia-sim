@@ -57,7 +57,15 @@ from .model import (
     recurrence_entry_reads,
     split_list,
 )
-from .python import UNPARSABLE, UNTOKENIZABLE, LogicalLine, places, read_logical_lines, refusal
+from .python import (
+    SOURCE_SUFFIXES,
+    UNPARSABLE,
+    UNTOKENIZABLE,
+    LogicalLine,
+    places,
+    read_logical_lines,
+    refusal,
+)
 from .release import CODE_SPAN_PATTERN
 from .shell import (
     COMMAND_ENDS,
@@ -189,10 +197,11 @@ _SUPPRESSION_RE = re.compile(
 #: history has ever held, and what it stops reading is 41 lines of prose -
 #: a release note, an item brief, or the `ROADMAP.md` version row that
 #: REJECTed every release cut (`PL-5MFL`, `PL-BHBZ`).
-SUPPRESSION_BEARING_SUFFIXES = (".py", ".pyi", ".toml", ".cfg", ".ini")
+SUPPRESSION_BEARING_SUFFIXES = (*SOURCE_SUFFIXES, ".toml", ".cfg", ".ini")
 
 
-#: The suffixes whose non-code spans are stripped below - narrower than
+#: The suffixes whose non-code spans are stripped below, which are Python
+#: source's own, `python.SOURCE_SUFFIXES` (`PL-H716`). They are narrower than
 #: `SUPPRESSION_BEARING_SUFFIXES`, and deliberately so. In a `.cfg` or `.ini`
 #: a quote is an ordinary character in a value and an inline `#` is part of
 #: that value under `configparser`'s defaults, so the same strip would delete
@@ -201,7 +210,7 @@ SUPPRESSION_BEARING_SUFFIXES = (".py", ".pyi", ".toml", ".cfg", ".ini")
 #: `.toml`, `.cfg` or `.ini` line has matched it in either direction - so a
 #: rule for them would be the widest one the hazard could motivate rather than
 #: the narrowest that removes it.
-QUOTING_SUFFIXES = (".py", ".pyi")
+QUOTING_SUFFIXES = SOURCE_SUFFIXES
 
 #: The spans of a Python line that carry text rather than code. Alternation is
 #: ordered and the scan runs left to right, so a `#` inside a string is taken
