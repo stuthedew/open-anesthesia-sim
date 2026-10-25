@@ -3316,11 +3316,14 @@ and Eger and Saidman's p. 1023 was read for this paragraph on 2026-10-25. The
 full citation of Eger and Saidman is in § "Known limitations".
 
 Baker and Farmery's 2011 review publishes the results as well as the
-operation. Its Table 2 (p. 572) gives tissue:blood coefficients for the
-vessel-rich, muscle and fat groups, in a column it attributes to Eger and
-Shafer. The session that filed `PL-H536` read that table on 2026-09-03, from a
-copy the project owner supplied, and recorded these figures. In each cell the
-first figure is this document's derived row and the second is Baker's:
+operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
+for the vessel-rich, muscle and fat groups. The set that matches is the one in
+brackets, which the table's footnote d attributes to Eger and Shafer.
+Desflurane has only that set. The table was read in full text from the private
+reference corpus on 2026-10-25 (`PL-VPF8`). Every figure matched the ones the
+session that filed `PL-H536` had recorded from an earlier copy on 2026-09-03.
+In each cell the first figure is this document's derived row and the second is
+Baker's bracketed figure:
 
 | | vessel-rich | muscle | fat |
 | --- | ---: | ---: | ---: |
@@ -3338,13 +3341,13 @@ first figure is this document's derived row and the second is Baker's:
 <!-- derived: 2.3095 from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
 <!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
 
-Baker prints the same three blood:gas values that the agent files store: 0.65
-for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the nine
-tissue:blood figures are the derived value rounded to Baker's printed
+Baker's bracketed blood:gas values are the three that the agent files store:
+0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the
+nine tissue:blood figures are the derived value rounded to Baker's printed
 precision. Desflurane's fat coefficient is the exception. 30.9524 rounds to
 31.0, and Baker prints 30.9. The difference is 0.05, or 0.17%, in the last
 printed digit. That is too small to come from a different operation, and Baker
-does not say how the column was rounded.
+does not say how the figures were rounded.
 <!-- not-restated: 0.05 -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
@@ -3355,19 +3358,26 @@ does not say how the column was rounded.
 that the stored tissue:gas values, divided by the stored blood:gas values,
 give the coefficients as the literature publishes them. That confirms the
 operation and its arithmetic. It is not a second measurement. Baker attributes
-the column to Eger and Shafer. The stored tissue:gas values are Yasuda, Targ
-and Eger's measurements as Gas Man rounded them, and the stored blood:gas
-values are De Wolf et al.'s. Eger is an author in both lines, so the two are
-not independent in origin. A reader should take the table as evidence that the
-division is the right operation, and not as evidence that the coefficients
-are right. § "Known limitations" says how far other laboratories' coefficients
-differ from these.
+the bracketed set to Eger and Shafer's 2005 tutorial, which ran its
+simulations in Gas Man, according to its abstract. The stored tissue:gas
+values are Yasuda, Targ and Eger's measurements as Gas Man rounded them, and
+the stored blood:gas values are De Wolf et al.'s. Eger is an author in both
+lines, so the two are not independent in origin. If Eger and Shafer took their
+coefficients from Gas Man, the match is one parameter set divided twice. Their
+paper is not held here, so where its coefficients came from has not been read.
+A reader should take the table as evidence that the division is the right
+operation, and not as evidence that the coefficients are right. § "Known
+limitations" says how far other laboratories' coefficients differ from these.
 
-**Baker's figures have not been re-read since 2026-09-03.** Neither this
-repository nor the private reference corpus holds the review's text. PubMed
-holds no full text for it (PMID 23737195, checked 2026-10-25), and on the same
-day the publisher's site refused an unattended client. `docs/references/README.md`
-has the full citation.
+**Baker's other set is not a check on the division.** Its plain figures are
+"Data from Fiserova-Bergerova and Diaz (26)", a 1986 paper. They come with
+their own blood:gas values, 0.6 for sevoflurane and 1.4 for isoflurane, and
+they differ from the derived rows by far more than rounding. § "Known
+limitations" gives the differences. The citations of Baker and Farmery 2011,
+Eger and Shafer 2005 and Fiserova-Bergerova and Diaz 1986 were checked in
+PubMed on 2026-10-25 (PMIDs 23737195, 16115976 and 3721592). Only Baker and
+Farmery was read in full text. `docs/references/README.md` has its full
+citation.
 
 ### v0.2.0: isoflurane and desflurane
 
@@ -11240,18 +11250,34 @@ and Eger, whose measurements the agent files store, compare their own values
 with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
 sevoflurane, isoflurane and halothane were similar to theirs for brain and for
 fat, except halothane's fat coefficient, which was 65% greater. They were 115%
-to 150% greater for kidney and 10% to 30% less for muscle. Lowe's isoflurane
+to 150% greater for kidney and 10% to 30% less for muscle. Those values are
+Fiserova-Bergerova, Tichy and Di Carlo 1984, Yasuda's ref 8. Lowe's isoflurane
 values were 50% to 75% greater. The authors could not explain the
 differences.
 
-So for sevoflurane and isoflurane, the two groups that this model
-parameterises from brain and fat rest on values that a second laboratory
-reproduced. Yasuda, Targ and Eger make no such comparison for desflurane. The
-150% is the kidney, which this
+A third published set agrees less well (`PL-VPF8`). Baker and Farmery's 2011
+review prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986
+beside the set that matches this model (Table 2, p. 572). On the tissue:blood
+scale, that set puts sevoflurane's fat coefficient at 71.7, 37% above this
+model's 52.3. It puts isoflurane's muscle coefficient at 1.71, 51% below this
+model's 3.46. Its vessel-rich figures are 28% above this model's for both
+agents. Part of each gap is the set's own blood:gas values, 0.6 for
+sevoflurane and 1.4 for isoflurane. The set may not be a measurement.
+According to its PubMed abstract, the 1986 paper measured coefficients only
+for water-soluble solvents such as acetone and the alcohols. It then fitted
+equations that predict any substance's tissue coefficients from its blood:gas
+and fat:gas values. Baker does not say which of the anesthetic figures were
+measured and which predicted. The set has no desflurane values.
+
+So for sevoflurane and isoflurane, the brain and fat values that this model's
+vessel-rich and fat groups use were reproduced by one other laboratory, in
+1984. The 1986 set does not reproduce them, and it may be a prediction rather
+than a measurement. Yasuda, Targ and Eger make no such comparison for
+desflurane. The 150% is the kidney, which this
 model does not parameterise on its own (§ "Parameter provenance" records that
 the vessel-rich group is Yasuda's brain value). Muscle is where the model's
-coefficient is least certain, on two counts. The other laboratory's muscle
-values were lower, and Yasuda's own muscle measurements spread the most. Their
+coefficient is least certain, on two counts. Both other sets put muscle
+lower, and Yasuda's own muscle measurements spread the most. Their
 standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03), 45% for
 isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35), against 17% to
 19% for fat. Eger and Saidman's Table 1 makes the same point from the
@@ -11269,10 +11295,12 @@ and washout curve this simulator draws.
 This is a limit on what the model can claim rather than a defect to fix. No
 coefficient here is wrong against its cited measurement. A learner should read
 the muscle and fat traces as one well-measured parameter set, and not as the
-only set the literature supports. Yasuda, Targ and Eger's p. 373 and Eger and
-Saidman's Table 1 were read in full text from the private reference corpus on
-2026-10-25, and Hendrickx and De Wolf's p. 165 on the same day. The Yasuda,
-Targ and Eger citation is in § "Parameter provenance".
+only set the literature supports. Yasuda, Targ and Eger's p. 373, Eger and
+Saidman's Table 1 and Baker and Farmery's Table 2 were read in full text from
+the private reference corpus on 2026-10-25, and Hendrickx and De Wolf's p. 165
+on the same day. Fiserova-Bergerova and Diaz 1986 was read as its PubMed
+abstract only (PMID 3721592), and the 1984 paper not at all. The Yasuda, Targ
+and Eger citation is in § "Parameter provenance".
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
