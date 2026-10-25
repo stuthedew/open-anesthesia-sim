@@ -3,12 +3,14 @@ id: PL-NZC0
 title: A Claude Code Projects trial needs project instructions carrying the approach gate and the queue as the only source of work: the coordinator starts threads by default, and thread limits asked for in conversation are preferences rather than caps
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: projects-trial
-touches: docs/items
+touches: docs/items, .claude/skills/docket/modes/coordinator.md, .claude/skills/docket/SKILL.md, docs/maintainer.md
 deferred-from: v0.7.0 - the Projects trial's verdict, which waits on the owner; no v0.7.0 feature reads it
 added: 2026-09-19
+closed: 2026-10-25
+pr: 1799
 not-delegable: the work is a trial run in a Claude Code Project and the owner's verdict on it; no command can prove a coordinator saved the owner attention. What proves it is this brief recording the two numbers under Done when, measured at the trial's end.
 ---
 
@@ -155,3 +157,18 @@ owner's because it is a new workflow mechanism. Stuart's request to complete
 the workflow items lifts the generator pause for it.
 
 **Decided, 2026-10-25.** Yes: the coordinator protocol becomes a committed docket skill mode, and the project instructions point at it (project owner, 2026-10-25, ratified, over keeping it in Project settings). Stuart's words: "Agree with Recs except for 3", where 3 was `PL-5S71`'s run.
+
+**Built, 2026-10-25.** `.claude/skills/docket/modes/coordinator.md` holds the
+coordination rules, taken from the project instructions as they stood at
+2026-10-25 15:48Z and from the coordinator's standing practice. The docket
+skill's dispatch table names it, and `docs/maintainer.md` § "Rules for sessions
+live in the repository" now says Project settings keep only the Goal, the
+Order, the compaction rule and a pointer. The model line reads the `[models]`
+table rather than naming a model id. Two differences from the old text were
+made on purpose. The settings' "assign and request review from stuthedew"
+became "assign, and do not request review", because GitHub refuses a review
+request from a pull request's own author and the connector opens each pull
+request as the owner. The settings' model line named an id, which the
+one-home rule now refuses outside the table. The coordinator applies the
+replacement project instructions, written to the project's shared folder as
+`project-instructions-proposed.md`.

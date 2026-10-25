@@ -3,12 +3,14 @@ id: PL-2CPD
 title: During product focus the session-start digest still leads with the bare next pick, a workflow generator item, so a product session that follows its Top line is handed apparatus work; only the docket skill's text routes it to the By lane product entry
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: infra
 feature: workflow-stress-2026-09
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-NZC0, PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
+payoff: a product session that follows the digest's first pick line is handed product work, not an apparatus item
+verify: grep -q 'def test_the_digest_leads_with_the_product_pick_under_product_focus' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** During product focus the session-start digest still leads with the bare next pick, a workflow generator item, so a product session that follows its Top line is handed apparatus work; only the docket skill's text routes it to the By lane product entry
@@ -25,6 +27,8 @@ Reproduced 2026-09-25 against 46954a81: `bin/docket digest` prints `Top: PL-HMZZ
 - **Held by the pause.** As captured, it is a new mechanism. The digest would have to learn a focus that today lives only in `CLAUDE.md` prose, through a new setting or a new meaning for `Top:`. It is not a defect in what exists, because the line is true for what it claims: the top of the unlaned ranking.
 - **Shaped by `PL-NZC0`'s verdict.** If the trial fails its bar, `PL-2866`'s fallback makes the digest's top line the pick, and this item closes into it. If the trial passes, this is the standing work.
 - `blocked-by` names `PL-NZC0` and the six items carrying `generator: live` that day. Before unblocking, check that `bin/docket generators` marks no head "still generating"; a head can be recorded spent while open, or a new one arrive, without touching this list.
+
+**Checked 2026-10-25:** unblocked. `PL-NZC0` closed with the trial passing both bars, so this is the standing work and `PL-2866`'s fallback does not follow. Every other blocker has closed. `bin/docket generators` marks three heads still generating, `PL-58D7`, `PL-HJKN` and `PL-N7MM`, and all three are product-lane heads, so the workflow-lane pause does not hold this item. The brief's reproduction is 30 days old, so the session that takes it re-runs `bin/docket digest` first.
 
 **Done when.** Under a declared product focus, the digest's first pick line names the product lane's top item, with a test in `subprojects/docket/tests/test_cli.py`. Or this item is dropped into `PL-NZC0`'s fallback, naming it.
 

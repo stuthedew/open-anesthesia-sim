@@ -4,27 +4,19 @@
 Which model and effort each kind of work uses is one fact, and its home is the
 `[models]` table, read through `docket.model_choice` (`PL-0XDM`). The project
 owner asked for it on 2026-10-25, after an open item still recommended Fable
-5.1 when nothing was meant to use Fable any more: "Sounds like single source of
-truth issue. Make things that say which model and effort to use use a single
-source of truth as well". A model id typed into a tool, a skill or a document
-is a second copy of that fact, and it goes stale the way that item did.
+5.1, a model nothing here used any more: "Sounds like single source of truth
+issue. Make things that say which model and effort to use use a single source
+of truth as well". A model id typed into a tool, a skill or a document is a
+second copy of that fact, and it goes stale the way that item did.
 
-**Two rules, each exact.** A model id is a string that `MODEL_ID_RE`
-matches: `claude-`, a family name, and version numbers.
-
-- *No model id outside its home.* A tracked file may name a model id only if
-  it is `docket.toml`, a record or a test, or is registered in `COPIES` with
-  the reason it may. A record states what happened, such as the session
-  ledger, a worker run or a closed item, so it is history rather than a
-  choice. A test's expected value is meant to be independent of the code it
-  checks. An open item may name an id too, since its brief records the
-  decisions taken on it.
-- *No excluded model outside the records.* An id the table's `excluded` list
-  names is refused everywhere except `docket.toml`, the records and the
-  tests. That includes an open item and a registered copy, because both are
-  read as instructions. The owner's rule is "Nothing should be using fable
-  anymore unless I specifically say" (project owner, 2026-10-25), and a rule in
-  the table is the owner naming it.
+**One rule, exact.** A model id is a string that `MODEL_ID_RE` matches:
+`claude-`, a family name, and version numbers. A tracked file may name one only
+if it is `docket.toml`, a record or a test, or is registered in `COPIES` with
+the reason it may. A record states what happened, such as the session ledger,
+a worker run or a closed item, so it is history rather than a choice. An open
+item is read as instructions, so it is held to the rule: that is where the
+stale model was. A test's expected value is meant to be independent of the
+code it checks.
 
 **What it cannot decide stays a judgment.** It reads ids, not names. "Fable
 5.1" or "use Sonnet" in prose passes, and whether such a sentence still tells a
@@ -56,15 +48,15 @@ from docket.vcs import tracked_files  # noqa: E402
 #: because it would be a copy this check refuses.
 MODEL_ID_RE = re.compile(r"\bclaude-[a-z]+(?:-\d+)+\b")
 
-#: Where the item store lives. Its open items are checked, and its closed ones
-#: are records.
+#: Where the item store lives. A closed item is a record. An open one is read
+#: as instructions, which is how a stale model reached a session, so it is
+#: held to the rule like any other file.
 ITEMS = "docs/items/"
 
 #: The files and trees that record what happened, and so may name any model.
 MODEL_RECORDS = ("docs/session-ledger.tsv", "docs/worker-runs/")
 
-#: Each other file that may name a model id that the table does not exclude,
-#: and why it may.
+#: Each other file that may name a model id, and why it may.
 COPIES = {
     "docs/maintainer.md": (
         "the owner's reference, which records the models overview's prices and the "
@@ -76,11 +68,10 @@ COPIES = {
         "an example of the context-window suffix that a configured model id carries"
     ),
     "tools/skill_start_eval.py": "a usage example in the docstring",
+    "docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md": (
+        "the model-comparison trial's run commands, which name the models it compares"
+    ),
 }
-
-
-def _is_item(path: str) -> bool:
-    return path.startswith(ITEMS) and path.endswith(".md") and not path.endswith("README.md")
 
 
 def problems(root: Path, files: list[str] | None = None) -> list[str]:
@@ -92,7 +83,6 @@ def problems(root: Path, files: list[str] | None = None) -> list[str]:
     tests = config.collected_test_paths
     if table is None:
         return [f"{CONFIG_NAME} has no [models] table, so no model id has a home"]
-    excluded = set(table.excluded)
     found: list[str] = []
     for path in sorted(tracked_files(root) if files is None else files):
         if path == CONFIG_NAME or is_under(path, tests):
@@ -105,21 +95,12 @@ def problems(root: Path, files: list[str] | None = None) -> list[str]:
         except UnicodeDecodeError:
             continue
         ids = MODEL_ID_RE.findall(text)
-        if not ids:
+        if not ids or is_under(path, MODEL_RECORDS):
             continue
-        if _is_item(path):
-            record = not parse_item(text, Path(path).name).is_open
-        else:
-            record = is_under(path, MODEL_RECORDS)
-        if record:
+        if path.startswith(ITEMS) and not parse_item(text, Path(path).name).is_open:
             continue
         for model in sorted(set(ids)):
-            if model in excluded:
-                found.append(
-                    f"{path}: names {model}, which [models] excludes; only the table "
-                    "and the records may name it"
-                )
-            elif not _is_item(path) and path not in COPIES:
+            if path not in COPIES:
                 found.append(
                     f"{path}: names {model}; read it from {CONFIG_NAME}'s [models] table, "
                     "or register the file in COPIES with the reason it may"

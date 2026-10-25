@@ -3,11 +3,15 @@ id: PL-TPS7
 title: Cut the prose in docs/ARCHITECTURE.md and docs/maintainer.md
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.6
 touches: docs/ARCHITECTURE.md, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-05
+closed: 2026-10-25
+pr: 1796
+verify: ! grep -qF 'It is a map for contributors, not a scientific specification — for the' docs/ARCHITECTURE.md && ! grep -qF 'session cannot act on still costs every session the context to read it.' docs/maintainer.md && ! grep -qF 'exist so agent sessions can be productive, rather than the simulator they' docs/apparatus.md
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. A line-count ceiling would be met by deleting a statement to reach a number, and `doc_check.py check` passes today
 ---
 
@@ -56,3 +60,15 @@ them. So the work is to rewrite each awkward sentence as
 `.claude/rules/plain-writing.md` says, and to cut only text that repeats
 itself. Where this brief says to cut prose, read it that way. The rewritten
 text may come out longer.
+
+**Done 2026-10-25.** All three files were rewritten end to end as
+`.claude/rules/plain-writing.md` says, in chunks of about 200 lines. One agent
+rewrote each chunk, and a second agent compared it with the original and
+repaired any fact that was lost, changed or blurred. A script then compared the
+code spans, item ids, pull request numbers, numbers, URLs and section
+references of each chunk against the original, and every difference was
+checked by hand. The rewrite removed 2,033 lines and added 2,240, because the
+main defect was compressed wording and the plain version needs the small words
+back. Six passages of `docs/maintainer.md` that `PL-0XDM` and `PL-44R1`
+rewrote after this work began keep `main`'s new text unchanged, since that text
+was written under the same rule.

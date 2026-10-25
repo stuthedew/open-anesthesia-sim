@@ -123,9 +123,8 @@ def test_a_model_with_no_price_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_project_table_prices_the_model_it_chooses() -> None:
-    """The real table prices its review model, which is not Fable (project owner, 2026-10-25)."""
+    """The real table prices the model it chooses for a review."""
     model = REVIEW.review_model()
-    assert model.choice.model != "claude-fable-5-1"
     assert model.input_usd_per_mtok > 0 and model.output_usd_per_mtok > 0
 
 

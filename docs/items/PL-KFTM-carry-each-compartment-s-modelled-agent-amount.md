@@ -37,3 +37,5 @@ the snapshot's stale-state guarantees.
 
 **Done when.** The snapshot carries the per-compartment record, the oracle
 test passes, and `docs/ARCHITECTURE.md` describes the record.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `SimulationSnapshot` carries the six tensions and `stored_agent_l`, and no single compartment's amount. One thing to weigh before building: `core/` already sums the same six amounts in `AgentUptakeSystem.total_stored_agent_l`, which the accounting check reads. Summing the records again in `app/`, as Required scope entry 2 asks, writes a second sum of one fact, so the test should at least hold the two equal.

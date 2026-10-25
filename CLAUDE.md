@@ -273,6 +273,20 @@ before finishing.
   check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
   it in full before finishing or committing; use `pytest -q` while iterating,
   and `--cov` only when coverage is the question.
+- **Wait on a long run only through the harness** (project owner,
+  2026-10-25). Start any command you will wait on with the Bash tool's
+  `run_in_background`, never with `nohup`, a trailing `&` or `setsid`. A
+  detached process does not wake the session when it ends, and a container
+  restart kills it without a trace. Before ending a turn to wait, schedule a
+  `send_later` check-in as a fallback. After a gap, run `uptime` before
+  trusting that a run is still going. A hook cannot carry this rule, because
+  the repository's hooks do not run in project threads (`PL-D1FD`).
+- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
+  leaving the coordinator to notice an idle thread). Before a thread goes idle
+  on a wait expected to last more than an hour, it runs `bin/docket next` in
+  its lane and takes any ready item inside the scope it was given. If there
+  is none, it tells the coordinator, so that the place can be filled
+  (`PL-D1FD`).
 
 Which model a session runs is the owner's lever rather than a session's, so it
 lives in `docs/maintainer.md` along with the settings that support it.
