@@ -973,6 +973,34 @@ def claims_bound(read: Holdings, branch: str, remotes: frozenset[str]) -> tuple[
     )
 
 
+def claimed_here(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
+    """The items that a `Claim:` on this checkout's own commits names.
+
+    The commits are the ones on `HEAD` and not on the default branch, walked as
+    `holdings` walks a branch. A claim counts in any state, as in
+    `claims_bound`: a session that claimed an item and has since closed or
+    yielded it still knows the item exists.
+
+    `bin/docket new` reads this so that a capture is never matched to an item
+    the filing session is working (`PL-PNSV`). It reads `HEAD` alone and no
+    other ref, because capture is kept cheap. A git too old to read a trailer,
+    or one that does not answer, gives an empty set, and the capture is then
+    searched as it was before this existed.
+    """
+    run = _Silences(runner or _run_git)
+    if _below_floor(root, run):
+        return frozenset()
+    history = _history(["HEAD"], default_base(root, runner=run), root, run)
+    if history is None:
+        return frozenset()
+    return frozenset(
+        parsed[0]
+        for commit in history
+        for value in commit.claims
+        if (parsed := _parse_claim(value)) is not None
+    )
+
+
 def claims_nothing(
     read: Holdings,
     branch: str,

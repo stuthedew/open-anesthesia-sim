@@ -101,9 +101,15 @@ available guess, and it is the only one, since asking the session for a path is
 friction capture may not have. `PL-0KQP` is the miss it closes — nine of
 thirteen known duplicate pairs share a declared path and the key finds them,
 and all four misses are that one item, filed from a branch whose commits
-touched the exact path the four items it duplicated declare. Where git answers
-nothing the search keys on what the capture names, an id in its title or its
-`--feature`; with neither it finds nothing, and the command behaves as it did
+touched the exact path the four items it duplicated declare. An item that a
+`Claim:` on the branch's own commits names is left out of the search. The
+session filing the capture is working that item, so it knows the item exists,
+and a recurrence is a filing by a session that did not. The working tree is
+also changing that item's files, which is why the search kept finding it: on
+2026-10-25, 68 of the store's 178 recorded entries had been matched onto the
+item the filing branch was working, and sessions had withdrawn 24 of them by
+hand (`PL-PNSV`). Where git answers nothing the search keys on what the
+capture names, an id in its title or its `--feature`; with neither it finds nothing, and the command behaves as it did
 before any of this existed; it does not fall back to that refuted title-only
 key.
 

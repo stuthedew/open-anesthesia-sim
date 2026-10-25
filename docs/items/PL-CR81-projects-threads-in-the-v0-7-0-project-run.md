@@ -11,7 +11,7 @@ blocked-by: PL-8Z38
 added: 2026-10-25
 payoff: every thread in the project runs with the repository's guard hooks and session-start digest again, or the project knows it does not and why
 verify: grep -qE '^\*\*Probe refused in a thread\.' docs/items/PL-CR81-*.md
-recurrences: 2026-10-25 PL-876V
+recurrences: 2026-10-25 PL-876V withdrawn 2026-10-25 PL-PNSV
 ---
 
 **Problem.** Projects threads in the v0.7.0 project run without this repository's hooks: no session-start digest and no guard hook fired in one thread on 2026-10-25, although it started inside the checkout with one repository

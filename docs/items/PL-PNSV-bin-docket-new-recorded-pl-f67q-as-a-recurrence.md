@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: recurrence-signal
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 deferred-from: v0.7.0 - captured after the freeze, at the owner's request in the workflow lane, and built at once; the generator tier ranks it, not the gate
 added: 2026-10-25
 payoff: A capture made while working an item is no longer counted as that item's defect firing again, so the promotion candidates bin/docket next names rest only on filings by sessions that did not know the item existed
@@ -26,3 +26,5 @@ reenters: PL-0HLS
 **Done when.** `bin/docket new` neither prints nor records as a possible earlier filing any item that a `Claim:` trailer on the branch's own commits names. A test in `subprojects/docket/tests/test_cli.py` files a capture on a branch claiming the item it would otherwise match, and shows nothing recorded. PL-CR81's entry for PL-876V is withdrawn, and `subprojects/docket/README.md` § "Capture costs nothing" states the exclusion and why.
 
 **Generator check.** The fact misread is whether an open item already describes the mechanism a new capture names, which is the `misread:` of the head PL-0HLS. PL-0HLS closed on 2026-10-12 after fixing four gaps in the search's key, among them PL-SV0D, where the working-tree key matched on the store directory that every branch changes. This is the same key reading another path the branch changes for its own reasons, the files of the item it is working, so it is recorded as a re-entry of PL-0HLS. It is the first since PL-0HLS closed, so no generator is owed yet.
+
+**Regression test, run 2026-10-25.** With `src/docket/cli.py` and `src/docket/claims.py` as they stood before the fix, `uv run pytest tests/test_cli.py -k records_nothing_on_an_item_this_branch_claims`, run from `subprojects/docket/`, fails with `AssertionError: the item in hand is not offered as an earlier filing`. The unclaimed control in the same test is matched and recorded first, so the failure comes from the claim alone. The test passes with the fix.
