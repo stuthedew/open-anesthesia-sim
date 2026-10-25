@@ -1,38 +1,40 @@
 """Exception hierarchy for errors raised by the simulation core.
 
-Every failure the core detects — a rejected argument, a violated numeric
-guard, a step whose numerics broke down — is raised as a subclass of
-`AnesthesiaSimulationError`, so a caller can catch simulation failure as
-one thing and distinguish it from a programming error (`TypeError`,
-`AttributeError`, ...) that happens to pass through the same call.
+The core raises every failure it detects as a subclass of
+`AnesthesiaSimulationError`. Such a failure may be a rejected argument, a
+violated numeric guard, or a step whose numerical method broke down. A caller
+can therefore catch every simulation failure as one type, and can tell it
+apart from a programming error (`TypeError`, `AttributeError`, ...) that
+happens to pass through the same call.
 
 `AnesthesiaSimulationError` deliberately does **not** inherit from
-`ValueError`. Doing so would be the smaller change but would defeat the
-purpose twice over: a bare `ValueError` raised by a core guard still would
-not be an `AnesthesiaSimulationError`, so the distinction the caller needs
-would remain unavailable; and Pydantic treats a `ValueError` raised inside
-a validator as a validation failure, so a project exception that is also a
-`ValueError` could be silently absorbed into a `ValidationError` by
-`core/parameters.py` rather than reaching the caller as itself.
+`ValueError`. Inheriting from it would be the smaller change, but it would
+defeat the purpose in two ways. First, a bare `ValueError` raised by a core
+guard would still not be an `AnesthesiaSimulationError`, so the caller still
+could not make the distinction it needs. Second, Pydantic treats a
+`ValueError` raised inside a validator as a validation failure. A project
+exception that was also a `ValueError` could then be silently absorbed into a
+`ValidationError` by `core/parameters.py`, instead of reaching the caller as
+itself.
 
-The two branches below mean different things to a caller, and the
-difference is what the interface acts on:
+The two branches below mean different things to a caller, and the interface
+acts on the difference:
 
-- `SimulationConfigurationError` — a value was rejected before it could be
-  simulated. Nothing has been miscalculated; the requested setting simply
-  did not take effect, and the run (if any) is still trustworthy.
-- `SimulationExecutionError` — the run must stop rather than continue,
-  and what the model holds either way is the last completed step. Usually
-  a step that had already begun could not be completed;
-  `AgentUptakeSystem.advance()` rolls that step back before raising, so
-  the values are a real solution of the model rather than an artifact of
-  how far into the step the operators got, and stopping is required all
-  the same because the same step would fail again.
-- `SimulationDomainLimitError`, a subclass of the above, is the one case
-  where nothing went wrong: the run reached the end of what the model is
-  claimed to represent, and the step that would have crossed the boundary
-  was refused before it began. The run stops for a different reason and
-  the interface must say so differently.
+- `SimulationConfigurationError` means that a value was rejected before it
+  could be simulated. Nothing has been miscalculated. The requested setting
+  did not take effect, and the run, if there is one, can still be trusted.
+- `SimulationExecutionError` means that the run must stop rather than
+  continue. Whatever the cause, the model holds the state of the last
+  completed step. Usually the cause is a step that had already begun and
+  could not be completed. `AgentUptakeSystem.advance()` rolls that step back
+  before raising. The stored values are then a real solution of the model,
+  not an artifact of how far into the step the operators got. The run must
+  still stop, because the same step would fail again.
+- `SimulationDomainLimitError` is a subclass of `SimulationExecutionError`.
+  It is the one case in which nothing went wrong. The run reached the end of
+  what the model claims to represent, and the step that would have crossed
+  that boundary was refused before it began. The run stops for a different
+  reason, and the interface must say so in different words.
 """
 
 
@@ -43,64 +45,66 @@ class AnesthesiaSimulationError(Exception):
 class SimulationConfigurationError(AnesthesiaSimulationError):
     """Raised when a value handed to the core is invalid or inconsistent.
 
-    Raised by the shared guards in `core/validation.py`, by compartment
-    constructors and setters, and by the parameter-file loaders. Detected
-    before any state is changed, so the caller can correct the value and
-    carry on.
+    The shared guards in `core/validation.py`, the compartment constructors
+    and setters, and the parameter-file loaders raise it. The error is
+    detected before any state changes, so the caller can correct the value
+    and carry on.
     """
 
 
 class SimulationExecutionError(AnesthesiaSimulationError):
     """Raised when a running simulation cannot continue safely.
 
-    A step that had begun could not be completed, or a caller asked a
-    halted run to continue. Where a step is what failed,
-    `AgentUptakeSystem.advance()` rolls it back before raising, so the
-    state left behind is the last completed step rather than a partly
-    applied one; the run still has to stop.
+    Either a step that had begun could not be completed, or a caller asked a
+    halted run to continue. When a step failed, `AgentUptakeSystem.advance()`
+    rolls it back before raising. The state left behind is then the last
+    completed step rather than a partly applied one. The run still has to
+    stop.
     """
 
 
 class SimulationDomainLimitError(SimulationExecutionError):
     """Raised when a run reaches a declared limit of the supported domain.
 
-    Today that is the supported run length: `core/supported_ranges.py`
-    refuses the step that would take elapsed simulated time past
+    Today that limit is the supported run length. `core/supported_ranges.py`
+    refuses the step that would take the elapsed simulated time past
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
 
-    **Nothing failed, and the distinction is the point of the class.** The
-    inputs were valid, the step was never attempted, and every value the
-    model holds is a completed step's at a simulated time inside the
-    supported span. What ended is the claim that a further step would stand
-    for a patient - the same act as `require_supported_cardiac_output`
-    refusing 1000 L/min, arriving mid-run because a run length is reached
-    rather than set.
+    **Nothing failed, and that distinction is the reason the class exists.**
+    The inputs were valid and the step was never attempted. Every value the
+    model holds comes from a completed step, at a simulated time inside the
+    supported span. What has ended is the claim that a further step would
+    represent a patient. Refusing that step is the same kind of act as
+    `require_supported_cardiac_output` refusing 1000 L/min. The difference is
+    that this refusal arrives in the middle of a run, because a run length is
+    something the run reaches, not a value that is set.
 
-    It is a `SimulationExecutionError` all the same, because the run must
-    stop: there is no value to correct and the next step would be refused
-    identically, so `SimulationConfigurationError`'s "the requested setting
-    did not take effect and the run carries on" does not describe it.
-    Sitting under the execution branch also makes the default safe - a
-    caller that knows only the base classes stops the run, which is right,
-    and only a caller that catches this type specifically needs to know
-    that stopping here is not a fault. One that presents it as a fault has
-    a defect: `docs/MODEL.md` § "Supported run length" requires the two be
-    told apart on screen.
+    It is still a `SimulationExecutionError`, because the run must stop.
+    There is no value to correct, and the next step would be refused in the
+    same way. So the description of `SimulationConfigurationError`, "the
+    requested setting did not take effect and the run carries on", does not
+    fit it. Placing it under the execution branch also makes the default
+    safe. A caller that knows only the base classes stops the run, which is
+    correct. Only a caller that catches this type specifically needs to know
+    that stopping here is not a fault. A caller that presents it as a fault
+    has a defect, because `docs/MODEL.md` § "Supported run length" requires
+    the screen to tell the two apart.
     """
 
 
 class SimulationNumericalError(SimulationExecutionError):
     """Raised when a numerical invariant is violated.
 
-    Distinct from `SimulationConfigurationError` in that the inputs were
-    valid: it is the step itself that produced a state the model cannot
-    represent — a negative compartment amount, a fraction outside zero
-    through one.
+    It differs from `SimulationConfigurationError` in that the inputs were
+    valid. The step itself produced a state that the model cannot represent,
+    such as a negative compartment amount or a fraction outside zero through
+    one.
 
-    No step size can reach this through the shipped propagator, whatever its
-    size: the system matrix is Metzler, so the exponential of it is entrywise
-    nonnegative. It is cover for a model extension whose matrix is not a pure
-    transfer system, and `docs/MODEL.md` § "Supported simulation step" says so.
+    No step, whatever its size, can produce this error through the shipped
+    propagator. The system matrix is a Metzler matrix, so its exponential is
+    nonnegative in every entry. The error exists to cover a model extension
+    whose matrix is not a pure transfer system, as `docs/MODEL.md`
+    § "Supported simulation step" says.
     """
 
 

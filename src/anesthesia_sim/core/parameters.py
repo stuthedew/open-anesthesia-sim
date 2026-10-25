@@ -1,23 +1,25 @@
 """Load and validate agent, reference-patient and breathing-system parameter files.
 
-Public types (`AgentParameters`, `ReferenceAdultParameters`,
+The public types (`AgentParameters`, `ReferenceAdultParameters`,
 `BreathingCircuitParameters`) are plain, frozen dataclasses with no dependency
 on the validation library, so the rest of the core never imports Pydantic. The
 `_AgentPayload`/`_ReferenceAdultPayload`/`_BreathingCircuitPayload` Pydantic
 models exist only to validate `data/agents/*.json`, `data/patients/*.json` and
-`data/machines/*.json` on load and are never exposed outside this module;
-`parse_agent_parameters()`, `parse_reference_adult_parameters()` and
-`parse_breathing_circuit_parameters()` are the seam between the two.
+`data/machines/*.json` when those files are loaded. They are never exposed
+outside this module. `parse_agent_parameters()`,
+`parse_reference_adult_parameters()` and
+`parse_breathing_circuit_parameters()` form the boundary between the two: each
+converts a validated payload into its public type.
 
 Every payload model is strict: it inherits `_StrictPayload`, which forbids
 keys the schema does not declare, so a misspelled or obsolete key in a data
 file fails the load instead of being silently discarded.
 
-Raises inside the Pydantic validators below are deliberately bare
-`ValueError`s: Pydantic collects those into a `ValidationError`, and a
-project exception raised there would not be collected the same way. Every
-raise this module makes to a *caller* is a `SimulationConfigurationError`,
-so `core/` presents one exception hierarchy at its boundary.
+The Pydantic validators below deliberately raise bare `ValueError`s. Pydantic
+collects those into a `ValidationError`, and it would not collect a project
+exception raised there in the same way. Every exception this module raises to
+a *caller* is a `SimulationConfigurationError`, so `core/` presents one
+exception hierarchy at its boundary.
 """
 
 from __future__ import annotations
@@ -48,30 +50,34 @@ from anesthesia_sim.core.validation import require_positive_finite
 
 @dataclass(frozen=True, slots=True)
 class SupportedSchemaVersions:
-    """The `schema_version` values one family of data file may declare.
+    """The `schema_version` values that one family of data files may declare.
 
-    Each family - agents, patients, machines - has its own window, so a schema
-    change to one family moves only that family's files. Until `PL-HNWX` one
-    module-level integer, checked by exact equality, stood for all three, and a
-    machine-only bump would have refused the three agent files and the patient
-    file until each was edited for a change it had nothing to do with.
+    Each family (agents, patients and machines) has its own window of accepted
+    versions, so a schema change to one family affects only that family's
+    files. Until `PL-HNWX`, one module-level integer, checked by exact
+    equality, served all three families. A version bump for machines alone
+    would then have refused the three agent files and the patient file until
+    each was edited for a change that had nothing to do with it.
 
-    The window is inclusive: `minimum` is the oldest version still read and
-    `current` is the version a file written today declares. Every family's
-    window is one version wide today, which is exact equality under another
-    name, and a window widens only on purpose.
+    The window is inclusive. `minimum` is the oldest version still accepted,
+    and `current` is the version that a file written today declares. Every
+    family's window is one version wide today, which amounts to exact
+    equality. A window widens only on purpose.
 
     **Widening is a claim about meaning, so it has to be stated.** A file
-    older than `current` is validated against today's payload model and is
-    not translated into it; nothing here upcasts one version into another. It
-    therefore reads correctly only while every key it can hold means what it
-    meant at its own version, and a changed meaning under an unchanged key
-    loads clean and is then misread. So a window whose `minimum` is below
-    `current` says in `widened_because` why the older files still read
-    correctly, and one that gives no reason is refused at import. That checks
-    that a reason is written, not that it is right, which stays the judgment
-    of whoever reviews the bump; what it guarantees is that raising `current`
-    alone fails loudly rather than admitting every older file by default.
+    older than `current` is validated against today's payload model. It is
+    not translated into that model, because nothing here converts one version
+    into another. Such a file is therefore interpreted correctly only while
+    every key it can hold still means what it meant at the file's own
+    version. If a key keeps its name but changes its meaning, the older file
+    loads without error and is then misinterpreted. So a window whose
+    `minimum` is below `current` must say in `widened_because` why the older
+    files are still interpreted correctly. A window that gives no reason is
+    refused at import. The check confirms that a reason is written, not that
+    it is right. Whether the reason is right remains the judgment of whoever
+    reviews the version bump. What the check guarantees is that raising
+    `current` alone fails loudly, rather than admitting every older file by
+    default.
 
     Raises:
         SimulationConfigurationError: the minimum is above the current
@@ -146,7 +152,7 @@ def require_one_mac_deliverable(
     `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC,
     so an agent's MAC must be at or below its vaporizer's maximum.
     `AgentParameters` and the agent file's schema both call this function, so
-    the record and the file are held to one rule (`PL-YHWH`). The message
+    the record and the file must meet the same rule (`PL-YHWH`). The message
     names the MAC as the agent's own value. It does not use
     `require_within_vaporizer_maximum`'s wording, which is written for a dial
     setting that someone asked for (found at review).
@@ -181,31 +187,31 @@ def _collected_by_pydantic() -> Iterator[None]:
         raise ValueError(str(error)) from error
 
 
-#: The closed vocabulary a `sources` entry's `tier` is drawn from, in the
-#: order `docs/MODEL.md` § "Source hierarchy" defines them: a study that
-#: measured the quantity, a review that collected such measurements without
-#: making one, and another simulator's parameter set.
+#: The closed set of values that a `sources` entry's `tier` may take. They are
+#: listed in the order that `docs/MODEL.md` § "Source hierarchy" defines them:
+#: a study that measured the quantity, a review that collected such
+#: measurements without making one, and another simulator's parameter set.
 #:
-#: An entry carries three provenance fields, one question each. `tier`
-#: classifies the document. `adopted` says whether this file takes it as an
-#: authority. `authority_for` names which stored values it is the authority
-#: for, as dotted key paths into the same file: it is the recorded link
-#: between a stored value and its source, which prose alone used to carry
-#: (`PL-9LXK`). The tier and the adoption are independent, and separating
-#: them is the whole point of recording either: every agent file cites primary
-#: measurements it has *not* adopted, so a check reading tier alone would
-#: report each of them as primary-sourced while its stored coefficients came
-#: from Gas Man - which is the second of that section's three rules, stated as
-#: the failure it exists to prevent.
+#: An entry carries three provenance fields, and each answers one question.
+#: `tier` classifies the document. `adopted` says whether this file takes the
+#: document as an authority. `authority_for` names the stored values that the
+#: document is the authority for, as dotted key paths into the same file. That
+#: list is the recorded link between a stored value and its source, a link
+#: that only prose used to carry (`PL-9LXK`). The tier and the adoption are
+#: independent, and keeping them separate is the reason for recording either.
+#: Every agent file cites primary measurements that it has *not* adopted. A
+#: check that looked at the tier alone would report each of those files as
+#: primary-sourced, while its stored coefficients came from Gas Man. That
+#: failure is what the second of that section's three rules exists to prevent.
 #:
 #: Where a file adopts no primary source at all, it says so in a top-level
-#: `provenance_gap` instead of leaving the silence to be read as an oversight.
-#: That is the third of the same three rules, and `check_source_tiers` in
-#: `tools/doc_check.py` is what requires it.
+#: `provenance_gap`, instead of leaving the silence to be mistaken for an
+#: oversight. That is the third of the same three rules, and
+#: `check_source_tiers` in `tools/doc_check.py` enforces it.
 #:
-#: `tools/doc_check.py` holds a second copy of this vocabulary, because it must
-#: run in a checkout with no virtualenv and cannot import this package;
-#: `tests/unit/test_parameters.py` fails if the two ever disagree.
+#: `tools/doc_check.py` keeps a second copy of these values, because it must
+#: run in a checkout with no virtualenv and so cannot import this package.
+#: `tests/unit/test_parameters.py` fails if the two copies ever disagree.
 SOURCE_TIERS: tuple[str, ...] = ("primary", "secondary", "reference-implementation")
 
 
@@ -214,20 +220,21 @@ class SourceReference:
     """Provenance for one scientific or physiologic parameter set.
 
     Three fields answer three questions. `tier` classifies the *document*
-    against `docs/MODEL.md` § "Source hierarchy". `adopted` says whether this
-    file takes it as an authority. `authority_for` names which stored values
-    it is the authority for, as dotted key paths into the file that cites it -
-    `"tissue_groups.fat.volume_l"` - and is the recorded link between a stored
-    value and its source, which prose alone used to carry (`PL-9LXK`).
+    against `docs/MODEL.md` § "Source hierarchy". `adopted` says whether the
+    citing file takes the document as an authority. `authority_for` names the
+    stored values that the document is the authority for, as dotted key paths
+    into the file that cites it, such as `"tissue_groups.fat.volume_l"`. That
+    list is the recorded link between a stored value and its source, a link
+    that only prose used to carry (`PL-9LXK`).
 
-    `tier` and `adopted` are independent and neither implies the other. A
-    primary measurement cited beside a stored number it did not produce is
-    `("primary", False)`, and reading it as provenance for that number is the
-    specific error the source hierarchy exists to prevent. `adopted` and
-    `authority_for` are held to agree instead - the loader refuses an adopted
-    entry that names no stored value, and an entry naming one that is not
-    adopted - and every path must name a numeric value the same file stores,
-    which no other entry names.
+    `tier` and `adopted` are independent, and neither implies the other. A
+    primary measurement cited beside a stored number that it did not produce
+    is `("primary", False)`. Treating it as the provenance for that number is
+    the specific error that the source hierarchy exists to prevent. `adopted`
+    and `authority_for`, by contrast, are required to agree. The loader
+    refuses an adopted entry that names no stored value, and it refuses an
+    entry that names a stored value but is not adopted. Every path must name a
+    numeric value that the same file stores and that no other entry names.
     """
 
     citation: str
@@ -243,26 +250,26 @@ class MacAwakeReference:
     """Population MAC-awake for one agent, as a fraction of that agent's MAC.
 
     MAC-awake is the concentration at which half of a population responds to
-    verbal command — a different endpoint from MAC, which is immobility to
-    surgical incision — so this is a second, lower reference and never a
-    restatement of the first.
+    verbal command. That is a different endpoint from MAC's, which is
+    immobility in response to surgical incision. So this is a second, lower
+    reference and never a restatement of the first.
 
     **Stored as a fraction, never as a percent of one atmosphere.** The
-    published sources express MAC-awake as a ratio to MAC (Katoh 1993
-    explicitly "as a ratio to age-adjusted MAC"), and the fraction is the only
+    published sources express MAC-awake as a ratio to MAC. Katoh 1993 does so
+    explicitly, "as a ratio to age-adjusted MAC". The fraction is the only
     form that stays correct if `mac_percent` changes or is ever made
-    age-aware. Recording the absolute percent instead would silently bind the
-    value to whichever MAC its own population was measured against:
-    desflurane's 2.60% is anchored to a MAC of 7.25% and this project stores
-    6.0%, so the absolute figure divided by the stored MAC reads 0.433 against
-    a published 0.36. `docs/MODEL.md` § "MAC-awake as a chart reference"
-    carries that.
+    age-aware. Recording the absolute percent instead would silently tie the
+    value to whichever MAC its own population was measured against.
+    Desflurane's 2.60% is anchored to a MAC of 7.25%, and this project stores
+    6.0%. The absolute figure divided by the stored MAC would therefore give
+    0.433, against a published 0.36. `docs/MODEL.md` § "MAC-awake as a chart
+    reference" records that comparison.
 
-    `mac_reference_basis` is prose rather than a number because the two
-    denominators are not the same kind of thing — Katoh's is each patient's
-    own age-adjusted MAC, Chortkoff's a single population figure — and a
-    fraction with no stated denominator is the "correct number with the wrong
-    context" failure `CLAUDE.md` names.
+    `mac_reference_basis` is prose rather than a number, because the two
+    denominators are not the same kind of thing. Katoh's denominator is each
+    patient's own age-adjusted MAC, and Chortkoff's is a single population
+    figure. A fraction with no stated denominator is the "correct number with
+    the wrong context" failure that `CLAUDE.md` names.
     """
 
     fraction_of_mac: MacMultiple
@@ -274,10 +281,10 @@ class MacAwakeReference:
 class AgentParameters:
     """Validated partition parameters for one volatile anesthetic.
 
-    Built by `parse_agent_parameters()` from `_AgentPayload`, which validates
-    the file and is discarded. The two carry overlapping field names on
-    purpose. `_StrictPayload` says why that is a boundary rather than
-    duplication.
+    `parse_agent_parameters()` builds this record from `_AgentPayload`, which
+    validates the file and is then discarded. The two types share some field
+    names on purpose. `_StrictPayload` explains why that is a boundary rather
+    than duplication.
 
     Raises:
         TypeError: `max_delivered_concentration_percent` was not built as a
@@ -316,7 +323,7 @@ class AgentParameters:
     mac_percent: MacPercent
     mac_awake: MacAwakeReference
     sources: tuple[SourceReference, ...]
-    # Why no primary source is adopted, where none is; `None` where one is.
+    # The reason no primary source is adopted, if none is, or `None` if one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
     provenance_gap: str | None
 
@@ -332,7 +339,7 @@ class AgentParameters:
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:
-        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+        """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
         return (
             self.vessel_rich_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
@@ -340,13 +347,13 @@ class AgentParameters:
 
     @property
     def muscle_tissue_blood_partition_coefficient(self) -> float:
-        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+        """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
         return self.muscle_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
 
     @property
     def fat_tissue_blood_partition_coefficient(self) -> float:
-        """Derive tissue:blood from tissue:gas / blood:gas; not stored redundantly."""
+        """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
         return self.fat_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
 
@@ -355,9 +362,9 @@ class AgentParameters:
 class ReferenceAdultParameters:
     """Validated physiologic defaults for the v0.1.0 reference adult.
 
-    Built by `parse_reference_adult_parameters()` from
-    `_ReferenceAdultPayload`, which validates the file and is discarded; see
-    `_StrictPayload` for why the pair exists.
+    `parse_reference_adult_parameters()` builds this record from
+    `_ReferenceAdultPayload`, which validates the file and is then discarded.
+    See `_StrictPayload` for why the pair of types exists.
     """
 
     schema_version: int
@@ -375,13 +382,13 @@ class ReferenceAdultParameters:
     fat_volume_l: float
     fat_perfusion_fraction: float
     sources: tuple[SourceReference, ...]
-    # Why no primary source is adopted, where none is; `None` where one is.
+    # The reason no primary source is adopted, if none is, or `None` if one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
     provenance_gap: str | None
 
     @property
     def total_perfusion_fraction(self) -> float:
-        """Sum tissue-group perfusion fractions; must equal 1 within tolerance."""
+        """Sum the tissue-group perfusion fractions, which must equal 1 within tolerance."""
 
         return (
             self.vessel_rich_perfusion_fraction
@@ -394,46 +401,49 @@ class ReferenceAdultParameters:
 class BreathingCircuitParameters:
     """Validated breathing-system parameters: what is in front of the patient.
 
-    A third kind beside `AgentParameters` and `ReferenceAdultParameters`,
-    because circuit volume and fresh gas flow belong to neither. They describe
-    the breathing system in front of the patient - its volume, and the flow a
-    run opens at, which a profile may leave to the run (`PL-QW19`) - and a file
-    that filed them under either would say something false about where they
-    came from - the reference adult's eleven values are one product's default
-    *patient*, and these are its default *breathing system*.
+    This is a third kind of parameter set beside `AgentParameters` and
+    `ReferenceAdultParameters`, because circuit volume and fresh gas flow
+    belong to neither. They describe the breathing system in front of the
+    patient: its volume, and the flow a run opens at, which a profile may leave
+    to the run to choose (`PL-QW19`). A file that stored them with either of
+    the other two would say something false about where they came from. The
+    reference adult's eleven values are one product's default *patient*, and
+    these are that product's default *breathing system*.
 
-    Both were hardcoded as `BreathingCircuit` field defaults until `PL-4YY1`.
-    That put them outside `tools/doc_check.py`'s `check_provenance`, which
-    walks data files in both directions and therefore cannot see a constant
-    that never entered one - so the only tool built to catch a missing
-    citation was structurally blind to the two constants setting the machine's
-    own wash-in time constant.
+    Both values were hardcoded as `BreathingCircuit` field defaults until
+    `PL-4YY1`. That put them beyond what `check_provenance` in
+    `tools/doc_check.py` could check. That check walks data files in both
+    directions, so it cannot see a constant that never entered one. The only
+    tool built to catch a missing citation therefore could not see the two
+    constants that set the machine's own wash-in time constant.
     """
 
     schema_version: int
     id: str
     display_name: str
-    # V_C whole: apparatus plus patient circuit, never a manufacturer's
-    # apparatus volume as published, which leaves the patient circuit out.
-    # `_BreathingCircuitPayload` says what a profile author adds to one, and
-    # why nothing in the tree could tell the two apart (`PL-TBMX`).
+    # The whole circuit volume V_C: apparatus plus patient circuit. It is never
+    # a manufacturer's published apparatus volume, which leaves out the patient
+    # circuit. `_BreathingCircuitPayload` says what a profile author adds to
+    # such a figure, and why nothing in the tree could tell the two apart
+    # (`PL-TBMX`).
     circuit_volume_l: float
-    # The flow this profile opens a run at, or `None` where it states none.
-    # `None` reads as *this profile states no startup flow* and never as *this
-    # machine has none*: no surveyed machine publishes one, so a run built
-    # from a silent profile opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
-    # in `core/circuit.py` instead, whose docstring gives its authority
-    # (`PL-QW19`).
+    # The flow this profile opens a run at, or `None` if it states none.
+    # `None` means *this profile states no startup flow*, never *this machine
+    # has none*. No surveyed machine publishes a startup flow. A run built
+    # from a profile that states none opens instead at
+    # `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`, whose
+    # docstring gives its authority (`PL-QW19`).
     default_fresh_gas_flow_l_min: float | None
-    # What this machine's flowmeters can actually set, or `None` where the
-    # profile declares no range. `None` is an absence of claim and not a
-    # machine known to be unlimited: with it the model's envelope in
-    # `core/supported_ranges.py` is the only bound, which is what the shipped
-    # profile records and why (`PL-8PS6`).
+    # The range this machine's flowmeters can actually set, or `None` if the
+    # profile declares no range. `None` means the profile makes no claim, not
+    # that the machine is known to be unlimited. With `None`, the model's
+    # envelope in `core/supported_ranges.py` is the only bound. The shipped
+    # profile records exactly that, with its reason (`PL-8PS6`).
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None
     sources: tuple[SourceReference, ...]
-    # Why no primary source is adopted, where none is; `None` where one is.
-    # Neither value here adopts one at all, which the file's own entry says.
+    # The reason no primary source is adopted, if none is, or `None` if one is.
+    # No source of any tier is adopted for either value here, as the file's
+    # own entry says.
     provenance_gap: str | None
 
 
@@ -457,8 +467,8 @@ def _validate_bool(value: object) -> bool:
     """Reject anything but a JSON boolean, including 0, 1 and \"true\".
 
     Pydantic would coerce all three. A source entry that declares
-    `"adopted": "false"` and loads as *true* would invert a provenance claim
-    silently, which is the class of failure `_StrictPayload` exists for.
+    `"adopted": "false"` and loads as *true* would silently invert a
+    provenance claim. `_StrictPayload` exists to prevent that class of failure.
     """
 
     if not isinstance(value, bool):
@@ -493,8 +503,8 @@ def _validate_schema_version(value: object, supported: SupportedSchemaVersions) 
     return value
 
 
-# One per family, each naming its window in the body so that the window is
-# read when a file is validated rather than captured when this module loads.
+# One function per family. Each names its window in its body, so the window is
+# looked up when a file is validated rather than captured when this module loads.
 def _validate_agent_schema_version(value: object) -> int:
     return _validate_schema_version(value, AGENT_SCHEMA_VERSIONS)
 
@@ -520,12 +530,13 @@ def _validate_positive_finite(value: object) -> float:
 
 
 def _validate_nonnegative_finite(value: object) -> float:
-    """Like `_validate_positive_finite`, admitting zero.
+    """Like `_validate_positive_finite`, but also accept zero.
 
-    Separate rather than a flag, because zero is meaningful for exactly one
-    kind of value here and meaningless for the rest: a machine whose common
-    gas outlet has a true off position declares a deliverable floor of 0.0,
-    where a volume or a partition coefficient of zero is a broken file.
+    This is a separate function rather than a flag, because zero is
+    meaningful for exactly one kind of value here and meaningless for the
+    rest. A machine whose common gas outlet has a true off position declares
+    a minimum deliverable flow of 0.0. A volume or a partition coefficient of
+    zero, by contrast, means the file is broken.
     """
 
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -568,41 +579,45 @@ PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
-"""**Which vocabulary a new field in this file takes** (`PL-KL2Q`).
+"""**Which set of types a new field in this file uses** (`PL-KL2Q`).
 
-Two overlapping vocabularies meet here and they do different halves of one job.
-The `Positive*` aliases above are Pydantic `BeforeValidator`s: they check a
-range at parse time and are plain `float` to `mypy`. `core/concentration.py`'s
-`Fraction`, `Percent` and `MacMultiple` separate the dimensionless conventions
-at every call site. The first two are also checked when built, against the
-whole of their range - 0 through 1, 0 through 100, zero included - and
-`MacMultiple` is a `NewType` that checks nothing at runtime (`PL-4R3W`). The
-rule is the layer, not the quantity:
+Two overlapping sets of types meet here, and they do different halves of one
+job. The `Positive*` aliases above are Pydantic `BeforeValidator`s. They check
+a range at parse time, and `mypy` sees them as plain `float`.
+`core/concentration.py`'s `Fraction`, `Percent` and `MacMultiple` keep the
+dimensionless conventions apart at every call site. `Fraction` and `Percent`
+are also checked when built, against the whole of their range (0 through 1,
+0 through 100, zero included). `MacMultiple` is a `NewType` that checks nothing
+at runtime (`PL-4R3W`). Which type a field takes depends on its layer, not on
+the quantity:
 
 - **A `_...Payload` field takes a `Positive*` alias.** The payload's job is to
-  refuse a bad file, and it is discarded immediately afterwards, so a type that
-  marks a boundary buys nothing on a value about to be thrown away.
+  refuse a bad file, and the payload is discarded immediately afterwards. A
+  type that marks a boundary therefore gains nothing on a value that is about
+  to be thrown away.
 - **A public dataclass field takes the `concentration` type.** The public
-  types are what the rest of the application holds, so they are where a
-  conversion can be missed and where a marked boundary is worth having.
-  `parse_agent_parameters` and `parse_reference_adult_parameters` are the one
-  crossing, and they wrap explicitly — `Percent(model.mac_percent)`,
+  types are what the rest of the application holds. They are therefore where
+  a conversion can be missed, and where a marked boundary is worth having.
+  `parse_agent_parameters` and `parse_reference_adult_parameters` are the only
+  places where a value crosses from one layer to the other. They wrap each
+  value explicitly, as in `Percent(model.mac_percent)` and
   `MacMultiple(model.mac_awake.fraction_of_mac)`. A `Percent` built there
-  cannot refuse what `PositivePercent` admitted, whose range lies inside its
-  own; the payload's is the stricter check, and the one that names the file.
+  cannot refuse a value that `PositivePercent` accepted, because the range of
+  `PositivePercent` lies inside the range of `Percent`. The payload's check is
+  the stricter one, and it is the one whose error names the file.
 - **A dimensionless quantity that is neither a concentration nor a ratio to MAC
-  takes `PositiveFraction` and stays a bare `float` on the public side** —
-  `perfusion_fraction` is the instance. Giving each such quantity a type of its
-  own would be a type per parameter rather than a type per boundary that a
-  wrong value can cross, and `core/concentration.py` states that a missing
-  conversion at such a boundary is what its types are there to catch.
+  takes `PositiveFraction` and stays a bare `float` on the public side.**
+  `perfusion_fraction` is the case in this file. Giving each such quantity its
+  own type would mean a type per parameter, rather than a type per boundary
+  that a wrong value can cross. `core/concentration.py` states that its types
+  exist to catch a missing conversion at such a boundary.
 
-**Merging the two was priced and refused.**
+**Merging the two was weighed and rejected.**
 `Annotated[Fraction, BeforeValidator(_validate_positive_fraction)]` would
-validate and separate in one annotation, and would delete the boundary
-`_StrictPayload`'s docstring says is deliberate: the payload would then be
-carrying the public type, so nothing would distinguish a value that has been
-through `parse_*` from one that has not.
+validate and keep conventions apart in one annotation. It would also remove the
+boundary that `_StrictPayload`'s docstring calls deliberate. The payload would
+then carry the public type, so nothing would distinguish a value that has
+passed through `parse_*` from one that has not.
 """
 
 
@@ -610,76 +625,79 @@ class _StrictPayload(BaseModel):
     """Base for every parameter-file schema: the load-time half of the pair.
 
     **Why a `_...Payload` exists beside a public dataclass.** Each payload
-    model below is paired with a public, frozen, Pydantic-independent type -
-    `_AgentPayload` with `AgentParameters`, `_ReferenceAdultPayload` with
-    `ReferenceAdultParameters` - and the pairing is deliberate rather than
-    duplication that nobody got round to removing (PL-007). Two things follow
-    from it, and neither survives merging the two:
+    model below is paired with a public, frozen type that does not depend on
+    Pydantic: `_AgentPayload` with `AgentParameters`, and
+    `_ReferenceAdultPayload` with `ReferenceAdultParameters`. The pairing is
+    deliberate. It is not duplication that nobody got round to removing
+    (PL-007). Two benefits follow from it, and merging the pair would lose
+    both:
 
-    - *The rest of `core/` never imports Pydantic.* A payload is a load-time
-      artifact: it validates one JSON document and is then discarded by
-      `parse_agent_parameters()` / `parse_reference_adult_parameters()`, which
-      are the seam. What every other module holds is the plain dataclass. Put
-      the validators on the public type instead and the validation library
-      becomes a dependency of the compartments, the controller and the tests.
-    - *The two shapes are not the same shape.* A payload mirrors the file;
-      the public type has the form the model wants. `_AgentPayload` nests
-      three coefficients under `tissue_gas_partition_coefficients` where
+    - *The rest of `core/` never imports Pydantic.* A payload exists only
+      while a file loads. It validates one JSON document and is then
+      discarded by `parse_agent_parameters()` /
+      `parse_reference_adult_parameters()`, which convert it into the public
+      type. Every other module holds the plain dataclass. If the validators
+      were put on the public type instead, the validation library would
+      become a dependency of the compartments, the controller and the tests.
+    - *The two types do not have the same shape.* A payload mirrors the file,
+      and the public type has the form the model wants. `_AgentPayload` nests
+      three coefficients under `tissue_gas_partition_coefficients`, where
       `AgentParameters` carries them flat and adds the tissue:blood ratios it
-      derives from them; `_ReferenceAdultPayload` nests six values under
-      `tissue_groups` where `ReferenceAdultParameters` carries them flat. The
-      seam functions are that mapping. Fields that look copied are the subset
-      where the file's shape and the model's happen to agree.
+      derives from them. `_ReferenceAdultPayload` nests six values under
+      `tissue_groups`, where `ReferenceAdultParameters` carries them flat. The
+      `parse_*` functions perform that mapping. Fields that look copied are
+      the ones where the file's shape and the model's happen to agree.
 
-    So a change that collapses a pair is not a simplification: it couples
+    So a change that merges a pair is not a simplification. It couples
     `core/` to the validation library, and it lets the JSON layout dictate
     the type the simulation reads.
 
-    **Strictness.** Pydantic's default is to discard an unknown key
-    silently, which in this repository means a data file can document one
-    model while the app runs another: a renamed field, a units-suffixed
-    variant, a typo'd duplicate, or a field from a schema version this
-    loader does not implement all load clean and take no effect. A
+    **Strictness.** By default, Pydantic silently discards an unknown key. In
+    this repository that would let a data file document one model while the
+    app runs another. A renamed field, a variant with a units suffix, a
+    misspelled duplicate, or a field from a schema version this loader does
+    not implement would all load without error and have no effect. A
     misspelling that *removes* a required key is already caught as a missing
-    field; this closes the other half.
+    field. Forbidding unknown keys catches the other half.
 
-    Every payload model below inherits from this rather than setting
-    `model_config` itself, so a seventh model added later is strict by
-    default instead of by being remembered. Two tests in
-    `tests/unit/test_parameters.py` walk this class's subclasses: one
-    enforces that strictness, the other that each subclass carries a
+    Every payload model below inherits from this class rather than setting
+    `model_config` itself. A model added later is therefore strict by
+    default, rather than only if someone remembers. Two tests in
+    `tests/unit/test_parameters.py` walk this class's subclasses. One
+    enforces that strictness. The other enforces that each subclass has a
     docstring, so a payload added later arrives explained rather than
     looking like duplication to whoever meets it next.
 
-    The first bullet above is checked rather than asserted:
-    `tools/import_boundary_check.py`, in `make check`, fails the build on a
-    `pydantic` import anywhere under `src/anesthesia_sim/` other than this
-    module, and names this module as the sole exception. Before it, the
-    claim was prose that nothing re-measured - so a leak into a compartment
-    would have left this paragraph reading as verified while being false,
-    which is worse than the coupling it describes (PL-Y0RZ).
+    The first bullet above is enforced by a check, not only stated.
+    `tools/import_boundary_check.py`, which runs in `make check`, fails the
+    build on a `pydantic` import anywhere under `src/anesthesia_sim/` other
+    than this module, and names this module as the only exception. Before
+    that check existed, the claim was prose that nothing tested again. A
+    Pydantic import in a compartment module would have left this paragraph
+    looking verified while it was false, which is worse than the coupling it
+    describes (PL-Y0RZ).
     """
 
     model_config = ConfigDict(extra="forbid")
 
 
 class _SourcePayload(_StrictPayload):
-    """Load-time schema for one `sources` entry, discarded into `SourceReference`.
+    """Load-time schema for one `sources` entry, converted to `SourceReference`.
 
-    `tier`, `adopted` and `authority_for` are required rather than defaulted.
-    A default would let a source added later be silently classified by
-    whoever wrote this line rather than by whoever read the paper, and the
-    value it would have to pick - "primary", "not adopted", or the authority
-    for nothing - is wrong in one direction or the other. All three are cheap
-    to state and none is guessable, so the schema asks.
+    `tier`, `adopted` and `authority_for` are required rather than given
+    defaults. A default would let a source added later be classified silently
+    by whoever wrote this line, rather than by whoever read the paper. Any
+    value a default could pick ("primary", "not adopted", or the authority for
+    nothing) would be wrong in one direction or the other. All three are cheap
+    to state and none can be guessed, so the schema requires them.
 
-    `adopted` stays beside `authority_for` although the list alone implies it,
-    and the two are held to agree: an adopted entry names at least one stored
-    value, and an entry naming one is adopted. An edit that changes one
-    without the other then fails the load rather than leaving them to
-    disagree. Whether each path names a value the file stores, and whether
-    another entry names it too, needs the whole file, so
-    `_validate_authority_for_paths` decides those.
+    `adopted` is kept beside `authority_for` even though the list alone
+    implies it, and the two must agree. An adopted entry must name at least
+    one stored value, and an entry that names one must be adopted. An edit
+    that changes one field without the other then fails the load, rather than
+    leaving the two in disagreement. Checking whether each path names a value
+    the file stores, and whether another entry names it too, needs the whole
+    file, so `_validate_authority_for_paths` makes those checks.
     """
 
     citation: NonEmptyString
@@ -691,7 +709,7 @@ class _SourcePayload(_StrictPayload):
 
     @model_validator(mode="after")
     def _adopted_must_agree_with_authority_for(self) -> _SourcePayload:
-        """Reject an adopted entry that names no stored value, and the reverse."""
+        """Reject an adopted entry that names no stored value, and an unadopted one that does."""
 
         if self.adopted and not self.authority_for:
             raise ValueError(
@@ -731,7 +749,8 @@ _NON_PARAMETER_KEYS = frozenset(
 )
 
 #: How much of a citation an error message quotes to name a `sources` entry.
-#: Forty characters, cut back to a word, is unique within every shipped file.
+#: Forty characters, cut back to the end of a word, give a name that is unique
+#: within every shipped file.
 _SHORT_CITATION_LENGTH = 40
 
 
@@ -747,11 +766,12 @@ def _short_citation(citation: str) -> str:
 def _stored_value_paths(payload: BaseModel, prefix: str = "") -> Iterator[str]:
     """Yield every numeric value a validated data file stores, as a dotted key path.
 
-    Paths are spelled as `authority_for` spells them, `tissue_groups.fat.volume_l`
-    for one, and read off the validated payload rather than the raw JSON. The
-    two have the same keys, because `extra="forbid"` admits none the schema does
-    not declare; an optional value the file omits or writes as `null` stores
-    nothing and is not yielded.
+    Paths are written the way `authority_for` writes them, for example
+    `tissue_groups.fat.volume_l`. They are taken from the validated payload
+    rather than the raw JSON. The two have the same keys, because
+    `extra="forbid"` admits no key that the schema does not declare. An
+    optional value that the file omits or writes as `null` stores nothing and
+    is not yielded.
     """
 
     for name in type(payload).model_fields:
@@ -772,12 +792,12 @@ def _validate_authority_for_paths(
 ) -> None:
     """Reject an `authority_for` path that names no stored value, or one named twice.
 
-    The file-level half of the rules `_SourcePayload` states, shared by every
-    family of data file. A path must name a numeric value this same file
-    stores, never one of `_NON_PARAMETER_KEYS` and never a group such as
-    `mac_awake`, because a group's values can each have a different
-    authority. No value may be named by two entries, because a stored number
-    has one source it was taken from.
+    This function checks the file-level half of the rules that `_SourcePayload`
+    states, and every family of data file uses it. A path must name a numeric
+    value that this same file stores. It must never name one of
+    `_NON_PARAMETER_KEYS`, or a group such as `mac_awake`, because each value
+    in a group can have a different authority. No value may be named by two
+    entries, because a stored number was taken from one source.
 
     Raises:
         ValueError: a path names nothing this file stores as a number, or two
@@ -789,8 +809,8 @@ def _validate_authority_for_paths(
     claimed_by: dict[str, str] = {}
 
     for index, source in enumerate(payload.sources):
-        # The index as well as the citation: two papers by one group can share
-        # every word a short citation keeps.
+        # Name the entry by its index as well as its citation, because two
+        # papers by one group can share every word that a short citation keeps.
         entry = f"sources[{index}] ({_short_citation(source.citation)!r})"
 
         for path in source.authority_for:
@@ -822,7 +842,7 @@ Sources = Annotated[list[_SourcePayload], BeforeValidator(_validate_sources_none
 
 
 class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
-    """The file's nesting for three coefficients `AgentParameters` holds flat."""
+    """The file's nested form of three coefficients that `AgentParameters` stores flat."""
 
     vessel_rich: PositiveFinite
     muscle: PositiveFinite
@@ -830,7 +850,10 @@ class _TissueGasPartitionCoefficientsPayload(_StrictPayload):
 
 
 class _MacAwakePayload(_StrictPayload):
-    """Load-time schema for one agent's `mac_awake`, discarded into `MacAwakeReference`."""
+    """Load-time schema for one agent's `mac_awake`, converted to `MacAwakeReference`.
+
+    The payload is discarded after the conversion.
+    """
 
     fraction_of_mac: PositiveFraction
     standard_deviation_fraction_of_mac: PositiveFraction
@@ -841,11 +864,11 @@ class _MacAwakePayload(_StrictPayload):
         """Reject a band that reaches zero or 1 MAC.
 
         Both edges are drawn, so both are values a reader acts on. A lower
-        edge at or below zero is not a concentration, and an upper edge at or
+        edge at or below zero is not a concentration. An upper edge at or
         above 1 MAC would put the awakening reference on top of the
-        anesthetizing one — which is not a rendering nuisance but a
-        contradiction of what MAC-awake is, and would erase the very decrement
-        the two references exist to show.
+        anesthetizing one. That is not just a drawing problem. It contradicts
+        what MAC-awake is, and it would hide the very decrease from MAC to
+        MAC-awake that the two references exist to show.
         """
 
         lower = self.fraction_of_mac - self.standard_deviation_fraction_of_mac
@@ -867,9 +890,10 @@ class _MacAwakePayload(_StrictPayload):
 
 
 class _AgentPayload(_StrictPayload):
-    """Load-time schema for `data/agents/*.json`, discarded into `AgentParameters`.
+    """Load-time schema for `data/agents/*.json`, converted to `AgentParameters`.
 
-    See `_StrictPayload` for why the pair exists and is not duplication.
+    The payload is discarded after the conversion. See `_StrictPayload` for
+    why the pair exists and is not duplication.
     """
 
     schema_version: AgentSchemaVersion
@@ -885,13 +909,13 @@ class _AgentPayload(_StrictPayload):
 
     @model_validator(mode="after")
     def _mac_percent_must_not_exceed_vaporizer_max(self) -> _AgentPayload:
-        """Reject an agent whose 1 MAC its own vaporizer cannot deliver.
+        """Reject an agent whose own vaporizer cannot deliver 1 MAC.
 
-        This is a `model_validator`, not a `field_validator` reading
-        `info.data`: a field validator only sees fields declared before it,
-        so reordering the two fields above would silently turn the check
-        into a no-op. The MAC start in `AgentUptakeSystem.for_agent()`
-        depends on this holding.
+        This is a `model_validator`, not a `field_validator` that reads
+        `info.data`. A field validator sees only the fields declared before
+        it, so reordering the two fields above would silently turn the check
+        into a no-op. `AgentUptakeSystem.for_agent()` opens each run at 1 MAC,
+        and that depends on this rule being met.
         """
 
         with _collected_by_pydantic():
@@ -909,14 +933,14 @@ class _AgentPayload(_StrictPayload):
 
 
 class _TissueGroupPayload(_StrictPayload):
-    """The file's nesting for one tissue group; `ReferenceAdultParameters` is flat."""
+    """The file's nested form of one tissue group, which `ReferenceAdultParameters` stores flat."""
 
     volume_l: PositiveFinite
     perfusion_fraction: PositiveFraction
 
 
 class _TissueGroupsPayload(_StrictPayload):
-    """The file's nesting for the three tissue groups, flattened by the seam."""
+    """The file's nested form of the three tissue groups, flattened when parsed."""
 
     vessel_rich: _TissueGroupPayload
     muscle: _TissueGroupPayload
@@ -924,9 +948,10 @@ class _TissueGroupsPayload(_StrictPayload):
 
 
 class _ReferenceAdultPayload(_StrictPayload):
-    """Load-time schema for `data/patients/*.json`, discarded into `ReferenceAdultParameters`.
+    """Load-time schema for `data/patients/*.json`, converted to `ReferenceAdultParameters`.
 
-    See `_StrictPayload` for why the pair exists and is not duplication.
+    The payload is discarded after the conversion. See `_StrictPayload` for
+    why the pair exists and is not duplication.
     """
 
     schema_version: PatientSchemaVersion
@@ -963,16 +988,19 @@ class _ReferenceAdultPayload(_StrictPayload):
 
 
 class _DeliverableFreshGasFlowRangePayload(_StrictPayload):
-    """Load-time schema for one machine's flow range, discarded into the type above.
+    """Load-time schema for one machine's flow range, converted to `DeliverableFreshGasFlowRange`.
 
-    Each end carries its own unit rather than inheriting one from the key, so
-    that a reader of the file sees L/min beside every number - the same reason
-    `circuit_volume_l` and `default_fresh_gas_flow_l_min` are spelled out.
+    The payload is discarded after the conversion. Each end carries its own
+    unit in its key, rather than inheriting one from the enclosing key, so
+    that a reader of the file sees L/min beside every number.
+    `circuit_volume_l` and `default_fresh_gas_flow_l_min` spell out their
+    units for the same reason.
 
-    Ordering is not checked here. `DeliverableFreshGasFlowRange` refuses an
-    inverted range in its own `__post_init__`, so the rule has one statement
-    and the seam below raises it for a data file exactly as it raises for a
-    direct construction.
+    The order of the two ends is not checked here.
+    `DeliverableFreshGasFlowRange` refuses an inverted range in its own
+    `__post_init__`. The rule is therefore written in one place.
+    `parse_breathing_circuit_parameters()` below builds that type, so it raises
+    the same error for a data file as a direct construction does.
     """
 
     minimum_l_min: NonNegativeFinite
@@ -980,64 +1008,65 @@ class _DeliverableFreshGasFlowRangePayload(_StrictPayload):
 
 
 class _BreathingCircuitPayload(_StrictPayload):
-    """Load-time schema for `data/machines/*.json`, discarded into `BreathingCircuitParameters`.
+    """Load-time schema for `data/machines/*.json`, converted to `BreathingCircuitParameters`.
 
     See `_StrictPayload` for why the pair exists and is not duplication. This
-    is the one payload whose shape and its public type's shape do agree, there
-    being nothing nested to flatten; the pair is kept anyway, because the
-    reason for it is the Pydantic boundary rather than the reshaping.
+    is the one payload whose shape matches its public type's shape, because it
+    has nothing nested to flatten. The pair is kept anyway, because it exists
+    for the Pydantic boundary, not for the reshaping.
 
-    `circuit_volume_l` is the assembled total, apparatus plus patient circuit
+    `circuit_volume_l` is the assembled total: apparatus plus patient circuit
     (`PL-TBMX`). The model has one well-mixed gas compartment in front of the
     patient, so the corrugated limbs and the Y-piece can only be inside it. A
     manufacturer's apparatus volume includes the absorber and excludes the
-    disposable patient circuit - every figure `docs/machine-survey.md`
-    § "(a1) Apparatus gas volume" found is of that kind - so an author holding
-    one adds a patient-circuit volume before storing it: 1.2 L, the Hudson RCI
-    circuit Shin et al. added to each Dräger machine's figure (BMC Anesthesiol
-    2017;17(1):10; their sums leave its 3 L reservoir bag out), unless the
-    profile assumes a circuit whose own volume is stated. Stored bare, a
-    Perseus A500's 2.1 L gives a circuit time constant of 31.5 s at 4.0 L/min
-    where its assembled 3.3 L gives 49.5 s, and nothing here can tell the two
-    apart: both are positive finite volumes, and `check_provenance` asks only
-    that a stored number has a row in `docs/MODEL.md`. That document states
-    the rule under "Breathing circuit".
+    disposable patient circuit. Every figure found by `docs/machine-survey.md`
+    § "(a1) Apparatus gas volume" is of that kind. So an author holding such a
+    figure adds a patient-circuit volume before storing it. The volume to add
+    is 1.2 L, the Hudson RCI circuit that Shin et al. added to each Dräger
+    machine's figure (BMC Anesthesiol 2017;17(1):10; their sums leave out the
+    circuit's 3 L reservoir bag). The exception is a profile that assumes a
+    circuit whose own volume is stated. Stored bare, a Perseus A500's 2.1 L gives a circuit time
+    constant of 31.5 s at 4.0 L/min, where its assembled 3.3 L gives 49.5 s.
+    Nothing here can tell the two apart. Both are positive finite volumes, and
+    `check_provenance` asks only that a stored number has a row in
+    `docs/MODEL.md`. That document states the rule under "Breathing circuit".
 
-    `default_fresh_gas_flow_l_min` is checked as positive and finite here and
-    not against `core/supported_ranges.py`, matching how the reference
-    patient's flows are handled: the range is checked once, where the value
-    is built as its `FreshGasFlow` in `AgentUptakeSystem.for_agent`, so a
-    data file naming an unsupported flow is refused there with the message
-    that names the interval, rather than by a second copy of the interval
-    here (`PL-0YYV`).
+    `default_fresh_gas_flow_l_min` is checked here only as positive and
+    finite, not against `core/supported_ranges.py`. The reference patient's
+    flows are handled the same way. The range is checked once, where
+    `AgentUptakeSystem.for_agent` builds the value as a `FreshGasFlow`. A data
+    file that names an unsupported flow is therefore refused there, with the
+    message that names the interval, rather than by a second copy of the
+    interval here (`PL-0YYV`).
 
-    It is also optional, and omitting it or writing `null` reads as *this
-    profile states no startup flow*, never as *this machine has none*
-    (`PL-QW19`). No surveyed machine publishes one (`docs/machine-survey.md`
-    § "(a2) Default fresh gas flow"), so a required field left the author of
-    a real profile three choices: invent a flow and a provenance row citing
-    nothing, copy this project's teaching default as if the manufacturer had
-    stated it, or not add the machine. A run built from a silent profile
-    opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`,
-    whose authority is the teaching-default rationale in
-    `data/machines/reference_circle_system.json`'s `provenance_gap` and not
-    any source. Optional is not lenient: `extra="forbid"` still refuses a
-    misspelled key, so `fresh_gas_flow_l_min` written for this one is an
-    error rather than a silence the run fills in. And a silent profile whose
-    declared deliverable range excludes the teaching default is refused when
-    the run is built, in `BreathingCircuit`'s own words, as a stated flow
-    outside its range would be.
+    The field is also optional. Omitting it or writing `null` means *this
+    profile states no startup flow*, never *this machine has none*
+    (`PL-QW19`). No surveyed machine publishes a startup flow
+    (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). A required
+    field therefore left the author of a real profile three choices: invent a
+    flow and a provenance row that cites nothing, copy this project's teaching
+    default as if the manufacturer had stated it, or not add the machine. A
+    run built from a profile that states no flow opens at
+    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`. The
+    authority for that value is the teaching-default rationale in
+    `data/machines/reference_circle_system.json`'s `provenance_gap`, not any
+    source. Optional does not mean lenient. `extra="forbid"` still refuses a
+    misspelled key, so `fresh_gas_flow_l_min` written in place of this field
+    is an error, not a silence that the run fills in. A profile that states no
+    flow, but whose declared deliverable range excludes the teaching default,
+    is refused when the run is built. `BreathingCircuit` refuses it in its own
+    words, just as it would refuse a stated flow outside the range.
 
     `deliverable_fresh_gas_flow_range` is optional and defaults to `None`,
-    which reads as *this profile declares no range* rather than as *this
-    machine is unlimited* - a profile written before the field existed
-    declared no range, and that is the honest reading of its silence. The
-    shipped profile writes `null` explicitly anyway, so the absence is a
-    statement its author made rather than one a schema default made for them.
-    Nothing here compares it against `core/supported_ranges.py` either: a
-    machine whose range does not overlap the model's envelope is refused by
-    `BreathingCircuit` wherever the range is written, the one place that holds
-    both claims (`PL-8PS6`, `PL-19Y0`).
+    which means *this profile declares no range*, not *this machine is
+    unlimited*. A profile written before the field existed declared no range,
+    and that is the honest interpretation of its silence. The shipped profile
+    writes `null` explicitly anyway, so the absence is a statement its author
+    made rather than one a schema default made for them. Nothing here compares
+    the range against `core/supported_ranges.py` either. `BreathingCircuit`
+    refuses a machine whose range does not overlap the model's envelope,
+    whenever the range is set. It is the one place that has both the
+    machine's range and the model's envelope (`PL-8PS6`, `PL-19Y0`).
     """
 
     schema_version: MachineSchemaVersion
@@ -1194,25 +1223,27 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
 def _load_packaged_json(package: str, filename: str) -> object:
     """Read one packaged JSON data file, raising only at this module's boundary.
 
-    The wrapping is load-bearing rather than tidy. This module's docstring
-    states that every raise it makes to a caller is a
-    `SimulationConfigurationError`, and callers are written against that:
+    The wrapping is needed for correctness, not for tidiness. This module's
+    docstring states that every exception it raises to a caller is a
+    `SimulationConfigurationError`, and callers rely on that. For example,
     `app/run_view.py`'s `_apply_setting` catches the project hierarchy and
-    reports a refused setting. Unwrapped, `resource.open()` raises `OSError` and
-    `json.load()` raises `UnicodeDecodeError` or `JSONDecodeError` - none of
-    them an `AnesthesiaSimulationError` - so a missing, unreadable or
-    truncated data file escaped as though it were a programming error and the
-    stated boundary was false for every one of them (`PL-B32L`).
+    reports a refused setting. Without the wrapping, `resource.open()` raises
+    `OSError`, and `json.load()` raises `UnicodeDecodeError` or
+    `JSONDecodeError`. None of them is an `AnesthesiaSimulationError`. So a
+    missing, unreadable or truncated data file used to escape as though it
+    were a programming error, and the stated boundary was false for each of
+    those cases (`PL-B32L`).
 
-    Three types rather than the two the audit named: the file is opened as
-    text, so a data file holding bytes that are not UTF-8 fails in the read
-    inside `json.load()` with a `UnicodeDecodeError`, which is a `ValueError`
-    and not a `JSONDecodeError`. Catching only the two named would have left
-    the third escaping and the docstring still false.
+    The function catches three types rather than the two that the audit
+    named. The file is opened as text, so a data file containing bytes that
+    are not UTF-8 fails during the read inside `json.load()` with a
+    `UnicodeDecodeError`. That is a `ValueError`, not a `JSONDecodeError`.
+    Catching only the two named types would have left the third escaping, and
+    the module docstring still false.
 
-    The cause is chained rather than discarded: which file and what was wrong
-    with it is the whole diagnostic content, and a corrupted install is
-    exactly the case where a reader needs it.
+    The cause is chained rather than discarded. Which file failed, and what
+    was wrong with it, is the whole diagnostic content, and a corrupted
+    install is exactly the case in which a reader needs it.
 
     Args:
         package: The data package to read from.
@@ -1304,10 +1335,10 @@ def load_reference_adult_parameters() -> ReferenceAdultParameters:
 def load_reference_circle_system_parameters() -> BreathingCircuitParameters:
     """Load and validate the built-in reference circle breathing system.
 
-    The breathing-system half of what `AgentUptakeSystem.for_agent()` builds, beside
-    the agent and the reference adult. Its two values were `BreathingCircuit`
-    field defaults until `PL-4YY1`, so a run took them from `core/` and no
-    provenance row could name them.
+    This is the breathing-system part of what `AgentUptakeSystem.for_agent()`
+    builds, alongside the agent and the reference adult. Its two values were
+    `BreathingCircuit` field defaults until `PL-4YY1`. Until then a run took
+    them from `core/`, and no provenance row could name them.
     """
 
     payload = _load_packaged_json("anesthesia_sim.data.machines", "reference_circle_system.json")

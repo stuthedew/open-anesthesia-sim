@@ -1,15 +1,18 @@
-"""The alveolar gas compartment: one ideal, perfectly mixed lung-gas volume
-that exchanges agent with the breathing circuit (ventilation) and with
-pulmonary blood (uptake), sitting between `circuit.py` and `patient.py`.
+"""The alveolar gas compartment, one ideal and perfectly mixed volume of lung gas.
+
+The compartment sits between `circuit.py` and `patient.py`. It exchanges agent
+with the breathing circuit through ventilation, and with pulmonary blood
+through uptake.
 
 Both of those exchanges are terms of the alveolar balance in
-`governing_equations.py`, and this class holds no method that applies either.
-It had one - `apply_blood_uptake()`, which moved a signed amount of agent in
-or out on a caller's say-so - and `PL-GS5X` removed it with the operator
-split whose fifth sub-step was its only caller. Nothing outside the governing
-equations may move agent between compartments: a mutator that can is a way to
-reach a state that solves nothing, and it evaluated its own result twice and
-accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
+`governing_equations.py`, and this class has no method that applies either.
+It once had one, `apply_blood_uptake()`, which moved a signed amount of agent
+in or out whenever a caller asked. `PL-GS5X` removed it together with the
+operator split whose fifth sub-step was its only caller. Nothing outside the
+governing equations may move agent between compartments. A method that can do
+so is a way to reach a state that does not solve those equations. That method
+also evaluated its own result twice, and it accepted a `bool` where
+`parameters.py` rejects one (`PL-LKRP`).
 """
 
 from dataclasses import dataclass
@@ -30,7 +33,7 @@ class AlveolarCompartmentState:
     """The alveolar compartment's run state: what a step can change.
 
     Gas volume and alveolar ventilation are absent for the reason given on
-    `BreathingCircuitState`: they are settings, not trajectory.
+    `BreathingCircuitState`: they are settings, not part of the trajectory.
     """
 
     agent_amount_l: float
@@ -57,43 +60,46 @@ class AlveolarCompartment:
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
-        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
-        # one `mypy` lets assign any attribute name, typed by the method's
-        # `value`, so with the guard in view a misspelt field written in `src/`
-        # would pass `--strict` and fail at run time against the slots - on
-        # the classes that define one alone. Hidden, `mypy` reads the
-        # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its lines are checked
-        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # Hidden from `mypy` on purpose. When a class defines `__setattr__`,
+        # `mypy` lets code assign any attribute name, typed by the method's
+        # `value` parameter. So with this guard visible, a misspelt field
+        # written in `src/` would pass `--strict` and fail at run time against
+        # the slots. That happens only on the classes that define
+        # `__setattr__`. With the guard hidden, `mypy` checks the dataclass's
+        # fields and their types as before. This guard is the runtime check for
+        # the callers that `mypy` does not check. Its lines are checked by
+        # their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the compartment's constructor would refuse.
 
-            Each field is stored in one place, its slot, so its check is made
-            here, for the constructor, the setters and an assignment made past
-            them alike, as `BreathingCircuit.__setattr__` explains (`PL-LBQY`,
-            `PL-19Y0`). Nothing is written when a value is refused, and the
-            constructor makes no check of its own. `restore_state` is the one
-            write of the amount made past this, and says why.
+            Each field is stored in one place, its slot. So the field's check
+            is made here, and it applies alike to the constructor, the setters
+            and a direct assignment that bypasses them, as
+            `BreathingCircuit.__setattr__` explains (`PL-LBQY`, `PL-19Y0`).
+            Nothing is written when a value is rejected, and the constructor
+            makes no check of its own. `restore_state` is the one write of the
+            amount that bypasses this method, and its docstring says why.
 
             The alveolar partial pressure is the agent amount divided by the
-            gas volume, so the two are held together, by whichever is written
-            second: an amount above the volume is refused, and so is a volume
-            too small for the amount already held. That relation is the
+            gas volume. So the two are checked together, by whichever is
+            written second. An amount above the volume is rejected, and so is a
+            volume too small for the amount already held. That relation is the
             compartment's to check rather than either quantity's
-            (`.claude/rules/core-domain.md`). Until `PL-544D` the constructor
-            and `set_partial_pressure_fraction` each made it while an
-            assignment made past both did not, so an amount past the volume - a
-            partial pressure above one atmosphere - was stored, and refused
-            only when `SimulationController.snapshot()` built the fraction two
-            layers later (`PL-7DJK`). Until `PL-19Y0` a volume too small for
-            the amount held was written the same way: 1e-6 L under 0.098 L of
-            sevoflurane began the next step at a partial pressure near 98,000
-            atmospheres and ended it with every fraction plausible and wrong
-            and the accounting passing (`PL-544D`, found at review;
+            (`.claude/rules/core-domain.md`). Until `PL-544D`, the constructor
+            and `set_partial_pressure_fraction` each checked it, but a direct
+            assignment that bypassed both did not. So an amount larger than the
+            volume, which is a partial pressure above one atmosphere, was
+            stored. It was rejected only when `SimulationController.snapshot()`
+            built the fraction two layers later (`PL-7DJK`). Until `PL-19Y0`, a
+            volume too small for the amount held was written the same way. A
+            volume of 1e-6 L, written while the compartment held 0.098 L of
+            sevoflurane, began the next step at a partial pressure near 98,000
+            atmospheres. It ended that step with every fraction plausible and
+            wrong, and with the accounting passing (`PL-544D`, found at review;
             `require_room_for_the_agent_held` has the figures). The
-            constructor writes the volume first, so it is held to the amount
-            only once there is one.
+            constructor writes the volume first, so the volume is checked
+            against the amount only once an amount exists.
 
             Raises:
                 TypeError: `name` is `alveolar_ventilation_l_min` and `value`
@@ -101,10 +107,11 @@ class AlveolarCompartment:
                     (`require_alveolar_ventilation`); or the volume or the
                     amount is not an `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the volume is not positive and
-                    finite; the amount is negative or not finite; or the
-                    amount would be more than `gas_volume_l`, what the
-                    compartment holds at a partial pressure of one atmosphere,
-                    whichever of the two is the one written.
+                    finite, the amount is negative or not finite, or the
+                    amount would be more than `gas_volume_l`, which is what
+                    the compartment holds at a partial pressure of one
+                    atmosphere. The last check applies whichever of the two is
+                    written.
             """
 
             if name == "gas_volume_l":
@@ -122,8 +129,8 @@ class AlveolarCompartment:
             elif name == "alveolar_ventilation_l_min":
                 require_alveolar_ventilation(value)
             elif name == "agent_amount_l":
-                # Every compartment holds an agent amount, so the refusal
-                # names this one (`core/validation.py`, `PL-2TZT`).
+                # Every compartment holds an agent amount, so the error message
+                # names this compartment (`core/validation.py`, `PL-2TZT`).
                 require_nonnegative_finite("alveolar agent_amount_l", value)
                 require_within_the_capacity(
                     "alveolar agent_amount_l",
@@ -140,9 +147,9 @@ class AlveolarCompartment:
         """The alveolar fraction $`F_A = M_A/V_A`$.
 
         `docs/MODEL.md` § "Gas compartments" is the definition. The alveolar
-        capacity is $`V_A`$ with no partition coefficient, this being a gas
-        phase, which is why the division is by the volume itself where the
-        blood and tissue compartments divide by a `capacity_l`.
+        capacity is $`V_A`$, with no partition coefficient, because this is a
+        gas phase. That is why this property divides by the volume itself,
+        where the blood and tissue compartments divide by a `capacity_l`.
         """
 
         return self.agent_amount_l / self.gas_volume_l
@@ -150,10 +157,10 @@ class AlveolarCompartment:
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
         """Change ventilation without changing stored alveolar agent.
 
-        The ventilation arrives checked against the supported range, which
-        its type was built through and nothing here checks again
-        (`core/supported_ranges.py`); that it was built as the type is
-        required by the write itself, in `__setattr__`.
+        The ventilation arrives already checked against the supported range,
+        because its type can only be built through that check. Nothing here
+        checks it again (`core/supported_ranges.py`). The write itself, in
+        `__setattr__`, requires that the value was built as that type.
 
         Raises:
             TypeError: `alveolar_ventilation_l_min` was not built as an
@@ -165,8 +172,9 @@ class AlveolarCompartment:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set alveolar state from a partial-pressure-equivalent fraction.
 
-        The fraction arrives checked against 0 to 1, which its type was built
-        through and nothing here checks again (`core/concentration.py`).
+        The fraction arrives already checked against 0 to 1, because its type
+        can only be built through that check. Nothing here checks the range
+        again (`core/concentration.py`).
 
         Raises:
             TypeError: `partial_pressure_fraction` was not built as a
@@ -184,18 +192,18 @@ class AlveolarCompartment:
     def restore_state(self, state: AlveolarCompartmentState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Writes the slot past `__setattr__`, so that rolling back cannot
-        itself raise; see `BreathingCircuit.restore_state()`. The amount came
-        off this compartment, and what a rollback owes the step is that state
-        back exactly: a rollback refused partway would replace the step's own
-        error and leave the compartments restored after this one holding the
-        failed step (`AgentUptakeSystem.restore_state`). The one way the guard
-        could refuse it is a volume moved under the held amount in the
-        meantime, which since `PL-19Y0` only a write past the volume's own
-        guard can make; the state restored is then the one the step began
-        from, over capacity as it already was, and the quotient the snapshot
-        builds from it is what refuses it, visibly (`PL-7DJK`; `PL-544D`,
-        found at review).
+        Writes the slot directly, bypassing `__setattr__`, so that rolling back
+        cannot itself raise (see `BreathingCircuit.restore_state()`). The
+        amount was captured from this compartment, and a rollback owes the step
+        exactly that state back. A rollback rejected partway would replace the
+        step's own error. The compartments due to be restored after this one
+        would then still hold the failed step (`AgentUptakeSystem.restore_state`).
+        The guard could reject the restore in only one case: if the volume had
+        been moved below the held amount in the meantime. Since `PL-19Y0`, only
+        a write that bypasses the volume's own guard can do that. The state
+        restored is then the one the step began from, already over capacity.
+        The fraction that the snapshot computes from it is what rejects it,
+        visibly (`PL-7DJK`; `PL-544D`, found at review).
         """
 
         object.__setattr__(self, "agent_amount_l", state.agent_amount_l)

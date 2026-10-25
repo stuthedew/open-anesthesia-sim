@@ -1,6 +1,7 @@
-"""One perfusion-limited tissue group (e.g. vessel-rich, muscle, fat):
-exchanges agent with arterial blood in proportion to its own blood flow,
-independently of every other tissue group.
+"""One perfusion-limited tissue group, such as the vessel-rich group, muscle or fat.
+
+The group exchanges agent with arterial blood in proportion to its own blood
+flow, independently of every other tissue group.
 """
 
 from dataclasses import dataclass
@@ -28,11 +29,11 @@ PERFUSION_FRACTION_UPPER_BOUND = 1.0
 class TissueGroupState:
     """One tissue group's run state: what a step can change.
 
-    Name, volume, perfusion fraction and partition coefficients are absent
-    for the reason given on `BreathingCircuitState`: they are parameters, not
-    trajectory. A tissue group stores no blood flow at all. Its flow is its
-    perfusion fraction of the patient's cardiac output, formed by
-    `blood_flow_l_min_at` wherever it is read (`PL-HQF5`).
+    The name, volume, perfusion fraction and partition coefficients are left
+    out, for the reason given on `BreathingCircuitState`: they are parameters,
+    not part of the trajectory. A tissue group stores no blood flow at all. Its
+    flow is its perfusion fraction of the patient's cardiac output, which
+    `blood_flow_l_min_at` computes wherever the flow is read (`PL-HQF5`).
     """
 
     agent_amount_l: float
@@ -50,14 +51,16 @@ class TissueGroup:
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
-        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
-        # is: a class that defines `__setattr__` is one `mypy` lets assign any
-        # attribute name, typed by the method's `value`, so with the guard in
-        # view a misspelt field written in `src/` would pass `--strict` and
-        # fail at run time against the slots. Hidden, `mypy` reads the
-        # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its lines are checked
-        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # These methods are hidden from `mypy` on purpose, as
+        # `AlveolarCompartment.__setattr__` is. For a class that defines
+        # `__setattr__`, `mypy` allows assignment to any attribute name, typed
+        # by the method's `value`. So if `mypy` could see the guard, a misspelt
+        # field written in `src/` would pass `--strict` and then fail at run
+        # time against the slots. With the methods hidden, `mypy` checks the
+        # dataclass's fields and their types as before. The guard is the
+        # run-time check for the callers that `mypy` does not check. Its lines
+        # are checked by their tests rather than by `mypy` (`PL-LBQY`, found at
+        # review).
 
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the tissue's constructor would refuse.
@@ -126,9 +129,9 @@ class TissueGroup:
 
                 return
 
-            # All three groups hold every field below, so a refusal names the group as
-            # well as the field (`core/validation.py`, `PL-2TZT`). The constructor writes
-            # the name first, so `self.name` is already set here.
+            # All three groups have every field below, so an error message names the
+            # group as well as the field (`core/validation.py`, `PL-2TZT`). The
+            # constructor writes the name first, so `self.name` is already set here.
             field = f"{self.name} {name}"
             compartment = f"{self.name} tissue"
 
@@ -199,10 +202,10 @@ class TissueGroup:
     def capacity_l(self) -> float:
         """Equivalent gas capacity at a tissue fraction of one, $`V_i\\lambda_{i:g}`$.
 
-        `docs/MODEL.md` § "Tissue compartments" is the definition. The stored
-        coefficient is tissue:gas rather than tissue:blood, so this is one
-        multiplication and the blood-referenced form is derived from it below
-        rather than the other way round.
+        `docs/MODEL.md` § "Tissue compartments" defines it. The stored
+        coefficient is tissue:gas rather than tissue:blood, so the capacity is
+        one multiplication. The tissue:blood coefficient is derived from the
+        stored one below, rather than the other way round.
         """
 
         return self.volume_l * self.tissue_gas_partition_coefficient
@@ -223,27 +226,29 @@ class TissueGroup:
     def venous_outflow_partial_pressure_fraction(self) -> float:
         """The partial-pressure fraction of the blood leaving this tissue.
 
-        Returns `partial_pressure_fraction` unchanged, and is kept as a
-        separate name rather than folded into its one caller because that
-        equality is an assumption rather than an identity: `docs/MODEL.md`
-        § "Assumptions" carries it as "tissue venous blood equilibrates with
+        It returns `partial_pressure_fraction` unchanged. It is kept as a
+        separate name, rather than folded into its one caller, because that
+        equality is an assumption rather than an identity. `docs/MODEL.md`
+        § "Assumptions" states it as "tissue venous blood equilibrates with
         its tissue group", which holds because each group is perfusion
         limited. A diffusion-limited group would need a real calculation
-        here, so the site that relies on the assumption is the site that
+        here. So the place that relies on the assumption is the place that
         should name it.
 
-        It is a *second* quantity on this class rather than an alias, which
-        is why it takes a prefix where the tissue's own fraction does not.
-        The two agree only in partial pressure: the concentrations either
-        side of the tissue-blood boundary differ by
-        `tissue_blood_partition_coefficient`. That is the whole reason this
-        model states every compartment in partial-pressure-equivalent
-        fractions, and this property is where the choice pays for itself -
-        written in concentrations, the same physiology would need the
-        coefficient applied here.
+        It is a *second* quantity on this class rather than an alias. That is
+        why its name has a prefix and the tissue's own fraction does not. The
+        two agree only in partial pressure. The concentrations on either side
+        of the tissue-blood boundary differ by a factor of
+        `tissue_blood_partition_coefficient`. That difference is the whole
+        reason this model states every compartment in
+        partial-pressure-equivalent fractions, and this property is where
+        that choice pays for itself. Written in concentrations, the same
+        physiology would need the coefficient applied here.
 
-        `PatientCompartments.tissue_return_partial_pressure_fraction` is the
-        one caller, which flow-weights this across the three groups.
+        The one caller is
+        `PatientCompartments.tissue_return_partial_pressure_fraction`, which
+        weights this value by each group's share of cardiac output and sums it
+        across the three groups.
         """
 
         return self.partial_pressure_fraction
@@ -252,10 +257,11 @@ class TissueGroup:
         """Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in L/min.
 
         The flow is the group's perfusion fraction of the cardiac output
-        (`docs/MODEL.md` § "Tissue groups"), and this is the only place the
-        product is formed. The group stores no flow of its own, so no write
-        can leave its flow out of step with the output (`PL-HQF5`). Its
-        callers pass the output of the patient the group belongs to.
+        (`docs/MODEL.md` § "Tissue groups"), and this is the only place where
+        the product is computed. The group stores no flow of its own, so no
+        write can leave its flow out of step with the cardiac output
+        (`PL-HQF5`). Its callers pass the cardiac output of the patient to
+        which the group belongs.
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
@@ -269,20 +275,21 @@ class TissueGroup:
     def time_constant_s(self, blood_flow_l_min: float) -> float:
         """The perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
-        `docs/MODEL.md` § "Tissue uptake and return" defines it, and gives the
-        zero-flow case this returns `inf` for: an unperfused tissue exchanges
-        nothing, so it never reaches equilibrium. The seconds-per-minute factor
-        is here because $`Q_i`$ is given in litres per minute while every time
-        in the model is in seconds.
+        `docs/MODEL.md` § "Tissue uptake and return" defines it. That section
+        also gives the zero-flow case, for which this method returns `inf`: an
+        unperfused tissue exchanges nothing, so it never reaches equilibrium.
+        The seconds-per-minute factor appears here because $`Q_i`$ is given in
+        litres per minute, while every time in the model is in seconds.
 
-        The step does not read this. `core/governing_equations.py` carries the
-        same quantity as `washin_rate_s`, its reciprocal, which states the
-        zero-flow case without a branch; this is the form a reader of the
-        specification is looking for.
+        The simulation step does not call this method.
+        `core/governing_equations.py` represents the same quantity as
+        `washin_rate_s`, its reciprocal, which expresses the zero-flow case
+        without a branch. This method gives the form that a reader of the
+        specification looks for.
 
         The flow $`Q_i`$ is an argument, because the group stores none. For a
-        group in a patient, it is `blood_flow_l_min_at` the patient's cardiac
-        output.
+        group in a patient, the flow is what `blood_flow_l_min_at` returns for
+        the patient's cardiac output.
 
         Raises:
             TypeError: the flow is not an `int` or a `float`.
@@ -302,7 +309,7 @@ class TissueGroup:
         )
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
-        """Set tissue state from a partial-pressure-equivalent fraction.
+        """Set the tissue state from a partial-pressure-equivalent fraction.
 
         Raises:
             TypeError: `partial_pressure_fraction` was not built as a
@@ -375,15 +382,18 @@ class TissueGroup:
     def restore_state(self, state: TissueGroupState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Writes the slot past `__setattr__`, so that rolling back cannot
-        itself raise, for the reasons `AlveolarCompartment.restore_state`
-        gives: the amount came off this tissue, a rollback refused partway
-        would replace the step's own error and leave the compartments restored
-        after this one holding the failed step, and a volume or coefficient
-        moved under the held amount in the meantime, which since `PL-19Y0`
-        only a write past its own guard can make, is left to the quotient the
-        snapshot builds, which refuses it visibly (`PL-7DJK`; `PL-544D`, found
-        at review).
+        It writes the slot directly, bypassing `__setattr__`, so that rolling
+        back cannot itself raise. The reasons are those that
+        `AlveolarCompartment.restore_state` gives. The amount was captured
+        from this tissue, so a rollback must restore exactly that amount. A
+        rollback refused partway would replace the step's own error, and
+        would leave the compartments restored after this one still holding
+        the failed step. The guard could refuse only if a volume or
+        coefficient had been changed in the meantime so that the capacity is
+        less than the stored amount. Since `PL-19Y0`, only a write that
+        bypasses that value's own guard can make such a change. The quotient
+        that the snapshot builds then rejects it, visibly (`PL-7DJK`;
+        `PL-544D`, found at review).
         """
 
         object.__setattr__(self, "agent_amount_l", state.agent_amount_l)

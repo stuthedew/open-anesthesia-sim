@@ -1,12 +1,12 @@
 """The governing equations of `docs/MODEL.md`, assembled as one system matrix.
 
-This file is a transcription and nothing else. Every entry `build_system_matrix`
-writes is one term of one balance equation in that document's "Governing
-equations" section, and the entries are written in the order the document
-states them, so a reader who knows the standard variables can check the model
-against the code without a lookup table between them. The arithmetic that
-solves the system is in `matrix_exponential.py`; it carries no physiology, and
-this file carries no numerics.
+This file is a transcription and nothing else. Every entry that
+`build_system_matrix` writes is one term of one balance equation in that
+document's "Governing equations" section. The entries are written in the order
+in which the document states them. So a reader who knows the standard variables
+can check the model against the code without a lookup table between them. The
+arithmetic that solves the system is in `matrix_exponential.py`. That module
+contains no physiology, and this file contains no numerical methods.
 
 ## Why the whole system is one matrix
 
@@ -17,35 +17,35 @@ $$
 \\frac{dy}{dt} = Ay + b .
 $$
 
-Carrying the constant $`b`$ against one extra state whose value is always 1
-turns the affine system into a linear one, $`dy/dt = Ay`$, and then
-$`\\exp(A\\,\\Delta t)`$ is its **exact** propagator, at any step size. So
+Writing the constant $`b`$ as a column multiplied by one extra state whose
+value is always 1 turns the affine system into a linear one, $`dy/dt = Ay`$.
+Then $`\\exp(A\\,\\Delta t)`$ is its **exact** propagator, at any step size. So
 assembling $`A`$ is the whole of the model, and nothing downstream of it
 approximates anything.
 
-That is the property this module exists for. The operator split it replaced
-solved five pairwise exchanges exactly and composed them in sequence, which is
-first-order accurate in the step rather than exact, and - the reason it was
-replaced - spread the alveolar balance's two terms across two non-adjacent
-sub-steps and never formed the pulmonary uptake term at all. Here that balance
-is one row, and its two terms are two entries of it.
+This module exists for that property. The operator split that it replaced
+solved five pairwise exchanges exactly and applied them one after another.
+That method is first-order accurate in the step rather than exact. It was
+replaced because it spread the alveolar balance's two terms across two
+non-adjacent sub-steps, and never formed the pulmonary uptake term at all.
+Here that balance is one row, and its two terms are two entries in that row.
 
 ## The state vector
 
-Six of the nine states are the modelled fractions, in the order
+Six of the nine states are the modelled fractions, in the order in which
 `docs/MODEL.md` introduces them: inspired gas, alveolar gas, mixed venous
-blood, then the three tissue groups. Two more accumulate the agent crossing
-the system boundary, and the last is the constant.
+blood, then the three tissue groups. Two more states accumulate the agent that
+crosses the system boundary, and the last state is the constant.
 
 $`F_I`$ is the fraction in the breathing circuit. The literature's gas-phase
-cascade is $`F_D \\rightarrow F_I \\rightarrow F_A`$ - delivered, inspired,
-alveolar - and under this model's boundary (one ideal, perfectly mixed
-circuit; no dead space; no separate inspiratory and expiratory limbs) the gas
-the patient inspires *is* the circuit gas, so the circuit's fraction and the
-inspired fraction are identically the same quantity. The state is named for
-the clinical quantity rather than for its container, because $`F_A/F_I`$ is
-the curve this simulator exists to let a learner produce; the container is
-still the circuit, and `circuit.py` still owns it.
+cascade is $`F_D \\rightarrow F_I \\rightarrow F_A`$: delivered, inspired,
+alveolar. Within this model's boundary there is one ideal, perfectly mixed
+circuit, with no dead space and no separate inspiratory and expiratory limbs.
+So the gas the patient inspires *is* the circuit gas, and the circuit's
+fraction and the inspired fraction are identically the same quantity. The
+state is named for the clinical quantity rather than for its container,
+because $`F_A/F_I`$ is the curve that this simulator exists to let a learner
+produce. The container is still the circuit, and `circuit.py` still owns it.
 
 ## Why delivered and exhausted agent are states rather than a side calculation
 
@@ -54,28 +54,32 @@ still the circuit, and `circuit.py` still owns it.
     initial agent + delivered agent = exhausted agent + currently stored agent
 
 and it is checked after every step, at a tolerance tight enough to halt a run.
-Delivered agent is $`\\dot V_F F_D \\Delta t`$, which needs no help. Exhausted
-agent is $`\\dot V_F \\int F_I \\, dt`$, and $`F_I`$ follows the coupled
-trajectory, so that integral has no closed form of its own - the previous
-implementation used the integral of a *circuit-alone* wash-in, which was
-consistent with the sub-step that produced it and would not be consistent with
-anything here.
+Delivered agent is $`\\dot V_F F_D \\Delta t`$, which needs no special
+treatment. Exhausted agent is $`\\dot V_F \\int F_I \\, dt`$. Because $`F_I`$
+follows the coupled trajectory, that integral has no closed form of its own.
+The previous implementation used the integral of a *circuit-alone* wash-in.
+That integral was consistent with the sub-step that produced it, and would not
+be consistent with anything here.
 
-Carried as a state, the integral is exact for the same reason the fractions
-are, and the accounting residual then sits at rounding rather than at the
-numerical method's error. Two rows, `docs/MODEL.md` § "External delivery" and
-"Circuit exhaust" equations respectively, and each reads as such.
+When the integral is carried as a state, it is exact for the same reason that
+the fractions are. The accounting residual is then at the level of rounding
+error rather than of the numerical method's error. Delivered and exhausted
+agent take two rows, for the `docs/MODEL.md` § "External delivery" and
+"Circuit exhaust" equations respectively, and each row is written as its
+equation.
 
 **The two remaining reported transfers are recovered rather than accumulated,
 and deliberately.** A net ventilatory transfer and a net pulmonary uptake are
-*signed* - agent returns from blood to alveolar gas during washout - so rows
-for them would carry negative off-diagonal entries, which is precisely the
-Metzler property `matrix_exponential.py` needs in order to guarantee that no
-compartment is driven negative. Both fall out of the balances instead, with no
-approximation: pulmonary uptake over a step is the change in stored patient
-agent, and the ventilatory transfer is that plus the change in stored alveolar
-agent, because $`\\Delta M_A`$ is the difference of the two by the alveolar
-equation itself. `uptake_system.py` forms them there.
+*signed*, because agent returns from blood to alveolar gas during washout. So
+rows for them would carry negative off-diagonal entries. Those entries would
+break the Metzler property that `matrix_exponential.py` needs in order to
+guarantee that no compartment is driven negative. Instead, both transfers are
+derived from the balances, with no approximation. Pulmonary uptake over a step
+is the change in the agent stored in the patient. The ventilatory transfer is
+that change plus the change in the agent stored in the alveolar gas. This
+holds because, by the alveolar equation itself, $`\\Delta M_A`$ is the
+difference between the two transfers. `uptake_system.py` computes them in that
+way.
 """
 
 from __future__ import annotations
@@ -116,7 +120,7 @@ VENOUS_FRACTION = 2
 """$`F_v`$, the mixed venous partial-pressure-equivalent fraction."""
 
 FIRST_TISSUE_FRACTION = 3
-"""$`F_i`$ for the first tissue group; the groups occupy consecutive states."""
+"""$`F_i`$ for the first tissue group. The groups occupy consecutive states."""
 
 DELIVERED_AGENT_L = 6
 """Cumulative agent delivered from the vaporizer over the propagated interval."""
@@ -127,15 +131,16 @@ EXHAUSTED_AGENT_L = 7
 UNIT_STATE = 8
 """The constant 1, which turns `dy/dt = Ay + b` into `dy/dt = Ay`.
 
-Its row is empty, so it is constant by construction rather than by convention,
-and no step can perturb the forcing term the other rows read from it. That
-holds in floating point as well as in the algebra, because `matrix_exponential`
-writes an empty row's propagator row as the identity's before its squarings,
-which then keep it to the last bit; the shift that makes the propagator
-nonnegative had returned it as $`1+\\delta`$, raised by the squarings to
-$`(1+\\delta)^{2^{s}}`$ (`PL-2MD9`). Every propagator the module returns
-carries it, since one needing more squarings than `MAXIMUM_SQUARINGS` is
-refused rather than returned.
+Its row is empty, so it is constant by construction rather than by convention.
+No step can perturb the forcing term that the other rows read from it. That
+holds in floating point as well as in the algebra. `matrix_exponential` writes
+the propagator row for an empty row as the identity's row before its
+squarings, and the squarings then keep that row exact to the last bit. The
+shift that makes the propagator nonnegative used to return the diagonal entry
+as $`1+\\delta`$, which the squarings raised to $`(1+\\delta)^{2^{s}}`$
+(`PL-2MD9`). Every propagator that the module returns has this exact row,
+because a propagator that would need more squarings than `MAXIMUM_SQUARINGS`
+is refused rather than returned.
 """
 
 STATE_SIZE = 9
@@ -148,65 +153,68 @@ CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
 """How far the tissue flows may sum away from cardiac output.
 
-Blood leaving the tissue groups is the whole of what returns to the venous
-pool: `docs/MODEL.md`'s venous balance is
-$`dF_v/dt = (\\sum_i Q_i F_i - QF_v)/V_v`$, so a $`\\sum_i Q_i`$ that did not
-equal $`Q`$ would put agent into that pool at one rate and take it out at
-another, and the model would create or destroy agent at a steady rate for as
-long as the mismatch stood.
+Blood leaving the tissue groups is all of the blood that returns to the venous
+pool. `docs/MODEL.md`'s venous balance is
+$`dF_v/dt = (\\sum_i Q_i F_i - QF_v)/V_v`$. So if $`\\sum_i Q_i`$ did not equal
+$`Q`$, the model would put agent into that pool at one rate and take it out at
+another. It would then create or destroy agent at a steady rate for as long as
+the mismatch lasted.
 
 `patient.py` already requires the perfusion *fractions* to sum to one, which
 is the same statement about the same quantity. It is checked again here
-because these settings are assembled separately from those compartments and
-this is the object the equations are actually built from - a check that lives
+because these settings are assembled separately from those compartments, and
+this is the object from which the equations are actually built. The check sits
 one call away from the arithmetic it protects, rather than in the class that
-usually supplies it. The absolute floor is what lets a zero cardiac output
-pass, which `docs/MODEL.md` § "Supported input ranges" requires.
+usually supplies the values. The absolute tolerance is what lets a zero cardiac
+output pass, which `docs/MODEL.md` § "Supported input ranges" requires.
 """
 
 TISSUE_BLOOD_FLOW_STATED_DECIMALS = 6
-"""Decimal places the tissue-flow refusal states the summed flows to, in L/min.
+"""The decimal places, in L/min, to which the tissue-flow error rounds the summed flows.
 
-The stored flows summed carry the float's noise in their last digits -
-6.000000000000001 L/min at an output set to 6.0 - which is precision no dial
-set and a banner must not claim. The comparison above is untouched by it:
-only the figure the message prints is rounded, to a microlitre per minute,
-three orders below any dial step and nine above the noise (`PL-M4M0`).
+The sum of the stored flows carries floating-point noise in its last digits,
+such as 6.000000000000001 L/min at a cardiac output set to 6.0. No dial set
+that precision, and a banner must not claim it. The rounding does not affect
+the comparison above. Only the figure that the message prints is rounded, to a
+microlitre per minute. That is three orders of magnitude below any dial step
+and nine above the noise (`PL-M4M0`).
 """
 
 
 def require_canonical_state(state: object) -> None:
     """Refuse a state vector the equations could not be read against.
 
-    The entry guard every sink that opens from a state a run passed through
-    shares - a `RunDefinition`, and the live system a branch resumes into -
-    so that the two cannot come to disagree about what a state is. It lives
-    here because each condition below is a statement about the state vector
-    this module defines rather than about either caller.
+    This is the shared entry guard for every sink that opens from a state that
+    a run passed through. There are two such sinks: a `RunDefinition`, and the
+    live system into which a branch resumes. Because they share one guard, the
+    two cannot come to disagree about what a state is. The guard lives here
+    because each condition below is a statement about the state vector that
+    this module defines, not about either caller.
 
-    **The first refusal is structural, not by type name.** A drawn value
+    **The first check tests structure, not the type's name.** A drawn value
     carries the same nine numbers in the same order as a canonical one, so
-    nothing about its contents distinguishes them; what does is that the
-    display path wraps its answers in something that is not a tuple.
+    nothing in its contents tells them apart. What does tell them apart is
+    that the display path wraps its results in something that is not a tuple.
     `docs/MODEL.md` § "The canonical evaluation rule" argues for exactly this
-    test - only a value that is structurally not a state is refused by a sink
-    that thought to check nothing - and a structural test holds for wrappers
-    this module has never heard of. `core/run_definition.py` names
-    `DisplayState` before delegating here, because it is the module that can;
-    the message below is what a sink outside that module can still say.
+    test: only a value that is structurally not a state is rejected even by a
+    sink that never thought to check. A structural test also works for
+    wrappers that this module has never heard of. `core/run_definition.py`
+    names `DisplayState` before delegating here, because that module knows
+    the type. The message below is what a sink outside that module can still
+    say.
 
     `state` is typed as `object` rather than as the tuple, deliberately. The
-    values this refuses are exactly the ones a caller believed were states,
-    so a signature that could only be given a state would put the check
-    somewhere it can never fire.
+    values that this function rejects are exactly the ones that a caller
+    believed were states. A signature that accepted only a state would put
+    the check where it could never fire.
 
     Raises:
         SimulationConfigurationError: `state` is not a tuple, is not
-            `STATE_SIZE` long, holds a non-finite value, or does not carry
-            exactly one in `UNIT_STATE`. The last is what makes every forcing
-            term in `build_system_matrix` mean what it says: a state carrying
-            anything else there would scale the whole of the delivery term
-            without changing any setting a reader can see.
+            `STATE_SIZE` long, holds a non-finite value, or does not hold
+            exactly one in `UNIT_STATE`. The last condition is what makes
+            every forcing term in `build_system_matrix` mean what it says. A
+            state holding any other value there would scale the whole delivery
+            term without changing any setting that a reader can see.
     """
 
     if not isinstance(state, tuple):
@@ -256,15 +264,16 @@ def _hold_as_exact_floats(record: object, fields: tuple[str, ...]) -> None:
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
 
-    The blood flow is held in litres per minute and read in litres per second,
-    for the reason `UptakeEquationSettings` gives for its own flows.
+    The blood flow is stored in litres per minute and read in litres per
+    second, for the reason that `UptakeEquationSettings` gives for its own
+    flows.
 
     Raises:
-        SimulationConfigurationError: any value is outside its domain - the
+        SimulationConfigurationError: any value is outside its domain. The
             volume and the partition coefficient must be positive and finite,
-            and the blood flow nonnegative and finite. Checked here so that a
-            matrix is never assembled from a parameter set that could not
-            describe a tissue.
+            and the blood flow must be nonnegative and finite. The values are
+            checked here so that a matrix is never assembled from a parameter
+            set that could not describe a tissue.
     """
 
     name: str
@@ -294,11 +303,11 @@ class TissueGroupEquationSettings:
         """Return $`Q_i / (V_i\\lambda_{i:b})`$, the reciprocal of $`\\tau_i`$.
 
         `docs/MODEL.md` § "Tissue uptake and return" gives the tissue time
-        constant as $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$, undefined at zero flow. This is
-        its reciprocal, which is zero there instead - an unperfused tissue
-        exchanges nothing, which is what the document's zero-flow case says,
-        and expressing it this way is what lets the matrix state that case
-        without a branch.
+        constant as $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$, which is undefined at
+        zero flow. This property is its reciprocal, which is zero at zero flow
+        instead. An unperfused tissue exchanges nothing, as the document's
+        zero-flow case says. Writing the rate this way lets the matrix express
+        that case without a branch.
         """
 
         return self.blood_flow_l_s / (self.volume_l * self.tissue_blood_partition_coefficient)
@@ -306,83 +315,88 @@ class TissueGroupEquationSettings:
 
 @dataclass(frozen=True, slots=True)
 class UptakeEquationSettings:
-    """Everything the governing equations need that a step does not change,
-    and the one bound a run owes its reader beside them.
+    """Everything that the governing equations need and a step does not change,
+    plus the one bound that a run owes its reader.
 
-    Frozen and compared by value, because `uptake_system.py` uses it as the
-    key its propagator is cached against: two steps taken under equal settings
-    must reuse one propagator, and a step taken under any different setting
-    must not. Deriving the key from the same object the matrix is built from is
-    what makes a stale propagator unrepresentable rather than merely unlikely.
-    It is also what a run holds per stretch (`core/run_definition.py`), and a
-    stretch that cannot say its dial was deliverable is incomplete, which is
-    why it carries the one field the matrix never reads, below.
+    The record is frozen and compared by value, because `uptake_system.py` uses
+    it as the key under which its propagator is cached. Two steps taken under
+    equal settings must reuse one propagator, and a step taken under any
+    different setting must not. The key is the same object from which the
+    matrix is built. That makes a stale propagator impossible to represent,
+    rather than merely unlikely. A run also stores one of these records for
+    each stretch (`core/run_definition.py`). A stretch that cannot show that
+    its dial setting was deliverable is incomplete. That is why the record
+    carries one field that the matrix never reads, described below.
 
-    **Flows are held in the litres per minute they were set to, and read in
-    litres per second.** `docs/MODEL.md` § "Governing equations" writes every
-    flow term per second, so each flow has a per-second property and
-    `build_system_matrix` reads only those, which keeps the conversion out of
-    every equation. The value as set is what is stored because this object is
-    also what a run records, one per stretch (`core/run_definition.py`), and
-    the conversion does not run backwards: a cardiac output of 1.9 L/min,
-    divided by sixty and multiplied back, is 1.8999999999999997, and settings
-    rebuilt from that differ in all three tissue flows (`PL-SM5V`).
-    `docs/MODEL.md` § "Time" states which of the two is the record.
+    **Flows are stored in the litres per minute to which they were set, and
+    read in litres per second.** `docs/MODEL.md` § "Governing equations" writes
+    every flow term per second. So each flow has a per-second property, and
+    `build_system_matrix` reads only those properties, which keeps the
+    conversion out of every equation. The value as set is what is stored,
+    because this object is also what a run records for each stretch
+    (`core/run_definition.py`), and the conversion does not reverse exactly. A
+    cardiac output of 1.9 L/min, divided by sixty and multiplied back, is
+    1.8999999999999997, and settings rebuilt from that value differ in all
+    three tissue flows (`PL-SM5V`). `docs/MODEL.md` § "Time" states which of
+    the two values is the record.
 
-    **The delivered concentration is held in the percent it was dialled, and
-    read as a fraction**, for the same reason (`PL-NJPB`). The equations read
-    $`F_D`$ through `delivered_partial_pressure_fraction`, and a fraction times
-    a hundred misses the percent it came from for 126 of the 801 settings a 0
-    to 8% dial makes at 0.01% steps, so a fraction stored here would not give
-    back what was set. `docs/MODEL.md` § "Concentrations" states it.
+    **The delivered concentration is stored as the percent that was dialled,
+    and read as a fraction**, for the same reason (`PL-NJPB`). The equations
+    read $`F_D`$ through `delivered_partial_pressure_fraction`. A fraction
+    multiplied by a hundred does not give back the percent it came from for
+    126 of the 801 settings that a 0 to 8% dial makes in 0.01% steps. So a
+    fraction stored here would not give back what was set. `docs/MODEL.md`
+    § "Concentrations" states this rule.
 
-    **Each flow is a checked type, so no record can hold one outside its
-    supported range** (`PL-HSFV`, `PL-0YYV`). A run is built from this record,
-    and a record built anywhere but `AgentUptakeSystem.equation_settings`
-    passes through no compartment, so while the flows were bare floats
-    range-checked by each compartment a `RunDefinition` opened under a cardiac
+    **Each flow is a checked type, so no record can store a flow outside its
+    supported range** (`PL-HSFV`, `PL-0YYV`). A run is built from this record.
+    A record built anywhere other than `AgentUptakeSystem.equation_settings`
+    passes through no compartment. So while the flows were bare floats that
+    each compartment range-checked, a `RunDefinition` opened under a cardiac
     output of 1000 L/min and simulated it. The three flow fields take
     `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, which cannot be
-    built outside their ranges (`core/supported_ranges.py`), so nothing here
-    checks a range again, and a bare `float` is refused as the programming
-    error it is. A tissue group's flow needs no range of its own: each is
-    nonnegative and together they sum to cardiac output, so none can exceed
-    it.
+    built outside their ranges (`core/supported_ranges.py`). So nothing here
+    checks a range again, and a bare `float` is rejected as the programming
+    error it is. A tissue group's flow needs no range of its own. Each tissue
+    flow is nonnegative and together they sum to cardiac output, so none can
+    exceed it.
 
-    **The dial is bounded by the vaporizer maximum it is held beside**
-    (`PL-BBMG`). The delivered concentration's limit is the maximum of the
-    agent's vaporizer rather than a constant of the model, so no type can
-    carry it: a dial is deliverable only against a maximum, and the check
-    belongs to a record holding both, which is where
+    **The dial is bounded by the vaporizer maximum stored beside it**
+    (`PL-BBMG`). The limit on the delivered concentration is the maximum of
+    the agent's vaporizer, not a constant of the model, so no type can enforce
+    it. A dial setting is deliverable only relative to a maximum, so the check
+    belongs to a record that stores both. That is where
     `.claude/rules/core-domain.md` stops the checked-type pattern. Until
-    `PL-BBMG` this record held the dial alone and bounded it at the 100
-    every percent is held to, so a record rebuilt with `dataclasses.replace`
-    to 20% sevoflurane against an 8% maximum opened a run and answered a
-    precise-looking trace. It carries `max_delivered_concentration_percent`
-    now, required and with no default, and refuses a dial above it through
-    `require_within_vaporizer_maximum`, the guard `BreathingCircuit` calls,
-    so the two refuse in one sentence. No default, because `BreathingCircuit`
-    defaults its maximum to 100% for a circuit built without an agent, and a
-    record defaulting the same way would be the gap this closes with a field
-    added. The matrix never reads the maximum; `AgentUptakeSystem` reads it
-    off the circuit into every record it builds, and into the propagator
-    cache key with the rest of the record. Both are `Percent`s, checked
-    against 0 to 100 when they were built (`core/concentration.py`), so
-    this checks their type and not that range again (`PL-4R3W`); what it
-    still checks is the relation, and that the maximum is above zero.
+    `PL-BBMG`, this record stored the dial alone and bounded it at the 100 to
+    which every percent is held. So a record rebuilt with `dataclasses.replace`
+    to 20% sevoflurane, against an 8% maximum, opened a run and returned a
+    precise-looking trace. The record now carries
+    `max_delivered_concentration_percent`, which is required and has no
+    default. It rejects a dial above that maximum through
+    `require_within_vaporizer_maximum`, the guard that `BreathingCircuit`
+    calls, so the two reject it with the same message. The field has no
+    default because `BreathingCircuit` sets its maximum to 100% by default for
+    a circuit built without an agent. A record with the same default would
+    reopen, under a new field, the gap that this field closes. The matrix
+    never reads the maximum. `AgentUptakeSystem` copies it from the circuit
+    into every record it builds, and so into the propagator cache key with the
+    rest of the record. Both values are `Percent`s, checked against 0 to 100
+    when they were built (`core/concentration.py`). So this record checks
+    their type, and does not check that range again (`PL-4R3W`). What it still
+    checks is the relation between them, and that the maximum is above zero.
 
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
             coefficient is not positive and finite, the vaporizer maximum is
             zero, the delivered concentration is above the vaporizer
-            maximum, the number of tissue groups is not the three
+            maximum, the number of tissue groups is not the three that
             `patient.py` builds, or the tissue flows do not sum to cardiac
             output.
-        TypeError: a flow was not built as its checked type, in
-            `core/supported_ranges.py`, the delivered concentration or the
-            vaporizer maximum was not built as a `Percent`, in
-            `core/concentration.py`, or the record was built without a
-            vaporizer maximum.
+        TypeError: a flow was not built as its checked type from
+            `core/supported_ranges.py`. Also raised when the delivered
+            concentration or the vaporizer maximum was not built as a
+            `Percent` from `core/concentration.py`, or when the record was
+            built without a vaporizer maximum.
     """
 
     circuit_volume_l: float
@@ -445,13 +459,14 @@ class UptakeEquationSettings:
             CARDIAC_OUTPUT_TOLERANCE_L_S
             + CARDIAC_OUTPUT_RELATIVE_TOLERANCE * self.cardiac_output_l_s
         ):
-            # Stated in the litres per minute the flows were set in, which is
-            # what every dial, readout and other refusal shows a clinician;
-            # the comparison stays in the litres per second the balances are
-            # written in. Reaching a reader through the stopped-run banner,
-            # the L/s figures named values the screen never shows, and the
-            # sum is rounded for the message alone, as
-            # `TISSUE_BLOOD_FLOW_STATED_DECIMALS` says why (`PL-M4M0`).
+            # The message states the flows in litres per minute, the unit in
+            # which they were set. Every dial, readout and other error message
+            # shows a clinician that unit. The comparison stays in litres per
+            # second, the unit in which the balances are written. The message
+            # reaches a reader through the stopped-run banner, and when it
+            # gave L/s figures, it named values that the screen never shows.
+            # The sum is rounded for the message only, for the reason that
+            # `TISSUE_BLOOD_FLOW_STATED_DECIMALS` gives (`PL-M4M0`).
             tissue_blood_flow_l_min = round(
                 sum(tissue.blood_flow_l_min for tissue in self.tissues),
                 TISSUE_BLOOD_FLOW_STATED_DECIMALS,
@@ -493,26 +508,27 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
 
     Each block below is one equation of `docs/MODEL.md` § "Governing
     equations", written in that document's own order and symbols. The comment
-    above each is the equation; the lines under it are its terms, one entry
-    each. `docs/MODEL.md` § "Selected method (as implemented)" is the step this
-    matrix is assembled for, and names this module as where $`A`$ comes from.
+    above each block is the equation, and each line under the comment writes
+    one of its terms as one matrix entry. `docs/MODEL.md` § "Selected method
+    (as implemented)" describes the step for which this matrix is assembled,
+    and names this module as the source of $`A`$.
 
-    Both citations are in the section-mark form, and quote the section title
-    verbatim: `tools/doc_check.py` looks for that text in the file named, so a
-    rename fails the gate instead of silently orphaning the pointer
-    (`PL-VZL0`, `PL-V13T`, `PL-316G`).
+    Both citations use the section-mark form, and quote the section title
+    exactly. `tools/doc_check.py` looks for that text in the named file. So
+    renaming the section fails the check, instead of silently leaving the
+    citation pointing at nothing (`PL-VZL0`, `PL-V13T`, `PL-316G`).
 
-    Every off-diagonal entry is a transfer rate and is nonnegative; every
-    diagonal is minus the total rate leaving that state. That makes the result
-    a Metzler matrix, which is the precondition
-    `matrix_exponential.matrix_exponential` requires and the reason its
-    propagator cannot drive a compartment negative.
+    Every off-diagonal entry is a transfer rate and is nonnegative. Every
+    diagonal entry is minus the total rate leaving that state. That makes the
+    result a Metzler matrix. `matrix_exponential.matrix_exponential` requires
+    that property, and it is the reason that the propagator cannot drive a
+    compartment negative.
 
     Zero flow needs no special case anywhere here. A rate of zero is an entry
-    of zero, and the exact propagator of a system with a zero rate is the one
-    that transfers nothing along it - which is what `docs/MODEL.md` requires at
-    zero ventilation, zero cardiac output and zero tissue flow, and which the
-    previous implementation needed three early returns to express.
+    of zero, and the exact propagator of a system with a zero rate transfers
+    nothing along that path. That is what `docs/MODEL.md` requires at zero
+    ventilation, zero cardiac output and zero tissue flow. The previous
+    implementation needed three early returns to express it.
     """
 
     matrix = [[0.0] * STATE_SIZE for _ in range(STATE_SIZE)]
@@ -521,14 +537,15 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     ventilation_l_s = settings.alveolar_ventilation_l_s
     cardiac_output_l_s = settings.cardiac_output_l_s
     blood_gas = settings.blood_gas_partition_coefficient
-    # Short locals here are the convention rather than an omission, and
-    # `delivered_fraction` is deliberately among them (`PL-BDNB`). Each matrix
-    # row below sits under a comment writing the equation in the
-    # specification's own symbols, so the reader has $`F_D`$ in view at the row
-    # rather than carrying this binding down the module; and the full
-    # `delivered_partial_pressure_fraction` would wrap the two rows that read
-    # it, which is the case `.claude/rules/core-domain.md` settles the other
-    # way — where a naming choice makes the model harder to see, the model wins.
+    # Short local names here are the convention rather than an omission, and
+    # `delivered_fraction` is deliberately one of them (`PL-BDNB`). Each matrix
+    # row below sits under a comment that writes the equation in the
+    # specification's own symbols. So the reader sees $`F_D`$ at the row, and
+    # does not have to carry this name down the module. The full name
+    # `delivered_partial_pressure_fraction` would also make the two rows that
+    # read it wrap onto a second line. `.claude/rules/core-domain.md` decides
+    # that case against the long name: where a naming choice makes the model
+    # harder to see, the model wins.
     delivered_fraction = settings.delivered_partial_pressure_fraction
 
     pulmonary_blood_flow_l_s = cardiac_output_l_s * blood_gas
@@ -545,9 +562,9 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     # Alveolar gas:
     #     dF_A/dt = [ V_A(F_I - F_A) - Q*lambda_bg(F_A - F_v) ] / V_A
     #
-    # The pulmonary uptake rate docs/MODEL.md specifies, Q*lambda_bg(F_A - F_v),
-    # is the second and third entries of this row. It was never formed at all
-    # under the operator split (PL-Y5BV).
+    # The pulmonary uptake rate that docs/MODEL.md specifies,
+    # Q*lambda_bg(F_A - F_v), is the second and third entries of this row. The
+    # operator split never formed it at all (PL-Y5BV).
     alveolar_volume_l = settings.alveolar_volume_l
     matrix[ALVEOLAR_FRACTION][INSPIRED_FRACTION] = ventilation_l_s / alveolar_volume_l
     matrix[ALVEOLAR_FRACTION][ALVEOLAR_FRACTION] = (
