@@ -481,6 +481,7 @@ workflow_paths = [
   "tests/unit/test_ignore_check.py",
   "tests/unit/test_main_ci_status.py",
   "tests/unit/test_new_prose.py",
+  "tests/unit/test_blind_review.py",
   "tests/unit/test_import_boundary_check.py",
   "tests/unit/test_literal_home_check.py",
   "tests/unit/test_pr_body_check.py",
