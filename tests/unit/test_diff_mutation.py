@@ -347,6 +347,25 @@ def test_settle_runs_nothing_when_no_pytest_run_raised(
     assert runs == []
 
 
+def test_a_module_that_raises_while_it_is_collected_counts_as_a_kill(tmp_path: Path) -> None:
+    """pytest stops such a run with status 2, the status of an interrupted run (`PL-N3YB`).
+
+    A real interrupt keeps status 2, because it says nothing about the mutant.
+    """
+    tests = tmp_path / diff_mutation.MUTANTS
+    tests.mkdir()
+    (tests / "test_raises.py").write_text('raise TypeError("built at import")\n')
+    (tests / "test_passes.py").write_text("def test_passes():\n    pass\n")
+    (tests / "test_stops.py").write_text("def test_stops():\n    raise KeyboardInterrupt\n")
+
+    def run(name: str) -> int | None:
+        return diff_mutation._pytest_in_mutants(tmp_path, [name], "")
+
+    assert run("test_raises.py") == 1
+    assert run("test_passes.py") == 0
+    assert run("test_stops.py") == 2
+
+
 def test_statuses_reads_the_results_listing(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

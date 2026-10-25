@@ -230,7 +230,7 @@ class DrawnWindow:
             series: Which substance's quantity to read.
                 `COMPARTMENT_STATE_INDEX` pairs each quantity with its state.
                 It has no entry for `RecordedQuantity.WASH_IN_RATIO`, which is
-                a quotient rather than a state. Use `wash_in_readings` for
+                a quotient rather than a state. Use `wash_in_quotients` for
                 that one.
 
         Returns:
@@ -246,7 +246,7 @@ class DrawnWindow:
         if series.quantity not in COMPARTMENT_STATE_INDEX:
             raise SimulationConfigurationError(
                 f"{series.quantity} is not a compartment state; it is derived from two of "
-                "them, and `wash_in_readings` is what forms it"
+                "them, and `wash_in_quotients` is what forms it"
             )
 
         index = COMPARTMENT_STATE_INDEX[series.quantity]
