@@ -224,7 +224,9 @@ try:
     # signature wrapped over several lines included (`PL-V2HK`).
     # What `ast.parse` raises where this interpreter cannot parse a file, which
     # `verify` names a file for (`PL-LCBQ`), read from where both find it.
+    # Which files are Python source is `python.SOURCE_SUFFIXES` too (`PL-H716`).
     from docket.python import (
+        SOURCE_SUFFIXES,
         UNPARSABLE,
         UNTOKENIZABLE,
         definition,
@@ -9774,8 +9776,6 @@ JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
 #: A patch's old-file header where the base has no such file.
 NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
-#: The suffixes whose definitions are read as statements.
-PYTHON_SUFFIXES = (".py", ".pyi")
 
 # A term's shape decides how it is searched for, because the two shapes carry
 # different risk. `doc_check.py`, `changed_tokens` and `TreeMap` cannot be
@@ -9846,7 +9846,7 @@ def changed_tokens(
         diff = [line for line in split_lines(patch) if line.strip()]
         if relative in docs:
             found = _removed_headings(root, base, relative, patch)
-        elif PurePosixPath(relative).suffix in PYTHON_SUFFIXES:
+        elif PurePosixPath(relative).suffix in SOURCE_SUFFIXES:
             name = PurePosixPath(relative)
             found = {
                 name.name,
