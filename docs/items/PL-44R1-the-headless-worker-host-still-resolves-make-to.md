@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: worker-runs
+milestone: v0.6.5
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, tools/doc_check.py, tests/unit/test_makefile_reference.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/apparatus.md, docs/maintainer.md
 added: 2026-10-20
 closed: 2026-10-25
