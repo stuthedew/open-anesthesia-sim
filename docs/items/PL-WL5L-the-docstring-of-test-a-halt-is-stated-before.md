@@ -3,10 +3,11 @@ id: PL-WL5L
 title: The docstring of test_a_halt_is_stated_before_its_dials_are_written says the circuit refuses at build a fresh-gas-flow range narrower than one dial step, but BreathingCircuit._require_the_two_flow_claims_overlap refuses only an empty overlap (found triaging PL-M3M2, 2026-10-17)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, test
 touches: tests/integration/test_simulation_view.py
 added: 2026-10-17
+closed: 2026-10-25
 payoff: the test's docstring no longer claims a build-time guard the circuit does not have, so nobody relies on it
 verify: ! grep -qF 'and the circuit refuses at build' tests/integration/test_simulation_view.py
 ---
