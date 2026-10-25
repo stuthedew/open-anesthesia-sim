@@ -37,3 +37,5 @@ is decided here rather than put to the owner.
 
 **Generator check.** A leftover of the Flet-to-Qt port (`qt-port`, complete).
 No fact here is misread by other items, so it is a one-off.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Both constants in `app/dashboard_frame.py` still hold U+00A0, `tools/glyph_check.py` still cites them, and the lock file still pins PySide6-Essentials 6.11.2, the version measured. The label heights were not measured again.

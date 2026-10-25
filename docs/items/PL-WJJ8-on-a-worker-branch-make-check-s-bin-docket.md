@@ -19,6 +19,8 @@ reenters: PL-6TP8
 
 **Done when.** A worker who finishes an item and leaves its status alone, as `docs/worker.md` requires, can get a green `make check`. The check still catches a non-discriminating `verify:` command on an item nobody has worked.
 
-**Why it matters.** Every correctly finished delegated item turns `make check` red on its worker branch, so the worker reports failure and the reviewing session must work out which failure is this known one. A gate that is red on every run whether or not anything is wrong teaches its readers to ignore it. **Checked 2026-10-24:** the error in `subprojects/docket/src/docket/checks.py`, around line 2016, has no reading for a worker branch.
+**Why it matters.** Every correctly finished delegated item turns `make check` red on its worker branch, so the worker reports failure and the reviewing session must work out which failure is this known one. A gate that is red on every run whether or not anything is wrong teaches its readers to ignore it. **Checked 2026-10-24:** the error that `_check_landed` in `subprojects/docket/src/docket/checks.py` raises has no reading for a worker branch.
 
 **Generator check.** An instance of the fact "what a `verify:` command's exit status proves about its own item's work", which `PL-6TP8`'s `misread:` states. The check assumes only two causes of a passing command on an open item, and a worker branch is a third. `PL-6TP8` closed on 2026-09-19. Recorded as `reenters: PL-6TP8`.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `_check_landed` still offers two readings, an item nobody closed or a command that does not discriminate, and nothing in it asks whether the branch is a worker's. `docs/worker.md` still says "Never change an item's `status`".

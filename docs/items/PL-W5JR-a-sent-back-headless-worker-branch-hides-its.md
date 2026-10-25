@@ -45,3 +45,5 @@ reviewed `sent-back` on `main` as finished.
 **Done when.** `tools/branch_sweep.py` lists a worker branch whose run record on `main` is reviewed `sent-back` as finished rather than as unfinished work, and `tests/unit/test_branch_sweep.py` has `test_a_sent_back_worker_branch_is_listed_for_deletion`.
 
 **Generator check.** An instance of the fact "whether the base already holds or has superseded a branch commit's change, by whatever route", which `PL-BHVM`'s `misread:` states. The carried commits have new shas, so the sweep compares file content and finds `main`'s copy different. `PL-BHVM` closed on 2026-09-19. Recorded as `reenters: PL-BHVM`.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `tools/branch_sweep.py` still has no reading for a sent-back worker branch, and the named test does not exist. No worker branch is on the remote today, so no item is hidden by one now.

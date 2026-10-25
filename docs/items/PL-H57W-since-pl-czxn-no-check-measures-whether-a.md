@@ -30,3 +30,5 @@ Split from `PL-7FPD` while triaging it on 2026-10-24. `PL-7FPD`'s problem covers
 **Done when.** `docket verify` refuses a branch that changes a core unit test so that a mutant in a core module the test imports by name, which the test's base version kills, survives the branch's version. It passes a branch whose changed test still kills every such mutant. `tests/unit/test_diff_mutation.py` has `test_a_branch_that_weakens_a_core_test_is_refused`, and the brief records the scoped cost measured on the files named above.
 
 **Generator check.** An instance of `PL-4W2L`'s fact, "whether a branch's diff weakens its tests", reached through `PL-CZXN`, which closed on 2026-10-24, like `PL-7FPD`. Recorded as `reenters: PL-CZXN`.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `PL-7FPD`, which this waited on, is done. `tools/diff_mutation.py` still compares only the display modules' mutants, and its own comment says a test of `core/` on a branch that changes no `core/` function stays unmeasured. The named test does not exist.

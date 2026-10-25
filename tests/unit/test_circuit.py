@@ -470,7 +470,10 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
         ),
         pytest.param(
             "deliverable_fresh_gas_flow_range",
-            DeliverableFreshGasFlowRange(minimum_l_min=20.0, maximum_l_min=30.0),
+            DeliverableFreshGasFlowRange(
+                minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN * 2.0,
+                maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN * 3.0,
+            ),
             SimulationConfigurationError,
             "^this machine can deliver no fresh gas flow the model is claimed over",
             id="range-outside-the-envelope",

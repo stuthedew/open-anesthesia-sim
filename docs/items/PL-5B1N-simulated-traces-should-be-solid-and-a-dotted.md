@@ -81,7 +81,7 @@ answer all three:
 
 **Related.** `PL-GVXP` (six traces separated by more than colour, shipped
 v0.4.7) is the constraint. `PL-THXF` (the legend swatch is a solid bar for a
-dashed trace) is open and touches the same legend this would have to extend.
+dashed trace) touched the same legend this would have to extend, and is done (checked 2026-10-25).
 
 **Triaged 2026-09-13.** `P2`, `M`, `feature`, `needs-decision`.
 
@@ -314,3 +314,5 @@ never drawn outside its region, at the run's width, or without its label.
 blocker cleared. This item is on Gate 3's frozen list in `ROADMAP.md`
 § "v0.7.0 - the schematic", in the group that clears before v0.7.0's
 implementation begins, so it is worked now, ahead of the schematic.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Nothing under `app/` draws a predicted trajectory: each "preview" there is the layout's split and join preview. Dash pattern is still the traces' second channel, and the circuit is still the only solid trace. `ParameterSlider` still applies a drag as it moves, and nothing connects `sliderReleased`. Each symbol the 2026-09-27 design round names still exists.

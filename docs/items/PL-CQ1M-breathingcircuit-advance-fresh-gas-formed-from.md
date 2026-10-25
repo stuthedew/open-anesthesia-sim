@@ -58,3 +58,5 @@ the reference, beside an exact full wash-in onto the dial. The reference
 wash-in tests and
 `test_the_circuit_balance_closes_within_the_rounding_of_what_the_step_moves`
 pass unchanged.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still reproduces.** On `cc31bef7`, a bare 6 L circuit at 4 L/min, washed out from a fraction of 1.0 under a dial of zero, reports 2.0612e-09 at 20 time constants, as `exponential_approach` and a 40-digit reference do. At 37.5 and 40 time constants it reports exactly 0.0, where both give 5.1756e-17 and 4.2484e-18. `advance_fresh_gas` still forms the fraction itself, and `exponential_approach` is still called only from `core/blood.py` and `core/tissue.py`.
