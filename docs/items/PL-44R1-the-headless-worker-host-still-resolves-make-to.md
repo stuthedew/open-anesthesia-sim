@@ -9,6 +9,7 @@ feature: worker-runs
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, tools/doc_check.py, tests/unit/test_makefile_reference.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/apparatus.md, docs/maintainer.md
 added: 2026-10-20
 closed: 2026-10-25
+pr: 1788
 payoff: a worker run on a host with an old make or bash is refused before it spends credit, instead of reporting a red gate it cannot explain
 verify: grep -q 'def test_an_old_make_on_path_is_refused_before_any_spend' tests/unit/test_headless_worker.py
 reenters: PL-TSH9
