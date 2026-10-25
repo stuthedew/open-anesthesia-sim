@@ -1,50 +1,53 @@
 """The values a layout is built from: an Area, a Split, and one window's tree.
 
-A window's content is a tree. Its leaves are **Areas**, each holding one View,
-named by its kind; its inner nodes are **Splits**, each dividing its rectangle
-among two or more children along one axis (`PL-C842`, `PL-3J2P`). The words
-are Blender's, as `.claude/rules/ui-areas.md` fixes them, and `View` replaces
-Blender's `Editor` there for the reason given.
+A window's content is a tree. Its leaves are **Areas**, and each Area holds one
+View, named by its kind. Its inner nodes are **Splits**, and each Split divides
+its rectangle among two or more children along one axis (`PL-C842`,
+`PL-3J2P`). The terms come from Blender, as `.claude/rules/ui-areas.md` defines
+them. That rule uses `View` in place of Blender's `Editor`, and gives the
+reason.
 
 **A split is a row or a column, never "horizontal" or "vertical".** Blender
-names a split by the line it draws, so its *horizontal split* stacks two
-Areas one above the other; Qt names a splitter by the direction it lays its
-children out in, so its `Qt.Horizontal` puts them side by side. The two read
-opposite ways, and a saved file outlives any reader's memory of which
-convention it used. `ROW` lays children out left to right and `COLUMN` stacks
-them top to bottom, in the words CSS flexbox and Flutter use for the same
-thing, and the adapter (`PL-W9P6`) maps them onto Qt's orientations.
+names a split by the line it draws, so its *horizontal split* stacks two Areas
+one above the other. Qt names a splitter by the direction in which it lays out
+its children, so its `Qt.Horizontal` puts them side by side. The two
+conventions mean opposite things, and a saved file outlives any reader's memory
+of which convention it used. `ROW` lays children out left to right, and
+`COLUMN` stacks them top to bottom. These are the words that CSS flexbox and
+Flutter use for the same thing. The adapter (`PL-W9P6`) maps them onto Qt's
+orientations.
 
-**Sizes are fractions of the split's extent**, one per child, each above zero
-and together one, never pixels, so a file reads the same on any screen
-(`PL-HJPY` Q5). How small an Area may be is a property of the screen it is
-shown on, so `layout/sizing.py` decides it against an extent in pixels
-(`PL-K285`).
+**Sizes are fractions of the split's extent, never pixels**, so a file gives
+the same layout on any screen (`PL-HJPY` Q5). A split has one size per child.
+Each size is greater than zero, and together they sum to one. How small an Area
+may be is a property of the screen it is shown on, so `layout/sizing.py`
+decides it against an extent in pixels (`PL-K285`).
 
-**A tree takes one form, wherever no four Areas meet at a point.** A split
-holds at least two children, and never a child split of its own orientation: a
-row inside a row is the same rectangle divided the same way as one wider row,
-and the model writes it as the wider row. That leaves one tree per arrangement
-except where four Areas meet at a point. There - a 2x2 grid - either of the two
-cuts through the point can be the outer one, so the arrangement has two trees,
-and which two Areas are siblings depends on which cut came first. Nothing a
-reader is offered depends on it: a join reads the rectangles, not the tree, and
-re-slices a junction where it needs to (`PL-G60V`, in `layout/model.py`). A
-window's tree also nests no deeper than `TREE_DEPTH_MAXIMUM`.
+**A tree has only one form, except where four Areas meet at a point.** A split
+has at least two children, and never has a child split of its own orientation.
+A row inside a row is the same rectangle divided the same way as one wider row,
+so the model writes it as the wider row. That leaves one tree for each
+arrangement, except where four Areas meet at a point, as in a 2x2 grid. There,
+either of the two cuts through the point can be the outer one. So the
+arrangement has two trees, and which two Areas are siblings depends on which
+cut came first. Nothing offered to the reader depends on that choice. A join
+works from the rectangles, not the tree, and re-slices a junction where it
+needs to (`PL-G60V`, in `layout/model.py`). A window's tree also nests no
+deeper than `TREE_DEPTH_MAXIMUM`.
 
-**An Area is addressed by an id, a whole number from 1** that the layout
-allocates and never reuses, so state kept per Area id cannot be resurrected
-under a different Area (`PL-HJPY` Q3). **A View kind is an opaque tag**: the
-layout checks its syntax, keeps it verbatim and never asks what it names, so
-nothing here knows a concrete View exists (`PL-R1WQ` Q1). A tag no View is
-registered under is the registry's question and not a malformed layout
-(`PL-SSQW` Q5).
+**An Area is addressed by an id, a whole number from 1.** The layout allocates
+ids and never reuses one, so state kept for an Area id cannot reappear under a
+different Area (`PL-HJPY` Q3). **A View kind is an opaque tag.** The layout
+checks its syntax, keeps it verbatim and never asks what it names, so nothing
+in this package knows that any concrete View exists (`PL-R1WQ` Q1). A tag
+under which no View is registered is for the View registry to report. It does
+not make the layout malformed (`PL-SSQW` Q5).
 
-**Each id and each tag is a type built only through its check**, the pattern
-`.claude/rules/core-domain.md` gives `core/`: `AreaId` is an `int` and
-`ViewKind` a `str` that refuse, as they are built, what could not be one, and
-every record past that point holds the type rather than checking a bare value
-again.
+**Each id and each tag is a type that can be built only by passing its
+check.** This is the pattern that `.claude/rules/core-domain.md` sets for
+`core/`. `AreaId` is an `int` and `ViewKind` is a `str`. Each rejects an
+invalid value when it is built. Every record after that point stores the type,
+rather than checking a bare value again.
 """
 
 from __future__ import annotations
@@ -75,26 +78,29 @@ __all__ = [
     "is_tag",
 ]
 
-# The largest an Area id can be: 2**53 - 1, the top of the range of integers
-# RFC 8259 section 6 names as the one every JSON implementation agrees on
-# exactly. An id is a key a saved file is read back by, so one a reader could
-# round to its neighbour is not an id. It bounds the layout's counter too,
-# which stays above every id in use and so cannot pass it: the last id the
-# layout allocates is 2**53 - 2, and no Area ever holds this one. Allocation
-# runs in sequence from 1, so no layout reaches either by use.
+# The largest value an Area id can have: 2**53 - 1. RFC 8259 section 6 names
+# this as the top of the range of integers on which every JSON implementation
+# agrees exactly. A saved file is read back by its ids, so a value that a
+# reader could round to its neighbour cannot serve as an id. The maximum also
+# bounds the layout's counter. The counter is always greater than every id in
+# use, and it cannot pass the maximum. So the last id that the layout allocates
+# is 2**53 - 2, and no Area ever has the maximum itself as its id. Allocation
+# runs in sequence from 1, so no layout reaches either value in use.
 AREA_ID_MAXIMUM: Final = 2**53 - 1
 
-# The deepest a split may sit in a window's tree, the root split being one
-# deep: the most splits on any path from a window's tree down to an Area. A
-# path that deep alternates row and column at every level, since a split never
-# holds one of its own orientation, so 16 of its splits divide the window across
-# and 16 down it, each giving at least one Area a share of its own: 17 Areas
-# stand side by side along the path and 17 stacked, and the smallest of the
-# stacked is at most a seventeenth of the window's height, under 64 px of a
-# 1080 px screen. No workspace a screen shows comes near that. It also sits far below
-# the recursion ceiling: the reader recurses three frames a level and the
-# operations two, so a tree this deep costs about a hundred of the thousand
-# frames Python allows by default, wherever its caller stands (`PL-1FT6`).
+# The greatest depth at which a split may sit in a window's tree, counting the
+# root split as one deep. It is the largest number of splits on any path from
+# the top of a window's tree down to an Area. A path that deep alternates row
+# and column at every level, because a split never has a child of its own
+# orientation. So 16 of its splits divide the window across, and 16 divide it
+# down. Each of them gives at least one Area a share of its own. That puts 17
+# Areas side by side along the path and 17 stacked, and the smallest of the
+# stacked Areas is at most a seventeenth of the window's height. That is less
+# than 64 px of a 1080 px screen. No workspace that a screen shows comes near
+# that. The maximum is also far below Python's recursion limit. The reader
+# recurses three frames per level and the operations two. So a tree this deep
+# uses about a hundred of the thousand frames that Python allows by default,
+# however deep in the stack its caller already is (`PL-1FT6`).
 TREE_DEPTH_MAXIMUM: Final = 32
 
 # The longest a View kind tag may be, in characters (`PL-R1WQ` Q1). A tag is
@@ -103,31 +109,34 @@ TREE_DEPTH_MAXIMUM: Final = 32
 # can never be mistaken for prose.
 VIEW_KIND_MAXIMUM_LENGTH: Final = 40
 
-# `PL-R1WQ` Q1's syntax: lowercase snake case, beginning with a letter, at any
-# length - each kind of tag bounds its own. Matched whole with `fullmatch`,
-# because `$` also matches before a trailing newline and would admit "chart\n".
+# The tag syntax from `PL-R1WQ` Q1: lowercase snake case, beginning with a
+# letter. The pattern sets no length, because each kind of tag sets its own
+# limit. It is matched whole with `fullmatch`, because `$` also matches before a
+# trailing newline and would accept "chart\n".
 _TAG: Final = re.compile(r"[a-z][a-z0-9_]*")
 
 
 def is_tag(text: str) -> bool:
     """Whether `text` is a tag: lowercase letters, digits and underscores, beginning with a letter.
 
-    The one grammar every tag in the package shares - a View kind, a shipped
-    Workspace's id - so a second copy of it cannot drift from this one.
+    Every tag in the package shares this one grammar, such as a View kind or a
+    shipped Workspace's id. Keeping it in one place means no second copy can
+    drift from it.
     """
 
     return _TAG.fullmatch(text) is not None
 
 
-# How far a split's sizes may sum from exactly one. An operation either
-# rescales each split it rebuilds to sum to one before working on it, or works
-# the split's sizes out afresh from where its borders lie (`layout/model.py`).
-# So the most a split built by this code misses one by is the few units in the
-# last place one operation's rounding adds, which no later operation inherits.
-# A file can hold sizes anywhere inside this and is read as written, and one
-# whose sizes miss one by more was not written by this code, and is refused
-# rather than rescaled. The reader holds a file to the same bound as a split
-# built in code, so whatever the model holds it writes and reads back equal.
+# How far the sum of a split's sizes may differ from exactly one. An operation
+# that rebuilds a split either rescales its sizes to sum to one before working
+# on it, or works the sizes out afresh from where the split's borders lie
+# (`layout/model.py`). So a split built by this code misses one by at most the
+# few units in the last place that one operation's rounding adds, and no later
+# operation inherits that error. A file may have sizes anywhere within this
+# tolerance and is read as written. A file whose sizes miss one by more was not
+# written by this code, and it is rejected rather than rescaled. The reader
+# applies the same bound to a file as to a split built in code, so anything
+# the model contains is written and read back unchanged.
 LAYOUT_SIZE_SUM_TOLERANCE: Final = 1e-9
 
 
@@ -135,13 +144,14 @@ class AreaId(int):
     """An Area's id: a whole number from 1 to `AREA_ID_MAXIMUM`, built only through that check.
 
     It compares, hashes and prints as the `int` it was built from, so a
-    mapping keyed by Area id finds it from either. The layout allocates ids in
-    sequence and never hands one out twice (`LayoutModel.next_area_id`).
+    mapping keyed by Area id finds an entry from either the id or the plain
+    number. The layout allocates ids in sequence and never hands one out twice
+    (`LayoutModel.next_area_id`).
 
     Raises:
         TypeError: the value is not an `int`, or is a `bool`, which subclasses
             `int` and would make `True` the Area with id 1.
-        InvalidLayout: the value is below 1 or above `AREA_ID_MAXIMUM`.
+        InvalidLayout: the value is less than 1 or greater than `AREA_ID_MAXIMUM`.
     """
 
     __slots__ = ()
@@ -159,12 +169,12 @@ class AreaId(int):
 
 
 class ViewKind(str):
-    """The kind of View an Area holds: an opaque tag, built only through its syntax check.
+    """The kind of View an Area holds, an opaque tag that is built only through its syntax check.
 
-    The syntax is `PL-R1WQ` Q1's - lowercase letters, digits and underscores,
-    beginning with a letter, at most `VIEW_KIND_MAXIMUM_LENGTH` long. It
-    compares and hashes as the `str` it was built from, so a registry keyed by
-    plain strings finds it.
+    The syntax comes from `PL-R1WQ` Q1: lowercase letters, digits and
+    underscores, beginning with a letter, and at most `VIEW_KIND_MAXIMUM_LENGTH`
+    characters long. A `ViewKind` compares and hashes as the `str` it was built
+    from, so a registry keyed by plain strings finds it.
 
     Raises:
         TypeError: the tag is not a `str`.
@@ -191,20 +201,20 @@ class Orientation(Enum):
     """The axis a split divides its rectangle along."""
 
     ROW = "row"
-    """Children side by side, left to right; the borders between them are vertical lines."""
+    """Children sit side by side, left to right. The borders between them are vertical lines."""
 
     COLUMN = "column"
-    """Children stacked, top to bottom; the borders between them are horizontal lines."""
+    """Children are stacked, top to bottom. The borders between them are horizontal lines."""
 
 
 @dataclass(frozen=True, slots=True)
 class Area:
-    """A leaf of the tree: one View, of the kind named, at an id unique to its layout.
+    """A leaf of the tree: one View of the named kind, at an id unique to its layout.
 
     Raises:
-        TypeError: `id` was not built as an `AreaId` - a bare `int`, or
-            `True`, would otherwise name an Area unchecked - or `view` as a
-            `ViewKind`.
+        TypeError: `id` was not built as an `AreaId`, or `view` was not built
+            as a `ViewKind`. Without this check, a bare `int` or `True` could
+            name an Area unchecked.
     """
 
     id: AreaId
@@ -227,11 +237,12 @@ class Split:
 
     Raises:
         TypeError: a field is not of its declared type.
-        InvalidLayout: the split holds fewer than two children; its sizes are
-            not one per child; a size is not finite and above zero; the sizes
-            miss a sum of one by more than `LAYOUT_SIZE_SUM_TOLERANCE`, which
-            the message names; or a child is a split of the same orientation,
-            which the one form a tree takes writes as part of this split.
+        InvalidLayout: the split has fewer than two children, or its sizes
+            are not one per child, or a size is not a finite number greater
+            than zero. Also raised when the sum of the sizes misses one by more than
+            `LAYOUT_SIZE_SUM_TOLERANCE`, which the message names, or when a
+            child is a split of the same orientation. A tree's single form
+            writes such a child's children as part of this split.
     """
 
     orientation: Orientation
@@ -303,8 +314,8 @@ type Node = Area | Split
 class Window:
     """One window's tree. `LayoutModel.windows[0]` is the main window (`PL-HJPY` Q1).
 
-    How deep the tree nests is checked by the `LayoutModel` holding it, against
-    `TREE_DEPTH_MAXIMUM`, not here.
+    The `LayoutModel` that contains the window checks the tree's depth against
+    `TREE_DEPTH_MAXIMUM`. This class does not.
 
     Raises:
         TypeError: `tree` is not an `Area` or a `Split`.

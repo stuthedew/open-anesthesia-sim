@@ -1,43 +1,48 @@
-"""Exception hierarchy for what the layout package refuses.
+"""Exception hierarchy for the cases that the layout package rejects.
 
-Every failure the layout package detects is a subclass of `LayoutError`, so a
-caller can catch a refused layout as one thing and tell it apart from a
-programming error - a `TypeError` for an argument of the wrong type - passing
-through the same call. `LayoutError` does not inherit from `ValueError`, for
-the first of the two reasons `core/exceptions.py` gives for its own base: a
-bare `ValueError` from somewhere else in a call would then read as a refusal
-the layout made.
+Every exception that the layout package raises for a failure it detects is a
+subclass of `LayoutError`. A caller can therefore catch every rejection as one
+exception type. The caller can also tell a rejection apart from a programming
+error that passes through the same call, such as a `TypeError` for an argument
+of the wrong type. `LayoutError` does not inherit from
+`ValueError`, for the first of the two reasons that `core/exceptions.py` gives
+for its own base class. If it did, a bare `ValueError` raised somewhere else in
+a call would look like a rejection made by the layout.
 
-The branches mean different things to a caller, and the difference is what an
-interface acts on:
+Each subclass means something different to a caller, and an interface acts on
+that difference:
 
-- `LayoutRefused` - an operation this layout cannot perform: a join the tree
-  cannot express, a border moved past its neighbour, a cut outside the Area
-  being split. Nothing is wrong with the layout, which is a value and is
-  unchanged; the reason is a sentence a menu can show beside the unavailable
-  entry (`PL-M352`).
-- `NotInLayout` - an Area id or a handle this layout does not hold: a stale
-  reference, which is the caller's error rather than the layout's.
-- `InvalidLayout` - a value that cannot be part of a layout, built in code: a
-  view kind that is not a tag, an Area id below one, a split whose sizes do not
-  sum to one.
+- `LayoutRefused` - the layout cannot perform an operation. Examples are a join
+  that the tree cannot express, a border moved past its neighbour, and a cut
+  outside the Area being split. Nothing is wrong with the layout. The layout is
+  a value and stays unchanged. The message gives the reason as a sentence that
+  a menu can show beside the unavailable entry (`PL-M352`).
+- `NotInLayout` - an Area id or a handle that this layout does not contain.
+  This is a stale reference, so the error is the caller's rather than the
+  layout's.
+- `InvalidLayout` - a value, built in code, that cannot be part of a layout.
+  Examples are a view kind that is not a tag, an Area id less than one, and a
+  split whose sizes do not sum to one.
 - `LayoutFormatError` - a serialized layout that does not describe a valid
-  one. `PL-SSQW` Q5 decided it: the message names the invariant that failed and
-  where, and the reader's file is set aside rather than repaired.
-- `UnsupportedSchemaVersion` - a serialized layout newer than this build
-  reads. Not a `LayoutFormatError`, because `PL-SSQW` Q5 answers the two
-  differently: an invalid file is set aside and the session saves on, a newer
-  one is left untouched and the session saves nothing.
-- `LastWorkspace` - a `LayoutRefused`: removing the Workspace would leave the
-  set with none, which `ROADMAP.md` item 34's floor refuses by the type.
-- `NotInWorkspaceSet` - a position the Workspace set does not hold: the
-  caller's error, as `NotInLayout` is.
+  layout. `PL-SSQW` Q5 decided how this case is handled. The message names the
+  invariant that failed and where it failed, and the reader's file is set aside
+  rather than repaired.
+- `UnsupportedSchemaVersion` - a serialized layout written in a schema version
+  newer than this build can read. It is not a `LayoutFormatError`, because
+  `PL-SSQW` Q5 handles the two cases differently. An invalid file is set aside
+  and the session goes on saving. A newer file is left untouched and the
+  session saves nothing.
+- `LastWorkspace` - a `LayoutRefused` for removing a Workspace when that would
+  leave the set with none. `ROADMAP.md` item 34 requires the type itself to
+  reject that removal.
+- `NotInWorkspaceSet` - a position that the Workspace set does not contain.
+  Like `NotInLayout`, this is the caller's error.
 - `WorkspaceFileError` - the store could not write, copy or set aside a file.
-  The message names the path and the operating system's reason, so the action
-  that asked for the write can report both where it was invoked.
+  The message names the path and the operating system's reason. The action that
+  asked for the write can then report both at the place where it was invoked.
 - `ShippedWorkspaceError` - a Workspace file shipped under `data/workspaces/`
-  does not read as one. That is a defect of this build, never the reader's
-  doing, so nothing sets the file aside or falls back from it.
+  is not a valid Workspace. That is a defect of this build and never the
+  reader's doing, so nothing sets the file aside or falls back from it.
 """
 
 from __future__ import annotations
@@ -68,22 +73,24 @@ class LayoutRefused(LayoutError):
     """Raised when an operation cannot be performed on this layout.
 
     The layout is an immutable value, so a refused operation leaves the
-    caller's layout exactly as it was. Trying an operation is therefore also
-    how a caller asks whether it is available: the message is the reason.
+    caller's layout exactly as it was. A caller can therefore find out whether
+    an operation is available by trying it. When the operation is not
+    available, the message gives the reason.
     """
 
 
 class NotInLayout(LayoutError):
-    """Raised when an Area id or a handle names nothing this layout holds."""
+    """Raised when an Area id or a handle names nothing that this layout contains."""
 
 
 class InvalidLayout(LayoutError):
     """Raised when a value built in code cannot be part of a layout or of a Workspace set.
 
-    Each message names the invariant the value broke: a split whose sizes do
-    not sum to one, two Workspaces of one name, a migration table with a gap in
-    it. Reading a serialized layout raises `LayoutFormatError` instead, with the
-    place in the document where the invariant broke.
+    Each message names the invariant that the value broke. Examples are a split
+    whose sizes do not sum to one, two Workspaces with the same name, and a
+    migration table with a gap in it. When a serialized layout breaks an
+    invariant, reading it raises `LayoutFormatError` instead, and that message
+    also gives the place in the document where the invariant broke.
     """
 
 
@@ -91,18 +98,19 @@ class LayoutFormatError(LayoutError):
     """Raised when a serialized layout does not describe a valid layout.
 
     The message names the invariant that failed and the place in the document
-    it failed at, so the file can be repaired by hand or reported. Nothing is
-    substituted and nothing is dropped: a layout that does not read is refused
-    whole (`PL-SSQW` Q5).
+    where it failed, so the file can be repaired by hand or reported. Nothing is
+    substituted and nothing is dropped. A layout that cannot be read is rejected
+    as a whole (`PL-SSQW` Q5).
     """
 
 
 class UnsupportedSchemaVersion(LayoutError):
     """Raised when a serialized layout was written by a newer build.
 
-    `PL-SSQW` Q5 (project owner, 2026-09-27, ratified, over setting the file
-    aside and starting fresh): a newer file is the reader's own work, so it is
-    refused and left untouched, and the session it was opened in saves nothing.
+    A newer file is the reader's own work, so it is rejected and left
+    untouched, and the session that opened it saves nothing. `PL-SSQW` Q5
+    decided this (project owner, 2026-09-27, ratified, over setting the file
+    aside and starting fresh).
     """
 
     # `found` and `supported` are `SchemaVersion` values, built by the code that reads
@@ -122,24 +130,26 @@ class LastWorkspace(LayoutRefused):
     """Raised when removing a Workspace would leave the set with none.
 
     `ROADMAP.md` item 34 adopts Blender's refusal to delete the last
-    workspace as "a floor it enforces structurally rather than by warning",
-    and `PL-WV9K` Q2 (project owner, 2026-09-27, ratified) puts it in the
-    type: the set is a value and is unchanged. The interface also disables
-    the action for a lone Workspace, so this is never the first thing a
-    reader meets.
+    workspace as "a floor it enforces structurally rather than by warning".
+    `PL-WV9K` Q2 (project owner, 2026-09-27, ratified) puts that rule in the
+    type. The set is a value, so a rejected removal leaves it unchanged. The
+    interface also disables the remove action when only one Workspace is
+    left, so this error is never the first sign a reader gets that the last
+    Workspace cannot be removed.
     """
 
 
 class NotInWorkspaceSet(LayoutError):
-    """Raised when a position names no Workspace this set holds."""
+    """Raised when a position names no Workspace that this set contains."""
 
 
 class WorkspaceFileError(LayoutError):
     """Raised when the store could not write, copy or set aside a file.
 
-    `PL-SSQW` Q6: a failed save is reported where the reader asked for it,
-    with the path and the operating system's reason, and the session
-    continues. The error that was raised is kept as `error`.
+    `PL-SSQW` Q6 decided that a failed save is reported at the place where
+    the reader asked for the save. The report gives the path and the
+    operating system's reason, and the session continues. The original
+    operating-system error is kept as `error`.
     """
 
     def __init__(self, doing: str, path: PurePath, error: OSError) -> None:
@@ -149,10 +159,10 @@ class WorkspaceFileError(LayoutError):
 
 
 class ShippedWorkspaceError(LayoutError):
-    """Raised when a Workspace file shipped with the application does not read as one.
+    """Raised when a Workspace file shipped with the application is not a valid Workspace.
 
-    The message names the file and what is wrong with it. The shipped set is
-    what a first run shows and what every fallback in `layout/store.py` falls
-    back to, so there is nothing further to fall back on: the build is broken,
-    and saying so is the only safe answer.
+    The message names the file and what is wrong with it. A first run shows the
+    shipped set, and every fallback in `layout/store.py` falls back to it. There
+    is nothing further to fall back on, so the build is broken, and reporting
+    that is the only safe response.
     """

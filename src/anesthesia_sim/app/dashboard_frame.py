@@ -1,28 +1,30 @@
-"""What the dashboard claims about one run at one instant, with no toolkit loaded.
+"""What the dashboard states about one run at one instant, computed without a GUI toolkit.
 
-The counterpart of `chart_frame.py` for everything beside the plots: the
-status word, the notice banner, the seven readouts, the four setting
-controls, the transport enablement, the agent-accounting panel, the
+This module is the counterpart of `chart_frame.py` for everything beside the
+plots: the status word, the notice banner, the seven readouts, the four
+setting controls, the transport enablement, the agent-accounting panel, the
 control-change list, the two bookmark listings, the chart captions and the
-new-case question. Each is a
-pure function of a `SimulationSnapshot` (or of the `ChartFrame` the same tick
-assembled), so every string a reader sees and every precedence rule that
-chooses between two of them is readable and testable without a display.
-`tests/unit/test_dashboard_frame.py` holds it that way; the PySide6 widgets
-in `qt_widgets.py`, `run_view.py` and `simulation_view.py` call these per
-tick and decide nothing (`PL-25KS`, decision D2).
+new-case question. Each is a pure function of a `SimulationSnapshot`, or of
+the `ChartFrame` that the same tick assembled. So every string a reader sees,
+and every precedence rule that chooses between two strings, can be read and
+tested without a display. `tests/unit/test_dashboard_frame.py` tests them that
+way. The PySide6 widgets in `qt_widgets.py`, `run_view.py` and
+`simulation_view.py` call these functions on every tick and decide nothing
+themselves (`PL-25KS`, decision D2).
 
 Every displayed number passes through `app/formatting.py`. This module
-composes strings and settles enablement, precedence and layout arithmetic;
-it formats nothing itself, so no resolution is spelled here and a change to
-a displayed resolution reaches this module without an edit.
+composes strings and decides enablement, precedence and layout arithmetic.
+It formats no number itself, so no display resolution is written here. So a
+change to a displayed resolution takes effect here without an edit to this
+module.
 
-The strings are the Flet dashboard's, verbatim. Parity with that build is
-the port's definition of done, and three of the strings are safety
-requirements rather than wording: the "Alveolar" readout glossed
-"end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout glossed "inspired"
-(`PL-8M05`) and the "Fresh gas flow" control glossed "common gas outlet"
-(`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
+The strings are copied word for word from the Flet dashboard. Matching that
+build is the port's definition of done. Three of the strings are safety
+requirements rather than wording choices: the "Alveolar" readout with the
+gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
+"inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
+"common gas outlet" (`PL-71CF`). Each is stated in `docs/MODEL.md` and
+enforced by an exact-string test.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -98,117 +100,126 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.layout.run_identity import RunId
 
-# The step each simulation tick advances by. What range of steps is
-# *supported* is `core/`'s to declare: `core.simulation_step.MINIMUM_SIMULATION_STEP_S`
-# and `MAXIMUM_SIMULATION_STEP_S` are that declaration, and `SimulationStep`
-# refuses a step outside them when it is built, here at import, so none reaches
-# a run to be displayed. This is a cadence choice inside
-# that range, at its ceiling
-# deliberately: running finer buys nothing a reader could see (halving the
-# step moves a displayed fraction by around 1e-16), and running coarser
-# costs control resolution. The two coinciding is a fact about this
-# configuration rather than an identity, so they are named apart and
-# `test_the_shipped_step_is_within_the_maximum_simulation_step` holds the
-# relation; `docs/MODEL.md` § "Supported simulation step" and § "Displayed
-# precision" carry the two derivations separately (`PL-X9KD`).
+# The step that each simulation tick advances by. `core/` declares which steps
+# are *supported*: `core.simulation_step.MINIMUM_SIMULATION_STEP_S` and
+# `MAXIMUM_SIMULATION_STEP_S` are that declaration. `SimulationStep` rejects a
+# step outside them when it is built, which here happens at import, so no such
+# step reaches a run that is displayed. The value below is a choice of cadence
+# inside that range, and it sits at the ceiling deliberately. A finer step buys
+# nothing a reader could see: halving the step moves a displayed fraction by
+# around 1e-16. A coarser step costs control resolution. That the chosen step
+# equals the ceiling is a fact about this configuration, not an identity. So
+# the two are named separately, and
+# `test_the_shipped_step_is_within_the_maximum_simulation_step` checks the
+# relation. `docs/MODEL.md` § "Supported simulation step" and § "Displayed
+# precision" give the two derivations separately (`PL-X9KD`).
 SIMULATION_STEP_S: Final = SimulationStep(0.1)
-# How often the simulation timer fires, in *real* seconds. Numerically equal
-# to the step and conceptually unrelated to it: the playback multiplier is
-# the ratio between them - a tick advances `rate.steps_per_tick(...)` steps of
-# `SIMULATION_STEP_S`, which is `multiplier` times faster than real time only
+# How often the simulation timer fires, in *real* seconds. It is numerically
+# equal to the step but means something different. The playback multiplier is
+# the ratio between the two. A tick advances `rate.steps_per_tick(...)` steps
+# of `SIMULATION_STEP_S`. That is `multiplier` times faster than real time only
 # because a tick is one step long (`app/playback.py`,
-# `test_a_tick_is_one_simulation_step_of_real_time`). It is also the
-# interface's control resolution (`PL-NBWP`): a tick advances its whole burst
-# uninterrupted, so a setting changed while the run plays first acts at a
-# tick boundary, `multiplier` times this interval apart.
+# `test_a_tick_is_one_simulation_step_of_real_time`). The interval is also the
+# interface's control resolution (`PL-NBWP`). A tick advances its whole burst
+# without interruption. So a setting changed while the run plays first takes
+# effect at a tick boundary, and tick boundaries are `multiplier` times this
+# interval apart in simulated time.
 SIMULATION_TICK_INTERVAL_S: Final = float(SIMULATION_STEP_S)
-# Render cadence, independent of the simulation step. Twice the tick, so a
-# frame is two control-grid steps at every playback rate - which is why
-# `PL-NBWP` left the grid where it is. Written as its own number rather than
-# derived, because a display cadence and a timer cadence are separate
-# decisions; `test_a_frame_is_two_control_grid_steps_at_every_rate` holds the
-# relation instead.
+# How often the display redraws, independent of the simulation step. It is
+# twice the tick, so a frame spans two control-grid steps at every playback
+# rate. That is why `PL-NBWP` left the grid where it is. The value is written
+# as its own number rather than derived from the tick, because a display
+# cadence and a timer cadence are separate decisions.
+# `test_a_frame_is_two_control_grid_steps_at_every_rate` checks the relation
+# instead.
 RENDER_INTERVAL_S: Final = 0.2
-# How wide the chart is before the first frame runs: the narrowest rung,
-# which is what "Fit run" answers with on a run that has recorded nothing.
+# How wide the chart is before the first frame is drawn. It is the narrowest
+# rung, which is the width "Fit run" chooses for a run that has recorded
+# nothing.
 INITIAL_CHART_TIME_BASE: Final = TIME_BASE_LADDER[0]
 
-# How many runs the dashboard may draw at once. Two, because that is what
-# `ROADMAP.md` § "v0.5.0 - the case you can branch" puts in its own
-# out-of-scope list, and because the encoding that tells one run from another
-# is two-level (`PL-HLD5`: the run on line width, under a cap of two
-# compartments). A third run would have nothing left to be drawn with.
+# How many runs the dashboard may draw at once. The limit is two for two
+# reasons. Two is what `ROADMAP.md` § "v0.5.0 - the case you can branch" puts
+# in its own out-of-scope list. And the encoding that tells one run from
+# another has two levels (`PL-HLD5`: the run is shown by line width, with a cap
+# of two compartments). A third run would have no encoding left to be drawn
+# with.
 MAX_DISPLAYED_RUNS: Final = 2
-# Where the two runs of a comparison are drawn. The trunk first and its branch
-# second is an invariant of how `SimulationView` builds and adds runs rather
-# than a fact about a case. It decides where a run is drawn and never what it
-# is called: `run_label` names a run from its identity (`PL-7Z84`).
+# Where the two runs of a comparison are drawn. The trunk is drawn first and
+# its branch second. That order is an invariant of how `SimulationView` builds
+# and adds runs, not a fact about a case. The index decides where a run is
+# drawn and never what it is called: `run_label` names a run from its identity
+# (`PL-7Z84`).
 TRUNK_RUN_INDEX: Final = 0
 BRANCH_RUN_INDEX: Final = 1
 
 # A readout with no gloss still draws the gloss line, so every reading in the
-# row sits on one baseline (`PL-8M05`). A non-breaking space rather than an
-# empty string: the Flet build needed it because a blank collapsed to zero
-# height there, and it is kept because `tools/glyph_check.py` names these
-# two constants as the evidence for U+00A0 and a test asserts the line holds
-# a value.
+# row sits on one baseline (`PL-8M05`). The line holds a non-breaking space
+# rather than an empty string. The Flet build needed it because a blank line
+# collapsed to zero height there. It is kept because `tools/glyph_check.py`
+# names these two constants as the evidence for U+00A0, and a test asserts
+# that the line holds a value.
 EMPTY_METRIC_QUALIFIER: Final = " "
-# The same spacer for the second-unit line, so the "Simulated time" panel -
-# which has no MAC multiple - is the height of the six that do.
+# The same spacer for the second-unit line. The "Simulated time" panel has no
+# MAC multiple, and the spacer makes it the same height as the six panels that
+# do.
 EMPTY_METRIC_SECONDARY_VALUE: Final = " "
 
-# The delivered-concentration dial's floor, in percent. Its maximum is
-# agent-specific (the real vaporizer's capability) and comes from
+# The lowest setting of the delivered-concentration dial, in percent. Its
+# maximum depends on the agent, because it is the real vaporizer's capability.
+# The maximum comes from
 # `SimulationSnapshot.max_delivered_concentration_percent` rather than from a
-# constant; the floor is here because it is a percent where the core's own
-# guard is a fraction. The flow ranges are `core/`'s and are never restated:
-# ventilation's and cardiac output's are `core/supported_ranges.py`'s
-# constants, imported (`PL-0MLQ`), and the fresh gas flow's is the circuit's,
-# read from `SimulationSnapshot.accepted_fresh_gas_flow_range_l_min` because a
-# machine profile can narrow it (`PL-7CRY`).
+# constant. The minimum is defined here because it is a percent, while the
+# core's own guard is a fraction. The flow ranges belong to `core/` and are
+# never restated here. The ranges for ventilation and cardiac output are
+# constants imported from `core/supported_ranges.py` (`PL-0MLQ`). The fresh gas
+# flow's range belongs to the circuit. It is read from
+# `SimulationSnapshot.accepted_fresh_gas_flow_range_l_min`, because a machine
+# profile can narrow it (`PL-7CRY`).
 MIN_DELIVERED_CONCENTRATION_PERCENT: Final = 0.0
 
-# The four status words. Four states, not two: a stopped run must never
-# render as a pause, and the two stopped states are not each other. A
-# failure says the model reached a state it could not step from; the
-# supported run length says it reached the end of what it is claimed to
-# represent, having done everything right.
+# The four status words. There are four states, not two. A stopped run must
+# never be shown as paused, and the two stopped states must not be confused
+# with each other. A failure says the model reached a state it could not step
+# from. The supported run length says the model reached the end of what it is
+# claimed to represent, having done everything right.
 STATUS_PAUSED_TEXT: Final = "Paused"
 STATUS_RUNNING_TEXT: Final = "Running"
 STATUS_FAILED_TEXT: Final = "Stopped — simulation error"
 STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 
 # The three notice banners, in precedence order. The stopped-run wording says
-# what the values *are* rather than warning about them, which is what rolling
-# the failed step back bought (`PL-026`). Whether a step was rolled back is the
-# failure's own to say - `SimulationNumericalError`'s message does - and the
-# banner no longer says it of every failure, since a setting that raised
-# (`PL-YK2V`) and a displayed value the interface refused (`PL-7DJK`) failed
-# no step. The run-length wording does not borrow the failure's: nothing
-# failed and nothing was rolled back, and describing a correct model as a
-# broken one is the safety defect `CLAUDE.md` names (`PL-Y5WR`). It says why
-# the limit exists, because a boundary with no reason reads as an arbitrary
-# restriction.
+# what the values *are* rather than warning about them. Rolling the failed
+# step back is what made that possible (`PL-026`). Whether a step was rolled
+# back is for the failure itself to say, and `SimulationNumericalError`'s
+# message does say it. The banner no longer says it of every failure, because
+# a setting that raised (`PL-YK2V`) and a displayed value that the interface
+# rejected (`PL-7DJK`) failed no step. The run-length wording does not reuse
+# the failure's wording. Nothing failed and nothing was rolled back, and
+# describing a correct model as a broken one is the safety defect that
+# `CLAUDE.md` names (`PL-Y5WR`). The wording says why the limit exists, because
+# a boundary given with no reason looks like an arbitrary restriction.
 #
-# Both failure wordings end with `{exit}`, the way out: `RESET_EXIT_TEXT`,
-# since Reset is the one door out of a stopped run - unless Reset is what was
-# refused, when `refused_reset_exit` names the other door, because sending a
-# reader back to the control that was just refused is an instruction the
-# screen already knows cannot be followed (`PL-M4M0`). The run-length wording
-# keeps its own Reset line: a refused Reset halts the run as a failure, which
-# outranks the limit, so that banner never carries another exit.
+# Both failure wordings end with `{exit}`, which names the way out. Normally
+# that is `RESET_EXIT_TEXT`, because Reset is the only way out of a stopped
+# run. When Reset itself was refused, `refused_reset_exit` names the other way
+# out instead. Sending a reader back to the control that was just refused
+# would be an instruction that the screen already knows cannot be followed
+# (`PL-M4M0`). The run-length wording keeps its own Reset line. A refused Reset
+# halts the run as a failure, and a failure outranks the limit, so the
+# run-length banner never needs another exit.
 RESET_EXIT_TEXT: Final = "Reset to start a new run."
 FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step. {exit}"
 )
 # The failure banner as `RunView.present_halt` writes it, before any frame of
-# the stopped run has been drawn: the chart and the readouts still show the
-# frame drawn before the stop, which is not the step the run stopped at, so
-# "the values shown are the last completed step" would be the stale-state
-# reading the hazard table names. `refresh` replaces it with
-# `FAILURE_NOTICE_TEMPLATE` on the first frame that draws, so which of the two
-# stands is decided by whether a frame drew rather than guessed from the
-# reason (`PL-7DJK`).
+# the stopped run has been drawn. At that point the chart and the readouts
+# still show the frame drawn before the stop, which is not the step the run
+# stopped at. So "the values shown are the last completed step" would be the
+# stale-state misreading that the hazard table names. `refresh` replaces this
+# banner with `FAILURE_NOTICE_TEMPLATE` on the first frame that draws. Which of
+# the two banners is shown is therefore decided by whether a frame drew, not
+# guessed from the reason (`PL-7DJK`).
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
     "the chart and the readouts show the last frame drawn before it stopped, and the "
@@ -225,28 +236,29 @@ REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
 
-# The way out when Reset is what was refused, in `refused_reset_exit`'s two
-# wordings. Reset is refused only on a settings record whose tissue flows do
-# not sum to the cardiac output. Every flow is formed from the output
-# (`PL-HQF5`), so a new output scales them all by one factor and the sum still
-# disagrees. Only a perfusion fraction written past its guard (`PL-Z0HN`) can
-# build that record, and no shipped code writes one. So no setting can repair
-# the refusal, and the banner says so rather than naming a dial. Until
-# `PL-01GY` it said to change the setting the refusal names, which stopped
-# being true with `PL-HQF5`.
+# The way out when Reset itself was refused, in the two wordings that
+# `refused_reset_exit` chooses between. Reset is refused only for a settings
+# record whose tissue flows do not sum to the cardiac output. Every flow is
+# computed from the output (`PL-HQF5`), so a new output scales them all by one
+# factor and the sum still disagrees. Only a perfusion fraction written past
+# its guard (`PL-Z0HN`) can build that record, and no shipped code writes one.
+# So no setting can repair the refusal, and the banner says so rather than
+# naming a dial. Until `PL-01GY` the banner said to change the setting that the
+# refusal names, and that advice stopped being true with `PL-HQF5`.
 #
-# The way out it names is closing and reopening the application, because that
-# is open on every run. A new case is not: it is the agent selector, which a
-# comparison replaces with `COMPARING_AGENT_LOCK_TEXT` and which a branch has
-# not got (`PL-TFX5`). If a refusal that a setting can repair is ever added to
-# that record, this text must change with it.
+# The way out that the banner names is to close and reopen the application,
+# because that is available on every run. A new case is not. A new case is
+# started from the agent selector, which a comparison replaces with
+# `COMPARING_AGENT_LOCK_TEXT` and which a branch does not have (`PL-TFX5`). If
+# a refusal that a setting can repair is ever added to that record, this text
+# must change with it.
 #
 # Which wording states the refusal depends on the banner's reason. On a run
 # that had not failed, or whose recorded failure is this same refusal, the
-# halt's reason is the refusal, so the exit points at it. On a run that had
+# halt's reason is the refusal, so the exit refers to it. On a run that had
 # failed for something else, the controller keeps that earlier reason
-# (`SimulationController.fail`), so the exit carries the refusal itself, in the
-# form the failure line gives a reason (`PL-M4M0`).
+# (`SimulationController.fail`). The exit then states the refusal itself, in
+# the form in which the failure line gives a reason (`PL-M4M0`).
 REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
 REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {way_out}"
 REFUSED_RESET_WAY_OUT_TEXT: Final = (
@@ -255,27 +267,29 @@ REFUSED_RESET_WAY_OUT_TEXT: Final = (
 )
 
 # What the chart says when a reader has unchecked every compartment. A plot
-# missing all six is a blank panel, and a blank panel reads as a display that
-# has failed rather than as one showing what it was asked for.
+# with all six missing is a blank panel. A blank panel looks like a display
+# that has failed, not like one showing what it was asked to show.
 NO_TRACES_SHOWN_TEXT: Final = (
     "No compartment traces are shown. Check a compartment above to draw it — "
     "the readouts and the run itself are unaffected."
 )
 
-# Said when a drawn trace goes above the top of the plot, naming which. The
-# fixed axis (`CHART_AXIS_TOP_MAC`) is exceeded by a setting in common use -
-# sevoflurane's 8% dial is 4.00 MAC - and a trace clipped at the ceiling draws
-# as a horizontal line, which is what a plateau looks like. Growing the axis
-# to fit was rejected: it redraws the curve at a smaller height partway
-# through the induction it is being used to teach.
+# Shown when a drawn trace goes above the top of the plot, naming the traces
+# that do. A setting in common use exceeds the fixed axis
+# (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.00 MAC. A trace
+# clipped at the ceiling draws as a horizontal line, which is what a plateau
+# looks like. Growing the axis to fit was rejected, because it would redraw the
+# curve at a smaller height partway through the induction it is being used to
+# teach.
 OFF_SCALE_NOTICE_TEMPLATE: Final = (
     "Above the top of the plot: {compartments}. The axis stops at {top} and these "
     "traces are cut off there — their values are in the readouts above, which are "
     "not clipped."
 )
 
-# The control-change panel. Newest first because it is a fixed panel beside
-# a chart rather than a scrollback; bounded, and honest about the bound.
+# The control-change panel. It lists the newest change first, because it is a
+# fixed panel beside a chart rather than a scrolling history. It lists a
+# limited number of changes and says how many it left out.
 NO_CONTROL_CHANGES_TEXT: Final = "No settings changed yet in this run."
 MAX_LISTED_ADJUSTMENTS: Final = 12
 CONTROL_TIMELINE_HEADING: Final = "Control changes"
@@ -285,27 +299,28 @@ CONTROL_TIMELINE_CAPTION: Final = (
 UNLISTED_CHANGES_TEMPLATE: Final = "{count} earlier change(s) not listed"
 TIMELINE_OVERFLOW_JOINER: Final = "; "
 
-# Shown on a chart whose pool of marks could not mark every control change
-# inside its window. Each chart has its own window (`PL-L59K`), so the count
-# belongs to the chart. It used to appear in the run's control-change panel,
-# when every chart drew the same window. The wording is a placeholder.
+# Shown on a chart whose limited pool of drawn marks could not mark every
+# control change inside its window. Each chart has its own window (`PL-L59K`),
+# so the count belongs to the chart. It used to appear in the run's
+# control-change panel, when every chart drew the same window. The wording is
+# a placeholder.
 UNMARKED_CHANGES_TEMPLATE: Final = "{count} control change(s) in this window not marked"
 
-# The bookmark panel. Two headings and two empty lines rather than one of
-# each, because the two collections are listed apart (`PL-LPLD`) and a shared
-# "nothing marked yet" would leave a reader working out which of the two it
-# was about.
+# The bookmark panel. It has two headings and two empty-list lines rather than
+# one of each, because the two collections are listed separately (`PL-LPLD`).
+# A shared "nothing marked yet" would leave a reader working out which of the
+# two collections it was about.
 #
-# Oldest first, which is the opposite of the control-change list above and is
-# not an inconsistency: that list is a record of what has happened and the
-# newest entry is the one a reader is chasing, while this is a set of standing
-# questions a reader adds to and scans, so an entry that moves when another is
-# added is one they have to find again.
+# The panel lists the oldest mark first. That is the opposite of the
+# control-change list above, and it is not an inconsistency. The control-change
+# list is a record of what has happened, and the newest entry is the one a
+# reader is looking for. This panel is a set of open questions that a reader
+# adds to and scans. An entry that moves when another is added is one the
+# reader has to find again.
 #
 # **The headings name the two kinds and say nothing else.** A caption here
-# would be explaining the domain to a clinician, which
-# `.claude/rules/ui-reader.md` rules out; what each row asserts is carried by
-# its own units and words.
+# would explain the domain to a clinician, which `.claude/rules/ui-reader.md`
+# rules out. Each row's own units and words state what the row asserts.
 TIME_BOOKMARK_HEADING: Final = "Time bookmarks"
 MAC_TARGET_HEADING: Final = "MAC targets"
 NO_TIME_BOOKMARKS_TEXT: Final = "None marked"
@@ -316,39 +331,40 @@ NO_MAC_TARGETS_TEXT: Final = "None set"
 MARK_LABEL_JOINER: Final = " – "
 
 # What a row says about how far the run has got with the mark it lists
-# (`PL-CTD7`). Conditional text rather than standing text, which is the
-# distinction `.claude/rules/ui-reader.md` draws: a mark the run can still
-# reach says nothing at all, so the words appear on exactly the rows whose
-# state a reader would otherwise have to infer from silence.
+# (`PL-CTD7`). This is conditional text rather than standing text, which is
+# the distinction `.claude/rules/ui-reader.md` draws. A row for a mark that the
+# run can still reach says nothing at all. So the words appear on exactly the
+# rows whose state a reader would otherwise have to infer from silence.
 #
-# **The three negative answers are worded apart deliberately.** "Not reached"
-# alone would be true of all three and would tell a learner that a bookmark
-# before this branch's fork might arrive if they kept running, which it cannot -
-# `bookmarks.MarkStanding` carries the argument, and `CLAUDE.md`'s
-# safety-critical standard is what rules out the plausible-looking answer.
-# `NOT_REACHED_WITHIN_CAP` names the run length rather than a number of hours,
-# so the figure lives once, in `core/supported_ranges.py` and
-# `docs/MODEL.md` § "Supported run length".
+# **The three negative answers are worded differently on purpose.** "Not
+# reached" alone would be true of all three. It would tell a learner that a
+# bookmark before this branch's fork might still arrive if they kept running,
+# which it cannot. `bookmarks.MarkStanding` gives the argument, and
+# `CLAUDE.md`'s safety-critical standard is what rules out that
+# plausible-looking answer. `NOT_REACHED_WITHIN_CAP` names the run length
+# rather than a number of hours, so the figure is written in one place only:
+# `core/supported_ranges.py` and `docs/MODEL.md` § "Supported run length".
 #
-# **The failed run's word names the failure for the same reason the cap's
-# names the cap** (`PL-N3N5`). Each says what the mark went unreached
-# *within* or *before*, so the row carries why nothing more will happen to
-# the mark rather than leaving a reader to find it on the run's own panel -
-# and it borrows that panel's phrase, so a screen read at one instant says
-# "Stopped - simulation error" above and "not reached before the simulation
-# error" beside the mark instead of two accounts of one stop. What it does
-# not do is predicate the transport state of the mark: "not reached" is the
-# claim, and the failure is when it stopped being open to revision, which is
-# the distinction `MARK_STILL_RUNNING_TEXT` below was introduced for.
+# **The failed run's words name the failure, for the same reason that the
+# cap's words name the cap** (`PL-N3N5`). Each says what the mark went
+# unreached *within* or *before*. So the row says why nothing more will happen
+# to the mark, rather than leaving a reader to find the reason on the run's
+# own panel. The words also reuse that panel's phrase. So a screen read at one
+# instant says "Stopped - simulation error" above and "not reached before the
+# simulation error" beside the mark, instead of giving two accounts of one
+# stop. The words do not attach the run's transport state to the mark. "Not
+# reached" is the claim, and the failure is the moment it stopped being open
+# to revision. `MARK_STILL_RUNNING_TEXT` below was introduced for that same
+# distinction.
 #
 # **"passed" and "reached" are two words because they are two claims**
-# (`PL-3K9B`). "Passed" is where the run's clock is relative to a marked
-# instant, so it is re-read every time the row is drawn and stays true across
-# anything that moves the clock. "Reached" is what the run did to a marked
-# height, which no clock orders. Wording them alike would put one word on a
-# row a rewind can revoke and a row it cannot, which is the plausible-looking
-# answer again - and a learner reading two branches side by side is reading
-# exactly that difference.
+# (`PL-3K9B`). "Passed" says where the run's clock is relative to a marked
+# instant. So it is worked out again every time the row is drawn, and it stays
+# true across anything that moves the clock. "Reached" says what the run did
+# at a marked height, which no clock orders. Wording them alike would put the
+# same word on a row that a rewind can revoke and on a row that it cannot.
+# That is the plausible-looking answer again, and a learner reading two
+# branches side by side is reading exactly that difference.
 MARK_STANDING_JOINER: Final = " · "
 MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     {
@@ -361,160 +377,169 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     }
 )
 
-# The same answers, attributed, for a row whose displayed runs disagree
-# (`PL-LHBY`, `PL-4KZD`). A mark's *set* is shared across the runs on screen -
-# `SimulationView._apply_to_every_run` is the only thing that writes one - but
-# its *standing* is computed from each run's own clock, its own opening
-# instant and its own halts, so two managements of one case answer the same
-# mark differently and both answers are the case's news.
+# The same answers, each attributed to its run, for a row on which the
+# displayed runs disagree (`PL-LHBY`, `PL-4KZD`). The *set* of marks is shared
+# across the runs on screen. `SimulationView._apply_to_every_run` is the only
+# code that writes one. But a mark's *standing* is computed from each run's
+# own clock, its own opening instant and its own halts. So two managements of
+# one case can give different answers for the same mark, and both answers are
+# news about the case.
 #
 # **`STILL_RUNNING` is the one entry that gains a word here, and only here.**
-# On an unattributed row silence is unambiguous: nothing has happened to a
+# On an unattributed row, silence is unambiguous: nothing has happened to the
 # mark on the one run whose answer the row states. Beside a named run that has
-# something to say, silence would read as the second run having no answer
-# rather than as its answer being not yet, so the row would leave a reader to
-# infer from an absence exactly what `.claude/rules/ui-reader.md` keeps
-# conditional text for. The word costs nothing on the rows that stay
-# unattributed, because those rows never reach this table.
+# something to say, silence would look as if the second run had no answer,
+# rather than as if its answer were "not yet". The row would then leave a
+# reader to infer from an absence exactly what `.claude/rules/ui-reader.md`
+# reserves conditional text for. The word costs nothing on the rows that stay
+# unattributed, because those rows never use this table.
 #
-# **It is predicated of the mark, not of the run, and "still running" was the
+# **The word describes the mark, not the run, and "still running" was the
 # wrong word for it.** `MARK_ATTRIBUTION_TEMPLATE` puts the run's name first,
-# which makes the run the grammatical subject: for `passed`, `reached` and the
-# cap the predicate still reads as that run's relation to the mark, but "still
-# running" reads as its transport state. This interface owns that vocabulary
-# already - `STATUS_RUNNING_TEXT`, `STATUS_PAUSED_TEXT` and
-# `STATUS_FAILED_TEXT` are a few lines above, and
-# `REFUSED_SETTING_NOTICE_TEMPLATE` uses the phrase in exactly that sense - so
+# which makes the run the grammatical subject. For `passed`, `reached` and the
+# cap, the phrase still reads as that run's relation to the mark. But "still
+# running" reads as the run's transport state. This interface already uses
+# that vocabulary for transport state. `STATUS_RUNNING_TEXT`,
+# `STATUS_PAUSED_TEXT` and `STATUS_FAILED_TEXT` are a few lines above, and
+# `REFUSED_SETTING_NOTICE_TEMPLATE` uses the phrase in exactly that sense. So
 # `Run 2 still running` contradicted the word on Run 2's own panel whenever
-# that run was paused, which is most of the time a learner reads this row, and
-# said something `MarkStanding.STILL_RUNNING` is not licensed to claim: it
-# says the run *can still reach* the mark and has not yet, which is a
-# statement about the mark rather than about the clock. "Not yet" is that
-# statement, and it holds of a paused run and a running one alike.
+# that run was paused, which is most of the time a learner reads this row. It
+# also claimed something that `MarkStanding.STILL_RUNNING` does not support.
+# That standing says the run *can still reach* the mark and has not yet, which
+# is a statement about the mark rather than about the clock. "Not yet" is that
+# statement, and it is true of a paused run and a running one alike.
 #
-# Derived from `MARK_STANDING_TEXT` rather than written out again, so the four
-# words the two tables share cannot come to disagree about what a standing is
-# called on one row and on the row beside it.
+# The table is derived from `MARK_STANDING_TEXT` rather than written out
+# again. So the four words that the two tables share cannot come to disagree
+# about what a standing is called on one row and on the row beside it.
 MARK_STILL_RUNNING_TEXT: Final = "not yet"
 MARK_STANDING_COMPARED_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     {**MARK_STANDING_TEXT, MarkStanding.STILL_RUNNING: MARK_STILL_RUNNING_TEXT}
 )
-# One run's answer, named by the run it belongs to. The run's own word comes
-# first, because a row that disagrees is scanned down its run names.
+# One run's answer, labelled with the run it belongs to. The run's name comes
+# first, because a reader scans a row of disagreeing answers down its run
+# names.
 MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 
-# The editor's own words. Field labels rather than sentences, which is the
-# form `.claude/rules/ui-reader.md` asks a specialist reader's screen to carry
-# its meaning in: "Compartment" and "Height" say what the control sets, and
-# what a height on a given compartment does and does not assert is
-# `docs/MODEL.md` § "MAC multiples as a display unit" rather than a paragraph
-# in a dialog.
-# The branch control, beside the marks and for the same reason: both offer
-# instants of the *case* rather than of either run, so both are panels of the
-# dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md` § "Where new
-# code belongs"). "From" labels the instant the branch opens at; the heading
-# names the mechanism and says nothing else, per the rule the mark headings
-# are written under.
+# The bookmark editor's own words. They are field labels rather than
+# sentences, which is the form in which `.claude/rules/ui-reader.md` asks a
+# specialist reader's screen to carry its meaning. "Compartment" and "Height"
+# say what the control sets. What a height on a given compartment does and
+# does not assert is stated in `docs/MODEL.md` § "MAC multiples as a display
+# unit", not in a paragraph in a dialog.
+# The branch control's words follow, beside the marks and for the same reason.
+# Both offer instants of the *case* rather than of either run, so both are
+# panels of the dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md`
+# § "Where new code belongs"). "From" labels the instant at which the branch
+# opens. The heading names the mechanism and says nothing else, under the same
+# rule as the mark headings.
 FORK_HEADING: Final = "Branch"
 FORK_POINT_LABEL: Final = "From"
-# "Branch" and not "Branch here" (`PL-Y2SL`): "here" names where the paused
-# trunk stands, on the button below, and this one branches at the point "From"
-# names. Two adjacent buttons with the same leading words doing different
-# things invite the wrong press, and a branch taken at the wrong instant ends
-# only with the trunk's Reset while one comparison is the cap.
+# The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
+# "here" names where the paused trunk stands, while this button branches at
+# the point that "From" names. Two adjacent buttons whose labels start with
+# the same words but do different things invite the wrong press. A branch
+# taken at the wrong instant can then be ended only with the trunk's Reset,
+# because only one comparison is allowed at a time.
 TAKE_FORK_LABEL: Final = "Branch"
-# Conditional text, so it earns a sentence where standing chrome would not
-# (`.claude/rules/ui-reader.md`). It says the rule and the way out of it,
-# because a refused control that does not say how to un-refuse itself is a
-# dead end rather than a mode. The display is capped at two runs and there is
-# no run selector yet - `ROADMAP.md` § "Explicitly out of scope for v0.5.0" -
-# so a second branch would have to replace the shown one silently, with the
-# first still live inside `BranchedCase`.
+# This is conditional text, so it earns a sentence where standing interface
+# text would not (`.claude/rules/ui-reader.md`). It states the rule and the
+# way out of it, because a refused control that does not say how to lift the
+# refusal is a dead end rather than a mode. The display is capped at two runs
+# and there is no run selector yet (`ROADMAP.md` § "Explicitly out of scope for
+# v0.5.0"). So a second branch would have to replace the shown one silently,
+# while the first branch stayed live inside `BranchedCase`.
 #
-# **A template, because the way out is a button and a button is found by the
-# words on it** (`PL-WG73`). It read "Reset the case" while the only Reset in
-# `app/` is labelled `RESET_LABEL` and nothing on screen says "case", so the
-# way out named a control this interface does not have. A comparison draws
-# two of them, one per run, and they do opposite things: the trunk's rebuilds
-# the case, the branch's returns that run to its own fork and leaves this
-# lock standing - which is the one a learner reaches for, being the run they
-# are trying to end. So the sentence names both, and
-# `comparing_fork_lock_text` fills it from the runs' names and `RESET_LABEL`,
-# which is what stops an instruction and the control it names drifting apart
-# again.
+# **It is a template, because the way out is a button and a reader finds a
+# button by the words on it** (`PL-WG73`). The text used to say "Reset the
+# case", but the only Reset in `app/` is labelled `RESET_LABEL` and nothing on
+# screen says "case". So the way out named a control that this interface does
+# not have. A comparison draws two Reset buttons, one per run, and they do
+# opposite things. The trunk's Reset rebuilds the case. The branch's Reset
+# returns that run to its own fork and leaves this lock in place, and it is
+# the one a learner reaches for, because the branch is the run they are trying
+# to end. So the sentence names both. `comparing_fork_lock_text` fills it from
+# the runs' names and `RESET_LABEL`, which stops an instruction and the
+# control it names from drifting apart again.
 #
-# It states what the trunk's Reset costs as well as what it ends. Sending a
-# learner to a control that discards every run without saying so would be
-# this same defect with the consequence hidden rather than the label.
+# The text states what the trunk's Reset costs as well as what it ends.
+# Sending a learner to a control that discards every run, without saying so,
+# would be the same defect with the consequence hidden instead of the label.
 COMPARING_FORK_LOCK_TEMPLATE: Final = (
     "One comparison at a time. {trunk}'s {reset} ends it and starts the case over; "
     "{branch}'s {reset} only returns {branch} to where it branched."
 )
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
-# The fork where the paused trunk stands, which is a second control rather
-# than a row in the selector above. A learner who pauses can branch there,
-# and it is the default act (project owner, 2026-10-12: "if I pause I should
-# be able to branch from there too"), because it is the one control labelled
-# with the instant the learner is looking at; the selector stays the way to
-# go anywhere else. A button rather than an entry selected by default
-# (project owner, 2026-10-12, ratified, over a row at the top of the selector
-# selected by default, `PL-Y2SL`; and `PL-TYWQ`, project owner 2026-09-21,
-# ratified, over the single list that grows a row while the run is halted).
-# The two offers have different lifetimes: an entry in the selector stays
-# forkable until the case itself changes, while this one is valid only while
-# the trunk stands where it stopped, so a row that arrived and left would
-# change the selector's membership under a reader who had looked away - the
-# stale-state case `.claude/rules/expert-review.md` names, and detectable
-# only against a remembered list - and a default selection that jumped to it
-# would move a choice the reader had made. A control that is either there or
-# not is detectable on sight.
+# The fork where the paused trunk stands. It is a second control rather than
+# a row in the selector above. A learner who pauses can branch there, and that
+# is the default action (project owner, 2026-10-12: "if I pause I should be
+# able to branch from there too"), because it is the one control labelled with
+# the instant the learner is looking at. The selector remains the way to
+# branch anywhere else. The fork is a button rather than an entry selected by
+# default (project owner, 2026-10-12, ratified, over a row at the top of the
+# selector selected by default, `PL-Y2SL`; and `PL-TYWQ`, project owner
+# 2026-09-21, ratified, over the single list that grows a row while the run is
+# halted).
 #
-# The instant is the clock's, which is where the branch opens: the clock
-# stands on whole steps, so the label and the fork are one number
+# The two offers last for different lengths of time. An entry in the selector
+# stays available for a branch until the case itself changes. This button is
+# valid only while the trunk stays where it stopped. A row that appeared and
+# then disappeared would change the selector's contents under a reader who had
+# looked away. That is the stale-state case that
+# `.claude/rules/expert-review.md` names, and a reader could detect it only by
+# comparing against a remembered list. A default selection that jumped to the
+# row would also move a choice the reader had made. A control that is either
+# there or not can be noticed on sight.
+#
+# The instant shown is the clock's, which is where the branch opens. The clock
+# advances in whole steps, so the label and the fork are the same number
 # (`HereForkPoint`).
 HERE_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}"
 # The same control's words when a mark stopped the trunk where it stands.
 #
-# **The instant is the halt's, not the mark's, and the wording keeps them
-# apart.** A mark lying inside a step halts the run at the step's end, so the
-# instant a learner marked and the instant the branch opens at are not in
-# general the same number (`SimulationController.resumed_here`). The label
-# therefore binds its instant to "Branch here" - what this control will do -
-# and says "stopped on your mark" of the halt rather than of the number, so it
-# never states a mark's position. Labelling it with the marked instant instead
-# would be the wrong label on a correct value, which `CLAUDE.md`'s
+# **The instant is the halt's, not the mark's, and the wording keeps the two
+# apart.** A mark that lies inside a step halts the run at the end of that
+# step. So the instant a learner marked and the instant at which the branch
+# opens are, in general, not the same number
+# (`SimulationController.resumed_here`). The label therefore attaches its
+# instant to "Branch here", which is what this control will do. It applies
+# "stopped on your mark" to the halt rather than to the number, so it never
+# states where a mark is. Labelling the control with the marked instant
+# instead would put the wrong label on a correct value, which `CLAUDE.md`'s
 # safety-critical standard counts as a failure of the value.
 #
-# One label for a crossing of either kind. A step can cross a marked instant
-# and a marked height at once, and "your mark" is true of both; which marks
-# were crossed is the bookmark panel's row to state, and repeating it here
+# One label serves a crossing of either kind. A step can cross a marked
+# instant and a marked height at once, and "your mark" is true of both. The
+# bookmark panel's rows state which marks were crossed. Repeating that here
 # would put two accounts of one stop on screen.
 #
 # **These exact words** (project owner, 2026-09-21, ratified, over `PL-TYWQ`'s
 # own illustrative "Branch at your mark - 0:45", which asserts where the mark
-# *is* and so is wrong whenever a mark lies inside a step). Ratified rather
-# than specified, so ordinary evidence reopens it - a learner who misreads it,
-# a measurement - but the clause it was chosen over is the one thing a rewrite
-# must not reintroduce.
+# *is* and so is wrong whenever a mark lies inside a step). The decision was
+# ratified rather than specified, so ordinary evidence can reopen it, such as
+# a learner who misreads it or a measurement. But a rewrite must not
+# reintroduce the wording it was chosen over.
 HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
-# A time bookmark the trunk has passed, as an entry in the selector beside the
-# control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
-# instant the branch opens at, never the mark's typed value**: a mark lying
-# inside a step is reached at the step's end, so the two differ, and the entry
-# names the one the act takes for the reason the halt label above does. "On
-# your mark" follows that ratified label's wording, "stopped on your mark", and
-# like it refers to the mark without stating where the mark is. It carries no
-# mark's name either, for the reason the halt label gives: which marks is the
-# bookmark panel's row to state. These words are the project owner's
-# (2026-10-12, ratified, over a label stating the mark's typed instant or its
-# name), so a rewrite is put to them rather than made.
+# A time bookmark that the trunk has passed, as an entry in the selector beside
+# the control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
+# instant at which the branch opens, never the value typed for the mark.** A
+# mark that lies inside a step is reached at the end of the step, so the two
+# instants differ. The entry names the instant the branch will use, for the
+# same reason as the halt label above. "On your mark" follows that ratified
+# label's wording, "stopped on your mark". Like that label, it refers to the
+# mark without stating where the mark is. It does not carry the mark's name
+# either, for the reason the halt label gives: the bookmark panel's rows state
+# which marks are meant. These words are the project owner's (2026-10-12,
+# ratified, over a label stating the mark's typed instant or its name). So a
+# change to them is proposed to the project owner, not made directly.
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
 
-# Each range below holds one part of a clock reading within the supported run, with every
-# value that part can take. Hours run below the run length, minutes and whole seconds run
-# below 60, and the tenth is nonzero. Each range starts at 1 so that a reading built from
-# them includes every part (`PL-NC0D`).
+# Each range below holds every value that one part of a clock reading can take
+# within the supported run. Hours are less than the run length in hours,
+# minutes and whole seconds are less than 60, and the tenth is nonzero. Each
+# range starts at 1, so that a reading built from them includes every part
+# (`PL-NC0D`).
 _CLOCK_HOURS: Final = range(1, int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // SECONDS_PER_HOUR))
 _CLOCK_MINUTES: Final = range(1, int(MINUTES_PER_HOUR))
 _CLOCK_WHOLE_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
@@ -602,44 +627,48 @@ COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
 MARK_NAME_FIELD_LABEL: Final = "Name"
 MARK_NAME_PLACEHOLDER: Final = "Optional"
-# The entry unit for an instant, and the resolution it is entered at. Seconds
-# rather than the compound form the clock reads, because a spin box states one
-# unit and the compound form is three; the dialog restates the entered value in
-# that form beside the control, so no reader converts between them. One decimal
-# is the simulation step, which is the finest instant a run can stand on.
+# The unit in which an instant is entered, and the resolution of the entry.
+# The unit is seconds rather than the compound form the clock shows, because a
+# spin box states one unit and the compound form has three. The dialog
+# restates the entered value in the compound form beside the control, so no
+# reader has to convert between them. One decimal place matches the
+# simulation step, which is the finest instant a run can stop at.
 INSTANT_ENTRY_SUFFIX: Final = " s"
 INSTANT_ENTRY_DECIMALS: Final = 1
 INSTANT_ENTRY_STEP_S: Final = 1.0
-# What the height control is bounded at before an agent has been named. Every
-# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC,
-# so it is a floor on the real bound rather than a guess at it, and
+# The upper bound of the height control before an agent has been named. Every
+# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC.
+# So this value is a lower bound on the real limit rather than a guess at it.
 # `BookmarkDialog.set_reachable_height` replaces it with the running agent's
-# own the first time a frame is drawn.
+# own limit the first time a frame is drawn.
 DEFAULT_MAXIMUM_TARGET_MAC: Final = 3.0
 
 REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
-"""Conditional text, which is where a sentence is appropriate: it fires on a
-press that did nothing and costs nothing when it does not
-(`.claude/rules/ui-reader.md`). The two empty lines above are standing text
-and are labels for that reason."""
-# Names the substance the six readouts belong to (`PL-TCD1`). Label rather
-# than sentence, and "Modelled" rather than a bare agent name, because the
-# row's own hazard is a reader setting these beside a monitor.
+"""Conditional text, which is where a sentence is appropriate.
+
+It appears only after a press that did nothing, and costs nothing when it
+does not appear (`.claude/rules/ui-reader.md`). The two empty-list lines above
+are standing text, and are labels for that reason."""
+# Names the substance that the six readouts belong to (`PL-TCD1`). It is a
+# label rather than a sentence. It says "Modelled" rather than giving a bare
+# agent name, because the hazard on this row is a reader comparing these
+# values with a monitor.
 COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 
-# The dial's setting on the readout heading line, in the two units the dial
-# prints it in. A label for the setting rather than a modelled value, so the
-# word is the dial's own: what the vaporizer is set to deliver (`PL-NWTM`).
+# The dial's setting on the readout heading line, in the two units that the
+# dial prints it in. This labels a setting, not a modelled value, so the word
+# is the dial's own: what the vaporizer is set to deliver (`PL-NWTM`).
 DELIVERED_LINE_TEMPLATE: Final = "Delivered {value} ({secondary})"
 
 # What the confirmation says before a new case replaces a recorded one, in
 # the order a reader meets it: why this is a new case at all, what is about
 # to be lost (`formatting.format_case_discard_warning`, per case), and what
 # survives. `NEW_CASE_CARRYOVER_TEMPLATE` is a claim about
-# `SimulationController.set_agent` and has to stay true with it. It names
-# three of the four settings that carry over, deliberately (`PL-0Q1T`): the
-# circuit volume carries over too, but it is not a setting the reader chose,
-# and listed among sliders it read as one mislaid somewhere.
+# `SimulationController.set_agent`, and it has to stay true as that method
+# changes. It deliberately names only three of the four settings that carry
+# over (`PL-0Q1T`). The circuit volume carries over too, but it is not a
+# setting the reader chose. Listed among the sliders, it looked like a slider
+# that had gone missing.
 NEW_CASE_TITLE_TEMPLATE: Final = "Start a new {agent} case?"
 NEW_CASE_IS_NOT_A_VIEW_TEXT: Final = (
     "Changing agent starts a new case. This model does not simulate switching "
@@ -649,9 +678,9 @@ NEW_CASE_CARRYOVER_TEMPLATE: Final = (
     "Fresh gas flow, alveolar ventilation and cardiac output carry over. "
     "Delivered {agent} starts at that agent's own 1 MAC."
 )
-# Both buttons name their outcome rather than answering a question. The
-# declining one is the *default* - filled, and last - so the press a reader
-# makes without reading is the one that keeps their case.
+# Both buttons name their outcome rather than answering yes or no. The button
+# that declines is the *default*: it is filled, and it comes last. So the
+# press a reader makes without reading is the one that keeps their case.
 KEEP_CURRENT_CASE_TEMPLATE: Final = "Keep the {agent} case"
 START_NEW_CASE_TEMPLATE: Final = "Discard and start {agent}"
 
@@ -660,8 +689,9 @@ START_NEW_CASE_TEMPLATE: Final = "Discard and start {agent}"
 # why the branch goes too, what is lost (`formatting.format_branch_discard_warning`,
 # per branch), and what the trunk keeps. `TRUNK_RESET_KEEPS_TEMPLATE` is a
 # claim about `SimulationController.reset`, which keeps the settings and the
-# bookmarks, and has to stay true with it. The buttons name their outcomes,
-# and the keeping one is the default, as on the new-case question.
+# bookmarks, and the text has to stay true as that method changes. The
+# buttons name their outcomes, and the button that keeps the branches is the
+# default, as on the new-case question.
 TRUNK_RESET_TITLE_TEMPLATE: Final = "{reset} {trunk} and discard {branches}?"
 TRUNK_RESET_ENDS_BRANCHES_TEMPLATE: Final = (
     "{trunk}'s {reset} starts the case over, and a branch cannot outlive the run it was taken from."
@@ -672,30 +702,32 @@ TRUNK_RESET_KEEPS_TEMPLATE: Final = (
 TRUNK_RESET_DISCARD_TEMPLATE: Final = "{reset} and discard {branches}"
 KEEP_BRANCHES_TEMPLATE: Final = "Keep {branches}"
 
-# While a run is going the agent selector is *replaced* by a chip rather than
-# greyed, because a disabled control repaints the agent's identity colour in
-# a theme grey at the one moment every number beside it is agent-specific
-# (`PL-61WW`). The caption says "running" rather than "this case" because
-# that is what is true: the selector returns on Pause.
+# While a run is going, the agent selector is *replaced* by a chip rather than
+# greyed out. A disabled control would repaint the agent's identity colour in
+# a theme grey, at the one moment when every number beside it depends on the
+# agent (`PL-61WW`). The caption says "running" rather than "this case",
+# because that is what is true: the selector returns on Pause.
 RUNNING_AGENT_LOCK_TEXT: Final = "Locked while running"
-# The other two reasons the chip stands in the selector's place. A branch
-# carries the agent of the case it continues - `SimulationController.set_agent`
-# refuses one outright (`PL-TFX5`) - so its selector is not locked but absent,
-# and the caption says what is true of it rather than what a Pause would undo.
-# While two runs are compared the trunk's selector *would* be obeyed, and that
-# is the worse case: the switch succeeds, `assemble_chart_frame` then refuses a
-# frame whose runs are on two agents, and `_halt_every_run` fails both over an
-# input to one of them (`PL-QRD1`). Refusing it before it reaches the controller
-# is `.claude/rules/expert-review.md`'s preference for an interface that
-# prevents the error over one that reports it afterwards.
+# The other two reasons why the chip replaces the selector. A branch carries
+# the agent of the case it continues, and `SimulationController.set_agent`
+# refuses a branch outright (`PL-TFX5`). So a branch's selector is not locked
+# but absent, and the caption says what is true of it rather than what a Pause
+# would undo. While two runs are compared, the trunk's selector *would* be
+# obeyed, and that is the worse case. The switch succeeds, then
+# `assemble_chart_frame` rejects a frame whose runs use two agents, and
+# `_halt_every_run` fails both runs over an input to one of them (`PL-QRD1`).
+# Refusing the switch before it reaches the controller follows
+# `.claude/rules/expert-review.md`'s preference for an interface that prevents
+# the error over one that reports it afterwards.
 BRANCH_AGENT_LOCK_TEXT: Final = "Locked to the case"
 COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
-# gas - not the unit anyone consumes agent in - so the caption says so
-# (`PL-TG60`); the two residual lines print only the power of ten they lie
-# below, because an order of magnitude is their whole purpose and the only
-# digit a rounding residual has (`PL-3PJZ`).
+# gas, which is not the unit in which anyone consumes agent, so the caption
+# says so (`PL-TG60`). The two residual lines print only the power of ten that
+# each value is less than. An order of magnitude is the whole purpose of those
+# lines, and it is the only meaningful digit a rounding residual has
+# (`PL-3PJZ`).
 ACCOUNTING_HEADING: Final = "Agent accounting validation"
 ACCOUNTING_VALID_TEXT: Final = "Valid"
 ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
@@ -713,18 +745,19 @@ TIME_BASE_LABEL: Final = "Time base"
 FIT_RUN_LABEL: Final = "Fit run"
 
 # The chart panel's heading and its time-axis captions. The caption states
-# the span actually drawn because the width is a mode (`PL-012`): the same
-# plot showing fifteen minutes and twelve hours is two different claims
-# about what a flat trace means. Under "Fit run" it says both that the
-# whole run is drawn and how wide the plot had to be to draw it, because the
-# selector then names the rule and only this line names what it came out as.
+# the span actually drawn, because the width is a mode (`PL-012`). The same
+# plot showing fifteen minutes and showing twelve hours makes two different
+# claims about what a flat trace means. Under "Fit run" the caption says both
+# that the whole run is drawn and how wide the plot had to be to draw it. The
+# selector then names only the rule, and this line is the only one that names
+# the resulting width.
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
 FITTED_TIME_AXIS_CAPTION_TEMPLATE: Final = "whole run so far, {span} shown"
 CHOSEN_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown"
 
 # The wash-in section. "Modelled, not measured" is its own line rather than
-# the tail of a paragraph: three words the safety standard requires, at the
-# end of a long sentence, are three words nobody reads (`PL-F9TQ`).
+# the end of a paragraph. The safety standard requires those three words, and
+# at the end of a long sentence nobody reads them (`PL-F9TQ`).
 WASH_IN_HEADING: Final = "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit"
 WASH_IN_DENOMINATOR_TEXT: Final = (
     "F_I = modelled circuit, not the vaporizer dial — a rise across a control mark "
@@ -735,93 +768,98 @@ WASH_IN_TRACE_LEGEND_LABEL: Final = "F_A/F_I (solid)"
 EQUILIBRIUM_LEGEND_LABEL: Final = "Equilibrium, F_A = F_I (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
 #: The MAC-awake band's legend words: a population value with its spread,
-#: and the trace it is read against (`PL-90Y6`).
+#: and the trace that the band is read against (`PL-90Y6`).
 MAC_AWAKE_BAND_LEGEND_LABEL: Final = "MAC-awake (population, ±1 SD; read against vessel-rich trace)"
-#: What assistive technology announces for a compartment's legend box: the
-#: act it performs rather than the pattern words beside it, which describe
-#: the line and not the control. Carried over from the Flet legend's
-#: semantics label so the port loses nothing a screen reader had.
+#: What assistive technology announces for a compartment's legend box. It
+#: names the action the box performs, not the pattern words beside it, which
+#: describe the line rather than the control. It is carried over from the Flet
+#: legend's semantics label, so the port loses nothing a screen reader had.
 TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE: Final = "Draw the {label} compartment on the chart"
-#: A compartment's legend words: its name and its line style, so the style is
-#: legible without reference to the plot (`docs/MODEL.md` § "The six
-#: compartment traces"). One template rather than an f-string at each legend
-#: row, because the compare-mode row has to say the same words as the
-#: checkbox above it or the two describe one curve differently.
+#: A compartment's legend words: its name and its line style, so the style can
+#: be read without looking at the plot (`docs/MODEL.md` § "The six
+#: compartment traces"). It is one template rather than an f-string at each
+#: legend row. The compare-mode row has to say the same words as the checkbox
+#: above it, or the two would describe one curve differently.
 TRACE_LEGEND_LABEL_TEMPLATE: Final = "{label} ({line_style})"
 #: What a run is called in text. `docs/MODEL.md` § "Minimum displayed outputs"
-#: requires the run to be named in text rather than carried by colour or by
-#: position: colour is spent on the compartment, and position alone fails the
-#: reader who has looked away and back.
+#: requires the run to be named in text, not shown only by colour or by
+#: position. Colour is already used for the compartment, and position alone
+#: fails a reader who has looked away and back.
 #:
-#: Numbered by the run's identity rather than by where it is drawn
-#: (`PL-7Z84`): a session numbers its runs in the order it places them and
-#: never gives a number out twice, so a branch taken after an earlier one was
-#: dropped is "Run 3", never a second "Run 2". The name has to be findable as
-#: well - a legend entry reading "Run 2" is only an attribution if something
-#: else on screen also says "Run 2", and that is the panel holding the
-#: settings that produced it.
+#: Runs are numbered by their identity rather than by where they are drawn
+#: (`PL-7Z84`). A session numbers its runs in the order it places them and
+#: never gives out a number twice. So a branch taken after an earlier branch
+#: was dropped is "Run 3", never a second "Run 2". The reader must also be able
+#: to find what the name refers to. A legend entry reading "Run 2" is only an
+#: attribution if something else on screen also says "Run 2". That something
+#: is the panel holding the settings that produced the run.
 RUN_LABEL_TEMPLATE: Final = "Run {number}"
 #: One drawn trace's legend words while more than one run is shown: the
-#: compartment's own words, then the run's. Both dimensions named on every
-#: entry, which is what `PL-8PSW` asks of a legend once a curve carries two.
+#: compartment's own words, then the run's. Every entry names both dimensions,
+#: which is what `PL-8PSW` asks of a legend once a curve carries two.
 COMPARED_TRACE_LEGEND_TEMPLATE: Final = "{trace}, {run}"
-#: The caption on the compare-mode legend row. "Drawn" rather than
+#: The caption on the compare-mode legend row. It says "Drawn" rather than
 #: "Compartments", because the row above it already names the compartments and
-#: is the control; this row is the four curves actually on the plot.
+#: is the control. This row lists the four curves actually on the plot.
 COMPARED_TRACE_LEGEND_CAPTION: Final = "Drawn traces:"
-#: One run's line in a column the runs share, while more than one is drawn:
-#: the run's name, then the line. The run leads here where it trails in
-#: `COMPARED_TRACE_LEGEND_TEMPLATE`, and the difference is what the reader is
-#: scanning for. A legend is read by curve, so the compartment leads there and
-#: the run tells two entries for one compartment apart. These columns stack one
-#: line per run, each opening with the same words - "Above the top of the
-#: plot", "Now: F_A/F_I" - so the run is the only thing distinguishing them,
-#: and a differentiator at the end of a wrapped sentence is one the reader has
-#: to go looking for.
+#: One run's line in a column that the runs share, while more than one run is
+#: drawn: the run's name, then the line. The run comes first here but last in
+#: `COMPARED_TRACE_LEGEND_TEMPLATE`, and the difference matches what the reader
+#: is scanning for. A legend is read by curve, so the compartment comes first
+#: there and the run tells two entries for one compartment apart. These
+#: columns stack one line per run, and each line opens with the same words,
+#: such as "Above the top of the plot" or "Now: F_A/F_I". So the run is the
+#: only thing that distinguishes the lines. A distinguishing word at the end of
+#: a wrapped sentence is one the reader has to go looking for.
 COMPARED_RUN_LINE_TEMPLATE: Final = "{run} — {line}"
-#: One run's banner in the notice column the runs share, while more than one is
-#: drawn. A colon where `COMPARED_RUN_LINE_TEMPLATE` uses an em dash, because
-#: every notice already opens `label — detail` - "Simulation stopped — ...",
-#: "Setting refused — ..." - so a second em dash would sit at a different depth
-#: than the first and read as the banner's own separator with the run's name as
-#: the label. The colon scopes what follows to the run, which is the sense
+#: One run's banner in the notice column that the runs share, while more than
+#: one run is drawn. It uses a colon where `COMPARED_RUN_LINE_TEMPLATE` uses an
+#: em dash. Every notice already opens with `label — detail`, as in
+#: "Simulation stopped — ..." and "Setting refused — ...". A second em dash
+#: would sit at a different level from the first. It would look like the
+#: banner's own separator, with the run's name as the label. The colon limits
+#: what follows to the run, which is the sense in which
 #: `OFF_SCALE_NOTICE_TEMPLATE` and `COMPARED_TRACE_LEGEND_CAPTION` already use
-#: it in. The run leads for `COMPARED_RUN_LINE_TEMPLATE`'s reason and not
-#: `COMPARED_PANEL_HEADING_TEMPLATE`'s: these stack wrapped sentences opening
-#: with identical words, not short headings whose both ends are read at once.
+#: it. The run comes first for the reason given at `COMPARED_RUN_LINE_TEMPLATE`,
+#: not the reason given at `COMPARED_PANEL_HEADING_TEMPLATE`. These banners
+#: stack wrapped sentences that open with identical words. They are not short
+#: headings whose two ends are both read at once.
 COMPARED_RUN_NOTICE_TEMPLATE: Final = "{run}: {notice}"
-#: One run's panel heading in a column the runs share: the panel's own words,
-#: then the run's. The run trails here where it leads in
-#: `COMPARED_RUN_LINE_TEMPLATE`, and the two are not in tension - this is the
-#: legend's case rather than the shared-line one. The sidebar stacks whole
-#: panels, each found by the kind of record it holds, so the kind leads exactly
-#: as the compartment does in `COMPARED_TRACE_LEGEND_TEMPLATE` and the run
-#: tells two panels of one kind apart. The differentiator-first argument that
-#: puts the run in front of a shared line turns on a wrapped sentence whose end
-#: a reader has to go looking for; a heading is one short bold line, where both
-#: ends are read at once.
+#: One run's panel heading in a column that the runs share: the panel's own
+#: words, then the run's. The run comes last here but first in
+#: `COMPARED_RUN_LINE_TEMPLATE`, and the two choices do not conflict. This is
+#: the legend's case, not the shared-line case. The sidebar stacks whole
+#: panels, and a reader finds each one by the kind of record it holds. So the
+#: kind comes first, exactly as the compartment does in
+#: `COMPARED_TRACE_LEGEND_TEMPLATE`, and the run tells two panels of one kind
+#: apart. The argument for putting the run first on a shared line depends on a
+#: wrapped sentence whose end a reader has to go looking for. A heading is one
+#: short bold line, and both its ends are read at once.
 #:
-#: An em dash rather than the colon `COMPARTMENT_SUBSTANCE_TEMPLATE` uses:
-#: "Agent accounting validation: Run 2" reads as the validation's *result*,
-#: which is the word the line directly below it carries (`ACCOUNTING_VALID_TEXT`).
+#: It uses an em dash rather than the colon that
+#: `COMPARTMENT_SUBSTANCE_TEMPLATE` uses. "Agent accounting validation: Run 2"
+#: reads as if "Run 2" were the validation's *result*. The result is the word
+#: on the line directly below (`ACCOUNTING_VALID_TEXT`).
 COMPARED_PANEL_HEADING_TEMPLATE: Final = "{heading} — {run}"
-#: The fork's legend words. Vertical like a control mark and solid where that
-#: is dashed, which is the pair of channels that separates them; the words say
-#: both so the mark is identifiable without reference to the plot.
+#: The fork's legend words. The fork mark is vertical like a control mark, but
+#: solid where a control mark is dashed. That pair of visual channels tells
+#: them apart, and the words state both, so the mark can be identified without
+#: looking at the plot.
 BRANCH_POINT_LEGEND_LABEL: Final = "Branch point (vertical, solid)"
-#: Said while the two-compartment cap is holding traces off the chart. It
-#: names the bound, what it removed, and where those values still are - the
-#: last because `docs/MODEL.md` § "Minimum displayed outputs" makes the
-#: readouts what keeps a capped compartment on the display, so a reader told
-#: only that a trace is gone has been told half of it.
+#: Shown while the two-compartment cap is keeping traces off the chart. It
+#: names the limit, what the limit removed, and where those values can still
+#: be read. The last part matters because
+#: `docs/MODEL.md` § "Minimum displayed outputs" makes the readouts what keeps
+#: a capped compartment on the display.
+#: A reader told only that a trace is gone has been told half of the story.
 COMPARED_CAP_NOTICE_TEMPLATE: Final = (
     "Two runs are shown, so the chart draws at most {cap} compartments at once. "
     "Every compartment's value is in the readouts below, for both runs."
 )
 # What the wash-in plot is showing at this instant. A trace that stops has
-# to say which of its two boundaries it stopped at: "nothing has reached the
+# to say at which of its two boundaries it stopped. "Nothing has reached the
 # circuit yet" and "the patient is giving agent back" are opposite
-# situations, and a reader shown only an empty plot would have neither.
+# situations, and a reader shown only an empty plot could tell neither.
 WASH_IN_STATE_TEMPLATE: Final = "Now: F_A/F_I = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: no agent has reached the circuit yet."
 WASH_IN_ELIMINATION_TEXT: Final = (
@@ -830,40 +868,41 @@ WASH_IN_ELIMINATION_TEXT: Final = (
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 
-# The two standing statements. The first says what the tool is *for*; the
-# second says how to read a number on it, beside the readouts themselves
-# (`PL-2K1R`): the compartments this simulator exists to display are the ones
-# no monitor shows, so a reader has no measured counterpart to check a
-# trace against and the polish of the display argues the other way. Once,
-# on the readout section's heading row, because a repeated disclaimer is one
-# that stops being read.
+# The two standing statements. The first says what the tool is *for*. The
+# second, placed beside the readouts themselves, says how to read a number on
+# it (`PL-2K1R`). The compartments this simulator exists to display are the
+# ones no monitor shows. So a reader has no measured value to check a trace
+# against, and the polish of the display suggests more accuracy than there
+# is. Each statement appears once, on the readout section's heading row,
+# because a repeated disclaimer stops being read.
 USE_DISCLAIMER_TEXT: Final = (
     "Educational simulation only. This idealized model is not a clinical prediction, "
     "monitoring, or dosing tool."
 )
 INTERPRETATION_DISCLAIMER_TEXT: Final = "Model outputs — not measurements."
 
-# The column counts the readout row may take, widest first: the row reflows
-# to the largest of these whose panels fit its width instead of squeezing a
-# label (`PL-8M05`), and the widest seats all seven. The rungs are the
-# ladder; the widths at which the row steps down are not recorded here,
-# because they are a property of the rendering font. `PL-8M05` recorded the
-# Flet build's breakpoints as a rendered measurement at Flet's sizes; the
-# port derives the same ladder from the font it actually renders with, so no
-# pixel figure is asserted that a font or a HiDPI scale would falsify.
+# The column counts that the readout row may use, widest first. The row
+# reflows to the largest count whose panels fit its width, instead of
+# squeezing a label (`PL-8M05`). The widest count fits all seven panels. These
+# counts are the steps of the ladder. The widths at which the row steps down
+# are not recorded here, because they depend on the rendering font. `PL-8M05`
+# recorded the Flet build's breakpoints as a measurement rendered at Flet's
+# sizes. The port derives the breakpoints for the same ladder from the font
+# it actually renders with. So no pixel figure is asserted here that a
+# different font or a HiDPI scale would make wrong.
 READOUT_ROW_LADDER: Final[tuple[int, ...]] = (7, 4, 2, 1)
 
 
 class Emphasis(StrEnum):
-    """How a status word is drawn: the colour role, named without a colour.
+    """How a status word is drawn: its colour role, named without naming a colour.
 
     The widget layer maps `MUTED` to `theme.MUTED`, `ACCENT` to
-    `theme.ACCENT_TEXT` and `WARNING` to `theme.WARNING`; naming the role
-    here keeps every colour token in `theme.py`. `WARNING` is the failure's
-    and deliberately not shared with the supported-limit stop: colouring a
-    correct model's declared boundary as a fault teaches a reader to
-    distrust a sound number, and spends the one signal this interface has
-    for a real one.
+    `theme.ACCENT_TEXT` and `WARNING` to `theme.WARNING`. Naming only the role
+    here keeps every colour token in `theme.py`. `WARNING` is used for a
+    failure, and deliberately not for the stop at the supported limit.
+    Colouring a correct model's declared boundary as a fault teaches a reader
+    to distrust a sound number. It also uses up the one signal this interface
+    has for a real fault.
     """
 
     MUTED = "muted"
@@ -880,17 +919,18 @@ class StatusWord:
 
 
 def status_word(status: RunStatus) -> StatusWord:
-    """The run's status word: failure, then supported limit, then running, then paused.
+    """Return the run's status word: failure, then supported limit, then running, then paused.
 
-    A failure outranks the supported run length on the reasoning
-    `notice` gives: the two cannot both arise from one run, and where a
-    failure is somehow recorded it is the more serious statement.
+    A failure outranks the supported run length for the reason `notice`
+    gives. The two cannot both arise from one run, and if a failure is
+    somehow recorded, it is the more serious statement.
 
     Args:
-        status: The run's status this tick - a `RunStatus`, or the snapshot
-            carrying one. `RunView.present_halt` passes the former, read
-            without building any compartment value, so a halt is worded from
-            facts that cannot fail (`PL-7DJK`).
+        status: The run's status this tick, either a `RunStatus` or the
+            snapshot carrying one. `RunView.present_halt` passes a
+            `RunStatus`, which is read without building any compartment
+            value. So a halt is worded from facts that cannot fail
+            (`PL-7DJK`).
 
     Returns:
         The word and its emphasis.
@@ -910,17 +950,18 @@ def status_word(status: RunStatus) -> StatusWord:
 
 @dataclass(frozen=True, slots=True)
 class ReadoutPanel:
-    """One readout panel's fixed half: its name, its gloss and what it reads.
+    """The fixed part of one readout panel: its name, its gloss and what it shows.
 
     Attributes:
         name: The modeled quantity, in the model's own terms.
         qualifier: What a clinician would compare that quantity against, or
-            None where nothing measured corresponds to it. Drawn smaller
-            than the name because it is the weaker claim of the two: the
-            compartment is what the model computes, the measurement is what
-            a clinician would set beside it, and equal type would offer them
-            as alternative names for one quantity (`PL-NV9W`, `PL-8M05`).
-        quantity: The compartment the panel reads, or None for the clock.
+            None where nothing measured corresponds to it. It is drawn
+            smaller than the name because it is the weaker claim of the two.
+            The compartment is what the model computes, and the measurement
+            is what a clinician would compare it with. Type of equal size
+            would present them as two names for one quantity (`PL-NV9W`,
+            `PL-8M05`).
+        quantity: The compartment the panel shows, or None for the clock.
     """
 
     name: str
@@ -928,13 +969,14 @@ class ReadoutPanel:
     quantity: RecordedQuantity | None
 
 
-# The seven panels in row order. "end-tidal-equivalent", never "end-tidal":
-# `docs/MODEL.md` § "Minimum displayed outputs" requires the hedge because
-# dead space, airway sampling delay, shunt and V/Q mismatch are all in its
-# "Known limitations", so this value is not end-tidal in any patient, and
-# end-tidal is the name of a *measurement* a clinician would most readily set
-# this readout beside. Do not shorten either gloss to fit a layout;
-# `test_the_alveolar_readout_is_labelled_end_tidal_equivalent` holds the pair.
+# The seven panels in row order. The gloss is "end-tidal-equivalent", never
+# "end-tidal". `docs/MODEL.md` § "Minimum displayed outputs" requires the
+# hedge, because dead space, airway sampling delay, shunt and V/Q mismatch are
+# all listed in its "Known limitations". So this value is not end-tidal in any
+# patient. End-tidal is the name of a *measurement*, and it is the one a
+# clinician would most readily compare this readout with. Do not shorten
+# either gloss to fit a layout.
+# `test_the_alveolar_readout_is_labelled_end_tidal_equivalent` checks the pair.
 READOUT_PANELS: Final[tuple[ReadoutPanel, ...]] = (
     ReadoutPanel("Simulated time", None, None),
     ReadoutPanel("Circuit", "inspired", RecordedQuantity.CIRCUIT),
@@ -953,15 +995,16 @@ class Readout:
     Attributes:
         name: The panel's name line.
         qualifier: Its gloss line, or `EMPTY_METRIC_QUALIFIER` where the
-            panel has none, so the line is held open.
+            panel has none, so the line keeps its height.
         value: The reading with its unit: the clock in compound form, or a
             compartment as a percent of one atmosphere.
-        secondary: The second line under the value: the compartment as a
-            multiple of the running agent's 1 MAC, or on the clock panel
-            the playback rate. Both units are shown at once rather than
-            behind a selector, because a selector would make the unit a
-            mode. The rate is drawn at every rate including 1x, so a blank
-            line never has to be read as real time (`PL-SN2C`).
+        secondary: The second line under the value. On a compartment panel
+            it is the compartment as a multiple of the running agent's 1 MAC.
+            On the clock panel it is the playback rate. Both units are shown
+            at once rather than behind a selector, because a selector would
+            make the unit a mode. The rate is drawn at every rate, including
+            1x, so a reader never has to take a blank line to mean real time
+            (`PL-SN2C`).
     """
 
     name: str
@@ -971,11 +1014,11 @@ class Readout:
 
 
 def _compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
-    """The snapshot field one readout panel reads.
+    """Return the snapshot field that one readout panel shows.
 
     Raises:
-        KeyError: If `quantity` is not one of the six compartments the
-            readout row shows - `RecordedQuantity.WASH_IN_RATIO` has its own
+        KeyError: If `quantity` is not one of the six compartments that the
+            readout row shows. `RecordedQuantity.WASH_IN_RATIO` has its own
             plot and no panel.
     """
 
@@ -1031,13 +1074,13 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
     return tuple(panels)
 
 
-# The widest string each readout column can show, so a panel can reserve
-# the width once instead of moving as a value changes length (`PL-3355`).
-# The value line is the clock's just before the supported run length -
-# every component of the compound form present, with tenths - and the
-# second line is the longest playback rate; a percent readout and a MAC
-# multiple are both shorter than these at every value the dial can reach.
-# Chosen by character count from the formatters' own extremes; the widget
+# The widest string that each readout column can show, so a panel can reserve
+# its width once instead of moving as a value changes length (`PL-3355`).
+# The value line is the clock's reading just before the supported run length,
+# which has every part of the compound form, including tenths. The second
+# line is the longest playback rate. A percent readout and a MAC multiple are
+# both shorter than these at every value the dial can reach. The strings are
+# chosen by character count from the formatters' own extremes, and the widget
 # measures the chosen string in its font.
 WIDEST_READOUT_VALUE: Final = max(
     (
@@ -1060,12 +1103,12 @@ WIDEST_COMPARTMENT_SECONDARY: Final = max(
     ),
     key=len,
 )
-#: What each readout column reserves its width for, in `READOUT_PANELS`
-#: order: the clock its widest elapsed form and its playback line, every
-#: compartment the two strings above. Each column reserves its own widest
-#: value rather than the clock's, which is what lets seven stand across a
-#: laptop-wide row while no value can wrap from its unit (`PL-3355`,
-#: `PL-8M05`).
+#: The strings whose width each readout column reserves, in `READOUT_PANELS`
+#: order. The clock column reserves its widest elapsed form and its playback
+#: line. Every compartment column reserves the two strings above. Each column
+#: reserves its own widest value rather than the clock's. That is what lets
+#: seven panels fit across a laptop-wide row while no value can wrap away from
+#: its unit (`PL-3355`, `PL-8M05`).
 READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
     (WIDEST_READOUT_VALUE, WIDEST_READOUT_SECONDARY)
     if panel.quantity is None
@@ -1138,31 +1181,32 @@ PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
 class SettingReadout:
     """One setting control as drawn this tick: its range, its value and its text.
 
-    Every slider is written from the snapshot on every tick, not left where
-    the reader dragged it: a refused setting must not leave a control
-    reading one value while the simulation runs at another, because the
-    control is a display of model state as much as an input to it. On a
-    halt it is written from `SimulationController.record()` first, since
-    no frame may follow, for the same reason (`PL-85LJ`).
+    Every slider is set from the snapshot on every tick, not left where the
+    reader dragged it. A refused setting must not leave a control showing one
+    value while the simulation runs at another, because the control displays
+    model state as much as it accepts input. On a halt, the slider is set from
+    `SimulationController.record()` first, for the same reason, because no
+    frame may follow (`PL-85LJ`).
 
     Attributes:
-        control: The setting it forwards.
+        control: The setting that the control forwards.
         name: The name line.
         qualifier: The gloss line, or the empty string where there is none.
-            No spacer is drawn for a setting: these four panels are of
-            unequal height by design, the delivered dial carrying a MAC
-            line the flow settings have no conversion for.
+            No spacer is drawn for a setting. These four panels have unequal
+            heights by design, because the delivered dial carries a MAC line
+            and the flow settings have no such conversion.
         unit: The unit of `value`.
-        decimals: The display resolution the slider steps at.
-        minimum: The slider's floor, in `unit`: the lowest setting at the
-            slider's resolution that the run accepts (`offered_range`).
-        maximum: The slider's ceiling, in `unit`: the highest such setting.
+        decimals: The display resolution at which the slider steps.
+        minimum: The slider's lowest position, in `unit`: the lowest setting
+            at the slider's resolution that the run accepts (`offered_range`).
+        maximum: The slider's highest position, in `unit`: the highest such
+            setting.
         value: The setting in force, in `unit`.
         value_text: The setting as the readout beside the slider prints it.
-        secondary: The same setting in the second display unit - the
-            delivered dial as a multiple of the agent's 1 MAC, so the one
-            control a reader sets can be compared with the traces it
-            produces - or the empty string for a setting with one unit.
+        secondary: The same setting in the second display unit, or the empty
+            string for a setting with one unit. For the delivered dial it is
+            the setting as a multiple of the agent's 1 MAC. That lets a reader
+            compare the one control they set with the traces it produces.
     """
 
     control: ControlInput
@@ -1233,12 +1277,12 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
         ControlInput.ALVEOLAR_VENTILATION: settings.alveolar_ventilation_l_min,
         ControlInput.CARDIAC_OUTPUT: settings.cardiac_output_l_min,
     }
-    # The range the run accepts for each control, read this tick. The model's
-    # envelopes are `core/supported_ranges.py`'s, so the interface offers the
-    # domain the verification gates cover and no wider (`PL-0MLQ`); the fresh
-    # gas flow's is that envelope narrowed by the mounted machine, as the
-    # circuit states it (`PL-7CRY`), and the dial's ceiling is the running
-    # agent's vaporizer maximum.
+    # The range that the run accepts for each control, read this tick. The
+    # model's envelopes come from `core/supported_ranges.py`, so the interface
+    # offers the domain that the verification gates cover and nothing wider
+    # (`PL-0MLQ`). The fresh gas flow's range is that envelope narrowed by the
+    # mounted machine, as the circuit states it (`PL-7CRY`). The dial's
+    # maximum is the running agent's vaporizer maximum.
     accepted_ranges: dict[ControlInput, tuple[float, float]] = {
         ControlInput.FRESH_GAS_FLOW: settings.accepted_fresh_gas_flow_range_l_min,
         ControlInput.DELIVERED: (
@@ -1315,8 +1359,9 @@ def _is_offered_step(value: float, offered: tuple[float, float], decimals: int) 
     """Whether a setting is one of the steps a slider offers, so the slider can show it.
 
     A step is compared as the value the slider emits for it, `slider_value`,
-    so a setting the slider wrote is always one. The only setting that no
-    slider wrote is an opening flow stated by a machine or patient profile
+    so a setting that the slider wrote is always an offered step. The only
+    setting that no slider wrote is an opening flow stated by a machine or
+    patient profile
     (`PL-1KQ9`, `PL-96SQ`).
 
     Args:
@@ -1355,7 +1400,7 @@ def slider_position(value: float, decimals: int) -> int:
 
 
 def slider_value(position: int, decimals: int) -> float:
-    """The value an integer slider position stands for; the inverse of `slider_position`.
+    """Return the value that an integer slider position represents, inverting `slider_position`.
 
     Args:
         position: The slider's integer position.
@@ -1369,17 +1414,18 @@ def slider_value(position: int, decimals: int) -> float:
 
 
 def offered_range(minimum: float, maximum: float, decimals: int) -> tuple[float, float] | None:
-    """The floor and ceiling a slider stepping at `decimals` offers inside a closed range.
+    """Return the lowest and highest steps that a slider stepping at `decimals` offers in a range.
 
-    A slider steps at its display resolution (`slider_position`), so its
-    floor and ceiling are the steps nearest the range's ends from inside it.
-    Rounding an end to the nearest step instead can land outside the range,
-    on a setting the run refuses: a machine floored at 0.25 L/min would be
-    offered 0.2 L/min at one decimal (`PL-7CRY`). An end that is already a
-    step is that step, so a range declared in whole steps - every shipped
-    one - is offered exactly. Each step is compared as the value the slider
-    emits for it, `slider_value`, so the comparison is the one the run's
-    own guard makes on that value.
+    The range is closed. A slider steps at its display resolution
+    (`slider_position`), so its lowest and highest positions are the steps
+    nearest the range's ends, from inside the range. Rounding an end to the
+    nearest step instead can land outside the range, on a setting that the run
+    refuses. For example, a machine whose minimum is 0.25 L/min would be
+    offered 0.2 L/min at one decimal (`PL-7CRY`). An end that is already a step
+    is offered as that step. So a range declared in whole steps, as every
+    shipped range is, is offered exactly. Each step is compared as the value
+    that the slider emits for it, `slider_value`. So the comparison is the same
+    one that the run's own guard makes on that value.
 
     Args:
         minimum: The lowest setting the run accepts, in the control's unit.
@@ -1412,21 +1458,22 @@ class Transport:
     """Which transport controls a reader may use this tick.
 
     Attributes:
-        start_enabled: False while running, and false for a run that has
-            failed or stands at the supported run length: neither can be
-            resumed - only reset - and a Start the controller would refuse
-            is a control presenting itself as working.
+        start_enabled: False while running. Also false for a run that has
+            failed or has reached the supported run length. Neither run can
+            be resumed, only reset. A Start button that the controller would
+            refuse is a control pretending to work.
         pause_enabled: True only while running.
-        reset_enabled: Always true; Reset is how every stopped state ends.
-        selector_locked: Whether the agent selector is replaced by the
-            agent chip. True while running, because choosing an agent
-            discards the case; true on a branch and while two runs are
-            compared, for the reasons `selector_lock_reason` states.
+        reset_enabled: Always true, because Reset is how every stopped state
+            ends.
+        selector_locked: Whether the agent chip replaces the agent selector.
+            True while running, because choosing an agent discards the case.
+            Also true on a branch and while two runs are compared, for the
+            reasons that `selector_lock_reason` states.
         selector_lock_reason: What the chip says about why the selector is
-            gone, or the empty string while the selector is shown. Carried
-            here rather than chosen in the widget layer, so the three
-            reasons are written in one place and a reader is never told
-            "running" about a lock a Pause will not lift.
+            gone, or the empty string while the selector is shown. The reason
+            is chosen here rather than in the widget layer. So the three
+            reasons are written in one place, and a reader is never told
+            "running" about a lock that a Pause will not lift.
     """
 
     start_enabled: bool
@@ -1437,25 +1484,26 @@ class Transport:
 
 
 def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = False) -> Transport:
-    """The transport enablement for one snapshot, and why its selector is locked.
+    """Return the transport enablement for one snapshot, and why its selector is locked.
 
-    The three locks are ranked by how long they last, longest first, because
-    the chip has room for one reason and a reader acts on it: a branch's
-    selector never returns, a comparison's returns on Reset, and a running
-    run's returns on Pause. Naming the shortest of the three that happens to
-    hold would send a reader to Pause for a lock Pause cannot lift.
+    The three locks are ranked by how long they last, longest first. The chip
+    has room for one reason, and a reader acts on that reason. A branch's
+    selector never returns. A comparison's selector returns on Reset. A
+    running run's selector returns on Pause. Naming the shortest-lasting lock
+    that happens to apply would send a reader to Pause for a lock that Pause
+    cannot lift.
 
     Args:
-        status: The run's status this tick - a `RunStatus`, or the snapshot
-            carrying one, as `status_word` takes it.
-        is_branch: Whether this run was opened from another
+        status: The run's status this tick, either a `RunStatus` or the
+            snapshot carrying one, as `status_word` takes it.
+        is_branch: Whether this run was opened from another run
             (`SimulationController.opened_from`). A branch carries the agent
-            of the case it continues, so `set_agent` refuses it outright and
-            the selector would be a control presenting itself as working.
+            of the case it continues, so `set_agent` refuses it outright. The
+            selector would then be a control pretending to work.
         comparing: Whether more than one run is on the chart. The runs share
-            one MAC axis and one set of clinical references, so a switch
-            accepted here is refused a moment later by
-            `chart_frame.assemble_chart_frame` - after the controller has
+            one MAC axis and one set of clinical references. So a switch
+            accepted here would be rejected a moment later by
+            `chart_frame.assemble_chart_frame`, after the controller had
             already changed agent (`PL-QRD1`).
 
     Returns:
@@ -1483,12 +1531,12 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
 
 
 def refused_setting_notice(error: SimulationConfigurationError) -> str:
-    """What the banner says about a setting the core refused.
+    """Return what the banner says about a setting that the core refused.
 
     A `SimulationConfigurationError` means the core rejected the value and
-    changed nothing: the run is untouched and must not be marked failed,
-    so the notice names the setting and `notice` appends that the run goes
-    on unchanged.
+    changed nothing. The run is untouched and must not be marked as failed.
+    So this text names the setting, and `notice` adds that the run continues
+    unchanged.
 
     Args:
         error: The refusal, whose message names the value and why.
@@ -1501,27 +1549,29 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
 
 
 def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:
-    """The way out a stopped-run banner names when Reset is what the core refused.
+    """Return the way out that a stopped-run banner names when the core refused Reset.
 
-    Every failure wording ends by naming Reset, the one door out of a
-    stopped run; when Reset is the control that was just refused, that line
-    would send the reader back to it. So the exit says Reset was refused,
-    that no setting can repair the refusal, and that closing and reopening
-    the application starts a new run (`REFUSED_RESET_WAY_OUT_TEXT`, whose
-    comment says why no setting can). How it says Reset was refused depends on
-    what the banner's reason already is: a controller keeps the first
-    failure it was given (`SimulationController.fail`), so on a run that had
-    not failed, or that this same refusal already stopped, the recorded
-    reason is the refusal and the exit points at it, and on one that had
-    failed for something else the reason stays that failure's and the exit
-    carries the refusal itself (`PL-M4M0`).
+    Every failure wording ends by naming Reset, the only way out of a stopped
+    run. When Reset is the control that was just refused, that line would
+    send the reader back to it. So this exit says that Reset was refused, that
+    no setting can repair the refusal, and that closing and reopening the
+    application starts a new run. `REFUSED_RESET_WAY_OUT_TEXT` holds those
+    words, and its comment says why no setting can repair the refusal.
+    How the exit says Reset was refused depends on the banner's existing
+    reason. A controller keeps the first failure it was given
+    (`SimulationController.fail`). On a run that had not failed, or that this
+    same refusal already stopped, the recorded reason is the refusal, so the
+    exit refers to it. On a run that had failed for something else, the
+    reason remains that earlier failure, so the exit states the refusal itself
+    (`PL-M4M0`).
 
     Args:
-        error: The refusal `SimulationController.reset()` raised.
-        recorded_failure_reason: The run's failure reason as it stood when
-            Reset was refused, or None if it had not failed. Compared with
-            the reason this refusal records (`halt_disposition`), since a
-            Reset pressed twice on one refusal is one reason, not two.
+        error: The refusal that `SimulationController.reset()` raised.
+        recorded_failure_reason: The run's failure reason as it was when
+            Reset was refused, or None if the run had not failed. It is
+            compared with the reason this refusal records
+            (`halt_disposition`), because pressing Reset twice for one
+            refusal gives one reason, not two.
 
     Returns:
         The banner's closing sentence, for `notice` and `halt_notice`.
@@ -1540,28 +1590,29 @@ def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | N
 def notice(
     status: RunStatus, rejected_setting_notice: str | None, *, refused_reset: str | None = None
 ) -> str | None:
-    """The banner for a frame that drew: a stopped run, or a refused setting, or nothing.
+    """Return the banner for a frame that drew: a stopped run, a refused setting, or nothing.
 
-    A stopped run outranks a refused setting because it describes the state
-    of everything else on screen, where a refusal describes only one
-    control. A failure outranks the supported run length in turn.
+    A stopped run outranks a refused setting, because it describes the state
+    of everything else on screen, while a refusal describes only one control.
+    A failure in turn outranks the supported run length.
 
-    Written by `RunView.refresh`, with the frame the status was read for on
-    screen, which is what lets the failure wording say the values shown are
-    the last completed step. `halt_notice` is the banner for a halt no frame
-    has been drawn for.
+    `RunView.refresh` writes this banner while the frame for which the status
+    was read is on screen. That is what lets the failure wording say that the
+    values shown are the last completed step. `halt_notice` gives the banner
+    for a halt for which no frame has been drawn.
 
     Args:
-        status: The run's status this tick - the snapshot the frame drew
+        status: The run's status this tick: the snapshot the frame drew
             from, or a bare `RunStatus`, as `status_word` takes it.
-        rejected_setting_notice: `refused_setting_notice`'s text for the
-            last refused setting, or None if the last setting took. Held by
-            the run's view rather than the controller because a refused
-            setting changes nothing about the simulation.
-        refused_reset: `refused_reset_exit`'s sentence while Reset is what
-            was refused, standing where the failure wording otherwise names
-            Reset as the way out; None while Reset is the way out. Held by
-            the run's view for the same reason as the refused setting.
+        rejected_setting_notice: The text from `refused_setting_notice` for
+            the last refused setting, or None if the last setting was
+            accepted. The run's view keeps it rather than the controller,
+            because a refused setting changes nothing about the simulation.
+        refused_reset: The sentence from `refused_reset_exit` while Reset
+            itself was refused. It takes the place where the failure wording
+            otherwise names Reset as the way out. It is None while Reset is
+            the way out. The run's view keeps it, for the same reason as the
+            refused setting.
 
     Returns:
         The banner text, or None when there is nothing to say.
@@ -1582,26 +1633,28 @@ def notice(
 
 
 def halt_notice(status: RunStatus, *, refused_reset: str | None = None) -> str | None:
-    """The banner for a halt no frame has yet been drawn for: a stopped run, or nothing.
+    """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
-    What `RunView.present_halt` writes, from the run's status alone, before
-    any frame is attempted. A failure takes `UNDRAWN_FAILURE_NOTICE_TEMPLATE`
-    rather than `notice`'s wording, because with no frame drawn the values on
-    screen are not the step the run stopped at. `refresh` writes `notice`'s
-    on the first frame that draws, so a step failure's frame, which the
-    rollback leaves drawable, replaces this banner in the same turn, and a
-    refused displayed value's, which refuses again, does not: which banner
-    stands is decided by whether a frame drew, never guessed from the reason
-    (`PL-7DJK`). The supported run length keeps its one wording, since
-    nothing is wrong with the state it stops on and the frame that follows
-    draws. A refused setting is not a halt and has no line here.
+    `RunView.present_halt` writes this banner from the run's status alone,
+    before it attempts any frame. A failure uses
+    `UNDRAWN_FAILURE_NOTICE_TEMPLATE` rather than `notice`'s wording, because
+    with no frame drawn the values on screen are not the step the run stopped
+    at. `refresh` writes `notice`'s banner on the first frame that draws.
+    After a step failure, the rollback leaves the run drawable, so its frame
+    replaces this banner in the same turn. After a refused displayed value,
+    the frame is refused again, so this banner stays. Which banner is shown is
+    therefore decided by whether a frame drew, never guessed from the reason
+    (`PL-7DJK`). The supported run length keeps its single wording, because
+    nothing is wrong with the state it stops on, and the frame that follows
+    draws. A refused setting is not a halt and has no banner here.
 
     Args:
         status: The run's status, as `SimulationController.status()` gives
-            it - read without building any compartment value, which is the
-            whole reason this takes a status rather than a snapshot.
-        refused_reset: As `notice` takes it: the way out while Reset is
-            what was refused, or None while Reset is the way out.
+            it. It is read without building any compartment value, which is
+            the whole reason this function takes a status rather than a
+            snapshot.
+        refused_reset: As `notice` takes it: the way out while Reset itself
+            was refused, or None while Reset is the way out.
 
     Returns:
         The banner text, or None when the run is not halted.
@@ -1626,18 +1679,18 @@ class HaltDisposition(StrEnum):
 
 
 def halt_disposition(error: BaseException) -> tuple[HaltDisposition, str]:
-    """How a raise stops the run, and the reason recorded for it.
+    """Return how a raised exception stops the run, and the reason recorded for it.
 
-    Every exception stops the run - a `TypeError` from a future refactor
-    kills a timer slot exactly as silently as a modelling failure does.
-    What the type decides is what the reader is told, for exactly one type:
-    `SimulationDomainLimitError` is the run reaching the end of the
-    supported domain, where the core refused the next step before taking
-    it and nothing was miscalculated, so reporting it as a failure would put
-    "simulation error" over a correct model that stopped where
-    `docs/MODEL.md` says it must (`PL-Y5WR`, `PL-V6M0`). Everything else,
-    known or not, is a failure: the narrow case is the named one, so an
-    unrecognised exception falls through to the more cautious branch.
+    Every exception stops the run. A `TypeError` from a future refactor
+    kills a timer slot exactly as silently as a modelling failure does. The
+    exception's type decides only what the reader is told, and only one type
+    is treated differently. `SimulationDomainLimitError` means the run reached
+    the end of the supported domain. The core refused the next step before
+    taking it, and nothing was miscalculated. Reporting it as a failure would
+    put "simulation error" over a correct model that stopped where
+    `docs/MODEL.md` says it must (`PL-Y5WR`, `PL-V6M0`). Every other
+    exception, known or not, is a failure. Only the narrow case is named, so
+    an unrecognised exception falls through to the more cautious branch.
 
     Args:
         error: What was raised.
@@ -1660,10 +1713,11 @@ class Accounting:
     Attributes:
         status: "Valid" in accent or "Validation failed" in warning.
         detail: One sentence under it saying what the status means.
-        amounts: Five lines: delivered, exhausted and stored agent at the
-            resolution `format_agent_volume` derives, then the unaccounted
-            amount and the absolute error as the power of ten each lies
-            below, since an order of magnitude is what those two are for
+        amounts: Five lines. The first three give delivered, exhausted and
+            stored agent at the resolution that `format_agent_volume`
+            derives. The last two give the unaccounted amount and the
+            absolute error, each as the power of ten that it is less than,
+            because an order of magnitude is what those two lines are for
             (`PL-TG60`, `PL-3PJZ`).
     """
 
@@ -1709,11 +1763,11 @@ class TimelinePanel:
     Attributes:
         entries: The listed adjustments, newest first, one per line, or
             `NO_CONTROL_CHANGES_TEXT` for a run nobody has touched.
-        overflow: What the panel and the chart could not show - the count
-            of earlier changes not listed and of changes not marked on the
-            chart, joined - or the empty string when nothing was left out.
-            Counted rather than dropped, because a list that quietly stops
-            asserts that nothing earlier happened.
+        overflow: The count of earlier changes that the panel did not list,
+            or the empty string when nothing was left out. The count of
+            changes that a chart left unmarked appears on that chart instead.
+            The changes are counted rather than silently dropped, because a
+            list that quietly stops asserts that nothing earlier happened.
     """
 
     entries: str
@@ -1758,9 +1812,9 @@ class MarkListing:
     Attributes:
         heading: What the collection is called.
         rows: One line per mark, in the order they were added, or empty.
-        empty_text: What stands where the rows would be when there are none.
-            Carried on the listing rather than chosen by the widget, so the
-            two collections cannot come to disagree about what "nothing
+        empty_text: The line shown in place of the rows when there are none.
+            It is stored on the listing rather than chosen by the widget, so
+            the two collections cannot come to disagree about what "nothing
             marked" looks like.
     """
 
@@ -1770,11 +1824,12 @@ class MarkListing:
 
     @property
     def empty_line(self) -> str | None:
-        """The line that stands where the rows would be, or None while there are rows.
+        """The line shown in place of the rows, or None while there are rows.
 
         The choice between the rows and the empty line is made here, where a
-        test can read it, so the widget decides nothing: it draws `rows` one
-        to a row (`PL-FPY2`) and this line only when it is not None.
+        test can check it, so the widget decides nothing. The widget draws
+        each entry of `rows` on its own row (`PL-FPY2`), and draws this line
+        only when it is not None.
         """
 
         return None if self.rows else self.empty_text
@@ -1782,11 +1837,11 @@ class MarkListing:
 
 @dataclass(frozen=True, slots=True)
 class BookmarkPanel:
-    """Both collections, listed apart.
+    """Both bookmark collections, listed separately.
 
-    Two listings and not one, which is the shape `PL-LPLD` was scoped on: a
-    single list with a kind column would make a reader sort the rows before
-    reading either.
+    There are two listings, not one, which is the design that `PL-LPLD` was
+    scoped on. A single list with a column for the kind of mark would make a
+    reader sort the rows before reading either collection.
 
     Attributes:
         times: The marked instants.
@@ -1799,26 +1854,26 @@ class BookmarkPanel:
 
 @dataclass(frozen=True, slots=True)
 class RunMarks:
-    """One displayed run's answers about the marks the case carries.
+    """One displayed run's standing on each of the marks that the case carries.
 
-    The panel is drawn from one of these per run rather than from a single
+    The panel is drawn from one of these per run, rather than from a single
     run's snapshot (`PL-LHBY`, `PL-4KZD`). A standing is computed from the
-    run's own clock, its own opening instant and its own halt set, so reading
-    one run's standings for every run's rows stated one management's answer
-    as the case's while two were on screen - and a learner comparing two
-    managements is reading exactly the quantity that differs.
+    run's own clock, its own opening instant and its own set of halts. So
+    using one run's standings for every run's rows stated one management's
+    answer as the case's answer while two runs were on screen. A learner
+    comparing two managements is reading exactly the quantity that differs.
 
     Attributes:
-        label: What this run is called in text, from `run_label`. The
-            caller's, for the reason `chart_frame.RunInput.label` gives: the
-            same word has to appear on the run's own panel beside the
-            settings that produced it, and a name this module invented would
-            be this module's alone. It is drawn only on a row whose runs
-            disagree, so a lone run's panel never states it.
+        label: What this run is called in text, from `run_label`. The caller
+            supplies it, for the reason `chart_frame.RunInput.label` gives.
+            The same word has to appear on the run's own panel beside the
+            settings that produced the run, and a name invented by this
+            module would appear nowhere else. It is drawn only on a row whose
+            runs disagree, so a lone run's panel never shows it.
         standings: This run's standing on each of the case's marks, from
-            `SimulationSnapshot.bookmark_standings` - the same snapshot the
-            run's readouts and traces were drawn from, so a row and the
-            trace it is read against are one instant of one run.
+            `SimulationSnapshot.bookmark_standings`. That is the same
+            snapshot that the run's readouts and traces were drawn from, so a
+            row and the trace it is read against show one instant of one run.
     """
 
     label: str
@@ -1826,15 +1881,15 @@ class RunMarks:
 
 
 def _with_standings(stated: str, said: Sequence[str]) -> str:
-    """One row: the mark's own value, then what the displayed runs say about it.
+    """Return one row: the mark's own value, then what the displayed runs say about it.
 
     Args:
         stated: The mark's own value and name, which every row carries. It is
-            stated once however many runs are shown, because the marks are
-            shared across them by construction; it is the answers that differ.
-        said: What each clause of the row says, in drawing order, from
-            `_standing_clauses`. A clause that says nothing is dropped rather
-            than drawn as an empty tail.
+            stated once however many runs are shown, because the runs share
+            the marks by design. Only the runs' answers differ.
+        said: The text of each clause of the row, in drawing order, from
+            `_standing_clauses`. An empty clause is dropped rather than drawn
+            as an empty tail.
 
     Returns:
         The row, with each clause that has something to say joined onto it.
@@ -1844,40 +1899,41 @@ def _with_standings(stated: str, said: Sequence[str]) -> str:
 
 
 def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str, ...]:
-    """What one mark's row says about it, attributed where the runs disagree.
+    """Return what one mark's row says about it, attributed to each run where the runs disagree.
 
-    **Agreement is what decides attribution, not the number of runs**
-    (`PL-LHBY`, `PL-4KZD`). An unattributed clause is a claim about the case,
-    so it may be drawn only where it is true of every run on screen - which is
-    always so for a lone run, and so for two runs that answer alike. That
-    makes the single-run row the degenerate case of this rule rather than a
-    second path through it, which is what keeps the two from drifting apart:
-    the panel had no way to draw a branch's own answer at all while it read
-    one run's standings for every run's marks, and `MarkStanding`'s
-    `BEFORE_THIS_BRANCH` could not reach the screen, the reference run being
-    the trunk and no mark standing before a trunk.
+    **Agreement decides attribution, not the number of runs** (`PL-LHBY`,
+    `PL-4KZD`). An unattributed clause is a claim about the case. So it may be
+    drawn only where it is true of every run on screen. That is always so for
+    a lone run, and it is so for two runs that give the same answer. This
+    makes the single-run row the simplest case of this rule rather than a
+    second code path, which keeps the two from drifting apart. While the panel
+    used one run's standings for every run's marks, it had no way to draw a
+    branch's own answer at all. `MarkStanding`'s `BEFORE_THIS_BRANCH` could
+    then never appear on screen, because the reference run was the trunk, and
+    a trunk has no branch point for a mark to lie before.
 
-    Where they disagree the clause is no longer the case's, so every run is
-    named - including a run whose answer is "not yet", which unattributed
-    silence would hide behind the run that did have something to say.
+    Where the runs disagree, the clause is no longer a claim about the case,
+    so every run is named. That includes a run whose answer is "not yet",
+    which unattributed silence would hide behind the run that did have
+    something to say.
 
-    **One run and its answer arrive already paired, rather than as two
-    sequences read in step.** Pairing them here would make a shorter standings
-    sequence draw the agreement clause from a subset of the runs — one run's
-    answer stated as the case's, which is the defect this function exists to
-    remove, reappearing as an off-by-one. The caller builds each pair in one
-    comprehension over the runs, so there is no length to check and no guard
-    that could be dropped: `CLAUDE.md` asks for the interface that prevents
-    the error over the one that refuses it afterwards.
+    **Each run and its answer arrive already paired, rather than as two
+    sequences read in step.** Pairing them here would let a shorter standings
+    sequence draw the agreement clause from only some of the runs. One run's
+    answer would then be stated as the case's answer, which is the defect this
+    function exists to remove, coming back as an off-by-one error. The caller
+    builds each pair in one comprehension over the runs. So there is no length
+    to check and no guard that could be dropped. `CLAUDE.md` asks for the
+    interface that prevents the error over the one that rejects it afterwards.
 
     Args:
         answers: One `(run label, that run's standing on this mark)` pair per
             displayed run, in drawing order.
 
     Returns:
-        One clause for the case where the runs agree, and one clause per run
-        where they do not. Empty where no run is given, which
-        `bookmark_panel` refuses before reaching here.
+        One clause where the runs agree, or one clause per run where they do
+        not. The result is empty when no run is given, but `bookmark_panel`
+        rejects that case before calling this function.
     """
 
     standings = tuple(standing for _, standing in answers)
@@ -1892,13 +1948,13 @@ def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str,
 
 
 def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
-    """A marked instant's own words: the time, and the name if it was given one.
+    """Return a marked instant's own words: the time, and the name if it was given one.
 
-    The time first and the name after it, on every drawn row: the time is
-    what the row asserts and the name is what the learner chose to call it,
-    and two rows read against each other are read down their first column.
-    `format_elapsed` renders it, so a bookmark and the run clock beside it
-    state one quantity one way.
+    Every drawn row puts the time first and the name after it. The time is
+    what the row asserts, and the name is what the learner chose to call it.
+    A reader comparing two rows reads down their first column. The time is
+    rendered by `format_elapsed`, so a bookmark and the run clock beside it
+    state one quantity in one way.
     """
 
     rendered = format_elapsed(bookmark.instant_s)
@@ -1910,17 +1966,18 @@ def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
 
 
 def _stated_mac_target(target: MacTarget) -> str:
-    """A marked height's own words: the compartment, the height, and any name.
+    """Return a marked height's own words: the compartment, the height, and any name.
 
-    Compartment, then height, then the name — on every drawn row, this being
-    what `bookmark_panel` builds them from. The compartment is on the row
-    rather than in a heading above it because a target means a different
-    thing on each one: `docs/MODEL.md` § "MAC multiples as a display unit"
-    states that a multiple of 1 MAC is the conventional reading only on the
-    alveolar compartment and is a partial-pressure ratio everywhere else, so
-    a row naming the height alone would be one number standing for six
-    claims. The compartment's name comes from `chart_frame.trace_style`, so
-    the row and the trace it is read against are named by one table.
+    Every drawn row gives the compartment, then the height, then the name,
+    because `bookmark_panel` builds every row from this function. The
+    compartment is on the row rather than in a heading above it, because a
+    target means something different on each compartment. `docs/MODEL.md`
+    § "MAC multiples as a display unit" states that a multiple of 1 MAC has its
+    conventional meaning only on the alveolar compartment, and is a
+    partial-pressure ratio everywhere else. So a row naming the height alone
+    would be one number standing for six claims. The compartment's name comes
+    from `chart_frame.trace_style`, so one table names both the row and the
+    trace it is read against.
     """
 
     compartment = trace_style(target.quantity).label
@@ -1934,43 +1991,44 @@ def _stated_mac_target(target: MacTarget) -> str:
 
 
 def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> BookmarkPanel:
-    """The two collections the case is marked at, as two listings.
+    """Return the case's two collections of marks, as two listings.
 
-    It states what is marked *and* where each displayed run has got with it
-    (`PL-CTD7`). Still nothing here reads a compartment: the standings are
-    computed in the advance loop, one per completed simulation step, and
-    arrive through `SimulationSnapshot.bookmark_standings` — which is what
-    keeps a drawn row from implying a detection this module performed.
+    The panel states what is marked *and* how far each displayed run has got
+    with each mark (`PL-CTD7`). Even so, nothing here reads a compartment. The
+    standings are computed in the advance loop, once per completed simulation
+    step, and arrive through `SimulationSnapshot.bookmark_standings`. That
+    keeps a drawn row from implying that this module detected anything.
 
-    **Every displayed run, not the reference run** (`PL-LHBY`, `PL-4KZD`). The
-    marks are the case's and are shared across the runs by construction, so
-    one row per mark is right; their standings are each run's own, so a row
-    states the answer unattributed only where the runs agree and names them
-    where they do not. Reading `snapshots[0]` for every row instead put one
-    management's answer on the other's mark in both directions: a branch that
-    halted on a learner's mark reported nothing, because the trunk was still
-    running for it, and an inherited bookmark the branch could never reach
-    read as the trunk had left it.
+    **The rows use every displayed run, not only the reference run**
+    (`PL-LHBY`, `PL-4KZD`). The marks belong to the case and the runs share
+    them by design, so one row per mark is right. But each run has its own
+    standings. So a row states the answer unattributed only where the runs
+    agree, and names each run where they do not. Using `snapshots[0]` for
+    every row instead put one management's answer on the other's mark, in
+    both directions. A branch that halted on a learner's mark reported
+    nothing, because the trunk had not yet reached that mark. And an
+    inherited bookmark that the branch could never reach was shown with the
+    trunk's standing for it.
 
     Args:
         bookmarks: The case's marks, from `SimulationSnapshot.bookmarks`.
-        runs: Every run on screen, in drawing order, each with the standings
-            read from the same snapshot its traces were drawn from. Marks and
-            standings arrive as separate arguments rather than one derived
-            from the other, so a panel cannot be drawn from one run's marks
-            and another run's answers.
+        runs: Every run on screen, in drawing order. Each carries the
+            standings read from the same snapshot that its traces were drawn
+            from. Marks and standings arrive as separate arguments, rather
+            than one being derived from the other. So a panel cannot be drawn
+            from one run's marks and another run's answers.
 
     Returns:
         Both listings, each with its heading, its rows and its empty line.
 
     Raises:
         ValueError: If no run is given. A panel drawn for no run would list
-            the case's marks under standings nobody had answered, which is
-            the plausible-looking row `CLAUDE.md`'s safety-critical standard
-            prefers an obvious failure to.
+            the case's marks with standings that no run had given. That is
+            the plausible-looking row for which `CLAUDE.md`'s safety-critical
+            standard prefers an obvious failure.
         SimulationConfigurationError: If a run's standings were computed for a
-            set that does not hold one of these marks, which
-            `BookmarkStandings` refuses rather than defaulting.
+            set of marks that does not hold one of these marks.
+            `BookmarkStandings` rejects that case rather than using a default.
     """
 
     if not runs:
@@ -2008,30 +2066,31 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
 
 @dataclass(frozen=True, slots=True)
 class ForkPoint:
-    """One entry in the branch control's selector: where a branch would open, and its door.
+    """One entry in the branch selector: where a branch would open, and which method opens it.
 
-    A recorded control event and a time bookmark the trunk has passed are
-    listed together, because both stay on offer until the case itself
-    changes (`fork_offer` says why that puts them in one list). They are
-    taken through different doors, and `mark` is what says which.
+    A recorded control event and a time bookmark that the trunk has passed
+    are listed together, because both stay on offer until the case itself
+    changes. `fork_offer` explains why that puts them in one list. The two
+    kinds are taken through different methods, and `mark` says which.
 
-    **A mark's entry carries the mark, not an instant to fork at.** A branch
-    at a mark opens at the end of the step that reaches it, which is not in
-    general the instant the learner typed (`MarkForkPoint`). A caller taking
-    the entry hands `mark` back to `BranchedCase.fork_at_mark`, which finds
-    that step itself, so there is no float here for a caller to get wrong:
-    `instant_s` is what the entry is labelled and ordered by, never what a
-    mark's branch is asked for at.
+    **A mark's entry carries the mark, not an instant to branch at.** A branch
+    at a mark opens at the end of the step that reaches the mark. In general,
+    that is not the instant the learner typed (`MarkForkPoint`). A caller
+    taking the entry passes `mark` back to `BranchedCase.fork_at_mark`, which
+    finds that step itself. So there is no float here for a caller to get
+    wrong. The entry is labelled and ordered by `instant_s`, but a mark's
+    branch is never requested at that instant.
 
     Attributes:
-        instant_s: Where a branch taken here opens, in seconds of the case: a
-            keyframe of the trunk, or a passed mark's `MarkForkPoint.fork_s`.
-        label: What the selector shows for it: `format_elapsed` of
-            `instant_s`, inside `MARK_FORK_LABEL_TEMPLATE` for a mark.
-        mark: None for a recorded control event, taken through
-            `BranchedCase.fork_at` at `instant_s`; the time bookmark itself,
-            as the trunk holds it, for a passed mark, taken through
-            `BranchedCase.fork_at_mark`.
+        instant_s: Where a branch taken here opens, in seconds of the case.
+            It is either a keyframe of the trunk or a passed mark's
+            `MarkForkPoint.fork_s`.
+        label: What the selector shows for the entry: `format_elapsed` of
+            `instant_s`, placed inside `MARK_FORK_LABEL_TEMPLATE` for a mark.
+        mark: None for a recorded control event, which is taken through
+            `BranchedCase.fork_at` at `instant_s`. For a passed mark, it is
+            the time bookmark itself, as the trunk holds it, and the entry is
+            taken through `BranchedCase.fork_at_mark`.
     """
 
     instant_s: CaseInstant
@@ -2044,39 +2103,42 @@ class ForkOffer:
     """What the branch control offers this tick, and why it may offer nothing.
 
     Attributes:
-        points: What the selector offers, earliest first: every keyframe the
-            trunk holds - its opening at induction and every setting change
-            the model was actually stepped under, from
-            `BranchedCase.fork_points_s` - and every time bookmark it has
-            passed, from `BranchedCase.mark_fork_points`. Anywhere else is
-            refused by the case rather than approximated, so the control
-            offers this list and never a free instant. Each instant is
-            rendered by `format_elapsed` - the form the run clock and every
-            bookmark row use, so a learner reads one quantity one way
-            wherever it appears. Empty once the trunk's frame has failed,
-            and the panel then withdraws the selector (`PL-T2Q2`).
+        points: What the selector offers, earliest first. It holds every
+            keyframe of the trunk, from `BranchedCase.fork_points_s`: its
+            opening at induction and every setting change that the model was
+            actually stepped under. It also holds every time bookmark that
+            the trunk has passed, from `BranchedCase.mark_fork_points`. The
+            case rejects a branch anywhere else rather than approximating it.
+            So the control offers this list and never a free choice of
+            instant. Each instant is rendered by `format_elapsed`, the form
+            that the run clock and every bookmark row use, so a learner reads
+            one quantity in one way wherever it appears. The list is empty
+            once the trunk's frame has failed, and the panel then withdraws
+            the selector (`PL-T2Q2`).
         locked: Whether the control is replaced by its reason. True while a
             comparison is already on the chart.
-        lock_reason: What stands where the control stood, or the empty
-            string while it is offered. A state caption rather than a
-            warning: a mode a reader can leave by pressing Reset is not the
-            same kind of thing as a refusal, and this interface has one
-            alarm colour (`.claude/rules/ui-reader.md`) which is worth
-            exactly as much as it is spent on.
-        here_offered: Whether the second control - the fork where the paused
-            trunk stands - is on screen this tick. It appears when the trunk
-            stops and goes when it starts, where an entry in `points` stays
-            until the case itself changes, which is why it is a control of
-            its own rather than an entry in that list (`PL-TYWQ`, `PL-Y2SL`).
+        lock_reason: The text shown in place of the control, or the empty
+            string while the control is offered. It is a state caption rather
+            than a warning. A mode that a reader can leave by pressing Reset
+            is not the same kind of thing as a refusal. This interface has one
+            alarm colour (`.claude/rules/ui-reader.md`), and it keeps its
+            value only if it is used sparingly.
+        here_offered: Whether the second control, the fork where the paused
+            trunk stands, is on screen this tick. It appears when the trunk
+            stops and disappears when the trunk starts. An entry in `points`
+            instead stays until the case itself changes. That is why the fork
+            here is a control of its own rather than an entry in that list
+            (`PL-TYWQ`, `PL-Y2SL`).
         here_label: What that control says, or the empty string while it is
-            not offered. It names the instant the branch will open at,
-            `HERE_FORK_LABEL_TEMPLATE`, and adds that a mark stopped the
-            trunk there when one did, `HALT_FORK_LABEL_TEMPLATE`, which
-            carries why those are two clauses rather than one.
-        refusal: Why the branch last asked for was not taken, for the
-            notice banner, or None. Never set while `locked`: the control
-            that produced it is gone, so the message is about something the
-            reader can no longer see.
+            not offered. It names the instant at which the branch will open,
+            using `HERE_FORK_LABEL_TEMPLATE`. When a mark stopped the trunk
+            there, it adds that fact, using `HALT_FORK_LABEL_TEMPLATE`. The
+            comment on that template explains why those are two clauses
+            rather than one.
+        refusal: Why the most recently requested branch was not taken, for
+            the notice banner, or None. It is never set while `locked`. The
+            control that produced the refusal is gone, so the message would
+            be about something the reader can no longer see.
     """
 
     points: tuple[ForkPoint, ...]
@@ -2096,21 +2158,22 @@ class ComparedRuns:
 
 
 def comparing_fork_lock_text(runs: ComparedRuns) -> str:
-    """The caption standing where the branch control stood, naming the way out of the lock.
+    """Return the caption shown in place of the branch control, naming the way out of the lock.
 
-    Filled from the runs' names and `RESET_LABEL` rather than written out. The way
-    out is a button, a button is found by the words on it, and a comparison
-    draws two Resets - one per run, each in a transport row led by that run's
-    name - so a sentence that names neither leaves the reader to guess which
-    (`PL-WG73`, and `COMPARING_FORK_LOCK_TEMPLATE` for what that guess cost).
+    The caption is filled from the runs' names and `RESET_LABEL` rather than
+    written out. The way out is a button, and a reader finds a button by the
+    words on it. A comparison draws two Reset buttons, one per run, each in a
+    transport row that starts with that run's name. So a sentence that names
+    neither leaves the reader to guess which one to press (`PL-WG73`, and
+    `COMPARING_FORK_LOCK_TEMPLATE` for what that guess cost).
 
-    The lock stands only while a second run is drawn - `fork_offer`'s
-    `comparing` - so both names are of runs on screen whenever this text is
-    on screen: the trunk, whose Reset ends the comparison, and the branch,
-    whose Reset returns that run to its fork and leaves the lock exactly
-    where it was. They are the names the runs carry rather than their
-    positions, because a branch taken after an earlier one was dropped is
-    not "Run 2" (`PL-7Z84`).
+    The lock applies only while a second run is drawn, which is `fork_offer`'s
+    `comparing`. So whenever this text is on screen, both names belong to
+    runs on screen. One is the trunk, whose Reset ends the comparison. The
+    other is the branch, whose Reset returns that run to its fork and leaves
+    the lock exactly where it was. The text uses the names the runs carry,
+    not their positions, because a branch taken after an earlier branch was
+    dropped is not "Run 2" (`PL-7Z84`).
 
     Args:
         runs: What the trunk and the branch are called on screen.
@@ -2132,71 +2195,76 @@ def fork_offer(
     here: HereForkPoint | None,
     refusal: str | None = None,
 ) -> ForkOffer:
-    """What the branch control shows for one tick of the trunk.
+    """Return what the branch control shows for one tick of the trunk.
 
-    All three doors to a fork are decided here, in two fields. `points` holds
-    every keyframe the trunk holds, taken through `fork_at`, and every time
-    bookmark it has passed, taken through `fork_at_mark`, in one list by
-    instant; `here_offered` is where the paused trunk stands right now,
-    taken through `fork_here`.
+    All three ways of taking a branch are decided here, in two fields.
+    `points` is one list, ordered by instant. It holds every keyframe of the
+    trunk, taken through `fork_at`, and every time bookmark that the trunk
+    has passed, taken through `fork_at_mark`. `here_offered` says whether a
+    branch is offered at the point where the paused trunk stands right now.
+    That branch is taken through `fork_here`.
 
-    **The passed marks share the keyframes' lifetime, and the paused point
-    does not.** A mark joins the list when the trunk's clock reaches it or
-    when one is set behind the clock, and leaves only when the learner
-    unmarks it or the trunk starts over, as a keyframe stays until the case
-    changes. So the marks belong in the selector, while the paused point,
-    which ends when the trunk starts, stays a control of its own: a row that
-    arrived and left as the run moved would change the selector's membership
-    under a reader who had looked away (`HERE_FORK_LABEL_TEMPLATE` carries the
-    two decisions). `docs/ARCHITECTURE.md` § "Where a branch may be taken" is
-    why the model keeps it apart from the keyframes - pausing records no
-    keyframe, so the paused point adds nothing to `fork_points_s`.
+    **The passed marks last as long as the keyframes, and the paused point
+    does not.** A mark joins the list when the trunk's clock reaches it, or
+    when a mark is set behind the clock. It leaves only when the learner
+    removes it or the trunk starts over, just as a keyframe stays until the
+    case changes. So the marks belong in the selector. The paused point ends
+    when the trunk starts, so it stays a control of its own. A row that
+    appeared and disappeared as the run moved would change the selector's
+    contents under a reader who had looked away. The comment on
+    `HERE_FORK_LABEL_TEMPLATE` records both decisions. `docs/ARCHITECTURE.md`
+    § "Where a branch may be taken" explains why the model keeps the paused
+    point apart from the keyframes. Pausing records no keyframe, so the paused
+    point adds nothing to `fork_points_s`.
 
-    Earliest first, and a control event ahead of a mark at the same instant:
-    the order the two lists are given in, kept by a stable sort, so one case
-    always lists the same way.
+    The list is earliest first, and a control event comes before a mark at
+    the same instant. That is the order in which the two lists are given,
+    kept by a stable sort, so one case is always listed in the same way.
 
-    Induction is offered rather than filtered out. A fork at zero is a second
-    management of the whole case, which is a comparison a learner may
-    legitimately want, and filtering it would leave a case that has recorded
-    nothing offering no instant at all - a control with an empty list and a
-    live button, which is worse than a strange entry.
+    Induction is offered rather than filtered out. A branch at zero is a
+    second management of the whole case, which is a comparison a learner may
+    legitimately want. Filtering it out would leave a case that has recorded
+    nothing with no instant to offer at all. That would be a control with an
+    empty list and a live button, which is worse than an odd-looking entry.
 
     Args:
         fork_points_s: The trunk's keyframes, from
             `BranchedCase.fork_points_s`.
-        marks: The time bookmarks the trunk has passed, each with the instant
-            a branch taken there opens at, from `BranchedCase.mark_fork_points`.
-            Required rather than defaulted, so a caller states that the trunk
-            has passed none instead of leaving the third door off unseen.
-        comparing: The two runs on the chart, while a second run is already
-            there, or None while one is. The display
-            is capped at `MAX_DISPLAYED_RUNS` and no run selector exists yet
-            (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"), so a
-            second branch taken now would have to replace the shown one while
-            the first went on living inside `BranchedCase` - state the screen
-            does not carry, which is what the control is refused for. It
-            refuses every door: a branch is a branch whichever one it came
-            through, and a transient control the cap would reject on press is
-            one this interface prevents rather than reports
-            (`.claude/rules/expert-review.md`).
+        marks: The time bookmarks that the trunk has passed, each with the
+            instant at which a branch taken there opens, from
+            `BranchedCase.mark_fork_points`. The argument is required rather
+            than defaulted. So a caller must state that the trunk has passed
+            no marks, instead of silently leaving out the third way to branch.
+        comparing: The two runs on the chart while a second run is already
+            there, or None while only one run is. The display is capped at
+            `MAX_DISPLAYED_RUNS`, and no run selector exists yet (`ROADMAP.md`
+            § "Explicitly out of scope for v0.5.0"). So a second branch taken
+            now would have to replace the shown one, while the first branch
+            went on living inside `BranchedCase`. The screen would not show
+            that state, which is why the control is refused. The refusal
+            applies to every way of branching, because a branch is a branch
+            whichever way it was taken. This interface prevents a control
+            that the cap would reject on press, rather than reporting the
+            rejection afterwards (`.claude/rules/expert-review.md`).
         here: Where the **trunk** is paused, from
             `BranchedCase.here_fork_point`, or None while `fork_here` would
-            refuse: the trunk is going, has failed, stands at the supported
-            run length, where a branch would have no step to take, or stands
-            at its opening, which the selector's induction entry already
-            offers. The model's
-            answer rather than an instant read off the clock here, so the
-            offer is drawn from the check the door raises from, and it says
-            whether a mark stopped the trunk there, which a float could not.
-        refusal: Why the branch last asked for was not taken, or None. It
-            is dropped while the control is locked, because it describes a
-            press of a control the reader can no longer see.
+            refuse. It refuses while the trunk is running, has failed, or has
+            reached the supported run length, where a branch would have no
+            step to take. It also refuses while the trunk is at its opening,
+            which the selector's induction entry already offers. This argument
+            is the model's answer, not an instant read off the clock here. So
+            the offer comes from the same check that `fork_here` raises from,
+            and it says whether a mark stopped the trunk there, which a float
+            could not say.
+        refusal: Why the most recently requested branch was not taken, or
+            None. It is dropped while the control is locked, because it
+            describes a press of a control that the reader can no longer see.
 
     Returns:
-        The points to offer, each labelled and carrying the door it is taken
-        through, whether the fork at the paused point is on offer and what it
-        says, or the reason none of it is.
+        The points to offer, each labelled and carrying the method through
+        which it is taken. Also whether the branch at the paused point is
+        offered and what its control says, or the reason that none of it is
+        offered.
     """
 
     control_events = tuple(
@@ -2210,8 +2278,8 @@ def fork_offer(
         )
         for point in marks
     )
-    # The comparison cap refuses every door, so it is applied once, here,
-    # rather than by each field asking about it separately.
+    # The comparison cap refuses every way of branching. So it is applied
+    # once, here, rather than checked separately for each field.
     offered_here = None if comparing is not None else here
 
     return ForkOffer(
@@ -2225,7 +2293,7 @@ def fork_offer(
 
 
 def _here_fork_label(here: HereForkPoint) -> str:
-    """The words on the fork where the trunk stands: its instant, and the mark that stopped it.
+    """Return the label of the fork where the trunk stands: its instant, and any stopping mark.
 
     Args:
         here: Where the trunk stands, from `BranchedCase.here_fork_point`.
@@ -2237,9 +2305,9 @@ def _here_fork_label(here: HereForkPoint) -> str:
 
 
 def delivered_line(delivered: SettingReadout) -> str:
-    """The delivered concentration in both units, for the readout heading line.
+    """Return the delivered concentration in both units, for the readout heading line.
 
-    Written from the readout the dial itself is written from, so the line
+    The line is written from the same readout as the dial itself, so the line
     and the dial print one setting in one form (`PL-NWTM`).
 
     Args:
@@ -2250,8 +2318,8 @@ def delivered_line(delivered: SettingReadout) -> str:
 
     Raises:
         ValueError: If `delivered` is not the delivered dial's readout. A
-            flow's readout has no second unit, and printed here it would
-            name a flow as the concentration the vaporizer is set to.
+            flow's readout has no second unit. Printed here, it would present
+            a flow as the concentration that the vaporizer is set to.
     """
 
     if delivered.control is not ControlInput.DELIVERED:
@@ -2264,12 +2332,13 @@ def delivered_line(delivered: SettingReadout) -> str:
 
 
 def substance_heading(settings: RunSettings) -> str:
-    """The heading naming the substance the six readouts belong to (`PL-TCD1`).
+    """Return the heading that names the substance the six readouts belong to (`PL-TCD1`).
 
     Args:
-        settings: The run's agent and settings - the snapshot a frame drew
-            from, or the controller's record where no frame draws, which is
-            why it takes what both carry (`PL-1YDD`).
+        settings: The run's agent and settings. This is the snapshot that a
+            frame drew from, or the controller's record when no frame draws.
+            That is why the function takes the type that both of them
+            provide (`PL-1YDD`).
 
     Returns:
         The heading line.
@@ -2282,28 +2351,28 @@ def substance_heading(settings: RunSettings) -> str:
 class RunStatement:
     """What a run's screen states without a compartment value: every run-state widget but the dials.
 
-    `RunView._write_statement` is the one writer of these widgets. `refresh`
-    calls it with the snapshot a frame drew from, and `present_halt` with
-    `SimulationController.record()` where no frame can draw, so a widget
-    stated here reads the same on a drawn run and on a halted one in the same
-    state. Before this, the halt wrote a list of widgets chosen by hand, and
-    each widget the list missed went on stating the last frame's run
-    (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
+    `RunView._write_statement` is the only code that writes these widgets.
+    `refresh` calls it with the snapshot that a frame drew from. `present_halt`
+    calls it with `SimulationController.record()` when no frame can draw. So a
+    widget listed here shows the same thing on a drawn run and on a halted run
+    in the same state. Before this class existed, the halt wrote a list of
+    widgets chosen by hand, and each widget the list missed went on showing
+    the last frame's run (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
 
-    The four dials are written beside it from the same record rather than
-    carried in it, because `setting_readouts` can raise, for a control that
-    can offer no setting, and everything here has to be on screen before it
-    does (`PL-85LJ`).
+    The four dials are written next to this statement from the same record,
+    rather than carried in it. `setting_readouts` can raise for a control that
+    can offer no setting, and everything here has to be on screen before that
+    happens (`PL-85LJ`).
 
     Attributes:
-        agent_id: The running agent, whose ISO 5360 pair
-            `RunView._apply_agent_color_scheme` writes and whose entry the
-            selector shows.
+        agent_id: The running agent. `RunView._apply_agent_color_scheme`
+            writes its ISO 5360 colour pair, and the selector shows its
+            entry.
         agent_name: The running agent's name, on the chip that replaces the
             selector.
         subtitle: The header badge's line naming the build and the agent.
-        substance_heading: The heading saying whose concentrations the
-            readouts are.
+        substance_heading: The heading saying which agent's concentrations
+            the readouts show.
         status: The status word.
         transport: Which transport controls are usable, and why the
             selector is locked.
@@ -2364,7 +2433,7 @@ def run_statement(
 
 
 def time_axis_caption(frame: ChartFrame) -> str:
-    """The span of run the chart is showing, and whether the reader or the run chose it.
+    """Return the span of the run that the chart shows, and whether the reader or the run chose it.
 
     Args:
         frame: The frame drawn this tick.
@@ -2382,14 +2451,14 @@ def time_axis_caption(frame: ChartFrame) -> str:
 
 
 def mac_reference_caption(frame: ChartFrame) -> str:
-    """The divisor every MAC number on the page was produced with.
+    """Return a caption naming the divisor that every MAC number on the page uses.
 
-    Names the reference run's agent and its 1 MAC, which is what makes the
-    MAC readouts traceable without opening a data file (`CLAUDE.md`,
+    The caption names the reference run's agent and its 1 MAC. That is what
+    makes the MAC readouts traceable without opening a data file (`CLAUDE.md`,
     safety-critical clinical-output standard).
 
     Args:
-        frame: The frame drawn this tick; its runs are all on one agent.
+        frame: The frame drawn this tick. All of its runs use one agent.
 
     Returns:
         The reference line.
@@ -2399,10 +2468,10 @@ def mac_reference_caption(frame: ChartFrame) -> str:
 
 
 def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
-    """What the MAC-awake band was drawn from: its published fraction and the divisor.
+    """Return what the MAC-awake band was drawn from: its published fraction and the divisor.
 
-    Both free parameters are named, so a reader who disagrees with either
-    can see which (`PL-F52R`).
+    Both free parameters are named, so a reader who disagrees with either one
+    can see which one it is (`PL-F52R`).
 
     Args:
         snapshot: The reference run's state this tick.
@@ -2422,19 +2491,19 @@ def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
 
 
 def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) -> str:
-    """What the wash-in plot is showing at this instant, and why.
+    """Return what the wash-in plot is showing at this instant, and why.
 
-    Where the trace is drawing, the number here is the same value its
-    right-hand end stands at - `read_wash_in` on the snapshot's own
-    alveolar and inspired fractions - so the plot and the sentence beside it
-    cannot disagree.
+    While the trace is being drawn, the number here is the same value as the
+    trace's right-hand end. Both come from `read_wash_in` on the snapshot's
+    own alveolar and inspired fractions, so the plot and the sentence beside
+    it cannot disagree.
 
     Args:
         snapshot: The run's state this tick.
         undrawn_wash_in_stretches: How many stretches inside the window the
-            plot's pool could not draw, from `RunFrame.undrawn_wash_in_stretches`
-            of the same tick; appended so the pool's bound is displayed
-            rather than silent.
+            plot's limited pool of lines could not draw, from
+            `RunFrame.undrawn_wash_in_stretches` of the same tick. The count
+            is appended, so the pool's limit is shown rather than hidden.
 
     Returns:
         One line for the row above the plot.
@@ -2579,15 +2648,15 @@ def unmarked_changes_lines(frame: ChartFrame) -> tuple[str | None, ...]:
 
 
 def run_label(run: RunId) -> str:
-    """What this run is called, in text: a rendering of its identity, never of where it is drawn.
+    """Return what this run is called in text, from its identity and never from where it is drawn.
 
-    The one place a run is named, so the legend entry, the run's own panel
-    heading and any later view say the same word. A name is only an
-    attribution if the reader can find what it refers to, and what it
+    This is the only place where a run is named, so the legend entry, the
+    run's own panel heading and any later view all use the same word. A name
+    is only an attribution if the reader can find what it refers to. What it
     refers to is the panel carrying that run's settings.
 
-    The name is the run's number alone. The session the identity also holds
-    tells two sessions' runs apart for a Workspace's pin, and a reader never
+    The name is the run's number alone. The identity also holds the session,
+    which tells two sessions' runs apart for a Workspace's pin. A reader never
     sees two sessions' runs at once (`PL-7Z84`).
 
     Args:
@@ -2598,7 +2667,8 @@ def run_label(run: RunId) -> str:
 
     Raises:
         TypeError: If `run` is not a `RunId`. A position in a tuple of runs
-            names whichever run stands there, which is what this replaced.
+            names whichever run happens to be there, and naming by position
+            is what this function replaced.
     """
 
     if not isinstance(run, RunId):
@@ -2614,10 +2684,10 @@ def trace_legend_label(style: TraceStyle) -> str:
 
 
 def compared_trace_legend_label(trace: str, run: str) -> str:
-    """One drawn curve's legend words while more than one run is shown.
+    """Return one drawn curve's legend words while more than one run is shown.
 
     Args:
-        trace: The trace's own words - a compartment's from
+        trace: The trace's own words: a compartment's words from
             `trace_legend_label`, or the wash-in plot's single trace label.
         run: The run's name, from `run_label`.
 
@@ -2629,30 +2699,30 @@ def compared_trace_legend_label(trace: str, run: str) -> str:
 
 
 def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
-    """One run's line in a column the runs share, named while more than one is drawn.
+    """Return one run's line in a column that the runs share, named while more than one is drawn.
 
     The wash-in state line and the off-scale notice both sit in the chart
-    column rather than on the run's own panel, one line per run, and both
-    carry a clinical value: an F_A/F_I the reader compares against the other
-    run's, and a statement that a compartment's trace is clipped. Neither
-    said whose it was, and stacking order is not an attribution - it is
-    declared nowhere on screen, and the run names live in a different
-    splitter section. Read as the other run's, the first inverts the
-    comparison a branch exists to teach and the second reports a clipped
-    trace on a run that has none (`PL-25DD`).
+    column rather than on the run's own panel, one line per run. Both carry a
+    clinical value. The first is an F_A/F_I that the reader compares with the
+    other run's. The second states that a compartment's trace is clipped.
+    Neither line used to say which run it belonged to, and stacking order is
+    not an attribution. The order is explained nowhere on screen, and the run
+    names are in a different splitter section. Read as the other run's, the
+    first line inverts the comparison that a branch exists to teach. The
+    second reports a clipped trace on a run that has none (`PL-25DD`).
 
-    Composed here rather than built into either line, following
-    `compared_trace_legend_label`: what the line says is a property of the
-    run's state, and which run it belongs to is a property of how many runs
-    the chart is drawing, so the run's name is a separate fact joined at the
-    one place that holds both.
+    The name is added here rather than built into either line, following
+    `compared_trace_legend_label`. What the line says depends on the run's
+    state. Whether the line needs its run's name depends on how many runs the
+    chart is drawing. So the run's name is a separate fact, joined at the one
+    place that knows both.
 
-    A lone run is given no name, having nothing to be told apart from - the
-    rule `SimulationView._rename_runs` applies to the run panels, and both
-    legends to the frame they are told of, so a single-run display is
-    unchanged. The frame's run is read
-    before that count is consulted, so an index addressing no run raises on
-    a one-run frame too rather than returning a line that looks right.
+    A lone run is given no name, because there is nothing to tell it apart
+    from. `SimulationView._rename_runs` applies the same rule to the run
+    panels, and both legends apply it to the frame they are given, so a
+    single-run display is unchanged. The frame's run is looked up before the
+    run count is checked. So an index that matches no run raises on a one-run
+    frame too, rather than returning a line that looks right.
 
     Args:
         line: This run's line, already formatted.
@@ -2661,8 +2731,8 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
         run_index: Which of the frame's runs the line belongs to.
 
     Returns:
-        The line unchanged while one run is drawn; the run's name and then
-        the line while more than one is.
+        The line unchanged while one run is drawn, or the run's name followed
+        by the line while more than one run is drawn.
 
     Raises:
         TypeError: If `run_index` is not an `int` (`RunIndex`).
@@ -2680,58 +2750,60 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
 
 
 def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | None:
-    """One run's banner in the notice column the runs share, named while two are drawn.
+    """Return one run's banner in the notice column that the runs share, named while two are drawn.
 
-    The banner sits in a column both runs write into, and all three of the
-    notices `notice` can return assert something about *a* run while naming
-    none: a halt says "Simulation stopped", and a refusal says "The
-    simulation is unchanged and still running its previous setting" - which
-    is false of the run it is not about. Read as the dashboard's rather than
-    one run's, a halt on the branch says the case has stopped when the trunk
-    is still going, and a refusal says a setting was not applied to a run
-    that took it (`PL-TSZM`).
+    The banner sits in a column that both runs write into. All three of the
+    notices that `notice` can return assert something about *a* run without
+    naming it. A halt says "Simulation stopped". A refusal says "The
+    simulation is unchanged and still running its previous setting", which is
+    false of the other run. Read as a statement about the whole dashboard
+    rather than one run, a halt on the branch says the case has stopped while
+    the trunk is still going. A refusal says a setting was not applied to a
+    run that did accept it (`PL-TSZM`).
 
-    Stacking order separates these less than it separates the chart column's
-    lines, because a banner with nothing to say is hidden rather than blank:
-    with one run halted the column holds a single block whose position moves
-    by the column's spacing alone - 12 px measured on 2026-09-21, against
-    nothing on screen to measure it from - while the words are identical.
+    Stacking order separates these banners even less than it separates the
+    chart column's lines, because a banner with nothing to say is hidden
+    rather than left blank. With one run halted, the column holds a single
+    block whose position moves only by the column's spacing, while the words
+    are identical. That spacing was 12 px, measured on 2026-09-21, with
+    nothing on screen to measure it against.
 
-    A colon rather than `COMPARED_RUN_LINE_TEMPLATE`'s em dash, which is why
-    this is a second function and not that one with the run read from a
-    different place. Every notice already opens `label — detail`
-    ("Simulation stopped — ...", "Setting refused — ..."), so an em dash
-    prefix would put two in one sentence at different depths, and the first
-    would read as the banner's own label separator with "Run 2" as the
-    label. The colon is the same one `OFF_SCALE_NOTICE_TEMPLATE` and the
-    compare-mode legend caption already use to scope what follows.
+    It uses a colon rather than the em dash of `COMPARED_RUN_LINE_TEMPLATE`.
+    That is why this is a second function, not the same function with the
+    run read from a different place. Every notice already opens with
+    `label — detail` ("Simulation stopped — ...", "Setting refused — ..."). So
+    an em dash prefix would put two dashes in one sentence at different
+    levels. The first would look like the banner's own label separator, with
+    "Run 2" as the label. The colon is the same one that
+    `OFF_SCALE_NOTICE_TEMPLATE` and the compare-mode legend caption already
+    use to limit what follows to one subject.
 
-    Takes the run's name rather than the frame and an index, where
-    `compared_run_line` takes the frame: the banner is also written by
-    `RunView.present_halt`, which states a halt from the snapshot alone
-    because the frame is what may have failed (`PL-25KS`). Reading the count
-    off the frame there would drop the attribution in exactly the case this
-    is for, and the name the dashboard has already given the run through
-    `set_run_name` is the same word `run_label` put on the run's own panel
-    and in both legends.
+    It takes the run's name rather than the frame and an index, unlike
+    `compared_run_line`, which takes the frame. `RunView.present_halt` also
+    writes the banner, and it states a halt from the snapshot alone, because
+    the frame is what may have failed (`PL-25KS`). Reading the run count from
+    the frame there would drop the attribution in exactly the case it exists
+    for. The name that the dashboard has already given the run through
+    `set_run_name` is the same word that `run_label` put on the run's own
+    panel and in both legends.
 
     Args:
-        notice_text: `notice`'s result for this run this tick, or None when
-            there is nothing to say.
+        notice_text: The result of `notice` for this run this tick, or None
+            when there is nothing to say.
         run_name: What the dashboard calls this run, from `run_label`, or
-            None while one run is drawn and there is nothing to tell it
+            None while only one run is drawn and there is nothing to tell it
             apart from.
 
     Returns:
-        The notice unchanged while one run is drawn or there is no notice;
-        the run's name and then the notice while two are.
+        The notice unchanged while one run is drawn or there is no notice, or
+        the run's name followed by the notice while two runs are drawn.
 
     Raises:
-        ValueError: If `run_name` is empty, which names no run. An empty
-            name would render a banner opening with a bare colon rather
-            than fail, and a notice that looks addressed to a run called
-            nothing is the plausible-looking output `CLAUDE.md` asks to be
-            failed instead.
+        ValueError: If `run_name` is empty, because an empty name names no
+            run. An empty name would not fail on its own. It would render a
+            banner that opens with a bare colon. A notice that looks
+            addressed to a run called nothing is the plausible-looking output
+            that `CLAUDE.md` asks to fail instead.
     """
 
     if run_name is not None and not run_name:
@@ -2744,42 +2816,42 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
 
 
 def compared_panel_heading(heading: str, run: str | None) -> str:
-    """One run's panel heading in a column the runs share, named while more than one is drawn.
+    """Return one run's panel heading in a shared column, named while more than one run is drawn.
 
-    The sidebar holds two panels per run - the agent-accounting validation
-    and the control-change record - in a column the runs share, so a branch
-    stacks four: accounting, control changes, accounting, control changes,
-    with nothing on any of them saying whose. Both carry a claim about one
-    run: the accounting panel a mass-balance status and litres of equivalent
-    pure agent gas, the control-change panel a list of settings under the
-    words "What was changed during this run". Read as the other run's, the
-    second says the trunk received an intervention it never got, which is the
-    comparison a branch exists to teach inverted rather than merely blurred
-    (`PL-C3GS`).
+    The sidebar holds two panels per run, the agent-accounting validation and
+    the control-change record, in a column that the runs share. So a branch
+    stacks four panels: accounting, control changes, accounting, control
+    changes. Nothing on any of them used to say which run it belonged to.
+    Both panels make a claim about one run. The accounting panel gives a
+    mass-balance status and litres of equivalent pure agent gas. The
+    control-change panel gives a list of settings under the words "What was
+    changed during this run". Read as the other run's, that list says the
+    trunk received an intervention it never got. That inverts the comparison
+    a branch exists to teach, rather than merely blurring it (`PL-C3GS`).
 
-    The name goes in the heading rather than on each line beneath it, which
-    is what separates this from `compared_run_line`: those columns hold one
-    bare line per run and have no heading to carry it, while a panel has a
+    The name goes in the heading rather than on each line beneath it, which is
+    what makes this different from `compared_run_line`. The chart column holds
+    one bare line per run and has no heading to carry the name. A panel has a
     heading whose whole job is to say what the panel holds. Prefixing five
-    lines with the same run name would say it five times and read as part of
-    each value.
+    lines with the same run name would say it five times, and it would look
+    like part of each value.
 
-    Kept general over the heading, and given no knowledge of which panel it
-    is naming, because every main view will owe an area a heading of its own
-    (`.claude/rules/ui-areas.md`) - and because a heading that travels with
-    its own panel survives a reader rearranging the column, where one group
+    The function works for any heading and does not know which panel it is
+    naming, for two reasons. Every main view will need a heading for each of
+    its areas (`.claude/rules/ui-areas.md`). And a heading that moves with its
+    own panel still works when a reader rearranges the column, where one group
     heading above both panels would not.
 
     Args:
         heading: The panel's own heading words.
         run: The run's name, from `run_label`, or `None` while one run is
-            drawn - which is the rule `SimulationView._rename_runs` already
-            applies to the run panels, and both legends to the frame they are
-            told of, so a single-run display gains no standing text.
+            drawn. `SimulationView._rename_runs` already applies that rule to
+            the run panels, and both legends apply it to the frame they are
+            given. So a single-run display gains no standing text.
 
     Returns:
-        The heading unchanged while one run is drawn; the heading and then
-        the run's name while more than one is.
+        The heading unchanged while one run is drawn, or the heading followed
+        by the run's name while more than one run is drawn.
     """
 
     if run is None:
@@ -2789,21 +2861,22 @@ def compared_panel_heading(heading: str, run: str | None) -> str:
 
 
 def compartment_cap_notice(frame: ChartFrame) -> str | None:
-    """What the chart says while the two-compartment cap is holding traces off it.
+    """Return what the chart says while the two-compartment cap keeps traces off it.
 
-    Conditional text, fired by the state it explains and costing nothing
-    otherwise (`.claude/rules/ui-reader.md`). It earns a sentence because it
-    accounts for two things a reader would otherwise have to guess at: why
-    four traces left the chart when the second run arrived, and why checking
-    a third box unchecks the longest-standing one
-    (`CompartmentSelection.with_compartment`). Neither is a label, a unit or
-    an axis title.
+    This is conditional text. It appears only in the state it explains, and
+    costs nothing otherwise (`.claude/rules/ui-reader.md`). It earns a
+    sentence because it explains two things that a reader would otherwise
+    have to guess. One is why four traces left the chart when the second run
+    arrived. The other is why checking a third box unchecks the box that has
+    been checked longest (`CompartmentSelection.with_compartment`). Neither
+    can be explained by a label, a unit or an axis title.
 
-    It fires on the cap being *in force* rather than on a count of traces
-    removed, because the dashboard holds its compartment selection inside the
+    It appears whenever the cap is *in force*, not according to a count of
+    removed traces. The dashboard keeps its compartment selection within the
     cap from the moment the second run appears
-    (`CompartmentSelection.with_run_count`) - so by the time a frame is
-    assembled the count is zero and the reader has still lost four curves.
+    (`CompartmentSelection.with_run_count`). So by the time a frame is
+    assembled, the count of removed traces is zero, yet the reader has still
+    lost four curves.
 
     Args:
         frame: The frame drawn this tick.
@@ -2843,12 +2916,12 @@ class NewCaseQuestion:
         title: Names what the reader would start, or the runs a Reset ends.
         body: Three statements in the order a reader meets them: why this
             is a new case at all, what is about to be lost, and what
-            survives. Three rather than one paragraph because they answer
-            three different questions and a reader stops at the first that
-            satisfies them.
+            survives. They are three statements rather than one paragraph,
+            because they answer three different questions, and a reader stops
+            at the first one that satisfies them.
         discard_label: The destructive action, drawn first and outlined.
-        keep_label: The safe action, drawn last and filled - the default
-            press, so the press a reader makes without reading keeps their
+        keep_label: The safe action, drawn last and filled. It is the
+            default, so the press a reader makes without reading keeps their
             case.
     """
 
@@ -2861,16 +2934,17 @@ class NewCaseQuestion:
 def new_case_question(
     snapshot: SimulationSnapshot, new_agent_display_name: str, adjustment_count: int
 ) -> NewCaseQuestion:
-    """The confirmation for one proposed new case.
+    """Return the confirmation for one proposed new case.
 
     Args:
         snapshot: The run that would be discarded.
-        new_agent_display_name: The agent the reader selected, as it is
-            named to them.
-        adjustment_count: How many control changes the run holds, counted
-            as the panel beside the chart lists them - through the same
-            grouping - so the count of what is about to be lost and the
-            list of it cannot come from two readings of one record.
+        new_agent_display_name: The agent the reader selected, named as the
+            reader sees it.
+        adjustment_count: How many control changes the run holds. They are
+            counted through the same grouping that the panel beside the chart
+            uses to list them. So the count of what is about to be lost and
+            the list of it cannot come from two different readings of one
+            record.
 
     Returns:
         The question's text.
@@ -2919,19 +2993,22 @@ class BranchAtStake:
 def branch_at_stake(
     name: str, began_at_s: float, snapshot: SimulationSnapshot | None, adjustment_count: int
 ) -> BranchAtStake | None:
-    """Whether a trunk's Reset would discard work in this branch, and what work.
+    """Return whether a trunk's Reset would discard work in this branch, and what work.
 
-    A branch holding nothing is not at stake, by `has_recorded_run`, which
-    is what spares the new-case question too: a question asked where nothing
-    is lost is answered without reading by the time something is. A branch
-    whose snapshot refuses a value is at stake, because what it holds cannot
-    be read, and discarding unread work without asking is the outcome this
+    A branch holding nothing is not at stake, as judged by
+    `has_recorded_run`. The same test spares the reader the new-case
+    question. If the question were asked when nothing would be lost, the
+    reader would be answering it without reading by the time something
+    would be. A branch
+    whose snapshot raises on a value is at stake, because what it holds cannot
+    be read. Discarding unread work without asking is the outcome this
     question exists to prevent.
 
     Args:
         name: What the branch is called on screen.
-        began_at_s: The case instant it branched at, from its controller.
-        snapshot: Its snapshot, or None where reading one refused.
+        began_at_s: The case instant at which it branched, from its
+            controller.
+        snapshot: Its snapshot, or None when reading one raised.
         adjustment_count: How many control changes it holds, grouped as its
             panel lists them.
 
@@ -2952,11 +3029,11 @@ def branch_at_stake(
 
 
 def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> NewCaseQuestion:
-    """The confirmation asked before the trunk's Reset discards branches holding work.
+    """Return the confirmation asked before the trunk's Reset discards branches holding work.
 
-    `docs/MODEL.md` § "Agent-change behavior" requires it. Reset's exemption
-    from that section's confirmation covers the run whose button was
-    pressed, and a branch is another run (`PL-W5WX`).
+    `docs/MODEL.md` § "Agent-change behavior" requires it. That section exempts
+    Reset from its confirmation only for the run whose button was pressed, and
+    a branch is another run (`PL-W5WX`).
 
     Args:
         trunk_name: What the trunk is called on screen.
@@ -2966,8 +3043,8 @@ def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> 
         The question's text.
 
     Raises:
-        ValueError: If no branch is given, since a Reset that discards
-            nothing asks nothing; or if an instant is negative or not finite
+        ValueError: If no branch is given, because a Reset that discards
+            nothing asks nothing. Also if an instant is negative or not finite
             (`format_branch_discard_warning`, through `format_elapsed`).
     """
 
@@ -2996,20 +3073,21 @@ def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> 
 
 
 def readout_row_width(columns: int, panel_widths_px: Sequence[float], spacing_px: float) -> float:
-    """The narrowest row that seats the panels `columns` across.
+    """Return the width of the narrowest row that fits the panels `columns` across.
 
-    Panels fill the grid row by row, so column `j` holds every panel whose
-    index is `j` modulo `columns` and is as wide as the widest of them; the
-    row is those column widths plus `columns - 1` gaps of `spacing_px`.
+    Panels fill the grid row by row. So column `j` holds every panel whose
+    index is `j` modulo `columns`, and the column is as wide as the widest of
+    those panels. The row's width is the sum of those column widths plus
+    `columns - 1` gaps of `spacing_px`.
 
     Args:
-        columns: How many panels stand side by side; at least one.
-        panel_widths_px: Each panel's own reservation, in row order.
+        columns: How many panels stand side by side. At least one.
+        panel_widths_px: The width each panel reserves, in row order.
         spacing_px: The gap between neighbouring columns, in logical pixels.
 
     Raises:
-        ValueError: If `columns` is below one, since no row seats its
-            panels in no columns.
+        ValueError: If `columns` is less than one, because a row cannot fit
+            its panels into no columns.
     """
 
     if columns < 1:
@@ -3021,21 +3099,22 @@ def readout_row_width(columns: int, panel_widths_px: Sequence[float], spacing_px
 
 
 def readout_columns(width_px: float, panel_widths_px: Sequence[float], spacing_px: float) -> int:
-    """How many readout panels stand side by side at this width.
+    """Return how many readout panels stand side by side at this width.
 
-    The largest rung of `READOUT_ROW_LADDER` whose panels fit: the row
-    `readout_row_width` gives for that count takes no more than `width_px`.
-    One column is the floor, however narrow the row, because a row must
-    hold its panels somewhere. Each panel's width is the widget's measured
-    reservation - the widest value its column can show, in the rendering
-    font (`PL-3355`) - so the row steps down exactly where a panel would
-    otherwise be clipped, at whatever width that is on the reader's display
+    The result is the largest count in `READOUT_ROW_LADDER` whose panels fit.
+    The panels fit when the row width that `readout_row_width` gives for that
+    count is no more than `width_px`. The result is never less than one
+    column, however narrow the row, because a row must hold its panels
+    somewhere. Each panel's width is the width that the widget measured and
+    reserved: the widest value its column can show, in the rendering font
+    (`PL-3355`). So the row steps down exactly where a panel would otherwise
+    be clipped, at whatever width that is on the reader's display
     (`PL-8M05`).
 
     Args:
         width_px: The readout row's width, in logical pixels.
-        panel_widths_px: Each panel's reservation, in row order, in logical
-            pixels.
+        panel_widths_px: The width each panel reserves, in row order, in
+            logical pixels.
         spacing_px: The gap between neighbouring columns, in logical pixels.
 
     Returns:

@@ -3,11 +3,14 @@ id: PL-1K5X
 title: Cut the padded comments and docstrings across src/
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
-touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app
+touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app, src/anesthesia_sim/layout, src/anesthesia_sim/app_metadata.py, docs/items/PL-21KP-present-tense-flet-claims-survive-the-qt-port.md
 added: 2026-09-05
+closed: 2026-10-25
+pr: 1798
+verify: ! grep -qF 'Mass-balance accounting: verify that a simulation run neither creates nor' src/anesthesia_sim/core/agent_simulation_validation.py && ! grep -qF 'Exception hierarchy for what the layout package refuses.' src/anesthesia_sim/layout/exceptions.py && ! grep -qF 'in place give way before the Areas that it did. An Area that gives way shrinks' src/anesthesia_sim/app/area_layout.py
 not-delegable: readability is judged by a person, and no command separates a trimmed comment from a padded one. A length ceiling would be met by deleting the provenance note this item exists to keep, which is the one outcome it forbids. `touches` reaches `src/anesthesia_sim/core` and `src/anesthesia_sim/data` besides, which delegation may never modify
 ---
 
@@ -56,3 +59,20 @@ text may come out longer.
 
 Start with the code the rules name as the instance to read first, such as
 `src/anesthesia_sim/core/tissue.py`, because sessions copy it.
+
+**Done 2026-10-25.** Every docstring and `#` comment under `src/` was
+rewritten as `.claude/rules/plain-writing.md` says, file group by file group.
+One agent rewrote each group, and a second compared it with the original and
+repaired any fact that was lost, changed or blurred. A script then checked
+each file against `main`: the code with docstrings removed must be identical,
+directive comments must match, and every code span, item id, pull request
+number, URL, number and section reference must survive. `make check`'s
+checks pass, and so does the full test suite. Where `main` changed a
+passage after the rewrite began (`PL-F9TC`'s `MacPercent` in `app/`), the
+passage keeps `main`'s text.
+
+The rewrite changed no fact, so the stale facts its agents found were filed
+instead, under the `stale-source-claims` feature: `PL-756M` (code spans naming
+symbols that do not exist), `PL-DP7B` (two `core/` docstrings describing older
+code) and `PL-0Z35` (five `app/` comments). Two more Flet claims were added to
+`PL-21KP`, which already covers them.

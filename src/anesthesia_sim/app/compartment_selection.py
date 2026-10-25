@@ -1,31 +1,32 @@
 """Which compartments the chart draws: the reader's selection, as a value the dashboard owns.
 
 The selection used to live in the legend's checkboxes, and the dashboard read
-it back from them (`PL-VN6M`). That held while there was exactly one legend
-in a fixed layout. The area system makes two ordinary acts of what were
-impossible ones: a reader closes the Area holding the legend, and the
-selection went with its boxes; a reader opens a second chart Area, and
-nothing said which legend it followed (`.claude/rules/ui-areas.md`, test 2).
-So the selection is a value here, held by the dashboard and handed down, the
-pattern `chart_frame.ChartFrame` already sets for everything else the chart
-draws: `TraceLegend` shows the selection it is handed and asks for a change
-to it, and `assemble_chart_frame` draws from the same value.
+it back from them (`PL-VN6M`). That worked while there was exactly one legend
+in a fixed layout. The area system turns two acts that were impossible into
+ordinary ones. A reader can close the Area that holds the legend, and the
+selection would disappear with its boxes. A reader can open a second chart
+Area, and nothing would say which legend it followed (`.claude/rules/ui-areas.md`,
+test 2). So the selection is now a value here, which the dashboard holds and
+passes down. This follows the pattern that `chart_frame.ChartFrame` already
+sets for everything else the chart draws. `TraceLegend` shows the selection
+it is given and asks for changes to it, and `assemble_chart_frame` draws from
+the same value.
 
-**Two rules travel with it, and one of them is only read here.** The cap -
-two compartments while more than one run is drawn - is
-`chart_frame.compared_compartments`', and every question this module asks of
-it goes through that function rather than restating the number. The rule for
-a reader's click over the cap is this module's, moved here from the legend:
-the compartment just asked for is shown, and the longest-standing one makes
-room for it.
+**Two rules come with the selection. This module owns one of them and only
+reads the other.** The cap, which is two compartments while more than one run is drawn,
+belongs to `chart_frame.compared_compartments`. Every question this module
+asks about the cap goes through that function rather than restating the
+number. The rule for a reader's click over the cap belongs to this module,
+and was moved here from the legend. The compartment just asked for is shown,
+and the longest-standing one makes room for it.
 
-**A selection over the cap cannot be built**, the pattern
-`.claude/rules/core-domain.md` gives a checked type. Every selection that
+**A selection over the cap cannot be built.** This is the checked-type
+pattern that `.claude/rules/core-domain.md` describes. Every selection that
 exists is inside the cap for the runs it was built for, so
-`compared_compartments` returns all of it, and the legend's boxes and the
-chart's curves, both drawn from one selection, cannot disagree. Nothing here
-imports a toolkit, and `tests/unit/test_compartment_selection.py` holds it
-without a display.
+`compared_compartments` returns all of it. The legend's boxes and the chart's
+curves are both drawn from one selection, so they cannot disagree. Nothing
+here imports a toolkit, and `tests/unit/test_compartment_selection.py` tests
+it without a display.
 """
 
 from __future__ import annotations
@@ -46,18 +47,19 @@ class CompartmentSelection:
 
     Attributes:
         order: The compartments shown, in the order the reader asked for
-            them, the longest-standing first. The order is what a click over
-            the cap reads (`with_compartment`); what is drawn, and in what
-            order, is `shown`'s.
-        run_count: How many runs the selection is drawn across, which is
-            what decides whether the cap applies. It is passed as an `int`
-            and built here as a `RunCount`, which checks it, so the selection
+            them, the longest-standing first. A click over the cap uses this
+            order (`with_compartment`). What is drawn, and in what order, is
+            decided by `shown`.
+        run_count: How many runs the selection is drawn across, which
+            decides whether the cap applies. It is passed as an `int` and
+            built here as a `RunCount`, which checks it, so the selection
             always holds a checked count.
 
     Raises:
         TypeError: If `order` is not a tuple, holds anything but a
-            `RecordedQuantity`, or `run_count` is not an `int` - a `bool`
-            included, which subclasses `int` and would make `True` one run.
+            `RecordedQuantity`, or `run_count` is not an `int`. A `bool` is
+            rejected too, because it subclasses `int` and would make `True`
+            count as one run.
         ValueError: If `order` names a quantity the chart draws no trace for
             or names one twice; if `run_count` is not between 1 and
             `MAX_DISPLAYED_RUNS`, the most the dashboard draws; or if the
@@ -108,13 +110,13 @@ class CompartmentSelection:
         return drawn
 
     def with_compartment(self, quantity: RecordedQuantity, shown: bool) -> CompartmentSelection:
-        """This selection with one compartment shown or hidden, as a reader's click asks.
+        """Return this selection with one compartment shown or hidden, as a reader's click asks.
 
         A compartment shown over the cap is honoured, and the longest-standing
-        selections make room for it: the oldest rather than the newest, so the
-        compartment a reader just asked for is the one they get. A cap that
-        refused the click instead would leave them pressing a box that does not
-        respond, which is the worse of the two surprises.
+        selections make room for it. The oldest are removed rather than the
+        newest, so the compartment a reader just asked for is the one they get.
+        A cap that refused the click instead would leave them pressing a box
+        that does not respond, which is the worse of the two surprises.
 
         Args:
             quantity: Which compartment.
@@ -148,14 +150,14 @@ class CompartmentSelection:
         return CompartmentSelection(order, self.run_count)
 
     def with_run_count(self, run_count: int) -> CompartmentSelection:
-        """This selection drawn across another number of runs, held inside its cap.
+        """Return this selection drawn across another number of runs, held inside its cap.
 
-        What is kept is exactly what the chart would draw for that many runs -
-        the top of the compartment table, which is `compared_compartments`'
-        rule - rather than a pair chosen here, so the boxes left checked are
-        the curves on the plot. A selection the cap reduced stays reduced when
-        the runs fall back to one, as it did while the legend held it: nothing
-        here remembers what the cap took off.
+        What is kept is exactly what the chart would draw for that many runs,
+        rather than a pair chosen here. That is the top of the compartment
+        table, by the rule in `compared_compartments`. So the boxes left
+        checked are the curves on the plot. A selection that the cap reduced
+        stays reduced when the runs fall back to one, as it did while the
+        legend held the selection. Nothing here remembers what the cap removed.
 
         Args:
             run_count: How many runs are now drawn.
@@ -177,16 +179,17 @@ class CompartmentSelection:
 
 
 def _require_compartment(quantity: object) -> RecordedQuantity:
-    """`quantity`, where it is a compartment the chart draws a trace for.
+    """Return `quantity` if it is a compartment the chart draws a trace for.
 
     A `RecordedQuantity` is a `str`, so a bare string spelling one compares
-    equal to it and would pass a membership test; it is refused by type
-    first.
+    equal to it and would pass a membership test. So the type is checked
+    first, and a bare string is refused.
 
     Raises:
         TypeError: If `quantity` is not a `RecordedQuantity`.
-        ValueError: If it is one the chart draws no trace for - the wash-in
-            ratio, which is a quotient of two compartments rather than one.
+        ValueError: If it is one the chart draws no trace for. That is the
+            wash-in ratio, which is a quotient of two compartments rather
+            than one compartment.
     """
 
     if not isinstance(quantity, RecordedQuantity):
@@ -202,6 +205,7 @@ def _require_compartment(quantity: object) -> RecordedQuantity:
 
 
 #: What the dashboard shows before a reader has chosen anything: every
-#: compartment, on one run, in table order - so a second run's arrival keeps
-#: the top of the table, which is where the circuit and alveolar traces are.
+#: compartment, on one run, in table order. So when a second run arrives,
+#: the selection keeps the top of the table, where the circuit and alveolar
+#: traces are.
 INITIAL_COMPARTMENT_SELECTION: Final = CompartmentSelection(COMPARTMENT_QUANTITIES, RunCount(1))

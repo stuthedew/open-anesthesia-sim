@@ -156,7 +156,7 @@ from anesthesia_sim.layout.workspace import PinnedRunAbsent, WorkspaceSet
 _RUN_ROWS_STRETCH: Final = 82
 _RECORD_COLUMN_STRETCH: Final = 18
 
-#: Object names the page and the case's controls are styled through.
+#: The object names that the stylesheets use to style the page and the case's controls.
 _PAGE_NAME: Final = "dashboardPage"
 # The scrolling part of the page, between the region and the disclaimer.
 _MIDDLE_NAME: Final = "dashboardMiddle"
@@ -188,7 +188,7 @@ class InterfaceText:
 
 
 def _seen_by_reader(widget: QWidget) -> bool:
-    """Whether a reader can see `widget` now, scrolling aside.
+    """Whether a reader can see `widget` now, setting scrolling aside.
 
     The widget and every widget it sits inside are shown, its window is shown
     and not minimized, and it has an area to draw in. A widget scrolled out
@@ -322,9 +322,10 @@ class SimulationView(QWidget):
     """The dashboard over one or two runs on one agent.
 
     Attributes:
-        presented_frames: How many frames `_refresh_view` has drawn. What
-            the tests count instead of the Flet build's page updates, and
-            what the coalescing rule (`PL-R2YM`) is about.
+        presented_frames: How many frames `_refresh_view` has drawn. The
+            tests count this number where they counted the Flet build's page
+            updates. It is also the count that the coalescing rule (`PL-R2YM`)
+            limits.
     """
 
     compartment_selection_changed = Signal(object)
@@ -410,24 +411,25 @@ class SimulationView(QWidget):
 
         super().__init__(parent)
         self._case = case
-        # Where every run this dashboard places takes its identity, so no
-        # number is given out twice in the session and a dropped branch's is
-        # never a later branch's (`PL-7Z84`).
+        # The one source from which every run this dashboard places takes its
+        # identity. So no number is given out twice in the session, and a
+        # dropped branch's number is never reused for a later branch (`PL-7Z84`).
         self._run_identities = RunIdentities() if run_identities is None else run_identities
         # The reader's Workspaces, including the current one that the Areas
         # draw. Here the current Workspace's layout and View states are the
         # ones it had when it was last drawn. The `workspaces` property reads
         # the live ones from the Areas (`PL-2KXB`).
         self._workspaces = shipped_workspaces() if workspaces is None else workspaces
-        # Where "Save as default" writes, and what the reader is told about
-        # the load, both handed to the tab strip when it is built (`PL-DWHG`).
+        # The store that "Save as default" writes to, and what the reader is
+        # told about the load. Both are handed to the tab strip when it is
+        # built (`PL-DWHG`).
         self._store = store
         self._notice = notice
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
-        # Why the branch last asked for was not taken, or None. Held across
-        # ticks for the reason `RunView._rejected_setting_notice` is: a
-        # refusal written into the panel and then overwritten by the next
+        # Why the branch last asked for was not taken, or None. It is kept
+        # across ticks for the same reason as `RunView._rejected_setting_notice`.
+        # A refusal written into the panel and then overwritten by the next
         # render tick would be gone before a reader could read it.
         self._fork_refusal: str | None = None
         # The compartments that both runs are drawn with. This view owns the
@@ -436,8 +438,8 @@ class SimulationView(QWidget):
         # (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._render_pending = False
-        # How many runs the last frame attempted was drawn over; `render_tick`
-        # draws when the run set has changed since (`PL-0LG6`).
+        # How many runs the last attempted frame was drawn over. `render_tick`
+        # draws when the run set has changed since then (`PL-0LG6`).
         self._drawn_run_count = 0
         # The Views the last frame was attempted for, and whether it failed.
         # A View owes a frame only while it has not been offered one, so a
@@ -445,9 +447,9 @@ class SimulationView(QWidget):
         self._offered_views: tuple[QWidget, ...] = ()
         self._frame_failed = False
         self.presented_frames = 0
-        # Whether the page is holding the concentration chart in view, from
-        # a branch taken until the reader scrolls the page themselves
-        # (`_keep_chart_in_view`, `PL-562Z`).
+        # Whether the page is keeping the concentration chart in view. It does
+        # so from the moment a branch is taken until the reader scrolls the
+        # page themselves (`_keep_chart_in_view`, `PL-562Z`).
         self._chart_view_owed = False
 
         # The marks belong to the *case* and not to any one run. That is why
@@ -462,9 +464,9 @@ class SimulationView(QWidget):
         self._bookmark_dialog: BookmarkDialog | None = None
         self._bookmarks_panel.edit_button.clicked.connect(self._open_bookmark_dialog)
 
-        # Where a branch is taken. Beside the marks for the reason they are
-        # here at all: both offer instants of the *case*, so neither belongs
-        # inside a `RunView`.
+        # The panel where a branch is taken. It is built beside the marks for
+        # the same reason that the marks are built here. Both offer instants of
+        # the *case*, so neither belongs inside a `RunView`.
         self._fork_panel = ForkPanel()
         self._fork_panel.take_button.clicked.connect(self._handle_fork)
         self._fork_panel.here_button.clicked.connect(self._handle_here_fork)
@@ -580,9 +582,9 @@ class SimulationView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(middle)
-        # `actionTriggered` fires for the reader's own scrolling - wheel,
-        # keys, the bar - and not for a scroll this view makes, so it is
-        # what tells the view to stop holding the chart in view.
+        # `actionTriggered` fires when the reader scrolls with the wheel, the
+        # keys or the bar. It does not fire for a scroll that this view makes.
+        # So this signal tells the view to stop keeping the chart in view.
         scroll.verticalScrollBar().actionTriggered.connect(self._release_chart_view)
         # The page's height changes with each pass of layout that moves the
         # chart, so the bar's range changing is when to follow it.
@@ -649,8 +651,9 @@ class SimulationView(QWidget):
         record_scroll.setFrameShape(QFrame.Shape.NoFrame)
         record_scroll.setStyleSheet(scroll_area_stylesheet())
         record_scroll.setWidget(records)
-        # As tall as the run rows beside it and no taller: an ignored height
-        # gives the band the left column's height, and the record scrolls.
+        # The record column is as tall as the run rows beside it and no taller.
+        # With its height policy set to ignored, the band takes the left
+        # column's height, and the record scrolls inside it.
         record_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
 
         row.addWidget(run_rows, _RUN_ROWS_STRETCH)
@@ -667,12 +670,12 @@ class SimulationView(QWidget):
 
     @property
     def layout_container(self) -> AreaLayout:
-        """The Areas: the widget tree the adapter draws from the layout model.
+        """The Areas, which are the widget tree that the adapter draws from the layout model.
 
-        The widget no unconditional value may have as an ancestor, since a
-        reader can resize what is in it and, once the area system is built
-        out, close it (`PL-W9P6`). Its `model` is the layout drawn now, after
-        every drag the reader has made.
+        No unconditional value may sit inside this widget. A reader can resize
+        what is in it, and once the area system is built out, a reader will be
+        able to close it (`PL-W9P6`). Its `model` is the layout drawn now,
+        after every drag the reader has made.
         """
 
         return self._areas
@@ -752,11 +755,11 @@ class SimulationView(QWidget):
         # items there that `PL-F9TQ` stopped.
         column.addWidget(self._bookmarks_panel)
 
-        # And the branch control below them, for the same reason and one
-        # more: a learner marks the decision point and then forks there, so
-        # the two controls are read in that order. Hidden as a whole where
-        # the dashboard holds no case, divider included, so a dashboard that
-        # cannot branch shows no seam where the control would have been.
+        # The branch control goes below the marks, for the same reason and one
+        # more. A learner marks the decision point and then forks there, so
+        # the two controls are read in that order. The whole section, divider
+        # included, is hidden when the dashboard holds no case. So a dashboard
+        # that cannot branch shows no seam where the control would have been.
         self._fork_section = QWidget()
         fork_column = _spaced_column(self._fork_section, column.spacing())
         fork_column.addWidget(self._section_divider())
@@ -771,12 +774,12 @@ class SimulationView(QWidget):
     def _place_run(self, controller: SimulationController) -> RunView:
         """Build a view for `controller` and put its widgets in each shared layout.
 
-        The one path a run reaches the dashboard by, whether it is one of
-        the runs the dashboard was built over or a branch taken from it an
-        hour later. Everything that depends on how many runs there are -
-        both legends' run counts, the names the runs are called by, and
-        whether an agent selector may be used - is rewritten afterwards from
-        the new set rather than assumed from the old one.
+        This is the only path by which a run reaches the dashboard. The run may
+        be one of those the dashboard was built over, or a branch taken from it
+        an hour later. Afterwards, everything that depends on how many runs
+        there are is rewritten from the new set rather than assumed from the
+        old one. That includes both legends' run counts, the names the runs are
+        called by, and whether an agent selector may be used.
 
         Args:
             controller: The run to display, already checked against the
@@ -789,9 +792,9 @@ class SimulationView(QWidget):
         run = RunView(controller, self, run_id=self._run_identities.mint())
 
         if not self._runs:
-            # Only the first run's restart is a new case: a branch's Reset
-            # returns it to the fork it opened at, which leaves the case and
-            # every other run of it standing.
+            # Only a restart of the first run starts a new case. A branch's
+            # Reset returns the branch to the fork it opened at. The case and
+            # every other run of it stay as they were.
             run.case_restarted.connect(self._handle_case_restarted)
             run.ask_before_reset(self._trunk_reset_question)
 
@@ -806,11 +809,11 @@ class SimulationView(QWidget):
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
         )
         # A later run's readouts join the first run's panels, so two runs
-        # read as one block of seven (`PL-F2YS`); they leave with the run.
-        # The first run's heading then states the substance and 1 MAC the
-        # runs share, and the later run's delivered concentration moves to its
-        # transport row, so its readout section has nothing left to show and
-        # takes no height (`PL-QLZ5`).
+        # appear as one block of seven (`PL-F2YS`). The readouts leave with the
+        # run. The first run's heading then states the substance and the 1 MAC
+        # that the runs share. The later run's delivered concentration moves to
+        # its transport row. So the later run's readout section has nothing left
+        # to show, and it takes no height (`PL-QLZ5`).
         if self._runs:
             placed = (*placed, *self._runs[0].show_readings_of(run))
             readout_section.setHidden(True)
@@ -825,11 +828,11 @@ class SimulationView(QWidget):
     def add_run(self, controller: SimulationController) -> RunView:
         """Draw a second run beside the one already shown, from the next frame on.
 
-        What a fork opens into, and the reason the dashboard's run set is not
-        fixed at construction. The new run is drawn last, so the run that
-        happened keeps the first position and every reference the chart takes
-        from the reference run - the ×MAC ruler, the MAC-awake band - goes on
-        being taken from it.
+        A fork opens into this second run, and that is why the dashboard's run
+        set is not fixed at construction. The new run is drawn last. So the run
+        that happened keeps the first position. Every reference that the chart
+        takes from the reference run, such as the ×MAC ruler and the MAC-awake
+        band, is still taken from that run.
 
         Args:
             controller: The run to add: a branch of this dashboard's own case.
@@ -841,19 +844,20 @@ class SimulationView(QWidget):
             ValueError: If the dashboard holds no case, if it already displays
                 `MAX_DISPLAYED_RUNS` runs, if `controller` is on another
                 agent, or if `controller` is not a branch of this case. The
-                last is the one that matters and the one a caller is most
-                likely to get wrong: two curves on one axis assert that they
-                are one patient under two managements, and nothing about a
-                stranger run makes that true. It would be drawn against the
-                same ×MAC ruler and named by `run_label` exactly as a branch
-                is, so the wrong claim would arrive wearing a correct chart -
-                which `CLAUDE.md`'s safety-critical standard treats as a
-                failure of the value rather than of its presentation.
+                last check matters most, and it is the one a caller is most
+                likely to get wrong. Two curves on one axis assert that they
+                are one patient under two managements. Nothing about a run
+                from another case makes that true. Such a run would be drawn
+                against the same ×MAC ruler and named by `run_label` exactly
+                as a branch is. So the wrong claim would appear on a chart
+                that looks correct. `CLAUDE.md`'s safety-critical standard
+                treats that as a failure of the value rather than of its
+                presentation.
 
                 A branch carries the agent and the cap of the case it
-                continues, so the first three are unreachable through the
-                branch control. They are reachable through this method, which
-                is public.
+                continues. So the first three errors cannot be raised through
+                the branch control. They can be raised through this method,
+                which is public.
         """
 
         if self._case is None:
@@ -891,10 +895,11 @@ class SimulationView(QWidget):
         run = self._place_run(controller)
 
         if self._render_timer.isActive():
-            # The dashboard is already running its cadences, so this run owes
-            # its own step timer; `start_simulation_timer` started the timers
-            # of the runs that were there at the time and cannot start one
-            # that did not exist. A timer on a paused run takes no step.
+            # The dashboard is already running its cadences, so this run needs
+            # its own step timer started here. `start_simulation_timer` started
+            # the timers of the runs that existed at the time, and it cannot
+            # start one for a run that did not exist yet. A timer on a paused
+            # run takes no step.
             run.start_simulation_timer()
 
         return run
@@ -902,21 +907,21 @@ class SimulationView(QWidget):
     def _handle_case_restarted(self) -> None:
         """Take every branch off the dashboard, because the run they were taken from has ended.
 
-        A branch is a second management of a case from an instant the trunk
-        passed through. Once the trunk has started over it never passed
-        through that instant, so a branch drawn beside it is two curves
-        asserting one patient under two managements while no longer being
-        one - and `BranchedCase` would go on listing a branch of a run that
-        no longer exists. The case is rebuilt on the restarted trunk, which
-        is exactly what it now is: a case with no branches.
+        A branch is a second management of a case, starting from an instant
+        that the trunk passed through. Once the trunk has started over, it has
+        not passed through that instant. A branch drawn beside it would then
+        be two curves asserting one patient under two managements, when they
+        are no longer one patient. And `BranchedCase` would go on listing a
+        branch of a run that no longer exists. So the case is rebuilt on the
+        restarted trunk, as what it now is: a case with no branches.
 
-        **A dashboard with no case has no branches, and this does nothing to
-        it.** Its runs are independent trunks - what the constructor admits
-        and what the two-trunk tests build - so the first run starting over
-        says nothing about the second, and dropping it would destroy a
-        recorded run over an input to another one. Reset is the gesture a
-        reader reaches for to start one run again, which is precisely the
-        wrong place to put a surprise (`PL-LQ19`).
+        **A dashboard with no case has no branches, and this method does
+        nothing to it.** Its runs are independent trunks. The constructor
+        accepts them, and the two-trunk tests build them. So the first run
+        starting over says nothing about the second. Dropping the second run
+        would destroy a recorded run because of an input to another one. Reset
+        is the gesture a reader reaches for to start one run again, which is
+        precisely the wrong place to put a surprise (`PL-LQ19`).
 
         **The case and a standing fork refusal belong to the run that ended,
         not to how many runs are drawn.** So both are cleared on every trunk
@@ -978,11 +983,11 @@ class SimulationView(QWidget):
     def _branch_at_stake(run: RunView) -> BranchAtStake | None:
         """What discarding this drawn branch would lose, or None where it holds nothing.
 
-        A branch whose snapshot refuses a value still holds work, so it is
-        stated from what its controller can say without one: its fork and
-        its recorded control changes (`branch_at_stake`). The refusal is
-        not handled here. It is the branch's own halt, which its own frame
-        states.
+        A branch whose snapshot rejects a value still holds work. So what it
+        would lose is stated from what its controller can report without a
+        snapshot: its fork and its recorded control changes
+        (`branch_at_stake`). The rejection is not handled here. It is the
+        branch's own halt, which the branch's own frame states.
         """
 
         try:
@@ -1023,10 +1028,10 @@ class SimulationView(QWidget):
 
         The run's set is read from `app/unconditional_set.py`, so the
         declaration rather than this method decides what the region must
-        hold. The region is the main window's, so it owes what
-        `window_region` returns for the main window of the layout the Areas
-        draw. Every agent this build loads is an inhaled agent, so every run
-        owes `INHALED_AGENT`'s tier.
+        hold. The region belongs to the main window. So it must hold what
+        `window_region` returns for the main window of the layout that the
+        Areas draw. Every agent this build loads is an inhaled agent, so every
+        run must show the values of `INHALED_AGENT`'s tier.
 
         Args:
             run: The run just placed.
@@ -1061,29 +1066,32 @@ class SimulationView(QWidget):
             )
 
     def _rename_runs(self) -> None:
-        """Hold the compartment selection to the run count, and tell every run.
+        """Fit the compartment selection to the run count, and tell every run of the new run set.
 
-        Said on every change to the run set rather than once at
-        construction. A lone run is given no name, having nothing to be told
-        apart from. Two runs are named by `run_label` from each run's
-        identity, which is what the legend entries call them. `docs/MODEL.md`
-        names a value's run whenever another run is drawn anywhere. Every run
-        is drawn in this dashboard until a run can be drawn elsewhere, so that
-        moment is the one at which this dashboard holds more than one run
-        (`PL-7Z84`). The same count decides whether an agent
-        selector may be used at all, because two runs share one MAC axis,
-        and whether the compartment selection is held to the cap
-        (`CompartmentSelection.with_run_count`). Neither legend is told here:
-        each names the curves a drawn frame drew, so each hears of the new
-        run set from the frame the change owes (`PL-G3K7`, `PL-0LG6`).
+        This runs on every change to the run set rather than once at
+        construction. A lone run is given no name, because there is nothing
+        to tell it apart from. When there are two runs, each is named by
+        `run_label` from its identity, which is also what the legend entries
+        call it. `docs/MODEL.md` requires a value's run to be named whenever
+        another run is drawn anywhere. Until a run can be drawn outside this
+        dashboard, every run is drawn in it. So another run is drawn somewhere
+        exactly when this dashboard holds more than one run (`PL-7Z84`). The
+        same count decides whether an agent selector may be used at all,
+        because two runs share one MAC axis. It also decides whether the compartment selection is
+        limited to the cap (`CompartmentSelection.with_run_count`). Neither
+        legend is told here. Each legend names the curves that a drawn frame
+        drew, so each learns of the new run set from the frame that the
+        change requires (`PL-G3K7`, `PL-0LG6`).
 
-        **It draws nothing, and nothing it calls may** (`PL-B1R9`). A frame
-        assembled before the last of these has been told is drawn from a run
-        set half told that it has changed, so the frame the change owes is
-        drawn by whatever changed the run set, once this returns: the press
-        that took a branch, the Reset that dropped one, `main()` after the
-        window is shown, or the render tick, which draws whenever the run
-        count differs from the one the last frame was drawn over (`PL-0LG6`).
+        **This method draws nothing, and nothing it calls may draw**
+        (`PL-B1R9`). A frame assembled before the last run has been told
+        would be drawn from a run set that is only partly told of the change.
+        So the frame that the change requires is drawn by whatever changed
+        the run set, once this method returns. That is the press that took a
+        branch, the Reset that dropped one, `main()` after the window is
+        shown, or the render tick. The render tick draws whenever the run
+        count differs from the one that the last frame was drawn over
+        (`PL-0LG6`).
         """
 
         comparing = len(self._runs) > 1
@@ -1260,17 +1268,18 @@ class SimulationView(QWidget):
     def _restate_fork_panel(self) -> None:
         """Restate both branch controls from the case on a halt, and offer nothing if that raises.
 
-        `_refresh_fork_panel` is otherwise called only at the end of a frame,
-        so a halt whose frame failed left "Branch here" live over a trunk
-        every other control said had failed, and a press was refused with the
-        refusal lost to the next failing frame (`PL-MMNX`). The case answers
-        from the trunk's own state, so the restatement needs no frame. On a
-        trunk whose frame failed it offers nothing (`PL-T2Q2`).
+        Apart from this method, `_refresh_fork_panel` is called only at the
+        end of a frame. So after a halt whose frame failed, "Branch here"
+        stayed live over a trunk that every other control said had failed.
+        A press was then refused, and the next failing frame overwrote the
+        refusal (`PL-MMNX`). The case computes its offer from the trunk's own
+        state, so the restatement needs no frame. On a trunk whose frame
+        failed, the panel offers nothing (`PL-T2Q2`).
 
-        Guarded, because it runs inside the halt path, where a raise would
-        escape the render path's own guard into the toolkit. A case whose
-        answers raise is given an offer of nothing rather than left with the
-        last frame's.
+        The call is guarded, because it runs inside the halt path. There, an
+        exception would escape the render path's own guard and reach the
+        toolkit. If the case raises while computing its offer, the panel is
+        given an offer of nothing rather than left with the last frame's.
         """
 
         try:
@@ -1289,23 +1298,23 @@ class SimulationView(QWidget):
     def _refresh_fork_panel(self) -> None:
         """Redraw both branch controls from the trunk's state this tick.
 
-        The points offered are the trunk's own - its keyframes and the marks
-        its clock has passed - so a running case adds one every time a
-        setting changes or the clock reaches a mark, and the panel has to
-        follow; it keeps the reader's selection where that point is still
-        offered. The fork at the paused point follows the same tick: it
-        appears on the frame the trunk stops on and is gone on the first frame
-        drawn after it starts.
+        The points offered are the trunk's own: its keyframes and the marks
+        that its clock has passed. So a running case adds a point every time
+        a setting changes or the clock reaches a mark, and the panel has to
+        follow. The panel keeps the reader's selection while the selected
+        point is still offered. The fork at the paused point follows the same tick. It
+        appears on the frame that the trunk stops on, and it is gone on the
+        first frame drawn after the trunk starts again.
 
         **The paused point and the marks are read from the trunk rather than
         from the displayed runs.** `BranchedCase.fork_here` and `fork_at_mark`
-        fork the trunk and refuse a branch outright, so a panel drawn from a
-        *branch's* paused point or marks would offer a fork the case cannot
-        take - a control that can only apologise, which
+        fork the trunk, and they refuse a branch outright. So a panel drawn
+        from a *branch's* paused point or marks would offer a fork that the
+        case cannot take. That is a control that can only apologise, which
         `.claude/rules/expert-review.md` prefers to prevent. The trunk is the
-        first displayed run today, but that is an invariant of how the
-        dashboard is built rather than one this method needs, and asking the
-        case costs one reading of the marks' standings a frame.
+        first displayed run today. But that is a property of how the
+        dashboard is built, and this method does not need to rely on it.
+        Asking the case costs one reading of the marks' standings per frame.
         """
 
         if self._case is None:
@@ -1346,19 +1355,21 @@ class SimulationView(QWidget):
     def present(self, coalesce: bool) -> None:
         """Draw a frame now, or leave it to the render tick; halt every run if drawing fails.
 
-        Guarded as `render_tick` is, because the discrete actions reach
-        here through a signal, and a raise inside a slot is printed by the
-        toolkit and otherwise lost: without the guard a frame that could
-        not be drawn for a Start or a Reset would leave every run running
-        behind a display that had stopped.
+        This method guards its drawing in the same way as `render_tick`. The
+        discrete actions call this method through a signal. The toolkit
+        prints an exception raised inside a slot, and the exception is
+        otherwise lost.
+        Without the guard, a frame that could not be drawn for a Start or a
+        Reset would leave every run running behind a display that had
+        stopped.
 
-        A frame drawn now discharges one owed, so drawing at once clears the
-        pending flag first.
+        A frame drawn now replaces any frame that was owed. So drawing at once
+        clears the pending flag first.
 
         Args:
-            coalesce: True to mark a frame owed and let the render tick draw
-                it, as a dragged slider does; False to draw at once, as every
-                discrete action does (`PL-R2YM`).
+            coalesce: True to mark a frame as owed and let the render tick
+                draw it, as a dragged slider does. False to draw at once, as
+                every discrete action does (`PL-R2YM`).
         """
 
         if coalesce:
@@ -1461,9 +1472,9 @@ class SimulationView(QWidget):
                 construction (`assemble_chart_frame`).
         """
 
-        # Stored before anything can raise: a frame that fails over a new run
-        # set, or for new Views, is answered by the halt it raises, and is not
-        # retried every tick.
+        # These are stored before anything can raise. A frame that fails over
+        # a new run set, or for new Views, is handled by the halt that its
+        # exception causes, and it is not retried every tick.
         self._drawn_run_count = len(self._runs)
         self._offered_views = self._areas.views()
         self._frame_failed = True
@@ -1644,10 +1655,11 @@ class SimulationView(QWidget):
     def _open_bookmark_dialog(self) -> None:
         """Show the editor, building it the first time it is asked for.
 
-        One dialog for the life of the dashboard rather than one per opening,
-        so a reader who closes it and opens it again finds their selection
-        where they left it. Non-modal and `open()` rather than `exec()`, for
-        the reasons `BookmarkDialog` states.
+        One dialog lasts for the life of the dashboard, rather than one for
+        each opening. So a reader who closes it and opens it again finds their
+        selection where they left it. The dialog is non-modal and is shown
+        with `open()` rather than `exec()`, for the reasons that
+        `BookmarkDialog` states.
         """
 
         if self._bookmark_dialog is None:
@@ -1664,20 +1676,22 @@ class SimulationView(QWidget):
     def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
         """Make one change to every displayed run, or have the first of them refuse it.
 
-        The marks are the case's, so a mark added to one run and refused by
-        another would leave two runs of one case answering different
-        questions - which is exactly the state this panel exists to prevent.
-        The loop writes run by run and stops at the first refusal, with no
-        second phase: every `BookmarkSet` operation is a pure function of the
-        set and the mark, the displayed runs hold equal sets, and nothing
-        interleaves with a synchronous loop, so either every run accepts or
-        the first run refuses and none has changed. The equal sets carry
-        that, and `_refresh_bookmarks` halts the dashboard on the frame they
-        stop being equal (`PL-LHBY`). A write computed against copies and
-        committed only once every run had accepted was described here and
-        never built; it is not built now either, because it would guard an
-        invariant the frame already refuses louder, and the fuzz `PL-RBMK`
-        records found no divergence.
+        The marks belong to the case. A mark added to one run and refused by
+        another would leave two runs of one case with different marks.
+        That is exactly the state this panel exists to prevent. The loop
+        writes run by run and stops at the first refusal, with no second
+        phase. That is safe for three reasons. Every `BookmarkSet` operation
+        is a pure function of the set and the mark. The displayed runs hold
+        equal sets. And nothing interleaves with a synchronous loop. So
+        either every run accepts the change, or the first run refuses it and
+        no run has changed. This relies on the sets being equal, and
+        `_refresh_bookmarks` halts the dashboard on the first frame in which
+        they are not (`PL-LHBY`). An earlier version of this docstring
+        described a write computed against copies and committed only once
+        every run had accepted. It was never built, and it is not built now
+        either. It would guard an invariant that the frame already enforces
+        more loudly, and the fuzzing that `PL-RBMK` records found no
+        divergence.
 
         Args:
             edit: What to do to one run.
@@ -1822,16 +1836,16 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
-        """Answer a reader's click in the legend: change the selection and draw at once.
+        """Handle a reader's click in the legend by changing the selection and drawing at once.
 
-        The legend only asks (`PL-VN6M`). The frame drawn next is assembled
-        from the selection this leaves - a click over the two-compartment cap
-        included, where the selection rather than the legend decides which
-        compartment makes room - and the legend's boxes are written from the
-        same selection once that frame has drawn (`_refresh_view`). Where the
-        frame fails, nothing writes them, and the legend puts the clicked box
-        back to the selection it last showed, which is the frame still on
-        the plot (`PL-G3K7`).
+        The legend only asks for the change (`PL-VN6M`). The next frame is
+        assembled from the selection that this method leaves. That includes a
+        click beyond the two-compartment cap, where the selection rather than
+        the legend decides which compartment makes room. The legend's boxes
+        are written from the same selection once that frame has drawn
+        (`_refresh_view`). If the frame fails, nothing writes the boxes. The
+        legend then puts the clicked box back to the selection it last showed,
+        which matches the frame still on the plot (`PL-G3K7`).
         """
 
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
@@ -1945,10 +1959,11 @@ class SimulationView(QWidget):
         broken out of the main one (`ROADMAP.md` planned-milestone item 34,
         not yet built) is to be added to this walk when it is built.
 
-        A string is visible where `_seen_by_reader` holds for the widget
-        that draws it. Of a combo's entries, only the current one is visible:
-        the rest are a click away and not on screen. A widget hidden until
-        its condition holds and a window that is minimized are held and not
+        A string is visible when `_seen_by_reader` returns True for the
+        widget that draws it. Of a combo box's entries, only the current one
+        is visible. The rest are a click away and not on screen. The strings
+        of a widget that stays hidden until its condition is met, and of a
+        window that is minimized, are still held by the dashboard but are not
         visible.
         """
 

@@ -82,9 +82,9 @@ minimum size hint (`app/view_registry.py`). The container holds the Area at
 that size wherever the layout can give it. Where the layout cannot, the
 container hides the View and shows a notice stating the size the View needs
 and the size the Area has (`layout/sizing.py`). So a View never has to draw
-itself in less than it asked for, and is never clipped. Where a Workspace pins a View to one
-run, that binding is left to `PL-7Z84`. Until then, every View draws every
-displayed run.
+itself in less than it asked for, and is never clipped. Where a Workspace
+pins a View to one run, that binding is left to `PL-7Z84`. Until then, every
+View draws every displayed run.
 """
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
-"""Per-agent parameter JSON files (see `core.parameters.AGENT_DATA_FILENAMES`
-for the id-to-filename mapping). No executable code or equations belong
-here; see CLAUDE.md's data-file discipline.
+"""Per-agent parameter JSON files.
+
+`core.parameters.AGENT_DATA_FILENAMES` maps each agent id to its file name. No
+executable code or equations belong here. See the data-file rules in CLAUDE.md.
 """

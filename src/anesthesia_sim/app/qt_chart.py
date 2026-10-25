@@ -1,39 +1,42 @@
 """The concentration chart and the wash-in plot, drawn with pyqtgraph.
 
-The toolkit half of the chart. Everything a frame *claims* - which
-compartment a curve carries, where the references stand, which instants are
-drawn, what a hover says - is settled in `app/chart_frame.py` without a
-toolkit, and this module only moves pyqtgraph items to match a `ChartFrame`.
+This module is the toolkit half of the chart. `app/chart_frame.py` settles,
+without a toolkit, everything a frame *claims*: which compartment a curve
+shows, where the references are drawn, which instants are drawn, and what a
+hover says. This module only moves pyqtgraph items to match a `ChartFrame`.
 Nothing here reads simulation state, formats a value, or decides a
-coordinate: a widget that computed a number a reader interprets would put a
-clinical value beyond the reach of `tests/unit/test_chart_frame.py`, which
-is where those claims are held.
+coordinate. A widget that computed a number a reader interprets would put a
+clinical value outside the coverage of `tests/unit/test_chart_frame.py`,
+which is where those claims are tested.
 
 **Items are moved, never rebuilt.** Every curve, mark and reference is built
-once and updated per frame, for the reason the Flet chart reused its point
-controls (`PL-010`): a frame costs what it draws rather than what it
-constructs. The pools are the sizes `chart_frame` states - a fixed number
-of control marks and wash-in stretches - and an unused member is hidden,
-which costs nothing per frame.
+once and then updated on each frame. The Flet chart reused its point
+controls for the same reason (`PL-010`): a frame then costs what it draws
+rather than what it constructs. The pools have the sizes that `chart_frame`
+states, which are a fixed number of control marks and of wash-in stretches.
+An unused member of a pool is hidden, which costs nothing per frame.
 
-**Both axes are ruled where they are labelled, by construction.** Each axis
-is given its ticks explicitly, from the frame, and pyqtgraph draws its
-gridlines at the ticks the axis carries, so the ruling and the labelling
-cannot describe two scales (`PL-Q4VH`).
+**Both axes have gridlines exactly where they have labels, by construction.**
+Each axis is given its ticks explicitly, from the frame, and the gridlines
+are drawn at the same ticks that the axis is labelled at. So the gridlines and
+the labels cannot describe two different scales (`PL-Q4VH`).
 
-**The hover answers whenever the pointer is over a drawn point, running or
-paused** (`docs/MODEL.md` § "The chart's hover readout: what the tooltip may
-show"). It is a readout over the plot's *drawn points* - the states the run
-was evaluated at - never over a position between two of them, and its text
-is `chart_frame`'s, produced by `app/formatting.py` and never by the chart
-library's coordinate formatter. It costs per pointer event rather than per
-point, so there is no mode to withdraw it in and no caption to write. It is
-not a default, though: `pyqtgraph.ScatterPlotItem` ships `hoverable` off and
-a plotted line carries no hover at all, so this module builds the affordance
-rather than inheriting it (`PL-YVHK`).
+**The hover shows a readout whenever the pointer is over a drawn point,
+whether the run is playing or paused** (`docs/MODEL.md` § "The chart's hover
+readout: what the tooltip may show"). The readout is for the plot's *drawn
+points*, which are the states at which the run was evaluated. It is never for
+a position between two of them. Its text is the text that `chart_frame`
+produces through `app/formatting.py`, and never the text of the chart
+library's coordinate formatter. The hover costs work per pointer event rather
+than per point, so there is no mode in which to withdraw it and no caption to
+write about such a mode. It is not a library default, though.
+`pyqtgraph.ScatterPlotItem` ships with `hoverable` off, and a plotted line has
+no hover at all, so this module builds the hover rather than inheriting it
+(`PL-YVHK`).
 
-**Every colour is `app/theme.py`'s.** This module declares no colour of its
-own, so `tools/contrast_check.py`'s palette stays the one that is drawn.
+**Every colour comes from `app/theme.py`.** This module declares no colour of
+its own, so the palette that `tools/contrast_check.py` measures stays the
+palette that is drawn.
 """
 
 from __future__ import annotations
@@ -168,11 +171,11 @@ __all__ = [
     "trace_pen",
 ]
 
-# How far, in pixels, the pointer may be from a drawn point and still be
-# answered. About the width of a fingertip's worth of cursor travel: wide
-# enough that a reader aiming at a curve lands on it, narrow enough that a
-# pointer parked in clear space between two traces reports neither rather
-# than whichever is nearer.
+# How far, in pixels, the pointer may be from a drawn point and still get a
+# readout. The radius is about a fingertip's width of cursor travel. It is
+# wide enough that a reader aiming at a curve lands on it. It is narrow enough
+# that a pointer resting in clear space between two traces reports neither of
+# them, rather than whichever is nearer.
 HOVER_RADIUS_PIXELS: Final = 12.0
 
 # pyqtgraph's `InfiniteLine` takes its angle in degrees. An angle of 90 gives a
@@ -183,29 +186,32 @@ _VERTICAL_LINE_ANGLE_DEG: Final = 90
 _HORIZONTAL_LINE_ANGLE_DEG: Final = 0
 
 
-# The dot on the wash-in stretch's last point when it stopped by crossing
-# equilibrium. A line that simply stops is indistinguishable from a line the
-# frame cut off, and this one stops while still climbing steeply, which is the
-# shape that reads as clipped. A terminal dot is the ordinary scientific-
-# plotting answer: it says the series ends here rather than continuing out of
-# view. Seven pixels across, the 3.5 px radius the Flet chart drew it at.
+# The dot on the last point of a wash-in stretch that stopped because it
+# crossed equilibrium. A line that simply stops looks the same as a line that
+# the frame cut off. This line stops while it is still climbing steeply, which
+# is the shape that looks clipped. A terminal dot is the ordinary remedy in
+# scientific plotting: it says that the series ends here rather than
+# continuing out of view. The dot is seven pixels across, which matches the
+# 3.5 px radius at which the Flet chart drew it.
 _WASH_IN_TERMINUS_DIAMETER: Final = 7.0
 
 # The dot the hover puts on the point it is reporting, so a reader can see
 # which drawn state the text describes.
 _HOVER_DOT_DIAMETER: Final = 8.0
 
-# The most answers a pointer moving over a plot costs a second, whatever rate
-# its device reports moves at: the first move at once, then the newest at the
-# end of each cooldown (`_PointerMoves`).
+# The most hover updates per second that a pointer moving over a plot can
+# cause, whatever rate its device reports moves at. The first move is handled
+# at once, and then the newest move at the end of each cooldown
+# (`_PointerMoves`).
 _HOVER_ANSWERS_PER_SECOND: Final = 60
 
-# Drawing order. Marks first - behind the references and behind every trace -
-# because a vertical rule crossing the whole plot is the one annotation that
-# can obscure all six compartments at the moment a reader is trying to see
-# what the change did to them. References next, so every trace is drawn over
-# them: a compartment obscured by a reference band would be the annotation
-# hiding the run it annotates. The hover sits over everything.
+# Drawing order. Control marks are drawn first, behind the references and
+# behind every trace. A vertical line across the whole plot is the one
+# annotation that can hide all six compartments at the moment a reader is
+# trying to see what the change did to them. References come next, so every
+# trace is drawn over them. A compartment hidden by a reference band would be
+# the annotation hiding the run it annotates. The hover is drawn over
+# everything.
 _Z_GRIDLINE: Final = -50
 _Z_CONTROL_MARK: Final = -30
 _Z_REFERENCE_BAND: Final = -20
@@ -216,10 +222,10 @@ _Z_HOVER: Final = 10
 def trace_pen(style: TraceStyle) -> QPen:
     """The pen one compartment trace is drawn with, on the chart and in the legend.
 
-    One constructor for both, so the legend swatch is drawn in the trace's
-    own pattern rather than as a solid bar describing a dashed line
-    (`PL-THXF`): a reader compares a mark to a curve rather than a phrase to
-    a curve.
+    One constructor serves both, so the legend swatch is drawn in the trace's
+    own pattern rather than as a solid bar standing for a dashed line
+    (`PL-THXF`). A reader then compares a mark with a curve, rather than a
+    phrase with a curve.
 
     Args:
         style: The trace.
@@ -234,12 +240,12 @@ def trace_pen(style: TraceStyle) -> QPen:
 def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | None) -> QPen:
     """A pen with a dash pattern stated in display pixels.
 
-    Qt states a dash pattern in units of the pen's width, and `app/theme.py`
-    and `chart_frame.COMPARTMENT_TRACES` state theirs in pixels - the unit
-    `docs/MODEL.md` § "The six compartment traces" tabulates - so the
-    conversion is made once, here, rather than at each of the seven pens
-    that carry a pattern. A pattern copied across without it draws every
-    dash the pen's width times too long, which is what the spike did.
+    Qt states a dash pattern in units of the pen's width. `app/theme.py` and
+    `chart_frame.COMPARTMENT_TRACES` state theirs in pixels, which is the unit
+    that `docs/MODEL.md` § "The six compartment traces" tabulates. So the
+    conversion is made once, here, rather than at each of the seven pens that
+    have a pattern. A pattern copied across without the conversion draws every
+    dash too long by a factor of the pen's width, which is what the spike did.
 
     Args:
         color: Hexadecimal line colour.
@@ -262,9 +268,9 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
 def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: RunCount) -> QPen:
     """The pen one run draws a compartment with, on the chart and in the legend.
 
-    `chart_frame.run_trace_style` decides it and this only builds it, so the
-    run's width channel is settled once, without a toolkit, where
-    `tests/unit/test_chart_frame.py` can hold it.
+    `chart_frame.run_trace_style` decides the pen, and this function only
+    builds it. So the width that tells runs apart is settled once, without a
+    toolkit, where `tests/unit/test_chart_frame.py` can test it.
 
     Args:
         quantity: Which compartment.
@@ -280,14 +286,14 @@ def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: Ru
 
 
 def _branch_point_pen() -> QPen:
-    """The pen a fork is marked with: upright and solid where a control mark is dashed.
+    """The pen for a fork mark, which is vertical and solid where a control mark is dashed.
 
-    Both marks name an instant and both are vertical, so what separates them
-    is the dash pattern and the words in the legend - two channels, neither
-    of them colour. It reuses the control mark's colour deliberately rather
-    than declaring one: the pair is already measured against the panel, and
-    a mark a reader must not read as a control change should not rest on a
-    hue at all.
+    Both marks name an instant and both are vertical. So the dash pattern and
+    the words in the legend are what separate them. Those are two channels,
+    and neither of them is colour. The pen reuses the control mark's colour on
+    purpose rather than declaring a new one. That colour has already been
+    measured against the panel, and a mark that a reader must not take for a
+    control change should not depend on a hue at all.
     """
 
     pen: QPen = pg.mkPen(CONTROL_MARK_COLOR, width=BRANCH_POINT_STROKE_WIDTH)
@@ -309,12 +315,13 @@ def _wash_in_pen(
     One constructor for both, as `trace_pen` is for the compartments, so the
     legend swatch cannot describe a line the plot is not drawing.
 
-    **The run's width channel reaches this plot too.** It draws one trace per
-    run in one colour and one dash pattern, so two runs here are not merely
-    hard to tell apart - they are identical but for their values, which is
-    the failure the compartment chart's cap and width levels exist to
-    prevent. The same step separates them, and for the same reason the same
-    run is the wider: the two ratios also coincide exactly before the fork.
+    **The width that tells runs apart applies to this plot too.** This plot
+    draws one trace per run, in one colour and one dash pattern. So two runs
+    here are not merely hard to tell apart: they are identical except for
+    their values. That is the failure that the compartment chart's cap and
+    width levels exist to prevent. The same width step separates the runs
+    here. The same run is the wider one, for the same reason as on that
+    chart: the two ratios also coincide exactly before the fork.
 
     Args:
         run_index: Which run, as a position in the frame's runs.
@@ -348,10 +355,10 @@ def _control_mark_pen() -> QPen:
 def _plot(background: str) -> Any:
     """One plot widget, with the interaction and the furniture every plot here shares.
 
-    Nothing a reader can pan, zoom or pop a menu on: the window is the time
-    base's and the range is the axis's, and a plot a reader could drag off
-    its labelled range would show a slope that meant something different
-    from the one beside it.
+    A reader cannot pan, zoom or open a menu on the plot. The time base sets
+    the window and the axis sets the range. A plot that a reader could drag
+    off its labelled range would show a slope that meant something different
+    from the slope on the plot beside it.
     """
 
     plot = pg.PlotWidget(background=background)
@@ -361,14 +368,15 @@ def _plot(background: str) -> Any:
     item.setMouseEnabled(x=False, y=False)
     item.disableAutoRange()
 
-    # Axis lines in the gridline colour and labels in the interface's label
-    # colour, which `tools/contrast_check.py` measures as text. pyqtgraph's
-    # own grid is deliberately not switched on: it is painted by the axis
-    # item *over* the plot, so at full opacity a gridline erases the pixel
-    # row of every trace and reference it crosses - measured 2026-09-14, the
-    # 1 MAC line vanished under the 2% rule it stands on - and at partial
-    # opacity it tints them. `_GridLines` rules the plot from underneath
-    # instead, at exactly the ticks each axis is labelled at.
+    # Axis lines are drawn in the gridline colour, and labels in the
+    # interface's label colour, which `tools/contrast_check.py` measures as
+    # text. pyqtgraph's own grid is deliberately left off. The axis item
+    # paints that grid *over* the plot. At full opacity, a gridline erases the
+    # pixel row of every trace and reference it crosses. This was measured on
+    # 2026-09-14, when the 1 MAC line vanished under the 2% gridline it sits
+    # on. At partial opacity, the grid tints those traces and references
+    # instead. So `_GridLines` draws the gridlines from underneath the plot,
+    # at exactly the ticks at which each axis is labelled.
     for name in ("left", "bottom", "right"):
         axis = item.getAxis(name)
         axis.setPen(pg.mkPen(GRIDLINE))
@@ -378,7 +386,7 @@ def _plot(background: str) -> Any:
 
 
 def _hover_items() -> tuple[Any, Any]:
-    """The dot and the text box a hover shows, hidden until one answers."""
+    """The dot and the text box that a hover shows, hidden until there is a readout."""
 
     dot = pg.ScatterPlotItem(size=_HOVER_DOT_DIAMETER, pen=None, brush=pg.mkBrush(INK))
     dot.setZValue(_Z_HOVER)
@@ -391,12 +399,12 @@ def _hover_items() -> tuple[Any, Any]:
 
 
 class _GridLines:
-    """The plot's ruling, drawn under everything at the ticks its axes carry.
+    """The plot's gridlines, drawn under everything at the ticks its axes carry.
 
-    One line per tick on each axis, from the same tick lists the axes are
-    labelled from, so the ruling and the labelling cannot describe two
-    scales (`PL-Q4VH`). Pools that grow to the widest window drawn and are
-    never shrunk; an unused line is hidden.
+    Each axis gets one line per tick, from the same tick lists that the axes
+    are labelled from. So the gridlines and the labels cannot describe two
+    different scales (`PL-Q4VH`). The pools of lines grow to fit the widest
+    window drawn, and they never shrink. An unused line is hidden.
     """
 
     def __init__(self, item: Any) -> None:
@@ -406,7 +414,7 @@ class _GridLines:
         self._horizontal: list[Any] = []
 
     def place(self, x_ticks: Sequence[float], y_ticks: Sequence[float]) -> None:
-        """Rule the plot at these positions, and hide the rest of the pools."""
+        """Draw gridlines at these positions, and hide the rest of each pool."""
 
         self._rule(self._vertical, _VERTICAL_LINE_ANGLE_DEG, x_ticks)
         self._rule(self._horizontal, _HORIZONTAL_LINE_ANGLE_DEG, y_ticks)
@@ -424,31 +432,33 @@ class _GridLines:
 class _PointerMoves(QObject):
     """Where the pointer moves over one plot, in scene coordinates, at most sixty times a second.
 
-    Read off the plot's viewport, ahead of pyqtgraph's scene. The scene passes
-    a move on only when 10 ms - its `mouseRateLimit` of 100 a second, as
-    shipped - have passed since the last move it passed on, and drops the rest
-    with nothing delivered after them, so the move a pointer stopped on could
-    go unanswered and the box keep the answer for a move or two earlier
-    (`PL-TCR5`). The first move is delivered at once; the newest of any that
-    follow it inside the cooldown, when the cooldown ends. A delivery starts
-    the cooldown and a move never restarts it: `pg.SignalProxy` restarts its
-    timer on every signal, so moves under a millisecond apart, as a 1 kHz
-    mouse reports them, held its delivery back for as long as the pointer kept
-    moving.
+    The moves are read from the plot's viewport, before pyqtgraph's scene sees
+    them. The scene passes a move on only when 10 ms have passed since the
+    last move it passed on, which is its `mouseRateLimit` of 100 a second as
+    shipped. The scene drops the other moves and delivers nothing after them.
+    So the move that a pointer stopped on could get no readout, and the box
+    could keep the readout for a move or two earlier (`PL-TCR5`). This class
+    delivers the first move at once. Of any moves that follow it inside the
+    cooldown, it delivers the newest when the cooldown ends. A delivery starts
+    the cooldown, and a move never restarts it. `pg.SignalProxy` restarts its
+    timer on every signal. So moves less than a millisecond apart, as a 1 kHz
+    mouse reports them, held back its delivery for as long as the pointer
+    kept moving.
 
     **A pointer that leaves is delivered at once, as `None`** (`PL-LTKL`).
-    Leaving the widget sends it no move, only a `Leave`, so a position kept
-    from moves alone outlived the pointer: the box stayed up at the last
-    point, and each later frame answered that point again - while a run
-    played, for a new instant each frame, so a modelled value climbed with
-    the run for a pointer that had gone. The `Leave` drops a move still
-    waiting out the cooldown too, which would otherwise put the box back up
-    when the cooldown ended.
+    Leaving the widget sends no move to it, only a `Leave` event. So a
+    position kept from moves alone outlived the pointer. The box stayed up at
+    the last point, and each later frame showed a readout for that point
+    again. While a run played, each frame gave a new instant, so a modelled
+    value climbed with the run for a pointer that had gone. The `Leave` event
+    also drops any move still waiting out the cooldown. Otherwise that move
+    would put the box back up when the cooldown ended.
     """
 
-    # `object` because the payload is a `QPointF` or `None`: a signal declared
-    # `QPointF` does not refuse `None` but delivers the scene's origin in its
-    # place, with nothing but a line on standard error to say so.
+    # The payload is `object` because it is a `QPointF` or `None`. A signal
+    # declared as `QPointF` does not reject `None`. Instead it delivers the
+    # scene's origin in its place, with nothing but a line on standard error
+    # to say so.
     moved = Signal(object)
 
     def __init__(self, plot: Any) -> None:
@@ -469,7 +479,7 @@ class _PointerMoves(QObject):
                 self._deliver()
         elif event.type() == QEvent.Type.Leave:
             # The cooldown is stopped as well as emptied, so a pointer that
-            # comes back is answered on its first move.
+            # comes back gets a readout on its first move.
             self._newest = None
             self._cooldown.stop()
             self.moved.emit(None)
@@ -488,12 +498,12 @@ class _PointerMoves(QObject):
 class _HoverReadout:
     """The hover's mechanics, shared by both plots.
 
-    Holds the last pointer position so a frame drawn under a resting pointer
-    re-answers rather than going quiet: at high playback the reported value
-    moves as the run does, which `docs/MODEL.md` § "When it answers" says is
-    correct rather than a defect to design around. It holds `None` once the
-    pointer has left the plot, so a frame drawn after that answers nothing
-    (`PL-LTKL`).
+    It keeps the last pointer position, so a frame drawn under a resting
+    pointer shows a fresh readout rather than going blank. At high playback
+    speed the reported value moves as the run does. `docs/MODEL.md` § "When
+    it answers" says that this is correct, not a defect to design around. It
+    keeps `None` once the pointer has left the plot, so a frame drawn after
+    that shows no readout (`PL-LTKL`).
     """
 
     def __init__(self, plot: Any) -> None:
@@ -509,14 +519,15 @@ class _HoverReadout:
     def moved(self) -> SignalInstance:
         """Each new pointer position over the plot, in scene coordinates, or `None` once it leaves.
 
-        The plot connects a slot of its own here, which stores the position
-        and then answers it: one slot, so nothing can answer before the
-        position is stored, which is what a second, direct slot on the scene's
-        signal did (`PL-TCR5`). The slot is not handed to this object to hold:
-        a method held here would hold the plot's widget in a reference cycle,
-        and such a widget is freed whenever the collector next runs, which can
-        be in the middle of the widget's own paint - measured, a segmentation
-        fault.
+        The plot connects a slot of its own to this signal. The slot stores
+        the position and then shows the readout for it. With only one slot,
+        nothing can show a readout before the position is stored. A second,
+        direct slot on the scene's signal did exactly that (`PL-TCR5`). The
+        slot is not handed to this object to keep. A method kept here would
+        hold the plot's widget in a reference cycle. Such a widget is freed
+        whenever the garbage collector next runs, which can be in the middle
+        of the widget's own paint. That was measured, and it caused a
+        segmentation fault.
         """
 
         return self._moves.moved
@@ -527,21 +538,22 @@ class _HoverReadout:
         self._scene_position = scene_position
 
     def scene_position(self) -> QPointF | None:
-        """Where the pointer last was, in scene coordinates, if over the widget."""
+        """Where the pointer last was, in scene coordinates, if it is over the widget."""
 
         return self._scene_position
 
     def show(self, target: HoverTarget, x_range: tuple[float, float]) -> None:
-        """Put a dot on every point that answered and the text beside them.
+        """Put a dot on every point in the readout, and put the text beside them.
 
-        One dot per reading rather than one for the box, because every run
-        *and* every compartment inside the radius answers
-        (`chart_frame.HoverTarget`) and a single dot would put a mark on one
-        curve while the box read for several - the attribution failure
-        `PL-MN4J` closed, arriving through the marker instead of through the
-        text. The dots span compartments since `PL-0RZ0`, so a reader whose
-        pointer is between two compressed traces sees both marked rather than
-        being told which one the arithmetic preferred.
+        There is one dot per reading rather than one for the box. Every run
+        *and* every compartment inside the radius is in the readout
+        (`chart_frame.HoverTarget`). A single dot would mark one curve while
+        the box gave values for several. That is the attribution failure that
+        `PL-MN4J` closed, coming back through the marker instead of through
+        the text. The dots have covered several compartments since `PL-0RZ0`.
+        So a reader whose pointer is between two closely packed traces sees
+        both marked, rather than being told which one the arithmetic
+        preferred.
         """
 
         self._dot.setData(
@@ -565,11 +577,11 @@ class _HoverReadout:
         self._text.setAnchor((1 if past_middle else 0, 0 if below else 1))
         self._text.setPos(anchor.time_s, anchor.value)
         self._dot.show()
-        # `setVisible` rather than `show`, which goes straight to Qt's own and
-        # so skips pyqtgraph's override: that override is what orients the
-        # box for the view, and a box shown through `show` is oriented only
-        # at its next paint, so read before then it can measure thousands of
-        # pixels tall (`PL-J0F7`).
+        # This uses `setVisible` rather than `show`. `show` goes straight to
+        # Qt's own method, and so it skips pyqtgraph's override. That override
+        # is what orients the box for the view. A box shown through `show` is
+        # oriented only at its next paint, so if it is measured before then it
+        # can come out thousands of pixels tall (`PL-J0F7`).
         self._text.setVisible(True)
 
     def _room_above_px(self, time_s: float, value: float) -> float:
@@ -602,7 +614,7 @@ class _HoverReadout:
         return str(self._text.textItem.toPlainText()) if self._text.isVisible() else None
 
     def shown_box(self) -> QRectF | None:
-        """Where the box stands in the plot widget's pixels, or `None` while it is hidden."""
+        """Where the box is in the plot widget's pixels, or `None` while it is hidden."""
 
         if not self._text.isVisible():
             return None
@@ -613,11 +625,12 @@ class _HoverReadout:
 class _RunPens:
     """One run's pens, built on first use and kept.
 
-    A trace's width carries the *run* once more than one is drawn
-    (`chart_frame.run_trace_style`), so a pen depends on how many runs are
-    on the chart as well as on the compartment - and that count changes when
-    a reader forks. Rebuilt only when it changes, and then cached, so the
-    per-frame cost stays what it was: items are moved, never rebuilt.
+    Once more than one run is drawn, a trace's width identifies the *run*
+    (`chart_frame.run_trace_style`). So a pen depends on how many runs are on
+    the chart as well as on the compartment, and that count changes when a
+    reader forks a run. The pens are rebuilt only when the count changes, and
+    they are then cached. So the cost per frame stays what it was: items are
+    moved, never rebuilt.
     """
 
     def __init__(self, run_index: RunIndex) -> None:
@@ -626,7 +639,7 @@ class _RunPens:
         self._penned_for: RunCount | None = None
 
     def changed_for(self, run_count: RunCount) -> bool:
-        """Whether the pens in use are not this many runs' pens, and record that they are."""
+        """Whether the pens in use were built for another run count, and record this one."""
 
         if self._penned_for == run_count:
             return False
@@ -636,7 +649,7 @@ class _RunPens:
         return True
 
     def of(self, quantity: RecordedQuantity, run_count: RunCount) -> QPen:
-        """This run's pen for a compartment, with this many runs drawn."""
+        """This run's pen for a compartment, when this many runs are drawn."""
 
         key = (quantity, run_count)
 
@@ -647,10 +660,11 @@ class _RunPens:
 
 
 def _branch_point_mark(item: Any) -> Any:
-    """One run's fork mark, hidden, full height and drawn over the gridlines.
+    """One run's fork mark: hidden, full height, and drawn over the gridlines.
 
-    One per run rather than one per plot: a fork belongs to the run that
-    opened at it, and a trunk simply never shows its own.
+    There is one mark per run rather than one per plot, because a fork
+    belongs to the run that started at it. A trunk run, which did not start
+    at a fork, simply never shows its mark.
     """
 
     mark = pg.InfiniteLine(
@@ -664,7 +678,7 @@ def _branch_point_mark(item: Any) -> Any:
 
 
 def _place_branch_point(mark: Any, time_s: float | None) -> None:
-    """Stand a run's fork mark at its instant, or hide it where there is none."""
+    """Place a run's fork mark at its instant, or hide the mark if the run has no fork."""
 
     if time_s is None:
         mark.hide()
@@ -703,11 +717,14 @@ class _RunItems:
 def _control_mark_pool(item: Any) -> list[Any]:
     """A fixed pool of vertical marks, all hidden, for one run on one plot.
 
-    Vertical is the mark's own channel: nothing else on either plot is, so
-    the orientation survives greyscale and every colour-vision deficiency,
-    and the mark competes for nothing in a palette six traces have already
-    exhausted. Full height by construction, because the time it marks has
-    to be readable against every trace.
+    Being vertical is what identifies the mark, because no trace or
+    reference on either plot is vertical. So the orientation survives
+    greyscale and every colour-vision deficiency. The only other vertical
+    lines are the gridlines and the fork mark, which is solid where a control
+    mark is dashed. The mark also takes no colour from a palette that six
+    traces have already used up. The marks are full height by
+    construction, because the time a mark shows has to be readable against
+    every trace.
     """
 
     pen = _control_mark_pen()
@@ -724,7 +741,7 @@ def _control_mark_pool(item: Any) -> list[Any]:
 
 
 def _place_marks(marks: Sequence[Any], times_s: Sequence[float]) -> None:
-    """Stand the pool's marks at these times, and hide the rest."""
+    """Place the pool's marks at these times, and hide the rest."""
 
     for mark, time_s in zip(marks, times_s, strict=False):
         mark.setPos(time_s)
@@ -735,14 +752,15 @@ def _place_marks(marks: Sequence[Any], times_s: Sequence[float]) -> None:
 
 
 def _set_time_axis(item: Any, frame: ChartFrame) -> None:
-    """Rule and label the bottom axis for the window the frame draws.
+    """Set the range and the labelled ticks of the bottom axis for the window the frame draws.
 
-    The placement is `chart_time_base.tick_times` and the wording is
-    `formatting.format_chart_time_label`, both settled in the frame; this
-    hands them to the axis. Every tick carries its unit - `45s`, `3m`,
-    `1h30m` - because this axis spans anything from a minute to half a day
-    and a bare `600` means seconds on one width and would be read as minutes
-    on another while looking identical on both.
+    The tick positions come from `chart_time_base.tick_times`, and their
+    wording from `formatting.format_chart_time_label`. Both are settled in
+    the frame, and this function hands them to the axis. Every tick label
+    carries its unit, such as `45s`, `3m` or `1h30m`. This axis spans
+    anything from a minute to half a day. A bare `600` means seconds at one
+    width but would be read as minutes at another, while looking identical
+    at both.
     """
 
     item.setXRange(frame.start_s, frame.stop_s, padding=0)
@@ -752,11 +770,11 @@ def _set_time_axis(item: Any, frame: ChartFrame) -> None:
 
 
 class ConcentrationChart(QWidget):
-    """The six compartment traces, both clinical references, both axes, the marks.
+    """The six compartment traces, both clinical references, both axes, and the marks.
 
-    Built once and redrawn per frame by `draw`, from a `ChartFrame` the
-    dashboard assembles. Holds nothing about the run but the last frame it
-    drew, which the hover reads.
+    The chart is built once, and `draw` redraws it on each frame from a
+    `ChartFrame` that the dashboard assembles. It keeps nothing about the run
+    except the last frame it drew, which the hover reads.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -773,14 +791,14 @@ class ConcentrationChart(QWidget):
         item.showAxis("right")
         item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
-        # The band and the line are drawn under the traces, so a trace is
-        # never hidden behind a reference. Both are placed from the frame's
-        # own MAC and MAC-awake, so neither can stand at another agent's
-        # height. The band is two stroked edges with a light fill between
-        # them: both strokes sit on the published boundaries, so the drawn
-        # extent is the data extent exactly - a band drawn thicker than its
-        # two edges would assert a wider population spread than the
-        # literature supports (`PL-90Y6`).
+        # The band and the line are drawn under the traces, so a reference
+        # never hides a trace. Both are placed from the frame's own MAC and
+        # MAC-awake values, so neither can be drawn at another agent's height.
+        # The band is two stroked edges with a light fill between them. Both
+        # strokes sit on the published boundaries, so the drawn extent is
+        # exactly the data extent. A band drawn thicker than its two edges
+        # would claim a wider population spread than the literature supports
+        # (`PL-90Y6`).
         band_color = QColor(MAC_AWAKE_BAND_COLOR)
         band_color.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
         self._band = pg.LinearRegionItem(
@@ -817,18 +835,19 @@ class ConcentrationChart(QWidget):
         """Move every item to match one frame.
 
         Args:
-            frame: What to draw. Runs beyond the items already built get
-                their own items on first sight; runs the frame no longer
-                carries are hidden.
+            frame: What to draw. A run beyond the items already built gets
+                its own items when it first appears. The items of a run that
+                the frame no longer has are hidden.
         """
 
         item = self._plot.getPlotItem()
         _set_time_axis(item, frame)
-        # The ceiling and the rules move with the agent because both are
-        # multiples of its 1 MAC - which is exactly what keeps the *scale*
-        # still: 0 to 3 MAC, ruled every half MAC, whichever agent is
-        # running. The left axis is labelled at exactly the values it rules,
-        # and the right axis at round MAC values against the same range.
+        # The ceiling and the gridlines move with the agent, because both are
+        # multiples of its 1 MAC. That is exactly what keeps the *scale*
+        # still: 0 to 3 MAC, with a gridline every half MAC, whichever agent
+        # is running. The left axis is labelled at exactly the values where
+        # it has gridlines. The right axis is labelled at round MAC values
+        # over the same range.
         item.setYRange(0.0, frame.axis_top_percent, padding=0)
         item.getAxis("left").setTicks([list(frame.percent_ticks)])
         item.getAxis("right").setTicks([list(frame.mac_ticks)])
@@ -839,11 +858,11 @@ class ConcentrationChart(QWidget):
         while len(self._runs) < len(frame.runs):
             self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
 
-        # Each run's items are added to the plot in turn, so a later run draws
-        # over an earlier one. That order is load-bearing rather than
-        # incidental: a branch reproduces its parent up to the fork, so before
-        # the branch point the two curves coincide exactly, and it is the
-        # narrower second run drawn last that keeps both visible there
+        # Each run's items are added to the plot in turn, so a later run is
+        # drawn over an earlier one. That order matters and is not
+        # incidental. A branch reproduces its parent up to the fork, so before
+        # the branch point the two curves coincide exactly. Drawing the
+        # narrower second run last is what keeps both visible there
         # (`theme.COMPARED_RUN_WIDTH_STEP`).
         run_count = frame.run_count
 
@@ -855,11 +874,11 @@ class ConcentrationChart(QWidget):
                     curve.setPen(items.pens.of(quantity, run_count))
 
                 if quantity in frame.visible:
-                    # Only the traces the reader has left shown are written:
-                    # a hidden trace costs nothing per frame and holds the
-                    # points of the frame it was last drawn in, which is why
-                    # it is hidden rather than emptied - and why it is
-                    # redrawn before it is shown again, below.
+                    # Only the traces that the reader has left shown are
+                    # written. A hidden trace costs nothing per frame and
+                    # keeps the points of the frame it was last drawn in.
+                    # That is why it is hidden rather than emptied, and why
+                    # it is redrawn here before it is shown again.
                     curve.setData(list(run.times_s), list(run.percents(quantity)))
                     curve.show()
                 else:
@@ -881,7 +900,7 @@ class ConcentrationChart(QWidget):
         return self._frame
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks and `theme.CHART_HEIGHT` tall; it grows into spare height."""
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall. It grows into spare height."""
 
         return _preferred_size(self._plot, CHART_HEIGHT)
 
@@ -889,18 +908,18 @@ class ConcentrationChart(QWidget):
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
         The dashboard samples one frame at the widest of its charts' widths,
-        so that none draws a chord wider than a pixel (`PL-GS3R`).
+        so that no chart draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
 
     @property
     def owes_a_frame(self) -> bool:
-        """Whether this plot is now wider than the frame it drew was sampled for.
+        """Whether this plot is now wider than the width its last frame was sampled for.
 
-        The dashboard's render tick reads it from every chart, so a chart
-        whose Area a reader widens is redrawn on the next tick even when the
-        window kept its size (`resample_owed`, `PL-9LNF`).
+        The dashboard's render tick reads this property from every chart. So
+        a chart whose Area a reader widens is redrawn on the next tick, even
+        when the window kept its size (`resample_owed`, `PL-9LNF`).
         """
 
         return resample_owed(self._frame, self.plot_width_px())
@@ -908,17 +927,18 @@ class ConcentrationChart(QWidget):
     def drawn_points(
         self, run: int, quantity: RecordedQuantity
     ) -> tuple[tuple[float, ...], tuple[float, ...]]:
-        """The instants and percents one run's curve for a compartment is drawn with.
+        """The instants and percents with which one run's curve for a compartment is drawn.
 
-        Read back off the curve item itself rather than off the frame, so a
-        test can hold what the toolkit holds against what the frame said.
+        The values are read back from the curve item itself rather than from
+        the frame. So a test can compare what the toolkit holds with what the
+        frame said.
 
         Args:
             run: Which run, as a position in the frame's runs.
             quantity: Which compartment.
 
         Returns:
-            Times in simulated seconds and values in percent; both empty
+            Times in simulated seconds and values in percent. Both are empty
             for a curve that is hidden.
 
         Raises:
@@ -938,8 +958,9 @@ class ConcentrationChart(QWidget):
     def drawn_pen(self, run: int, quantity: RecordedQuantity) -> QPen:
         """The pen one run's curve for a compartment is drawn with.
 
-        Read off the curve item rather than recomputed, so a test holds what
-        the toolkit is painting against what `chart_frame` said it should.
+        The pen is read from the curve item rather than recomputed. So a test
+        can compare what the toolkit is painting with what `chart_frame` said
+        it should paint.
         """
 
         pen: QPen = self._runs[run].curves[quantity].opts["pen"]
@@ -954,7 +975,7 @@ class ConcentrationChart(QWidget):
         return float(mark.value()) if mark.isVisible() else None
 
     def control_mark_times(self, run: int) -> tuple[float, ...]:
-        """Where one run's shown control marks stand, in simulated seconds."""
+        """Where one run's visible control marks are, in simulated seconds."""
 
         return tuple(float(mark.value()) for mark in self._runs[run].marks if mark.isVisible())
 
@@ -976,12 +997,12 @@ class ConcentrationChart(QWidget):
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
     def axis_titles(self) -> tuple[str, ...]:
-        """The titles the chart's axes carry, so a whole-interface walk reaches them."""
+        """The titles of the chart's axes, so a walk over the whole interface finds them."""
 
         return _axis_titles(self._plot)
 
     def painted(self) -> QImage:
-        """The chart as painted, so a test can hold what is on screen."""
+        """The chart as painted, so a test can check what is on screen."""
 
         return _render(self)
 
@@ -991,17 +1012,18 @@ class ConcentrationChart(QWidget):
         return _plot_pixel(self._plot, time_s, percent)
 
     def plot_area(self) -> QRectF:
-        """The plot inside its axes, in the pixels of `painted`: where the hover box has to stay."""
+        """The plot inside its axes, in the pixels of `painted`, where the hover box has to stay."""
 
         return _plot_area(self._plot)
 
     def readout_at(self, time_s: float, percent: float) -> str | None:
         """What the hover would say for a pointer at this plot position.
 
-        The same lookup the pointer triggers, exposed so a test can hold the
-        rendered readout against the frame without synthesizing mouse
-        events. The widget has to be shown and laid out first: the tolerance
-        is in pixels, and a plot with no size has no pixels.
+        This is the same lookup that the pointer triggers. It is exposed so a
+        test can check the rendered readout against the frame without
+        synthesizing mouse events. The widget has to be shown and laid out
+        first, because the tolerance is in pixels, and a plot with no size has
+        no pixels.
 
         Args:
             time_s: The pointer's position along the time axis.
@@ -1031,7 +1053,7 @@ class ConcentrationChart(QWidget):
         self._refresh_hover()
 
     def _refresh_hover(self) -> None:
-        """Answer for wherever the pointer is, or hide when it is nowhere near."""
+        """Show the readout for wherever the pointer is, or hide it when no point is near."""
 
         position = self._hover.scene_position()
         view_box = self._plot.getPlotItem().getViewBox()
@@ -1058,7 +1080,7 @@ class ConcentrationChart(QWidget):
         return self._hover.shown_text()
 
     def hover_box(self) -> QRectF | None:
-        """Where the hover box stands in the pixels of `painted`, or `None` while it is hidden."""
+        """Where the hover box is in the pixels of `painted`, or `None` while it is hidden."""
 
         return self._hover.shown_box()
 
@@ -1078,9 +1100,9 @@ class _WashInRunItems:
             item.addItem(stretch)
             self.stretches.append(stretch)
 
-        # One scatter item for every terminus dot of the run, in the trace's
-        # own colour: it says the series ends here rather than continuing
-        # out of view, and only a stretch that *stopped* gets one.
+        # One scatter item holds every terminus dot of the run, in the trace's
+        # own colour. A dot says that the series ends here rather than
+        # continuing out of view, and only a stretch that *stopped* gets one.
         self.termini = pg.ScatterPlotItem(
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
@@ -1089,7 +1111,7 @@ class _WashInRunItems:
         self.marks = _control_mark_pool(item)
 
     def repen(self, run_count: RunCount) -> None:
-        """Re-pen every stretch when the number of runs on the plot has changed."""
+        """Give every stretch a new pen when the number of runs on the plot has changed."""
 
         if self._penned_for == run_count:
             return
@@ -1112,12 +1134,12 @@ class _WashInRunItems:
 
 
 class WashInChart(QWidget):
-    """The F_A/F_I plot: the stretches, the equilibrium line, the marks, its axis.
+    """The F_A/F_I plot: the stretches, the equilibrium line, the marks, and its axis.
 
-    Under the compartment chart rather than beside it, on the same time
-    window, because it is that chart's alveolar and circuit traces expressed
-    as one number. The window it draws is the same `ChartFrame`'s, so the
-    two plots can never be showing different spans of the run.
+    The plot sits under the compartment chart rather than beside it, on the
+    same time window, because it shows that chart's alveolar and circuit
+    traces as one number. It draws the window of the same `ChartFrame`, so
+    the two plots can never show different spans of the run.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1131,15 +1153,17 @@ class WashInChart(QWidget):
         item = self._plot.getPlotItem()
         item.setLabel("left", "F_A/F_I", color=MUTED)
         item.setLabel("bottom", "simulated time", color=MUTED)
-        # Fixed rather than fitted, and labelled at its own gridlines, in its
-        # own resolution: `docs/MODEL.md` § "F_A/F_I as a displayed ratio".
+        # The axis is fixed rather than fitted to the data. It is labelled at
+        # its own gridlines, at its own resolution, as `docs/MODEL.md`
+        # § "F_A/F_I as a displayed ratio" specifies.
         item.setYRange(0.0, WASH_IN_AXIS_MAXIMUM, padding=0)
         item.getAxis("left").setTicks([list(wash_in_axis_ticks())])
 
-        # The curve's asymptote, drawn as the reference it is: a definitional
-        # anchor rather than a measured value with spread, so a line and not
-        # a band. It belongs to the plot rather than to any run - F_A = F_I is
-        # a property of the ratio - so there is one whatever the plot holds.
+        # The curve's asymptote, drawn as the reference it is. It is fixed by
+        # definition rather than measured with a spread, so it is a line and
+        # not a band. It belongs to the plot rather than to any run, because
+        # F_A = F_I is a property of the ratio. So there is one line,
+        # whatever the plot holds.
         self._equilibrium_line = pg.InfiniteLine(
             pos=WASH_IN_EQUILIBRIUM_RATIO,
             angle=_HORIZONTAL_LINE_ANGLE_DEG,
@@ -1165,9 +1189,9 @@ class WashInChart(QWidget):
         """Move every item to match one frame.
 
         Args:
-            frame: What to draw - the same frame the compartment chart drew,
-                so the two plots share their instants and not merely their
-                axis numbers.
+            frame: What to draw. This is the same frame that the
+                compartment chart drew, so the two plots share their
+                instants and not merely their axis numbers.
         """
 
         item = self._plot.getPlotItem()
@@ -1218,24 +1242,24 @@ class WashInChart(QWidget):
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
         The dashboard samples one frame at the widest of its charts' widths,
-        so that none draws a chord wider than a pixel (`PL-GS3R`).
+        so that no chart draws a chord wider than a pixel (`PL-GS3R`).
         """
 
         return _plot_width_px(self._plot)
 
     @property
     def owes_a_frame(self) -> bool:
-        """Whether this plot is now wider than the frame it drew was sampled for.
+        """Whether this plot is now wider than the width its last frame was sampled for.
 
-        The dashboard's render tick reads it from every chart, so a chart
-        whose Area a reader widens is redrawn on the next tick even when the
-        window kept its size (`resample_owed`, `PL-9LNF`).
+        The dashboard's render tick reads this property from every chart. So
+        a chart whose Area a reader widens is redrawn on the next tick, even
+        when the window kept its size (`resample_owed`, `PL-9LNF`).
         """
 
         return resample_owed(self._frame, self.plot_width_px())
 
     def drawn_stretches(self, run: int) -> tuple[tuple[tuple[float, float], ...], ...]:
-        """Each shown stretch of one run, as its drawn (time, ratio) points."""
+        """Each visible stretch of one run, as its drawn (time, ratio) points."""
 
         drawn = []
 
@@ -1256,7 +1280,7 @@ class WashInChart(QWidget):
         return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
 
     def drawn_pen(self, run: int) -> QPen:
-        """The pen one run's stretches are drawn with, read off the plot item."""
+        """The pen one run's stretches are drawn with, read from the plot item."""
 
         pen: QPen = self._runs[run].stretches[0].opts["pen"]
 
@@ -1270,7 +1294,7 @@ class WashInChart(QWidget):
         return float(mark.value()) if mark.isVisible() else None
 
     def control_mark_times(self, run: int) -> tuple[float, ...]:
-        """Where one run's shown control marks stand, in simulated seconds."""
+        """Where one run's visible control marks are, in simulated seconds."""
 
         return tuple(float(mark.value()) for mark in self._runs[run].marks if mark.isVisible())
 
@@ -1285,12 +1309,12 @@ class WashInChart(QWidget):
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
     def axis_titles(self) -> tuple[str, ...]:
-        """The titles the plot's axes carry, so a whole-interface walk reaches them."""
+        """The titles of the plot's axes, so a walk over the whole interface finds them."""
 
         return _axis_titles(self._plot)
 
     def painted(self) -> QImage:
-        """The plot as painted, so a test can hold what is on screen."""
+        """The plot as painted, so a test can check what is on screen."""
 
         return _render(self)
 
@@ -1300,14 +1324,14 @@ class WashInChart(QWidget):
         return _plot_pixel(self._plot, time_s, ratio)
 
     def plot_area(self) -> QRectF:
-        """The plot inside its axes, in the pixels of `painted`: where the hover box has to stay."""
+        """The plot inside its axes, in the pixels of `painted`, where the hover box has to stay."""
 
         return _plot_area(self._plot)
 
     def readout_at(self, time_s: float, ratio: float) -> str | None:
         """What the hover would say for a pointer at this plot position.
 
-        As `ConcentrationChart.readout_at`, on the ratio axis.
+        This works as `ConcentrationChart.readout_at` does, on the ratio axis.
 
         Args:
             time_s: The pointer's position along the time axis.
@@ -1361,7 +1385,7 @@ class WashInChart(QWidget):
         return self._hover.shown_text()
 
     def hover_box(self) -> QRectF | None:
-        """Where the hover box stands in the pixels of `painted`, or `None` while it is hidden."""
+        """Where the hover box is in the pixels of `painted`, or `None` while it is hidden."""
 
         return self._hover.shown_box()
 
@@ -1392,14 +1416,14 @@ def _render(widget: QWidget) -> QImage:
 
 
 def _preferred_size(plot: Any, height_px: int) -> QSize:
-    """The size a chart asks its layout for: the plot's own width, the theme's height.
+    """The size a chart asks its layout for: the plot's own width and the theme's height.
 
-    The height is the theme's rather than the toolkit's: a graphics view
-    asks for 480 px of its own accord, which is no chart's height and made
-    the page a quarter of a screen taller than the one it replaced. The
-    plot still grows past this - it expands in both directions - so a
-    taller window lengthens the traces; the minimum is the same theme
-    height, set on the plot.
+    The height comes from the theme rather than the toolkit. A graphics view
+    asks for 480 px on its own, which is no chart's height. That request made
+    the page a quarter of a screen taller than the page it replaced. The plot still
+    grows past this height, because it expands in both directions, so a
+    taller window lengthens the traces. The plot's minimum height is the same
+    theme height, set on the plot.
     """
 
     return QSize(plot.sizeHint().width(), height_px)
@@ -1408,12 +1432,13 @@ def _preferred_size(plot: Any, height_px: int) -> QSize:
 def _plot_width_px(plot: Any) -> float:
     """The width of `plot`'s plot area in logical pixels, for `chart_columns`.
 
-    The view box rather than the widget: the axes and their labels take the
-    rest, and it is the view box the time axis spans. Read from the geometry
-    Qt laid out, so before a chart is shown it answers whatever default size
-    the toolkit gave the unshown widget - which is why the caller draws its
-    first frame after the chart is shown, and why `chart_columns` floors
-    what it is handed.
+    The width is the view box's rather than the widget's. The axes and their
+    labels take the rest of the widget, and the time axis spans the view
+    box. The width is read from the geometry that Qt laid out. So before a
+    chart is shown, this returns whatever default size the toolkit gave the
+    unshown widget. That is why the caller draws its first frame after the
+    chart is shown, and why `chart_columns` applies a minimum to the width it
+    is handed.
     """
 
     return float(plot.getPlotItem().getViewBox().width())
@@ -1433,10 +1458,10 @@ def _plot_pixel(plot: Any, x: float, y: float) -> tuple[int, int]:
 
 
 def _plot_area(plot: Any) -> QRectF:
-    """The view box of `plot` - the plot inside its axes - in the pixels of its widget.
+    """The view box of `plot`, which is the plot inside its axes, in its widget's pixels.
 
-    In the pixels of the chart that owns it too, for the reason `_plot_pixel`
-    gives.
+    These are also the pixels of the chart that owns the plot, for the reason
+    that `_plot_pixel` gives.
     """
 
     return QRectF(
@@ -1445,14 +1470,15 @@ def _plot_area(plot: Any) -> QRectF:
 
 
 class _LineSwatch(QWidget):
-    """A legend mark drawn with the very pen its series is drawn with.
+    """A legend mark drawn with the same pen that its series is drawn with.
 
-    Horizontal for a trace or a reference line, vertical for a control mark,
-    whose own channel on the chart is that it is the only vertical thing
-    there. Its size never changes with what it shows - this sits beside a
-    control a reader clicks repeatedly, and a row that reflowed under the
-    cursor would move the next box out from under it - so an *empty* swatch,
-    for a trace that is hidden, paints nothing at the same size.
+    The mark is horizontal for a trace or a reference line. It is vertical
+    for a control mark or a fork mark, because those marks are vertical on
+    the chart, and no trace or reference there is. The swatch's size never changes with
+    what it shows. It sits beside a control that a reader clicks repeatedly,
+    and a row that reflowed under the cursor would move the next box out from
+    under it. So an *empty* swatch, for a trace that is hidden, paints
+    nothing at the same size.
     """
 
     def __init__(self, pen: QPen, width: int, height: int, *, vertical: bool = False) -> None:
@@ -1472,9 +1498,9 @@ class _LineSwatch(QWidget):
         """Paint this mark with another pen, for a swatch whose series changes.
 
         The compare-mode row's entries are a fixed pool that stands for
-        whichever traces are drawn, so a swatch has to be able to take the
+        whichever traces are drawn. So a swatch has to be able to take the
         pen of the curve it currently describes. The size never changes with
-        it, for the reason the class docstring gives.
+        the pen, for the reason the class docstring gives.
         """
 
         self._pen = pen
@@ -1501,12 +1527,12 @@ class _LineSwatch(QWidget):
 
 
 class _BandSwatch(QWidget):
-    """The MAC-awake band's legend mark: a fill ruled on both edges, as on the chart.
+    """The MAC-awake band's legend mark: a fill with a line along both edges, as on the chart.
 
-    A band's extent is exactly what distinguishes it from a line, so this is
-    the one legend mark not drawn at the shared swatch size - and it is
-    ruled on both edges because a swatch ruled on one would teach the reader
-    the wrong mark for the one on the chart (`PL-90Y6`).
+    A band's extent is exactly what distinguishes it from a line. So this is
+    the one legend mark that is not drawn at the shared swatch size. It has a
+    line along both edges, because a swatch with a line along one edge would
+    teach the reader the wrong mark for the band on the chart (`PL-90Y6`).
     """
 
     def __init__(self) -> None:
@@ -1521,7 +1547,7 @@ class _BandSwatch(QWidget):
 
     @property
     def edge_pen(self) -> QPen:
-        """The pen both edges are ruled with."""
+        """The pen that both edges are drawn with."""
 
         return self._edge_pen
 
@@ -1547,11 +1573,11 @@ class _BandSwatch(QWidget):
 def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]]) -> FlowLayout:
     """One legend row: a caption, where the row has one, then swatch-and-label pairs.
 
-    A wrapping row, as the Flet build's legend rows were, so the entries
-    reflow under a narrow chart rather than holding the chart column to
-    their summed width: the caption is laid first and the entries follow it,
-    each an unbreakable swatch-and-label pair, and a pair that would overrun
-    the right edge starts the next line.
+    The row wraps, as the Flet build's legend rows did. So the entries reflow
+    under a narrow chart, rather than forcing the chart column to be as wide
+    as all of them together. The caption is laid out first and the entries
+    follow it. Each entry is a swatch-and-label pair that is never split, and
+    a pair that would run past the right edge starts the next line.
     """
 
     row = FlowLayout(horizontal_spacing=LEGEND_ENTRY_SPACING, vertical_spacing=LEGEND_LINE_SPACING)
@@ -1568,12 +1594,13 @@ def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]])
 class _PooledEntry:
     """One legend entry whose swatch and words are rewritten rather than rebuilt.
 
-    The compare-mode rows name every curve actually on the plot, and which
-    curves those are changes with the reader's selection and with how many
-    runs are drawn. A fixed pool the size of the most that can be shown -
-    `COMPARED_COMPARTMENT_CAP` compartments times `MAX_DISPLAYED_RUNS` runs -
-    is written and hidden instead of a row rebuilt on every change, which is
-    the same reason the plots keep fixed pools of marks and stretches.
+    The compare-mode rows name every curve actually on the plot. Which curves
+    those are changes with the reader's selection and with how many runs are
+    drawn. Instead of rebuilding a row on every change, the legend writes to
+    and hides the entries of a fixed pool. The pool has room for the most
+    entries that can be shown, which is `COMPARED_COMPARTMENT_CAP`
+    compartments times `MAX_DISPLAYED_RUNS` runs. The plots keep fixed pools
+    of marks and stretches for the same reason.
     """
 
     def __init__(self, row: FlowLayout) -> None:
@@ -1584,7 +1611,7 @@ class _PooledEntry:
         row.addWidget(self.widget)
 
     def show(self, pen: QPen, text: str) -> None:
-        """Stand for this curve: its own pen, and the words that name it."""
+        """Describe this curve, with its own pen and the words that name it."""
 
         self.swatch.set_pen(pen)
         self.label.setText(text)
@@ -1597,11 +1624,12 @@ class _PooledEntry:
 
 
 def legend_caption(text: str) -> QLabel:
-    """A legend row's caption, in the muted role every row's caption takes.
+    """A legend row's caption, in the muted colour that every row's caption uses.
 
-    Its own constructor because a row that has to hide its caption - the
-    compare row, which stands down entirely on a single run - needs to hold
-    the widget rather than fish it back out of the layout.
+    The caption has its own constructor because a row that has to hide its
+    caption needs to keep the widget, rather than find it again in the
+    layout. The compare row is such a row: it hides entirely when a single
+    run is drawn.
     """
 
     label = QLabel(text)
@@ -1611,7 +1639,7 @@ def legend_caption(text: str) -> QLabel:
 
 
 def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
-    """A swatch beside its words, as one item a legend row wraps whole."""
+    """A swatch beside its words, as one item that a legend row wraps as a whole."""
 
     entry = QWidget()
     pair = QHBoxLayout(entry)
@@ -1653,12 +1681,12 @@ class TimeBaseSelector(QComboBox):
         self.currentIndexChanged.connect(self._handle_pick)
 
     def show_time_base(self, time_base: ChartTimeBase | None) -> None:
-        """Show this time base, or "Fit run" for None, without reading it as a request.
+        """Show this time base, or "Fit run" for None, without treating it as a request.
 
         Raises:
-            ValueError: `time_base` is not one this control offers. The two
-                tables diverging is a defect to surface, not a width to
-                show as something else.
+            ValueError: `time_base` is not one this control offers. If the
+                two tables disagree, that is a defect to report, not a width
+                to show as something else.
         """
 
         key = FIT_RUN_KEY if time_base is None else str(time_base.span_s)
@@ -1694,41 +1722,43 @@ class TimeBaseSelector(QComboBox):
 class TraceLegend(QWidget):
     """The chart's three legend rows, of which the compartment row is also a control.
 
-    **The legend shows a compartment selection and asks for changes to it;
-    it does not hold one** (`PL-VN6M`). The selection is a
-    `CompartmentSelection` its owner hands to `show_selection` - the
-    dashboard's, and the same value the plot's frame is assembled from - so
-    a layout that closes this widget, or shows a second one, leaves the
-    selection where it was. A reader's click is emitted as
-    `compartment_requested`, and the boxes move when the owner answers.
+    **The legend shows a compartment selection and asks for changes to it,
+    but it does not own one** (`PL-VN6M`). The selection is a
+    `CompartmentSelection` that its owner hands to `show_selection`. The
+    owner is the dashboard, and the selection is the same value that the
+    plot's frame is assembled from. So a layout that closes this widget, or
+    shows a second one, leaves the selection as it was. A reader's click is
+    emitted as `compartment_requested`, and the boxes move when the owner
+    responds.
 
-    Every compartment entry is written from that one value - its box, its
-    swatch and its label - which is what makes the legend's agreement with
-    the plot a property of the code rather than of somebody's diligence. Two
+    Every compartment entry, meaning its box, its swatch and its label, is
+    written from that one value. That is what makes the legend's agreement
+    with the plot a property of the code rather than of somebody's care. Two
     lists of the same six compartments is exactly how a legend comes to name
-    a line the chart is not drawing, so no box keeps a state it was not
-    handed: a click nobody answers is undone.
+    a line the chart is not drawing. So no box keeps a state it was not
+    handed, and a click that nobody responds to is undone.
 
-    Each swatch is painted with the pen the chart draws that series with,
-    so a dashed trace has a dashed swatch (`PL-THXF`) and the band is a
-    band. The references and the control mark get their own rows rather
-    than joining the six compartments: they are not compartments, and one
-    row would invite reading them as a seventh and eighth trace.
+    Each swatch is painted with the pen the chart draws that series with. So
+    a dashed trace has a dashed swatch (`PL-THXF`), and the band has a band
+    as its swatch. The references and the control mark get their own rows
+    rather than joining the six compartments. They are not compartments, and
+    a single row would invite reading them as a seventh and an eighth trace.
 
-    An entry stays on screen when its trace is off, and keeps its line-style
-    words while it is off (`PL-YTX9`): the unchecked box and the empty
-    swatch already say the line is not drawn, in two channels neither of
-    which is colour, and the words are what switching it on will draw.
+    An entry stays on screen when its trace is off, and it keeps the words
+    that describe its line style (`PL-YTX9`). The unchecked box and the empty
+    swatch already say that the line is not drawn. Those are two channels,
+    and neither of them is colour. The words describe what switching the
+    trace on will draw.
     """
 
     compartment_requested = Signal(object, bool)
     """Emitted when a reader shows or hides a compartment: the compartment, and whether to draw it.
 
-    A request rather than a change: the boxes move when the selection's owner
-    answers it through `show_selection`. Never emitted for a selection that
-    arrives that way, even one that unchecks a box, because that change is
-    the owner's, and the frame it owes is the owner's to draw once its run
-    set is whole (`PL-B1R9`).
+    This is a request rather than a change. The boxes move when the
+    selection's owner responds through `show_selection`. The signal is never
+    emitted for a selection that arrives that way, even one that unchecks a
+    box. That change is the owner's, and so is drawing the frame that the
+    change requires, once the owner's run set is complete (`PL-B1R9`).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1748,10 +1778,11 @@ class TraceLegend(QWidget):
             box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(foreground_stylesheet(INK))
-            # The label's colour is the stylesheet's; the *indicator* is drawn
-            # from palette `Base` and `Text`, which the stylesheet does not
-            # reach - so under a dark host appearance the box was a dark square
-            # and its tick was INK on near-black at 1.35:1 (`PL-7W9N`).
+            # The stylesheet sets the label's colour. The *indicator* is drawn
+            # from the palette's `Base` and `Text` roles, which the stylesheet
+            # does not affect. So under a dark host appearance, the box was a
+            # dark square, and its tick was INK on near-black at a contrast of
+            # 1.35:1 (`PL-7W9N`).
             declare_interface_colours(box)
             box.toggled.connect(
                 lambda checked, quantity=style.quantity: self._on_toggled(quantity, checked)
@@ -1764,11 +1795,12 @@ class TraceLegend(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(LEGEND_LINE_SPACING)
         layout.addLayout(_legend_row("Compartments:", compartments))
-        # The compare row: one entry per curve actually drawn, naming both the
-        # compartment and the run, because once a curve carries two dimensions
-        # a legend that names one of them attributes nothing. It is empty and
-        # takes no height on a single run, where the row above already names
-        # every drawn curve completely.
+        # The compare row has one entry per curve actually drawn, and each
+        # entry names both the compartment and the run. Once a curve stands
+        # for two things, a legend that names only one of them identifies
+        # nothing. The row is empty and takes no height when a single run is
+        # drawn, because the row above already names every drawn curve
+        # completely.
         self._compared_row = _legend_row(None, [])
         self._compared_caption = legend_caption(COMPARED_TRACE_LEGEND_CAPTION)
         self._compared_row.addWidget(self._compared_caption)
@@ -1777,14 +1809,15 @@ class TraceLegend(QWidget):
             for _ in range(COMPARED_COMPARTMENT_CAP * MAX_DISPLAYED_RUNS)
         ]
         layout.addLayout(self._compared_row)
-        # Each reference names the compartment it is read against, which
-        # `docs/MODEL.md` § "Interface boundary" requires of a reference in
-        # the same breath as it exempts one from the drawn-trace rule.
-        # Vessel-rich for the band, not alveolar: the model has no effect-site
-        # compartment and defines the arterial fraction as the alveolar one,
-        # so the alveolar trace is the fastest curve on the chart and the
-        # furthest from where responsiveness returns. Alveolar for 1 MAC,
-        # because that is what MAC is defined for.
+        # Each reference names the compartment it is read against.
+        # `docs/MODEL.md` § "Interface boundary" requires that of a
+        # reference, in the same passage that exempts a reference from the
+        # drawn-trace rule. The band names vessel-rich, not alveolar. The
+        # model has no effect-site compartment, and it defines the arterial
+        # fraction as the alveolar one. So the alveolar trace is the fastest
+        # curve on the chart, and the furthest from where responsiveness
+        # returns. The 1 MAC line names alveolar, because MAC is defined for
+        # the alveolar concentration.
         layout.addLayout(
             _legend_row(
                 "Clinical references:",
@@ -1806,9 +1839,9 @@ class TraceLegend(QWidget):
             )
         )
         # A third row, because a control mark is neither of the two kinds
-        # above it: a compartment trace is a modelled quantity and a clinical
-        # reference is a published constant; this is a record of something
-        # the *user* did.
+        # above it. A compartment trace is a modelled quantity, and a
+        # clinical reference is a published constant. A control mark is a
+        # record of something the *user* did.
         branch_swatch = _LineSwatch(
             _branch_point_pen(),
             CONTROL_MARK_SWATCH_WIDTH,
@@ -1820,12 +1853,14 @@ class TraceLegend(QWidget):
         run_record = _legend_row("Run record:", [_control_mark_entry()])
         run_record.addWidget(self._branch_entry)
         layout.addLayout(run_record)
-        # The selection last handed to `show_selection`, kept so the boxes can
-        # be written back to it after a request nobody answers: the owner's
-        # value as last shown, which nothing here changes.
+        # The selection last handed to `show_selection`. It is kept so the
+        # boxes can be written back to it after a request that nobody
+        # responds to. It is the owner's value as last shown, and nothing
+        # here changes it.
         self._selection: CompartmentSelection = INITIAL_COMPARTMENT_SELECTION
         # True while the boxes are being written from a selection, so a box
-        # that toggles under that pass is repainted and not taken for a click.
+        # that toggles during that pass is repainted and not taken for a
+        # click.
         self._showing = False
         # What each drawn run is called, from the last `show_run_names`.
         self._run_names: tuple[str, ...] = ()
@@ -1835,9 +1870,9 @@ class TraceLegend(QWidget):
     def shown(self) -> tuple[RecordedQuantity, ...]:
         """The compartments currently checked, in table order.
 
-        What the boxes show, for a check that they show the selection they
-        were handed. Nothing reads the selection back from here: the
-        dashboard draws from its own (`PL-VN6M`).
+        This is what the boxes show, for a check that they show the selection
+        they were handed. Nothing reads the selection back from here, because
+        the dashboard draws from its own (`PL-VN6M`).
         """
 
         return tuple(
@@ -1849,19 +1884,20 @@ class TraceLegend(QWidget):
     def show_selection(self, selection: CompartmentSelection) -> None:
         """Show this selection: check exactly its compartments, and name its runs' curves.
 
-        The owner's answer to `compartment_requested`, and its way of telling
-        the legend that the run set has changed. The boxes are written from
-        `selection.shown`, which is exactly what a frame assembled from the
-        same selection draws, so the boxes a reader sees checked are the
-        curves on the plot.
+        This is how the owner responds to `compartment_requested`, and also
+        how it tells the legend that the run set has changed. The boxes are
+        written from `selection.shown`, which is exactly what a frame
+        assembled from the same selection draws. So the boxes a reader sees
+        checked are the curves on the plot.
 
-        **Announces nothing, even where it unchecks a box** (`PL-B1R9`). The
-        change is the owner's, made while it changes the selection or the run
-        set, and the owner already owes the frame that draws it. Announced
-        from here, the cap a second run brings drew that frame early - from
-        inside `SimulationView._rename_runs`, before the wash-in legend or
-        either run had been told there were two runs - and the fork that
-        caused it then drew its own.
+        **It announces nothing, even when it unchecks a box** (`PL-B1R9`).
+        The change is the owner's, made while it changes the selection or the
+        run set, and the owner already has to draw the frame that shows the
+        change. When the change was announced from here, the cap that a
+        second run brings drew that frame too early. It drew it from inside
+        `SimulationView._rename_runs`, before the wash-in legend or either
+        run had been told there were two runs. The fork that caused the cap
+        then drew its own frame.
 
         Args:
             selection: The selection to show.
@@ -1875,10 +1911,10 @@ class TraceLegend(QWidget):
     def show_run_names(self, names: tuple[str, ...]) -> None:
         """Name the runs' curves as the runs' own panels name them, in drawing order.
 
-        The dashboard's answer to a frame drawn over a new run set, given
-        before the selection that frame was drawn from, so each compared
-        entry names its run by the run's identity rather than by where it is
-        drawn (`PL-7Z84`).
+        This is how the dashboard responds to a frame drawn over a new run
+        set. The dashboard calls it before it hands over the selection that
+        the frame was drawn from. So each compared entry names its run by the
+        run's identity rather than by where it is drawn (`PL-7Z84`).
 
         Args:
             names: What each drawn run is called, from `run_label`.
@@ -1888,7 +1924,7 @@ class TraceLegend(QWidget):
         self._refresh_compared_row()
 
     def _check_exactly(self, shown: tuple[RecordedQuantity, ...]) -> None:
-        """Check exactly these compartments' boxes, without reading the change as a request."""
+        """Check exactly these compartments' boxes, without treating the change as a request."""
 
         showing = self._showing
         self._showing = True
@@ -1901,16 +1937,17 @@ class TraceLegend(QWidget):
 
     @property
     def _run_count(self) -> RunCount:
-        """How many runs the selection this legend shows is drawn across."""
+        """How many runs are drawn for the selection that this legend shows."""
 
         return self._selection.run_count
 
     def set_compartment_shown(self, quantity: RecordedQuantity, shown: bool) -> None:
         """Show or hide one compartment, by the route a reader's click takes through the legend.
 
-        Which makes it a request: the box moves, `compartment_requested` is
-        emitted, and the box ends showing what the selection's owner answers
-        with - or what it showed before, where nobody answers.
+        That makes it a request. The box moves, `compartment_requested` is
+        emitted, and the box ends up showing what the selection's owner
+        responds with. Where nobody responds, the box ends up showing what it
+        showed before.
 
         Args:
             quantity: Which compartment.
@@ -1931,8 +1968,8 @@ class TraceLegend(QWidget):
     def compared_marks(self) -> tuple[LegendMark, ...]:
         """The compare row's entries as drawn: each curve's words and its own pen.
 
-        Empty on a single run, where the compartment row already names every
-        drawn curve completely.
+        The result is empty when a single run is drawn, because the
+        compartment row then already names every drawn curve completely.
         """
 
         return tuple(
@@ -1954,9 +1991,9 @@ class TraceLegend(QWidget):
         """Write one entry per drawn curve, and hide the rest of the pool."""
 
         drawn = self._selection.shown
-        # Drawn only once both counts agree: between a selection over a new
-        # run set and the names of its runs, an entry would otherwise name a
-        # curve with a name it does not have.
+        # The entries are drawn only once both counts agree. Between a
+        # selection over a new run set and the names of its runs, an entry
+        # would otherwise give a curve a name that is not its own.
         named = len(self._run_names) == self._run_count
         entries = (
             []
@@ -1969,7 +2006,7 @@ class TraceLegend(QWidget):
                     ),
                 )
                 # Grouped by compartment rather than by run, so the two
-                # entries a reader compares stand beside each other exactly
+                # entries a reader compares sit beside each other, exactly
                 # as the two curves they name do.
                 for quantity in drawn
                 for index in range(self._run_count)
@@ -2001,23 +2038,24 @@ class TraceLegend(QWidget):
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(foreground_stylesheet(INK if checked else MUTED))
 
-        # A box written from a selection this legend was handed reaches here
-        # too, and is only repainted: that change is the owner's, not a request.
+        # A box written from a selection that this legend was handed also
+        # arrives here. It is only repainted, because that change is the
+        # owner's and not a request.
         if self._showing:
             return
 
         self.compartment_requested.emit(quantity, checked)
-        # An owner connected directly has answered by now, and its answer has
-        # written the boxes already, so this changes nothing. Where nobody
-        # answered, it puts the clicked box back to the selection last shown,
-        # rather than leaving a box holding a state no selection gave it -
-        # which is where a legend begins to name a curve the plot is not
-        # drawing.
+        # An owner connected directly has responded by now, and its response
+        # has already written the boxes, so this call changes nothing. Where
+        # nobody responded, the call puts the clicked box back to the
+        # selection last shown. Otherwise a box would keep a state that no
+        # selection gave it, which is how a legend begins to name a curve the
+        # plot is not drawing.
         self._check_exactly(self._selection.shown)
 
 
 def _control_mark_entry() -> tuple[_LineSwatch, QLabel]:
-    """The control mark's legend entry, the same on both legends: upright, in its own pen."""
+    """The control mark's legend entry, the same on both legends: a vertical line in its own pen."""
 
     return (
         _LineSwatch(
@@ -2034,8 +2072,9 @@ def _control_mark_entry() -> tuple[_LineSwatch, QLabel]:
 class LegendMark:
     """One legend entry as it is drawn: its words, its pen, and which way its line runs.
 
-    What a test reads back from a legend, so that the words and the mark can
-    be held against the plot's own pens without reaching into a widget.
+    This is what a test reads back from a legend. It lets the test check the
+    words and the mark against the plot's own pens without reaching into a
+    widget.
     """
 
     label: str
@@ -2047,9 +2086,9 @@ class LegendMark:
 class BandMark:
     """The MAC-awake band's legend entry as it is drawn: its words, its edges and its fill.
 
-    Ruled on both edges and filled between, as the band on the chart is
-    (`PL-90Y6`); what a test reads back to hold the swatch to the chart's
-    own mark.
+    The swatch has a line along both edges and a fill between them, as the
+    band on the chart does (`PL-90Y6`). A test reads this back to check the
+    swatch against the chart's own mark.
     """
 
     label: str
@@ -2060,15 +2099,16 @@ class BandMark:
 class WashInLegend(QWidget):
     """The wash-in plot's legend row: the ratio trace, its asymptote, the control mark.
 
-    One row rather than three, and no caption, because the wash-in plot has
-    one trace and one reference and the row reads without them; it sits
-    under the plot's heading and its two label lines, which say what the
-    ratio is and is not (`PL-F9TQ`). Each swatch is painted with the pen the
-    plot draws that mark with - the trace at its own stroke width, the
-    equilibrium line in its wide dash, the control mark upright and finely
-    dashed - so the swatch and the words describe the mark in two channels
-    (`PL-THXF`). The per-run state sentence that follows this row on screen is
-    the dashboard's to place, since it is written per tick from the frame.
+    The legend has one row rather than three, and no caption, because the
+    wash-in plot has one trace and one reference. The row is clear without
+    captions. It sits under the plot's heading and its two label lines, which
+    say what the ratio is and is not (`PL-F9TQ`). Each swatch is painted with
+    the pen that the plot draws that mark with. The trace is at its own
+    stroke width, the equilibrium line is in its wide dash, and the control
+    mark is vertical and finely dashed. So the swatch and the words describe
+    the mark in two channels (`PL-THXF`). On screen, a per-run state sentence
+    follows this row. The dashboard places that sentence, because it is
+    written on each tick from the frame.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -2100,10 +2140,11 @@ class WashInLegend(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         row = _legend_row(None, entries)
-        # This plot draws one trace per run in one colour and one dash
-        # pattern, so the run's width is the only thing separating two of
-        # them and the row has to name which width is which. A fork entry
-        # joins it for the same reason it joins the chart's legend above.
+        # This plot draws one trace per run, in one colour and one dash
+        # pattern. So the run's width is the only thing that separates two of
+        # them, and the row has to say which width is which. A fork entry
+        # joins the row for the same reason it joins the chart's legend
+        # above.
         self._branch_swatch = _LineSwatch(
             _branch_point_pen(),
             CONTROL_MARK_SWATCH_WIDTH,
@@ -2137,10 +2178,10 @@ class WashInLegend(QWidget):
 
         self._run_names = names
         comparing = run_count > 1
-        # The single unqualified entry stands down while the per-run entries
-        # stand in for it: two entries naming the same trace, one of them
-        # saying nothing about which run, is the ambiguity this row is
-        # being given to remove.
+        # The single entry that names no run is hidden while the per-run
+        # entries take its place. Two entries naming the same trace, one of
+        # them saying nothing about which run, is the ambiguity that this row
+        # is meant to remove.
         self._trace_swatch.setHidden(comparing)
         self._trace_label.setHidden(comparing)
         self._branch_entry.setHidden(not comparing)
