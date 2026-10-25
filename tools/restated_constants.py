@@ -58,6 +58,11 @@ test that reads the constant only through a subprocess it starts sees the
 unperturbed module. A test that copies the value only as a value just inside
 the limit still passes, because the limit moved outwards.
 
+A test listed in `TRIPWIRES` is reported as failing on purpose and does not
+fail the run. Each one holds a literal measured at the current limit and
+checks it against the limit that the simulator computes, so its failure asks
+for a re-measurement rather than showing a copy.
+
 **How the file test works.** A test's file counts as importing the constant
 when it holds `from anesthesia_sim.core.supported_ranges import NAME`, or
 imports the module and reads `NAME` from it as an attribute. A test that gets
@@ -98,6 +103,19 @@ PERTURBED_CONSTANT_VARIABLE = "ANESTHESIA_SIM_PERTURB_CONSTANT"
 #: The test tree that is run. `subprojects/docket/tests` never imports the
 #: simulator, so a constant cannot change its result.
 SUITE = "tests"
+
+#: Tests that fail on purpose when a limit moves, each with the reason.
+#: Such a test holds a literal that was measured at the current limit, such as
+#: the length of a published-fit washout, and checks it against the limit read
+#: from the simulator. Its failure is the prompt to re-measure, not a copy of
+#: the limit, so the report lists it and does not fail the run.
+TRIPWIRES: Mapping[str, str] = {
+    "tests/reference/test_late_washout_against_published_fits.py"
+    "::test_the_run_ends_at_the_supported_run_length": (
+        "its tables were measured over ELIMINATION_DURATION_MIN, which it checks against "
+        "maximum_step_count, so a new run length means re-measuring them"
+    )
+}
 
 MINIMUM_PREFIX = "MINIMUM_"
 MAXIMUM_PREFIX = "MAXIMUM_"
@@ -370,6 +388,8 @@ class Finding:
     unjudged: tuple[str, ...] = ()
     #: Tests in a file that imports `subprocess`, which were not judged.
     through_subprocess: tuple[str, ...] = ()
+    #: Tests on `TRIPWIRES`, which fail on purpose when the limit moves.
+    tripwires: tuple[str, ...] = ()
     #: Why the run gave no answer, or an empty string when it gave one.
     declined: str = ""
 
@@ -413,7 +433,9 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         )
         return finding
     still = {failure.nodeid for failure in rerun.failures}
-    finding.restating = tuple(f.nodeid for f in candidates if f.nodeid not in still)
+    restated = [f.nodeid for f in candidates if f.nodeid not in still]
+    finding.restating = tuple(nodeid for nodeid in restated if nodeid not in TRIPWIRES)
+    finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in TRIPWIRES)
     finding.unjudged = tuple(f.nodeid for f in candidates if f.nodeid in still)
     return finding
 
@@ -441,6 +463,10 @@ def report(
             "as restating it"
         )
         lines.extend(f"  restates it: {nodeid}" for nodeid in finding.restating)
+        lines.extend(
+            f"  fails on purpose, because {TRIPWIRES[nodeid]}: {nodeid}"
+            for nodeid in finding.tripwires
+        )
         lines.extend(
             f"  not judged, fails without the perturbation too: {nodeid}"
             for nodeid in finding.unjudged

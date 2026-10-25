@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from restated_constants import (
     RANGES_SOURCE,
+    TRIPWIRES,
     Constant,
     Failure,
     Finding,
@@ -188,3 +189,23 @@ def test_a_run_without_an_answer_fails_the_report() -> None:
     assert report([declined], [])[1] is True
     assert report([answered], [Constant("STEP", 2.0)])[1] is True
     assert report([answered], [], [Constant("MINIMUM_RATE", 0.0)])[1] is False
+
+
+def test_a_tripwire_is_listed_without_failing_the_report() -> None:
+    nodeid = next(iter(TRIPWIRES))
+    tripped = Finding(Constant(NAME, 1.0), 2.0, failed=1, tripwires=(nodeid,))
+    restated = Finding(Constant(NAME, 1.0), 2.0, failed=1, restating=(nodeid,))
+
+    text, failing = report([tripped], [])
+    assert failing is False
+    assert f"fails on purpose, because {TRIPWIRES[nodeid]}: {nodeid}" in text
+    assert report([restated], [])[1] is True
+
+
+def test_each_tripwire_names_a_test_that_exists() -> None:
+    root = Path(__file__).resolve().parents[2]
+    for nodeid in TRIPWIRES:
+        file, _, function = nodeid.partition("::")
+        tree = ast.parse((root / file).read_text(encoding="utf-8"))
+        defined = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
+        assert function in defined, nodeid

@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 blocked-by: PL-R417
 added: 2026-10-03
 closed: 2026-10-25
+pr: 1778
 payoff: the specification's supported run length cannot drift from the simulator's, so docs/MODEL.md never tells a reader that a run length the simulator refuses is supported, or the reverse
 verify: grep -q 'def test_a_prose_figure_is_held_to_the_constant_its_marker_names' tests/unit/test_doc_check.py
 ---
