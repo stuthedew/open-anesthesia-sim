@@ -259,3 +259,36 @@ def test_an_unanswered_remote_listing_is_said_and_nothing_is_dropped() -> None:
     assert branch_sweep.still_on_remote(found, heads) == (found, [])
     lines = branch_sweep.report(decide(found, Readings(), NOW), {}, applied=False, heads=heads)
     assert lines[0].startswith("The remote's branch list could not be read")
+
+
+def test_a_sent_back_worker_branch_is_listed_for_deletion() -> None:
+    """Carried commits have new shas, so docket reads work that is not there (`PL-W5JR`)."""
+    readings = Readings()
+    readings.keep(NAME, "unfinished work on PL-928V")
+    readings.keep(NAME, "an edit to PL-928V, open on main, that main lacks")
+    readings.settled[NAME] = (NOW - 2 * GRACE).date()
+    [verdict] = decide([_branch(NOW - 3 * GRACE)], readings, NOW)
+    assert verdict.kept == ()
+    assert verdict.notes == (
+        "unfinished work on PL-928V",
+        "an edit to PL-928V, open on main, that main lacks",
+        f"its worker run was reviewed sent-back on {(NOW - 2 * GRACE).date().isoformat()}",
+    )
+
+
+def test_an_open_pull_request_still_keeps_a_sent_back_branch() -> None:
+    readings = Readings()
+    readings.keep(NAME, "pull request #7 is open from it", firm=True)
+    readings.keep(NAME, "unfinished work on PL-928V")
+    readings.settled[NAME] = (NOW - 2 * GRACE).date()
+    [verdict] = decide([_branch(NOW - 3 * GRACE)], readings, NOW)
+    assert verdict.kept == ("pull request #7 is open from it",)
+
+
+def test_a_commit_after_the_review_is_not_settled_by_it() -> None:
+    """A push after the review is new work the review never saw."""
+    readings = Readings()
+    readings.keep(NAME, "unfinished work on PL-928V")
+    readings.settled[NAME] = (NOW - 3 * GRACE).date()
+    [verdict] = decide([_branch(NOW - 2 * GRACE)], readings, NOW)
+    assert verdict.kept == ("unfinished work on PL-928V",)

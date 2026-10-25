@@ -12,7 +12,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from worker_runs import RECORDS_DIR, check, main, review, write
+from worker_runs import RECORDS_DIR, check, main, review, sent_back, write
 
 RUN = {
     "item": "PL-B7K2",
@@ -131,3 +131,14 @@ def test_the_check_command_fails_on_an_unreviewed_record_and_passes_on_none(
     assert "has no review" in capsys.readouterr().err
     assert main(["review", str(path), "--outcome", "accepted", "--note", "Fine."]) == 0
     assert main(["check"], root=tmp_path) == 0
+
+
+def test_only_a_branch_whose_latest_run_was_sent_back_is_settled(tmp_path: Path) -> None:
+    """A run sent back and then run again on the same branch is not settled (`PL-W5JR`)."""
+    first = write(tmp_path, RUN)
+    review(first, "sent-back", "Blocked correctly.", date(2026, 10, 20))
+    assert sent_back(tmp_path) == {"claude/pl-b7k2-worker": date(2026, 10, 20)}
+    again = write(tmp_path, {**RUN, "started": "2026-10-21T08:00:00+00:00"})
+    assert sent_back(tmp_path) == {}
+    review(again, "accepted", "Merged as it stood.", date(2026, 10, 21))
+    assert sent_back(tmp_path) == {}

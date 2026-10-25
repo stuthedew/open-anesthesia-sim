@@ -166,6 +166,36 @@ def review(path: Path, outcome: str, note: str, today: date) -> None:
     path.write_text(_dump({**record, "review": written}), encoding="utf-8")
 
 
+def sent_back(root: Path) -> dict[str, date]:
+    """Each worker branch whose latest run record under `root` is reviewed `sent-back`.
+
+    Maps the branch to its review date. A sent-back branch's work is finished:
+    the review either carried its commits to a branch of its own or refused
+    them, so `tools/branch_sweep.py` names the branch for deletion
+    (`PL-W5JR`). Only a branch's latest run counts, so a run sent back and
+    then run again is not settled by the first review. A record that `check`
+    would refuse is skipped, because `check` reports it.
+    """
+    directory = root / RECORDS_DIR
+    latest: dict[str, tuple[str, object]] = {}
+    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+        if not isinstance(record, dict) or run_problems(record):
+            continue
+        branch, started = str(record["branch"]), str(record["started"])
+        if branch not in latest or started > latest[branch][0]:
+            latest[branch] = (started, record.get("review"))
+    found = {}
+    for branch, (_, verdict) in latest.items():
+        if isinstance(verdict, dict) and not review_problems(verdict):
+            if verdict["outcome"] == "sent-back":
+                found[branch] = date.fromisoformat(str(verdict["reviewed"]))
+    return found
+
+
 def check(root: Path) -> tuple[int, list[str]]:
     """How many records are under `root`, and each problem found in them."""
     directory = root / RECORDS_DIR

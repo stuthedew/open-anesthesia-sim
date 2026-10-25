@@ -843,7 +843,8 @@ Before it opens the pull request, the reviewing session runs
 `make check` fails until the session does this (`PL-87BR`). The records are
 how headless work is compared with chat-session work. So the record of a
 sent-back branch still belongs on `main`. Carry its two record commits to a
-branch of their own. `--item <id>` runs one named item. `--per-run-usd` caps
+branch of their own. Once that lands, the daily branch sweep deletes the
+sent-back worker branch, so its item returns to `bin/docket next` (`PL-W5JR`). `--item <id>` runs one named item. `--per-run-usd` caps
 the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is
 the form used for `PL-6FX6`'s trial. In that form the clone cannot push, so the
 work stays on your machine. The cost that each run reports is Claude Code's
