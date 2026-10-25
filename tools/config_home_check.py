@@ -310,6 +310,24 @@ FACTS: tuple[Fact, ...] = (
         Place("tools/doc_quote_check.py", r"^FETCH_TIMEOUT_S = (\d+)$"),
         (Place(".github/workflows/drift.yml", r"each read once with a (\d+) s timeout"),),
     ),
+    # Claude Code reads its own files and cannot read `docket.toml`'s
+    # `[models]` table, which says which model and effort each kind of work
+    # uses (`PL-0XDM`). So the two places it reads are held to the table here.
+    Fact(
+        "the effort a session runs at, the models table's default",
+        Place("docket.toml", r'^default = \{ model = "[^"]+", effort = "(\w+)" \}$'),
+        (
+            Place(".claude/settings.json", r'^\s*"effortLevel": "(\w+)",?$'),
+            Place(
+                "docs/maintainer.md", r"^\*\*On Opus 5\.5, every session opens at `(\w+)` for now"
+            ),
+        ),
+    ),
+    Fact(
+        "the model the Explore subagent runs, the models table's exploration rule",
+        Place("docket.toml", r'^match = \{ role = "exploration" \}\nmodel = "([^"]+)"$'),
+        (Place(".claude/agents/Explore.md", r"^model: (\S+)$"),),
+    ),
 )
 
 

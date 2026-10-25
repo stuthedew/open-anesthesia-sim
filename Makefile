@@ -291,6 +291,10 @@ check: sync
 # fact - a version, a path list, a command, a timeout - whose copy in one file
 # differs from its home in another (`PL-SH0W`).
 	python3 tools/config_home_check.py
+# Bare too: it reads tracked files as text. It refuses a model id written
+# outside `docket.toml`'s `[models]` table, and the excluded model anywhere
+# but the table and the records (`PL-0XDM`).
+	python3 tools/model_home_check.py
 # Under `uv run`, unlike the bare lines above, because it reads project source:
 # the docstrings of every module, for the citations in them, and that source
 # targets 3.14. The 3.11 floor parser cannot read all of it, and this names each
