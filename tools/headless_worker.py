@@ -113,6 +113,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 import docket.cli as docket_cli  # noqa: E402
+from docket.checks import WORKER_ITEM_ENV  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
 from docket.model_choice import Choice, item_facts  # noqa: E402
@@ -484,7 +485,12 @@ def work(
     env: Mapping[str, str],
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> Run:
-    """Clone, run one worker on `item`, and return what the run reported."""
+    """Clone, run one worker on `item`, and return what the run reported.
+
+    The worker's environment names `item` in `WORKER_ITEM_ENV`, so its own
+    `make check` reads the item's passing `verify:` as the work done rather
+    than as an item left open (`PL-WJJ8`).
+    """
     branch = branch_for(item, model, no_push)
     started = now()
     clone = workdir / f"{branch.removeprefix('claude/')}-{started:%Y%m%dT%H%M%S}"
@@ -492,7 +498,12 @@ def work(
     argv = claude_argv(claude, prompt_for(item, branch, no_push), model, effort, per_run_usd)
     try:
         process = subprocess.run(
-            argv, cwd=clone, env=dict(env), capture_output=True, timeout=RUN_TIMEOUT_S, check=False
+            argv,
+            cwd=clone,
+            env={**env, WORKER_ITEM_ENV: item},
+            capture_output=True,
+            timeout=RUN_TIMEOUT_S,
+            check=False,
         )
         exit_code: int | None = process.returncode
         result = read_result(process.stdout)

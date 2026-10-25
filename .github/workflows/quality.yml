@@ -356,6 +356,18 @@ jobs:
       # only ever off there by association with it: `pytest-xdist` is a
       # declared dependency that job upgrades and was never running, so
       # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
+      #
+      # **The test modules' rewritten bytecode is written once, before the
+      # workers start** (`PL-GQCQ`). Each worker imports every test module, and
+      # pytest rewrites a module's asserts on import, which the bytecode guard
+      # stops it caching. One process per core collects a share of the modules
+      # and writes their rewritten bytecode, and the workers then read it. On
+      # four cores this step took about 8 s and cut a part's pytest run by about
+      # 33 s. The root `conftest.py` says why this is safe. The step is named so
+      # that `tools/main_ci_status.py` does not count it as the suite.
+      - name: write the test modules' rewritten bytecode, a share per core
+        if: steps.scope.outputs.scope != 'items'
+        run: seq "$(nproc)" | xargs -P "$(nproc)" -I '{}' uv run pytest --collect-only -q -p no:cacheprovider --write-assertion-cache "{}/$(nproc)"
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 1/2
         if: steps.scope.outputs.scope != 'items'
         # Write each line to the log as pytest prints it. Without this, the log
@@ -584,6 +596,10 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --dev
+      # The first part's step, for the first part's reasons (`PL-GQCQ`).
+      - name: write the test modules' rewritten bytecode, a share per core
+        if: steps.scope.outputs.scope != 'items'
+        run: seq "$(nproc)" | xargs -P "$(nproc)" -I '{}' uv run pytest --collect-only -q -p no:cacheprovider --write-assertion-cache "{}/$(nproc)"
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-report= --part 2/2
         if: steps.scope.outputs.scope != 'items'
         # Write each line to the log as pytest prints it. Without this, the log

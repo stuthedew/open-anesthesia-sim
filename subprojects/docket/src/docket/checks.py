@@ -1836,7 +1836,15 @@ def _check_provenance(
             )
 
 
-def _check_landed(report: Report, landed: LandedReport | None) -> None:
+#: The environment variable through which `tools/headless_worker.py` names the
+#: one item its worker is working (`PL-WJJ8`). On that branch the item's own
+#: `verify:` passing is the work done, not a stale item, and `docs/worker.md`
+#: leaves its closing to the reviewer, so `_check_landed` reports it as an
+#: advisory there instead of an error.
+WORKER_ITEM_ENV = "DOCKET_WORKER_ITEM"
+
+
+def _check_landed(report: Report, landed: LandedReport | None, worked: str | None = None) -> None:
     """Say when an open item's own evidence of doneness already holds.
 
     An item is closed by hand, so nothing notices work that merges without its
@@ -2001,6 +2009,16 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
         | {identifier for identifier, _ in landed.wrapped}
     )
     startable = tuple(identifier for identifier in landed.passing if identifier not in named)
+    # The item a headless worker is working passes because the worker did it,
+    # and the worker may not close it, so on its branch it is the third reading
+    # and an advisory. Every other item still takes the two-reading error.
+    if worked is not None and worked in startable:
+        startable = tuple(identifier for identifier in startable if identifier != worked)
+        report.advisories.append(
+            f"{worked} is the item this headless worker is working, and its `verify:` "
+            "command now passes, which is the work done. Leave its status as it is: "
+            "the reviewing session closes it (docs/worker.md)"
+        )
     if not startable:
         return
     one = len(startable) == 1
@@ -4441,6 +4459,7 @@ def analyze(
     written: WrittenReport | None = None,
     gone: GoneReport | None = None,
     verify_files: frozenset[str] | None = None,
+    worked: str | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -4512,6 +4531,10 @@ def analyze(
     derived here: `config` arrives already applied, and a `Config` holding
     library defaults is indistinguishable from a project that wrote those
     values down. A caller that does not supply it leaves the reading unnamed.
+
+    `worked` is the item a headless worker is working on this branch, which
+    the caller reads from `WORKER_ITEM_ENV` (`PL-WJJ8`). A caller that does not
+    supply it reports every open item whose command passes as an error.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -4534,7 +4557,7 @@ def analyze(
     _check_notes_references(report, unreferenced, unread_notes)
     _check_cut_window(report, window, notes)
     _check_provenance(report, history, closures)
-    _check_landed(report, landed)
+    _check_landed(report, landed, worked)
     _check_selects_nothing(report, landed, ids)
     _note_settings(report, settings_source)
     _note_cost(report, landed)

@@ -22,6 +22,17 @@ any of these holds, and swept only when none does:
 - its last commit is under `GRACE` old, which covers a session's first pushes,
   before it has claimed anything.
 
+**A sent-back worker branch is finished whatever `docket` reads on it**
+(`PL-W5JR`). A headless worker's branch whose latest run record on the
+default branch is reviewed `sent-back`, and whose last commit is no later than
+that review, was either carried to a branch of its own or refused. The carried
+commits have new shas, and the reviewer edits the item after them, so `docket`
+and `vcs.stranded` read unfinished work and an edit the default branch lacks.
+Those reasons, and `vcs.orphaned`'s, become notes archived with the branch. An
+open pull request, the only copy of an item and the grace period still keep
+it. Without this, `bin/docket next` hides the item as in flight until the
+owner deletes the branch by hand.
+
 So sweeping a branch never hides what the digest or `bin/docket stranded` would
 report for recovery. The one listing it removes is an edit to an item the
 default branch has closed: nothing is left for that edit to inform, and its
@@ -65,7 +76,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -87,6 +98,7 @@ from docket.vcs import (  # noqa: E402
 )
 
 import left_behind_check  # noqa: E402
+import worker_runs  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
 #: Where a swept branch's tip is kept, as `<ARCHIVE>/<branch>/<tip>`. The tip in
@@ -125,13 +137,21 @@ class Readings:
 
     kept: dict[str, list[str]] = field(default_factory=dict)
     notes: dict[str, list[str]] = field(default_factory=dict)
+    #: The reasons that keep a branch even once a review has settled it: an
+    #: open pull request and the only copy of an item.
+    firm: dict[str, list[str]] = field(default_factory=dict)
+    #: Each worker branch whose latest run was reviewed `sent-back`, and when.
+    settled: dict[str, date] = field(default_factory=dict)
     #: The remotes a ref's prefix is stripped against, as `vcs._head_name` strips
     #: it. `REMOTE` is always among them, so a `git remote` that answered nothing
     #: cannot file a reason under a name `decide` never looks up.
     remotes: frozenset[str] = frozenset()
 
-    def keep(self, ref: str, why: str) -> None:
-        self.kept.setdefault(_head_name(ref, self.remotes | {REMOTE}), []).append(why)
+    def keep(self, ref: str, why: str, *, firm: bool = False) -> None:
+        name = _head_name(ref, self.remotes | {REMOTE})
+        self.kept.setdefault(name, []).append(why)
+        if firm:
+            self.firm.setdefault(name, []).append(why)
 
     def note(self, ref: str, what: str) -> None:
         self.notes.setdefault(_head_name(ref, self.remotes | {REMOTE}), []).append(what)
@@ -199,8 +219,8 @@ def read_pull_requests(root: Path, now: datetime, readings: Readings) -> None:
     for pull in found:
         if not pull.base:
             raise Declined(f"pull request #{pull.number} came back without its base branch")
-        readings.keep(pull.head, f"pull request #{pull.number} is open from it")
-        readings.keep(pull.base, f"pull request #{pull.number} is open onto it")
+        readings.keep(pull.head, f"pull request #{pull.number} is open from it", firm=True)
+        readings.keep(pull.base, f"pull request #{pull.number} is open onto it", firm=True)
 
 
 def read_docket(root: Path, now: datetime, readings: Readings) -> None:
@@ -224,7 +244,7 @@ def read_stranded(root: Path, now: datetime, readings: Readings) -> None:
         raise Declined(f"`stranded` could not read the branches: {report.declined}")
     for lost in report.items:
         for ref in lost.branches:
-            readings.keep(ref, f"the only copy of {lost.identifier}")
+            readings.keep(ref, f"the only copy of {lost.identifier}", firm=True)
     for edit in report.edits:
         for ref in edit.branches:
             if edit.identifier in held_open:
@@ -261,12 +281,18 @@ def read_left_behind(root: Path, now: datetime, readings: Readings) -> None:
             )
 
 
+def read_sent_back(root: Path, now: datetime, readings: Readings) -> None:
+    for branch, reviewed in worker_runs.sent_back(root).items():
+        readings.settled[_head_name(branch, readings.remotes | {REMOTE})] = reviewed
+
+
 READERS: tuple[Callable[[Path, datetime, Readings], None], ...] = (
     read_pull_requests,
     read_docket,
     read_stranded,
     read_orphaned,
     read_left_behind,
+    read_sent_back,
 )
 
 
@@ -274,12 +300,20 @@ def decide(found: Sequence[Branch], readings: Readings, now: datetime) -> list[V
     verdicts = []
     for branch in found:
         held = list(readings.kept.get(branch.name, ()))
+        notes = list(readings.notes.get(branch.name, ()))
+        reviewed = readings.settled.get(branch.name)
+        if reviewed is not None and branch.committed.date() <= reviewed:
+            firm = readings.firm.get(branch.name, [])
+            notes += [why for why in held if why not in firm]
+            notes.append(f"its worker run was reviewed sent-back on {reviewed.isoformat()}")
+            held = list(firm)
         kept = list(held)
         age = now - branch.committed
         if age < GRACE:
             kept.append(f"last commit {_hours(age)} ago, inside the {_hours(GRACE)} grace period")
-        notes = tuple(readings.notes.get(branch.name, ()))
-        verdicts.append(Verdict(branch, tuple(kept), notes, only_grace=bool(kept) and not held))
+        verdicts.append(
+            Verdict(branch, tuple(kept), tuple(notes), only_grace=bool(kept) and not held)
+        )
     return verdicts
 
 

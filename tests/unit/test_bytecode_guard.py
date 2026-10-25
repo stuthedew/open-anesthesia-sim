@@ -29,15 +29,29 @@ second `-f`, prints the variable as its own shell sees it, so a value `make`
 holds without exporting it does not pass. This run exports the variable
 itself, so the probe runs in an environment without it, and the same probe
 without the `Makefile` is the control showing it did.
+
+The tests at the end hold the one exception, `--write-assertion-cache K/N`
+(`PL-GQCQ`). Each share of N must keep a different set of test modules, and
+together the shares must keep every module once, or CI's step before the suite
+would cache some modules twice and others never. A path that is not a test
+module must be left to pytest, or a package would lose its `__init__.py`. The
+option may turn bytecode writing back on only for a run that collects and
+executes nothing. These tests call the root `conftest.py`'s functions with a
+stand-in config, because a real collection that writes bytecode would write it
+into this checkout.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+
+import pytest
 
 ROOT_CONFTEST = Path(__file__).resolve().parents[2] / "conftest.py"
 MAKEFILE = ROOT_CONFTEST.parent / "Makefile"
@@ -130,3 +144,187 @@ def test_without_the_makefile_a_recipe_sees_no_bytecode_setting() -> None:
 
 def test_the_makefile_turns_bytecode_writing_off_for_its_recipes() -> None:
     assert _seen_by_a_recipe(MAKEFILE) == "1"
+
+
+def _root_conftest() -> ModuleType:
+    """The root `conftest.py`, loaded as a module of its own so its functions can be called.
+
+    Loading it runs its guard again, which turns bytecode writing off. In a
+    collection that `--write-assertion-cache` turned it on for, every module
+    collected after this one would then go uncached, so the setting is put back.
+    """
+    spec = importlib.util.spec_from_file_location("root_conftest", ROOT_CONFTEST)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    writing_off = sys.dont_write_bytecode
+    spec.loader.exec_module(module)
+    sys.dont_write_bytecode = writing_off
+    return module
+
+
+ROOT_HOOKS = _root_conftest()
+
+
+def _config(
+    root: Path, share: tuple[int, int] | None, *, collect_only: bool = True
+) -> SimpleNamespace:
+    """A stand-in for `pytest.Config`, holding only what the cache share reads."""
+    return SimpleNamespace(
+        getoption=lambda name, default=None: share if name == "write_assertion_cache" else default,
+        getini=lambda name: ["test_*.py"] if name == "python_files" else [],
+        rootpath=root,
+        option=SimpleNamespace(collectonly=collect_only),
+    )
+
+
+#: Test module paths, relative to the root, from more than one directory.
+_MODULES = [f"tests/{tree}/test_{n}.py" for tree in ("unit", "integration") for n in range(12)]
+
+
+@pytest.mark.parametrize("shares", [1, 3, 4])
+def test_every_test_module_falls_in_exactly_one_share(tmp_path: Path, shares: int) -> None:
+    kept = {
+        index: [
+            module
+            for module in _MODULES
+            if ROOT_HOOKS.pytest_ignore_collect(
+                tmp_path / module, _config(tmp_path, (index, shares))
+            )
+            is None
+        ]
+        for index in range(1, shares + 1)
+    }
+    assert sorted(module for modules in kept.values() for module in modules) == sorted(_MODULES)
+    if shares > 1:
+        assert all(len(modules) < len(_MODULES) for modules in kept.values()), kept
+
+
+def test_a_path_that_is_not_a_test_module_is_left_to_pytest(tmp_path: Path) -> None:
+    config = _config(tmp_path, (1, 4))
+    for path in (
+        "tests",
+        "tests/unit",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/helpers.py",
+    ):
+        assert ROOT_HOOKS.pytest_ignore_collect(tmp_path / path, config) is None, path
+
+
+def test_without_the_option_no_module_is_left_out(tmp_path: Path) -> None:
+    config = _config(tmp_path, None)
+    assert all(
+        ROOT_HOOKS.pytest_ignore_collect(tmp_path / module, config) is None for module in _MODULES
+    )
+
+
+def test_the_cache_share_turns_bytecode_writing_back_on_for_a_collection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    ROOT_HOOKS.write_assertion_cache_if_asked(_config(tmp_path, None))
+    assert sys.dont_write_bytecode
+    ROOT_HOOKS.write_assertion_cache_if_asked(_config(tmp_path, (2, 4)))
+    assert not sys.dont_write_bytecode
+
+
+def test_the_cache_share_refuses_a_run_that_executes_tests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    with pytest.raises(pytest.UsageError, match="only with --collect-only"):
+        ROOT_HOOKS.write_assertion_cache_if_asked(_config(tmp_path, (1, 4), collect_only=False))
+    assert sys.dont_write_bytecode
+
+
+def test_a_share_writes_a_cache_for_each_of_its_modules_after_this_one(tmp_path: Path) -> None:
+    """A real collection writes the rewritten bytecode of a module collected after this file.
+
+    `PYTHONPYCACHEPREFIX` sends every cache to `tmp_path`, so nothing is written
+    into the checkout. This module loads the root `conftest.py` again when it is
+    imported, which re-runs its guard. Before the load restored the setting,
+    every module collected after this one in a share was left uncached (blind
+    review of `PL-GQCQ`).
+    """
+    later = ROOT_CONFTEST.parent / "tests" / "unit" / "test_worksteal_dealing.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--write-assertion-cache",
+            "1/1",
+            __file__,
+            str(later),
+        ],
+        cwd=ROOT_CONFTEST.parent,
+        env={**os.environ, "PYTHONPYCACHEPREFIX": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    cached = {path.name.split(".")[0] for path in tmp_path.rglob("*-pytest-*.pyc")}
+    assert {"test_bytecode_guard", "test_worksteal_dealing"} <= cached, result.stdout
+
+
+def test_a_share_that_collects_no_test_module_exits_cleanly(tmp_path: Path) -> None:
+    """A real collection of a share that holds no module exits 0, where pytest gives 5.
+
+    `tests/benchmarks` holds one test module, so one of two shares holds
+    nothing. That share runs here, and `quality.yml`'s step fails on any share
+    that exits non-zero (`PL-VMMB`). The empty share is found with the root
+    `conftest.py`'s own split, so the test does not depend on which share the
+    module's CRC-32 picks.
+    """
+    root = ROOT_CONFTEST.parent
+    (module,) = (root / "tests" / "benchmarks").glob("test_*.py")
+    (empty,) = (
+        index
+        for index in (1, 2)
+        if ROOT_HOOKS.pytest_ignore_collect(module, _config(root, (index, 2))) is True
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--write-assertion-cache",
+            f"{empty}/2",
+            "tests/benchmarks",
+        ],
+        cwd=root,
+        env={**os.environ, "PYTHONPYCACHEPREFIX": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "no tests collected" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("share", "status", "expected"),
+    [
+        (None, pytest.ExitCode.NO_TESTS_COLLECTED, pytest.ExitCode.NO_TESTS_COLLECTED),
+        ((1, 2), pytest.ExitCode.INTERRUPTED, pytest.ExitCode.INTERRUPTED),
+        ((1, 2), pytest.ExitCode.USAGE_ERROR, pytest.ExitCode.USAGE_ERROR),
+    ],
+)
+def test_only_an_empty_cache_share_has_its_exit_status_changed(
+    tmp_path: Path,
+    share: tuple[int, int] | None,
+    status: pytest.ExitCode,
+    expected: pytest.ExitCode,
+) -> None:
+    """A collection error, a usage error, and a run without the option keep their status."""
+    session = SimpleNamespace(config=_config(tmp_path, share), exitstatus=status)
+    ROOT_HOOKS.pytest_sessionfinish(session, status)
+    assert session.exitstatus == expected

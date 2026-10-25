@@ -212,6 +212,20 @@ def test_an_unknown_key_in_the_docket_table_is_rejected(tmp_path: Path) -> None:
         load(tmp_path)
 
 
+def test_a_focus_that_names_no_lane_is_rejected(tmp_path: Path) -> None:
+    """`PL-2CPD`. A misspelt focus would rank every lane while the file read as focused."""
+    (tmp_path / "docket.toml").write_text('[docket]\nfocus = "products"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="^focus: 'products' is not a lane"):
+        load(tmp_path)
+
+
+def test_a_focus_on_a_lane_loads(tmp_path: Path) -> None:
+    (tmp_path / "docket.toml").write_text('[docket]\nfocus = "product"\n', encoding="utf-8")
+
+    assert load(tmp_path).focus == "product"
+
+
 def test_the_shipped_config_names_only_settings_load_reads() -> None:
     """The repository's own `docket.toml` loads under the stricter reading."""
     load(Path(__file__).resolve().parents[3])

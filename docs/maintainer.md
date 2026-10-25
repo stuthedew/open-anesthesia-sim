@@ -25,13 +25,14 @@ direct squash merge (`PL-NXRJ`). The instructions asked for that merge from
 repository can read the instructions, so no check can catch the split. Sending
 every rule to the repository is what prevents it.
 
-**What the instructions keep** is the trial's own coordination and nothing
-else. That is the Goal, the Order and its pause, the thread caps, and which
-model each thread runs. It also covers where threads post and record: the
-review summary in the project chat, one line on a merge, and the project's
-shared folder. Last, one line says that every other rule is the repository's.
-`PL-PDVF` holds the cut-down text as it was written on 2026-10-03, and the
-table of where each rule went.
+**What the instructions keep** is the project's own state and nothing else.
+That is the Goal, the Order and its pause, the compaction rule, and a pointer
+to `.claude/skills/docket/modes/coordinator.md`. The mode file holds the
+coordination rules: the thread caps, which model each thread runs, what every
+brief says, where threads post and record, merging, and releases (project
+owner, 2026-10-25, ratified, over keeping them in Project settings,
+`PL-NZC0`). `PL-PDVF` holds the cut-down text as it was written on 2026-10-03,
+and the table of where each rule went.
 
 **When you give a rule for sessions in the Project, it goes to the repository
 in the same sitting.** Say it to the coordinator. The coordinator starts a
@@ -842,7 +843,8 @@ Before it opens the pull request, the reviewing session runs
 `make check` fails until the session does this (`PL-87BR`). The records are
 how headless work is compared with chat-session work. So the record of a
 sent-back branch still belongs on `main`. Carry its two record commits to a
-branch of their own. `--item <id>` runs one named item. `--per-run-usd` caps
+branch of their own. Once that lands, the daily branch sweep deletes the
+sent-back worker branch, so its item returns to `bin/docket next` (`PL-W5JR`). `--item <id>` runs one named item. `--per-run-usd` caps
 the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is
 the form used for `PL-6FX6`'s trial. In that form the clone cannot push, so the
 work stays on your machine. The cost that each run reports is Claude Code's

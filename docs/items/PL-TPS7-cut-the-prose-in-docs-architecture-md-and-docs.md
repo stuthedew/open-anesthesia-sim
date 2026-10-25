@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.6
 touches: docs/ARCHITECTURE.md, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-05
 closed: 2026-10-25

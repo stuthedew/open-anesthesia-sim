@@ -69,9 +69,9 @@ capture them in one command rather than one per turn.
 **Implementation.** Usage is available and the point is to burn it on work.
 Here `docket next` picks, and the session goes deep. While product focus holds
 (`CLAUDE.md` § "What this project is"), a session given no particular work runs
-`docket next product` instead, and takes the product entry of the digest's
-`By lane` line rather than its `Top:` line, which is the bare `next`
-(`PL-2866`).
+`docket next product` instead (`PL-2866`). The digest's `Top:` line then
+reads `Top, product focus:`, because `docket.toml`'s `focus` key ranks it in
+the product lane alone (`PL-2CPD`).
 
 Do not silently convert the first into the second. An idea raised mid-session
 gets captured and the session continues; it does not become an implementation
@@ -95,6 +95,7 @@ compaction cap does not reach it.
 | Untriaged items to fold into the queue, your own new capture's fields included; a grooming pass; recording a generator, or a defect in the machinery that finds them; or writing an item's `verify:` command | `.claude/skills/docket/modes/triage.md` |
 | Scoping a milestone's debt gate, or there is finished work to ship | `.claude/skills/docket/modes/release.md` |
 | An item's work is done and wants closing out | `.claude/skills/docket/modes/close-out.md` |
+| Coordinating a Claude Code Project on this repository, or working a thread its coordinator started | `.claude/skills/docket/modes/coordinator.md` |
 
 `cat .claude/skills/docket/SKILL.md .claude/skills/docket/modes/*.md` is the
 whole skill for a session that wants it end to end.

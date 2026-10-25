@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test
 feature: one-home-for-constants
+milestone: v0.6.6
 touches: tools, .github/workflows/drift.yml, tests, docket.toml, docs/apparatus.md
 blocked-by: PL-R417
 added: 2026-10-03
