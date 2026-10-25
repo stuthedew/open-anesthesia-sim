@@ -46,3 +46,5 @@ A recorded "it fits" closes this as legitimately as a fix would.
 
 **Generator check.** One-off: a measurement left open when the budget began
 following the window, not a misread fact.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `docs/WORKING_NOTES.md` holds the read's figures under "The read measured at the window-following budget" and no paint figure, and `RENDER_INTERVAL_S` is still 0.2 s. Only the owner's machine can take the measurement.

@@ -38,3 +38,5 @@ above.
 **Generator check.** None: the only workflow path touched is
 `tools/contrast_check.py`, which gains this View's colours as every new View's
 colours are added, and that produces no findings of its own.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** The named test does not exist, the fat shares quoted match `PL-H5DV`'s table, and its blocker, `PL-RNYV`, is open.

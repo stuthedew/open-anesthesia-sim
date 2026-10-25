@@ -1,13 +1,13 @@
 ---
 id: PL-B4P7
 title: A run opening at the teaching-default fresh gas flow records nothing saying so, so once a second machine profile can reach a run nothing can label that flow as the project's teaching choice rather than the machine's
-priority: P2
+priority: P3
 effort: M
 status: blocked
 classes: safety, anticipated, ux
 feature: machine-profile-framework
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/circuit.py
-blocked-by: PL-2FZ9
+blocked-by: PL-2FZ9, PL-TBMK
 deferred-from: v0.7.0 - deferred to Gate 4 on beat 3's terms (PL-LF0P, following PL-DB64's disposition for the same holding condition): waits on PL-2FZ9 and through it on a second machine profile reaching a run, which no release schedules; safety, but not live at 0947408 - one machine profile, so no run can open at another machine's flow
 added: 2026-09-27
 ---
@@ -49,3 +49,5 @@ display could show the teaching default as the selected machine's own flow or as
 a recommendation for it: the correct number with the wrong provenance, which the
 safety-critical standard counts as a safety failure. Blocked on `PL-2FZ9`, which
 makes that reachable, and classed `anticipated` so it waits at that item's band.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true, and `PL-TBMK` is added to `blocked-by`.** The one shipped profile still states 4.0 L/min, and `AgentUptakeSystem.for_agent` still records nothing about where a flow came from. Loading a profile by id (`PL-2FZ9`) does not make the hazard live by itself. A run also needs a profile that states no flow, and `PL-TBMK` writes the second profile, which is the one likely to state none, since no manufacturer publishes a startup flow (`PL-QW19`). With `PL-2FZ9` alone in `blocked-by`, closing it would have shown this `safety` item as ready while nothing could reach the hazard, the false ready `PL-0H5D` recorded for `PL-WZVZ`. Its band moves from `P2` to `P3` with the new blocker, because an `anticipated` safety item waits at its blocker's band, and `PL-TBMK` is `P3`, as `PL-WZVZ` already is for the same blocker. The deferral to Gate 4 still holds.

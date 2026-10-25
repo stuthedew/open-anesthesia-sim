@@ -7,7 +7,7 @@ status: blocked
 classes: ux, docs, safety, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md, docs/ARCHITECTURE.md
-blocked-by: PL-KZ99, PL-0S0V, PL-2881
+blocked-by: PL-KZ99, PL-0S0V, PL-2881, PL-93B3
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list to hold the gate open): planned-milestone item 28's liquid-volume readout, waiting on PL-YRLM, which holds whether a release schedules item 28; none does before v0.6.0
 added: 2026-09-16
 payoff: a learner reads the delivered agent in millilitres of liquid equivalent, the unit they buy and fill a vaporizer in
@@ -242,7 +242,7 @@ recommendation asks for rather than a drop.
 recorded here, together with the Gas Man reading behind it. Whichever way the
 decision goes, this file is where a session building item 28 finds out why the
 answer is millilitres of liquid equivalent, why money is later and reader-set,
-and why the accounting Editor keeps litres of vapour.
+and why the agent accounting View keeps litres of vapour.
 
 [superseded 2026-09-27: `PL-YRLM` is the stand-in now, and this item waits on it
 for a release]
@@ -252,15 +252,15 @@ re-pointed at it and this one closes - or explicitly left unscoped with this ite
 recorded as the stand-in.
 
 **Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** The display facts are unchanged -
-`ACCOUNTING_UNIT_CAPTION` at `dashboard_frame.py:251`,
-`AGENT_VOLUME_DISPLAY_DECIMALS = 1` at `formatting.py:138`, the "bare L invites
-the liquid reading" rationale at `docs/MODEL.md:6626` - and the scope decision
-is still open: `ROADMAP.md:3837` says outright that item 28 is named by no
+`ACCOUNTING_UNIT_CAPTION` in `dashboard_frame.py`,
+`AGENT_VOLUME_DISPLAY_DECIMALS = 1` in `formatting.py`, the "bare L invites
+the liquid reading" rationale in `docs/MODEL.md` § "Displayed precision" - and the scope decision
+is still open: `ROADMAP.md` then said outright that item 28 is named by no
 release. Three attributions moved. `PL-S6WW` closed 2026-09-17 (#669), so only
 `PL-KZ99` of the two blockers stands - and `PL-KZ99` now names a closed item in
 its own `blocked-by`. `PL-H4N8` closed 2026-09-19 (#709) and **already made the
-correction this brief says it carries**: `ROADMAP.md:5422` now reads "from the
-delivered-agent amount", with the note at `:5429` recording that it read
+correction this brief says it carries**: item 28 in `ROADMAP.md` § "Planned milestones" now reads "from the
+delivered-agent amount", with the note beside it recording that it read
 "exhausted-agent" until 2026-09-19. So the dependants are four rather than
 five. The reason to keep this open is untouched: `PL-0S0V` and `PL-VJZK` are
 both `safety`-classed and both blocked on it, so closing it promotes two
@@ -296,3 +296,5 @@ Area and read the delivered agent as millilitres of liquid equivalent, labelled
 as liquid equivalent and as modelled. An end-to-end test compares the
 displayed figure with delivered vapour converted by an independently computed
 factor. The `Done when` paragraphs above are superseded by this one.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true, and `PL-93B3` is added to `blocked-by`.** No agent cost View exists, and the accounting panel still shows litres of vapour. "What this item builds now" keeps the reader's unit in the preferences file that `PL-93B3` builds, as entry 10 of v0.7.0's Required scope does, so this item waits on that file too. The line numbers in the 2026-09-19 sweep paragraph above are replaced with the names they pointed at.

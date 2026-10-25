@@ -76,3 +76,5 @@ that requirement rather than leaving it to the session that builds the readout.
 
 **It no longer waits on `PL-B396`.** This item is a specification in
 `docs/MODEL.md`, and `PL-1P15`, which builds the price, waits on it.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): the `docs/MODEL.md` half is still to do, and the rest is narrower.** `docs/MODEL.md` says nothing yet about a price, its currency or its provenance. The `ROADMAP.md` half of **Done when** is met in substance: entry 9 of v0.7.0's Required scope states the requirement, where the session building the readout reads it, though it does not mention the modelled consumption figure. The shipped-default-or-reader's distinction has nothing to tell apart while v0.7.0 ships no price (entry 11). So what is left is the `docs/MODEL.md` text: a stored price carries its value, currency and date set, and a cost display shows the price as the reader's, the price and date it was computed at, and the modelled consumption figure beside it. The paragraph "Blocked on the unit, and gated by the roadmap beyond that" no longer applies: the item is `ready`, as the 2026-10-25 paragraphs say.
