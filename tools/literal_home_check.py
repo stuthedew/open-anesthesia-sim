@@ -91,13 +91,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from product_paths import CORE_DIR, PACKAGE_DIR
 from workflow_paths_check import tracked_under
 
 #: The tree held to both rules.
-TREE = "src/anesthesia_sim"
+TREE = PACKAGE_DIR
 
 #: The layer whose sites may read only constants defined inside it.
-CORE = "src/anesthesia_sim/core/"
+CORE = f"{CORE_DIR}/"
 
 #: Values a bare literal may take anywhere. See the module docstring on 2.
 EXEMPT_VALUES: frozenset[int] = frozenset({-2, -1, 0, 1, 2})

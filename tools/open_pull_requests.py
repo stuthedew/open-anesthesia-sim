@@ -147,6 +147,15 @@ def _git(args: list[str], root: Path) -> str:
     return call_git(args, root).answer
 
 
+def origin_url(root: Path = ROOT) -> str:
+    """`origin`'s URL in `root`, or "" where git could not name one.
+
+    The one read of the remote's URL, which `repo_slug` parses and
+    `headless_worker` clones from (`PL-H5T9`). Git is asked through `_git`.
+    """
+    return _git(["remote", "get-url", REMOTE], root).strip()
+
+
 def repo_slug(root: Path = ROOT) -> str | None:
     """`owner/name` for `origin` in `root`, or None when it cannot be read as GitHub's.
 
@@ -156,7 +165,7 @@ def repo_slug(root: Path = ROOT) -> str | None:
     token-bearing URL does not defeat (`PL-2TV9`). A remote git could not name
     reads as no GitHub repository, as an empty URL does.
     """
-    return github_slug(_git(["remote", "get-url", REMOTE], root))
+    return github_slug(origin_url(root))
 
 
 def api_request(

@@ -1816,7 +1816,7 @@ _UNKNOWN_IN_SCOPE = ROADMAP.replace(
 
 def test_the_scope_split_counts_ids_rather_than_entries() -> None:
     """`Required scope` is prose with ids written into it, so there is no entry
-    to count - which is why `SECTION_ID_RE` reads the subsection in full and
+    to count - which is why `CITED_ID_RE` reads the subsection in full and
     why this is the only honest unit."""
     section = next(s for s in parse_milestones(ROADMAP) if s.version == (0, 4, 0))
 
