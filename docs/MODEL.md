@@ -621,6 +621,8 @@ zero MAC, and every formatter that forms it refuses a divisor that was not
 built as one (`PL-F9TC`). The type sets no lower bound beyond zero. A MAC far
 below any real agent's would still give multiples too large to read, and the
 shipped MACs are 1.2% to 6.0%.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
 A concentration fraction must always be finite and satisfy:
 
