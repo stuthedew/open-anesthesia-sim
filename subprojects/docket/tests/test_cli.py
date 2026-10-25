@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import ast
 import inspect
+import json
 import os
 import re
 import subprocess
@@ -12925,3 +12926,124 @@ def test_an_empty_evidence_table_changes_nothing_show_or_next_print(
     assert before == after == [0, 0]
     assert capsys.readouterr().out == said_before
     assert "model:" not in said_before
+
+
+def _draft_forge(tmp_path: Path, root: Path, opened: str, drafted: str = "77") -> Path:
+    """Point `root`'s forge commands at a fake forge, and return where it records a draft.
+
+    `opened` is the listing `open_pull_requests_command` prints. The draft
+    command writes the arguments it was given to the returned file and prints
+    `drafted`, or exits 1 with a reason on stderr where `drafted` is empty.
+    """
+    asked = tmp_path / "drafted.json"
+    forge = tmp_path / "forge.py"
+    forge.write_text(
+        "import json, sys\n"
+        f"if sys.argv[1] == 'open':\n    print({opened!r}, end='')\n    raise SystemExit(0)\n"
+        f"open({str(asked)!r}, 'w').write(json.dumps(sys.argv[2:]))\n"
+        f"if not {drafted!r}:\n"
+        "    print('GitHub refused (HTTP 403)', file=sys.stderr)\n    raise SystemExit(1)\n"
+        f"print({drafted!r})\n",
+        encoding="utf-8",
+    )
+    (root / "docket.toml").write_text(
+        "[docket]\n"
+        f'open_pull_requests_command = "python3 {forge} open"\n'
+        f'open_draft_command = "python3 {forge} draft"\n',
+        encoding="utf-8",
+    )
+    return asked
+
+
+def _claim(root: Path) -> int:
+    return main(["claim", "--items", str(root / "docs" / "items"), "--now", ARM_NOW, "PL-B1B1"])
+
+
+def test_claim_opens_the_branch_s_pull_request_as_a_draft_once_the_claim_is_pushed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-86DN: the number exists before the item closes, so the closing commit can carry it."""
+    root, git = _arm_repo(tmp_path)
+    asked = _draft_forge(tmp_path, root, opened="")
+
+    assert _claim(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"claim: opened draft pull request #77 on {ARM_BRANCH}" in out
+    assert json.loads(asked.read_text()) == [ARM_BRANCH, "main", "PL-B1B1: PL-B1B1"]
+    assert git("ls-remote", "--heads", "origin", ARM_BRANCH).strip()
+
+
+def test_claim_opens_no_draft_where_a_pull_request_is_open_on_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, _ = _arm_repo(tmp_path)
+    asked = _draft_forge(tmp_path, root, opened=f"{ARM_BRANCH} 12\n")
+
+    assert _claim(root) == 0
+
+    assert f"claim: pull request #12 is open on {ARM_BRANCH}" in capsys.readouterr().out
+    assert not asked.exists()
+
+
+def test_a_draft_the_forge_refused_is_said_with_the_step_the_session_takes_instead(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The claim is published either way, so it still exits 0, and never reads as opened."""
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened="", drafted="")
+
+    assert _claim(root) == 0
+
+    out = capsys.readouterr().out
+    assert "claim: no draft pull request opened: GitHub refused (HTTP 403)" in out
+    assert "Open it as a draft with your own GitHub tool now, before any work" in out
+    assert "opened draft" not in out
+
+
+def _close(root: Path) -> int:
+    return main(
+        [
+            "set",
+            "--items",
+            str(root / "docs" / "items"),
+            "PL-B1B1",
+            "--status",
+            "done",
+            "--closed",
+            "2026-09-01",
+        ]
+    )
+
+
+def test_closing_an_item_writes_its_branch_s_open_pull_request_number(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-86DN: `pr:` lands in the closing commit, so the first `pr-title` run passes.
+
+    Before, the number was written by a separate `record N` after the pull
+    request opened, and 116 pull requests took a red run and a second push.
+    """
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened=f"claude/other 5\n{ARM_BRANCH} 1832\n")
+
+    assert _close(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"PL-B1B1: pr: 1832, the pull request open on {ARM_BRANCH}" in out
+    text = (root / "docs" / "items" / "PL-B1B1-held.md").read_text(encoding="utf-8")
+    assert "\npr: 1832\n" in text
+
+
+def test_closing_an_item_with_no_pull_request_open_writes_no_number_and_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened="claude/other 5\n")
+
+    assert _close(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"`pr:` not written: no pull request is open on {ARM_BRANCH}" in out
+    assert "bin/docket record N" in out
+    assert "pr:" not in (root / "docs" / "items" / "PL-B1B1-held.md").read_text(encoding="utf-8")

@@ -135,9 +135,11 @@ results between them were not, beyond Table I.
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
-**Not held here.** Removed 2026-09-06 as publisher-copyright material this
-public repository may not redistribute; see "Redistribution" above. Reach it
-through the DOI.
+**Not held here. Held in the private corpus since 2026-10-25**, like every
+other owner-supplied full text, and the corpus's own index carries the file
+name and checksum. This repository held a copy until 2026-09-06, when it was
+removed as publisher-copyright material that this public repository may not
+redistribute; see "Redistribution" above.
 
 > Baker AB, Farmery AD. Inert gas transport in blood and tissues.
 > *Comprehensive Physiology*. 2011 Apr;1(2):569–92.
@@ -158,6 +160,19 @@ treats the anesthetic gases specifically, deriving how transfer depends on
 solubility in blood and in each tissue. Read it when a compartment structure,
 a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
 being questioned or extended.
+
+Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
+"Parameter provenance" cites for the tissue:blood division (`PL-H536`,
+`PL-VPF8`). The table prints two sets of coefficients, and neither is Baker's
+own. The bracketed set, which matches the derived rows, is Eger and Shafer's
+(its ref 21: *Anesth Analg* 2005;101:688–96, PMID 16115976). The plain set is
+Fiserova-Bergerova and Diaz's (its ref 26: *Int Arch Occup Environ Health*
+1986;58:75–87, PMID 3721592). Neither paper is held. The review is tier 2 under
+`docs/MODEL.md` § "Source hierarchy".
+
+Route and depth: full text, from the private corpus's copy on 2026-10-25.
+Table 2 and pp. 569–70 were read from the page images, and pp. 571 and 573–74
+and the reference list through the corpus's text layer. The rest was not read.
 
 ### Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion
 

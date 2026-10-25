@@ -37,6 +37,12 @@ carrying only captured items is not a pull request", `PL-WNCT`).
 first (`PL-S5MF`). Where a claim rides that first push, open the pull request as
 a draft, as `.claude/skills/docket/modes/start.md` explains.
 
+**A claimed item's pull request is already open, as a draft.** `bin/docket
+claim` opened it when it published the claim, so that the closing commit can
+carry the number (`PL-86DN`). For that work, opening the pull request means
+rewriting its placeholder title and body and marking it ready. Where `claim`
+said it opened none, open it as a draft yourself before any work.
+
 ## Run the blind review passes before a simulator pull request is ready
 
 **A simulator pull request is not marked ready or armed until its blind

@@ -332,10 +332,12 @@ MUSCLE_COLOR = "#D17206"
 
 FAT_COLOR = "#64748B"
 
-# The colour swatch that every legend entry draws. It is one size across all
-# three legend rows, so that a reader scanning down them compares marks rather
-# than shapes. `_build_band_legend_item` is the one deliberate exception,
-# because a band's extent is exactly what distinguishes it from a line.
+# This is the width of the colour swatch that every line's legend entry draws.
+# Every such swatch has this width, in any of the four legend rows, so that a
+# reader scanning down them compares marks rather than shapes. Its height is
+# `LEGEND_SWATCH_HEIGHT` or the line's own stroke width rounded up, whichever
+# is greater. The control mark, the fork mark and the MAC-awake band are the
+# exceptions, with the sizes below, because a tick and a band are not lines.
 LEGEND_SWATCH_WIDTH = 24
 
 LEGEND_SWATCH_HEIGHT = 4
@@ -432,20 +434,26 @@ ONE_MAC_LINE_DASH_PATTERN = [16, 8]
 # standing in for both.
 ONE_MAC_LINE_STROKE_WIDTH = 1.5
 
-# A control-change mark is furniture, like the two references, and it takes
-# the same MUTED ink for the same reason. It is not a compartment, and a hue of
-# its own would join the trace palette's separation problem while implying
-# that it is one. It needs no second colour channel, because it already has a
-# stronger cue: it is the only vertical thing on the chart. No colour-vision
-# deficiency and no greyscale rendering can take that cue away. Reusing MUTED
-# also declares no new pair for `tools/contrast_check.py`, because MUTED on
-# PANEL is already measured as the 1 MAC line.
+# A control-change mark is chart furniture, like the two references, and it
+# takes the same MUTED ink for the same reason. It is not a compartment. A hue
+# of its own would add one more colour that the traces must be told apart
+# from, and it would imply that the mark is a compartment. The mark needs no
+# colour of its own to be told apart, because it already has a stronger cue:
+# it is vertical, while both references and every trace run along the time
+# axis. The gridlines are vertical too, but they are solid, finer and drawn in
+# their own grey. The fork mark is the one other vertical line in this ink,
+# and `BRANCH_POINT_STROKE_WIDTH`'s comment says how the two are told apart.
+# No colour-vision deficiency and no greyscale rendering can take these cues
+# away. Reusing MUTED also adds no new colour pair for
+# `tools/contrast_check.py` to measure, because MUTED on PANEL is already
+# measured for the 1 MAC line.
 CONTROL_MARK_COLOR = MUTED
 
-# The mark is finer than either reference and every trace, because a control
-# mark annotates the run rather than showing any part of it. In a case with a
-# dozen adjustments, a mark as heavy as a trace would compete with the curves
-# it exists to be read against. It is heavier than the vertical grid lines,
+# The mark is finer than every trace, because a control mark annotates the run
+# rather than showing any part of it. It has the same width as the two
+# references, 1.5 px, and is told apart from them by its direction. In a case
+# with a dozen adjustments, a mark as heavy as a trace would compete with the
+# curves it exists to be read against. It is heavier than the vertical grid lines,
 # though, and dashed where they are solid. Measured against a rendered frame, a
 # mark of a hair's width beside a 60 s gridline can be found, but it is not
 # immediately separable from the gridline. A reader who cannot tell an

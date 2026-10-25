@@ -2844,10 +2844,13 @@ def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
 
 # ----------------------------------------------------------- bookmark panel
 #
-# These tests cover what the two listings claim, and the one thing they must
-# not claim: that a mark has been *reached*. Detection is `PL-CTD7` and is not
-# built, so a row that implied a crossing would put an unbuilt guarantee on
-# screen (`PL-LPLD`).
+# These tests cover what the two listings claim, and what each row says about
+# a mark's standing, meaning its status. A run detects when it reaches a mark
+# (`PL-CTD7`). So a row says "reached" for a target the run halted on, or for
+# one inside the step the run stands on or opened on
+# (`MarkStanding.REACHED`). Other wording describes a mark the clock has
+# passed, one the run can no longer reach, and one on a run that failed. A
+# mark the run can still reach adds no words to its row.
 
 
 def _marks() -> BookmarkSet:
