@@ -129,6 +129,9 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     assert beyond.span_s == widest.span_s * 2.0
     # Doubled together, so the wider axis is ruled like every declared rung.
     assert beyond.span_s / beyond.tick_interval_s == widest.span_s / widest.tick_interval_s
+    # A run that ends exactly on a doubled width fits it, as a run that ends
+    # exactly on a declared rung fits that rung, and is not doubled again.
+    assert fit_to_run(CaseInstant(widest.span_s * 2.0)).span_s == widest.span_s * 2.0
 
 
 def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
