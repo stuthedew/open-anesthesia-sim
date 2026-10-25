@@ -1921,6 +1921,9 @@ whole count up to $`2^{53}\approx9.0\times10^{15}`$ exactly. Below about
 $`9.6\times10^{-12}`$ s a day is more steps than that, and `elapsed_s` would
 round the count before multiplying it by the step (§ "Simulated time is a count
 of steps, not a running total").
+<!-- derived: 86 400 000 steps from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 86 400 000 steps from core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- derived: 9.6e-12 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **It binds a compartment stepped on its own too, and the ceiling does not**
 (`PL-WP52`, 2026-10-19). A compartment is stepped at a run's step only by
@@ -1967,6 +1970,7 @@ The value is the measurement above taken as the floor (project owner,
 and over a floor at the 9.6e-12 s where a day's step count stops being exact,
 `PL-YZ17`). It was the session's recommendation rather than the owner's own
 specification, so ordinary evidence reopens it.
+<!-- derived: 9.6e-12 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader

@@ -3,12 +3,14 @@ id: PL-NH53
 title: docs/MODEL.md restates the supported run length in prose (§ Supported simulation step; § The first 24 hours of elimination against the published mean curves) and check_prose_provenance holds a prose figure to the data files only, so a change to MAXIMUM_ELAPSED_SIMULATION_TIME_S leaves those sentences wrong: hold a prose figure to a named constant in src/ with a marker, as the data-file figures are
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: one-home-for-constants
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 blocked-by: PL-R417
 added: 2026-10-03
+closed: 2026-10-25
+pr: 1778
 payoff: the specification's supported run length cannot drift from the simulator's, so docs/MODEL.md never tells a reader that a run length the simulator refuses is supported, or the reverse
 verify: grep -q 'def test_a_prose_figure_is_held_to_the_constant_its_marker_names' tests/unit/test_doc_check.py
 ---
@@ -31,3 +33,15 @@ verify: grep -q 'def test_a_prose_figure_is_held_to_the_constant_its_marker_name
 **Held by the generator pause** (triage, 2026-10-04). PL-40SJ's tool and baseline are on `main`, so that half of the wait is over. The pause is not: on `main` at `4ab001b8`, `bin/docket generators` marks `PL-R417` (readers that take one physical line for a whole statement) still generating, and its build is open in #1332. The owner asked for this item's promotion on the two steps the offer named, a `verify:` command and no other live head; the first is done above and the second failed, so `blocked-by:` now names `PL-R417`, keeping the decision above to wait out the pause rather than lift it. `PL-R417`'s `touches` include `tools/doc_check.py` as well, so the wait also keeps this change to `check_prose_provenance` off a file another branch is editing. Before promoting, check that `bin/docket generators` marks no head "still generating", rather than this list; building it sooner is the owner's call, made by asking (`PL-6Q9L`).
 
 **Unblocked 2026-10-11, when `PL-R417` closed in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. PL-40SJ's tool and baseline are on `main`, and `#1392` is the branch that held `tools/doc_check.py`; read against the tree nothing else holds it.
+
+**Closed 2026-10-25.** `PL-JS6P` (#1782) merged first and did most of this
+item's work: its markers take a module and a constant, read with `ast` by
+`module_constants` in `tools/doc_check.py`, and it marked the run length
+across `docs/MODEL.md`, § "Supported run length" included. This branch had
+built the same reader, so at the merge it took `main`'s version and kept only
+what `main` lacked. A number grouped with spaces, as the specification writes
+86 400, is now read as one number, both in the prose under a marker and in a
+derived figure, so "86 400 000 steps" is no longer looked for as 86. Four
+derived markers now hold the step-count figures in § "Supported simulation
+step" (86 400 000 steps and 9.6e-12 s). With the constant set to 172 800 s,
+`doc_check.py check` reports 22 errors. No third marker kind was needed.
