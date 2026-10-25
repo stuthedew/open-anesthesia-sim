@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py
 added: 2026-09-05
 closed: 2026-10-24
+pr: 1775
 verify: grep -q 'def test_a_rejected_value_appears_in_the_message' tests/unit/test_validation.py && uv run pytest tests/unit/test_validation.py
 ---
 

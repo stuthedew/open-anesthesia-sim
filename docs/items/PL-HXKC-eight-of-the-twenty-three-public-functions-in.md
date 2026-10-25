@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-05
 closed: 2026-10-24
+pr: 1775
 verify: uv run python -c 'import ast,pathlib,sys; fs=lambda t:[n for n in t.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]+[m for c in t.body if isinstance(c,ast.ClassDef) and not c.name.startswith("_") for m in fs(c)]; sys.exit(any(not any(w in (ast.get_docstring(f) or "").lower() for w in ("raise","reject","refus")) for p in pathlib.Path("src").rglob("*.py") for f in fs(ast.parse(p.read_bytes())) if not f.name.startswith("_") and any(isinstance(n,ast.Raise) for n in ast.walk(f))))'
 ---
 
