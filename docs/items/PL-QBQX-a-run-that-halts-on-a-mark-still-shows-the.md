@@ -1,0 +1,21 @@
+---
+id: PL-QBQX
+title: A run that halts on a mark still shows the status word "Paused", the same word as the learner's own Pause, and the only sign that a mark stopped it, the "Branch here: …, stopped on your mark" label, is withdrawn while two runs are compared, so a halt during a comparison, or a second halt on a MAC target whose row already reads "reached", looks like a pause nobody made
+priority: P2
+effort: M
+status: ready
+classes: ux, defect
+feature: replay-findings
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
+added: 2026-10-25
+payoff: a learner comparing two runs can tell that a mark stopped one, instead of seeing a pause nobody made
+verify: grep -q 'def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison' tests/integration/test_simulation_view.py
+---
+
+**Problem.** `status_word` returns "Paused" for any stopped run that has not failed or reached the run-length limit (`src/anesthesia_sim/app/dashboard_frame.py`). It does not read `SimulationSnapshot.bookmark_halt`. Since `PL-TYWQ`, the trunk's fork button reads "Branch here: …, stopped on your mark" after a halt (`dashboard_frame.py`). That is now the only cue. `fork_offer` withdraws the button while two runs are shown (`dashboard_frame.py`), and nothing replaces it. A MAC target halts on every crossing. On the second crossing its row already reads "reached", so the row does not change either.
+
+**Why it matters.** During a comparison, a run that stops on a mark looks exactly like a run the learner paused. The learner cannot tell that a mark stopped it, which is the hidden mode `docs/MODEL.md` § "Halting on a marked crossing" says the every-crossing rule avoids. The fork label's wording and its choice not to name the mark are the owner's ratified decision (2026-09-21). So a fix that names the mark, or that changes the status word, is put to the owner first. Showing the existing cue during a comparison may not need that.
+
+**Done when.** A run halted on a mark is told apart from one the learner paused while two runs are compared, as it is with one run shown. Any change to the status word or a label that names the mark is put to the owner first. `tests/integration/test_simulation_view.py` has `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`.
+
+**Found by.** `PL-TBQS` reviewer replay on #775, findings 775 r01 F2, r02 F4, r03 F3, r05 F2 and r06 F3, and the second `PL-ZWXD` addendum entry, checked against main on 2026-10-25 by reading the code. The halt-not-drawn half of these reports was fixed by `PL-T995`.

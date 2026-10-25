@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.8
 touches: tools/ast_identity.py, tools/fixture_id_check.py, subprojects/docket/src/docket/python.py, tests/unit/test_ast_identity.py, subprojects/docket/tests/test_python.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25
