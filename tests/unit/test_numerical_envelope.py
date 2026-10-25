@@ -207,6 +207,20 @@ def test_a_tissue_blood_coefficient_outside_the_envelope_is_refused_with_both_fa
         )
 
 
+def test_a_tissue_blood_quotient_refuses_a_factor_never_built_as_a_coefficient() -> None:
+    """A bare `float` factor was never checked against the envelope, so it is refused by name."""
+
+    with pytest.raises(
+        TypeError, match=r"^fat tissue:gas factor of 34\.0 was not built as Partition"
+    ):
+        tissue_blood_partition_coefficient(34.0, PartitionCoefficient(0.65), name="fat")  # type: ignore[arg-type]
+
+    with pytest.raises(
+        TypeError, match=r"^fat blood:gas factor of 0\.65 was not built as Partition"
+    ):
+        tissue_blood_partition_coefficient(PartitionCoefficient(34.0), 0.65, name="fat")  # type: ignore[arg-type]
+
+
 def _fat(blood_gas: float, tissue_gas: float) -> TissueGroup:
     return TissueGroup(
         name="fat",
