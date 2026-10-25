@@ -211,6 +211,20 @@ release's notes, for a closing pull request inside that release's tag span
 that its notes never name. The error prints each line and the heading it goes
 under (`PL-JLYG`).
 
+**Prove "nothing computational moved" with a command, not by reading the
+diff.** A baseline section that says so rests first on the tree objects:
+compare `git rev-parse vA.B.C:src/anesthesia_sim/core` with `HEAD`'s, and the
+same for `src/anesthesia_sim/data`. Equal hashes prove it. When either one
+moved, run `uv run python tools/ast_identity.py vA.B.C HEAD
+src/anesthesia_sim/core src/anesthesia_sim/data`, with the previous tag as
+`vA.B.C`. It runs under `uv run python` because `src/` targets the project's
+own Python release. Exit 2 means it could not compare, which proves nothing.
+Exit 1 means some code changed, so the notes may not make the claim. Exit 0
+means only docstrings and comments changed, and you still read each changed docstring in the diff. A
+docstring records units, a model version and provenance, so whether the change
+is safe is a judgment the tool does not make. v0.5.2 was the first cut where
+the hashes moved for a docstring-only change (`PL-VHHB`).
+
 **Recover any pull request body a merge dropped, in the same pull request**
 (`PL-3PH2`). The squash commit's body on `main` is the record of each pull
 request's body, and a merge client can still send an empty one; the offline
