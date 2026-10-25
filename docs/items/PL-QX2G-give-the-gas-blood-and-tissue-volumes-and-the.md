@@ -3,11 +3,13 @@ id: PL-QX2G
 title: Give the gas, blood and tissue volumes and the partition coefficients a declared numerical envelope, refused at build as checked types: today each is only positive and finite, so a tissue volume of 1e-300 L with a tissue:blood coefficient of 1e-30 makes washin_rate_s raise a bare ZeroDivisionError, and a 1e307 L tissue with a 1e-307 tissue:gas coefficient has a 1 L capacity but an infinite time constant
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app/controller.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/unit, tests/reference
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1833
 payoff: a volume or partition coefficient outside the envelope on which core's arithmetic is shown correct is refused when it is built, so no product of them can reach inf, zero or a bare built-in error
 verify: grep -rq 'def test_every_volume_and_partition_coefficient_is_refused_outside_its_numerical_envelope' tests/unit
 ---
