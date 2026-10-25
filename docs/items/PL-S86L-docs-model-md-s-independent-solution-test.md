@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1829
 payoff: The coupled model's verification section says which trajectory each gate figure comes from and where in a run the worst disagreement sits, as the exact step measures them today
 verify: ! grep -qF 'four kinds of run' docs/MODEL.md && ! grep -qF 'worst trajectory the four' docs/MODEL.md && ! grep -qF 'always inside a' docs/MODEL.md && ! grep -qF 'same number of steps' docs/MODEL.md && ! grep -qF 'it alone exceeds the previous' docs/MODEL.md && ! grep -qF 'early in the wash-in' tests/reference/test_coupled_dynamics.py && ! grep -qF '6 000 for each of them' tests/reference/test_coupled_dynamics.py && ! grep -qF 'reached at about 306 s' tests/reference/test_coupled_dynamics.py && ! grep -qF 'always inside a' tests/reference/test_coupled_dynamics.py
 ---
