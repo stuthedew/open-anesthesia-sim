@@ -1,4 +1,4 @@
-"""Have Fable 5.1 read `docs/MODEL.md` against the stored data once, as one message batch.
+"""Have a strong model read `docs/MODEL.md` against the stored data once, as one message batch.
 
 `docs/MODEL.md` is the specification of the clinical model, and every value
 under `src/anesthesia_sim/data/` is cited from it. A statement there that
@@ -8,7 +8,7 @@ pass, because it does not fit in one session's budget (`PL-5S71`). This tool
 buys that reading on the owner's API credit.
 
 **How the requests are built.** The document and the data files total about
-215,000 tokens, which fits in Fable 5.1's 1M-token context. So each request
+215,000 tokens, which fits in a 1M-token context. So each request
 carries all of both, and asks the model to review the statements of one `##`
 section against the whole. That finds a contradiction between two sections,
 which a request carrying only its own section could not. The shared part comes
@@ -34,12 +34,19 @@ It runs on the owner's machine, because the key and the credit are there, as
 - `fetch BATCH_ID` reports the batch's progress, and once it has ended,
   downloads the results and writes one findings file for a session to read.
 
-The API's request shape, model and prices are from the Claude API reference
-as read on 2026-10-25: Message Batches at `/v1/messages/batches`, the
+**Which model reads it.** The model, its effort and its list price come from
+`docket.toml`'s `[models]` table, as the role `review` (`PL-0XDM`). A tool
+that named its own model went stale: this one named Fable 5.1 after the
+project owner had stopped using it. A model with no price in
+`[models.prices]` is refused before anything is built, because the cost bound
+could not be stated.
+
+The API's request shape is from the Claude API reference as read on
+2026-10-25: Message Batches at `/v1/messages/batches`, the
 `anthropic-version` `2026-10-21`, which refuses `temperature`, `top_p` and
-`top_k`, and Fable 5.1's batch prices of $5 and $25 per million input and
-output tokens. Fable 5.1 always thinks, so no `thinking` field is sent and
-`output_config.effort` sets how hard it works.
+`top_k`, and a batch price of half the list price. No `thinking` field is
+sent, so the model thinks as its default sets, which on Opus 5.5 is adaptive
+thinking, and `output_config.effort` sets how hard it works.
 """
 
 from __future__ import annotations
@@ -65,24 +72,26 @@ sys.path.insert(0, str(ROOT / "tools"))
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import tracked_under  # noqa: E402
 
-from headless_worker import STATE_DIR, Refused, read_effort_level  # noqa: E402
+from docket.config import load as load_config  # noqa: E402
+from docket.model_choice import Choice  # noqa: E402
+from headless_worker import STATE_DIR, Refused, role_choice  # noqa: E402
 from product_paths import DATA_DIR, MODEL_DOC  # noqa: E402
 
-#: The strongest model, which the owner asked to do this reading (`PL-5S71`).
-REVIEW_MODEL = "claude-fable-5-1"
+#: The role this reading asks `docket.toml`'s `[models]` table for.
+REVIEW_ROLE = "review"
 
 ANTHROPIC_API = "https://api.anthropic.com"
 BATCHES_PATH = "/v1/messages/batches"
 ANTHROPIC_VERSION = "2026-10-21"
 
 #: The most output, thinking included, that one section's request may use.
-#: Fable 5.1 allows 128,000. This is large enough for a long section's
+#: Opus 5.5 allows 128,000. This is large enough for a long section's
 #: thinking and findings, and it bounds what a runaway request can cost.
 MAX_OUTPUT_TOKENS = 48_000
 
-#: Batch prices for Fable 5.1, in US dollars per million tokens.
-BATCH_INPUT_USD_PER_MTOK = 5.0
-BATCH_OUTPUT_USD_PER_MTOK = 25.0
+#: A batch costs this share of the list price, per the API reference's
+#: Message Batches pricing, read 2026-10-25.
+BATCH_PRICE_SHARE = 0.5
 
 #: Bytes per token assumed for the cost bound. English prose runs nearer four,
 #: so three overstates the input on purpose.
@@ -213,7 +222,9 @@ def instruction(section: Section) -> str:
     )
 
 
-def build_requests(document: str, data: Mapping[str, str], effort: str) -> list[dict[str, object]]:
+def build_requests(
+    document: str, data: Mapping[str, str], choice: Choice
+) -> list[dict[str, object]]:
     """One batch request per section, each carrying the shared prefix."""
     prefix = shared_prefix(document, data)
     requests: list[dict[str, object]] = []
@@ -224,7 +235,7 @@ def build_requests(document: str, data: Mapping[str, str], effort: str) -> list[
             {
                 "custom_id": section.custom_id,
                 "params": {
-                    "model": REVIEW_MODEL,
+                    "model": choice.model,
                     "max_tokens": MAX_OUTPUT_TOKENS,
                     "system": SYSTEM_PROMPT,
                     "messages": [
@@ -234,7 +245,7 @@ def build_requests(document: str, data: Mapping[str, str], effort: str) -> list[
                         }
                     ],
                     "output_config": {
-                        "effort": effort,
+                        "effort": choice.effort,
                         "format": {"type": "json_schema", "schema": FINDINGS_SCHEMA},
                     },
                 },
@@ -245,14 +256,41 @@ def build_requests(document: str, data: Mapping[str, str], effort: str) -> list[
     return requests
 
 
-def cost_bound_usd(requests: Sequence[Mapping[str, object]]) -> float:
+@dataclass(frozen=True)
+class ReviewModel:
+    """The model and effort the table chose for the reading, and its list price."""
+
+    choice: Choice
+    #: List prices in US dollars per million input and output tokens.
+    input_usd_per_mtok: float
+    output_usd_per_mtok: float
+
+
+def review_model(root: Path = ROOT) -> ReviewModel:
+    """The model, effort and price `docket.toml`'s `[models]` table gives the reading.
+
+    Raises:
+        Refused: the file has no `[models]` table, or the table has no price
+            for the model it chose, so the cost bound could not be stated.
+    """
+    choice = role_choice(REVIEW_ROLE, root)
+    table = load_config(root).models
+    price = table.price(choice.model) if table is not None else None
+    if price is None:
+        raise Refused(
+            f"[models.prices] in {root / 'docket.toml'} has no price for {choice.model}, "
+            "so the batch's cost could not be bounded"
+        )
+    return ReviewModel(choice, *price)
+
+
+def cost_bound_usd(requests: Sequence[Mapping[str, object]], model: ReviewModel) -> float:
     """The most the batch could cost, assuming no cache hit and every output at its cap."""
     input_bytes = sum(len(json.dumps(r["params"]).encode()) for r in requests)
     input_tokens = input_bytes / BOUND_BYTES_PER_TOKEN
     output_tokens = MAX_OUTPUT_TOKENS * len(requests)
-    return (
-        input_tokens * BATCH_INPUT_USD_PER_MTOK + output_tokens * BATCH_OUTPUT_USD_PER_MTOK
-    ) / 1_000_000
+    list_usd = input_tokens * model.input_usd_per_mtok + output_tokens * model.output_usd_per_mtok
+    return list_usd * BATCH_PRICE_SHARE / 1_000_000
 
 
 def read_inputs(root: Path = ROOT) -> tuple[str, dict[str, str]]:
@@ -380,20 +418,25 @@ def summarize(results: Sequence[Mapping[str, object]]) -> list[str]:
 
 def estimate(args: argparse.Namespace) -> int:
     document, data = read_inputs()
-    requests = build_requests(document, data, read_effort_level())
+    model = review_model()
+    requests = build_requests(document, data, model.choice)
     if args.write:
         args.write.write_text(json.dumps({"requests": requests}, indent=1), encoding="utf-8")
         print(f"wrote the batch body to {args.write}")
     print(f"{len(requests)} requests, one per section of {MODEL_DOC}, over {len(data)} data files")
-    print(f"at most ${cost_bound_usd(requests):.2f}, with no cache hit and every output at its cap")
+    print(f"on {model.choice.describe()}")
+    print(
+        f"at most ${cost_bound_usd(requests, model):.2f}, "
+        "with no cache hit and every output at its cap"
+    )
     return 0
 
 
 def submit(args: argparse.Namespace, send: Sender | None = None) -> int:
     document, data = read_inputs()
-    effort = read_effort_level()
-    requests = build_requests(document, data, effort)
-    bound = cost_bound_usd(requests)
+    model = review_model()
+    requests = build_requests(document, data, model.choice)
+    bound = cost_bound_usd(requests, model)
     if not math.isfinite(args.credit_left) or bound > args.credit_left:
         raise Refused(
             f"the batch could cost up to ${bound:.2f}, more than the ${args.credit_left:.2f} "
@@ -405,8 +448,8 @@ def submit(args: argparse.Namespace, send: Sender | None = None) -> int:
     manifest = {
         "batch_id": batch["id"],
         "submitted_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "model": REVIEW_MODEL,
-        "effort": effort,
+        "model": model.choice.model,
+        "effort": model.choice.effort,
         "inputs_sha256": digest(document, data),
         "data_files": list(data),
         "sections": {s.custom_id: s.heading for s in sections(document)},

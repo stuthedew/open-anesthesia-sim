@@ -36,6 +36,7 @@ from .model import (
     ranks_as_generator,
     ranks_as_generator_defect,
 )
+from .model_choice import Choice, ModelTable, item_facts
 from .roadmap import (
     EXCLUDED,
     IN_SCOPE,
@@ -486,19 +487,26 @@ class Recommendation:
     #: `Item.model_evidence`, or `None`. Carried for the reason `delegable` is:
     #: the table lives in the configuration, which `describe` cannot reach.
     evidence: ModelEvidence | None = None
+    #: The model and effort `docket.toml`'s `[models]` table chooses for this
+    #: item, or `None` where the project keeps no such table (`PL-0XDM`).
+    #: Carried for the reason `evidence` is.
+    choice: Choice | None = None
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
+        chosen = f", {self.choice.describe()}" if self.choice is not None else ""
         if self.item.model_guidance:
-            marks.append(f"{self.item.model_guidance} - use your strongest model")
+            marks.append(f"{self.item.model_guidance} - use your strongest model{chosen}")
         elif self.delegable:
             # `elif` rather than a second `if`, mirroring `render._marks`. The
             # two are already mutually exclusive - `delegability` returns the
             # guidance string itself whenever `model_guidance` is set - so this
             # says so where a reader looks, rather than leaving them to check.
-            # Which model is cheaper is deliberately not named here: the answer
-            # dates, and `docs/maintainer.md` is where a dated instance lives.
-            marks.append("delegable - a cheaper model may take this")
+            # Which model is cheaper is named only by the `[models]` table,
+            # the one home for that dated answer (`PL-0XDM`).
+            marks.append(f"delegable - a cheaper model may take this{chosen}")
+        elif self.choice is not None:
+            marks.append(f"model: {self.choice.describe()}")
         # Beside the fixed flag rather than instead of it: the flag is a rule
         # and this is a measurement, and a reader should see both when they
         # disagree.
@@ -1501,6 +1509,20 @@ def _placed(
     return reason, scoped_to
 
 
+def choose_model(
+    item: Item,
+    models: ModelTable | None,
+    workflow_paths: tuple[str, ...],
+    protected_paths: tuple[str, ...],
+    gate_paths: tuple[str, ...],
+) -> Choice | None:
+    """The model and effort the `[models]` table chooses for `item`, or `None` with no table."""
+    if models is None:
+        return None
+    delegable = item.delegability(protected_paths, gate_paths) is None
+    return models.choose(item_facts(item, models, workflow_paths, delegable=delegable))
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -1514,6 +1536,7 @@ def recommend(
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
     model_evidence: tuple[ModelEvidence, ...] = (),
+    models: ModelTable | None = None,
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -1792,6 +1815,7 @@ def recommend(
                 ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
                 evidence=item.model_evidence(model_evidence, workflow_paths),
+                choice=choose_model(item, models, workflow_paths, protected_paths, gate_paths),
             )
         )
 
@@ -1849,6 +1873,7 @@ def longest_waiting(
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
     model_evidence: tuple[ModelEvidence, ...] = (),
+    models: ModelTable | None = None,
 ) -> Waiting:
     """Owed work in the order it has waited, for `docket next --oldest`.
 
@@ -1919,6 +1944,7 @@ def longest_waiting(
                 ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
                 evidence=item.model_evidence(model_evidence, workflow_paths),
+                choice=choose_model(item, models, workflow_paths, protected_paths, gate_paths),
             )
         )
     # No new-work filter: `is_debt` keeps every `needs-decision` item owed.

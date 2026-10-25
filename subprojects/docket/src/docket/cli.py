@@ -90,6 +90,7 @@ from .plan import (
     Standing,
     UnrankedGenerator,
     awaiting_decision,
+    choose_model,
     clusters,
     features,
     gate,
@@ -2364,6 +2365,11 @@ def cmd_show(args: argparse.Namespace) -> int:
     model = []
     if item.model_guidance is not None:
         model.append(f"{item.model_guidance}, strongest model")
+    chosen = choose_model(
+        item, config.models, config.workflow_paths, config.protected_paths, config.gate_paths
+    )
+    if chosen is not None:
+        model.append(chosen.describe())
     if (evidence := item.model_evidence(config.model_evidence, config.workflow_paths)) is not None:
         model.append(evidence.describe())
     if model:
@@ -2970,6 +2976,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
         model_evidence=config.model_evidence,
+        models=config.models,
     )
     pending = awaiting_decision(
         items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
@@ -3047,6 +3054,7 @@ def _next_oldest(
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
         model_evidence=config.model_evidence,
+        models=config.models,
     )
     where = f" in the {lane} lane" if lane else ""
     if waiting.picks:

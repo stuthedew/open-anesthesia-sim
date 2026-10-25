@@ -824,3 +824,53 @@ instruction_paths = [
   ".claude/skills",
   "docs/worker.md",
 ]
+
+# Which model and reasoning effort each kind of work uses. This table is the
+# one home for that choice (`PL-0XDM`; project owner, 2026-10-25: "Make things
+# that say which model and effort to use use a single source of truth"). It is
+# read through `docket.model_choice`, by `bin/docket next` and `show`, by
+# `tools/headless_worker.py` and by `tools/model_doc_review.py`. The copies
+# that cannot read it, `effortLevel` in `.claude/settings.json` and `model:` in
+# `.claude/agents/Explore.md`, are held to it by `tools/config_home_check.py`,
+# and `tools/model_home_check.py` refuses a model id written anywhere else.
+#
+# The first rule whose `match` holds decides, and a key it leaves out falls
+# back to `default`. So list the most demanding rule first: an item that
+# touches both the simulator and the interface takes the first rule that names
+# either area. `match` may name any category a reader passes: `class`, `lane`,
+# `feature`, `status`, `size` (an item's `effort:` field), `area` (from
+# `[models.areas]` below) and `role`. `bin/docket` passes `role` as
+# `strongest` for safety, science and open-decision items and as `delegable`
+# for the items a cheaper model may take. The tools pass `worker`, `review` and
+# `exploration`. subprojects/docket/README.md § "The model table" has the format.
+[models]
+# The default effort is the owner's level for every session on Opus 5.5
+# (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`).
+default = { model = "claude-opus-5-5", effort = "high" }
+# Nothing uses these unless the owner names one for that work (project owner,
+# 2026-10-25: "Nothing should be using fable anymore unless I specifically say").
+excluded = ["claude-fable-5-1"]
+
+# List prices in US dollars per million tokens, from Anthropic's models
+# overview (https://platform.claude.com/docs/en/about-claude/models/overview,
+# read 2026-10-18, as `docs/maintainer.md` records). A tool that
+# spends API credit bounds its cost from these.
+[models.prices]
+"claude-opus-5-5" = { input = 4.0, output = 20.0 }
+"claude-sonnet-5-5" = { input = 2.0, output = 10.0 }
+
+[models.areas]
+simulator = ["src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md"]
+interface = ["src/anesthesia_sim/app/"]
+
+# The items a cheaper model may take go to Sonnet 5.5, not Haiku 5.5 (project
+# owner, 2026-09-19; `docs/maintainer.md` § "Match model capability to the work").
+[[models.rule]]
+match = { role = "delegable" }
+model = "claude-sonnet-5-5"
+
+# The Explore subagent's `model: opus` alias, which resolves to the session's
+# own Opus model (project owner, 2026-10-17, over Haiku 5.5 and Sonnet 5.5).
+[[models.rule]]
+match = { role = "exploration" }
+model = "opus"
