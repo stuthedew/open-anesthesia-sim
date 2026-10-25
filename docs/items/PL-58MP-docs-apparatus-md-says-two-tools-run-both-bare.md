@@ -3,11 +3,13 @@ id: PL-58MP
 title: docs/apparatus.md says two tools run both bare and under uv run, but quality.yml runs three (branch_id_check too), and README.md and CONTRIBUTING.md say make check runs everything CI runs, which doc_check's GATE_ONLY records is not so
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: one-source-of-truth
 touches: README.md, CONTRIBUTING.md, docs/apparatus.md
 added: 2026-10-19
+closed: 2026-10-25
+pr: 1760
 payoff: a contributor no longer reads a green make check as a promise that CI will pass
 verify: ! grep -qF 'everything CI runs' README.md CONTRIBUTING.md && ! grep -qF 'and two' docs/apparatus.md
 reenters: PL-ZQ3R

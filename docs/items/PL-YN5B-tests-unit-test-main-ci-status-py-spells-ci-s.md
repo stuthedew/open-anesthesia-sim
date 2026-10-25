@@ -3,11 +3,13 @@ id: PL-YN5B
 title: tests/unit/test_main_ci_status.py spells CI's pytest step with --cov-fail-under=100, which the step has not carried since the suite was split into two parts (PL-T9X9)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test
 feature: one-source-of-truth
 touches: tests/unit/test_main_ci_status.py
 added: 2026-10-19
+closed: 2026-10-25
+pr: 1760
 payoff: the test no longer teaches a reader a CI command that was removed
 verify: ! grep -qF -- '--cov-branch --cov-fail-under=100"' tests/unit/test_main_ci_status.py
 reenters: PL-T9X9
