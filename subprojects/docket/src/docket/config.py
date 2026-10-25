@@ -286,6 +286,13 @@ class Config:
     #: which holds the pull request. Empty by default, which turns the hold
     #: off: docket names no repository tool, so the project supplies the count.
     prose_count_command: str = ""
+    #: A command counting the blind generalist review passes that the branch's
+    #: simulator change owes, which `docket arm` reads so that a simulator
+    #: branch waits until a `Blind-review` record says that many ran
+    #: (`PL-HDRN`). The package appends nothing. The command owes exit 0 and
+    #: one line holding a whole number, and non-zero where it could not count,
+    #: which holds the pull request. Empty by default, which turns the hold off.
+    blind_count_command: str = ""
     #: A command that mutates the lines a branch changed and says which mutants
     #: the tests did not catch, which `docket verify` runs once per run as an
     #: integrity check (`PL-CZXN`). The package appends the base it audits
@@ -608,6 +615,9 @@ def load(root: Path) -> Config:
         ),
         prose_count_command=_str(
             section.get("prose_count_command"), defaults.prose_count_command, "prose_count_command"
+        ),
+        blind_count_command=_str(
+            section.get("blind_count_command"), defaults.blind_count_command, "blind_count_command"
         ),
         mutation_command=_str(
             section.get("mutation_command"), defaults.mutation_command, "mutation_command"
