@@ -370,7 +370,10 @@ def test_a_capacity_that_overflows_is_refused_at_build(factor: float) -> None:
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=rf"^venous volume_l of {shown} is outside the numerical envelope of 0\.01 to 10000 L,",
+        match=(
+            rf"^venous volume_l of {shown} is outside the numerical envelope of "
+            r"0\.01 to 10000 L,"
+        ),
     ):
         CompartmentVolume(factor, name="venous volume_l")
 

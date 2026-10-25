@@ -634,16 +634,16 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     fat a time constant shorter than the step, and the fraction written is back in range.
     The rollback's requirement does not depend on the parameter set. The volume and the
     tissue:gas coefficient are written directly, bypassing their own guards, because what is
-    under test is the rollback and not the route. The state left is the one the step began from, with fat over capacity as it
-    already was, for the snapshot's `Fraction` to refuse.
+    under test is the rollback and not the route. The state left is the one the step began
+    from, with fat over capacity as it already was, for the snapshot's `Fraction` to refuse.
     """
 
     system = _a_run_whose_next_step_a_compartment_refuses()
     fat = system.patient.fat
-    # Halving the volume alone would take it to about 4e-6 L, below the numerical envelope
-    # (`PL-QX2G`). So the volume goes to the envelope's smallest, 0.01 L, and the coefficient
-    # makes the capacity half the amount held. The capacity, and so fat's row of the system
-    # matrix, is the same as halving the volume alone gave.
+    # Making the capacity half the amount held through the volume alone needs about 4e-6 L,
+    # which is below the numerical envelope (`PL-QX2G`). So the volume goes to the envelope's
+    # smallest, 0.01 L, and the coefficient makes the capacity half the amount held. The
+    # capacity, and so fat's row of the system matrix, is the same as before.
     object.__setattr__(fat, "volume_l", CompartmentVolume(0.01))
     object.__setattr__(
         fat,

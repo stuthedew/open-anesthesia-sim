@@ -41,6 +41,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     load_agent_parameters,
@@ -273,7 +274,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 
     controller = SimulationController(
         agent_id="sevoflurane",
-        circuit_volume_l=5.0,
+        circuit_volume_l=CompartmentVolume(5.0),
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
         delivered_concentration_percent=Percent(3.0),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),
@@ -317,7 +318,7 @@ def _run_with_non_default_settings(agent_id: str) -> SimulationController:
 
     return SimulationController(
         agent_id=agent_id,
-        circuit_volume_l=4.5,
+        circuit_volume_l=CompartmentVolume(4.5),
         fresh_gas_flow_l_min=FreshGasFlow(2.5),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),
         cardiac_output_l_min=CardiacOutput(6.5),
@@ -697,7 +698,7 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
 
     assert not hasattr(SimulationController, "set_circuit_volume")
 
-    controller = SimulationController(circuit_volume_l=5.0)
+    controller = SimulationController(circuit_volume_l=CompartmentVolume(5.0))
     controller.start()
     _advance_for(controller, duration_s=10.0)
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
@@ -2602,7 +2603,10 @@ def test_a_settings_mismatch_names_the_setting_that_differs(
     before = trunk.snapshot()
     on_file = load_agent_parameters(before.agent_id)
     edited = dataclasses.replace(
-        on_file, blood_gas_partition_coefficient=on_file.blood_gas_partition_coefficient + 0.05
+        on_file,
+        blood_gas_partition_coefficient=PartitionCoefficient(
+            on_file.blood_gas_partition_coefficient + 0.05
+        ),
     )
     monkeypatch.setattr(uptake_system, "load_agent_parameters", lambda agent_id: edited)
 
@@ -2624,7 +2628,9 @@ def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
 
     trunk = _trunk_with_two_changes()
     on_file = load_reference_adult_parameters()
-    edited = dataclasses.replace(on_file, muscle_volume_l=on_file.muscle_volume_l + 1.0)
+    edited = dataclasses.replace(
+        on_file, muscle_volume_l=CompartmentVolume(on_file.muscle_volume_l + 1.0)
+    )
     monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
 
     with pytest.raises(SimulationConfigurationError) as refusal:
