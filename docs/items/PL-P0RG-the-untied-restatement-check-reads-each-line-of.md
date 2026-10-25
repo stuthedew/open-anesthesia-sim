@@ -9,7 +9,7 @@ feature: one-source-of-truth
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-10-25
 closed: 2026-10-25
-pr: 1809
+pr: 1810
 payoff: the untied-restatement check's docstring says why a split math span cannot hide a figure on a passing run, and a test holds that
 verify: uv run pytest -q tests/unit/test_doc_check.py -k 'split_across_two_lines_is_refused'
 ---

@@ -9,7 +9,7 @@ feature: one-source-of-truth
 touches: tools/ast_identity.py, tools/fixture_id_check.py, subprojects/docket/src/docket/python.py, tests/unit/test_ast_identity.py, subprojects/docket/tests/test_python.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25
-pr: 1809
+pr: 1810
 payoff: a release cut's ast_identity verdict calls an attribute-docstring rewrite unchanged, so it no longer forces a trajectory comparison or a hand proof
 verify: uv run pytest -q tests/unit/test_ast_identity.py subprojects/docket/tests/test_python.py -k 'attribute_docstring or without_docstrings'
 reenters: PL-8W1J

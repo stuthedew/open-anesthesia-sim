@@ -9,7 +9,7 @@ feature: one-source-of-truth
 touches: tools/worker_runs.py, tools/fact_home_check.py, tests/unit/test_fact_home_check.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25
-pr: 1809
+pr: 1810
 payoff: a module-level string bound under a second name in another apparatus module fails make check, unless DISTINCT_WORDS records the two as different facts
 verify: uv run pytest -q tests/unit/test_fact_home_check.py -k 'string_bound_under_two_names or distinct_word' && python3 tools/fact_home_check.py
 reenters: PL-S08Z
