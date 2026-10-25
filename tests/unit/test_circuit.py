@@ -19,6 +19,7 @@ from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
     parse_breathing_circuit_parameters,
@@ -39,7 +40,7 @@ REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$
 
 def test_rejects_agent_amount_above_circuit_capacity() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+        circuit_volume_l=CompartmentVolume(6.0), max_delivered_concentration_percent=Percent(100.0)
     )
 
     with pytest.raises(
@@ -55,7 +56,7 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
         max_delivered_concentration_percent=Percent(100.0),
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(100.0),
     )
@@ -67,7 +68,7 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
 def test_zero_fresh_gas_flow_preserves_concentration() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(0.0),
         delivered_concentration_percent=Percent(100.0),
@@ -83,7 +84,7 @@ def test_zero_fresh_gas_flow_preserves_concentration() -> None:
 def test_zero_delivered_concentration_washes_out_circuit() -> None:
     circuit = BreathingCircuit(
         max_delivered_concentration_percent=Percent(100.0),
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(0.0),
         inspired_partial_pressure_fraction=Fraction(1.0),
@@ -104,12 +105,12 @@ def test_exact_update_is_independent_of_step_size() -> None:
     """
 
     one_step = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         delivered_concentration_percent=Percent(100.0),
     )
     many_steps = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         delivered_concentration_percent=Percent(100.0),
     )
@@ -127,9 +128,13 @@ def test_exact_update_is_independent_of_step_size() -> None:
 
 @pytest.mark.parametrize("circuit_volume_l", [0.0, -1.0, float("inf")])
 def test_rejects_invalid_circuit_volume(circuit_volume_l: float) -> None:
-    with pytest.raises(SimulationConfigurationError):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^circuit_volume_l of .* is outside the numerical envelope of 0.01 to 10000 L",
+    ):
         BreathingCircuit(
-            max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=circuit_volume_l
+            max_delivered_concentration_percent=Percent(100.0),
+            circuit_volume_l=CompartmentVolume(circuit_volume_l, name="circuit_volume_l"),
         )
 
 
@@ -137,7 +142,7 @@ def test_rejects_invalid_circuit_volume(circuit_volume_l: float) -> None:
 def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
         )
@@ -151,7 +156,7 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -165,7 +170,7 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
 def test_rejects_construction_above_the_vaporizer_maximum() -> None:
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             delivered_concentration_percent=Percent(8.0),
             max_delivered_concentration_percent=Percent(5.0),
         )
@@ -173,7 +178,7 @@ def test_rejects_construction_above_the_vaporizer_maximum() -> None:
 
 def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -186,7 +191,7 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
     """A dial at zero, with the vaporizer off, is always valid, because it gives washout."""
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -211,7 +216,7 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: 
         match="^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
     ):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             delivered_concentration_percent=Percent(0.0),
             max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
         )
@@ -226,7 +231,7 @@ def test_accepts_fresh_gas_flow_at_both_ends_of_the_supported_range() -> None:
 
     for fresh_gas_flow_l_min in (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN):
         circuit = BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
         )
@@ -249,7 +254,7 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(4.0),
     )
@@ -263,7 +268,7 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
 def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             fresh_gas_flow_l_min=FreshGasFlow(500.0),
         )
@@ -282,17 +287,17 @@ def test_changing_circuit_volume_conserves_stored_agent() -> None:
     """
 
     circuit = BreathingCircuit(
-        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=CompartmentVolume(6.0)
     )
     circuit.set_agent_amount(0.048288200)
 
-    circuit.set_circuit_volume(3.0)
+    circuit.set_circuit_volume(CompartmentVolume(3.0))
 
     assert circuit.agent_amount_l == pytest.approx(0.048288200)
     assert circuit.circuit_volume_l == 3.0
     assert circuit.inspired_partial_pressure_fraction == pytest.approx(0.048288200 / 3.0)
 
-    circuit.set_circuit_volume(12.0)
+    circuit.set_circuit_volume(CompartmentVolume(12.0))
 
     assert circuit.agent_amount_l == pytest.approx(0.048288200)
     assert circuit.inspired_partial_pressure_fraction == pytest.approx(0.048288200 / 12.0)
@@ -307,7 +312,7 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
     """
 
     circuit = BreathingCircuit(
-        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=CompartmentVolume(6.0)
     )
     circuit.set_agent_amount(2.0)
 
@@ -319,7 +324,7 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
             r'atmosphere \(docs/MODEL.md, "Breathing circuit"\)$'
         ),
     ):
-        circuit.set_circuit_volume(1.0)
+        circuit.set_circuit_volume(CompartmentVolume(1.0))
 
     assert circuit.circuit_volume_l == 6.0
     assert circuit.agent_amount_l == pytest.approx(2.0)
@@ -338,7 +343,7 @@ def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> No
     """
 
     circuit = BreathingCircuit(
-        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=CompartmentVolume(6.0)
     )
     object.__setattr__(circuit, "inspired_partial_pressure_fraction", nan)
 
@@ -346,7 +351,7 @@ def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> No
         SimulationConfigurationError,
         match="^inspired_partial_pressure_fraction of nan is outside 0 to 1",
     ):
-        circuit.set_circuit_volume(3.0)
+        circuit.set_circuit_volume(CompartmentVolume(3.0))
 
     assert circuit.circuit_volume_l == 6.0
 
@@ -355,11 +360,11 @@ def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
     """The capacity bound is closed, matching `set_agent_amount`'s own."""
 
     circuit = BreathingCircuit(
-        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=CompartmentVolume(6.0)
     )
     circuit.set_agent_amount(2.0)
 
-    circuit.set_circuit_volume(2.0)
+    circuit.set_circuit_volume(CompartmentVolume(2.0))
 
     assert circuit.inspired_partial_pressure_fraction == pytest.approx(1.0)
     assert circuit.agent_amount_l == pytest.approx(2.0)
@@ -374,7 +379,7 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
     """
 
     return BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(4.0),
         delivered_concentration_percent=Percent(2.0),
         inspired_partial_pressure_fraction=Fraction(0.01),
@@ -391,22 +396,22 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
         pytest.param(
             "circuit_volume_l",
             0.0,
-            SimulationConfigurationError,
-            "^circuit_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^circuit_volume_l of 0.0 was not built as CompartmentVolume, it is float",
             id="zero-volume",
         ),
         pytest.param(
             "circuit_volume_l",
             nan,
-            SimulationConfigurationError,
-            "^circuit_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^circuit_volume_l of nan was not built as CompartmentVolume, it is float",
             id="nan-volume",
         ),
         pytest.param(
             "circuit_volume_l",
             True,
             TypeError,
-            "^circuit_volume_l of True has type bool",
+            "^circuit_volume_l of True was not built as CompartmentVolume, it is bool",
             id="bool-volume",
         ),
         pytest.param(
@@ -583,8 +588,8 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
     The circuit stores its agent as a fraction of its volume, so a volume
     written straight onto the field changes the amount of agent with it.
     Halving the volume on a run stepped 60 s left half the agent that the
-    circuit held. No constructor refuses a positive volume, so the field's
-    write does not refuse one either (`PL-19Y0`). Instead, the next step halts
+    circuit held. No constructor refuses a volume inside the numerical envelope,
+    so the field's write does not refuse one either (`PL-19Y0`). Instead, the next step halts
     on the accounting identity and is rolled back, rather than carrying the
     lost agent forward. `set_circuit_volume` is the write that conserves the
     agent, and the same step passes after it.
@@ -593,7 +598,7 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
     written_past = _a_sevoflurane_run_stepped_60_s()
     before = written_past.capture_state()
 
-    written_past.circuit.circuit_volume_l = 3.0
+    written_past.circuit.circuit_volume_l = CompartmentVolume(3.0)
 
     with pytest.raises(AgentSimulationValidationError, match="^Agent accounting validation failed"):
         written_past.advance(SimulationStep(0.1))
@@ -602,7 +607,7 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
 
     conserved = _a_sevoflurane_run_stepped_60_s()
 
-    conserved.circuit.set_circuit_volume(3.0)
+    conserved.circuit.set_circuit_volume(CompartmentVolume(3.0))
 
     assert conserved.advance(SimulationStep(0.1)).agent_accounting.passes_validation
 
@@ -623,7 +628,7 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(5.0)
+        circuit_volume_l=CompartmentVolume(6.0), max_delivered_concentration_percent=Percent(5.0)
     )
 
     assert circuit.delivered_concentration_percent == 0.0
@@ -648,7 +653,10 @@ def test_a_circuit_cannot_be_built_without_its_volume_or_its_vaporizer_maximum(
     the data files.
     """
 
-    given = {"circuit_volume_l": 6.0, "max_delivered_concentration_percent": Percent(8.0)}
+    given = {
+        "circuit_volume_l": CompartmentVolume(6.0),
+        "max_delivered_concentration_percent": Percent(8.0),
+    }
     del given[missing]
 
     with pytest.raises(TypeError, match=f"missing 1 required .*argument: '{missing}'"):
@@ -847,7 +855,7 @@ def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(1.0),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
@@ -870,7 +878,7 @@ def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="machine can deliver"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             fresh_gas_flow_l_min=FreshGasFlow(0.2),
             deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
@@ -889,7 +897,7 @@ def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+        circuit_volume_l=CompartmentVolume(6.0), max_delivered_concentration_percent=Percent(100.0)
     )
 
     assert circuit.deliverable_fresh_gas_flow_range is None
@@ -914,7 +922,7 @@ def test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built() ->
 
     with pytest.raises(SimulationConfigurationError) as raised:
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
                 minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 2.0,
@@ -933,7 +941,7 @@ def test_a_range_touching_the_envelope_at_one_point_is_built() -> None:
     """The overlap test is on the closed intervals, so one shared flow is enough."""
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
@@ -972,7 +980,7 @@ def test_a_range_may_be_floored_at_zero() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.0, maximum_l_min=8.0
@@ -1039,7 +1047,7 @@ def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
 
     lowest, highest = accepted
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(lowest),
         deliverable_fresh_gas_flow_range=(
@@ -1077,7 +1085,7 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
 
     circuit = BreathingCircuit(
         max_delivered_concentration_percent=Percent(100.0),
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(2.0),
     )

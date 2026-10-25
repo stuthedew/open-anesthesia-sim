@@ -12,6 +12,7 @@ from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
     parse_reference_adult_parameters,
@@ -37,7 +38,7 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
         ),
     ):
         AlveolarCompartment(
-            gas_volume_l=2.5,
+            gas_volume_l=CompartmentVolume(2.5),
             alveolar_ventilation_l_min=AlveolarVentilation(4.0),
             agent_amount_l=2.6,
         )
@@ -60,7 +61,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     """
 
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     held = alveoli.agent_amount_l
@@ -102,37 +103,41 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
         pytest.param(
             "gas_volume_l",
             0.0,
-            SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^gas_volume_l of 0.0 was not built as CompartmentVolume, it is float",
             id="zero-volume",
         ),
         pytest.param(
             "gas_volume_l",
             -1.0,
-            SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^gas_volume_l of -1.0 was not built as CompartmentVolume, it is float",
             id="negative-volume",
         ),
         pytest.param(
             "gas_volume_l",
             inf,
-            SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^gas_volume_l of inf was not built as CompartmentVolume, it is float",
             id="infinite-volume",
         ),
         pytest.param(
             "gas_volume_l",
             nan,
-            SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^gas_volume_l of nan was not built as CompartmentVolume, it is float",
             id="nan-volume",
         ),
         pytest.param(
-            "gas_volume_l", True, TypeError, "^gas_volume_l of True has type bool", id="bool-volume"
+            "gas_volume_l",
+            True,
+            TypeError,
+            "^gas_volume_l of True was not built as CompartmentVolume, it is bool",
+            id="bool-volume",
         ),
         pytest.param(
             "gas_volume_l",
-            0.5,
+            CompartmentVolume(0.5),
             SimulationConfigurationError,
             r"^gas_volume_l of 0.5 is too small for the 0.625 L of agent the alveolar "
             r"compartment holds: it would leave room for 0.5 L at a partial pressure of one "
@@ -172,7 +177,7 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
     """
 
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
     held = astuple(alveoli)
@@ -197,7 +202,7 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     """
 
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
     refused = (
@@ -206,10 +211,10 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
-        replace(alveoli, gas_volume_l=0.5)
+        replace(alveoli, gas_volume_l=CompartmentVolume(0.5))
 
     smuggled = copy.copy(alveoli)
-    object.__setattr__(smuggled, "gas_volume_l", 0.5)
+    object.__setattr__(smuggled, "gas_volume_l", CompartmentVolume(0.5))
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         copy.copy(smuggled)
@@ -217,7 +222,7 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     with pytest.raises(SimulationConfigurationError, match=refused):
         pickle.loads(pickle.dumps(smuggled))
 
-    alveoli.gas_volume_l = alveoli.agent_amount_l
+    alveoli.gas_volume_l = CompartmentVolume(alveoli.agent_amount_l)
 
     assert alveoli.partial_pressure_fraction == 1.0
 
@@ -232,12 +237,17 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
     refused the volume after that read. The capacity check therefore kept a
     leniency for a capacity that was not positive. That leniency accepted
     every amount once a bad volume had been written in a way that bypassed
-    the constructor (`PL-544D`, found at review).
+    the constructor (`PL-544D`, found at review). Since `PL-QX2G`, such a volume
+    is refused when its `CompartmentVolume` is built, before any write.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="gas_volume_l"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^gas_volume_l of .* is outside the numerical envelope of 0.01 to 10000 L",
+    ):
         AlveolarCompartment(
-            alveolar_ventilation_l_min=AlveolarVentilation(4.0), gas_volume_l=invalid_value
+            alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+            gas_volume_l=CompartmentVolume(invalid_value, name="gas_volume_l"),
         )
 
 
@@ -252,10 +262,14 @@ def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_numbe
     supported between instances of 'float' and 'str'". That message named
     neither the field nor its constraint, which is the kind of message that
     `PL-3800` had removed (found at review). Since `PL-19Y0`, the volume's
-    own write requires a number first, and the stand-in is gone.
+    own write checks it first, and the stand-in is gone. Since `PL-QX2G`, that
+    check requires a `CompartmentVolume`.
     """
 
-    with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
+    with pytest.raises(
+        TypeError,
+        match=f"^gas_volume_l of {not_a_number!r} was not built as CompartmentVolume, it is ",
+    ):
         AlveolarCompartment(
             alveolar_ventilation_l_min=AlveolarVentilation(4.0),
             gas_volume_l=not_a_number,  # type: ignore[arg-type]
@@ -277,7 +291,7 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
     """
 
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     captured = alveoli.capture_state()
@@ -292,7 +306,7 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
 
 def test_changing_ventilation_preserves_alveolar_agent() -> None:
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     amount_before = alveoli.agent_amount_l
@@ -305,7 +319,7 @@ def test_changing_ventilation_preserves_alveolar_agent() -> None:
 
 def test_reset_clears_agent_and_preserves_settings() -> None:
     alveoli = AlveolarCompartment(
-        gas_volume_l=3.0, alveolar_ventilation_l_min=AlveolarVentilation(5.0)
+        gas_volume_l=CompartmentVolume(3.0), alveolar_ventilation_l_min=AlveolarVentilation(5.0)
     )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
 
@@ -326,7 +340,7 @@ def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
 
     for alveolar_ventilation_l_min in (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN):
         alveoli = AlveolarCompartment(
-            gas_volume_l=2.5,
+            gas_volume_l=CompartmentVolume(2.5),
             alveolar_ventilation_l_min=AlveolarVentilation(alveolar_ventilation_l_min),
         )
 
@@ -341,7 +355,7 @@ def test_rejects_ventilation_above_the_supported_range() -> None:
     """Regression (PL-0MLQ): 200 L/min was accepted and simulated."""
 
     alveoli = AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+        gas_volume_l=CompartmentVolume(2.5), alveolar_ventilation_l_min=AlveolarVentilation(4.0)
     )
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
@@ -352,7 +366,10 @@ def test_rejects_ventilation_above_the_supported_range() -> None:
 
 def test_rejects_construction_with_ventilation_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        AlveolarCompartment(gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(200.0))
+        AlveolarCompartment(
+            gas_volume_l=CompartmentVolume(2.5),
+            alveolar_ventilation_l_min=AlveolarVentilation(200.0),
+        )
 
 
 @pytest.mark.parametrize("missing", ["gas_volume_l", "alveolar_ventilation_l_min"])
@@ -368,7 +385,7 @@ def test_an_alveolar_compartment_cannot_be_built_without_its_volume_or_ventilati
     """
 
     given: dict[str, object] = {
-        "gas_volume_l": 2.5,
+        "gas_volume_l": CompartmentVolume(2.5),
         "alveolar_ventilation_l_min": AlveolarVentilation(4.0),
     }
     del given[missing]

@@ -37,6 +37,7 @@ import pytest
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit, FreshGasExchange
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -201,7 +202,7 @@ class CompartmentPrimitive:
 def _build_circuit(fresh_gas_flow_l_min: float) -> BreathingCircuit:
     return BreathingCircuit(
         max_delivered_concentration_percent=Percent(100.0),
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
         delivered_concentration_percent=DRIVING_PERCENT,
         inspired_partial_pressure_fraction=LOADED_FRACTION,
@@ -230,10 +231,10 @@ class _Perfused[CompartmentT: (TissueGroup, VenousBloodCompartment)]:
 def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
     tissue = TissueGroup(
         name="vessel_rich",
-        volume_l=6.0,
+        volume_l=CompartmentVolume(6.0),
         perfusion_fraction=0.76,
-        blood_gas_partition_coefficient=0.65,
-        tissue_gas_partition_coefficient=1.0,
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        tissue_gas_partition_coefficient=PartitionCoefficient(1.0),
     )
     tissue.set_partial_pressure_fraction(LOADED_FRACTION)
 
@@ -241,7 +242,10 @@ def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
 
 
 def _build_venous_blood(blood_flow_l_min: float) -> _Perfused[VenousBloodCompartment]:
-    venous_blood = VenousBloodCompartment(volume_l=1.222, blood_gas_partition_coefficient=0.65)
+    venous_blood = VenousBloodCompartment(
+        volume_l=CompartmentVolume(1.222),
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+    )
     venous_blood.set_partial_pressure_fraction(LOADED_FRACTION)
 
     return _Perfused(venous_blood, blood_flow_l_min)

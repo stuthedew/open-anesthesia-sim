@@ -1,8 +1,8 @@
 """Test, in one place, the shared rule for what a checked type may be built from.
 
 `core/checked_number.py` sets the rule for every checked type: `Fraction`,
-`Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant` and
-`StepCount`. The rule says what may be built into one, that none is built from
+`Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant`,
+`StepCount`, `CompartmentVolume` and `PartitionCoefficient`. The rule says what may be built into one, that none is built from
 another, and how a zero is stored. Each type's own tests check that the type
 follows the rule. These tests check the rule itself, so that a change to it
 fails here before any type's tests fail (`PL-LLMN`, `PL-979Z`).
@@ -33,6 +33,7 @@ from anesthesia_sim.core.checked_number import (
 )
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
@@ -63,12 +64,16 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     Percent: 0.05,
     MacPercent: 0.05,
     StepCount: 1,
+    CompartmentVolume: 0.05,
+    PartitionCoefficient: 0.05,
 }
 """For each checked type, a number that every other type's range accepts, with one exception.
 
 0.05 is a supported step, a flow of 0.05 L/min, an instant of 0.05 s, a
-fraction of 0.05 and a dial at 0.05%. A count of one step is an instant of
-1 s, a flow of 1 L/min, a fraction of 1.0 and a dial at 1%. So when one of
+fraction of 0.05, a dial at 0.05%, a volume of 0.05 L and a partition
+coefficient of 0.05. A count of one step is an instant of 1 s, a flow of
+1 L/min, a fraction of 1.0, a dial at 1%, a volume of 1 L and a coefficient
+of 1. So when one of
 these values, built as one type, is refused by another type, the refusal
 comes from the type and not from the number. The one exception is the step
 built from the count, because no whole number of seconds is a supported
@@ -88,12 +93,14 @@ NAMED_AS: dict[type[Any], str] = {
     Percent: "percent",
     MacPercent: "mac_percent",
     StepCount: "step_count",
+    CompartmentVolume: "volume_l",
+    PartitionCoefficient: "partition_coefficient",
 }
 """The name that each constructor gives its value in a refusal.
 
 The name is the constructor's parameter, with two exceptions. The step uses
 the run's `simulation_step_s`, although its parameter is `seconds`. A
-concentration uses its default `name`."""
+concentration, a volume and a partition coefficient use their default `name`."""
 
 ORDERED_PAIRS = [
     (built_as, building)
@@ -398,6 +405,8 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
     Percent: 150.0,
     MacPercent: 150.0,
     StepCount: -5,
+    CompartmentVolume: 1e-5,
+    PartitionCoefficient: 1e5,
 }
 """For each checked type, a number that its own range refuses, written into a pickle by hand."""
 
