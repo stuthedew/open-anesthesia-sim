@@ -977,18 +977,24 @@ def claimed_here(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
     """The items that a `Claim:` on this checkout's own commits names.
 
     The commits are the ones on `HEAD` and not on the default branch, walked as
-    `holdings` walks a branch. A claim counts in any state, as in
-    `claims_bound`: a session that claimed an item and has since closed or
-    yielded it still knows the item exists.
+    `holdings` walks a branch. A claim counts only where its token names the
+    branch `HEAD` is on, as in `_events` (`PL-CH3Z`). So a claim carried in by
+    merging another branch that has not landed stays that branch's. A claim
+    counts in any state, as in `claims_bound`: a session that claimed an item
+    and has since closed or yielded it still knows the item exists.
 
     `bin/docket new` reads this so that a capture is never matched to an item
     the filing session is working (`PL-PNSV`). It reads `HEAD` alone and no
-    other ref, because capture is kept cheap. A git too old to read a trailer,
-    or one that does not answer, gives an empty set, and the capture is then
-    searched as it was before this existed.
+    other ref, because capture is kept cheap. A detached `HEAD` claims nothing.
+    A git too old to read a trailer, or one that does not answer, gives an
+    empty set, and the capture is then searched as it was before this existed.
     """
     run = _Silences(runner or _run_git)
     if _below_floor(root, run):
+        return frozenset()
+    remotes = _remotes(root, run)
+    branch = head_branch(root, run, remotes)
+    if not branch:
         return frozenset()
     history = _history(["HEAD"], default_base(root, runner=run), root, run)
     if history is None:
@@ -998,6 +1004,7 @@ def claimed_here(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
         for commit in history
         for value in commit.claims
         if (parsed := _parse_claim(value)) is not None
+        and _head_name(parsed[1], remotes) == branch
     )
 
 

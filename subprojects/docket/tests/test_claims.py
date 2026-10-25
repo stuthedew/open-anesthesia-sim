@@ -160,12 +160,16 @@ def test_claimed_here_reads_this_branch_s_claims_and_not_the_base_s(tmp_path: Pa
     A squash merge can carry a `Claim:` line into the default branch's
     history. A walk that read the base would then treat every item ever
     claimed there as in hand, and the capture search would never match one of
-    them again.
+    them again. A branch merged in before it landed carries its own claims,
+    which stay that branch's, as they do for `holdings`.
     """
     repo = _Repo(tmp_path / "repo")
     repo.claim("PL-C2C2", when=T0 - DAY)
-    repo.branch("claude/held")
+    repo.branch("claude/other")
+    repo.claim("PL-D3D3", when=T0 - HOUR)
+    repo.branch("claude/held", start="main")
     repo.claim("PL-B1B1", when=T0)
+    repo.git("merge", "-q", "--no-edit", "claude/other")
 
     assert claimed_here(repo.root) == {"PL-B1B1"}
 
