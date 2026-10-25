@@ -3,11 +3,12 @@ id: PL-W5JR
 title: A sent-back headless worker branch hides its item from bin/docket next, and the daily branch sweep keeps it, so only the owner's hand push can release the item: claude/pl-928v-worker after #1733 carried its two commits to main
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: worker-runs
-touches: tools/branch_sweep.py, tests/unit/test_branch_sweep.py
+touches: tools/branch_sweep.py, tools/worker_runs.py, tests/unit/test_branch_sweep.py, tests/unit/test_worker_runs.py, docs/apparatus.md, docs/maintainer.md, docs/items
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a sent-back worker branch is named for deletion, so its item returns to bin/docket next instead of hiding as in flight
 verify: grep -q 'def test_a_sent_back_worker_branch_is_listed_for_deletion' tests/unit/test_branch_sweep.py
 reenters: PL-BHVM
@@ -47,3 +48,5 @@ reviewed `sent-back` on `main` as finished.
 **Generator check.** An instance of the fact "whether the base already holds or has superseded a branch commit's change, by whatever route", which `PL-BHVM`'s `misread:` states. The carried commits have new shas, so the sweep compares file content and finds `main`'s copy different. `PL-BHVM` closed on 2026-09-19. Recorded as `reenters: PL-BHVM`.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `tools/branch_sweep.py` still has no reading for a sent-back worker branch, and the named test does not exist. No worker branch is on the remote today, so no item is hidden by one now.
+
+**Built, 2026-10-25.** `tools/worker_runs.py` gains `sent_back`, which returns each worker branch whose latest run record is reviewed `sent-back`, with its review date. It lives there because that module owns the record's format. `tools/branch_sweep.py` reads it. For such a branch whose last commit is no later than the review, the sweep turns the unfinished-work, stranded-edit and orphaned-commit reasons into notes archived with the branch. An open pull request, the only copy of an item and the grace period still keep the branch, because the readers that find them now mark them firm. A push after the review is new work, so it is not settled. Tests: `test_a_sent_back_worker_branch_is_listed_for_deletion`, `test_an_open_pull_request_still_keeps_a_sent_back_branch`, `test_a_commit_after_the_review_is_not_settled_by_it`, and `test_only_a_branch_whose_latest_run_was_sent_back_is_settled`. `docs/apparatus.md` and `docs/maintainer.md` § "Spend the monthly API credit on delegable items" say so.
