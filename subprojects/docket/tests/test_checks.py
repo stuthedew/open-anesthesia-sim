@@ -2802,6 +2802,19 @@ def test_an_item_whose_work_has_landed_is_an_error() -> None:
     assert not _has(_advisories(_landed()), "already passes")
 
 
+def test_a_worked_item_on_a_worker_branch_passes_the_replay() -> None:
+    """`PL-WJJ8`: the worker may not close its item, so its passing command is its work done."""
+    worked = analyze([_item()], TODAY, landed=_landed(), worked="PL-K7QX")
+    assert not _has(worked.errors, "already passes")
+    assert _has(worked.advisories, "PL-K7QX is the item this headless worker is working")
+    # Any other item whose command passes is still the two-reading error.
+    other = analyze(
+        [_item()], TODAY, landed=_landed(passing=("PL-K7QX", "PL-B7K2")), worked="PL-B7K2"
+    )
+    assert _has(other.errors, "PL-K7QX is open but its `verify:` command already passes")
+    assert not _has(other.errors, "PL-B7K2")
+
+
 def test_a_landed_item_is_reported_as_two_readings_not_a_verdict() -> None:
     # It must not claim the work landed. A passing command is also what a
     # command that does not discriminate looks like, and on this store that

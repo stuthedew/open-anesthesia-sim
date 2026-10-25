@@ -181,6 +181,10 @@ Breaking one silently is worse than not doing the item.
   and report it. See **When something errors** below.
 - **Never change an item's `status`.** Marking work done is the reviewer's,
   not yours.
+  When `tools/headless_worker.py` runs you, it names your item in
+  `DOCKET_WORKER_ITEM`. `make check` then reports your item's passing
+  `verify:` as an advisory rather than an error, so finished work can still
+  report green (`PL-WJJ8`).
 - **Never assert a value you observed rather than one the brief specified.**
   If the brief names an exception and a message, assert those. If the code
   disagrees with the brief, that is a finding to capture — not a test to bend

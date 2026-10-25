@@ -21,6 +21,7 @@ from typing import Any
 from . import arming, claiming, instructions, notes, render, sessions
 from .checks import (
     TIER_BANDS,
+    WORKER_ITEM_ENV,
     Report,
     SettingsSource,
     analyze,
@@ -949,6 +950,9 @@ def _complete_report(
         offered=_offered(root, items, config, args),
         milestones=_milestones(root, config),
         landed=landed,
+        # The item a headless worker is working, whose passing command is its
+        # work done rather than a stale item (`PL-WJJ8`).
+        worked=os.environ.get(WORKER_ITEM_ENV) or None,
         # Only the closures in question are asked about, because each costs a
         # `git show`: a done item recording no `pr`, judged once its closure
         # stands on the default base, and a done item this checkout changed,
