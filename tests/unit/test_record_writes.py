@@ -41,7 +41,6 @@ from __future__ import annotations
 import dataclasses
 import importlib
 import inspect
-import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -389,6 +388,30 @@ def core_classes() -> list[tuple[str, type]]:
     return found
 
 
+ITEMS = Path(__file__).resolve().parents[2] / "docs" / "items"
+
+
+def _open_items_named(text: str) -> list[str]:
+    """Return the queue items that `text` names and that are still open.
+
+    A `GAP` entry stays true only while its item is open. When the item is
+    closed, the test fails until the entry is changed to the kind of write the
+    item built.
+    """
+
+    named = {word.strip("().,;") for word in text.split() if word.strip("(").startswith("PL-")}
+    found = []
+
+    for name in sorted(named):
+        for path in ITEMS.glob(f"{name}-*.md"):
+            front = path.read_text(encoding="utf-8").split("\n---\n", 1)[0]
+
+            if "\nstatus: done" not in front and "\nstatus: dropped" not in front:
+                found.append(name)
+
+    return found
+
+
 def _entries(kind: str) -> list[Any]:
     return [
         pytest.param(key, field, write, id=f"{key}.{field}")
@@ -455,6 +478,7 @@ def test_a_write_that_breaks_the_accounting_fails_the_next_accounting_read(
     assert not system.agent_simulation_validation.passes_validation
 
 
+@pytest.mark.reads_item_store
 @pytest.mark.parametrize(
     ("key", "field", "write"),
     _entries(ACCOUNTED) + _entries(OWN) + _entries(PRIVATE) + _entries(GAP),
@@ -468,7 +492,7 @@ def test_a_field_written_without_a_check_at_the_write_says_why(
         assert field.startswith("_") or key.split(".")[-1].startswith("_")
 
     if write.kind == GAP:
-        assert re.search(r"\bPL-[0-9A-Z]{4}\b", write.why)
+        assert _open_items_named(write.why)
 
 
 def test_every_entry_is_of_a_known_kind() -> None:
