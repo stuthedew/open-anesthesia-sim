@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/display_units.py, tests/unit/test_dashboard_frame.py, tests/unit/test_display_units.py
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1777
 payoff: the unit beside a flow control and the unit its value is recorded in come from one place
 verify: ! grep -q '"L/min"' src/anesthesia_sim/app/dashboard_frame.py
 ---

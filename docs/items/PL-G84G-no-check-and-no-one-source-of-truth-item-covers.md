@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/app/, tests/unit/, docs/ARCHITECTURE.md
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1777
 payoff: a unit label shown beside a value cannot change in one module and stay old in another
 verify: ! grep -q '"L/min"' src/anesthesia_sim/app/control_record.py && ! grep -q '"×MAC"' src/anesthesia_sim/app/qt_chart.py && ! grep -q '"% of 1 atm"' src/anesthesia_sim/app/qt_chart.py
 ---
