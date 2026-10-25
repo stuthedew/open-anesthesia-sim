@@ -53,21 +53,22 @@ def halt_gate[View: HaltingView, **Params](
     """Make an exception raised inside `slot` halt the view's run, rather than escape to Qt.
 
     The returned method runs `slot`. When `slot` raises an `Exception`, the returned
-    method passes it to the view's `halt_for_slot`. A slot can raise when it reads a
-    snapshot that rejects a value, or when a setting or a step that it applies raises.
-    Either way, the run is left halted and the halt is shown on screen. A method that a
-    gated slot calls may be gated as well. The inner gate then halts and returns, and
-    the outer slot goes on.
+    method passes it to the view's `halt_for_slot`. A slot can raise when it reads a run's
+    snapshot and the snapshot rejects a value. It can also raise when a setting or a step
+    that it applies raises. Either way, the run is left halted and the halt is shown on
+    screen. A method that a gated slot calls may be gated as well. The inner gate then
+    halts the run and returns, and the outer slot continues.
 
-    Showing the halt can itself raise (`PL-TLH4`). The gate marks that exception, and
-    each outer gate passes it on. Otherwise each outer gate would show the whole halt
-    a second time, with the halt's own exception as the reason.
+    Showing the halt can itself raise (`PL-TLH4`). The gate that was showing the halt then
+    marks that exception, and each outer gate lets the marked exception through without
+    halting again. Otherwise each outer gate would show the whole halt a second time, with
+    that exception as the reason.
 
-    Qt hands a slot only as many of its signal's arguments as the slot takes. The
-    returned method does the same for `slot`. It has to, because it takes `*args`
-    itself, and PySide6 hands such a method every argument of the signal. Otherwise
-    a slot that takes no argument, connected to `rangeChanged`, would be called with
-    two (measured on PySide6 6.11.2, 2026-10-25).
+    Qt passes a slot only as many of its signal's arguments as the slot accepts. The
+    returned method does the same for `slot`. It must, because it accepts `*args` itself,
+    and PySide6 passes such a method every argument of the signal. Without this, a slot
+    that takes no argument and is connected to `rangeChanged` would be called with two
+    arguments (measured on PySide6 6.11.2, 2026-10-25).
 
     Args:
         slot: A method of a `HaltingView` that returns nothing.

@@ -7498,11 +7498,12 @@ def _ancestry(widget: QWidget) -> list[QWidget]:
     return chain
 
 
-#: Each callback that a view connects or hands out and that does not pass the halt gate,
-#: keyed by its class and its source text, with the reason it need not. Qt or a View
-#: calls every other callback from the event loop, so a raise inside it is lost unless
-#: it passes the gate (`PL-HJKN`). An entry that is no longer handed out, or that now
-#: passes the gate, fails the test, so the list stays true.
+#: Each entry is a callback that a view connects to a signal or passes to another call without
+#: the halt gate. Its key is the view class's name and the callback's source text, and its value
+#: is the reason the callback does not need the gate. Qt or a view calls every callback not
+#: listed here from the event loop, so an exception raised inside it is lost unless it passes
+#: the gate (`PL-HJKN`). The test fails on an entry if its callback is no longer connected or
+#: passed on, or if the callback now passes the gate, so the list stays accurate.
 _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
     ("RunView", "dialog.deleteLater"): (
         "it is Qt's own slot, which deletes the dialog once it closes, and it reads no run"
@@ -7530,9 +7531,10 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
 
 
 def _own_method(node: ast.expr, view_class: type) -> str | None:
-    """The name of the method of `view_class` that `node` reads as `self.<name>`, if it does.
+    """Return `<name>` when `node` is `self.<name>` for a method of `view_class`, else None.
 
-    A property is not a method handed out, because reading it hands out its value.
+    A property does not count as a method, because `self.<name>` then gives the property's
+    value, not a method.
     """
 
     if not (
@@ -7553,16 +7555,16 @@ def _own_method(node: ast.expr, view_class: type) -> str | None:
 def _callback_bypass(
     callback: ast.expr, call: ast.Call, view_class: type, local_functions: set[str]
 ) -> str | None:
-    """Why `callback`, handed to `call`, bypasses the halt gate, or None if it does not.
+    """Return why `callback`, passed to `call`, bypasses the halt gate, or None if it does not.
 
-    A method of the view passes when it is gated, wherever it is handed. Handed to
-    `.connect`, every other slot bypasses the gate. That includes a lambda, a local
-    function, a slot of another object such as `run.controller.pause`, and a slot
-    reached through an attribute of the view such as `self.controller.pause`. Handed
-    to any other call, a lambda or a local function bypasses the gate too, because the
-    callee can keep it and call it from the event loop. The one exception is a call
-    to one of the view's own methods, which runs it inside the slot that called it.
-    Any other argument is a value, not a callback, so it returns None.
+    A method of the view passes the gate when it is gated, whatever call it is passed to.
+    Every other slot passed to `.connect` bypasses the gate. That includes a lambda, a local
+    function, a slot of another object such as `run.controller.pause`, and a slot reached
+    through an attribute of the view such as `self.controller.pause`. A lambda or a local
+    function passed to any other call bypasses the gate too, because the called function can
+    keep it and call it from the event loop. The one exception is a call to one of the
+    view's own methods, because that method runs the callback inside the calling slot.
+    Any other argument is a value, not a callback, so this function returns None for it.
     """
 
     method = _own_method(callback, view_class)
@@ -7612,13 +7614,13 @@ class _HaltGateReading:
 def _halt_gate_bypasses(
     view_class: type, exemptions: Mapping[tuple[str, str], str]
 ) -> _HaltGateReading:
-    """Each call in `view_class`'s source that hands out a callback bypassing the halt gate.
+    """Find each call in `view_class`'s source whose callback bypasses the halt gate.
 
-    The source holds every connection the class makes, including those made in a
-    dialog built later. A `partial` handed to `.connect` is judged by the method it
-    wraps. A callback listed in `exemptions`, keyed by the class's name and the
-    callback's source text, is not reported as a bypass. It is reported as stale
-    when it passes the gate.
+    The source holds every connection the class makes, including the ones it makes when it
+    later builds a dialog. A `partial` passed to `.connect` is judged by the method that it
+    wraps. `exemptions` is keyed by the class's name and the callback's source text. A
+    callback listed there is not reported as a bypass, but its entry is reported as stale
+    when the callback passes the gate.
     """
 
     (class_node,) = ast.parse(inspect.getsource(view_class)).body
@@ -7676,18 +7678,18 @@ def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
     """Every slot that `RunView` and `SimulationView` connect or hand out passes the halt gate.
 
     A slot that reads or changes a run can raise, for example on a run whose snapshot
-    refuses a value. PySide6 prints an exception raised inside a slot and goes on, so
-    the run kept reading "Paused" with no halt stated. Each slot was put behind a
-    `try` by hand, and six were found outside it, one review at a time: `PL-YK2V`,
-    `PL-7DJK`, `PL-V2HC`, `PL-08SS`, `PL-F2T2` and `PL-M3M2`. Every slot now passes
-    `app/halt_gate.py`'s `halt_gate`, and this test makes the next slot pass it too
+    refuses a value. PySide6 prints an exception raised inside a slot and carries on, so the
+    run still said "Paused", and no halt appeared on screen. Each slot used to be wrapped in
+    a `try` by hand, and six were found without one, each in a separate review: `PL-YK2V`,
+    `PL-7DJK`, `PL-V2HC`, `PL-08SS`, `PL-F2T2` and `PL-M3M2`. Every slot now passes through
+    `app/halt_gate.py`'s `halt_gate`, and this test makes each new slot pass through it too
     (`PL-HJKN`).
 
-    The test reads each class's source, and `_callback_bypass` says which callbacks
-    bypass the gate. Each one must pass the gate, or be listed in
-    `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it need not.
+    The test parses each class's source, and `_callback_bypass` decides which callbacks
+    bypass the gate. The test fails on any such callback unless it is listed in
+    `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it does not need the gate.
     `test_the_halt_gate_check_finds_each_way_around_the_gate` shows that the check
-    catches each shape of bypass.
+    catches each kind of bypass.
     """
 
     bypasses: list[str] = []
@@ -7761,10 +7763,12 @@ def _bare_function() -> None:
 def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
     """The check reports each callback in `_ViewWiredAroundTheGate` that bypasses the gate.
 
-    The list below was written from that class's source by hand. A gated method, a
-    `partial` of one and a lambda run at once by the view's own method all pass. An
-    exempt callback passes until the gate covers it, and then the entry is reported
-    as stale (blind review of `PL-HJKN`).
+    The expected list below was written by hand from that class's source. Three kinds of
+    callback pass: a gated method, a `partial` of a gated method, and a lambda or a local
+    function that one of the view's own methods runs at once. An exempt callback is not
+    reported while it
+    bypasses the gate. Once the gate covers it, its entry is reported as stale (blind
+    review of `PL-HJKN`).
     """
 
     reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {})
@@ -7800,9 +7804,9 @@ def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
 ) -> None:
     """An exception in the Pause slot, which no hand-written `try` guarded, now halts the run.
 
-    Before `PL-HJKN`, PySide6 printed the exception and went on. The run kept showing
-    that it was running, and nothing on screen said that it had failed. The halt gate
-    now halts it.
+    Before the halt gate (`PL-HJKN`), PySide6 printed the exception and carried on. The run
+    kept showing that it was running, and nothing on screen said that it had failed. The
+    halt gate now halts the run.
     """
 
     controller = SimulationController()

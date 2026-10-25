@@ -128,10 +128,11 @@ def test_a_raise_inside_a_nested_gated_slot_halts_once_and_the_outer_slot_goes_o
 
 
 def test_a_raise_from_the_halt_inside_a_nested_gated_slot_halts_only_once() -> None:
-    """The halt's own exception passes through each outer gate, which does not halt again.
+    """An exception raised while the view shows a halt passes through each outer gate.
 
-    Each outer gate used to catch it as a new error and state the whole halt a second
-    time, with the halt's own exception as the reason (blind review of `PL-HJKN`).
+    No outer gate halts the run again. Each outer gate used to catch the exception as a new
+    error and show the whole halt a second time, with that exception as the reason (blind
+    review of `PL-HJKN`).
     """
 
     class _FailingHaltNestingView(_NestingView):
