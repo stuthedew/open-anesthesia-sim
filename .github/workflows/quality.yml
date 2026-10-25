@@ -316,8 +316,10 @@ jobs:
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
       - run: uv run python tools/ignore_check.py
+        if: steps.scope.outputs.scope != 'items'
       # Under `uv run` because it runs pylint, a `dev` dependency, for its
-      # duplicate-code check alone (`PL-VWXL`).
+      # duplicate-code check alone. An item file holds no code, so the fast
+      # path skips it (`PL-VWXL`).
       - run: uv run python tools/duplicate_code_check.py
         if: steps.scope.outputs.scope != 'items'
       # `make check`'s pytest line, with `--cov-fail-under=100` replaced by
