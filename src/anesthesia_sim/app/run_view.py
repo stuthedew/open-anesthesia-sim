@@ -3,45 +3,49 @@
 `PL-B9PY` divided the dashboard into a part that all runs share and a part
 for each run. `RunView` is the part for each run. It holds what two displayed
 runs cannot share: a controller, seven readouts, four settings, the
-transport, the agent identity, the notices, and the accounting and
-control-change panels. `SimulationView` holds what the runs do share. The
-class can be instantiated twice, and nothing in one instance refers to
-another run.
+transport (the run's playback controls), the agent identity, the notices, and
+the accounting and control-change panels. `SimulationView` holds what the runs
+do share. `RunView` can be instantiated twice, and nothing in one instance
+refers to another run.
 
 `app/dashboard_frame.py` decides every claim that this class displays, and
-does so without a GUI toolkit. This class calls those functions once per
-tick, in the order that `refresh` sets. It writes the results into widgets
+does so without a GUI toolkit. This class calls that module's functions once
+per tick, in the order that `refresh` sets. It writes the results into widgets
 that decide nothing (`PL-25KS`, decision D2). No number is formatted here and
 no colour is declared here. Colours come from `app/theme.py`, and they reach a
-widget through the composers in `app/stylesheets.py` (decision D10,
-`PL-Y4YX`).
+widget through the functions in `app/stylesheets.py` that compose stylesheets
+(decision D10, `PL-Y4YX`).
 
 **Agent colour has one writer.** `_apply_agent_color_scheme` is the only
 method under `app/` that writes the ISO 5360 identity pair. It writes the pair
 on every tick to exactly six controls, whether or not each is on screen. So
 the chip that replaces the selector when a run starts already has the right
 colour on the frame where it appears (`PL-61WW`).
-`tools/agent_identity_check.py` reads that method to learn which controls
-carry the identity. It enforces one rule on each of them: nothing that carries
-agent colour is drawn disabled. So the selector's `setDisabled(locked)` call
-sits beside a `setHidden(locked)` call with the same operand, and the selector
-draws nothing while it cannot be used.
+`tools/agent_identity_check.py` reads the source of that method to learn which
+controls carry the identity. It enforces one rule on each of them: nothing that
+carries agent colour is drawn disabled. So the selector's `setDisabled(locked)`
+call sits beside a `setHidden(locked)` call with the same argument, and the
+selector is hidden whenever it cannot be used.
 
 **A rejected setting shows a notice, and any other exception halts the run.**
 Every setting forwarded to the run passes through `_apply_setting`.
 `SimulationConfigurationError` means that the core rejected the value and
 changed nothing, so the run goes on under a "Setting refused" banner. Any
-other exception stops the run. `dashboard_frame.halt_disposition` decides how
-the stop is reported. A `SimulationDomainLimitError` is reported as reaching
-the supported run length, and anything else as a failure (`PL-V6M0`,
-`PL-Y5WR`, `PL-YK2V`). `present_halt` shows a halted run before any frame is
-attempted. It works from the controller's record, for which no compartment
-value is built. There are two reasons. First, the frame is the shared render
-path, and that path may be what raised. A halt reported only through the
-frame would then leave every status word reading "Paused" over a failed
-controller (`PL-25KS`). Second, a fresh snapshot builds compartment values.
-When building one of those values was what raised, a halt stated from the
-snapshot was never shown at all (`PL-7DJK`).
+other exception stops the run. Every slot of this view, and `_apply_setting`
+itself, is wrapped in `halt_gate` from `app/halt_gate.py`. So an exception
+raised in any of them halts the run through `_halt_run`. It does not escape to
+the toolkit and leave the run still showing "Paused" (`PL-HJKN`).
+`dashboard_frame.halt_disposition` decides how the stop is reported. A
+`SimulationDomainLimitError` is reported as reaching the supported run length,
+and anything else as a failure (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`).
+`present_halt` shows a halted run before any attempt to draw a frame. It works
+from the controller's record, and reading that record builds no compartment
+value. There are two reasons for this. First, the frame is drawn by a render
+path that all runs share, and that path may be what raised. A halt reported
+only through the frame would then leave every status word showing "Paused" for
+a failed controller (`PL-25KS`). Second, building a fresh snapshot builds
+compartment values. When building one of those values was what raised, a halt
+reported from the snapshot was never shown at all (`PL-7DJK`).
 
 **The run-state widgets have one writer.** Every widget that a run shows is
 written from one of two sources. The run-state widgets show what the run
@@ -50,9 +54,10 @@ control-change panel and the banner. The snapshot widgets show the snapshot
 that the frames were drawn from: the readouts, their clock and the accounting
 panel. `_write_statement` writes the run-state widgets from
 `dashboard_frame.run_statement`. Both `refresh` and `present_halt` call it, so
-a halted run looks the same as a drawn run in the same state. An earlier halt
-wrote a list of widgets chosen by hand. Each widget that the list missed went
-on showing the run as it was at the last frame (`PL-X7D5`).
+a halted run looks the same as a drawn run in the same state. An earlier
+version of the halt code wrote to a list of widgets chosen by hand. Each widget
+that the list missed went on showing the run as it was at the last frame
+(`PL-X7D5`).
 
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
@@ -137,6 +142,7 @@ from anesthesia_sim.app.formatting import (
     format_playback_rate,
     format_subtitle,
 )
+from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
@@ -717,37 +723,6 @@ class RunView(QWidget):
 
         self._notice_text.set_notice(compared_run_notice(banner, self._run_name))
 
-    def _snapshot_for_a_control(self) -> SimulationSnapshot | None:
-        """Read this run's snapshot for a control, and halt the run if the read raises.
-
-        Two handlers read the snapshot inside a Qt slot. `_handle_agent_change`
-        uses it to decide whether to do nothing, start a new case or ask a
-        question. `_apply_setting` rewrites this run's labels from it after a
-        coalesced change. Inside a slot, the toolkit prints an exception and
-        otherwise loses it (`SimulationView.present` explains). A run's own
-        snapshot can reject a value, which is the halt that `PL-7DJK` made
-        visible. Before `PL-V2HC`, the read on such a run raised inside the
-        slot. So the control accepted the choice, and nothing on screen
-        responded to it.
-
-        The exception is the halt that the run is in, or is about to be in.
-        `_halt_run` shows that halt on every run-state widget. It works from
-        the controller's record, which builds no compartment value
-        (`PL-85LJ`, `PL-X7D5`). A controller keeps the first reason it was
-        given. So a run that is already halted for this rejection shows the
-        same halt again.
-
-        Returns:
-            The snapshot, or `None` once the run has been halted for the
-            raise and the halt is on screen.
-        """
-
-        try:
-            return self.snapshot()
-        except Exception as error:
-            self._halt_run(error)
-            return None
-
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
 
@@ -758,7 +733,7 @@ class RunView(QWidget):
         rewrites nothing, because the first presentation writes everything.
 
         Args:
-            snapshot: This run's state, read by `_snapshot_for_a_control`.
+            snapshot: This run's state, read by `_apply_setting` after the change.
         """
 
         if self._presented:
@@ -993,12 +968,14 @@ class RunView(QWidget):
 
     # ------------------------------------------------------------ settings
 
+    @halt_gate
     def _apply_setting(self, apply: Callable[[], None], *, coalesce: bool = False) -> None:
         """Forward one setting to the run, and report how it was received.
 
         A `SimulationConfigurationError` is a refusal. It means that the core rejected
         the value and changed nothing, so the run goes on and the banner says which
-        setting was refused. Any other exception halts the run through `_halt_run`.
+        setting was refused. Any other exception halts the run, because this method
+        is wrapped in the halt gate (`PL-HJKN`).
         That includes an exception from outside the project's own exception classes,
         because the run still cannot continue (`PL-YK2V`). An accepted setting clears
         a refusal that is in effect. It also clears the way out that a refused Reset
@@ -1007,19 +984,19 @@ class RunView(QWidget):
         cardiac output could repair that record, because it recomputed the stored
         tissue flows.
 
-        The method leaves drawing the frame to the render tick only when `coalesce` is
-        set and no refusal was in effect before the call or is in effect after it. A
-        refusal, and the clearing of one, are the states in which the dial on screen
-        and the simulation disagree, so neither may wait for a tick (`PL-R2YM`). A
-        coalesced change still rewrites this run's own labels at once, from a snapshot
-        read through `_snapshot_for_a_control`. If reading that snapshot raises, the
-        run is halted and shows the halt. Before `PL-V2HC`, the exception escaped the
-        slot after the setting had been applied. The halted run also has its dials
+        The method leaves the frame for the render tick to draw only when two things
+        are true: `coalesce` is set, and no refusal was in effect before the call or
+        is in effect after it. When a setting is refused, or a refusal is cleared, the
+        dial on screen and the simulation disagree, so neither may wait for a tick
+        (`PL-R2YM`). A coalesced change still rewrites this run's own labels at once,
+        from a snapshot read after the change. If reading that snapshot raises, the
+        gate halts the run and shows the halt. Before `PL-V2HC`, the exception escaped
+        the slot after the setting had been applied. The halted run also has its dials
         written from the settings it holds, because no frame follows to write them
-        (`PL-85LJ`). The rewrite of the labels is guarded too. It can raise, as
-        `setting_readouts` does for a control that can offer no setting. The run is
-        then halted through `_halt_run`. So the status word, the transport controls
-        and the banner show the halt before the dial write raises again and escapes
+        (`PL-85LJ`). The rewrite of the labels can raise too, as `setting_readouts`
+        does for a control that can offer no setting. The gate halts the run for that
+        as well. So the status word, the transport controls and the banner show the
+        halt before writing the dials raises again and the exception escapes
         (`PL-M3M2`).
 
         Args:
@@ -1034,9 +1011,6 @@ class RunView(QWidget):
             apply()
         except SimulationConfigurationError as error:
             self._rejected_setting_notice = refused_setting_notice(error)
-        except Exception as error:
-            self._halt_run(error)
-            return
         else:
             self._rejected_setting_notice = None
             self._refused_reset_notice = None
@@ -1044,19 +1018,11 @@ class RunView(QWidget):
         deferred = coalesce and settled_notice is None and self._rejected_setting_notice is None
 
         if deferred:
-            snapshot = self._snapshot_for_a_control()
-
-            if snapshot is None:
-                return
-
-            try:
-                self._refresh_against_last_frame(snapshot)
-            except Exception as error:
-                self._halt_run(error)
-                return
+            self._refresh_against_last_frame(self.snapshot())
 
         self.presentation_requested.emit(deferred)
 
+    @halt_gate
     def _handle_adjustment_start(self) -> None:
         """Close any open adjustment, so the changes that follow are a new act.
 
@@ -1067,6 +1033,7 @@ class RunView(QWidget):
 
         self.controller.begin_control_adjustment()
 
+    @halt_gate
     def _handle_setting_request(self, control: ControlInput, value: float) -> None:
         """Apply the value a slider in any copy of the setting controls was moved to."""
 
@@ -1109,11 +1076,13 @@ class RunView(QWidget):
 
     # ----------------------------------------------------------- transport
 
+    @halt_gate
     def _handle_start(self) -> None:
         """Start the run, and show a notice if the controller refuses the start."""
 
         self._apply_setting(self.controller.start)
 
+    @halt_gate
     def _handle_pause(self) -> None:
         self.controller.pause()
         self.presentation_requested.emit(False)
@@ -1134,6 +1103,7 @@ class RunView(QWidget):
 
         self._reset_question = question
 
+    @halt_gate
     def _handle_reset(self) -> None:
         """Respond to a press of Reset by starting over at once, or by asking first.
 
@@ -1183,6 +1153,7 @@ class RunView(QWidget):
         if question is not None:
             self._reset_dialog.show_question(question)
 
+    @halt_gate
     def _handle_reset_finished(self, result: int) -> None:
         self._resolve_reset(result == QDialog.DialogCode.Accepted)
 
@@ -1210,38 +1181,24 @@ class RunView(QWidget):
 
         `case_restarted` is emitted before the frame is asked for. So by the
         time the frame is assembled, the dashboard has already dropped any
-        branch of the run that just ended. A branch drawn beside a trunk that
-        is back at induction would be two curves claiming to show one case
-        when they no longer do.
+        branch of the run that just ended. If a branch were still drawn beside
+        a trunk that is back at induction, the two curves would claim to show
+        one case when they no longer do.
 
         **A Reset that the core refuses halts the run instead.**
         `SimulationController.reset()` refuses before it clears anything. It
         refuses when the settings record is one on which the next step would
         also be refused. So the run is left exactly as it was, and it is
         stopped through the failed-step path. That path records the refusal,
-        and the status word, the transport and the banner state it. In any
-        other halt, the banner names Reset as the way out. For this halt, the
-        way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says that no setting
-        can repair the refusal (`PL-01GY`). Every exception halts the run, as
-        an exception from a step does. A `SimulationConfigurationError` here
-        is not a refused setting, because the run it leaves cannot be cleared
-        (`PL-M4M0`). `case_restarted` is not emitted, since no case restarted.
-        The frame is asked for, as after any halt.
-        """
-
-        try:
-            self.controller.reset()
-        except Exception as error:
-            self._halt_refused_reset(error)
-            return
-
-        self._rejected_setting_notice = None
-        self._refused_reset_notice = None
-        self.case_restarted.emit()
-        self.presentation_requested.emit(False)
-
-    def _halt_refused_reset(self, error: BaseException) -> None:
-        """Halt the run for a Reset the core refused, with the banner naming the repair.
+        and the status word, the transport controls and the banner show it. In
+        any other halt, the banner names Reset as the way out. For this halt,
+        the way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says that no setting
+        can repair the refusal (`PL-01GY`). Every exception from `reset()`
+        halts the run, just as an exception from a step does. A
+        `SimulationConfigurationError` here is not treated as a refused
+        setting, because the run it leaves cannot be cleared (`PL-M4M0`).
+        `case_restarted` is not emitted, since no case restarted. The frame is
+        asked for, as after any halt.
 
         The exit text is chosen before the halt records the refusal, because
         its wording depends on what the banner's reason will be. A controller
@@ -1249,25 +1206,41 @@ class RunView(QWidget):
         failed for something else, the banner's reason stays that earlier
         failure, and the exit text itself has to state the refusal.
         `refused_reset_exit` tells that run apart from a run that this same
-        refusal stopped on an earlier press (`PL-M4M0`).
+        refusal stopped on an earlier press (`PL-M4M0`). This method then
+        raises the refusal again, to the halt gate of the slot that called it,
+        and that gate halts the run once. This method used to halt the run
+        itself. When showing that halt raised an exception, the gate caught
+        the new exception and halted the run a second time (blind review of
+        `PL-HJKN`).
 
-        Args:
-            error: What `SimulationController.reset()` raised.
+        Raises:
+            Exception: What `SimulationController.reset()` raised, once the exit
+                text is chosen.
         """
 
-        self._refused_reset_notice = refused_reset_exit(
-            error, recorded_failure_reason=self.controller.status().failure_reason
-        )
-        self._halt_run(error)
+        try:
+            self.controller.reset()
+        except Exception as error:
+            self._refused_reset_notice = refused_reset_exit(
+                error, recorded_failure_reason=self.controller.status().failure_reason
+            )
+            raise
 
+        self._rejected_setting_notice = None
+        self._refused_reset_notice = None
+        self.case_restarted.emit()
+        self.presentation_requested.emit(False)
+
+    @halt_gate
     def _handle_playback_rate_change(self, index: int) -> None:
         """Store the playback rate that the reader chose, for the next tick to read.
 
-        Raises:
-            SimulationConfigurationError: If the control offers a multiplier
-                that `SUPPORTED_PLAYBACK_RATES` does not (`playback_rate_for`).
-                A mismatch between the two tables is a defect, and raising
-                makes it visible.
+        If the control offers a multiplier that is not in `SUPPORTED_PLAYBACK_RATES`,
+        `playback_rate_for` raises `SimulationConfigurationError`. A mismatch between
+        the control's multipliers and `SUPPORTED_PLAYBACK_RATES` is a defect. The halt
+        gate halts the run for it, so the defect is shown on screen. The selector keeps
+        the rate that the reader picked. The run keeps the rate that it held before,
+        and the line beside the selector names that rate.
         """
 
         multiplier = self._playback_rate_dropdown.itemData(index)
@@ -1280,6 +1253,7 @@ class RunView(QWidget):
 
     # ---------------------------------------------------- the new-case flow
 
+    @halt_gate
     def _handle_agent_change(self, index: int) -> None:
         """Respond to a selection by doing nothing, starting a new case at once, or asking.
 
@@ -1291,12 +1265,12 @@ class RunView(QWidget):
         open dialog names one agent, and its answer must start that agent and
         no other (`PL-25KS`).
 
-        On a run whose snapshot raises, the response to the selection is to
-        show again the halt that the exception represents. The selector is
-        put back to the agent that the controller names, because the snapshot
-        that would name it is what raised (`PL-V2HC`). Reset is the way out
-        that the halt banner names, unless a refused Reset has left its own
-        way out in effect.
+        When reading the run's snapshot raises, the response to the selection is to
+        show the halt for that exception again. The gate halts the run. Then
+        `present_halt` puts the selector back to the agent that the controller's
+        record names, because the snapshot that would name it is what raised
+        (`PL-V2HC`). Reset is the way out that the halt banner names, unless a
+        refused Reset has left its own way out in effect.
         """
 
         agent_id = self._agent_dropdown.itemData(index)
@@ -1304,11 +1278,7 @@ class RunView(QWidget):
         if agent_id is None:
             return
 
-        snapshot = self._snapshot_for_a_control()
-
-        if snapshot is None:
-            self._show_running_agent(self.controller.agent_id)
-            return
+        snapshot = self.snapshot()
 
         if self._pending_agent_id is not None:
             self._show_running_agent(snapshot.agent_id)
@@ -1326,29 +1296,33 @@ class RunView(QWidget):
     def _show_running_agent(self, agent_id: str) -> None:
         """Put the selector back on `agent_id`, this run's agent, without responding to the pick.
 
-        The combo box reports the reader's pick as a change before the
-        handler runs. A pick that is not acted on leaves the selector naming
-        an agent that the run is not using, until the selector is put back.
-        Such a pick is one made while a question is open, or on a run whose
-        snapshot raises. Signals are blocked while the selector is put back,
-        so that the change is not read as a second pick.
+        The combo box changes to the reader's pick before the handler runs.
+        So a pick that is not acted on leaves the selector naming an agent
+        that the run is not using, until the selector is put back. This
+        method puts back a pick made while a question is open. On a run whose
+        snapshot raises, the halt puts the selector back instead, through
+        `present_halt`. Signals are blocked while the selector is put back, so
+        that the change is not treated as a second pick.
         """
 
         with QSignalBlocker(self._agent_dropdown):
             self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(agent_id))
 
     def _start_new_case(self, agent_id: str) -> None:
-        """Switch the run to `agent_id` through the setting gate, `_apply_setting`.
+        """Switch the run to `agent_id` through `_apply_setting`, like any other setting.
 
-        `SimulationController.set_agent` refuses a branch (`PL-TFX5`), and
-        that refusal reaches the reader as a refused-setting notice. It also
-        carries the settings over from the snapshot, so on a run whose
-        snapshot refuses the gate would record that refusal as a refused
-        setting; the snapshot is read through `_snapshot_for_a_control`
-        first, so the raise is the halt it is, restated, and nothing is
-        recorded as refused (`PL-V2HC`). The confirmation path arrives here
-        with a snapshot read when the question was asked, which a halt in
-        the meantime outdates.
+        `SimulationController.set_agent` refuses to switch the agent of a branch
+        (`PL-TFX5`), and that refusal reaches the reader as a refused-setting notice.
+        `set_agent` also carries the settings over from the run's snapshot. So
+        if reading the snapshot raises, `set_agent` raises too, and
+        `_apply_setting` would record that exception as a refused setting.
+        This method therefore reads the snapshot first, outside
+        `_apply_setting`. If that read raises, the exception reaches the halt
+        gate of the slot that called this method. The gate treats it as the
+        halt that it is and shows that halt again, and nothing is recorded as
+        refused (`PL-V2HC`). The confirmation path reaches this method holding
+        a snapshot that was read when the question was asked. A halt since
+        then makes that snapshot out of date.
 
         **An accepted switch emits `case_restarted`**, as Reset does, because
         it too starts a new case. The signal is emitted inside the setting
@@ -1358,8 +1332,7 @@ class RunView(QWidget):
         (`PL-BM6X`). A refused switch changes nothing and emits nothing.
         """
 
-        if self._snapshot_for_a_control() is None:
-            return
+        self.snapshot()
 
         def switch() -> None:
             self.controller.set_agent(agent_id)
@@ -1371,17 +1344,24 @@ class RunView(QWidget):
         """Ask before discarding a recorded run, with the selector already put back.
 
         While the question is open, the selector shows the agent that is
-        actually running. The count of changes that would be lost uses the
-        same grouping that the timeline panel lists.
+        actually running. The changes that would be lost are counted in the
+        same groups that the timeline panel lists.
+
+        The pending agent is recorded only once the dialog is built. While an
+        agent is pending, the selector puts back every later pick. The pending
+        agent used to be recorded before the dialog was built. So when building
+        the dialog raised an exception, the selector kept putting back every
+        pick, even after the Reset that the halt names as the way out (blind
+        review of `PL-HJKN`).
         """
 
-        self._pending_agent_id = agent_id
         self._show_running_agent(snapshot.agent_id)
 
         question = new_case_question(
             snapshot, AGENT_DISPLAY_NAMES[agent_id], len(self.adjustments(snapshot))
         )
         dialog = NewCaseDialog(question, self)
+        self._pending_agent_id = agent_id
         dialog.finished.connect(self._handle_new_case_finished)
         # The dialog is deleted once answered. Otherwise every question asked
         # would stay a child of this view, with its title in
@@ -1417,6 +1397,7 @@ class RunView(QWidget):
             )
         )
 
+    @halt_gate
     def _handle_new_case_finished(self, result: int) -> None:
         self._resolve_new_case(result == QDialog.DialogCode.Accepted)
 
@@ -1452,16 +1433,17 @@ class RunView(QWidget):
     def halt(self, error: BaseException, *, in_frame: bool = False) -> None:
         """Stop the run for an exception, and record the disposition that it calls for.
 
-        This method draws nothing and writes nothing on screen. `_halt_run`
-        and `SimulationView._halt_every_run` call `present_halt` after
-        halting.
+        This method draws nothing and writes nothing on screen. To show the
+        halt, `_halt_run` and `SimulationView._halt_every_run` call
+        `present_halt` after they call this method.
 
         Args:
             error: The exception that was raised.
-            in_frame: True when the exception came from the frame that every
-                run is drawn in, rather than from this run's own step or
-                setting. The controller records that as well, and a trunk with
-                that record offers no branch
+            in_frame: True when the exception came from the dashboard that
+                draws every run, either from its frame or from one of its own
+                slots. False when it came from this run's own step or setting.
+                The controller also records an exception from the dashboard,
+                and a trunk with that record offers no branch
                 (`SimulationController.record_failed_frame`).
         """
 
@@ -1485,27 +1467,56 @@ class RunView(QWidget):
         banner are written before the frame is asked for. So a run whose
         frame cannot be drawn still says that it stopped.
 
+        `present_halt` can raise an exception after it has written the halt,
+        when a dial cannot be written (`PL-M3M2`). The frame is still asked
+        for, because the dashboard restates its own panels, such as "Branch
+        here", only when it draws a frame. Before this change, no frame was
+        asked for here, so those panels kept offering the halted run as it was
+        before the halt (blind review of `PL-HJKN`).
+
         Args:
             error: The exception that was raised.
+
+        Raises:
+            ValueError: What `present_halt` raised, once the frame has been asked for.
         """
 
         self.halt(error)
-        self.present_halt()
-        self.presentation_requested.emit(False)
+
+        try:
+            self.present_halt()
+        finally:
+            self.presentation_requested.emit(False)
+
+    def halt_for_slot(self, error: Exception) -> None:
+        """Halt this run for an exception that one of its slots raised, through `_halt_run`.
+
+        `app/halt_gate.py`'s `halt_gate` calls this method. A slot of this view
+        acts on this run alone, so no other run stops.
+
+        Args:
+            error: The exception that the slot raised.
+
+        Raises:
+            ValueError: What `_halt_run` raises once the halt is shown.
+        """
+
+        self._halt_run(error)
 
     # -------------------------------------------------------------- timing
 
+    @halt_gate
     def step_tick(self) -> None:
         """Advance the run by one tick's worth of steps, and never draw.
 
-        The method reads the playback rate once and takes that many steps of
-        `SIMULATION_STEP_S`, with nothing else serviced between them. So a
-        setting changed while the run plays takes effect on a tick boundary
-        (`PL-NBWP`). A step that the core refuses abandons the rest of the
-        burst and halts the run on the last completed step. The slot keeps
-        working afterwards, so Reset can restart the run. A late tick costs
-        the run real time and never changes its trajectory, because no step
-        is made up.
+        The method reads the playback rate once and takes the number of steps that
+        it sets, each `SIMULATION_STEP_S` long, with nothing else serviced between
+        them. So a setting changed while the run plays takes effect on a tick
+        boundary (`PL-NBWP`). If the core refuses a step, the rest of that tick's
+        steps are abandoned, and the gate halts the run on the last completed step.
+        The slot keeps working afterwards, so Reset can restart the run. A tick that
+        fires late costs the run real time but never changes its trajectory, because
+        no step is made up.
         """
 
         if not self.controller.is_running:
@@ -1515,11 +1526,8 @@ class RunView(QWidget):
             tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
         )
 
-        try:
-            for _ in range(steps):
-                self.controller.advance(SIMULATION_STEP_S)
-        except Exception as error:
-            self._halt_run(error)
+        for _ in range(steps):
+            self.controller.advance(SIMULATION_STEP_S)
 
     def start_simulation_timer(self) -> None:
         """Start the tick timer, which only `stop_timers` stops and a failure never does."""
