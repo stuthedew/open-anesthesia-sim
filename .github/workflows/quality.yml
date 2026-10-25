@@ -126,13 +126,17 @@ jobs:
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
     # else here would bound (`PL-FSH9`).
     #
-    # 15 minutes was sized against the single x64 job's times on 2026-10-17: a
-    # median of 621 s (10m21s) on slow runners and 352 s on fast ones, and
-    # 639 s (10m39s) at the longest. Each part now runs less than that job did,
-    # and arm64's pytest steps took 138 s and 284 s (`PL-JWBW`), so the bound is
-    # loose until it is re-timed from the parts' own runs (`PL-T9X9`). A timeout that fires on a healthy run is a defect in the
-    # timeout rather than a saving, so re-time the job and restate these
-    # figures when the pytest step grows (`PL-H9KW`).
+    # 15 minutes was sized against the single x64 job's times on 2026-10-17,
+    # whose longest run took 639 s (10m39s). It was re-timed from the parts'
+    # own runs on 2026-10-25 (`PL-ZWQS`). Over 200 successful x64 push runs on `main` from
+    # 2026-10-18 to 2026-10-25, the longest part-1 job took 469 s and the
+    # longest part-2 job 605 s. Over 130 arm64 pull-request runs, the longest
+    # part-2 job took 587 s. One arm64 part-1 job took 773 s, but its steps
+    # ended after 285 s and the runner took the other 8 minutes to finish the
+    # job. So 15 minutes leaves 49% above the longest job that ran its steps,
+    # close to the 41% the single job had. A timeout that fires on a healthy
+    # run is a defect in the timeout rather than a saving, so re-time the job
+    # and restate these figures when the pytest step grows (`PL-H9KW`).
     timeout-minutes: 15
     # The fast path's answer, for the `checks` job below (`PL-DXD4`).
     outputs:
@@ -213,9 +217,11 @@ jobs:
       # across two jobs, the full suite took 8m33s of the one job's 10m23s on
       # run 39062070913. So this step asks `bin/docket ci-scope` whether every
       # path the pull request changed is under the store, and writes
-      # `scope=items` or `scope=full` as its output. On `items`, ruff, mypy,
-      # `ignore_check.py` and both parts of the suite are skipped, with the
-      # coverage the parts upload and `checks` combines. The second part runs
+      # `scope=items` as its output if so. It writes `scope=apparatus` when
+      # every path is under `workflow_paths`, which only the second part's
+      # pytest step reads (`PL-STM6`), and `scope=full` otherwise. On
+      # `items`, ruff, mypy, `ignore_check.py` and both parts of the suite are
+      # skipped, with the coverage the parts upload and `checks` combines. The second part runs
       # only the tests marked `reads_item_store` instead. The root
       # `conftest.py` fails any test that reads the store without that marker,
       # so the marked set keeps up with the tests.
@@ -580,8 +586,30 @@ jobs:
         # Write each line to the log as pytest prints it. Without this, the log
         # stamped pytest's session header at the end of collection, which hid
         # where a slow part spent its time (`PL-2N6J`).
+        #
+        # **A pull request that changes only apparatus files skips the costly
+        # tests** (`PL-STM6`). `ci-scope` answers `apparatus` when every
+        # changed path is under `docket.toml`'s `workflow_paths`. Then
+        # `--skip-costly` leaves out the tests that read a 24-hour washout
+        # curve or a controller run, which `tests/conftest.py` names. Their
+        # own inputs are `src/`, `tests/reference/`, `tests/integration/` and
+        # the conftests under `tests/`, and none of those is under
+        # `workflow_paths`. Two apparatus files still reach them: the root
+        # `conftest.py`, which runs inside every test, and this workflow,
+        # which sets the runner image and the step's environment. A change to
+        # either skips them on its pull request, and `main`'s push run, which
+        # runs them, is what catches a break there. They are the
+        # 35 tests that took 479 s of the suite's 1,646 s of test time on
+        # 2026-10-25. `PYTEST_ADDOPTS` carries the option, so the step's
+        # command, which `tools/main_ci_status.py` times by its name, does not
+        # change. A push to `main` never asks `ci-scope`, so it runs them all.
+        #
+        # Coverage still runs, but `checks` does not hold it to 100% on this
+        # answer, for the reason its `COSTLY_SKIPPED` comment gives. Without
+        # the costly tests, `core/` was still covered in full on 2026-10-25.
         env:
           PYTHONUNBUFFERED: "1"
+          PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}
       # The fast path's part of the suite, in place of both parts on a pull
       # request that changes only item files. It runs here rather than in the
       # first part, which already runs the tools that read the store, so the
@@ -628,15 +656,26 @@ jobs:
     needs: [checks-part-1, checks-part-2]
     if: always()
     runs-on: ubuntu-latest
-    # About 30 s of work: setup, two downloads and two `coverage` commands.
+    # Setup, two downloads and two `coverage` commands. Over the same runs it
+    # took a median of 14 s, and 80 s at the longest (`PL-ZWQS`).
     timeout-minutes: 5
     # `true` when both parts took the item-only fast path (`PL-DXD4`). Then
     # neither part measured coverage, so every step after the first is
     # skipped. Any other pair of answers runs them, including the empty pair a
     # push to `main` gives. Where the parts disagree, `coverage combine` fails
     # on the part whose data is missing.
+    #
+    # `COSTLY_SKIPPED` is `true` when the second part left out the costly
+    # tests (`PL-STM6`). Coverage is still combined and printed then, but not
+    # held to 100%. Such a pull request changes nothing under `src/` and no
+    # simulator test, so it cannot change what `core/` is covered by. A gap it
+    # showed would come from an earlier product change, reached only by a
+    # costly test, and the apparatus pull request could not fix it without
+    # becoming a product one. Every product pull request and every push to
+    # `main` runs the costly tests and holds the full gate.
     env:
       ITEMS_ONLY: ${{ needs.checks-part-1.outputs.scope == 'items' && needs.checks-part-2.outputs.scope == 'items' }}
+      COSTLY_SKIPPED: ${{ needs.checks-part-2.outputs.scope == 'apparatus' }}
 
     steps:
       - name: both parts succeeded
@@ -664,4 +703,7 @@ jobs:
       # `make check`'s threshold, which `tools/doc_check.py`'s
       # `check_coverage_gate` holds to the Makefile's `--cov-fail-under`.
       - run: uv run coverage report --show-missing --fail-under=100
-        if: env.ITEMS_ONLY != 'true'
+        if: env.ITEMS_ONLY != 'true' && env.COSTLY_SKIPPED != 'true'
+      - name: coverage without the costly tests, printed and not held to 100%
+        if: env.COSTLY_SKIPPED == 'true'
+        run: uv run coverage report --show-missing

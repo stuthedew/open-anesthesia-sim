@@ -125,6 +125,9 @@ _ITEMS_ONLY = re.compile(
     r"^    env:\n      ITEMS_ONLY: \$\{\{ (?P<condition>.+) \}\}$", re.MULTILINE
 )
 
+#: The gate's variable, which says whether the second part skipped the costly tests.
+_COSTLY_SKIPPED = re.compile(r"^      COSTLY_SKIPPED: \$\{\{ (?P<condition>.+) \}\}$", re.MULTILINE)
+
 #: One term of a condition: a context compared with a quoted literal. A
 #: condition is these terms joined by `&&`.
 _TERM = re.compile(r"^(?P<name>[\w.-]+) (?P<operator>==|!=) '(?P<literal>[a-z_]+)'$")
@@ -157,6 +160,9 @@ SKIPPED_ON_ITEMS = {
 #: The fast path's own steps: the question, and the marked tests in the suite's place.
 SCOPE_STEP = "which steps this pull request needs"
 FAST_PATH_STEP = "the tests that read the item store"
+
+#: The step that prints coverage without holding it to 100%, on `apparatus` only.
+UNGATED_COVERAGE_STEP = "coverage without the costly tests, printed and not held to 100%"
 
 
 def _job_head(text: str, job: str) -> str:
@@ -224,6 +230,9 @@ def _run(
     gate = _ITEMS_ONLY.search(_job_head(text, _GATE))
     assert gate is not None, "`checks` should set `ITEMS_ONLY` from the parts' answers"
     values["env.ITEMS_ONLY"] = "true" if _holds(gate["condition"], values) else "false"
+    skipped = _COSTLY_SKIPPED.search(_job_head(text, _GATE))
+    assert skipped is not None, "`checks` should set `COSTLY_SKIPPED` from the second part"
+    values["env.COSTLY_SKIPPED"] = "true" if _holds(skipped["condition"], values) else "false"
     return {
         job: [
             (_name(step), _runs(step, {**values, "steps.scope.outputs.scope": scopes[job]}))
@@ -330,6 +339,47 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
         assert reader in ran, f"{reader!r} does not run on an item-only pull request"
 
 
+def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_threshold() -> None:
+    """On `apparatus`, only the costly tests and the 100% threshold differ from `full` (`PL-STM6`).
+
+    The parts run the steps they run on `full`. The second part's pytest step
+    passes `--skip-costly` through `PYTEST_ADDOPTS`, and only on that answer.
+    The first part holds no costly test, so its step passes nothing. `checks`
+    still combines coverage, and prints it without the threshold, because a
+    gap it showed would come from an earlier product change.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+    full = _run(text, "pull_request", "full")
+    apparatus = _run(text, "pull_request", "apparatus")
+    for part in _PARTS:
+        assert apparatus[part] == full[part], part
+    changed = [
+        (name, on_full, on_apparatus)
+        for (name, on_full), (_, on_apparatus) in zip(full[_GATE], apparatus[_GATE], strict=True)
+        if on_full != on_apparatus
+    ]
+    assert changed == [
+        ("Run uv run coverage report --show-missing --fail-under=100", True, False),
+        (UNGATED_COVERAGE_STEP, False, True),
+    ]
+    assert UNGATED_COVERAGE_STEP not in [
+        name for name, runs in _run(text, "push", "")[_GATE] if runs
+    ]
+
+    skip = (
+        "PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}"
+    )
+    suites = {
+        part: [step for step in _steps(text, part) if _name(step).startswith("Run uv run pytest")]
+        for part in _PARTS
+    }
+    assert [skip in step for step in suites["checks-part-2"]] == [True]
+    assert [skip in step for step in suites["checks-part-1"]] == [False]
+    assert all(
+        "--skip-costly" not in step.splitlines()[0] for steps in suites.values() for step in steps
+    )
+
+
 @pytest.mark.parametrize(
     ("first", "second"),
     [("items", "full"), ("full", "items"), ("items", ""), ("", "items")],
@@ -344,7 +394,7 @@ def test_checks_combines_coverage_unless_both_parts_answered_items(first: str, s
     fail on the missing half, rather than let `checks` pass.
     """
     gate = _run(WORKFLOW.read_text(encoding="utf-8"), "pull_request", first, second)[_GATE]
-    assert [name for name, runs in gate if not runs] == []
+    assert [name for name, runs in gate if not runs] == [UNGATED_COVERAGE_STEP]
 
 
 def test_the_formatter_skips_the_store_that_the_fast_path_does_not_check(tmp_path: Path) -> None:
