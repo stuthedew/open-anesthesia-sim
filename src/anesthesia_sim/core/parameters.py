@@ -1202,7 +1202,20 @@ AGENT_DATA_FILENAMES: dict[str, str] = {
 
 
 def load_agent_parameters(agent_id: str) -> AgentParameters:
-    """Load and validate one built-in agent definition by id."""
+    """Load and validate one built-in agent definition by id.
+
+    Args:
+        agent_id: The agent's id, a key of `AGENT_DATA_FILENAMES`.
+
+    Returns:
+        The agent's parameters, parsed by `parse_agent_parameters`.
+
+    Raises:
+        SimulationConfigurationError: `agent_id` names no built-in agent; the
+            packaged file is missing, unreadable or not valid JSON; the file fails
+            `parse_agent_parameters`; or the file declares an id other than
+            `agent_id`.
+    """
 
     filename = AGENT_DATA_FILENAMES.get(agent_id)
 
