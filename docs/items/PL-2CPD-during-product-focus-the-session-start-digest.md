@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/
 blocked-by: PL-NZC0, PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
 closed: 2026-10-25
+pr: 1801
 payoff: a product session that follows the digest's first pick line is handed product work, not an apparatus item
 verify: grep -q 'def test_the_digest_leads_with_the_product_pick_under_product_focus' subprojects/docket/tests/test_cli.py
 ---
