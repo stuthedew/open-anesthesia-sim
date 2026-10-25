@@ -1498,6 +1498,22 @@ $$
 Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount
 that prevents division by zero.
 
+**$`M_{\mathrm{initial}}`$ is counted from the system's own parts, which are
+written once** (`PL-N7MM`). The parts are the circuit, the alveoli, the patient
+and the accounting validator, built together for one agent. A part written
+onto a built system is refused with a `SimulationConfigurationError`. A part
+holding agent the anchor did not count would otherwise halt the next step on
+this identity, which blames the numerics for a swapped part. An empty part
+built for another agent would pass the identity and no check would find it.
+The refusal covers the parts themselves. Agent written straight into a part's
+own store, or held by a tissue group or venous pool written onto the patient,
+is not refused at the write: this identity finds it at the next step or read.
+`tests/unit/test_record_writes.py` walks every class in `core/`. It fails on a
+field of a mutable record that neither refuses a later write nor is checked
+against a rule, at the write or by this identity, unless the field's entry
+says why no rule ties it to another field or names the open item that will
+check it.
+
 Two bounds apply, and each one addresses a different question.
 
 **The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
@@ -6818,6 +6834,9 @@ a bare `float` step is refused with a `TypeError`. A count past zero with no
 step, or a pair past the run length, is refused with a
 `SimulationConfigurationError`. This matches what § "Supported input ranges"
 says of a flow written onto its compartment (`PL-LBQY`).
+The state's uptake system is written once, when the state is built, because
+the count says how far that one system has been advanced. A later write is
+refused with a `SimulationConfigurationError` (`PL-N7MM`).
 `SimulationState.elapsed_s` builds its product as a `CaseInstant`. That
 constructor never refuses the product, because the count being multiplied is
 decided on that same product (`PL-8H2R`). An instant that a run is only

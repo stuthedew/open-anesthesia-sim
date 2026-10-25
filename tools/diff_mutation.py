@@ -122,11 +122,18 @@ RESULT_RE = re.compile(r"^\s+(\S+): (.+)$")
 #: returning. Its worker catches the exception and exits with -1.
 RAISED = 255
 #: What a run of whole test files under one mutant says, by pytest's exit
-#: status. Under `-x` a test module that raises while it is imported stops the
-#: run with status 1, as a failed test does. Any other status, such as 2 for an
-#: interrupted run, is reported as it is, because it says nothing about the
-#: mutant.
+#: status. Any other status, such as 2 for an interrupted run, is reported as
+#: it is, because it says nothing about the mutant. A test module that raises
+#: while it is imported is the exception, because pytest gives it status 2 as
+#: well. `_pytest_in_mutants` reads that case from pytest's output instead.
 RERUN_STATUS = {0: "survived", 1: "killed"}
+#: pytest's exit status for an interrupted run, `ExitCode.INTERRUPTED`.
+INTERRUPTED = 2
+#: What pytest 9 prints, between rows of "!", when it ends a run because a test
+#: module raised while it was collected: "Interrupted: 1 error during
+#: collection". The files ran cleanly with no mutant applied first, so the
+#: mutant caused the raise (`PL-N3YB`).
+COLLECTION_ERROR_RE = re.compile(r"Interrupted: \d+ errors? during collection")
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
 #: Why a run whose results list is empty is refused rather than reported.
@@ -476,6 +483,11 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
     The mutated copy of the source comes first on the import path, and mutmut's
     trampolines read which mutant to run from the environment, as its own
     workers do.
+
+    A run that stopped because a test module raised while it was collected
+    returns 1, the status of a failed test. pytest gives that run status 2, the
+    status of an interrupted run, and `settle` counts a raise at import as a
+    kill.
     """
     environment = {**os.environ, "MUTANT_UNDER_TEST": mutant, "PYTHONPATH": "src"}
     command = [sys.executable, "-m", "pytest", "--rootdir=.", "-x", "-q", "-p", "no:cacheprovider"]
@@ -490,6 +502,10 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
         )
     except subprocess.TimeoutExpired:
         return None
+    if done.returncode == INTERRUPTED and COLLECTION_ERROR_RE.search(
+        done.stdout.decode("utf-8", errors="replace")
+    ):
+        return 1
     return done.returncode
 
 

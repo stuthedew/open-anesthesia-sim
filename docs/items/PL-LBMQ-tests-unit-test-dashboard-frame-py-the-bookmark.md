@@ -3,11 +3,13 @@ id: PL-LBMQ
 title: tests/unit/test_dashboard_frame.py: the bookmark panel section comment says reaching a mark (PL-CTD7) is not built, but later tests in the file check rows that say a mark was reached (found in the PL-FDMJ prose pass, 2026-10-25)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: tests/unit/test_dashboard_frame.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1817
 payoff: the bookmark panel's tests say what they test, including reaching a mark
 verify: ! grep -qF 'Detection is `PL-CTD7` and is not' tests/unit/test_dashboard_frame.py
 ---

@@ -3,11 +3,13 @@ id: PL-V7FG
 title: tests/unit/test_state_capture.py: test_a_step_after_a_setting_moved_propagates_with_the_new_matrix says the two systems differ in setting ventilation before or after the first step, but both set it after and differ only in clearing the propagator cache (found in the PL-FDMJ prose pass, 2026-10-25)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: tests/unit/test_state_capture.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1817
 payoff: the state-capture test says it guards the propagator cache, which is what it guards
 verify: ! grep -qF 'that ventilation was set before the first step or after it' tests/unit/test_state_capture.py
 ---
