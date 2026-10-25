@@ -392,7 +392,11 @@ def skip_costly_asked(environ: Mapping[str, str]) -> bool:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add `--part K/N` and `--skip-costly`, the two ways CI narrows a run of the suite."""
+    """Add `--part K/N` and `--skip-costly`, the two ways CI narrows a run of the suite.
+
+    Also add `--write-assertion-cache K/N`, which CI's step before the suite
+    runs. The root `conftest.py` says what it does.
+    """
 
     parser.addoption(
         "--part",
@@ -406,6 +410,16 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=skip_costly_asked(os.environ),
         help="leave out every test that reads a costly computation, as quality.yml does on a "
         "pull request that changes only apparatus files",
+    )
+    # The root `conftest.py` acts on this option, because it owns the bytecode
+    # guard and its hooks reach both test trees. It is registered here so that
+    # it is parsed by `_part`, the one parser of `K/N` (`PL-GQCQ`).
+    parser.addoption(
+        "--write-assertion-cache",
+        type=_part,
+        metavar="K/N",
+        help="with --collect-only, collect share K of N of the test modules and write "
+        "pytest's rewritten bytecode for each, as quality.yml does before its pytest step",
     )
 
 
