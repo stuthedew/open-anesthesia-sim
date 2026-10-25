@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.6.3
 touches: tools/headless_worker.py
 added: 2026-10-20
 closed: 2026-10-24

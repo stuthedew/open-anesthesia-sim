@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: planning
 feature: review-panel
+milestone: v0.6.3
 touches: docs/items/PL-TBQS-replay-the-rest-of-pl-tcbj-s-pool-about-9-more.md, docs/items/PL-TDV9-add-one-more-blind-generalist-review-pass-on.md
 added: 2026-10-24
 closed: 2026-10-24

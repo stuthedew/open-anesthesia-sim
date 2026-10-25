@@ -3,12 +3,14 @@ id: PL-X5L4
 title: app/chart_series.py's wash-in docstrings still say 'sample' for a drawn column and reason from the 0.1 s step where the column spacing now governs
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: core-domain-language
-touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/controller.py
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/wash_in.py
 added: 2026-09-14
-verify: ! grep -nE 'recorded sample|draws recorded samples|newest recorded sample' src/anesthesia_sim/app/chart_frame.py src/anesthesia_sim/app/chart_time_base.py src/anesthesia_sim/app/controller.py
+closed: 2026-10-24
+pr: 1766
+verify: ! grep -qE 'draws recorded samples|newest recorded sample|newest sample' src/anesthesia_sim/app/chart_frame.py src/anesthesia_sim/app/chart_time_base.py src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** app/chart_series.py's wash-in docstrings still say 'sample' for a drawn column and reason from the 0.1 s step where the column spacing now governs
@@ -50,3 +52,5 @@ sed. Keep those, and say they are history where the sentence does not already.
 reasons from the simulation step where column spacing governs; the sentences
 that describe what the chart used to do say so; and the `PL-2FM6` history line
 in `chart_frame.py` is left alone.
+
+**Closed 2026-10-24.** The `verify:` command named `recorded sample`, which also matched the `PL-2FM6` history comment in `chart_frame.py` that the Done-when says to leave alone ("while the chart selected recorded samples"). The command now names the stale phrases only, `newest sample` among them. The sweep also covered every other `app/` docstring that used "sample" for a drawn column or a state: `area_layout.py` and `simulation_view.py` (a chord joins two drawn columns), `dashboard_frame.py` (the snapshot holds the newest state) and `wash_in.py` (a quotient is classified). `fit_to_run` and `following_window` take the newest instant as `newest_instant_s` now, with `PL-9DF9`. The wash-in ceiling paragraph in `wash_in_stretches` says its 1.00235 figure was measured step by step, and that a drawn column can land on a later state that the measurement did not cover. The history sentences in `controller.py` and `run_series.py` stay, since each already says it is history.

@@ -3,11 +3,13 @@ id: PL-VHHB
 title: Every release cut asserts that nothing computational moved, and the only evidence is tree identity - which v0.5.2 did not have, so the claim was proved by an ad-hoc AST comparison that no later cut can re-run
 priority: P3
 effort: M
-status: ready
+status: done
 classes: infra
 feature: release-process
-touches: tools/ast_identity.py, tests/unit/test_ast_identity.py, .claude/skills/docket/modes/release.md
+touches: tools/ast_identity.py, tests/unit/test_ast_identity.py, .claude/skills/docket/modes/release.md, docs/apparatus.md, docket.toml
 added: 2026-09-21
+closed: 2026-10-25
+pr: 1774
 payoff: a release cut proves 'nothing computational moved' with a command a later cut can re-run, not by a reader judging each changed line of src/ to be a comment
 verify: grep -q 'def test_a_docstring_only_change_reads_identical' tests/unit/test_ast_identity.py
 ---

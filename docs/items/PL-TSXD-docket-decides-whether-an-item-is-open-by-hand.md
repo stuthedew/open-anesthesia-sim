@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/, tools/, subprojects/docket/tests/, tests/unit/test_branch_sweep.py
 added: 2026-10-19
 closed: 2026-10-24

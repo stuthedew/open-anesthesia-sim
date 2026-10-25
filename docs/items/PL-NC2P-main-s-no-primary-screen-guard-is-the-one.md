@@ -3,11 +3,13 @@ id: PL-NC2P
 title: `main()`'s no-primary-screen guard is the one testable line `app/main.py` leaves uncovered after the Qt port
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
+closed: 2026-10-24
+pr: 1766
 verify: grep -qE 'def test_\w*no_primary_screen' tests/unit/test_bootstrap.py
 ---
 
@@ -60,3 +62,5 @@ So when this is started, its `verify:` should be the paired shape the skill
 recommends for a decision recorded in prose - something that passes today plus
 a `grep` for what the work adds - not the coverage shape. Cost is then well
 under a second rather than the ~56 s a full-suite `--cov` run costs.
+
+**Closed 2026-10-24.** `test_application_launcher_refuses_to_open_with_no_primary_screen` in `tests/unit/test_bootstrap.py` drives `main()` with an application whose `primaryScreen()` returns `None`, and checks that it raises the guard's `RuntimeError`, never shows the window and never enters the event loop. The `if __name__ == "__main__": main()` line is kept: it is what makes `python -m anesthesia_sim.app.main` open the application, and pytest imports the module rather than running it, so no test can reach that line. `uv run anesthesia-sim` enters through the console script that `test_console_script_points_to_application_launcher` pins.

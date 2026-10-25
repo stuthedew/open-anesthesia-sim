@@ -1,15 +1,19 @@
 """What the recorded control-input timeline becomes on screen."""
 
+import pytest
+
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import (
     CONTROL_INPUT_LABELS,
     AdjustmentGrouping,
+    ControlAdjustment,
     format_adjustment,
     format_control_value,
     group_adjustments,
     wrapping_between_parts,
 )
 from anesthesia_sim.app.dashboard_frame import NO_CONTROL_CHANGES_TEXT
+from anesthesia_sim.core.supported_ranges import CaseInstant
 
 #: U+00A0, written out here rather than imported, so the tests below state
 #: independently of the module which character keeps two words together.
@@ -24,13 +28,68 @@ def _change(
     adjustment: int,
 ) -> ControlChange:
     return ControlChange(
-        elapsed_s=elapsed_s,
+        elapsed_s=CaseInstant(elapsed_s),
         adjustment=adjustment,
         control=control,
         previous_value=previous_value,
         new_value=new_value,
         unit=CONTROL_INPUT_UNITS[control],
     )
+
+
+def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one() -> None:
+    """A record stamped with a bare number has had no check against the run length.
+
+    The controller stamps every change with the running state's instant,
+    which is already a `CaseInstant`. A caller building a record itself, such
+    as a notebook, could otherwise list a change a billion seconds past the
+    24 h supported run length, or at `nan`, in the control-change panel
+    (`PL-RCYZ`).
+    """
+
+    with pytest.raises(TypeError, match="elapsed_s of 1000000000.0 was not built as CaseInstant"):
+        ControlChange(
+            elapsed_s=1e9,  # type: ignore[arg-type]
+            adjustment=1,
+            control=ControlInput.FRESH_GAS_FLOW,
+            previous_value=6.0,
+            new_value=2.0,
+            unit=CONTROL_INPUT_UNITS[ControlInput.FRESH_GAS_FLOW],
+        )
+
+    with pytest.raises(TypeError, match="started_at_s of nan was not built as CaseInstant"):
+        ControlAdjustment(
+            ControlInput.FRESH_GAS_FLOW,
+            float("nan"),  # type: ignore[arg-type]
+            CaseInstant(60.0),
+            6.0,
+            2.0,
+            "L/min",
+            1,
+        )
+
+    with pytest.raises(TypeError, match="ended_at_s of -60.0 was not built as CaseInstant"):
+        ControlAdjustment(
+            ControlInput.FRESH_GAS_FLOW,
+            CaseInstant(60.0),
+            -60.0,  # type: ignore[arg-type]
+            6.0,
+            2.0,
+            "L/min",
+            1,
+        )
+
+
+def test_grouping_hands_the_recorded_instants_through_as_case_instants() -> None:
+    timeline = (
+        _change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),
+        _change(12.1, ControlInput.FRESH_GAS_FLOW, 3.0, 2.0, adjustment=1),
+    )
+
+    (adjustment,) = group_adjustments(timeline)
+
+    assert type(adjustment.started_at_s) is CaseInstant
+    assert type(adjustment.ended_at_s) is CaseInstant
 
 
 def test_an_empty_timeline_groups_into_nothing() -> None:

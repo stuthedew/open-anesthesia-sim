@@ -51,8 +51,8 @@ docket arm                   # whether this branch's pull request may be armed: 
                              # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2,
                              # and 3 for a hold for the owner's read with no ask recorded
 docket arm --owner-ask       # only the line the owner may be sent: exit 0, or 3 for none
-docket ci-scope --base origin/main   # items or full: whether this branch changed item
-                             # files alone, for CI's item-only fast path
+docket ci-scope --base origin/main   # items, apparatus or full: whether this branch
+                             # changed item files alone, or apparatus files alone, for CI
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
@@ -2323,21 +2323,26 @@ the current one is untagged. No tag step is filed as an item any more, so `statu
 titles for a tag the clone holds: the `[TAGGED: vX.Y.Z exists - close it]` mark
 it drew on one (`PL-53Y6`) went with the step (`PL-2FY6`).
 
-### Whether a branch changed item files alone: `docket ci-scope`
+### Whether a branch changed item or apparatus files alone: `docket ci-scope`
 
 `docket ci-scope --base REF` prints `items` when every path the branch changed
-against `REF`, committed or not, is under the store. Otherwise it prints `full`.
-Either answer comes with its reason. A CI job uses the answer to skip the steps
-that no item file can change (`PL-DXD4`). `--github-output PATH` also appends
-`scope=items` or `scope=full` to that file, which is how a GitHub Actions step
-hands a value to the steps after it.
+against `REF`, committed or not, is under the store. It prints `apparatus` when
+every changed path is under the settings' `workflow_paths` and at least one is
+outside the store. Otherwise it prints `full`. Each answer comes with its
+reason. A CI job uses `items` to skip the steps that no item file can change
+(`PL-DXD4`), and `apparatus` to skip the tests that no apparatus file can
+change (`PL-STM6`). `--github-output PATH` also appends `scope=items`,
+`scope=apparatus` or `scope=full` to that file, which is how a GitHub Actions
+step hands a value to the steps after it. With no `workflow_paths` declared,
+the answer is never `apparatus`.
 
 The changed paths are the ones the scoped verify replay reads, against the same
 base, so the replay and the fast path judge one diff. An item moved out of the
 store is a path outside it, because the diff reads a rename as a deletion and
 an addition.
 
-Every reading that cannot show the diff is item files alone answers `full`. That
+Every reading that cannot show the diff is item or apparatus files alone
+answers `full`. That
 covers a branch that changed nothing, a base git cannot resolve, `--no-git`, and
 a store outside the repository. `full` skips nothing, so a wrong `full` costs a
 slower run, where a wrong `items` would skip a check. The command exits 0 for

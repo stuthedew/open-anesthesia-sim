@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: tools/fact_home_check.py, tests/unit/test_fact_home_check.py, CLAUDE.md, .claude/rules/apparatus-standard.md
 added: 2026-10-24
 closed: 2026-10-24

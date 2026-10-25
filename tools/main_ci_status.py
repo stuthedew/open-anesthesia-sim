@@ -107,7 +107,8 @@ so a re-run rather than a fix is what clears it.
 
 **It also says when CI's pytest step has drifted from its baseline**
 (`PL-YY32`). The pytest step of `quality.yml`'s `checks` job took 48 s on
-2026-09-05, about 125 s in mid-September and about 500 s by 2026-10-17. Since
+2026-09-05, about 125 s in mid-September, about 500 s by 2026-10-17 and about
+700 s by 2026-10-25. Since
 `PL-T9X9` the suite runs in two parts, each the pytest step of its own job, and
 the step's time is the sum of the two. Nothing
 read the trend, and `PL-H9KW` was filed by feel a month in. So this script takes
@@ -277,29 +278,38 @@ STEP_WIDTH = 70
 PYTEST_STEP_PREFIX = "Run uv run pytest"
 
 #: How many of `main`'s newest successful runs the pytest step's median is taken
-#: over. Each run costs a request. Over the 100 runs `PYTEST_BASELINE_S` was
+#: over. Each run costs a request. Over the 100 runs the first baseline was
 #: measured on, a median of three would have reached the band's lower bound once,
-#: at 0.50, while a median of five never went below 0.59 (`PL-YY32`).
+#: at 0.50, while a median of five never went below 0.59 (`PL-YY32`). Over the 100
+#: runs the present baseline was measured on, a median of three ranged from 0.64
+#: to 1.15 times it and a median of five from 0.79 to 1.15 (`PL-QQGZ`).
 PYTEST_RUNS = 5
 
 #: The pytest step's time, in seconds, that the median is compared with. It is
-#: the median of the step's time over `main`'s 100 successful push runs from #4906
-#: to #5440 (2026-10-11 06:07Z to 2026-10-17 16:07Z), which was 471.5 s. The
-#: last 16 of those runs came after `PL-H9KW`'s two test-time changes merged
-#: (#1486 and #1487). Their median was 502.5 s, 1.07 times this baseline, so those
-#: changes left the step inside the band. When a change moves the step's time on
-#: purpose, measure this again the same way: the median over at least the newest
-#: 100 successful push runs.
-PYTEST_BASELINE_S = 470
+#: the median of the step's time, summed over the two parts, across `main`'s 100
+#: successful push runs from #6195 to #6627 (2026-10-19 16:20Z to 2026-10-25
+#: 01:20Z), which was 695.0 s.
+#:
+#: The baseline before it was 470 s, the median over #4906 to #5440 (2026-10-11
+#: to 2026-10-17). The step grew because the suite grew, not because any setup
+#: slowed: the tests' own summed time on one machine rose from 480 s on
+#: 2026-09-26 to 1,646 s on 2026-10-25, and 71% of that rise is simulator
+#: tests. The 24-hour washout and wash-in reference tests alone add 507 s.
+#: `PL-QQGZ`'s **Attribution.** section has the measurement. When a change moves
+#: the step's time on purpose, measure this again the same way: the median over
+#: at least the newest 100 successful push runs.
+PYTEST_BASELINE_S = 695
 
 #: The band, as fractions of `PYTEST_BASELINE_S`, inside which the line stays
-#: silent. About a third of runs land on a runner that finishes the step in about
-#: 0.57 of the others' time. The job payload names no machine type, so that cause
-#: is inferred. Over the same 100 runs, the median of five consecutive runs ranged
-#: from 0.59 to 1.16 times 471.5 s, so the line would have stayed silent on all 96
-#: such windows. Read on every fourth run against a baseline set on 2026-09-16,
-#: the upper bound would have fired on 2026-09-23, at run #2879. `PL-H9KW` was
-#: filed 24 days later.
+#: silent. Over the 100 runs the first baseline was measured on, about a third of
+#: runs landed on a runner that finished the step in about 0.57 of the others'
+#: time. The job payload names no machine type, so that cause is inferred. Over
+#: those runs, the median of five consecutive runs ranged from 0.59 to 1.16 times
+#: 471.5 s, so the line would have stayed silent on all 96 such windows. Over the
+#: present baseline's 100 runs, 12 took less than 0.75 times it and the fastest
+#: took 0.60, and the median of five stayed between 0.79 and 1.15. Read on
+#: every fourth run against a baseline set on 2026-09-16, the upper bound would
+#: have fired on 2026-09-23, at run #2879. `PL-H9KW` was filed 24 days later.
 PYTEST_BAND = (0.5, 1.3)
 
 

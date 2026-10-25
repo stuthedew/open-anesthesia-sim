@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/, tools/pr_body_check.py, tools/pr_record_check.py, tools/left_behind_check.py, tests/unit/test_pr_record_check.py
 added: 2026-10-19
 closed: 2026-10-24

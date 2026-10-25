@@ -175,6 +175,72 @@ def test_the_costly_tests_run_in_the_last_part_and_the_rest_alternate() -> None:
     assert DEALING.part(tests, {0, 5}, 2, 2) == [0, 2, 4, 5, 7, 9]
 
 
+def test_skipping_the_costly_tests_leaves_out_only_them() -> None:
+    """`--skip-costly` drops the costly tests and keeps the rest in their order (`PL-STM6`)."""
+
+    tests = list(range(10))
+    assert DEALING.selected(tests, {0, 5}, None, skip_costly=True) == [1, 2, 3, 4, 6, 7, 8, 9]
+    assert DEALING.selected(tests, {0, 5}, None, skip_costly=False) == tests
+
+
+def test_skipping_the_costly_tests_leaves_the_parts_every_other_test_once() -> None:
+    """With the costly tests left out, the two parts still run every ordinary test once."""
+
+    tests = list(range(23))
+    costly = {3, 4, 17}
+    runs = [
+        test
+        for index in (1, 2)
+        for test in DEALING.selected(tests, costly, (index, 2), skip_costly=True)
+    ]
+    assert sorted(runs) == [test for test in tests if test not in costly]
+
+
+def test_part_1_unskipped_and_part_2_skipped_still_run_every_other_test_once() -> None:
+    """The combination CI runs: only the second part passes `--skip-costly`.
+
+    The first part sees the costly tests and the second does not. They still
+    deal the ordinary tests alike, because `part` counts its cycle over the
+    ordinary tests alone.
+    """
+
+    tests = list(range(23))
+    costly = {3, 4, 17}
+    runs = [
+        *DEALING.selected(tests, costly, (1, 2), skip_costly=False),
+        *DEALING.selected(tests, costly, (2, 2), skip_costly=True),
+    ]
+    assert sorted(runs) == [test for test in tests if test not in costly]
+
+
+@pytest.mark.parametrize(
+    ("environ", "asked"),
+    [({"SKIP_COSTLY_TESTS": "1"}, True), ({"SKIP_COSTLY_TESTS": ""}, False), ({}, False)],
+    ids=["one", "empty", "unset"],
+)
+def test_only_skip_costly_tests_set_to_1_asks_for_the_skip(
+    environ: dict[str, str], asked: bool
+) -> None:
+    """CI asks for `--skip-costly` through a variable only this conftest reads.
+
+    `quality.yml` sets it to "1" on an apparatus pull request and to "" on
+    every other, so the empty value must not ask. It is not `PYTEST_ADDOPTS`,
+    which a pytest started in another repository would inherit (`#1774`).
+    """
+
+    assert DEALING.SKIP_COSTLY_VARIABLE == "SKIP_COSTLY_TESTS"
+    assert DEALING.skip_costly_asked(environ) is asked
+
+
+def test_without_skipping_a_part_is_the_one_part_deals() -> None:
+    tests = list(range(12))
+    shares = DEALING.PART_SHARES[2]
+    for index in (1, 2):
+        assert DEALING.selected(tests, {0}, (index, 2), skip_costly=False) == DEALING.part(
+            tests, {0}, index, 2, shares
+        )
+
+
 def test_a_part_is_read_as_k_of_n() -> None:
     assert DEALING._part("2/2") == (2, 2)
 

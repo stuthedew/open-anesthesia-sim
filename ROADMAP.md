@@ -142,7 +142,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.42 | Completed | **The release where each chart keeps its own time window, so the shipped Induction Workspace opens its concentration chart on the first 15 minutes of the case while the other charts keep theirs.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 37 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored scientific value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.41 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/induction.json`, which saves its concentration chart at the 15-minute window. `app/` changed because each chart View now saves its own window, the F_A/F_I plot gains the same control, and the off-scale notice, the wash-in state line and the count of unmarked control changes now describe each chart's own window (`PL-L59K`). `docs/MODEL.md` and `README.md` say the window is chosen for each chart. **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 239 of 246 cleared, as at the v0.5.41 tag. `PL-9354`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.6.0 | Completed | **The release where the layout is the reader's: the dashboard is divided into Areas that a reader splits, joins, swaps, resizes and closes, each Area holds any View the build registers, the arrangements are kept as Workspaces that a reader saves and restores, and the values needed to read any number on screen stay in view outside the Areas, with the use disclaimer.** 64 items, and the capability boundary § "Versioning decision" gives a minor number to: all 40 ids in v0.6.0's Required scope are closed. **No equation, parameter or stored scientific value changed, and no run differs**: `core/` moved (`92e04de` to `d482c41`) because its refusals now name the object that refused and reject a capacity that underflows or overflows (`#1676`), and the trajectory comparison against the v0.5.42 tag found every state, halt, readout and hover string identical over 81 cases and three 24-hour runs. `data/` resolves to `bd5d496` at both ends. A learner can now save, restore and reset Workspaces from the Layout menu (`PL-DWHG`), open the Area and Layout menus by right-click and swap two Areas by Ctrl-drag (`PL-R5G4`), and no longer meets an Area too thin to see (`PL-391Y`). The region holding time, run state, agent and concentrations sits above the part of the page that scrolls and the disclaimer sits below it, so neither leaves the window at any height (`PL-NNML`). **It finishes five features**, among them `layout-sliver-areas` and `v0.6.0-done-check`, the check of the Definition of done bullet by bullet that found `PL-NNML`. **Gate 2 is clear**: 241 of its 247 entries are cleared and 6 are deferred, from 239 of 246 at the v0.5.42 tag. `PL-9CS6`, the cut, ships in no release under `PL-KRS6`. | 64 items |
 | v0.6.1 | Completed | **The release where four of `CLAUDE.md`'s procedures moved into the skills that apply them and two rules a check already enforces were retired, so `CLAUDE.md`, which every session loads at launch, is about 10,300 characters shorter, and where pull requests run quality.yml's test parts on the arm64 runner.** Nine items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, was not yet scoped when it was cut, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.0 tag and here, and only `.github/` moved. All nine merged after the v0.6.0 tag. The generator ranking and its pause went to the docket skill's triage mode (`PL-6VJ3`), the pull request procedure to a new `pull-request` skill (`PL-S2NL`), and the spend-reset procedure and the housekeeping rule's detail to the docket skill's start and capture modes (`PL-Z90G`), each leaving one sentence in `CLAUDE.md` that names its moment; `PL-SN2Z` measured that the docket skill starts on the requests that name its moment. **It finishes `skill-routing` and `worker-instructions`**, and closes no generator head. **None is a gate entry**: Gate 3 froze later, when v0.7.0 was scoped. `PL-XMCT`, the cut, ships in no release under `PL-KRS6`. | 9 items |
-| v0.6.2 | Completed / current baseline | **The release where the reply hook stops refusing a message that asks the owner for nothing and checks the coordinator's posts too, which finishes the review hold, and where a second copy of a shared fact is classed a defect at triage and two check baselines of such copies are drained.** 16 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, was not yet scoped when it was cut, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.1 tag and here. `src/` moved only in `app/`, where `PL-4X5B` named 29 bare layout literals without changing a value, and rendered the default run pixel-identical before and after. The owner-ask hook (`PL-YGR6`, `PL-YV90`, `PL-646J`, `PL-JLB4`), triage's defect class for a second copy (`PL-ZZ03`), the two drained baselines (`PL-LGDV`, `PL-4X5B`), `verify`'s mutation run on changed lines (`PL-CZXN`), and the effort trial's arm drawn in the session-start hook (`PL-8MZ9`) carry it. **It finishes `review-hold`**, and closes no generator head. **None is a gate entry**: Gate 3 froze later, when v0.7.0 was scoped. `PL-Z4T7`, the cut, ships in no release under `PL-KRS6`. | 16 items |
+| v0.6.2 | Completed | **The release where the reply hook stops refusing a message that asks the owner for nothing and checks the coordinator's posts too, which finishes the review hold, and where a second copy of a shared fact is classed a defect at triage and two check baselines of such copies are drained.** 16 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, was not yet scoped when it was cut, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.1 tag and here. `src/` moved only in `app/`, where `PL-4X5B` named 29 bare layout literals without changing a value, and rendered the default run pixel-identical before and after. The owner-ask hook (`PL-YGR6`, `PL-YV90`, `PL-646J`, `PL-JLB4`), triage's defect class for a second copy (`PL-ZZ03`), the two drained baselines (`PL-LGDV`, `PL-4X5B`), `verify`'s mutation run on changed lines (`PL-CZXN`), and the effort trial's arm drawn in the session-start hook (`PL-8MZ9`) carry it. **It finishes `review-hold`**, and closes no generator head. **None is a gate entry**: Gate 3 froze later, when v0.7.0 was scoped. `PL-Z4T7`, the cut, ships in no release under `PL-KRS6`. | 16 items |
+| v0.6.3 | Completed / current baseline | **The release where `tools/fact_home_check.py` refuses a predicate written inline and a fact copied under a new name, where a new check holds 21 configuration facts to their homes, and where `bin/docket arm` holds a simulator pull request until its blind generalist review passes are recorded.** 20 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `tests/reference/` and `docs/MODEL.md` resolve to the same trees at the v0.6.2 tag and here. `src/` moved only in `app/`, where two dialogs now share one layout function (`#1765`, under the still-open `PL-VWXL`), and both rendered pixel-identical at the v0.6.2 tag and here. One source of truth carries twelve items (`PL-N4FP`, `PL-MM3Q`, `PL-H5T9`, `PL-PNGQ`, `PL-SH0W` among them), the review panel three (`PL-TBQS`, `PL-TDV9`, `PL-HDRN`), and `PL-7FPD` makes `verify` refuse a branch that weakens a display test. **It finishes `blocked-means-blocked` and `review-panel`**, and closes one generator head, `PL-N4FP`, spent. **Two are Gate 3 entries**, `PL-LL9F` and `PL-YF16`: Gate 3 froze when v0.7.0 was scoped in `#1761`, after this cut was written, and with `PL-SC0N` (`#1769`, inside this tag's span) it stands at 3 of 46 cleared. `PL-TC7Y`, the cut, ships in no release under `PL-KRS6`. | 20 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -247,86 +248,98 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.6.2
+## Current baseline: v0.6.3
 
-v0.6.2 is the release where the reply hook stops refusing a message that asks
-the owner for nothing, and checks the coordinator's posts as well as a
-session's replies. That finishes the review hold. It is also the release where
-triage classes a second copy of a shared fact as a defect, and where two
-checks' baselines of such copies are drained. The release has 16 items, and it
-is a patch on both halves of § "Versioning decision"'s test. No capability
-boundary is crossed. The next milestone, v0.7.0, the schematic, is not yet
-scoped, and v0.7.0 and v0.8.0 are given to milestone sections. Gate 3 freezes
-when v0.7.0 is scoped, so no item here is a gate entry.
+v0.6.3 is the release where `tools/fact_home_check.py` refuses a predicate
+written inline and a fact copied under a new name, and where a new check holds
+21 configuration facts to the files that own them. It is also the release
+where `bin/docket arm` holds a simulator pull request until its blind
+generalist review passes are recorded. The release has 20 items, and it is a
+patch on both halves of § "Versioning decision"'s test. No capability boundary
+is crossed. The next milestone, v0.7.0, the schematic, is scoped and not built,
+and v0.7.0 and v0.8.0 are given to milestone sections. Gate 3 froze when
+v0.7.0 was scoped in `#1761`, which merged after this cut was written. Two of
+this release's items, `PL-LL9F` and `PL-YF16`, are on its frozen list, which
+stands at 3 of 46 cleared.
 
 **No equation, parameter or stored value changed, and no run can differ:**
 
-| Tree | v0.6.1 tag | This cut | What moved |
+| Tree | v0.6.2 tag | This cut | What moved |
 | --- | --- | --- | --- |
 | `src/anesthesia_sim/core/` | `d482c41` | `d482c41` | nothing |
 | `src/anesthesia_sim/data/` | `bd5d496` | `bd5d496` | nothing |
-| `src/` | `18c16f2` | `57aa719` | `app/` only: 29 bare layout literals named (`PL-4X5B`) |
+| `src/` | `57aa719` | `bc928cf` | `app/` only: the new-case dialog and the Workspace question dialog share `qt_widgets.lay_out_question` (`#1765`) |
 | `tests/reference/` | `3c0f417` | `3c0f417` | nothing |
 | `docs/MODEL.md` | `543147f` | `543147f` | nothing |
-| `README.md` | `ac729ff` | `ac729ff` | nothing |
-| `.github/` | `f29184a` | `9cd1b01` | a comment in quality.yml, saying why `pyproject.toml` excludes the item store from ruff's formatter (`PL-L9SF`) |
+| `README.md` | `ac729ff` | `7deabed` | it no longer says `make check` runs everything CI runs, and names `GATE_ONLY` (`PL-58MP`) |
+| `.github/` | `9cd1b01` | `3f9176e` | quality.yml runs `tools/config_home_check.py` (`PL-SH0W`) and `tools/duplicate_code_check.py` (`#1765`) |
 
-`core/` and `data/` resolve to the same trees at the v0.6.1 tag and at this
-cut, so this cut did not measure the trajectories again. `PL-4X5B` changed no
-value in `app/`. It rendered the default run at 120 s, at 1600 px and at
-1047 px wide, and the opened bookmark editor, and each image was
-pixel-identical before and after. All 16 items merged on `main` after the
-v0.6.1 tag, so no earlier release's notes need a pointer to them.
+`core/` and `data/` resolve to the same trees at the v0.6.2 tag and at this
+cut, so this cut did not measure the trajectories again. The `app/` change in
+`#1765` moved the two dialogs' identical layout into one function. It ships
+under `PL-VWXL`, which stays open for one copied block in `core/`, so the item
+is not among this release's 20. This cut rendered both dialogs offscreen from
+the v0.6.2 tag's tree and from this cut's tree. Each pair of images was
+byte-identical, at 442 by 234 px for the new-case dialog and 442 by 105 px for
+the Workspace question, and in both trees the keep button is the default.
 
-**The reply hook.** `owner_ask_guard.py` refused two messages that asked the
-owner for nothing, and now passes them (`PL-YGR6`). It now checks the
-coordinator's project-chat posts too. A post that asks for a read or a merge is
-refused unless it carries a line in the rendered Owner-ask form, which the hook
-reads from `docket.arming` rather than copying (`PL-YV90`). The hook reads every
-string in such a post at any depth, not only the top-level fields (`PL-646J`). The advisory that tells
-sessions to demote process work no longer counts an item whose priority the
-owner set (`PL-JLB4`). With these, every item in `review-hold` is done.
+Four of the 20 items merged on `main` before the v0.6.2 tag landed, in `#1738`
+(`PL-JT7Y`, `PL-N4FP`, `PL-TSXD`) and `#1747` (`PL-F9WM`). The v0.6.2 cut did
+not stamp them, so they ship inside the v0.6.2 tag and are described here.
+v0.6.2's notes now carry a pointer to each.
 
-**One source of truth.** Triage now classes an item whose subject is a second
-copy of a shared fact as `defect`, even while the copies agree, and
-`docs/dead-ends.md` records why (`PL-ZZ03`). `tools/fact_home_check.py`'s
-baseline of 59 second readers was drained (`PL-LGDV`), and
-`tools/literal_home_check.py` no longer allows any literal under `app/`
-(`PL-4X5B`). The roadmap's timeline row for the v0.6.x milestone was corrected,
-and `tools/doc_check.py` now refuses a "not yet" status under the timeline
-(`PL-0B22`).
+**One source of truth.** `tools/fact_home_check.py` gained a third rule. It
+refuses, with an empty baseline, a hand test of an item's open status or of a
+`pr:` number outside `docket.model` (`PL-N4FP`). docket now reads those facts
+through `Item.is_open` and `model.pr_number`, in place of 19 hand tests of the
+status set and four hand readings of the number (`PL-TSXD`, `PL-JT7Y`). That
+closes `PL-N4FP` as a spent generator head. The check's second rule now also
+finds a fact copied under a new name (`PL-MM3Q`), and five such copies were
+replaced with reads of their homes (`PL-H5T9`). A whole number in the
+apparatus is read through one ASCII-digit reader, because `str.isdigit()`
+accepts digits that `int()` refuses (`PL-PNGQ`). The new
+`tools/config_home_check.py` lists 21 configuration facts, such as the Python
+range, the action versions and the test commands, and fails when a copy
+differs from its home (`PL-SH0W`). Three restated facts in a hook, a test and
+the docs were corrected (`PL-M81V`, `PL-YN5B`, `PL-58MP`), as was a docstring
+in `arming.py` (`PL-F9WM`). `docket inflow` now reopens a line that three
+filings re-enter after its last successor closed (`PL-SFW9`).
 
-**Review and verification.** `bin/docket verify` replaced its "no existing
-assertion removed" check with a mutation run on the changed lines, because
-about 15 of the 17 rejections that check gave since 2026-10-01 were waived
-(`PL-CZXN`). `PL-TCBJ` replayed a panel of specialist reviewer subagents on
-ten past simulator pull requests, and `PL-TBQS`, still open, widens that
-sample.
+**Review before merge.** `PL-TBQS` replayed the reviewer test on 20 merged
+pull requests, and the bar chose two blind generalist passes over the
+specialist panel. `PL-TDV9` adds those passes before a simulator pull request
+merges: one on every simulator change, and a second on a change to the
+clinical model. `bin/docket arm` now holds a simulator branch until a
+`Blind-review` trailer records the passes (`PL-HDRN`). `bin/docket verify` now
+refuses a branch that weakens a display test, by running the base and branch
+tests against the same `app/` mutants (`PL-7FPD`).
 
-**Sessions and CI.** The session-start hook now draws the effort trial's arm
-from a hash of the session id, because the environment's setup script ran
-once into a snapshot taken before the trial began (`PL-8MZ9`). Sessions no
-longer ask the owner to delete branches that GitHub already deleted
-(`PL-TL6T`). `tools/headless_worker.py` reports a failed clone by git's real
-error line rather than its progress line (`PL-15TY`). `bin/docket show` lists
-the sessions that worked a closed item, with each one's model, effort and cost
-(`PL-70M6`). The v0.6.0 frozen list's three lane groups became one group of 229
-entries, because a lane copied into `ROADMAP.md` goes stale when `touches`
-changes (`PL-Z64T`).
+**The queue and the sessions.** Closing a blocker now releases a dependent
+whose milestone blocker had already cleared (`PL-LL9F`). `bin/docket show` no
+longer reports a model switch when the two names differ only by a `[1m]`
+suffix (`PL-YF16`). The effort trial now splits sessions evenly between high
+and xhigh (`PL-TN18`). `PL-HNRP` recorded that the Max plan's API credit
+covers the headless runner.
 
-The release finishes one feature, `review-hold`, and closes no generator head.
-The release item is `PL-Z4T7`, whose `resource: release-train` keeps it out of
-every later release. Every closure carried its `pr:` number before the cut, so
-every bullet cites its pull request. `tools/pr_body_check.py` found no squash
-commit that lost its body. `bin/docket release` reported again that apparatus
-inflow missed a prediction pre-registered in `PL-04KR`. From 2026-10-12 to
+The release finishes two features, `blocked-means-blocked` and
+`review-panel`, and closes one generator head, `PL-N4FP`. The release item is
+`PL-TC7Y`, whose `resource: release-train` keeps it out of every later
+release. Every closure carried its `pr:` number before the cut, so every
+bullet cites its pull request. `tools/pr_body_check.py` found no squash commit
+that lost its body. `bin/docket release` reported again that apparatus inflow
+missed a prediction pre-registered in `PL-04KR`. From 2026-10-12 to
 2026-10-18, 28 new apparatus paths arrived over 107 filings, which is 0.26 a
 filing against a ceiling of 0.13, so the apparatus surface is still growing.
 `bin/docket inflow` has the table.
 
+Two pull requests merged on `main` after this cut was written: `#1761`, which
+scoped v0.7.0 and froze Gate 3 (`PL-LF0P`, `PL-YRLM`), and `#1769`, which gave
+a pull request number a type that only `pr_number` builds (`PL-SC0N`). They
+ship inside the v0.6.3 tag, and the next release describes them.
+
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.2 tag. It is described in the
-next release, and v0.6.2's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.3 tag. It is described in the
+next release, and v0.6.3's notes take a pointer to it at that release's cut.
 
 ## The plan
 
