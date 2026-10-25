@@ -108,6 +108,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_trace_legend_label,
     trace_legend_label,
 )
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
 from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -767,10 +768,10 @@ class ConcentrationChart(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
-        item.setLabel("left", "% of 1 atm", color=MUTED)
+        item.setLabel("left", DisplayUnit.CONCENTRATION.axis_title, color=MUTED)
         item.setLabel("bottom", "simulated time", color=MUTED)
         item.showAxis("right")
-        item.getAxis("right").setLabel("×MAC", color=MUTED)
+        item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
         # The band and the line are drawn under the traces, so a trace is
         # never hidden behind a reference. Both are placed from the frame's

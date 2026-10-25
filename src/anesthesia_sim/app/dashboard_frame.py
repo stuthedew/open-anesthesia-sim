@@ -46,7 +46,7 @@ from anesthesia_sim.app.chart_frame import (
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
-from anesthesia_sim.app.control_record import ControlInput
+from anesthesia_sim.app.control_record import CONTROL_INPUT_DISPLAY_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
 from anesthesia_sim.app.controller import (
     HereForkPoint,
@@ -543,11 +543,15 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
         The entry for a mark passed at the instant with the widest reading.
     """
 
-    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(f"{hour}h"))
-    minutes = max(_CLOCK_MINUTES, key=lambda minute: advance_px(f"{minute}m"))
+    # Each part is measured as `format_elapsed` writes it alone, so the
+    # measured text follows the clock's own format (`PL-G84G`).
+    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(format_elapsed(hour * SECONDS_PER_HOUR)))
+    minutes = max(
+        _CLOCK_MINUTES, key=lambda minute: advance_px(format_elapsed(minute * SECONDS_PER_MINUTE))
+    )
     whole, tenth = max(
         ((whole, tenth) for whole in _CLOCK_WHOLE_SECONDS for tenth in _CLOCK_TENTHS),
-        key=lambda second: advance_px(f"{second[0]}.{second[1]}s"),
+        key=lambda second: advance_px(format_elapsed(second[0] + second[1] / _TENTHS_PER_SECOND)),
     )
     instant_s = (
         hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
@@ -1039,59 +1043,61 @@ READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
 
 @dataclass(frozen=True, slots=True)
 class ParameterControl:
-    """One setting control's fixed half: what it sets and how it is offered.
+    """The fixed part of one setting control, saying what it sets and how it is offered.
 
     Attributes:
-        control: The setting it forwards to the controller.
-        name: The setting's name, or None where the name carries the
-            agent and comes from `format_delivered_label` per tick.
-        qualifier: Where the name alone would be read as a different
-            quantity than the model uses, the words that separate the two,
-            or None where the name is unambiguous. "common gas outlet"
-            because "Fresh gas flow" alone is what a flowmeter bank is
-            labelled, and a flowmeter reads the carrier gas only, while
-            the model's mass balance makes this the whole post-vaporizer
-            stream - 22% apart at desflurane's 18% dial, landing on the
-            circuit time constant the wash-in curve is about (`PL-71CF`).
-        unit: The unit the slider's value is in.
-        decimals: The display resolution the slider steps at, from
-            `formatting.py`, so the value applied to the model is exactly
-            the value printed beside the slider (`PL-25KS`, decision D4).
+        control: The setting that the control forwards to the controller.
+        name: The setting's name. It is None where the name includes the agent;
+            `format_delivered_label` then supplies the name on each tick.
+        qualifier: Words that tell the setting apart from a different quantity
+            that the name alone would suggest, or None where the name is
+            unambiguous. Fresh gas flow has the qualifier "common gas outlet".
+            "Fresh gas flow" alone is how a flowmeter bank is labelled, and a
+            flowmeter reads only the carrier gas. In the model's mass balance,
+            this setting is the whole stream leaving the vaporizer. The two
+            differ by 22% at desflurane's 18% dial setting. That difference
+            carries into the circuit time constant, which is what the wash-in
+            curve shows (`PL-71CF`).
+        decimals: The display resolution at which the slider steps, taken from
+            `formatting.py`. So the value applied to the model is exactly the
+            value printed beside the slider (`PL-25KS`, decision D4).
 
-    The range is not here. Two of the four are instance state rather than
-    constants - the delivered dial's ceiling is the running agent's
-    vaporizer maximum, and the fresh gas flow's range is what the mounted
-    machine narrows the model's envelope to - so `setting_readouts` states
-    every control's range in one table, reading those two from the snapshot.
+    The range is not stored here. For two of the four controls, the range is
+    instance state rather than a constant. The delivered dial's ceiling is the
+    running agent's vaporizer maximum. The fresh gas flow's range is the model's
+    envelope, narrowed by the mounted machine. So `setting_readouts` states every
+    control's range in one table, and it reads those two ranges from the snapshot.
     """
 
     control: ControlInput
     name: str | None
     qualifier: str | None
-    unit: str
     decimals: int
+
+    @property
+    def unit(self) -> str:
+        """The label of the unit the slider's value is in.
+
+        The label comes from the `DisplayUnit` member that
+        `control_record.CONTROL_INPUT_DISPLAY_UNITS` gives this control. Each
+        recorded change carries the recorded spelling of that same member. So the
+        slider's label and the recorded unit cannot name different units
+        (`PL-Q3G9`).
+        """
+
+        return CONTROL_INPUT_DISPLAY_UNITS[self.control].label
 
 
 # The four controls in panel order.
 PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
     ParameterControl(
-        ControlInput.FRESH_GAS_FLOW,
-        "Fresh gas flow",
-        "common gas outlet",
-        "L/min",
-        FLOW_DISPLAY_DECIMALS,
+        ControlInput.FRESH_GAS_FLOW, "Fresh gas flow", "common gas outlet", FLOW_DISPLAY_DECIMALS
     ),
-    ParameterControl(ControlInput.DELIVERED, None, None, "%", CONCENTRATION_DISPLAY_DECIMALS),
+    ParameterControl(ControlInput.DELIVERED, None, None, CONCENTRATION_DISPLAY_DECIMALS),
     ParameterControl(
-        ControlInput.ALVEOLAR_VENTILATION,
-        "Alveolar ventilation",
-        None,
-        "L/min",
-        FLOW_DISPLAY_DECIMALS,
+        ControlInput.ALVEOLAR_VENTILATION, "Alveolar ventilation", None, FLOW_DISPLAY_DECIMALS
     ),
-    ParameterControl(
-        ControlInput.CARDIAC_OUTPUT, "Cardiac output", None, "L/min", FLOW_DISPLAY_DECIMALS
-    ),
+    ParameterControl(ControlInput.CARDIAC_OUTPUT, "Cardiac output", None, FLOW_DISPLAY_DECIMALS),
 )
 
 

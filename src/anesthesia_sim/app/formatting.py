@@ -42,6 +42,7 @@ from decimal import Decimal
 from math import isfinite
 from typing import Final
 
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, percent_from_fraction
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -168,13 +169,13 @@ MAC_DISPLAY_DECIMALS: Final = 2
 #: Smallest difference in MAC multiples the readouts resolve.
 MAC_DISPLAY_RESOLUTION_MAC: Final = DECIMAL_BASE**-MAC_DISPLAY_DECIMALS
 
-# The unit written after a MAC multiple. The multiplication sign is doing
-# safety work rather than typographic work: "0.80 MAC" is read as a depth of
-# anesthesia, and "0.80 ×MAC" as what the number actually is — a partial
-# pressure expressed as a multiple of the concentration that would be 1 MAC.
-# `docs/MODEL.md` § "MAC multiples as a display unit" states the convention
-# the interface is holding a reader to here.
-MAC_UNIT_SUFFIX: Final = " \u00d7MAC"
+# The unit written after a MAC multiple, read from its `DisplayUnit` member,
+# which says why the multiplication sign matters.
+MAC_UNIT_SUFFIX: Final = f" {DisplayUnit.MAC_MULTIPLE.label}"
+
+# The label written after a concentration in percent, read from its
+# `DisplayUnit` member.
+_PERCENT: Final = DisplayUnit.CONCENTRATION.label
 
 # Candidate spacings for the chart's MAC axis, coarsest last. `mac_axis_ticks`
 # takes the first that keeps the axis within `MAX_MAC_AXIS_INTERVALS`, so the
@@ -288,9 +289,9 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     if percent > 0.0 and float(rendered) == 0.0:
         resolution = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
 
-        return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
+        return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}{_PERCENT}"
 
-    return f"{rendered}%"
+    return f"{rendered}{_PERCENT}"
 
 
 def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> MacMultiple:
@@ -430,7 +431,7 @@ def format_mac_reference(agent_display_name: str, mac_percent: Percent) -> str:
         A one-line statement of the agent's 1 MAC in percent.
     """
 
-    return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}%"
+    return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}{_PERCENT}"
 
 
 def mac_awake_band_percent(
@@ -551,8 +552,8 @@ def format_mac_awake_reference(
     return (
         f"MAC-awake {agent_display_name.lower()} = "
         f"{fraction_of_mac:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX} "
-        f"({centre_percent:.{decimals}f}%), "
-        f"band ±1 SD {lower_percent:.{decimals}f}–{upper_percent:.{decimals}f}%"
+        f"({centre_percent:.{decimals}f}{_PERCENT}), "
+        f"band ±1 SD {lower_percent:.{decimals}f}–{upper_percent:.{decimals}f}{_PERCENT}"
     )
 
 
@@ -697,7 +698,7 @@ def format_flow(flow_l_min: float) -> str:
     `:.1f` out beside it.
     """
 
-    return f"{flow_l_min:.{FLOW_DISPLAY_DECIMALS}f} L/min"
+    return f"{flow_l_min:.{FLOW_DISPLAY_DECIMALS}f} {DisplayUnit.FLOW.label}"
 
 
 def format_elapsed(elapsed_s: float) -> str:
