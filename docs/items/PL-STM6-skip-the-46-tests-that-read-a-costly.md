@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 feature: ci-cost
-touches: .github/workflows/quality.yml, tests/conftest.py
+touches: .github/workflows/quality.yml, tests/conftest.py, tests/unit/test_worksteal_dealing.py, tests/unit/test_quality_step_order.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/apparatus.md
 added: 2026-10-17
 payoff: a pull request that touches no simulator code waits about a minute less for checks
 not-delegable: the design names the paths that count as simulator code, a judgment, and its end state is a measurement of CI runs
@@ -47,3 +47,17 @@ the 46 tests and rebalances the parts, pushes to `main` still run them, and the
 median slow-runner time of such pull requests is measured against the split's.
 
 **Generator check.** An optimisation the owner agreed to file, not a defect: no reader misread a fact.
+
+**Taken up again** (project owner, 2026-10-25: "Complete Code quality in the simulator and workflow and CI items", which names this item's feature among the workflow and CI work).
+
+**The design, decided 2026-10-25.** The paths that cannot change these tests' results are `docket.toml`'s `workflow_paths`, the list that already says which files are the apparatus. So no second list is kept for this. `bin/docket ci-scope` gains a third answer, `apparatus`, given when every changed path is under `workflow_paths` and at least one is outside the store. `items` still comes first, because it skips more. A path under neither list, or any reading that cannot show the diff, answers `full` as before. The costly tests read only `src/`, `tests/reference/`, `tests/integration/` and the conftests under `tests/`, and none of those is under `workflow_paths`. The root `conftest.py` is under it. It runs inside every test, so a change to it that broke a costly test would also be seen by the ordinary tests, and `main`'s push run, which always runs everything, is the backstop, as it is for the item-only fast path.
+
+`tests/conftest.py` gains `--skip-costly`, which leaves out the tests that `_costly_reads` names. That is the same predicate the parts and the dealing use, so the skipped set cannot drift from the costly set. The second part's pytest step passes it through `PYTEST_ADDOPTS` on `apparatus` only, so the step's name, which `tools/main_ci_status.py` times, does not change.
+
+*The coverage question.* Without the costly tests, `core/` was still covered in full: 1,687 statements and 406 branches, measured locally on 2026-10-25. So coverage still runs and `checks` still requires 100%. If a later change leaves a line of `core/` that only a costly test reaches, the next apparatus pull request fails the gate and names the line, and the fix is a unit test of it. Turning coverage off on `apparatus` was considered and set aside: on Python 3.14 coverage added no measurable time (139 s without it and 128 s with it, on the same 483 tests).
+
+*The balance.* On 2026-10-25 there are 35 costly tests, 28 in the late-washout module and 7 in `test_controller.py`, and they took 479 s of the suite's 1,646 s of summed test time. On arm64 pull requests, part 1's job took a median of 291 s and part 2's 320 s, with part 2's pytest step at 290 s. Part 1 takes 2 of each 5 ordinary tests in 150 s, so part 2's 3 of 5 come to about 225 s and the costly tests to about 65 s of its step. Without them, part 2's job should take about 255 s against part 1's 291 s. That is close enough that `PART_SHARES` is left alone until it is measured.
+
+*Expected saving.* Of the 236 merges to `main` from 2026-10-18 to 2026-10-25, 99 changed apparatus files alone with at least one outside the store, so about 42% of pull requests take this path. Another 64 changed item files alone and already take the item-only fast path. On those the run should finish when part 1 does, about 30 s sooner than now. That is less than the item's first estimate of 55 s, because `PL-928H` moved pull requests to arm64, where part 2 was already only 37 s behind part 1.
+
+**What is left.** Measure the median wall time of apparatus pull requests over at least 20 runs after this merges, against the split's 370 s median on arm64 pull requests (`PL-ZWQS`). Retune `PART_SHARES` for the skip only if part 1 then finishes more than 30 s after part 2.

@@ -3,10 +3,11 @@ id: PL-ZWQS
 title: Balance quality.yml's two test parts, whose controller runs are built again when worksteal moves their tests to idle workers, then re-time the split jobs' timeouts and the pytest baseline
 priority: P3
 effort: M
-status: ready
+status: done
 feature: ci-cost
 touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py, tests/reference/test_late_washout_against_published_fits.py, tests/unit/test_worksteal_dealing.py
 added: 2026-10-17
+closed: 2026-10-25
 payoff: a slow runner's quality run takes about 6 minutes instead of about 8, and its timeouts and drift baseline match what the split jobs take
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
@@ -176,3 +177,24 @@ comment says once 100 runs exist, or kept with the reading that shows it still
 fits.
 
 **Generator check.** Follow-up work to a change the owner asked for, not a defect: no reader misread a fact. The numbers were sized before the runs that measure them existed.
+
+**Re-timed, measured 2026-10-25.** The sample is every successful `quality.yml` run whose two pytest steps passed, read from the Actions API's job and step timings. It has 200 x64 push runs on `main`, from 2026-10-18 10:56Z to 2026-10-25 02:19Z, and 130 arm64 pull-request runs, from 2026-10-19 15:07Z to 2026-10-25 02:20Z. The wall time runs from the first job's start to the end of `checks`.
+
+| | x64 pushes to `main` | arm64 pull requests |
+| --- | --- | --- |
+| Wall time, median (longest) | 541 s (622 s) | 370 s (817 s) |
+| `checks-part-1` job, median (longest) | 353 s (469 s) | 291 s (773 s) |
+| `checks-part-2` job, median (longest) | 526 s (605 s) | 320 s (587 s) |
+| `checks` job, median (longest) | 14 s (25 s) | 14 s (80 s) |
+| Part 1's pytest step, median | 214 s | 150 s |
+| Part 2's pytest step, median | 502 s | 290 s |
+| Median gap, part 2's job minus part 1's | 156 s | 37 s |
+| Runs in which part 2 finished last | 171 of 200 | 111 of 130 |
+
+*Against the single job.* The median x64 wall time is 541 s against the single job's 621 s, a saving of 80 s rather than 3 minutes. The saving is smaller because the suite has grown since 2026-10-17. The two pytest steps now sum to a median of 716 s on x64, and the single job ran about 115 s of linters besides, so the single job would now take about 830 s. Against that, the split saves about 290 s. `PL-QQGZ` attributes the growth to the tests added. Doc_check's step time no longer sorts the runners into clear speed classes, because that step has grown too, so this compares all runs rather than slow-runner runs only.
+
+*The timeouts.* The longest x64 job that ran its steps took 605 s, part 2 on `main`. One arm64 part-1 job took 773 s, but its last step ended 285 s after it started, so the runner, not the work, took the rest. `timeout-minutes: 15` leaves 49% above 605 s, close to the 41% the single job had, so it stays. The `checks` job's 5 minutes stays too: it took 80 s at the longest. `quality.yml`'s comments now carry these figures.
+
+*The baseline.* `PYTEST_BASELINE_S` was re-measured at 695 s by `PL-QQGZ` (#1771), over `main`'s 100 successful push runs #6195 to #6627.
+
+*The balance.* The rule from 2026-10-18 is to move ordinary tests from part 2 to part 1 only if the median gap over at least 20 runs is still more than 30 s. On the arm64 pull-request runs, which are the ones a person waits on, the gap is 37 s. That is within the 5 to 10 seconds the owner said not to spend hours on. On x64 the gap is 156 s, because x64 slows part 2 more than part 1. Part 2's pytest step, which holds the costly computations, takes 1.73 times as long on x64 (502 s against 290 s), and part 1's takes 1.43 times as long (214 s against 150 s). One share serves both architectures, and a share that closed the x64 gap would make part 1 finish last on every pull request. So `PART_SHARES` stays at 2 of each 5 ordinary tests for part 1. `PL-STM6` changes the balance on pull requests that change only apparatus files, and measures it there.

@@ -330,6 +330,30 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
         assert reader in ran, f"{reader!r} does not run on an item-only pull request"
 
 
+def test_an_apparatus_pull_request_runs_every_step_and_skips_only_the_costly_tests() -> None:
+    """On `apparatus`, every job runs the steps it runs on `full` (`PL-STM6`).
+
+    The answer reaches one place instead: the second part's pytest step passes
+    `--skip-costly` through `PYTEST_ADDOPTS`, and only on that answer. The
+    first part holds no costly test, so its step passes nothing.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert _run(text, "pull_request", "apparatus") == _run(text, "pull_request", "full")
+
+    skip = (
+        "PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}"
+    )
+    suites = {
+        part: [step for step in _steps(text, part) if _name(step).startswith("Run uv run pytest")]
+        for part in _PARTS
+    }
+    assert [skip in step for step in suites["checks-part-2"]] == [True]
+    assert [skip in step for step in suites["checks-part-1"]] == [False]
+    assert all(
+        "--skip-costly" not in step.splitlines()[0] for steps in suites.values() for step in steps
+    )
+
+
 @pytest.mark.parametrize(
     ("first", "second"),
     [("items", "full"), ("full", "items"), ("items", ""), ("", "items")],

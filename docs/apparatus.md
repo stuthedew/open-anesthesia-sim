@@ -627,7 +627,7 @@ for: `actions/setup-python` at the declared floor, then <!-- floor-commands -->
 `python3 tools/fact_home_check.py`, `python3 tools/config_home_check.py`
 and `bin/docket check` under it. On a pull
 request, `bin/docket ci-scope` runs under it first, to decide whether the run
-takes the item-only fast path (`PL-DXD4`). <!-- /floor-commands -->
+takes the item-only fast path (`PL-DXD4`) or skips the costly tests (`PL-STM6`). <!-- /floor-commands -->
 `tools/doc_check.py`'s `check_floor_list` holds the commands between those
 two markers to the steps the floor section runs (`PL-5N7T`). `dead_ends.py` and `bin/docket
 check` joined the section under `PL-PBP5`, which found them enforced by `make
