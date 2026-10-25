@@ -54,6 +54,30 @@ It stops a write and not a read: a cache written by something other than a
 test run, from source mutated and restored inside one second, still shadows
 the restored file.
 
+**One exception: CI writes pytest's rewritten test modules once, before its
+workers start** (`PL-GQCQ`). Pytest rewrites the `assert` statements of every
+test module it imports, and caches the result as a `.pyc` only when bytecode
+writing is on. With the guard above, every process rewrites every module again.
+In CI each part's pytest step starts eight workers on four cores, and each
+worker imports every test module, because `--part` picks tests only after they
+are collected. Measured 2026-10-25 on four idle cores, one collection took
+23.7 s with rewriting and 4.9 s from a written cache. A CI-shaped part 1 took
+188 s from a fresh tree, and 164 s when the cache was written first, the 8 s
+that the writing took included.
+
+So `--write-assertion-cache K/N`, given with `--collect-only`, turns bytecode
+writing back on for that process and collects only share K of N of the test
+modules. A module's share is the CRC-32 of its path, relative to the root, modulo
+N. `quality.yml` runs N such processes at once, one per core, in a step before
+the suite. That took 6.8 to 7.8 s. The workers then read the cache, and since
+the guard still applies to them, nothing writes a cache while a test runs. The
+cache is written from the fresh checkout's sources and is never rewritten
+during the run, so the hazard above, a cache written in the middle of a
+mutation and a restore, cannot arise. The option refuses to run without
+`--collect-only`, so a run that executes tests can never write bytecode.
+`make check` does not use it, because a cache written there stays in the
+working tree, where later edits and mutation runs meet it.
+
 **A test that reads the item store says so** (`PL-DXD4`). On a pull request
 that changes only item files, `quality.yml` skips the full suite and runs only
 the tests marked `reads_item_store`. Only a test that reads the store can
@@ -106,7 +130,9 @@ a duplicate-module error that stops mypy before it evaluates anything
 import os
 import subprocess
 import sys
+import zlib
 from collections.abc import Generator
+from fnmatch import fnmatch
 from pathlib import Path
 
 import pytest
@@ -199,6 +225,50 @@ def pytest_configure(config: pytest.Config) -> None:
     root = Path(__file__).resolve().parent
     _STORE_READS.store = str(root / load_config(root).items_dir)
     sys.addaudithook(_audit)
+    write_assertion_cache_if_asked(config)
+
+
+def write_assertion_cache_if_asked(config: pytest.Config) -> None:
+    """Turn bytecode writing back on where `--write-assertion-cache` asks, with `--collect-only`.
+
+    Refuse the option on a run that executes tests, so that no test ever runs
+    in a process that writes bytecode.
+    """
+    if _assertion_cache_share(config) is None:
+        return
+    if not config.option.collectonly:
+        raise pytest.UsageError(
+            "--write-assertion-cache writes bytecode, so it runs only with --collect-only"
+        )
+    sys.dont_write_bytecode = False
+
+
+def _assertion_cache_share(config: pytest.Config) -> tuple[int, int] | None:
+    """The `(K, N)` share that `--write-assertion-cache` asks for, or None.
+
+    `tests/conftest.py` registers the option, so a run that does not load that
+    conftest has no such option and gets None.
+    """
+    share: tuple[int, int] | None = config.getoption("write_assertion_cache", default=None)
+    return share
+
+
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool | None:
+    """Leave out every test module outside the share `--write-assertion-cache` asks for.
+
+    A module is in share K of N when the CRC-32 of its path, relative to the
+    root, is K - 1 modulo N. A path that is not a test module by `python_files`
+    is left to pytest, so a directory or a package's `__init__.py` is still
+    collected. None leaves the decision to pytest and any other plugin.
+    """
+    share = _assertion_cache_share(config)
+    if share is None or not any(
+        fnmatch(collection_path.name, pattern) for pattern in config.getini("python_files")
+    ):
+        return None
+    index, shares = share
+    key = collection_path.relative_to(config.rootpath).as_posix().encode()
+    return True if zlib.crc32(key) % shares != index - 1 else None
 
 
 def _unmarked(what: str, reads: list[str]) -> str:
