@@ -315,17 +315,17 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
         pickle.loads(pickle.dumps(smuggled))
 
 
-# Desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas delivers
-# 0.18 * 10 L/min * (1 ms / 60,000 ms/min) = 3e-5 L in one step at the 1 ms
-# step floor. A longer step transfers more, but the floor gives a 24 h run the
-# most steps, and so the most additions to round. That makes it the worst case
-# for the running totals. The value is computed here rather than read from the
-# model.
+# At desflurane's 18% vaporizer maximum and 10 L/min of fresh gas, one step at
+# the 1 ms step floor delivers 0.18 * 10 L/min * (1 ms / 60,000 ms/min) = 3e-5 L.
+# The step floor is the shortest step the model allows. A longer step transfers
+# more, but the floor gives a 24 h run the most steps, and so the most additions
+# that can round. That makes it the worst case for the running totals. The
+# value is computed here rather than read from the model.
 WORST_CASE_TRANSFER_PER_STEP_L = 0.18 * 10.0 / 60_000.0
 
-# A 24 h run of that delivery adds up to 2592 L. These cases start from 2500 L
-# because rounding loses the most at the largest totals: one unit in the last
-# place there is 4.5e-13 L.
+# Delivering that amount at every step for 24 h adds up to 2592 L. These cases
+# start the totals at 2500 L, because rounding loses the most when the totals
+# are largest. At 2500 L, one unit in the last place is 4.5e-13 L.
 LATE_IN_A_DAY_LONG_RUN_L = 2500.0
 
 # 200,000 steps keeps the case under a second. Over that many steps from
@@ -335,9 +335,9 @@ STEPS_IN_THE_SAMPLE = 200_000
 
 # Kahan summation's error bound is 2u + O(n u^2) relative to the sum of the
 # addends, where u = 2**-53 (Higham, *Accuracy and Stability of Numerical
-# Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). The O(n u^2) term is about
-# 1e-24 at a day's 8.64e7 steps, so 2u is the bound at every supported run
-# length. It is about 450,000 times smaller than a tenth of
+# Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). Over the 8.64e7 steps of a
+# day, the O(n u^2) term is about 1e-24, so 2u is the bound at every supported
+# run length. That bound is about 450,000 times smaller than a tenth of
 # `DOCUMENTED_RELATIVE_TOLERANCE`.
 COMPENSATED_SUM_BOUND = 2 * 2.0**-53
 
@@ -352,13 +352,14 @@ def test_the_running_totals_do_not_drift_as_steps_add_up() -> None:
     Until `PL-XST1`, each step's transfer was added to its total with a plain
     `+=`. Each addition could then round by up to half a unit in the last
     place, always in the same direction for a nearly constant transfer. Over a
-    24 h run at the 1 ms step floor, that drift brought a correct run's residual
-    within a few percent of the relative tolerance at which the run is
-    halted (`docs/MODEL.md` § "Mass-balance identity"). The expected sums are
-    computed exactly, with `Fraction`, rather than by the code under test. The
-    plain sum of the same transfers is computed too. It shows that this
-    sequence makes plain addition drift by many orders of magnitude more than
-    the bound, so a return to plain addition fails.
+    24 h run at the 1 ms step floor, that drift brought the residual of a
+    correct run within a few percent of the relative tolerance at which the
+    run is halted (`docs/MODEL.md` § "Mass-balance identity"). The residual is
+    the gap between the two sides of the accounting identity. The expected
+    sums are computed exactly, with `Fraction`, rather than by the code under
+    test. The test also computes the plain sum of the same transfers, which
+    drifts from the exact sum by many orders of magnitude more than the bound.
+    This shows that the test would fail if the code returned to plain addition.
     """
 
     validator = AgentSimulationValidator()

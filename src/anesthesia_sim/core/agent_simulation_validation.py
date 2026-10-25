@@ -32,25 +32,28 @@ _COMPENSATION_TERMS = frozenset({"delivered_compensation_l", "exhausted_compensa
 def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[float, float]:
     """Add `addend` to a running total by Kahan's compensated summation.
 
-    `compensation` is how much larger `total` became than it should have when
-    rounding last changed it, negative when `total` became smaller. It is
-    taken off the next addend, so rounding cannot build up one addition at a
-    time. The function returns the new total and the new compensation.
+    `compensation` is the rounding error left by the last addition to `total`.
+    It is positive when rounding made `total` larger than it should be, and
+    negative when rounding made it smaller. The function subtracts it from the
+    next addend, so rounding errors cannot build up one addition at a time. It
+    returns the new total and the new compensation.
 
-    The computed total of n nonnegative addends is within (2u + O(n u^2)) of
-    the exact sum, relative to it, where u = 2**-53 is the unit roundoff. At
-    the step counts this model supports, the O(n u^2) term is negligible, so
-    the error does not grow with the run's length (Higham, *Accuracy and
-    Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002, section 4.3,
-    equation 4.8). Plain addition's error does grow with it, by up to u per
-    addition. `docs/MODEL.md` § "Mass-balance identity" gives what each
-    measured over a 24 h run at the step floor (`PL-XST1`).
+    For n nonnegative addends, the computed total differs from the exact sum by
+    at most (2u + O(n u^2)) times the exact sum, where u = 2**-53 is the unit
+    roundoff. At the step counts this model supports, the O(n u^2) term is
+    negligible, so the error does not grow with the run's length (Higham,
+    *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002,
+    section 4.3, equation 4.8). The error of plain addition does grow with the
+    run's length, by up to u per addition. `docs/MODEL.md` § "Mass-balance
+    identity" gives the error that each method gave over a 24 h run at the
+    step floor, the shortest step the model allows (`PL-XST1`).
 
     Neumaier's variant, which CPython's `sum` uses, keeps the plain running
     sum and adds the compensation only at the end. That would leave the stored
-    total as inaccurate as plain addition does, and every reader of the total
-    would have to add the compensation to it. Kahan's form keeps the stored
-    total accurate, so the totals mean what they meant before.
+    total as inaccurate as plain addition leaves it, and every reader of the
+    total would have to add the compensation to it. Kahan's form keeps the
+    stored total accurate, so each total still means what it meant before and
+    its readers need no change.
     """
 
     corrected = addend - compensation
@@ -74,15 +77,16 @@ class AgentSimulationValidationResult:
 
 @dataclass(frozen=True, slots=True)
 class AgentSimulationValidatorState:
-    """The validator's run state: the three totals of one accounting period and two compensations.
+    """A validator's run state holds three totals and two compensation terms.
 
-    All three totals are captured, including `initial_agent_l`. That total is
-    the anchor of the current accounting period, not a setting. `reset()`
-    writes it, and `reset()` is also what clears run state everywhere else in
-    `core/`. The accounting identity on `AgentSimulationValidator` only means
-    something when all three totals are read at the same instant. Restoring two
-    of them alongside a third that had changed would leave a validator
-    describing no real period.
+    The three totals belong to one accounting period, and all three are
+    captured, including `initial_agent_l`. That total is the anchor of the
+    current accounting period, not a setting. `reset()` writes it, and
+    `reset()` is also what clears run state everywhere else in `core/`. The
+    accounting identity on `AgentSimulationValidator` only means something
+    when all three totals are read at the same instant. Restoring two of them
+    alongside a third that had changed would leave the validator describing a
+    period that never happened.
 
     The compensation term of each running total is captured with it. A total
     restored without its compensation would round differently on the next
@@ -111,18 +115,19 @@ class AgentSimulationValidator:
     The delivered and exhausted totals are running sums of one transfer per
     step, so a run of many steps adds many small amounts to a large total.
     Each total is kept by compensated summation, with its compensation term
-    in a field of its own (`_compensated_sum`, `PL-XST1`). Plain addition let
-    rounding build up once per step. Over a 24 h run at the 1 ms step floor it
-    brought a correct run's residual close to
-    `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`, where the run would have been
+    in a field of its own (`_compensated_sum`, `PL-XST1`). With plain addition,
+    rounding error built up at every step. Over a 24 h run at the 1 ms step
+    floor, that error brought the residual of a correct run close to
+    `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`. The residual is the gap between the
+    two sides of the identity, and at that tolerance the run would have been
     halted. `docs/MODEL.md` § "Mass-balance identity" records the measurement.
 
     The compensation terms are not constructor arguments, so
     `dataclasses.replace()` starts its copy with both terms at zero. That copy
     is still accurate, because each total already holds the accurate sum. But
     its next step can round differently from the validator it was copied from.
-    `copy.copy()`, `pickle` and `capture_state()` carry both terms, and
-    `restore_state()` is the route that a rollback takes.
+    `copy.copy()`, `pickle` and `capture_state()` carry both terms. A rollback
+    uses `restore_state()`, not `dataclasses.replace()`.
     """
 
     initial_agent_l: float = 0.0
@@ -144,19 +149,19 @@ class AgentSimulationValidator:
         # (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a total or a compensation, refusing a value that cannot be one.
+            """Write a total or a compensation term, refusing a value that cannot be one.
 
-            Each total is stored in one place, its slot, so its check is made
-            here. The one check therefore covers the constructor,
-            `record_external_agent_transfer`, `reset`, `restore_state`, and a
-            direct assignment that bypasses all of them, as
+            Each total is stored in one place, its slot, and every write to a slot
+            passes through this method. So the one check made here covers the
+            constructor, `record_external_agent_transfer`, `reset`, `restore_state`,
+            and a direct assignment that bypasses all of them, as
             `BreathingCircuit.__setattr__` explains (`PL-LBQY`, `PL-19Y0`).
-            Nothing is written when a value is refused, and the constructor
-            makes no check of its own. No total is checked against another, so
-            the order of the writes does not matter. A sum that overflows to an
-            infinity is refused where it is written, rather than carried into
-            the accounting identity. A compensation term may be negative, but
-            it must be finite, or the next sum it corrects would not be.
+            Nothing is written when a value is refused. The constructor makes no
+            check of its own. No total is checked against another, so the order of
+            the writes does not matter. A sum that overflows to an infinity is
+            refused where it is written, rather than carried into the accounting
+            identity. A compensation term may be negative, but it must be finite.
+            Otherwise the next sum that it corrects would not be finite either.
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`

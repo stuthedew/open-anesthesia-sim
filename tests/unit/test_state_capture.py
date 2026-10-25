@@ -168,8 +168,8 @@ COMPARTMENTS = (
         # `initial_agent_l` is run state rather than a setting. It anchors the
         # current accounting period, and `reset()` writes it. Everywhere else
         # in `core/`, `reset()` is what clears run state. The two compensation
-        # terms are run state too, because each running total is not complete
-        # without its own (`PL-XST1`).
+        # terms are run state too, because a running total is not complete
+        # without its own compensation term (`PL-XST1`).
         run_state_fields=frozenset(
             {
                 "initial_agent_l",
