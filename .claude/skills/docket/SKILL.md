@@ -95,6 +95,7 @@ compaction cap does not reach it.
 | Untriaged items to fold into the queue, your own new capture's fields included; a grooming pass; recording a generator, or a defect in the machinery that finds them; or writing an item's `verify:` command | `.claude/skills/docket/modes/triage.md` |
 | Scoping a milestone's debt gate, or there is finished work to ship | `.claude/skills/docket/modes/release.md` |
 | An item's work is done and wants closing out | `.claude/skills/docket/modes/close-out.md` |
+| Coordinating a Claude Code Project on this repository, or working a thread its coordinator started | `.claude/skills/docket/modes/coordinator.md` |
 
 `cat .claude/skills/docket/SKILL.md .claude/skills/docket/modes/*.md` is the
 whole skill for a session that wants it end to end.

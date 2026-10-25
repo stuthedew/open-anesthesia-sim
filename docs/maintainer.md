@@ -25,13 +25,14 @@ direct squash merge (`PL-NXRJ`). The instructions asked for that merge from
 repository can read the instructions, so no check can catch the split. Sending
 every rule to the repository is what prevents it.
 
-**What the instructions keep** is the trial's own coordination and nothing
-else. That is the Goal, the Order and its pause, the thread caps, and which
-model each thread runs. It also covers where threads post and record: the
-review summary in the project chat, one line on a merge, and the project's
-shared folder. Last, one line says that every other rule is the repository's.
-`PL-PDVF` holds the cut-down text as it was written on 2026-10-03, and the
-table of where each rule went.
+**What the instructions keep** is the project's own state and nothing else.
+That is the Goal, the Order and its pause, the compaction rule, and a pointer
+to `.claude/skills/docket/modes/coordinator.md`. The mode file holds the
+coordination rules: the thread caps, which model each thread runs, what every
+brief says, where threads post and record, merging, and releases (project
+owner, 2026-10-25, ratified, over keeping them in Project settings,
+`PL-NZC0`). `PL-PDVF` holds the cut-down text as it was written on 2026-10-03,
+and the table of where each rule went.
 
 **When you give a rule for sessions in the Project, it goes to the repository
 in the same sitting.** Say it to the coordinator. The coordinator starts a
