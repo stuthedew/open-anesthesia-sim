@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from .model import Item, is_under
 
 #: The table's name in `docket.toml`.
-TABLE = "models"
+MODELS_TABLE = "models"
 #: The keys the table may hold.
 TABLE_KEYS = frozenset({"default", "excluded", "areas", "prices", "rule"})
 #: The keys a rule may hold. `match` is required, with `model`, `effort` or both.
@@ -118,7 +118,7 @@ class ModelTable:
         return frozenset(reached)
 
     def choose(self, facts: Facts) -> Choice:
-        """The model and effort for work with these facts: the first rule that holds, or the default."""
+        """Return the first rule that holds for these facts, or the default."""
         for position, rule in enumerate(self.rules, start=1):
             if rule.holds(facts):
                 return Choice(rule.model or self.model, rule.effort or self.effort, position)
@@ -161,37 +161,41 @@ def parse(data: Mapping[str, object], source: str) -> ModelTable:
     """
     unknown = sorted(set(data) - TABLE_KEYS)
     if unknown:
-        raise ValueError(f"{source}: [{TABLE}] has no key named {', '.join(unknown)}")
+        raise ValueError(f"{source}: [{MODELS_TABLE}] has no key named {', '.join(unknown)}")
     default = data.get("default")
     if not isinstance(default, dict) or set(default) != {"model", "effort"}:
-        raise ValueError(f"{source}: [{TABLE}] default must name exactly `model` and `effort`")
-    excluded = _strings(data.get("excluded", []), f"{source}: [{TABLE}] excluded")
-    model = _model(default["model"], f"{source}: [{TABLE}] default.model")
+        raise ValueError(
+            f"{source}: [{MODELS_TABLE}] default must name exactly `model` and `effort`"
+        )
+    excluded = _strings(data.get("excluded", []), f"{source}: [{MODELS_TABLE}] excluded")
+    model = _model(default["model"], f"{source}: [{MODELS_TABLE}] default.model")
     if model in excluded:
         raise ValueError(
-            f"{source}: [{TABLE}] default.model is {model}, which `excluded` lists; "
+            f"{source}: [{MODELS_TABLE}] default.model is {model}, which `excluded` lists; "
             "only a rule may name an excluded model"
         )
-    effort = _effort(default["effort"], f"{source}: [{TABLE}] default.effort")
+    effort = _effort(default["effort"], f"{source}: [{MODELS_TABLE}] default.effort")
     areas_data = data.get("areas", {})
     if not isinstance(areas_data, dict):
-        raise ValueError(f"{source}: [{TABLE}.areas] must be a table of path lists")
+        raise ValueError(f"{source}: [{MODELS_TABLE}.areas] must be a table of path lists")
     areas = tuple(
-        (name, _strings(paths, f"{source}: [{TABLE}.areas] {name}"))
+        (name, _strings(paths, f"{source}: [{MODELS_TABLE}.areas] {name}"))
         for name, paths in areas_data.items()
     )
     rows = data.get("rule", [])
     if not isinstance(rows, list):
-        raise ValueError(f"{source}: `{TABLE}.rule` must be an array of tables, [[{TABLE}.rule]]")
+        raise ValueError(
+            f"{source}: `{MODELS_TABLE}.rule` must be an array of tables, [[{MODELS_TABLE}.rule]]"
+        )
     names = {name for name, _ in areas}
     rules = tuple(
-        _rule(row, names, f"{source}: [[{TABLE}.rule]] {n}") for n, row in enumerate(rows, 1)
+        _rule(row, names, f"{source}: [[{MODELS_TABLE}.rule]] {n}") for n, row in enumerate(rows, 1)
     )
     prices_data = data.get("prices", {})
     if not isinstance(prices_data, dict):
-        raise ValueError(f"{source}: [{TABLE}.prices] must be a table of model prices")
+        raise ValueError(f"{source}: [{MODELS_TABLE}.prices] must be a table of model prices")
     prices = tuple(
-        (name, *_price(entry, f"{source}: [{TABLE}.prices] {name}"))
+        (name, *_price(entry, f"{source}: [{MODELS_TABLE}.prices] {name}"))
         for name, entry in prices_data.items()
     )
     return ModelTable(model, effort, excluded, areas, rules, prices)
@@ -224,7 +228,7 @@ def _rule(row: object, areas: Collection[str], where: str) -> ModelRule:
             raise ValueError(f"{where}: `match.{category}` must be a non-empty string")
         if category == "area" and value not in areas:
             raise ValueError(
-                f"{where}: `match.area` is {value!r}, which [{TABLE}.areas] does not name"
+                f"{where}: `match.area` is {value!r}, which [{MODELS_TABLE}.areas] does not name"
             )
         pairs.append((category, value))
     if "model" not in row and "effort" not in row:
@@ -236,7 +240,7 @@ def _rule(row: object, areas: Collection[str], where: str) -> ModelRule:
 
 def _model(value: object, where: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{where} must be a model id, such as claude-sonnet-5-5")
+        raise ValueError(f"{where} must be a model id, as `[models.prices]` names one")
     return value
 
 

@@ -69,11 +69,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.model_choice import Choice  # noqa: E402
 from docket.vcs import tracked_under  # noqa: E402
 
-from docket.config import load as load_config  # noqa: E402
-from docket.model_choice import Choice  # noqa: E402
 from headless_worker import STATE_DIR, Refused, role_choice  # noqa: E402
 from product_paths import DATA_DIR, MODEL_DOC  # noqa: E402
 

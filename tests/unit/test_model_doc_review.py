@@ -110,8 +110,8 @@ def test_the_reading_takes_the_table_s_review_model_and_its_price(tmp_path: Path
         tmp_path,
         '[models]\ndefault = { model = "model-a", effort = "high" }\n'
         '[[models.rule]]\nmatch = { role = "review" }\nmodel = "model-b"\neffort = "max"\n'
-        '[models.prices]\nmodel-a = { input = 1, output = 2 }\n'
-        'model-b = { input = 10, output = 50 }\n',
+        "[models.prices]\nmodel-a = { input = 1, output = 2 }\n"
+        "model-b = { input = 10, output = 50 }\n",
     )
     assert REVIEW.review_model(root) == REVIEW.ReviewModel(Choice("model-b", "max", 1), 10.0, 50.0)
 
@@ -123,7 +123,7 @@ def test_a_model_with_no_price_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_project_table_prices_the_model_it_chooses() -> None:
-    """The real table chooses a review model it can price, and not Fable (project owner, 2026-10-25)."""
+    """The real table prices its review model, which is not Fable (project owner, 2026-10-25)."""
     model = REVIEW.review_model()
     assert model.choice.model != "claude-fable-5-1"
     assert model.input_usd_per_mtok > 0 and model.output_usd_per_mtok > 0

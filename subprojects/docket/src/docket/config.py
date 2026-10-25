@@ -517,11 +517,11 @@ def load(root: Path) -> Config:
     with path.open("rb") as handle:
         data = tomllib.load(handle)
     section = data.get("docket", data)
-    tables = data.get(model_choice.TABLE)
+    tables = data.get(model_choice.MODELS_TABLE)
     if section is data:
-        section = {key: value for key, value in data.items() if key != model_choice.TABLE}
+        section = {key: value for key, value in data.items() if key != model_choice.MODELS_TABLE}
     if tables is not None and not isinstance(tables, dict):
-        raise ValueError(f"{CONFIG_NAME}: [{model_choice.TABLE}] must be a table")
+        raise ValueError(f"{CONFIG_NAME}: [{model_choice.MODELS_TABLE}] must be a table")
     models = None if tables is None else model_choice.parse(tables, CONFIG_NAME)
     # A misspelt key would otherwise leave its setting at the default while the
     # file reads as though it were set (`PL-HTHC`).

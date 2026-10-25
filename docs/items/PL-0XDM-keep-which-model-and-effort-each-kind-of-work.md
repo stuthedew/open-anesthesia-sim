@@ -3,12 +3,13 @@ id: PL-0XDM
 title: Keep which model and effort each kind of work uses in one extensible table, and use no Fable unless the owner names it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: one-source-of-truth
 touches: docket.toml, subprojects/docket/src/docket/config.py, tools/, tests/unit/, subprojects/docket/tests/, .claude/, docs/maintainer.md, docs/apparatus.md, subprojects/docket/README.md
 deferred-from: v0.7.0 - filed 2026-10-25 after the gate froze, at the owner's request in the workflow lane, and built at once outside the gate's scope
 added: 2026-10-25
+closed: 2026-10-25
 payoff: a change of model or effort for any kind of work is one edit to docket.toml, and no stale copy can send a session to a model the owner has ruled out
 verify: grep -q '^\[models\]' docket.toml
 ---
@@ -17,7 +18,7 @@ verify: grep -q '^\[models\]' docket.toml
 
 **The owner's rules** (project owner, 2026-10-25). "Nothing should be using fable anymore unless I specifically say." "Make things that say which model and effort to use use a single source of truth as well." "Model single source of truth will need to be extendible because may end up wanting this model or strength for this arbitrary category(ies) and a different default."
 
-**Why it matters.** A model or effort named in a stale copy is followed by whichever session reads that copy first. The owner pays for a model he has ruled out, or work runs below the bar he set for it, and nothing reports the disagreement.
+**Why it matters.** A model or effort named in a stale copy is followed by whichever session reads that copy first. The owner pays for a model they have ruled out, or work runs below the bar they set for it, and nothing reports the disagreement.
 
 **The design.** A `[models]` table in `docket.toml` is the one home. docket and the tools already read that file.
 
@@ -34,3 +35,13 @@ verify: grep -q '^\[models\]' docket.toml
 **Done when.** The table exists and is the only place a current model or effort choice is stated. Every reader goes through it. Changing `default` or adding a rule changes what `bin/docket next`, the headless worker and the review tool use, with no other edit. The check refuses a model id written anywhere else, and refuses Fable's id outside the records.
 
 **Generator check.** The misread fact is which model and effort the owner wants for a kind of work. It had no single home, so each copy aged on its own. This item gives it one home and a check, which is the fix the `one-source-of-truth` feature asks for. It is one instance, not a generator.
+
+**Built, 2026-10-25.** `docket.model_choice` reads the table, and `docket.config` loads it as `Config.models`. Its readers are these.
+
+- `bin/docket next` and `show` print the chosen model and effort beside the model flag, such as "use your strongest model, claude-opus-5-5 at high effort". The flag's words stay, because the flag is the rule and the table is the answer to it.
+- `tools/headless_worker.py` asks for each item as the role `worker`, and `--model` is now an override. A project with no table is refused before any spend.
+- `tools/model_doc_review.py` asks as the role `review`, and takes the list price from `[models.prices]`, at half for a batch. A model with no price is refused.
+
+`tools/config_home_check.py` holds three copies to the table: `effortLevel` in `.claude/settings.json`, the effort in `docs/maintainer.md` § "Match effort to the standard the work is held to", and `model:` in `.claude/agents/Explore.md`. `tools/model_home_check.py` is the new check, run bare in `make check` and in the quality job. The other prose copies were rewritten to point at the table rather than held to it: `docs/maintainer.md` § "Which model each flag means" and `.claude/rules/apparatus-standard.md`. Neither the release notes nor pull request bodies are tracked files, so the check does not read them. `PL-5S71`'s brief no longer names Fable's id, and it records the refused run.
+
+One part of the design is not built: a session working with no item passing the paths it changes. No reader does that today, so it waits for the first one.
