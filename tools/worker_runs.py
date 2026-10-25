@@ -41,6 +41,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.claims import AGENT_BRANCH_PREFIX  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 
 #: Where the records live, relative to the repository root. `docket.toml`'s
@@ -79,8 +80,6 @@ OUTCOMES = ("accepted", "fixed", "sent-back")
 #: The fields of a written review.
 REVIEW_FIELDS = ("outcome", "note", "reviewed")
 
-BRANCH_PREFIX = "claude/"
-
 #: The one file in the directory that is not a record: it says what the records are.
 README = "README.md"
 
@@ -88,7 +87,7 @@ README = "README.md"
 def file_name(branch: str, started: str) -> str:
     """The record's file name, from the run's branch and its start time."""
     moment = datetime.fromisoformat(started)
-    return f"{branch.removeprefix(BRANCH_PREFIX)}-{moment:%Y%m%dT%H%M%S}.json"
+    return f"{branch.removeprefix(AGENT_BRANCH_PREFIX)}-{moment:%Y%m%dT%H%M%S}.json"
 
 
 def run_problems(record: Mapping[str, object]) -> list[str]:
@@ -108,8 +107,8 @@ def run_problems(record: Mapping[str, object]) -> list[str]:
         if not isinstance(value, kinds) or (isinstance(value, bool) and bool not in kinds):
             found.append(f"{name} is {json.dumps(value)}, not {_kinds(kinds)}")
     branch = record.get("branch")
-    if isinstance(branch, str) and not branch.startswith(BRANCH_PREFIX):
-        found.append(f"branch {branch} does not start with {BRANCH_PREFIX}")
+    if isinstance(branch, str) and not branch.startswith(AGENT_BRANCH_PREFIX):
+        found.append(f"branch {branch} does not start with {AGENT_BRANCH_PREFIX}")
     for name in ("started", "finished"):
         value = record.get(name)
         if isinstance(value, str) and _moment(value) is None:

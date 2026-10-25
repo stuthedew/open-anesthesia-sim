@@ -30,14 +30,18 @@ def _tree(root: Path, **modules: str) -> None:
         path.write_text(source, encoding="utf-8")
 
 
+#: A `DISTINCT_WORDS` of one entry, for the tests that build their own tree.
+_ONLY_CLOSED = {"closed": (frozenset({"BY_CLOSED", "PULL_CLOSED"}), "two facts")}
+
+
 def _report(root: Path, baseline: dict[str, dict[tuple[str, str], int]] | None = None) -> str:
-    return format_report(analyze(root, baseline=baseline or {}))
+    return format_report(analyze(root, distinct={}, baseline=baseline or {}))
 
 
 def test_a_git_call_outside_vcs_fails_naming_file_line_scope_and_home(tmp_path: Path) -> None:
     _tree(tmp_path, tools__branch=GIT_RUNNER)
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -56,7 +60,7 @@ def test_the_git_homes_pass_and_so_does_a_command_that_is_not_git(tmp_path: Path
         tools__gate='import subprocess\n\ndef tests():\n    return subprocess.run(["uv", "run"])\n',
     )
 
-    assert analyze(tmp_path, baseline={}).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline={}).errors == 0
 
 
 def test_a_home_named_by_scope_covers_that_function_and_not_the_rest_of_its_file(
@@ -138,10 +142,10 @@ def test_the_github_host_outside_the_client_fails_and_a_docstring_mention_does_n
     _tree(
         tmp_path,
         tools__open_pull_requests='GITHUB_API = "https://api.github.com"\n',
-        tools__armed='"""Reads https://api.github.com/repos for the arm."""\n\nAPI = "https://api.github.com"\n',
+        tools__armed='"""Reads https://api.github.com/repos for the arm."""\n\nAPI = "https://api.github.com/graphql"\n',
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -163,7 +167,7 @@ def test_a_default_branch_literal_outside_vcs_fails_and_a_module_guard_does_not(
         ),
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -183,7 +187,7 @@ def test_shlex_split_outside_the_lexers_fails_and_shlex_quote_does_not(tmp_path:
         ),
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -201,7 +205,7 @@ def test_a_name_defined_in_two_modules_fails_and_an_import_or_alias_does_not(
         tools__reads="from store import ID_RE\n\nALIAS_RE = ID_RE\n",
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 2
@@ -216,7 +220,7 @@ def test_a_name_defined_in_two_modules_fails_and_an_import_or_alias_does_not(
         "subprojects/docket/src/docket/store.py": {("definition", "ID_RE"): 1},
         "tools/generator.py": {("definition", "ID_RE"): 1},
     }
-    assert analyze(tmp_path, baseline=drained).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline=drained).errors == 0
 
 
 def test_a_fact_copied_under_another_name_is_reported(tmp_path: Path) -> None:
@@ -230,7 +234,7 @@ def test_a_fact_copied_under_another_name_is_reported(tmp_path: Path) -> None:
         ),
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 2
@@ -246,21 +250,23 @@ def test_a_fact_copied_under_another_name_is_reported(tmp_path: Path) -> None:
             ("same call", "CITED_ID_RE = SECTION_ID_RE"): 1
         },
     }
-    assert analyze(tmp_path, baseline=drained).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline=drained).errors == 0
 
 
 def test_two_facts_that_share_a_value_or_a_sentinel_call_are_not_reported(tmp_path: Path) -> None:
     """A plain constant can mean two things, as `trend.UNPLACED_PATH` and
     `roadmap.UNPLACED` both hold `"unplaced"`, and each `object()` is a new
-    sentinel, so neither is read as one fact copied (`PL-MM3Q`)."""
+    sentinel, so neither is read as one fact copied (`PL-MM3Q`). Since
+    `PL-3PKN` the two strings pass because `DISTINCT_WORDS` lists both names."""
     _tree(
         tmp_path,
         docket__trend='UNPLACED_PATH = "unplaced"\nUNREAD = object()\n',
         docket__roadmap='UNPLACED = "unplaced"\nABSENT = object()\n',
         tools__other='import re\n\nONE_RE = re.compile("a")\nTWO_RE = re.compile("b")\n',
     )
+    distinct = {"unplaced": (frozenset({"UNPLACED_PATH", "UNPLACED"}), "two facts")}
 
-    assert analyze(tmp_path, baseline={}).errors == 0
+    assert analyze(tmp_path, distinct=distinct, baseline={}).errors == 0
 
 
 def test_one_repository_path_under_two_names_is_reported(tmp_path: Path) -> None:
@@ -278,7 +284,7 @@ def test_one_repository_path_under_two_names_is_reported(tmp_path: Path) -> None
         docket__arming='TESTS = "tests/"\n',
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 4
@@ -289,21 +295,90 @@ def test_one_repository_path_under_two_names_is_reported(tmp_path: Path) -> None
     ) in printed
 
 
-def test_a_string_that_names_no_path_or_a_method_argument_is_not_a_path(tmp_path: Path) -> None:
-    """`"claude/"` is a branch prefix and names nothing in the tree, and the `"/"`
-    in `SOURCE.rstrip("/")` is a method's argument rather than a path, so
-    neither is read as one path spelled twice (`PL-S08Z`)."""
+def test_a_method_argument_names_no_path(tmp_path: Path) -> None:
+    """The `"/"` in `SOURCE.rstrip("/")` is a method's argument rather than a
+    path, so it is not read as one path spelled twice (`PL-S08Z`)."""
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "m.py").write_text("", encoding="utf-8")
     _tree(
         tmp_path,
-        docket__claims='AGENT_BRANCH_PREFIX = "claude/"\nSOURCE = "src/"\n',
-        tools__worker='BRANCH_PREFIX = "claude/"\n',
+        docket__claims='SOURCE = "src/"\n',
         tools__paths='from docket.claims import SOURCE\n\nSOURCE_DIR = SOURCE.rstrip("/")\n',
         tools__other='TESTS_DIR = TESTS.rstrip("/")\n',
     )
 
-    assert analyze(tmp_path, baseline={}).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline={}).errors == 0
+
+
+def test_a_string_bound_under_two_names_in_two_modules_is_refused(tmp_path: Path) -> None:
+    """`PL-3PKN`: `tools/worker_runs.py` spelled `"claude/"` as `BRANCH_PREFIX`
+    beside `docket.claims.AGENT_BRANCH_PREFIX`. The prefix names no path in the
+    tree, so the path comparison passed it, and no rule compared plain strings."""
+    _tree(
+        tmp_path,
+        docket__claims='AGENT_BRANCH_PREFIX = "claude/"\n',
+        tools__worker='BRANCH_PREFIX = "claude/"\n',
+    )
+
+    report = analyze(tmp_path, distinct={}, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 2
+    assert "One string bound under different names in more than one module:" in printed
+    assert (
+        "AGENT_BRANCH_PREFIX = BRANCH_PREFIX: subprojects/docket/src/docket/claims.py:1 "
+        "AGENT_BRANCH_PREFIX, tools/worker.py:1 BRANCH_PREFIX"
+    ) in printed
+
+
+def test_a_string_read_from_its_home_or_bound_once_is_not_refused(tmp_path: Path) -> None:
+    """An import of the home's name, and a string only one module binds, are one binding."""
+    _tree(
+        tmp_path,
+        docket__claims='AGENT_BRANCH_PREFIX = "claude/"\nLIVE = "live"\n',
+        tools__worker=(
+            "from docket.claims import AGENT_BRANCH_PREFIX\n\nPREFIX = AGENT_BRANCH_PREFIX\n"
+        ),
+        tools__other='NAMES = ("live", "claude/")\nGREETING = f"claude/{1}"\n',
+    )
+
+    assert analyze(tmp_path, distinct={}, baseline={}).errors == 0
+
+
+def test_a_word_two_facts_share_passes_only_while_the_table_lists_every_name(
+    tmp_path: Path,
+) -> None:
+    """`DISTINCT_WORDS` excuses `"closed"` under the two names it lists, and no more.
+
+    A third name binding the word is a finding, and so is a listed name the tree
+    no longer binds, so the table cannot drift away from the tree.
+    """
+    listed = {"docket__claims": 'BY_CLOSED = "closed"\n', "docket__vcs": 'PULL_CLOSED = "closed"\n'}
+    _tree(tmp_path, **listed)
+    assert analyze(tmp_path, baseline={}, distinct=_ONLY_CLOSED).errors == 0
+
+    _tree(tmp_path, tools__queue='SHUT = "closed"\n')
+    third = analyze(tmp_path, baseline={}, distinct=_ONLY_CLOSED)
+    assert third.errors == 3
+    assert "BY_CLOSED = PULL_CLOSED = SHUT: " in format_report(third)
+
+    (tmp_path / "tools" / "queue.py").unlink()
+    (tmp_path / "subprojects" / "docket" / "src" / "docket" / "vcs.py").unlink()
+    gone = analyze(tmp_path, baseline={}, distinct=_ONLY_CLOSED)
+    printed = format_report(gone)
+    assert gone.errors == 1
+    assert "A `DISTINCT_WORDS` entry the tree no longer matches:" in printed
+    assert (
+        "'closed': listed under BY_CLOSED, PULL_CLOSED; the tree binds it as BY_CLOSED" in printed
+    )
+
+
+def test_every_distinct_word_is_a_string_the_tree_binds_under_exactly_its_names() -> None:
+    """The real table matches the real tree, which `analyze` reports as stale otherwise."""
+    report = analyze(Path(__file__).resolve().parents[2])
+
+    assert report.stale_words == ()
+    assert report.same_string == {}
 
 
 def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) -> None:
@@ -327,7 +402,7 @@ def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) ->
         docket__plan="from . import model\n\nresolved = [s in model.CLOSED_STATUSES for s in ()]\n",
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 3
@@ -361,7 +436,7 @@ def test_item_is_open_and_the_sets_own_module_are_accepted(tmp_path: Path) -> No
         ),
     )
 
-    assert analyze(tmp_path, baseline={}).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline={}).errors == 0
 
 
 def test_a_pr_field_read_by_hand_is_refused(tmp_path: Path) -> None:
@@ -381,7 +456,7 @@ def test_a_pr_field_read_by_hand_is_refused(tmp_path: Path) -> None:
         ),
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -404,7 +479,7 @@ def test_pr_number_of_the_pr_field_and_whole_number_elsewhere_are_accepted(tmp_p
         ),
     )
 
-    assert analyze(tmp_path, baseline={}).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline={}).errors == 0
 
 
 def test_a_digit_test_outside_the_whole_number_reader_is_refused(tmp_path: Path) -> None:
@@ -421,7 +496,7 @@ def test_a_digit_test_outside_the_whole_number_reader_is_refused(tmp_path: Path)
         ),
     )
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
     printed = format_report(report)
 
     assert report.errors == 1
@@ -435,7 +510,7 @@ def test_the_baseline_covers_what_it_names_and_refuses_one_more(tmp_path: Path) 
     path = "tools/branch.py"
     baseline = {path: {("git", "_git"): 1}}
     _tree(tmp_path, tools__branch=GIT_RUNNER)
-    assert analyze(tmp_path, baseline=baseline).errors == 0
+    assert analyze(tmp_path, distinct={}, baseline=baseline).errors == 0
 
     (tmp_path / path).write_text(
         'import subprocess\n\ndef _git(args):\n    subprocess.run(["git", "fetch"])\n'
@@ -456,7 +531,7 @@ def test_an_entry_the_tree_no_longer_fills_is_stale(tmp_path: Path) -> None:
         "tools/gone.py": {("git", "main"): 1},
     }
 
-    report = analyze(tmp_path, baseline=baseline)
+    report = analyze(tmp_path, distinct={}, baseline=baseline)
     printed = format_report(report)
 
     assert report.errors == 3
@@ -469,7 +544,7 @@ def test_a_tree_with_no_python_files_is_an_error(tmp_path: Path) -> None:
     (tmp_path / "tools").mkdir()
     (tmp_path / "tools" / "README.md").write_text("tools\n", encoding="utf-8")
 
-    report = analyze(tmp_path, baseline={})
+    report = analyze(tmp_path, distinct={}, baseline={})
 
     assert report.errors == 1
     assert "the check read nothing" in format_report(report)
@@ -481,7 +556,7 @@ def test_a_file_that_does_not_parse_fails_and_its_entries_are_not_called_stale(
     path = "tools/broken.py"
     _tree(tmp_path, tools__broken="def build(:\n")
 
-    report = analyze(tmp_path, baseline={path: {("git", "build"): 1}})
+    report = analyze(tmp_path, distinct={}, baseline={path: {("git", "build"): 1}})
     printed = format_report(report)
 
     assert report.errors == 1
