@@ -3,11 +3,13 @@ id: PL-KM19
 title: tests/unit/test_parameters.py: two docstrings count the payload models as seven and eight, but the test below them asserts nine subclasses of _StrictPayload (found in the PL-FDMJ prose pass, 2026-10-25)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: tests/unit/test_parameters.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1815
 payoff: the parameter tests' docstrings stop stating a count of payload models that the code has already outgrown
 verify: ! grep -qF "today's eight" tests/unit/test_parameters.py && ! grep -qF 'The seventh payload model' tests/unit/test_parameters.py
 ---
