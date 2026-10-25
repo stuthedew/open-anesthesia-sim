@@ -3,13 +3,14 @@ id: PL-86DN
 title: A pull request opened after its closing push fails its first pr-title run until the number is recorded by hand: 132 red runs on 116 pull requests since 2026-09-26, one closing pull request in five every week, each costing a push and a full quality run
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: infra
 feature: fewer-red-runs
-touches: subprojects/docket/src/docket/cli.py, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/start.md, .claude/skills/pull-request/SKILL.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/start.md, .claude/skills/pull-request/SKILL.md
 deferred-from: v0.7.0 - filed after Gate 3 froze; a CI cost in the workflow lane, not a hazard
 added: 2026-10-25
 payoff: a closing pull request starts green, so about 30 pushes and full quality runs a week stop being spent on writing one number
+verify: grep -q 'def test_closing_an_item_writes_its_branch_s_open_pull_request_number' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `tools/pr_record_check.py`, a step of the required `pr-title`
@@ -86,10 +87,29 @@ rather than relabelling it, and it keeps the merge hold that `PL-HMZZ` built.
 The choice is the owner's because it reopens their ratified decision, and
 because it changes what the pull request list shows them.
 
-**Done when.** The owner's answer is recorded here. Under option 2 or 3, a
-closing pull request opened the recommended way passes its first `pr-title`
-run, with a test that pins the closing commit carrying `pr:`. Under option 1,
-the item is dropped with the answer as its reason.
+**Answered 2026-10-25: option 2** (project owner, 2026-10-25, ratified, over
+keeping the hold and counting it, which was `PL-1DZF`'s decision, and over
+writing the number only where a pull request is already open). `bin/docket
+claim` opens the branch's pull request as a draft when it pushes the claim.
+`bin/docket set <id> --status done` writes `pr:` from the branch's open pull
+request.
+
+One question was still open when the owner agreed: whether every kind of
+session holds a token that can open a pull request. The docket package reads
+the GitHub API through `vcs.py`, but it writes nothing there yet. Where a
+session has no such token, `claim` says so and names the step the session
+takes instead: it opens the draft with its own GitHub tool, as `start.md`
+already asks at a branch's first push. Either way, the pull request exists
+before the closing commit.
+
+**Done when.** After `bin/docket claim` pushes a claim, the branch has an
+open draft pull request, or `claim` has said it could not open one and what
+the session does instead. `bin/docket set <id> --status done` writes `pr:`
+equal to that pull request's number, so the closing commit carries it and the
+first `pr-title` run after it passes.
+`test_closing_an_item_writes_its_branch_s_open_pull_request_number` in
+`subprojects/docket/tests/test_cli.py` pins that. `start.md`, `close-out.md`
+and the `pull-request` skill describe opening the draft at the claim.
 
 **Related, not this item.** 37 further red runs since 2026-09-21 were the
 title half of the same job: a title that did not yet lead with every item the
