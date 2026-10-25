@@ -157,3 +157,15 @@ choice that needed rework or unintended behavior. Each monthly run does this:
 8. **Report.** When the corrected test is significant, put it to the owner:
    the effect with its 95% confidence interval, the counts, the confounders,
    and a recommendation.
+
+**Progress, 2026-10-25.** The skill exists at
+`.claude/skills/model-review/SKILL.md`, with the decision rules, the
+rule-of-three table, the record refreshes, the join from item to session, the
+outcome measures from `PL-4SFQ`, the design-fallout scoring, the screen, the
+effort monitoring steps above, the pre-registration template, the report
+format and the triggers. `docs/model-review.md` is the register, with the
+effort trial registered in the template's form. `docs/maintainer.md` §
+"Match model capability to the work" points at both, and its ledger section
+now points at the skill's refresh steps instead of restating them. **What is
+left:** the first review, which refreshes the ledger, scores the closed items
+and writes its findings to the register.

@@ -3,11 +3,13 @@ id: PL-4SFQ
 title: Define the outcome measures a closed item is scored on - rework items citing it, recurrences, reopenings, churn on its files, red CI runs and review findings - and snapshot the CI run history before GitHub's 90-day deletion removes it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
-touches: .claude/skills/model-review, docs/ci-runs.tsv
+touches: .claude/skills/model-review, docs/ci-runs.tsv, tools/ci_runs.py, tests/unit/test_ci_runs.py, docket.toml, docs/apparatus.md, docs/maintainer.md, docs/model-review.md
 added: 2026-10-17
+closed: 2026-10-25
+pr: 1776
 payoff: whether a cheaper or dearer setting held up is read from defined signals rather than impression, and the CI half of that evidence stops being deleted before anyone reads it
 verify: grep -q 'Outcome measures' .claude/skills/model-review/SKILL.md && grep -q 'ci-runs.tsv' .claude/skills/model-review/SKILL.md
 ---
@@ -56,3 +58,22 @@ runs still in progress were left out, and nine duplicates from overlapping
 pages were merged. Conclusions: 9,646 success, 1,459 cancelled, 553 failure.
 The outcome measures themselves are still to define, and they wait for the
 model-review skill (`PL-63CB`). The refresh belongs in that skill too.
+
+**Done, 2026-10-25.** `.claude/skills/model-review/SKILL.md` § "Outcome
+measures" defines each measure by the record it is read from, its window and
+its normalization: rework items citing the item, recurrence and re-entry
+fields, a reopened decision (a text match, listed for a reader to confirm),
+relative churn on its files, red CI runs and pushes after the first, and
+review findings. The window is 30 days for an implementation item and 90 for a
+design item, which is one classed `planning` or recording an owner's decision.
+Each measure is reported per item and per 100 added lines, within one effort
+size and one lane.
+
+The refresh is now a tool rather than a scratchpad script that is lost after
+one run: `python3 tools/ci_runs.py refresh` asks GitHub for each day from the
+day before the newest row. Its first run on 2026-10-25 added 1,058 runs, to
+12,716 rows. Two things it learned from GitHub's answers: a run's
+`pull_requests` comes back empty once the pull request's branch is deleted, so
+a known link is kept; and the listing returns at most 1,000 runs for one query,
+so it reads one day at a time and refuses a day at the cap. The busiest day so
+far held 361 runs.
