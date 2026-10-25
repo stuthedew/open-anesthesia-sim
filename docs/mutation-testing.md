@@ -25,6 +25,15 @@ that the base version catches and the branch's version misses refuses the
 branch. The display modules are the seven files under `app/` that
 `[tool.mutmut] only_mutate` names.
 
+The same two runs also take the mutants of each `core/` module that the
+changed test file imports by name, so a branch that loosens a core unit test,
+such as a wider tolerance on a concentration, is refused the same way (project
+owner, 2026-10-24, ratified, over leaving core unit tests unmeasured and over
+comparing every mutant a changed test reaches, `PL-H57W`). A module counts when
+either version of the file imports it with `from anesthesia_sim.core.x import
+...`, `from anesthesia_sim.core import x` or `import anesthesia_sim.core.x`,
+inside a function or not.
+
 A high mutation score does not show that the tests catch a wrong clinical
 value. mutmut never changes the data files or the module-level constants, and a
 mutant cannot show whether a test's expected value is right.
@@ -55,11 +64,12 @@ must come from, and that rule applies whatever the score.
 
 ### What the check of a changed test leaves unmeasured
 
-- **A fault outside the display modules.** Only the mutants of `app/` run
-  against the two versions of a changed test. That keeps each run to about
-  two minutes, where the mutants of `core/` that a display test reaches would
-  take 9 to 16 minutes (`PL-7FPD` has the measurements). So a changed test of `core/` on a branch that changes
-  no `core/` function is not measured (`PL-H57W`).
+- **A fault in a `core/` module that the test does not import by name.** A
+  test that builds a run reaches most of `core/` through the run, and all of
+  those mutants would take 9 to 16 minutes for each version of a changed test
+  (`PL-7FPD` has the measurements). So only the modules the file names run,
+  and a fault the test catches only through another module is not measured
+  (`PL-H57W` has the scoped cost).
 - **The Qt widget modules and the integration tests.** mutmut does not mutate
   the Qt modules, such as `simulation_view.py`, and the check runs no
   integration test.
@@ -83,7 +93,9 @@ changed line in the file, such as an import or a helper, selects the whole
 file. A blank line or a comment selects nothing. A branch that only adds tests
 has nothing to compare. On 2026-10-24 the two runs for one changed function in
 `tests/unit/test_dashboard_frame.py` took 197 s together, on four otherwise idle
-cores. Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
+cores, with the display modules' mutants alone. On 2026-10-25, with the core
+modules that file imports added, the same kind of change took 911 s, most of it
+in the branch run over the whole file (`PL-H57W`). Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
 what `bin/docket verify` saw.
 
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
