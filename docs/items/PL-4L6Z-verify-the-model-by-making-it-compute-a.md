@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: tests/reference/, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-10-25
+pr: 1819
 payoff: The shipped model must now recover its stored alveolar and tissue volumes from simulated measurements, so an equation the specification states wrongly but that conserves agent fails a test.
 verify: grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/ && grep -rq 'def test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value' tests/reference/ && grep -q '### Parameter-recovery test' docs/MODEL.md
 ---

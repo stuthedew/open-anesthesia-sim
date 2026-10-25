@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-10-25
+pr: 1819
 payoff: A required test in docs/MODEL.md that names no test now fails make check, so a required test that is never written or is deleted can no longer go unnoticed.
 verify: grep -q 'heading="Required tests"' tools/doc_check.py && grep -q 'def _subsection_members' tools/doc_check.py && grep -q 'def test_a_required_test_subsection_naming_nothing_is_an_error' tests/unit/test_doc_check.py
 ---
