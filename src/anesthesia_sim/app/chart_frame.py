@@ -89,7 +89,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
@@ -817,13 +817,13 @@ def assemble_chart_frame(
     *,
     plot_width_px: float,
 ) -> ChartFrame:
-    """Read every run once and settle everything the frame draws.
+    """Read every run once and work out everything the frame draws.
 
-    Four steps, in an order that makes two runs one picture rather than
-    two: the shared ruler is set from the reference run, the window is
-    chosen so that it contains every run, the references are placed across
-    that window, and only then does each run evaluate its own states into
-    it.
+    The work takes four steps, in an order that makes two runs one picture
+    rather than two. First the shared ruler is set from the reference run.
+    Next the window is chosen so that it contains every run. Then the
+    references are placed across that window. Only then does each run
+    evaluate its own states into it.
 
     Args:
         runs: Every run on the chart, in drawing order, with the snapshot
@@ -832,32 +832,38 @@ def assemble_chart_frame(
         shown: The compartments the reader has left drawn.
         plot_width_px: The width of the plot the frame will be drawn on, in
             logical pixels. Where more than one plot draws the frame, it is
-            the widest of them, since the wash-in stretches are formed from
-            the same columns and a narrower plot loses nothing to columns
-            closer than a pixel (`resample_owed`).
+            the widest of them. The wash-in stretches are formed from the
+            same columns, and a narrower plot loses nothing to columns that
+            are closer than a pixel (`resample_owed`).
             `ConcentrationChart.plot_width_px` and `WashInChart.plot_width_px`
-            report it. Required rather than defaulted: a frame drawn for a
-            width nobody stated would be drawn at the floor, silently.
+            report it. It is required rather than defaulted, because a frame
+            drawn for a width nobody stated would silently be drawn at the
+            floor.
 
     Returns:
         The frame.
 
     Raises:
         ValueError: If the width is negative or not finite (see
-            `chart_columns`); if no run is given; or if the runs are not all
-            on one agent. One ×MAC ruler, one MAC-awake band and one 1 MAC line are
-            drawn across a chart every run shares, and all three are the
-            agent's own published values; two agents on one axis would have
-            one run's traces read against the other's divisor - a correct
-            number under the wrong label, which `CLAUDE.md`'s
+            `chart_columns`), if no run is given, or if the runs are not all
+            on one agent. A chart that every run shares draws one ×MAC ruler,
+            one MAC-awake band and one 1 MAC line. All three are the agent's
+            own published values. With two agents on one axis, one run's
+            traces would be read against the other agent's divisor. That is a
+            correct number under the wrong label, which `CLAUDE.md`'s
             safety-critical standard treats as a failure of the value.
         SimulationConfigurationError: If a drawn compartment value is outside
-            0 to 1, naming the compartment, or the axis top is past 100% of an
-            atmosphere - an agent whose MAC is above a third of one. Every
-            value the frame draws is built as its checked type here, before
-            the frame exists, so a refusal leaves nothing half-drawn and the
-            interface halts every run on it (`PL-7DJK`). No supported
-            setting reaches either (`core/concentration.py`).
+            0 to 1, and the error then names the compartment. It is also
+            raised if the axis top is above 100% of an atmosphere, which
+            happens for an agent whose MAC is above a third of an atmosphere.
+            Every value the frame draws is built as its checked type here,
+            before the frame exists. So a rejection leaves nothing half-drawn,
+            and the interface halts every run on the chart (`PL-7DJK`). No
+            supported setting reaches either limit (`core/concentration.py`).
+        TypeError: If the newest run's `elapsed_s` was not built as a
+            `CaseInstant`. Then nothing has checked the instant that the
+            window is placed from against the supported run length
+            (`PL-9DF9`).
     """
 
     if not runs:
@@ -872,18 +878,19 @@ def assemble_chart_frame(
         )
 
     reference = runs[0].snapshot
-    newest_sample_s = max(run.snapshot.elapsed_s for run in runs)
+    newest_instant_s = max(run.snapshot.elapsed_s for run in runs)
+    require_case_instant("newest_instant_s", newest_instant_s)
 
     # The visible window, and the two modes it can be in. "Fit run" derives
     # the width from the newest instant so the whole case is drawn, pinned at
     # zero; a chosen width is held exactly and follows that instant, so a
     # trace's slope on the plot means the same thing at every moment.
     if time_base is None:
-        base = fit_to_run(newest_sample_s)
+        base = fit_to_run(newest_instant_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
-        start_s, stop_s = following_window(base, newest_sample_s)
+        start_s, stop_s = following_window(base, newest_instant_s)
 
     columns = chart_columns(plot_width_px)
     # The cap is applied here rather than where a reader clicks, so that what
@@ -1017,54 +1024,66 @@ def _drawn_wash_in(window: DrawnWindow, substance_id: str) -> tuple[WashInStretc
 def wash_in_stretches(
     quotients: Sequence[float | None], extension_ceiling: float
 ) -> list[tuple[int, int]]:
-    """The stretches the wash-in plot draws, as ranges over the drawn columns.
+    """Return the stretches that the wash-in plot draws, as ranges over the drawn columns.
 
     A column *anchors* a stretch when its quotient is inside the wash-in
-    domain `app/wash_in.py` states. A column *extends* one when it has a
-    quotient at all - its denominator was above the display floor - that
-    quotient is no higher than `extension_ceiling`, and it neighbours an
-    anchor. So a stretch is a run of in-domain columns plus, at each end,
-    the one crossing column that shows where the curve left the domain and
-    that the plot can still show.
+    domain that `app/wash_in.py` states. A column *extends* a stretch when
+    all three of these hold:
 
-    **Why a stretch is extended at all.** Without the crossing column the
-    curve stops at the last column at or below equilibrium, short of the
-    boundary it stopped at, and a trace halting in clear space short of a
-    line reads as clipped rather than finished. With it the curve meets the
-    equilibrium reference and ends on it.
+    - it has a quotient at all, because its denominator was above the
+      display floor;
+    - that quotient is no higher than `extension_ceiling`;
+    - it is next to an anchor.
+
+    So a stretch is a run of in-domain columns plus one crossing column at
+    each end. The crossing column shows where the curve left the domain,
+    provided the plot can still show that column.
+
+    **Why a stretch is extended at all.** Without the crossing column, the
+    curve stops at the last column at or below equilibrium. That column is
+    short of the boundary the curve crossed, and a trace that halts in clear
+    space short of a line looks clipped rather than finished. With the
+    crossing column, the curve meets the equilibrium reference line and ends
+    on it.
 
     **Why the extension has a ceiling.** A run stepped at 0.1 s crosses
-    equilibrium by a hair - measured across every agent and every supported
-    alveolar ventilation and cardiac output at the maximum fresh gas flow,
-    the first sample above it reaches 1.00235 - but the ratio is not
-    continuous in general: `BreathingCircuit.set_circuit_volume` conserves
-    the agent in the circuit while changing the volume it is divided by, so
-    a circuit volume doubled between two steps halves F_I and doubles the
-    ratio. No interface control does that today, and a rule that holds only
-    because a slider is missing is not one to rely on. A crossing column
-    above the ceiling is therefore not drawn, and the stretch ends where it
-    did before: not clamped to the ceiling, not interpolated onto it -
-    simply a point outside what this plot can show.
+    equilibrium by only a hair. This was measured across every agent and
+    every supported alveolar ventilation and cardiac output, at the maximum
+    fresh gas flow. The state at the first step above equilibrium reaches
+    1.00235. That measurement was taken step by step. A drawn column falls
+    wherever the column spacing puts it, so a column can land on a later
+    state of the run, which the measurement did not cover. The ratio is also
+    not continuous in general. `BreathingCircuit.set_circuit_volume`
+    conserves the agent in the circuit while it changes the volume that the
+    agent is divided by. So a circuit volume doubled between two steps halves
+    F_I and doubles the ratio. No interface control does that today, but a
+    rule that holds only because a slider is missing is not one to rely on.
+    So a crossing column above the ceiling is not drawn, and the stretch
+    ends where it would have ended without the extension. The column is not
+    clamped to the ceiling or interpolated onto it. It is simply a point
+    outside what this plot can show.
 
-    **A single polyline through every in-domain sample would draw a straight
-    line across the stretch it skipped** - a segment joining two real points
-    through values the run never produced, which is the synthesized trace
-    this module never creates. A broken line asserts nothing about the gap.
+    **A single polyline through every in-domain column would draw a straight
+    line across the stretch it skipped.** That segment would join two real
+    points through values the run never produced. It would be a synthesized
+    trace, which this module never creates. A broken line asserts nothing
+    about the gap.
 
-    Computed over the drawn columns rather than maintained as the run
-    records samples (`PL-2FM6`): there are only the columns being drawn, so
-    classifying all of them is proportional to the frame rather than to the
-    run, and a boundary can fall only on an instant the chart actually
-    plots. Two anchor runs separated by a single extendable column both
-    reach it, and it is drawn once as each stretch's endpoint - the honest
-    rendering of a run that left the domain and returned within one column,
-    and the only case where one column appears twice.
+    The stretches are computed from the drawn columns, not kept up to date as
+    the run advances (`PL-2FM6`). Only the drawn columns are needed, so
+    classifying all of them costs time in proportion to the frame rather than
+    to the run. It also means that a boundary can fall only on an instant the
+    chart actually plots. When a single extendable column separates two runs
+    of anchors, both stretches extend to it. The column then appears once in
+    each stretch, as its endpoint. That is the honest rendering of a run that
+    left the domain and returned within one column, and it is the only case
+    in which one column appears twice.
 
     Args:
         quotients: One entry per drawn column, `None` where the column has
             no quotient at all.
-        extension_ceiling: Highest quotient a crossing column may carry and
-            still extend a stretch.
+        extension_ceiling: The highest quotient that a crossing column may
+            have and still extend a stretch.
 
     Returns:
         One `(start, stop)` pair of column indices per stretch, oldest

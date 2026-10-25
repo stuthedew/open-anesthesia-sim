@@ -378,8 +378,8 @@ def _snapshot(
 
     return SimulationSnapshot(
         is_running=is_running,
-        elapsed_s=latest.elapsed_s,
-        began_at_s=0.0,
+        elapsed_s=CaseInstant(latest.elapsed_s),
+        began_at_s=CaseInstant(0.0),
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
@@ -526,7 +526,7 @@ def _control_change(
     adjustment: int,
 ) -> ControlChange:
     return ControlChange(
-        elapsed_s=elapsed_s,
+        elapsed_s=CaseInstant(elapsed_s),
         adjustment=adjustment,
         control=control,
         previous_value=previous_value,

@@ -3,11 +3,13 @@ id: PL-2K0K
 title: SimulationController.bookmark_standings' second and third docstring paragraphs and SimulationView._refresh_bookmarks' docstring use private senses a newcomer cannot parse: 'What the run did is joined by the steps it opened on and stands on, asked now', 'the runs answer one mark differently', 'standings nobody answered', 'load-bearing' (found by PL-YHR3's prose review, out of its scope)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-10-19
+closed: 2026-10-24
+pr: 1766
 payoff: a newcomer can follow why each bookmark standing is read from every run, so the reasoning behind what the bookmark panel tells a learner can be checked
 verify: ! grep -qF 'What the run did is joined by the steps it opened on and stands on' src/anesthesia_sim/app/controller.py && ! grep -qF 'so the runs answer one mark' src/anesthesia_sim/app/simulation_view.py
 ---

@@ -180,3 +180,66 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
             window.close()
             window.deleteLater()
         application.processEvents()
+
+
+def test_application_launcher_refuses_to_open_with_no_primary_screen(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """With no primary screen there is nothing to size the window from (`PL-NC2P`).
+
+    `main()` raises rather than opening a window at a guessed size, which
+    could hide its own content. The window is never shown and the event loop
+    never runs.
+    """
+
+    application = QApplication.instance() or QApplication([])
+    exec_calls: list[int] = []
+    windows: list[QMainWindow] = []
+
+    class _ScreenlessApplication:
+        def __init__(self, argv: list[str]) -> None:
+            del argv
+
+        def setOrganizationName(self, name: str) -> None:  # Qt spells this in camelCase.
+            del name
+
+        def setApplicationName(self, name: str) -> None:  # Qt spells this in camelCase.
+            del name
+
+        def palette(self) -> QPalette:
+            return QApplication.palette()
+
+        def setPalette(self, palette: QPalette) -> None:  # Qt spells this in camelCase.
+            del palette
+
+        def primaryScreen(self) -> None:  # Qt spells this in camelCase.
+            return None
+
+        def exec(self) -> int:
+            exec_calls.append(1)
+            return 0
+
+    class _RecordingWindow(QMainWindow):
+        def __init__(self) -> None:
+            super().__init__()
+            windows.append(self)
+
+    monkeypatch.setattr(app_main, "QApplication", _ScreenlessApplication)
+    monkeypatch.setattr(app_main, "QMainWindow", _RecordingWindow)
+    monkeypatch.setenv(USER_DIRECTORY_VARIABLE, str(tmp_path))
+
+    try:
+        with pytest.raises(RuntimeError, match="no primary screen is available"):
+            app_main.main()
+
+        assert exec_calls == []
+        (window,) = windows
+        assert not window.isVisible()
+    finally:
+        for window in windows:
+            view = window.centralWidget()
+            if isinstance(view, SimulationView):
+                view.stop_timers()
+            window.close()
+            window.deleteLater()
+        application.processEvents()
