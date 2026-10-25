@@ -1131,6 +1131,41 @@ def test_a_figure_in_a_list_a_lower_case_unit_or_a_math_span_is_asked_about(
     assert f"{shown} equals " in untied[0]
 
 
+def test_python_source_is_named_by_docket_s_suffixes() -> None:
+    """`PL-H716`: the removed-definition reader spelled `(".py", ".pyi")` beside
+    `docket.verify`'s copy, so it reads `docket.python.SOURCE_SUFFIXES` now."""
+    from docket.python import SOURCE_SUFFIXES
+
+    assert doc_check.SOURCE_SUFFIXES is SOURCE_SUFFIXES
+    assert not hasattr(doc_check, "PYTHON_SUFFIXES")
+
+
+def test_a_math_span_split_across_two_lines_is_refused_before_its_figure_is_read(
+    tmp_path: Path,
+) -> None:
+    """`PL-P0RG`: the untied-restatement check reads a line at a time, so a span
+    wrapped onto a second line gives it no figure. The span renders as literal
+    text, and `check_math_delimiters` refuses both halves, so the document fails
+    until the span is joined onto one line, where its figure is read."""
+    model = _model_with("The pool is $`V_P =\n0.5`$ L in the adult.")
+    root = _with_constants(_repo(tmp_path, model=model), "POOL_L = 0.5\n")
+    split = MODEL.count(chr(10)) + 2
+
+    errors = _errors(root)
+
+    assert _untied(root) == []
+    assert any(error.startswith(f"docs/MODEL.md:{split} leaves `$`` unpaired") for error in errors)
+    assert any(
+        error.startswith(f"docs/MODEL.md:{split + 1} leaves ``$` unpaired") for error in errors
+    )
+
+    joined = _with_constants(
+        _repo(tmp_path / "joined", model=_model_with("The pool is $`V_P = 0.5`$ L in the adult.")),
+        "POOL_L = 0.5\n",
+    )
+    assert len(_untied(joined)) == 1
+
+
 @pytest.mark.parametrize(
     "prose",
     [

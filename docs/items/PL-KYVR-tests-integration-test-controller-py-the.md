@@ -3,11 +3,14 @@ id: PL-KYVR
 title: tests/integration/test_controller.py: the docstring of WORST_SHARED_COLUMN_DIVERGENCE calls the 1e-13 bound an order of magnitude above the measured 2.8e-15 (it is about 1.5) and eleven orders below the displayed 1e-4 (it is nine) (found by the blind review of #1805, 2026-10-25)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.8
 touches: tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1813
 payoff: a reader weighing the controller test's tolerance is given its true margin above the measured value and below the displayed precision
 verify: ! grep -qF 'eleven orders of magnitude below the 1e-4' tests/integration/test_controller.py && ! grep -qF 'is set an order of magnitude above that' tests/integration/test_controller.py
 ---

@@ -3,11 +3,14 @@ id: PL-PV5Q
 title: docs/interface-provenance.md's stated-rationale section rests on search-engine summaries because every blender.org host and web.archive.org are egress-blocked, so a session that can reach the HIG and Developer Docs should re-read it against the pages themselves
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs
 feature: interface-areas
-touches: docs/interface-provenance.md
+milestone: v0.6.8
+touches: docs/interface-provenance.md, ROADMAP.md
 added: 2026-09-16
+closed: 2026-10-25
+pr: 1818
 verify: grep -qF 'read against the primary pages rather than search summaries' docs/interface-provenance.md && python3 tools/doc_check.py check
 ---
 
@@ -36,3 +39,20 @@ Blender Manual and Developer Docs pages themselves and is confirmed, corrected
 or withdrawn; the section records that it was read against the primary pages
 rather than search summaries, with the date; and any claim still unreachable is
 marked as resting on a summary rather than left indistinguishable from the rest.
+
+**Outcome, 2026-10-25.** Every claim in the section was read at its primary
+page, and § "Pages read on 2026-10-25" lists the pages. All five `blender.org`
+hosts answered at CONNECT on the day. `projects.blender.org` serves its HTML
+only to a JavaScript client, so task T91536 and its commit were read through
+that forge's API. The re-read corrected three claims. Non-Modal is about
+consistent input, not about not blocking. The main region does have a
+definition: it is the one region always visible. And no page calls the
+toolbar's tools "gizmo-driven". Two claims are now marked unconfirmed: that the
+interface renamed the screen "layout", and that a temporary window adds a
+hidden screen. Three findings were strengthened. Blender names the mode-error
+hazard, through Raskin in Reynish's 2008 paper, but still has no doctrine for
+keeping the mode visible. Blender's own 2025 tablet post says a single-area
+design departs from non-overlap. And Pin Scene is an opt-in exception to the
+2.8 workshop's rule that the scene belongs to the window. The section's main
+finding held: Blender's reason for non-overlap is visibility and efficiency,
+not information integrity.
