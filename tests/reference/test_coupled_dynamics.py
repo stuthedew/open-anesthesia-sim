@@ -36,6 +36,7 @@ import pytest
 
 from anesthesia_sim.app import formatting
 from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -825,10 +826,16 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # displayed ordering is read through `format_percent`. It checks a number
 # against 0 to 1 and solves nothing. `_displayed_percent` is the one place where
 # it is built.
+#
+# `CompartmentVolume` is the type that the system under test accepts for its
+# circuit volume (`PL-QX2G`). It checks a number against the numerical envelope
+# and solves nothing. The oracle's own `CIRCUIT_VOLUME_L` stays a plain float, and
+# the type is built only where `_empty_shipped_system` hands it to the circuit.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "AlveolarVentilation",
         "CardiacOutput",
+        "CompartmentVolume",
         "Fraction",
         "FreshGasFlow",
         "Percent",
@@ -1047,7 +1054,7 @@ def _empty_shipped_system(agent_id: str) -> AgentUptakeSystem:
     """The implementation under test, empty and at its own defaults."""
 
     system = AgentUptakeSystem.for_agent(agent_id)
-    system.circuit.set_circuit_volume(CIRCUIT_VOLUME_L)
+    system.circuit.set_circuit_volume(CompartmentVolume(CIRCUIT_VOLUME_L))
 
     return system
 

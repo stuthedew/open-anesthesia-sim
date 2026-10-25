@@ -19,6 +19,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -558,22 +559,27 @@ def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
 
     The fix is upstream, in `core/matrix_exponential.py`, which refused a zero
     propagator because `exp(A*dt)` is nonsingular. Since `PL-2MD9`, the run at
-    this volume stops earlier, at `MAXIMUM_SQUARINGS`. The constant state can
-    also no longer be wiped out with the rest. That is why the cap is needed:
-    restoring the constant state alone let this volume advance again with
-    every other entry destroyed. This test pins the end of the path rather than
-    either refusal, so it still fails if the arithmetic goes back to returning
-    a value.
+    this volume stopped earlier, at `MAXIMUM_SQUARINGS`. Since `PL-QX2G`, the
+    numerical envelope refuses the volume itself, so it can no longer reach a
+    step. `tests/unit/test_matrix_exponential.py` still tests both refusals of
+    the propagator.
     """
 
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^gas_volume_l of 1e-300 is outside the numerical envelope of 0\.01 to 10000 L,",
+    ):
+        CompartmentVolume(1e-300, name="gas_volume_l")
+
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    system.alveoli.gas_volume_l = 1e-300
+    held_l = system.alveoli.gas_volume_l
 
-    with pytest.raises(SimulationNumericalError, match="could not be completed"):
-        system.advance(SimulationStep(0.1))
+    with pytest.raises(
+        TypeError, match=r"^gas_volume_l of 1e-300 was not built as CompartmentVolume, it is float"
+    ):
+        system.alveoli.gas_volume_l = 1e-300  # type: ignore[assignment]
 
-    assert system.alveoli.agent_amount_l == 0.0
-    assert system.agent_simulation_validator.delivered_agent_l == 0.0
+    assert system.alveoli.gas_volume_l == held_l
 
 
 def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -> None:
@@ -585,30 +591,42 @@ def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -
     its accounting check passing. It recorded 6.4e-32 L delivered where the
     vaporizer had delivered 0.0004 L, and the stored and exhausted totals were
     destroyed to match. That is the same failure as `PL-3PRZ`: a residual
-    formed from quantities that one failure corrupted together. The step is
-    now refused before any arithmetic runs.
+    formed from quantities that one failure corrupted together. Since
+    `PL-QX2G`, the numerical envelope refuses the volume itself, before any
+    step. `tests/unit/test_matrix_exponential.py` still tests the propagator's
+    refusal past `MAXIMUM_SQUARINGS`.
     """
 
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^gas_volume_l of 1e-18 is outside the numerical envelope of 0\.01 to 10000 L,",
+    ):
+        CompartmentVolume(1e-18, name="gas_volume_l")
+
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    system.alveoli.gas_volume_l = 1e-18
+    held_l = system.alveoli.gas_volume_l
 
-    with pytest.raises(SimulationNumericalError, match="could not be completed"):
-        system.advance(SimulationStep(0.1))
+    with pytest.raises(
+        TypeError, match=r"^gas_volume_l of 1e-18 was not built as CompartmentVolume, it is float"
+    ):
+        system.alveoli.gas_volume_l = 1e-18  # type: ignore[assignment]
 
-    assert system.agent_simulation_validator.delivered_agent_l == 0.0
+    assert system.alveoli.gas_volume_l == held_l
 
 
 def test_an_alveolar_volume_the_model_can_still_step_is_not_refused() -> None:
     """The fix for the regressions above must not have moved this boundary.
 
     1e-6 L is four orders of magnitude less than any real lung volume, and the
-    model steps it without complaint. `PL-3PRZ`'s table recorded that behaviour
+    model stepped it without complaint. `PL-3PRZ`'s table recorded that behaviour
     before the fix. A guard that also refused this volume would have traded a
-    silent wrong answer for a refusal of the model's own working range.
+    silent wrong answer for a refusal of the model's own working range. Since
+    `PL-QX2G` the working range is the numerical envelope, so the test steps at
+    its smallest volume, 0.01 L.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    system.alveoli.gas_volume_l = 1e-6
+    system.alveoli.gas_volume_l = CompartmentVolume(0.01)
 
     result = system.advance(SimulationStep(0.1))
 

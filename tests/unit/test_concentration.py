@@ -44,6 +44,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_sevoflurane_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
@@ -524,7 +525,8 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     with pytest.raises(
@@ -540,7 +542,7 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
     """The same missing conversion the other way round makes a value a hundred times too large."""
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+        circuit_volume_l=CompartmentVolume(6.0), max_delivered_concentration_percent=Percent(100.0)
     )
 
     with pytest.raises(
@@ -634,7 +636,8 @@ def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     circuit.set_delivered_concentration_percent(Percent(0.08))
@@ -699,17 +702,20 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             delivered_concentration_percent=2.0,  # type: ignore[arg-type]
         )
 
     with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
-        BreathingCircuit(circuit_volume_l=6.0, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+        BreathingCircuit(
+            circuit_volume_l=CompartmentVolume(6.0),
+            max_delivered_concentration_percent=8.0,  # type: ignore[arg-type]
+        )
 
     with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             inspired_partial_pressure_fraction=0.0,  # type: ignore[arg-type]
         )
@@ -807,7 +813,8 @@ def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_i
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     with pytest.raises(SimulationConfigurationError, match="percent of 150.0 is outside 0 to 100"):
