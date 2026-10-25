@@ -10,8 +10,9 @@ prints how many refusals each guard and rule made, and in how many sessions.
 A line is the time in UTC to the microsecond, the session id, the guard's name
 and the rule that refused, separated by tabs. The command is never logged,
 because a command can carry a token. A guard run by hand, with no session id in
-its input, is not logged. `pr-body-email-guard.sh` logs nothing, so it has no
-line here.
+its input, is not logged. `pr-body-email-guard.sh` refuses through
+`tools/pr_body_check.py --screen`, which logs its refusals through
+`hook_input.deny` as well, under the rule `email-address` (`PL-HHKC`).
 
 The counts are a floor, and the floor is lowest for the guards that fire after
 `bin/docket record`: `push-check-guard`, `gate-status-guard` and
