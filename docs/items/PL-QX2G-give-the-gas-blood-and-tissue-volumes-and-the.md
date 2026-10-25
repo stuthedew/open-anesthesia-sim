@@ -33,3 +33,33 @@ verify: grep -rq 'def test_every_volume_and_partition_coefficient_is_refused_out
 **Done when.** Every volume and partition coefficient is a checked type with a declared envelope that is stated, with its measurement, in `docs/MODEL.md`; the parameter-file payloads and the equation settings take those types; and a test probes each envelope at both edges and one representable value past each.
 
 **Generator check.** A member of the `floating-point-domain` feature, split from `PL-58D7`, the generator head.
+
+**Session notes, 2026-10-25 (claimed on `claude/blissful-goodall-i6dw3h`; stopped for length before any code).** The session that claimed this item read the code and took one measurement, then reset at the spend budget. The next session starts from here.
+
+*The shape planned.* One new module in `core/` holds the envelope, because the envelope is a numerical claim and `core/supported_ranges.py` holds physiological ones. It defines `MINIMUM_VOLUME_L`, `MAXIMUM_VOLUME_L`, `MINIMUM_PARTITION_COEFFICIENT` and `MAXIMUM_PARTITION_COEFFICIENT`. It also defines two checked types built as `FreshGasFlow` is built, a `float` and a `CheckedQuantity` (names to settle, for example `CompartmentVolume` and `PartitionCoefficient`). Each type has a stored-value check that refuses a bare `float` with `TypeError`, as `require_fresh_gas_flow` does. `docs/ARCHITECTURE.md` § "Where new code belongs" needs the new module, because `tools/doc_check.py` holds that map to the tree. The places that store a volume or a coefficient, and so call the stored-value check in place of `require_positive_finite`, are these:
+
+- `BreathingCircuit.__setattr__` and `set_circuit_volume` (`circuit.py`).
+- `AlveolarCompartment.__setattr__` for `gas_volume_l` (`alveolar.py`).
+- `VenousBloodCompartment.__setattr__` (`blood.py`).
+- `TissueGroup.__setattr__` (`tissue.py`).
+- `TissueGroupEquationSettings.__post_init__` and `UptakeEquationSettings.__post_init__` (`governing_equations.py`).
+- The parameter payloads in `parameters.py`, which build the types at load. `patient.py` and `uptake_system.py` then pass them through.
+
+`app/controller.py` passes a circuit volume to `set_circuit_volume` and must build the type there. About 300 keyword uses in the tests build compartments from bare floats: `test_circuit.py` 38, `test_tissue.py` 36, `test_parameters.py` 21, `test_governing_equations.py` 20, `test_alveolar.py` 18, `test_blood.py` 13 and `test_controller.py` 13, with fewer in about twenty other files. That migration is mechanical, so a subagent can do it once the types exist in `src/`.
+
+Once both factors are inside the envelope, their product lies between 1e-6 and 1e7 at the candidate bounds. So `require_a_capacity` in `core/validation.py` can never fire. Retire it, and rewrite its regression tests (`PL-8LQZ`, `PL-FNH3`) as tests that the envelope refuses those inputs. `require_room_for_the_agent_held` stays, because it checks a relation with the amount held.
+
+*The measurement that changes the candidate bounds.* The products and quotients are not the binding limit. The propagator's squarings are. The script built `UptakeEquationSettings` at envelope corners, with every flow at its maximum and the tissue flows split 0.98, 0.01 and 0.01 of a 10 L/min cardiac output. It counted the squarings that `matrix_exponential` would perform:
+
+| Corner | Fastest rate (1/s) | Squarings at 0.1 s | Squarings at 86 400 s |
+| --- | --- | --- | --- |
+| Candidate: volumes 1e-3 L, coefficients 1e-3 to 1e4, so tissue:blood 1e-7 | 1.6e9 | 32 | 52 |
+| Same, with tissue:blood also held at 1e-3 or above | 1.7e6 | 22 | 42 |
+| Volumes 1e-2 L, coefficients 1e-2 to 1e3, tissue:blood 1e-7 | 1.6e6 | 22 | 42 |
+| Volumes 1e-2 L, coefficients 1e-2 to 1e3, tissue:blood 1e-2 or above | 1.7e4 | 15 | 35 |
+
+`MAXIMUM_SQUARINGS` is 32. At 32 squarings the module's own error bound is 2^-20, about 1e-6, in every entry. A slow state such as the fat changes by about 7e-7 of itself per 0.1 s step. So at the candidate's stiffest corner, rounding is as large as the fat's whole change per step, and the error compounds over a run. The candidate bounds therefore do not meet this item's own claim, that the arithmetic has been shown to give the right answer inside the envelope. The stiff corner comes from the tissue:blood quotient: a tiny tissue:gas coefficient over a huge blood:gas one. No agent has a tissue:blood coefficient outside about 0.5 to 100.
+
+*The shipped extremes, for the margins.* Volumes run from 1.222 L (venous pool) to 33 L (muscle), with the circuit at 6.0 L and the alveolar gas at 2.5 L. Blood:gas coefficients run from 0.42 to 1.30, and tissue:gas coefficients from 0.54 to 70.
+
+*What the next session does first.* Measure the propagator's error against a high-precision evaluation at the corners. No `mpmath` or `scipy` is installed, so write a `decimal` scaling-and-squaring Taylor series in the scratchpad. Measure the mixed corners too: one input at its edge with the rest at shipped values. Then choose the bounds so that the 0.1 s propagator's error at every corner is far below the slowest shipped mode's change per step, and record the criterion with the numbers in `docs/MODEL.md` § "Numerical method". Bounding the tissue:blood quotient as well looks necessary. That bound is a relation between two fields, so `TissueGroup` and the agent payload check it. Alternatively, a third checked type can hold the quotient for `TissueGroupEquationSettings`. Every corner exceeds 32 squarings at the 24 h horizon. So read how `RunDefinition.state_at` composes its intervals (`run_definition.py` lines 961 and 1003) before claiming anything about long evaluations at the corners. A refusal there comes from `core/exceptions.py`, which `PL-58D7`'s planned corner sweep accepts.
