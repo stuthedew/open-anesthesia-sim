@@ -2768,7 +2768,7 @@ volumes do not follow: 83.6% of body weight is 58.5 L at 70 kg, against the
 stored 47.5 L. So Gas Man appears to have kept the book's 76/24 flow split. It
 appears to have redistributed the 24 across two compartments where the book
 has five, over a smaller tissue volume. That arithmetic is this project's, and
-it is no evidence against the Workbook. Gas Man may lump differently, or may
+it does not prove the Workbook wrong. Gas Man may lump differently, or may
 work from a page outside the range supplied. The data file carries the figures
 and the detail for each value.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
@@ -5626,8 +5626,8 @@ following frame in forty at 150 columns, one in four at 1 069 and one in two at
 2 401. From 5x up, the left edge passes a column on nearly every frame at 1 069
 columns or more, so nearly every frame forms it. This was re-measured in a
 later process whose times ran about a quarter above the table's. With sixty
-changes in view at 1 069 columns, a frame cost 13.0 ms at 20x against 12.0 ms
-at 1x. At 2 401 columns it cost 23.9 ms against 22.8 ms. Two runs at 2 401
+changes in view at 1 069 columns, one run's call cost 13.0 ms at 20x against
+12.0 ms at 1x. At 2 401 columns it cost 23.9 ms against 22.8 ms. Two runs at 2 401
 columns therefore take about 40-50 ms of a 200 ms frame. Before the propagators
 were kept, sixty changes in view on two runs at 1 069 columns took about
 240 ms. That is longer than the frame they were drawn in.
@@ -8254,7 +8254,7 @@ one, and this project's disclaimers already take that view.
 today* (`PL-JSY5`, 2026-10-18). Where the line lives, and the one gap in that,
 are stated in § "Minimum displayed outputs" -> "What this list requires once
 the layout is the reader's". The argument above needs only that the line is
-a fixed part of the layout rather than conditional, and that is true at every
+a permanent statement rather than a conditional one, and that is true at every
 window size.
 
 The interface applies the same economy of signals one level down. The
