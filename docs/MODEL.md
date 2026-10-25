@@ -10560,6 +10560,10 @@ This model does not model:
 - lung tissue and pulmonary blood. No compartment represents either, and
   together they are a store worth about a fifth of every agent's fast pool
   (the note below this list sizes it);
+- a vessel-poor tissue group. Bone, cartilage, ligament, tendon and the other
+  tissues with little or no blood flow have no compartment, and none of the
+  three tissue groups stands for them. The note below this list gives the
+  reason, which is the one the field gives;
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added
   in v0.2.0; see § "Parameter provenance");
 - nitrous oxide;
@@ -10648,6 +10652,42 @@ them against the other candidate explanations of one specific disagreement,
 and a second copy here would be a second thing to keep true. This list carries
 the magnitude, because a reader sizing what the model leaves out should not
 have to find it inside an argument about one agent.
+
+**The vessel-poor group is left out because it takes up almost no agent, and
+Eger's own model leaves it out for that reason** (`PL-NX4H`). Eger grouped the
+body's tissues into four groups by their capacity and their blood flow:
+vessel-rich, muscle, fat and vessel-poor. His later five-compartment model
+keeps the first three. It deletes the vessel-poor group "because its
+contribution to uptake is considered insignificant", and adds a lung
+compartment and an intertissue-diffusion compartment instead. That is
+Carpenter et al. 1986, as Hendrickx and De Wolf report it on p. 163. Eger and
+Saidman's review gives the physiological reason. The group is "made up of
+ligaments, tendons, cartilage, bone, and other avascular tissues", and it
+"does not contribute to uptake because of its minimal or absent perfusion"
+(p. 1023). Gas Man, the reference implementation, also carries exactly three
+tissue groups, in the Workbook's Model Parameters table on p. 168.
+
+So the three groups here are Eger's five-compartment model without its lung
+and intertissue-diffusion compartments, and the bullets on lung tissue and on
+intertissue diffusion record those two omissions. The three groups hold 6.0,
+33.0 and 14.5 L, which is 53.5 L in a 70 kg reference patient. Read that total
+as the sum of three compartments, not as a statement of body composition. The
+rest of the body, the vessel-poor tissues among it, is not a store that this
+model fills or empties.
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5 -->
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+<!-- derived: 53.5 L from data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6, tissue_groups.muscle.volume_l = 33, tissue_groups.fat.volume_l = 14.5 -->
+
+Nothing in this project measures what the omission costs. The case that it is
+small is the perfusion argument above: a tissue that receives almost no blood
+receives almost no agent over the length of any case this simulator teaches.
+Hendrickx and De Wolf's p. 163 and Eger and Saidman's p. 1023 were read in
+full text from the private reference corpus on 2026-10-25. Carpenter et al.'s
+full text has not been read here, so the deletion is attributed to them only as
+Hendrickx and De Wolf report it. The intertissue-diffusion note below gives the
+full citation of all four sources.
 
 **The circuit's own walls absorb agent, and the model's circuit is inert.**
 `BreathingCircuit` solves an ideal, well-mixed volume whose walls do nothing.

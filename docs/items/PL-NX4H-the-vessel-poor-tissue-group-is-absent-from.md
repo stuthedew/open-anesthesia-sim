@@ -3,11 +3,12 @@ id: PL-NX4H
 title: The vessel-poor tissue group is absent from Known limitations
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-01
+closed: 2026-10-25
 verify: grep -qi 'vessel-poor' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
