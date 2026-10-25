@@ -1102,6 +1102,28 @@ class NewCaseDialog(QDialog):
             self, question.title, self.body_labels, question.discard_label, question.keep_label
         )
 
+    def show_question(self, question: NewCaseQuestion) -> None:
+        """Rewrite every line of the question, because the runs may have moved on while it is open.
+
+        The question names how much work starting over discards. A running
+        run goes on stepping while the dialog is open, so the run view
+        rewrites the question on each refresh. The reader therefore decides
+        on a figure for the work as it stands now (`PL-WM5P`).
+
+        Args:
+            question: The text of `dashboard_frame.new_case_question` or
+                `dashboard_frame.trunk_reset_question`, for the runs as they
+                stand now.
+        """
+
+        self.title_label.setText(question.title)
+
+        for label, line in zip(self.body_labels, question.body, strict=True):
+            label.setText(line)
+
+        self.discard_button.setText(question.discard_label)
+        self.keep_button.setText(question.keep_label)
+
 
 class MarkRow(QWidget):
     """One mark's row: a bullet, and beside it the row's text, wrapping under itself.
