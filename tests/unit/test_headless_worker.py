@@ -16,6 +16,7 @@ from pathlib import Path
 import headless_worker
 import pytest
 from docket.lines import split_lines
+from docket.model_choice import Choice
 from docket.store import ID_RE
 from docket.vcs import GitCall
 from headless_worker import (
@@ -296,7 +297,7 @@ def _main(args: list[str], items: str = "PL-B7K2\n", **overrides: object) -> int
         "environ": {"ANTHROPIC_API_KEY": "sk-test"},
         "tools": lambda env: None,
         "docket": lambda: items,
-        "effort_level": lambda: "high",
+        "models": lambda items: {item: Choice("claude-opus-5-5", "high", None) for item in items},
         "awake": lambda: "awake",
     }
     return headless_worker.main(args, **{**common, **overrides})  # type: ignore[arg-type]
@@ -429,29 +430,48 @@ def test_without_caffeinate_the_runner_says_nothing_keeps_it_awake(
     assert line.startswith("Nothing keeps this machine awake")
 
 
-def test_a_worker_runs_at_the_level_the_project_settings_hold(
+def _project(tmp_path: Path, models: str) -> Path:
+    """A project root holding an empty item store and `models` as its `[models]` table."""
+    (tmp_path / "docs" / "items").mkdir(parents=True)
+    (tmp_path / "docket.toml").write_text(models, encoding="utf-8")
+    return tmp_path
+
+
+def test_a_worker_runs_at_the_model_and_effort_the_table_chooses(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Every run takes the settings file's `effortLevel`, whatever its item's lane (`PL-4N0K`)."""
-    settings = tmp_path / "settings.json"
-    settings.write_text('{"effortLevel": "xhigh"}', encoding="utf-8")
-    level = lambda: headless_worker.read_effort_level(settings)  # noqa: E731
-    assert _main(["--dry-run", "--credit-left", "50"], effort_level=level) == 0
+    """Every run takes `docket.toml`'s `[models]` choice for the role `worker` (`PL-0XDM`)."""
+    root = _project(
+        tmp_path,
+        '[models]\ndefault = { model = "model-a", effort = "high" }\n'
+        '[[models.rule]]\nmatch = { role = "worker" }\neffort = "xhigh"\n',
+    )
+    chosen = lambda items: headless_worker.worker_choices(items, root)  # noqa: E731
+    assert _main(["--dry-run", "--credit-left", "50"], models=chosen) == 0
     out = capsys.readouterr().out
-    assert "PL-B7K2 at xhigh effort" in out
+    assert "PL-B7K2 on model-a at xhigh effort" in out
     assert "$50.00 of credit left" in out
 
 
-def test_the_project_settings_set_high_for_every_run() -> None:
-    """The owner set `high` for all work on 2026-10-19 (`PL-6XZG`, `docs/maintainer.md`)."""
-    assert headless_worker.read_effort_level() == "high"
+def test_a_model_named_on_the_command_line_overrides_the_table(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert _main(["--dry-run", "--credit-left", "50", "--model", "model-b"]) == 0
+    assert "PL-B7K2 on model-b at high effort" in capsys.readouterr().out
 
 
-def test_a_settings_file_with_no_effort_level_is_refused_before_any_spend(tmp_path: Path) -> None:
-    settings = tmp_path / "settings.json"
-    settings.write_text("{}", encoding="utf-8")
-    level = lambda: headless_worker.read_effort_level(settings)  # noqa: E731
-    assert _main(["--dry-run", "--credit-left", "50"], effort_level=level) == 2
+@pytest.mark.reads_item_store
+def test_the_project_table_runs_workers_on_opus_at_high() -> None:
+    """Workers run Opus 5.5 (`PL-80R5`) at the owner's `high` (`PL-6XZG`)."""
+    assert headless_worker.worker_choices(["PL-ZZZZ"])["PL-ZZZZ"].describe() == (
+        "claude-opus-5-5 at high effort"
+    )
+
+
+def test_a_project_with_no_models_table_is_refused_before_any_spend(tmp_path: Path) -> None:
+    root = _project(tmp_path, "")
+    chosen = lambda items: headless_worker.worker_choices(items, root)  # noqa: E731
+    assert _main(["--dry-run", "--credit-left", "50"], models=chosen) == 2
 
 
 def test_an_item_the_queue_does_not_offer_is_refused() -> None:

@@ -4040,6 +4040,66 @@ that is not a TOML date, and an `n` below 1. An entry that matched nothing
 while looking applied would hide the recommendation it holds. The table is
 not a `docket.toml` setting, so it has one home.
 
+### The model table
+
+`docket.toml`'s `[models]` table says which model and reasoning effort each
+kind of work uses, and `docket.model_choice` is its one reader (`PL-0XDM`).
+`docket next` prints its choice beside a pick's model flag, and `docket show`
+prints it on a `model:` line. Tools that start work read it too, such as a
+headless worker or a paid review. A choice written anywhere else is a second
+copy that goes stale, which is the problem the table exists to fix.
+
+```toml
+[models]
+default = { model = "model-a", effort = "high" }
+excluded = ["model-x"]     # nothing uses these unless a rule names one
+
+[models.prices]            # list prices in US dollars per million tokens
+"model-a" = { input = 4.0, output = 20.0 }
+
+[models.areas]             # parts of the tree, by path
+simulator = ["src/core/", "docs/MODEL.md"]
+interface = ["src/app/"]
+
+[[models.rule]]
+match = { area = "simulator" }
+effort = "max"
+
+[[models.rule]]
+match = { area = "interface" }
+model = "model-b"
+effort = "medium"
+```
+
+A rule's `match` names one or more categories, and the rule holds when each
+has the value it gives. The first rule that holds decides, and a key it leaves
+out falls back to `default`. So list the most demanding rule first. In the
+example, an item that touches both the simulator and the interface takes the
+first rule, at `max` effort.
+
+The categories a reader passes for an item are `class`, `lane`, `feature`,
+`status`, `size` (the item's `effort:` field, `S`, `M` or `L`), `area` and
+`role`. An item reaches an area when one of its `touches` lies inside one of
+the area's paths, or is a directory holding one. `role` is `strongest` where
+`Item.model_guidance` asks for the strongest model, `delegable` where a
+cheaper model may take the item, and empty otherwise. A tool passes its own
+role, such as `worker`, `review` or `exploration`. A new category is a data
+edit: a reader that knows the fact passes it, and a rule that names a
+category no reader passes never holds.
+
+`config.load` reads the table into `Config.models`, which is `None` when the
+file has none. A malformed table is refused, as a malformed `docket.toml` is.
+That covers an unknown key, a default that is not exactly a model and an
+effort, an effort outside `low`, `medium`, `high`, `xhigh` and `max`, a rule
+that sets neither a model nor an effort, a rule naming an area the table does
+not define, a price that is not a positive number, and a default the
+`excluded` list names. A rule may name an excluded model, because a rule in
+the table is the owner choosing it.
+
+The model evidence table above is different. It records a measurement and is
+printed beside the choice rather than instead of it. When a measurement
+should change what work uses, the change is a rule in `[models]`.
+
 ### Which sessions worked a closed item
 
 `docket show` ends a closed item with a section headed "Sessions that worked

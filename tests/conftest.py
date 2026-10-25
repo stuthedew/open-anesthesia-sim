@@ -100,21 +100,59 @@ second time, which crashes the process. A drift job on CPython 3.15.0 printed
 died of a segmentation fault while the exit destroyed its windows. So
 `pytest_sessionfinish` deletes the windows Python built while the application
 still runs, and leaves Qt's own widgets to their owners, which delete them.
+
+**A supported-range constant set to a wrong value, on request** (`PL-0Z0F`).
+`tools/restated_constants.py` runs the suite with one constant of
+`anesthesia_sim.core.supported_ranges` moved, to find the tests that copy the
+constant's value instead of importing its name. It asks for the move through
+one environment variable, `NAME=VALUE`, whose name the tool owns. When the
+variable is unset or empty, `perturb_ranges` does nothing, the header gains no
+line, and the suite runs exactly as it would without this code.
+
+When it is set, this file puts a finder at the front of `sys.meta_path` before
+any module of the simulator is imported, and then imports the ranges module
+through it. The finder compiles the module from its source with the one
+binding of `NAME` replaced by `VALUE`, and never reads a cached `.pyc`. So the
+module is built once, already holding the wrong value. A module that later
+runs `from anesthesia_sim.core.supported_ranges import NAME` copies the wrong
+value, as does a module-level value the ranges module derives from `NAME`.
+Setting the attribute after an import would reach neither. If the ranges
+module was imported before this file ran, and not by this file, the run stops
+with a usage error, because the copies taken by then would hold the old value.
+A test module that loads this file a second time finds the module already
+built with the same perturbation, and that is allowed. The same holds if
+the variable is malformed or names no numeric constant. Each xdist worker
+imports this file, so each builds its own perturbed module.
+
+The perturbation is printed in pytest's header, which is how the tool knows
+that it was applied. A subprocess that a test starts imports the unperturbed
+module, so a test that reads the constant only that way is not checked.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib
+import importlib.abc
+import importlib.machinery
+import importlib.util
 import os
 import pickle
 import sys
 from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
 from itertools import islice
 from pathlib import Path
-from types import ModuleType
+from types import CodeType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
+from restated_constants import (
+    PERTURBED_CONSTANT_VARIABLE,
+    RANGES_MODULE,
+    parse_perturbation,
+    perturbation_line,
+    perturbed_tree,
+)
 
 if TYPE_CHECKING:
     from xdist.workermanage import WorkerController
@@ -125,6 +163,89 @@ except ImportError:  # Windows, where `computed_once` shares nothing between wor
     fcntl = None
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+class _PerturbedRangesLoader(importlib.machinery.SourceFileLoader):
+    """Load the ranges module from its source with one constant's binding replaced."""
+
+    def __init__(self, fullname: str, path: str, name: str, value: float) -> None:
+        super().__init__(fullname, path)
+        self.constant_name = name
+        self.constant_value = value
+
+    def get_code(self, fullname: str) -> CodeType:
+        """Compile the perturbed source, bypassing the bytecode cache."""
+
+        source = self.get_data(self.path).decode("utf-8")
+        tree = perturbed_tree(source, self.constant_name, self.constant_value)
+        return compile(tree, self.path, "exec", dont_inherit=True)
+
+
+class _PerturbedRangesFinder(importlib.abc.MetaPathFinder):
+    """Find the ranges module where the path finder does, and hand it the perturbing loader."""
+
+    def __init__(self, name: str, value: float) -> None:
+        self.constant_name = name
+        self.constant_value = value
+
+    def find_spec(
+        self, fullname: str, path: Sequence[str] | None, target: ModuleType | None = None
+    ) -> importlib.machinery.ModuleSpec | None:
+        if fullname != RANGES_MODULE:
+            return None
+        found = importlib.machinery.PathFinder.find_spec(fullname, path)
+        if found is None or found.origin is None:
+            raise pytest.UsageError(f"{PERTURBED_CONSTANT_VARIABLE}: {fullname} was not found")
+        loader = _PerturbedRangesLoader(
+            fullname, found.origin, self.constant_name, self.constant_value
+        )
+        return importlib.util.spec_from_file_location(fullname, found.origin, loader=loader)
+
+
+def perturb_ranges(setting: str | None) -> str | None:
+    """Build the ranges module with the constant `setting` names moved, and say what moved.
+
+    `setting` is the environment variable's value. Unset or empty, nothing
+    happens and the result is `None`. The module docstring says why the
+    finder has to be installed before anything imports the module.
+    """
+
+    if not setting:
+        return None
+    try:
+        name, value = parse_perturbation(setting)
+    except ValueError as error:
+        raise pytest.UsageError(str(error)) from error
+    loaded = sys.modules.get(RANGES_MODULE)
+    if loaded is not None:
+        # A test module that loads this file again, as `test_worksteal_dealing.py`
+        # does, finds the module already built with this perturbation.
+        loader = getattr(loaded.__spec__, "loader", None)
+        built_with = (
+            getattr(loader, "constant_name", None),
+            getattr(loader, "constant_value", None),
+        )
+        if built_with == (name, value):
+            return perturbation_line(name, value)
+        raise pytest.UsageError(
+            f"{PERTURBED_CONSTANT_VARIABLE} is set, but {RANGES_MODULE} was imported before "
+            "tests/conftest.py could perturb it, so earlier copies would hold the old value"
+        )
+    sys.meta_path.insert(0, _PerturbedRangesFinder(name, value))
+    try:
+        importlib.import_module(RANGES_MODULE)
+    except ValueError as error:
+        raise pytest.UsageError(str(error)) from error
+    return perturbation_line(name, value)
+
+
+_PERTURBATION = perturb_ranges(os.environ.get(PERTURBED_CONSTANT_VARIABLE))
+
+
+def pytest_report_header(config: pytest.Config) -> list[str]:
+    """Name the perturbed constant in pytest's header, and add nothing when there is none."""
+
+    return [_PERTURBATION] if _PERTURBATION else []
 
 
 class _CurveRead(Protocol):

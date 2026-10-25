@@ -683,6 +683,82 @@ def test_a_derived_figure_says_to_recompute_when_an_input_moves(tmp_path: Path) 
     )
 
 
+def _run_length_errors(tmp_path: Path, constant: str, *prose: str) -> list[str]:
+    """The `docs/MODEL.md` errors of a repository whose run length is `constant`.
+
+    The miniature package map does not list `core/supported_ranges.py`, so
+    only the specification's own errors are returned.
+    """
+    root = _repo(
+        tmp_path, model=_model_with(*prose), modules=("core/thing.py", "core/supported_ranges.py")
+    )
+    (root / "src" / "anesthesia_sim" / "core" / "supported_ranges.py").write_text(
+        f"from typing import Final\n\nMAXIMUM_ELAPSED_SIMULATION_TIME_S: Final = {constant}\n"
+        "DERIVED_ELSEWHERE = MAXIMUM_ELAPSED_SIMULATION_TIME_S / 2\n",
+        encoding="utf-8",
+    )
+    return [error for error in _errors(root) if error.startswith("docs/MODEL.md")]
+
+
+RUN_LENGTH = "core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400"
+
+
+def test_a_prose_figure_is_held_to_the_constant_its_marker_names(tmp_path: Path) -> None:
+    """A figure the code states, not a data file, is held to its constant (`PL-NH53`).
+
+    `docs/MODEL.md` states the supported run length in prose, and moving
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` used to leave those sentences wrong
+    with the check still passing. A number grouped with spaces, as this
+    project writes "86 400 s", is read as the one number it is.
+    """
+    prose = (
+        "A run is supported for 86 400 s, which is 24 hours.",
+        f"<!-- provenance: {RUN_LENGTH} -->",
+        f"<!-- derived: 24 hours from {RUN_LENGTH} -->",
+    )
+
+    assert _run_length_errors(tmp_path / "held", "86_400.0", *prose) == []
+
+    moved = _run_length_errors(tmp_path / "moved", "172_800.0", *prose)
+    assert any(
+        "states MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400" in error and "holds 172800" in error
+        for error in moved
+    ), moved
+    assert any("24 hours was computed from" in error for error in moved), moved
+
+    reworded = _run_length_errors(
+        tmp_path / "reworded", "86_400.0", "A run is supported for a day.", prose[1]
+    )
+    assert any("is not in it" in error for error in reworded), reworded
+
+    unread = _run_length_errors(
+        tmp_path / "unread",
+        "86_400.0",
+        "Half is 43 200 s.",
+        "<!-- provenance: core/supported_ranges.py DERIVED_ELSEWHERE = 43200 -->",
+    )
+    assert any("does not hold as a number" in error for error in unread), unread
+
+
+def test_a_grouped_derived_figure_is_found_whole(tmp_path: Path) -> None:
+    """A derived figure grouped with spaces is looked for as the whole number.
+
+    Read in pieces, "86 400 000 steps" was looked for as 86, which any
+    paragraph stating "86 400 s" contains, so a misplaced marker passed.
+    """
+    marker = f"<!-- derived: 86 400 000 steps from {RUN_LENGTH} -->"
+
+    placed = _run_length_errors(
+        tmp_path / "placed", "86_400.0", "A run at 1 ms takes 86 400 000 steps.", marker
+    )
+    assert placed == []
+
+    misplaced = _run_length_errors(
+        tmp_path / "misplaced", "86_400.0", "A run is supported for 86 400 s.", marker
+    )
+    assert any("which is not in the prose" in error for error in misplaced), misplaced
+
+
 def test_a_correct_derived_figure_is_left_alone(tmp_path: Path) -> None:
     root = _repo(
         tmp_path,

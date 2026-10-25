@@ -68,26 +68,37 @@ their work held up and brings its recommendations to you with their evidence.
 
 ### Which model each flag means
 
-**A dated instance, not a rule** (`.claude/rules/expert-review.md`). What
-falsifies the two names below is a new model release, nothing about how this
-project works, so check the lineup before trusting them; everything else in
-this section holds whoever is at the top.
+**The answer is `docket.toml`'s `[models]` table** (`PL-0XDM`). It holds a
+default model and effort, and rules that override them for a kind of work,
+matched on an item's class, lane, feature, status, size, area or role. An area
+is a set of paths, such as the simulator's core or the interface. `bin/docket
+next` and `bin/docket show` print the model and effort it chooses beside each
+flag, and the headless worker and the model review tool read it too. To change
+a choice, edit the table; `subprojects/docket/README.md` § "The model table"
+has the format. `tools/model_home_check.py` refuses a model id written
+anywhere else, and `tools/config_home_check.py` holds the two copies that
+Claude Code reads to it. This section records why the table says what it
+does.
 
-- **As of 2026-10-18 the strongest available model is still Claude Fable
-  5.1** (`claude-fable-5-1`), which is what `use your strongest model` asks
-  for. Anthropic's models overview recommends Claude Opus 5.5 for most work,
-  and Fable 5.1 "for demanding reasoning and long-horizon agentic work, or when
-  your evals on Claude Opus 5.5 at higher effort still fall short"
+**A dated instance, not a rule** (`.claude/rules/expert-review.md`). What
+falsifies the two names below is a new model release or a new word from the
+owner, nothing about how this project works.
+
+- **`use your strongest model` means Claude Opus 5.5, the table's default.**
+  Nothing uses Claude Fable 5.1 unless the project owner names it for that
+  work: "Nothing should be using fable anymore unless I specifically say"
+  (project owner, 2026-10-25). The table's `excluded` list names Fable's id,
+  and `tools/model_home_check.py` refuses that id anywhere but the table and
+  the records. That replaces this section's reading of 2026-10-18, which named
+  Fable 5.1 as the strongest model and so as what the flag asked for. An open
+  item went on recommending Fable after the owner had stopped using it, which
+  is why the answer now has one home. Anthropic's models overview recommends
+  Opus 5.5 for most work
   (https://platform.claude.com/docs/en/about-claude/models/overview, read
-  2026-10-18). The project owner confirmed on 2026-09-19 that Fable is
-  stronger than Opus. That settles it against the assumption that whatever
-  model a session already runs satisfies the flag. Claude Opus 5.5
-  (`claude-opus-5-5`) is the step below and the substitute when Fable is
-  unavailable. The owner moved this project's Projects threads from Fable 5.1
-  to Opus 5.5 on 2026-10-14 (`PL-XJV3`). Which model a session runs is the
-  owner's choice, and this line only says what the flag asks for.
-- **As of 2026-10-18 `delegable` still means Claude Sonnet 5.5**
-  (`claude-sonnet-5-5`), not Claude Haiku 5.5, and one named tier rather than
+  2026-10-18). The owner moved this project's Projects threads from Fable 5.1
+  to Opus 5.5 on 2026-10-14 (`PL-XJV3`).
+- **As of 2026-10-18 `delegable` still means Claude Sonnet 5.5**, the table's
+  `delegable` rule, not Claude Haiku 5.5, and one named tier rather than
   a choice between two. The project owner asked for a cheap-model offer on
   clear-cut items and specified the asymmetry it must have (2026-09-19): *"I'd
   rather err on the side of default opus if any question and miss items that
@@ -153,9 +164,11 @@ strong half is named by family rather than by rank, and the family stopped
 being top on 2026-09-19. Use it when Opus-level planning is enough for the
 item in hand — not as the default for work this section calls reasoning-heavy.
 
-For that work, set the model deliberately (`/model fable`, or `--model
-claude-fable-5-1` at launch) and switch back for execution. Two caveats
-survive whichever way the split is made:
+**Since 2026-10-25 that objection no longer applies as written.** Nothing
+uses Fable unless the owner names it, so Opus is the strongest model in use,
+and `opusplan`'s planning half is no longer a tier below. Where the owner
+names Fable for a piece of work, set it deliberately with `/model` and switch
+back for execution. Two caveats survive whichever way the split is made:
 
 1. Execution returns to the cheaper model, so the strong-model review of a
    safety-critical diff is a deliberate step, not an automatic one.
@@ -185,9 +198,11 @@ evaluations" (Claude Code docs, *Model configuration*, section "Adjust effort
 level", https://code.claude.com/docs/en/model-config, read 2026-10-17).
 
 **On Opus 5.5, every session opens at `high` for now, simulator and apparatus
-alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). The
-`effortLevel` key in `.claude/settings.json` sets it, so a session the owner
-opens without choosing a level runs at `high`. A level the owner picks when
+alike** (project owner, 2026-10-19, over `max` and `xhigh`, `PL-6XZG`). Its
+home is the default effort in `docket.toml`'s `[models]` table (`PL-0XDM`).
+The `effortLevel` key in `.claude/settings.json` is the copy Claude Code
+reads, and `tools/config_home_check.py` fails when the two differ. So a
+session the owner opens without choosing a level runs at the table's default. A level the owner picks when
 opening a session still wins over the file, because Claude Code ranks an
 explicit choice above settings (Claude Code docs, *Model configuration*,
 section "Adjust effort level", https://code.claude.com/docs/en/model-config,
@@ -315,7 +330,9 @@ deletes a workflow run 90 days after it ran (`PL-4SFQ`).
   model for quick lookups; `PL-2D28` carries the case). The project's own
   Explore definition, `.claude/agents/Explore.md`, writes `model: opus`, no
   `effort` line, `omitClaudeMd: true` and the read-only tools Read, Grep and
-  Glob. In an Opus session the `opus` alias resolves to the session's own
+  Glob. Its `model:` is a copy of the `exploration` rule in `docket.toml`'s
+  `[models]` table, and `tools/config_home_check.py` fails when the two
+  differ (`PL-0XDM`). In an Opus session the `opus` alias resolves to the session's own
   model. In a Fable session on a Claude subscription it resolves to the Opus
   model the alias points to. That is what the built-in Explore did in both
   ([subagents](https://code.claude.com/docs/en/sub-agents), "Choose a model"
@@ -787,11 +804,14 @@ the runner's last one forward. Runners before `PL-NQ0M` kept a ledger at
 `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads
 it now, so you can delete it.
 
-## Have Fable 5.1 read the model document against the data, once
+## Have a strong model read the model document against the data, once
 
 `tools/model_doc_review.py` sends `docs/MODEL.md` and every data file under
-`src/anesthesia_sim/data/` to Fable 5.1 through the Message Batches API, on the
-same API credit as the headless workers (`PL-5S71`). It sends one request per
+`src/anesthesia_sim/data/` through the Message Batches API, on the same API
+credit as the headless workers (`PL-5S71`). The model, its effort and its
+price come from `docket.toml`'s `[models]` table, for the role `review`; on
+2026-10-25 that was Opus 5.5 at `high`. Whether to run it at all, now that the
+owner has refused the Fable run it was built for, is with the owner. It sends one request per
 `##` section, 25 on 2026-10-25, and each request carries the whole document and
 the data. The model reports statements in its section that contradict a stored
 value, another statement or their own units. A session then checks each one and
@@ -800,8 +820,8 @@ key exported as in § "Spend the monthly API credit on delegable items", steps 1
 to 3.
 
 1. `uv run python tools/model_doc_review.py estimate` prints the number of
-   requests and the most the batch could cost, and sends nothing. On
-   2026-10-25 the bound was $66.91. The bound assumes no prompt-cache hit and
+   requests, the model and effort, and the most the batch could cost, and
+   sends nothing. On 2026-10-25 the bound was $27.05 on Opus 5.5. The bound assumes no prompt-cache hit and
    every request using its full output allowance, so the bill should be well
    below it.
 2. `uv run python tools/model_doc_review.py submit --credit-left 197.72`, with

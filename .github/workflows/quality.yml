@@ -286,6 +286,9 @@ jobs:
       # Bare: it reads configuration files as text and parses no Python. It
       # refuses a configuration copy that differs from its home (`PL-SH0W`).
       - run: python3 tools/config_home_check.py
+      # Bare: it reads tracked files as text. It refuses a model id written
+      # outside `docket.toml`'s `[models]` table (`PL-0XDM`).
+      - run: python3 tools/model_home_check.py
       # Bare, unlike the `--verify` line further down: nothing has installed
       # `uv` at this point in the job, so every `verify:` command would be "not
       # found" and the replay would decline rather than answer. What is being
