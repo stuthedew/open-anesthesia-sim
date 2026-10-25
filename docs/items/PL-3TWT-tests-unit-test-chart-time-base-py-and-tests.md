@@ -1,9 +1,11 @@
 ---
 id: PL-3TWT
 title: tests/unit/test_chart_time_base.py and tests/integration/test_sevo_controller.py still say the interface is Flet, but it is Qt (found in the PL-FDMJ prose pass, 2026-10-25)
-status: untriaged
+status: dropped
 feature: stale-source-claims
 added: 2026-10-25
+closed: 2026-10-25
+reason: duplicate of PL-21KP, which already covers the same present-tense Flet claims and missing test citations in these files; its two extra lines were folded into PL-21KP's brief
 ---
 
 **Problem.** tests/unit/test_chart_time_base.py and tests/integration/test_sevo_controller.py still say the interface is Flet, but it is Qt (found in the PL-FDMJ prose pass, 2026-10-25)

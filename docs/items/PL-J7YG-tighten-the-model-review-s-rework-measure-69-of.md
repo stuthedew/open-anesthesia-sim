@@ -1,10 +1,16 @@
 ---
 id: PL-J7YG
 title: Tighten the model review's rework measure: 69% of closed items have a later defect or refactor item citing them, so it cannot rank settings
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: model-review
+touches: .claude/skills/model-review/SKILL.md
 deferred-from: v0.7.0 - a measure in the model review, which no v0.7.0 feature reads; the next review run is due about 2026-11-25
 added: 2026-10-25
+payoff: the next model review ranks model and effort settings on a rework rate that separates failed work from work merely cited
+verify: ! grep -qF 'later items whose brief names the item' .claude/skills/model-review/SKILL.md
 ---
 
 **Problem.** Tighten the model review's rework measure: 69% of closed items have a later defect or refactor item citing them, so it cannot rank settings
