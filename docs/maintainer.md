@@ -85,14 +85,15 @@ falsifies the two names below is a new model release or a new word from the
 owner, nothing about how this project works.
 
 - **`use your strongest model` means Claude Opus 5.5, the table's default.**
-  Nothing uses Claude Fable 5.1 unless the project owner names it for that
-  work: "Nothing should be using fable anymore unless I specifically say"
-  (project owner, 2026-10-25). The table's `excluded` list names Fable's id,
-  and `tools/model_home_check.py` refuses that id anywhere but the table and
-  the records. That replaces this section's reading of 2026-10-18, which named
-  Fable 5.1 as the strongest model and so as what the flag asked for. An open
-  item went on recommending Fable after the owner had stopped using it, which
-  is why the answer now has one home. Anthropic's models overview recommends
+  The `[models]` table decides which model each kind of work uses, and
+  nothing here uses Claude Fable 5.1 because the table names it for nothing.
+  That replaces this section's reading of 2026-10-18, which named Fable 5.1 as
+  the strongest model and so as what the flag asked for. An open item went on
+  recommending Fable after nothing else used it, which is why the answer now
+  has one home. `tools/model_home_check.py` refuses a model id written outside
+  the table, the records and the tests. The project owner's point was the one
+  home, not Fable: "It was more about having a single source of truth (fable
+  just being an example of a stale model)" (project owner, 2026-10-25). Anthropic's models overview recommends
   Opus 5.5 for most work
   (https://platform.claude.com/docs/en/about-claude/models/overview, read
   2026-10-18). The owner moved this project's Projects threads from Fable 5.1
@@ -164,11 +165,11 @@ strong half is named by family rather than by rank, and the family stopped
 being top on 2026-09-19. Use it when Opus-level planning is enough for the
 item in hand — not as the default for work this section calls reasoning-heavy.
 
-**Since 2026-10-25 that objection no longer applies as written.** Nothing
-uses Fable unless the owner names it, so Opus is the strongest model in use,
-and `opusplan`'s planning half is no longer a tier below. Where the owner
-names Fable for a piece of work, set it deliberately with `/model` and switch
-back for execution. Two caveats survive whichever way the split is made:
+**Since 2026-10-25 that objection no longer applies as written.** The
+`[models]` table names Opus 5.5 as the strongest model in use, so `opusplan`'s
+planning half is no longer a tier below. Where a rule in the table names a
+stronger model for a piece of work, set it deliberately with `/model` and
+switch back for execution. Two caveats survive whichever way the split is made:
 
 1. Execution returns to the cheaper model, so the strong-model review of a
    safety-critical diff is a deliberate step, not an automatic one.
@@ -810,8 +811,8 @@ it now, so you can delete it.
 `src/anesthesia_sim/data/` through the Message Batches API, on the same API
 credit as the headless workers (`PL-5S71`). The model, its effort and its
 price come from `docket.toml`'s `[models]` table, for the role `review`; on
-2026-10-25 that was Opus 5.5 at `high`. Whether to run it at all, now that the
-owner has refused the Fable run it was built for, is with the owner. It sends one request per
+2026-10-25 that was Opus 5.5 at `high`. The project owner chose on 2026-10-25
+to run it once on the table's model, over dropping it. It sends one request per
 `##` section, 25 on 2026-10-25, and each request carries the whole document and
 the data. The model reports statements in its section that contradict a stored
 value, another statement or their own units. A session then checks each one and

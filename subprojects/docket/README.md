@@ -4060,7 +4060,6 @@ copy that goes stale, which is the problem the table exists to fix.
 ```toml
 [models]
 default = { model = "model-a", effort = "high" }
-excluded = ["model-x"]     # nothing uses these unless a rule names one
 
 [models.prices]            # list prices in US dollars per million tokens
 "model-a" = { input = 4.0, output = 20.0 }
@@ -4100,9 +4099,7 @@ file has none. A malformed table is refused, as a malformed `docket.toml` is.
 That covers an unknown key, a default that is not exactly a model and an
 effort, an effort outside `low`, `medium`, `high`, `xhigh` and `max`, a rule
 that sets neither a model nor an effort, a rule naming an area the table does
-not define, a price that is not a positive number, and a default the
-`excluded` list names. A rule may name an excluded model, because a rule in
-the table is the owner choosing it.
+not define, and a price that is not a positive number.
 
 The model evidence table above is different. It records a measurement and is
 printed beside the choice rather than instead of it. When a measurement
