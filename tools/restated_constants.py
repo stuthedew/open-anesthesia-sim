@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+"""Name each test that copies a supported-range limit's value instead of importing its name.
+
+A test that writes `86_400.0` where it means
+`MAXIMUM_ELAPSED_SIMULATION_TIME_S` passes on every run until the limit moves.
+Then it fails for a reason that is not a defect, and that is the kind of
+failure that teaches a session to edit the test rather than the code.
+`PL-T5J5` found eight such tests by hand. It set the limit to 48 h and read
+which tests broke: 9 of 3,670 failed, and 8 of those failures were spurious.
+This script runs that method on a schedule (`PL-0Z0F`).
+
+**What it does.** It reads `src/anesthesia_sim/core/supported_ranges.py` with
+`ast` and lists each public module-level name bound to a number. For each one
+it runs the tests under `tests/` once, with the constant set to a wrong value
+through the `PERTURBED_CONSTANT_VARIABLE` environment variable, which
+`tests/conftest.py` reads. It collects the tests that fail. A failing test
+whose file imports the constant by name is expected to fail, such as the pin
+in `tests/unit/test_supported_ranges.py` that asserts the limit is 86,400 s.
+Any other failing test is reported, after one more run without the
+perturbation confirms that the test passes there. The script exits non-zero
+when it reports a test.
+
+**Which way a value moves.** A wrong value widens the supported interval by
+its own width. A `MAXIMUM_` name moves up and a `MINIMUM_` name moves down, by
+the distance between the pair. A maximum with no paired minimum is measured
+from zero, so `MAXIMUM_ELAPSED_SIMULATION_TIME_S` doubles to 48 h, as in
+`PL-T5J5`. Narrowing the interval would instead fail every test that uses an
+ordinary setting near the limit, which says nothing about whether the test
+restates it. Widening fails a test that asserts a value past the old limit is
+refused, or that otherwise depends on where the limit sits.
+
+**What it cannot see.** It reports what it could not judge rather than
+dropping it, and each of these makes the run fail:
+
+- a constant that no rule above can move, such as a name with neither prefix;
+- a run of the suite that pytest did not finish, or whose output does not
+  show that the perturbation was applied;
+- a test that fails without the perturbation too.
+
+Two kinds of restating test pass the perturbed run and so are never named. A
+test that reads the constant only through a subprocess it starts sees the
+unperturbed module. A test that copies the value only as a value just inside
+the limit still passes, because the limit moved outwards.
+
+**How the file test works.** A test's file counts as importing the constant
+when it holds `from anesthesia_sim.core.supported_ranges import NAME`, or
+imports the module and reads `NAME` from it as an attribute. A test that gets
+the value through a helper module is judged by its own file, so it is
+reported. The judgment of whether a reported test should change is left to
+the session that reads the report.
+
+The suite takes several minutes for each constant, so this runs in the
+`restated-constants` job of `.github/workflows/drift.yml` and not in
+`make check`. `--constant NAME` limits a run to the named constants. Standard
+library only, like every tool under `tools/`, though it runs pytest from the
+project's environment as a subprocess.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import math
+import os
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ElementTree
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+#: The module whose constants are perturbed, by import name and by path.
+RANGES_MODULE = "anesthesia_sim.core.supported_ranges"
+RANGES_SOURCE = ROOT / "src" / "anesthesia_sim" / "core" / "supported_ranges.py"
+
+#: The one environment variable `tests/conftest.py` reads, holding `NAME=VALUE`.
+PERTURBED_CONSTANT_VARIABLE = "ANESTHESIA_SIM_PERTURB_CONSTANT"
+
+#: The test tree that is run. `subprojects/docket/tests` never imports the
+#: simulator, so a constant cannot change its result.
+SUITE = "tests"
+
+MINIMUM_PREFIX = "MINIMUM_"
+MAXIMUM_PREFIX = "MAXIMUM_"
+
+
+@dataclass(frozen=True)
+class Constant:
+    """A public module-level name bound to a number."""
+
+    name: str
+    value: float
+
+
+def _number(node: ast.expr) -> float | None:
+    """The value of a number literal, negated or not, or `None` for anything else."""
+
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        inner = _number(node.operand)
+        return None if inner is None else -inner
+    if (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+    ):
+        return float(node.value)
+    return None
+
+
+def _bound_name(node: ast.stmt) -> tuple[str, ast.expr] | None:
+    """The name and value of a module-level binding of one name, or `None`."""
+
+    if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        target = node.targets[0]
+        if isinstance(target, ast.Name):
+            return target.id, node.value
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value:
+        return node.target.id, node.value
+    return None
+
+
+def numeric_constants(source: str) -> list[Constant]:
+    """Each public upper-case module-level name in `source` bound to a number literal."""
+
+    constants = []
+    for node in ast.parse(source).body:
+        bound = _bound_name(node)
+        if bound is None:
+            continue
+        name, value = bound
+        number = _number(value)
+        if number is not None and name.isupper() and not name.startswith("_"):
+            constants.append(Constant(name, number))
+    return constants
+
+
+def widened(constant: Constant, constants: Sequence[Constant]) -> float | None:
+    """The wrong value that widens `constant`'s interval by its width, or `None`.
+
+    The module docstring gives the rule. `None` means that no rule moves this
+    constant, or that its interval has no width to widen by.
+    """
+
+    values = {each.name: each.value for each in constants}
+    if constant.name.startswith(MAXIMUM_PREFIX):
+        partner = MINIMUM_PREFIX + constant.name.removeprefix(MAXIMUM_PREFIX)
+        width = constant.value - values.get(partner, 0.0)
+        return constant.value + width if width > 0 else None
+    if constant.name.startswith(MINIMUM_PREFIX):
+        partner = MAXIMUM_PREFIX + constant.name.removeprefix(MINIMUM_PREFIX)
+        if partner not in values:
+            return None
+        width = values[partner] - constant.value
+        return constant.value - width if width > 0 else None
+    return None
+
+
+def parse_perturbation(text: str) -> tuple[str, float]:
+    """Read `NAME=VALUE` from the environment variable, refusing any other shape."""
+
+    name, sign, value = text.partition("=")
+    try:
+        number = float(value)
+    except ValueError:
+        number = math.nan
+    if not sign or not name or not math.isfinite(number):
+        raise ValueError(
+            f"{PERTURBED_CONSTANT_VARIABLE}={text!r} is not NAME=VALUE with a finite "
+            f"number, such as MAXIMUM_ELAPSED_SIMULATION_TIME_S=172800.0"
+        )
+    return name, number
+
+
+def perturbed_tree(source: str, name: str, value: float) -> ast.Module:
+    """`source` parsed, with the one module-level binding of `name` set to `value`.
+
+    Raises `ValueError` unless exactly one module-level statement binds `name`
+    to a number literal, so a perturbation that would reach nothing fails
+    instead of running an unperturbed suite.
+    """
+
+    tree = ast.parse(source)
+    replaced = 0
+    for node in tree.body:
+        bound = _bound_name(node)
+        if bound is None or bound[0] != name or _number(bound[1]) is None:
+            continue
+        literal = ast.copy_location(ast.Constant(value), bound[1])
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            node.value = literal
+        replaced += 1
+    if replaced != 1:
+        raise ValueError(
+            f"{RANGES_MODULE} binds {name} to a number {replaced} times at module level, "
+            "and a perturbation needs exactly one such binding to replace"
+        )
+    return ast.fix_missing_locations(tree)
+
+
+def perturbation_line(name: str, value: float) -> str:
+    """The line `tests/conftest.py` prints in pytest's header when it perturbs a constant."""
+
+    return f"{PERTURBED_CONSTANT_VARIABLE}: {RANGES_MODULE}.{name} = {value!r}"
+
+
+def _dotted(node: ast.expr) -> str | None:
+    """`a.b.c` for a chain of attribute reads on a name, or `None`."""
+
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        head = _dotted(node.value)
+        return None if head is None else f"{head}.{node.attr}"
+    return None
+
+
+def imports_name(source: str, name: str) -> bool:
+    """Whether `source` imports `name` from the ranges module, or reads it from that module."""
+
+    package, _, leaf = RANGES_MODULE.rpartition(".")
+    module_names: set[str] = set()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.level == 0:
+            if node.module == RANGES_MODULE and any(
+                alias.name in (name, "*") for alias in node.names
+            ):
+                return True
+            if node.module == package:
+                module_names.update(
+                    alias.asname or leaf for alias in node.names if alias.name == leaf
+                )
+        elif isinstance(node, ast.Import):
+            module_names.update(
+                alias.asname or RANGES_MODULE for alias in node.names if alias.name == RANGES_MODULE
+            )
+    return any(
+        isinstance(node, ast.Attribute)
+        and node.attr == name
+        and _dotted(node.value) in module_names
+        for node in ast.walk(tree)
+    )
+
+
+@dataclass(frozen=True)
+class Failure:
+    """A test that failed or errored, by its pytest node id and its file."""
+
+    nodeid: str
+    file: str
+
+
+def failures_in(junit_xml: str) -> list[Failure]:
+    """The failed and errored tests in a JUnit report written with `junit_family=xunit1`.
+
+    `xunit1` is the family that records each test's file. A module that failed
+    to collect is reported as its file.
+    """
+
+    found: dict[str, Failure] = {}
+    for case in ElementTree.fromstring(junit_xml).iter("testcase"):
+        if case.find("failure") is None and case.find("error") is None:
+            continue
+        file = case.get("file", "")
+        classname = case.get("classname", "")
+        if not classname:
+            nodeid = file
+        else:
+            module = file.removesuffix(".py").replace("/", ".")
+            classes = classname[len(module) + 1 :].split(".") if classname != module else []
+            nodeid = "::".join([file, *classes, case.get("name", "")])
+        found.setdefault(nodeid, Failure(nodeid, file))
+    return list(found.values())
+
+
+def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:
+    """The failures whose file does not import `name`, read through `read(file)`."""
+
+    imports: dict[str, bool] = {}
+    for failure in failures:
+        if failure.file not in imports:
+            imports[failure.file] = imports_name(read(failure.file), name)
+    return [failure for failure in failures if not imports[failure.file]]
+
+
+@dataclass(frozen=True)
+class SuiteRun:
+    """One run of pytest: its exit status, its failures, and what it printed."""
+
+    status: int
+    failures: list[Failure]
+    output: str
+
+
+def run_suite(targets: Sequence[str], workers: str, environment: Mapping[str, str]) -> SuiteRun:
+    """Run pytest over `targets` with `environment`, and read its JUnit report."""
+
+    with tempfile.TemporaryDirectory() as scratch:
+        report = Path(scratch) / "junit.xml"
+        command = [
+            sys.executable,
+            "-m",
+            "pytest",
+            *targets,
+            "-n",
+            workers,
+            "--dist",
+            "worksteal",
+            "-p",
+            "no:cacheprovider",
+            "--continue-on-collection-errors",
+            f"--junitxml={report}",
+            "-o",
+            "junit_family=xunit1",
+        ]
+        done = subprocess.run(
+            command, cwd=ROOT, env=dict(environment), capture_output=True, check=False
+        )
+        text = report.read_text(encoding="utf-8") if report.exists() else ""
+    failures = failures_in(text) if text else []
+    output = (done.stdout + done.stderr).decode("utf-8", errors="replace")
+    return SuiteRun(done.returncode, failures, output)
+
+
+@dataclass
+class Finding:
+    """What one constant's perturbed run showed."""
+
+    constant: Constant
+    value: float
+    failed: int = 0
+    restating: tuple[str, ...] = ()
+    #: Tests that also fail without the perturbation, so were not judged.
+    unjudged: tuple[str, ...] = ()
+    #: Why the run gave no answer, or an empty string when it gave one.
+    declined: str = ""
+
+
+def judge(constant: Constant, value: float, workers: str) -> Finding:
+    """Run the suite with `constant` set to `value`, and name the tests that restate it."""
+
+    finding = Finding(constant, value)
+    environment = {**os.environ, PERTURBED_CONSTANT_VARIABLE: f"{constant.name}={value!r}"}
+    run = run_suite([SUITE], workers, environment)
+    if run.status not in (0, 1):
+        finding.declined = f"pytest exited with status {run.status}:\n{run.output[-2000:]}"
+        return finding
+    if perturbation_line(constant.name, value) not in run.output:
+        finding.declined = "pytest's output does not show the perturbation was applied"
+        return finding
+    finding.failed = len(run.failures)
+    candidates = restating(
+        run.failures, constant.name, lambda file: (ROOT / file).read_text(encoding="utf-8")
+    )
+    if not candidates:
+        return finding
+    plain = {key: value for key, value in os.environ.items() if key != PERTURBED_CONSTANT_VARIABLE}
+    rerun = run_suite([failure.nodeid for failure in candidates], workers, plain)
+    if rerun.status not in (0, 1):
+        finding.declined = (
+            f"the rerun without the perturbation exited with status {rerun.status}:\n"
+            f"{rerun.output[-2000:]}"
+        )
+        return finding
+    still = {failure.nodeid for failure in rerun.failures}
+    finding.restating = tuple(f.nodeid for f in candidates if f.nodeid not in still)
+    finding.unjudged = tuple(f.nodeid for f in candidates if f.nodeid in still)
+    return finding
+
+
+def report(findings: Sequence[Finding], unmoved: Sequence[Constant]) -> tuple[str, bool]:
+    """The report's text, and whether it names anything that fails the run."""
+
+    lines = []
+    failing = bool(unmoved)
+    for finding in findings:
+        constant = finding.constant
+        head = f"{constant.name} {constant.value!r} -> {finding.value!r}"
+        if finding.declined:
+            failing = True
+            lines.append(f"{head}: no answer, because {finding.declined}")
+            continue
+        lines.append(
+            f"{head}: {finding.failed} tests failed, {len(finding.restating)} without "
+            "importing the name"
+        )
+        lines.extend(f"  restates it: {nodeid}" for nodeid in finding.restating)
+        lines.extend(
+            f"  not judged, fails without the perturbation too: {nodeid}"
+            for nodeid in finding.unjudged
+        )
+        failing = failing or bool(finding.restating or finding.unjudged)
+    lines.extend(
+        f"{constant.name}: not perturbed, because no rule widens it; teach `widened` one"
+        for constant in unmoved
+    )
+    lines.append(
+        "Not seen by this run: a test that reads a constant only through a subprocess, "
+        "and a test that copies only a value just inside a limit."
+    )
+    return "\n".join(lines), failing
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument(
+        "--constant",
+        action="append",
+        metavar="NAME",
+        help="perturb only this constant; repeat for more. The default is every one.",
+    )
+    parser.add_argument(
+        "--workers", default="auto", help="pytest-xdist's -n for each run (default: auto)"
+    )
+    options = parser.parse_args(argv)
+
+    constants = numeric_constants(RANGES_SOURCE.read_text(encoding="utf-8"))
+    known = {constant.name for constant in constants}
+    unknown = sorted(set(options.constant or ()) - known)
+    if unknown:
+        parser.error(f"{RANGES_MODULE} has no numeric constant named {', '.join(unknown)}")
+    chosen = [c for c in constants if not options.constant or c.name in options.constant]
+
+    findings = []
+    unmoved = []
+    for constant in chosen:
+        value = widened(constant, constants)
+        if value is None:
+            unmoved.append(constant)
+            continue
+        print(f"perturbing {constant.name} to {value!r}", flush=True)
+        findings.append(judge(constant, value, options.workers))
+
+    text, failing = report(findings, unmoved)
+    print(text)
+    return 1 if failing else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
