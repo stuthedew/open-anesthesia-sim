@@ -2204,13 +2204,15 @@ def test_a_halt_is_stated_before_its_dials_are_written(
     `present_halt` writes the dials through `dashboard_frame.setting_readouts`.
     That function raises for a control that can offer no setting, such as a
     fresh gas flow range narrower than the dial's 0.1 L/min step. No shipped
-    machine declares such a range, and the circuit refuses one when it is
-    built. When the dials were written before the banner, that exception left
-    the halt half shown: the status word and the transport were written, but
-    no banner was. The exception also escaped the slot (found at `PL-85LJ`'s
-    review). The dials now come last, so the three signs of the halt are on
-    screen before the exception. The exception still escapes rather than
-    being hidden.
+    machine declares such a range. The circuit does not refuse one when it is
+    built: `_require_the_two_flow_claims_overlap` in `core/circuit.py`
+    refuses only an empty overlap, so a narrow range reaches
+    `setting_readouts`. When the dials were written before the banner, that
+    exception left the halt half shown: the status word and the transport
+    were written, but no banner was. The exception also escaped the slot
+    (found at `PL-85LJ`'s review). The dials now come last, so the three
+    signs of the halt are on screen before the exception. The exception
+    still escapes rather than being hidden.
     """
 
     controller = _paused_run_with_history()
