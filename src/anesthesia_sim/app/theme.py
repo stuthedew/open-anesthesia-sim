@@ -333,8 +333,8 @@ MUSCLE_COLOR = "#D17206"
 FAT_COLOR = "#64748B"
 
 # The colour swatch that every legend entry draws. It is one size across all
-# three legend rows, so that a reader scanning down them compares marks rather
-# than shapes. `_build_band_legend_item` is the one deliberate exception,
+# four legend rows, so that a reader scanning down them compares marks rather
+# than shapes. `_BandSwatch` is the one deliberate exception,
 # because a band's extent is exactly what distinguishes it from a line.
 LEGEND_SWATCH_WIDTH = 24
 
@@ -442,8 +442,9 @@ ONE_MAC_LINE_STROKE_WIDTH = 1.5
 # PANEL is already measured as the 1 MAC line.
 CONTROL_MARK_COLOR = MUTED
 
-# The mark is finer than either reference and every trace, because a control
-# mark annotates the run rather than showing any part of it. In a case with a
+# The mark is finer than every trace, because a control mark annotates the run
+# rather than showing any part of it. It has the same width as the two
+# references, 1.5 px, and is told apart from them by its dash. In a case with a
 # dozen adjustments, a mark as heavy as a trace would compete with the curves
 # it exists to be read against. It is heavier than the vertical grid lines,
 # though, and dashed where they are solid. Measured against a rendered frame, a

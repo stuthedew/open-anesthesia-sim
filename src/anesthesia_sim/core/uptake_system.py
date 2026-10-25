@@ -248,12 +248,14 @@ class AgentUptakeSystem:
     def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance the system by one conservative, validated step, or leave it unchanged.
 
-        The step is all-or-nothing. `_advance_step()` applies five
-        sub-exchanges in sequence, and a guard can reject the fifth after the
-        first four have already written their compartments. So this method
-        captures every dynamic value first. It restores those values on any
-        exit that is not a completed step, which leaves the system
-        bit-identical to what it was on entry.
+        The step is all-or-nothing. `_advance_step()` computes the whole step
+        in one exact propagation, but it then writes the result into the
+        compartments one at a time. A fraction's guard can reject a value after
+        earlier compartments have already been written. The accounting check
+        runs only after every compartment and the validator have been written.
+        So this method captures every dynamic value first. It restores those
+        values on any exit that is not a completed step, which leaves the
+        system bit-identical to what it was on entry.
 
         The rollback is on the unwind path rather than in an `except` clause,
         so "any exit" really means any exit. A `BaseException` unwinds through
@@ -268,9 +270,9 @@ class AgentUptakeSystem:
         (PL-BNPY).
 
         This matters because a partly applied step is not a solution of
-        anything. Its numbers are an artifact of the order in which the
-        operators ran (the fifth having run against the second's output). They
-        are not evidence of where the model broke down, and `CLAUDE.md`
+        anything. It holds the new step's values in the compartments already
+        written and the old step's values in the rest. Its numbers are not
+        evidence of where the model broke down, and `CLAUDE.md`
         prefers an obvious failure to a plausible-looking number. Rolling back
         leaves the last completed step, which *is* a solution. So a caller that
         halts still holds a state that it can display and reason about. The

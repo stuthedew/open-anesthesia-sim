@@ -406,8 +406,10 @@ def test_a_quotient_rounded_up_does_not_place_the_mark_a_step_late() -> None:
 def test_a_mark_inside_a_step_is_reached_at_the_step_s_end_and_not_rounded_back() -> None:
     """Rounding would put 45.35 s on the step ending at 45.3 s, before the mark.
 
-    No halt stops there: the step that reaches the mark is the one ending at
-    45.4 s, at a coarser step as at the interface's own.
+    No halt stops there. At the interface's own 0.1 s step, the step that
+    reaches the mark is the one ending at 45.4 s. At the finer 0.05 s step,
+    45.35 s is a step's end, and the step that reaches the mark is the one
+    ending at 45.35 s.
     """
 
     inside = TimeBookmark(CaseInstant(45.35))
