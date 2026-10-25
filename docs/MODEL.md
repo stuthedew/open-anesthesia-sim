@@ -2236,6 +2236,7 @@ error" is the worst relative error of any entry of the 0.1 s propagator. "After
 | Alveolar gas 0.001 L, blood:gas 10 000 (the first floor considered) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 The last row is why the volume floor is 0.01 L and not the 0.001 L first
 considered. At 0.001 L the stiffest corner needed 22 squarings, and its step
@@ -2244,6 +2245,7 @@ error was 1.7e-9, against 5.8e-11 for the same corner at 0.01 L. Over a
 shorter step needs fewer squarings, so each step is more accurate, but there
 are proportionally more steps.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **What a long interval costs at the corners.** The canonical path forms one
 propagator for each stretch of unchanged settings
@@ -6935,6 +6937,7 @@ the floor of § "The numerical envelope". The measurements are kept because they
 show what the propagator's own refusals do when a matrix reaches them by
 another route. `tests/unit/test_matrix_exponential.py` still drives those
 refusals, with a matrix built to match.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **The numerics do eventually object, and that is a backstop rather than a
 bound.** The same measurement was continued downward at the shipped 0.1 s step.
@@ -9998,6 +10001,7 @@ this interface is set by what each number is for, and the rule above governs
 the clinical readouts.
 <!-- not-restated: 0.18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 0.01 L -->
 
 The chart plots the same percentages on a shared linear axis that runs from 0
 to 3 ×MAC of the running agent. A second axis on the right shows the identical
