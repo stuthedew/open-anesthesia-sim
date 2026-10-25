@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: stale-source-claims
+milestone: v0.6.8
 touches: tests/integration/test_controller.py
 added: 2026-10-25
 closed: 2026-10-25
