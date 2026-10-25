@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: review-panel
-touches: .claude/skills/pull-request/SKILL.md, tools/blind_review.py, tests/unit/test_blind_review.py, subprojects/docket/src/docket/arming.py, .claude/skills/docket/modes/close-out.md, docket.toml
+touches: .claude/skills/pull-request/SKILL.md, tools/blind_review.py, tests/unit/test_blind_review.py, subprojects/docket/src/docket/arming.py, .claude/skills/docket/modes/close-out.md, docket.toml, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-24
 payoff: each simulator pull request gets a blind generalist review before it merges, and one that changes the clinical model gets two; in PL-TBQS's replay of 20 merged pull requests, one such run named 18 of the 39 defects filed later and three named 21

@@ -49,7 +49,7 @@ def repo(tmp_path: Path) -> Path:
 @pytest.mark.parametrize(
     ("paths", "owed"),
     [
-        (["tools/x.py", "docs/items/PL-AAAA.md"], 0),
+        (["tools/x.py", "docs/items/PL-B1C2.md"], 0),
         (["src/anesthesia_sim/app/chart_frame.py"], 1),
         (["README.md"], 1),
         (["tools/x.py", "src/anesthesia_sim/core/alveolar.py"], 2),
@@ -94,7 +94,7 @@ def test_a_core_change_owes_two_passes(repo: Path) -> None:
 
 def test_each_pass_gets_only_the_committed_tree_and_the_diff(repo: Path, tmp_path: Path) -> None:
     _write(repo, "src/anesthesia_sim/core/alveolar.py", "X = 1\n")
-    _commit(repo, "PL-AAAA: add the alveolar constant")
+    _commit(repo, "PL-B1C2: add the alveolar constant")
     _write(repo, "notes.txt", "uncommitted\n")
     passes, fork = passes_owed(repo, "main")
     out = tmp_path / "out"
@@ -111,7 +111,7 @@ def test_each_pass_gets_only_the_committed_tree_and_the_diff(repo: Path, tmp_pat
             ["README.md", "src", DIFF_FILE]
         )
         diff = (tree / DIFF_FILE).read_text(encoding="utf-8")
-        assert "PL-AAAA: add the alveolar constant" in diff
+        assert "PL-B1C2: add the alveolar constant" in diff
         assert "+X = 1" in diff
         assert "seed" not in diff.split("diff --git")[0]
 
