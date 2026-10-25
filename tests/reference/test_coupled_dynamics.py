@@ -486,9 +486,10 @@ SHIPPED_STEP_S = 0.1
 # there.
 #
 # **What it costs, measured rather than estimated (`PL-B1WW`).** The earlier
-# argument against refining said that RK4 time rises fourfold per halving. That
-# is true of the RK4 term alone, and it was never measured against the
-# deliverable:
+# argument against refining said that RK4 time rises fourfold per halving.
+# Fixed-step RK4 time in fact doubles per halving, so it rises fourfold over the
+# two halvings from 0.05 s to 0.0125 s. Even that holds for the RK4 work alone,
+# and it was never measured against the deliverable:
 #
 #     this file, serially                39.5 s -> 79.2 s     (+39.7 s, 2.0x)
 #     whole suite, as CI invokes it      43.0 s -> 55.5 s     (+12.5 s, 1.29x)
@@ -502,8 +503,8 @@ SHIPPED_STEP_S = 0.1
 #
 # **Richardson extrapolation was measured and rejected.** It carries two RK4
 # streams at h/2 and h/4 and combines them as (16*y_fine - y_coarse)/15. That
-# gives a fifth-order oracle at 3x the current oracle cost, against 4x for this
-# plain refinement, and it reaches the same lowest value: 1.6029e-14 against
+# gives a fifth-order oracle at 3x the cost of the 0.05 s oracle, against 4x for
+# this plain refinement, and it reaches the same lowest value: 1.6029e-14 against
 # 1.5786e-14. Both figures are the shipped step's own residual rather than either
 # oracle's truncation. Richardson extrapolation would save about a quarter of the
 # oracle term, roughly 3 s of CI. The price would be a new mechanism inside the
