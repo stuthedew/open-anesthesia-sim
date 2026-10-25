@@ -3,13 +3,16 @@ id: PL-YRLM
 title: Decide which release builds planned-milestone item 28, agent cost, so the liquid-equivalent readout PL-B396 decided, and the price, precision and constants waiting on it, have a release to wait on
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: planning
 feature: liquid-agent-consumption
 touches: ROADMAP.md, docs/items
 blocked-by: v0.7.0
 deferred-from: v0.6.0 - captured after the freeze to hold whether a release schedules planned-milestone item 28, a question Gate 3 inherits with the four entries waiting on it (PL-18BD), and not safety or science
 added: 2026-09-27
+closed: 2026-10-25
+reason: v0.7.0's scoping round scheduled planned-milestone item 28 into v0.7.0 (project owner, 2026-10-25, ratified)
+verify: grep -qF 'PL-1P15' ROADMAP.md
 ---
 
 **Problem.** Decide which release builds planned-milestone item 28, agent cost, so the liquid-equivalent readout PL-B396 decided, and the price, precision and constants waiting on it, have a release to wait on
@@ -88,3 +91,12 @@ place of this item, and this item closes. If the owner drops item 28 instead,
 
 **Generator check.** Bookkeeping rather than a finding: it gives `PL-B396`'s
 holding condition an id, and the misread fact is `PL-18BD`'s.
+
+**Answered 2026-10-25: v0.7.0 builds item 28.** `PL-LF0P`'s scoping round put
+the question to the project owner, who chose "Yes, in v0.7.0" (project owner,
+2026-10-25, ratified, over leaving item 28 unscheduled and pushing its four
+entries to Gate 4). `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope"
+names `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK`, with two new items:
+`PL-1P15` for the cost in money at a reader-set price, and `PL-93B3` for the
+preferences file that keeps the price. `PL-B396` no longer waits on this item,
+so it closes.

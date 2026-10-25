@@ -1,15 +1,16 @@
 ---
 id: PL-KZ99
 title: Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: science, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
-blocked-by: PL-S6WW, PL-B396
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; science, but not live at 19af95d - nothing in src/ stores or displays a liquid volume, a density or a molar mass
 added: 2026-09-16
+payoff: a vapour-to-liquid conversion is derived from each agent's stored molar mass and liquid density, each with its source and measurement temperature
+verify: grep -q 'liquid_density' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
 
 **Problem.** Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
@@ -70,6 +71,7 @@ which is what `docs/MODEL.md` § "Source hierarchy" asks of a stored value, and 
 turns Biro 2014 from a source into an independent cross-check in
 `tests/reference/`.
 
+[superseded 2026-10-25: `PL-S6WW` closed on 2026-09-17]
 [superseded 2026-09-17: `PL-S6WW` closed; groomed below]
 **Blocked on `PL-S6WW`** (the model's undocumented reference temperature), which
 is now declared in `blocked-by` rather than only in prose: the conversion has two
@@ -106,6 +108,7 @@ as `PL-S6WW, PL-B396`, `PL-VJZK` as `PL-B396` alone — and this item was the on
 of the three that never had the second edge written in. That is the whole of
 why it appeared in the advisory and neither of them did.
 
+[superseded 2026-10-25: v0.7.0 schedules item 28, and `PL-B396` now waits on this item]
 **So the real blocker is `PL-B396`** (agent amounts are displayed in litres of
 vapour, which is not the unit a reader buys, fills or wastes agent in — report a
 liquid-equivalent millilitre figure), `needs-decision`, which the roadmap calls
@@ -131,3 +134,15 @@ schedules item 28, so the passage above calling `PL-B396` `needs-decision`, and
 saying no version exists until `PL-B396` produces one, is dated: the version
 will come from `PL-YRLM`'s answer. `blocked-by: PL-S6WW, PL-B396` stands, and
 `bin/docket wave` reaches `PL-YRLM` through it.
+
+**Scheduled in v0.7.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 with planned-milestone item 28, agent cost, inside it (project owner, 2026-10-25, ratified, over leaving item 28 unscheduled and deferring this item to Gate 4). `PL-YRLM` closed with that answer. This item is in `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope", so v0.7.0 clears it itself.
+
+**It no longer waits on `PL-B396`.** The edge ran this way only while
+`PL-B396` stood in for item 28. Now `PL-B396` builds the readout, and the
+readout needs these constants first, so the edge is reversed.
+
+**Done when.** Each shipped agent's parameter file stores its molar mass and
+its liquid density with the density's measurement temperature and source. The
+vapour-to-liquid factor is derived from them in one place, and a reference test
+checks it against Biro's and Gas Man's published constants within their
+stated rounding.
