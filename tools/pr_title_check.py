@@ -205,8 +205,16 @@ def open_pull_request(slug: str, branch: str) -> tuple[int, str] | None:
     return found[0].number, found[0].title
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+def arguments(description: str, variable: str, subject: str) -> tuple[argparse.Namespace, str]:
+    """Read the arguments this check and `pr_record_check.py` both take, and the head they name.
+
+    `variable` is the environment variable the check reads its pull request's
+    `subject` from, such as `PR_TITLE` and its title. The head is a ref where
+    one is named, by `--head` or by CI's `PR_HEAD`. Otherwise a `--discover`
+    run reads the tree it is about to commit (`PL-T8PT`), and any other run
+    reads `HEAD`.
+    """
+    parser = argparse.ArgumentParser(description=description)
     # `docket`'s own answer where CI passes no `PR_BASE`, so a clone whose
     # default is `master` compares against it rather than an `origin/main`
     # that does not resolve there (`PL-GNCB`).
@@ -215,14 +223,40 @@ def main() -> int:
     parser.add_argument(
         "--discover",
         action="store_true",
-        help="when PR_TITLE is unset, read the title from this branch's open "
+        help=f"when {variable} is unset, read the {subject} from this branch's open "
         "pull request; skip silently if it cannot be read; with no --head, read "
         "what the branch closes from the working tree (for `make check`)",
     )
     args = parser.parse_args()
-    # A ref where one is named, by `--head` or by CI's `PR_HEAD`; otherwise the
-    # local run reads the tree it is about to commit (`PL-T8PT`).
-    head = args.head or (WORKING_TREE if args.discover else "HEAD")
+    return args, args.head or (WORKING_TREE if args.discover else "HEAD")
+
+
+def discovered_pull_request() -> tuple[int, str] | None:
+    """This branch's open pull request, as (number, title), or None where it cannot be read."""
+    slug, branch = repo_slug(), _branch()
+    return open_pull_request(slug, branch) if slug and branch else None
+
+
+def report_unread_trees(check: str, base: str, head: str, silence: GitUnanswered) -> None:
+    """Say that the trees at `base` and `head` could not be read, so nothing was checked."""
+    print(
+        f"{check}: one of the trees at {base} and {head} could not be read, "
+        f"so what this branch closes is unknown; not checked.\n"
+        f"  {silence}\n"
+        f"  Name refs git can resolve - `git fetch origin` where the base is missing.",
+        file=sys.stderr,
+    )
+
+
+def where_read(head: str) -> tuple[str, str]:
+    """Name what was read, and where, for a finding: the checkout's working tree or a branch."""
+    if head == WORKING_TREE:
+        return "this checkout", " in its working tree"
+    return "this branch", ""
+
+
+def main() -> int:
+    args, head = arguments(__doc__, "PR_TITLE", "title")
 
     # The title comes through the environment, never through argv or a shell
     # interpolation: it is attacker-controlled text on a fork pull request, and
@@ -234,8 +268,7 @@ def main() -> int:
     if discovered:
         # Before `closes()`, which costs a `git show` per item file at both
         # ends of the range. A branch with nothing open pays one request.
-        slug, branch = repo_slug(), _branch()
-        found = open_pull_request(slug, branch) if slug and branch else None
+        found = discovered_pull_request()
         if found is None:
             return 0
         number, title = found
@@ -246,13 +279,7 @@ def main() -> int:
     try:
         closing = closes(args.base, head)
     except GitUnanswered as silence:
-        print(
-            f"pr-title: one of the trees at {args.base} and {head} could not be read, "
-            f"so what this branch closes is unknown; not checked.\n"
-            f"  {silence}\n"
-            f"  Name refs git can resolve - `git fetch origin` where the base is missing.",
-            file=sys.stderr,
-        )
+        report_unread_trees("pr-title", args.base, head, silence)
         # A skip under `--discover`, as the module docstring says; the gate
         # that was handed a title fails rather than certify it unread.
         return 0 if discovered else 1
@@ -273,8 +300,7 @@ def main() -> int:
     which = f"#{number}'s title" if number is not None else "the title"
     # Where it read, since under `--discover` that is the checkout rather than
     # anything pushed yet.
-    closer = "this checkout" if head == WORKING_TREE else "this branch"
-    where = " in its working tree" if head == WORKING_TREE else ""
+    closer, where = where_read(head)
     print(
         f"pr-title: {closer} closes {', '.join(closing)}{where}, but {which} does not "
         f"lead with {', '.join(missing)}.\n"

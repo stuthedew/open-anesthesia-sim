@@ -82,7 +82,6 @@ not report that it found nothing.
 
 from __future__ import annotations
 
-import argparse
 import ast
 import operator
 from collections import Counter, defaultdict
@@ -91,6 +90,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from check_support import (
+    Overflow,
+    ScopedVisitor,
+    Stale,
+    overflows,
+    run_report,
+    stale_entries,
+    stale_lines,
+)
 from product_paths import CORE_DIR, PACKAGE_DIR
 from workflow_paths_check import tracked_under
 
@@ -202,22 +210,13 @@ def _evaluate(node: ast.AST, known: Mapping[str, Number]) -> Number | None:
     return None
 
 
-class _Literals(ast.NodeVisitor):
+class _Literals(ScopedVisitor):
     """Collects bare numeric literals with the dotted scope that encloses each."""
 
     def __init__(self, path: str) -> None:
+        super().__init__()
         self.path = path
-        self.scope: list[str] = []
         self.found: list[Literal] = []
-
-    def _scoped(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> None:
-        self.scope.append(node.name)
-        self.generic_visit(node)
-        self.scope.pop()
-
-    visit_FunctionDef = _scoped
-    visit_AsyncFunctionDef = _scoped
-    visit_ClassDef = _scoped
 
     def visit_UnaryOp(self, node: ast.UnaryOp) -> None:
         operand = _number(node.operand)
@@ -272,34 +271,13 @@ def read_module(source: str, path: str) -> Module:
 
 
 @dataclass(frozen=True)
-class Overflow:
-    """A file, scope and value found more often than the baseline allows."""
-
-    path: str
-    key: tuple[str, str]
-    allowed: int
-    found: tuple[Literal, ...]
-
-
-@dataclass(frozen=True)
-class Stale:
-    """A baseline entry the tree no longer fills."""
-
-    path: str
-    key: tuple[str, str]
-    allowed: int
-    found: int
-    missing: bool
-
-
-@dataclass(frozen=True)
 class Report:
     """Everything one run decided."""
 
     scanned: int
     literals: int
     allowed: int
-    overflows: tuple[Overflow, ...]
+    overflows: tuple[Overflow[Literal], ...]
     stale: tuple[Stale, ...]
     redefined: tuple[tuple[str, tuple[Constant, ...]], ...]
     unparsed: tuple[tuple[str, str], ...]
@@ -348,22 +326,8 @@ def analyze(
             sites[(relative, literal.key)].append(literal)
         constants.extend(module.constants)
 
-    overflows: list[Overflow] = []
-    for (path, key), literals in sites.items():
-        allowed = baseline.get(path, {}).get(key, 0)
-        if len(literals) > allowed:
-            overflows.append(Overflow(path, key, allowed, tuple(literals)))
-
-    unread = {path for path, _ in unparsed}
-    stale: list[Stale] = []
-    for path, entries in baseline.items():
-        if path in unread:
-            continue
-        missing = not (root / path).is_file()
-        for key, allowed in entries.items():
-            count = 0 if missing else found.get(path, Counter())[key]
-            if count < allowed:
-                stale.append(Stale(path, key, allowed, count, missing))
+    over = overflows(sites.items(), baseline)
+    stale = stale_entries(root, baseline, found, {path for path, _ in unparsed})
 
     by_name: dict[str, list[Constant]] = defaultdict(list)
     for constant in constants:
@@ -378,7 +342,7 @@ def analyze(
         scanned=scanned,
         literals=sum(sum(counts.values()) for counts in found.values()),
         allowed=sum(sum(entries.values()) for entries in baseline.values()),
-        overflows=tuple(overflows),
+        overflows=tuple(over),
         stale=tuple(stale),
         redefined=redefined,
         unparsed=tuple(unparsed),
@@ -449,23 +413,7 @@ def format_report(report: Report, tree: str = TREE) -> str:
             "read the name; the baseline does not grow."
         )
 
-    if report.stale:
-        lines.append("")
-        lines.append(
-            "Baselined but no longer there - lower the entry, so the count stays a ratchet:"
-        )
-        for entry in report.stale:
-            scope, value = entry.key
-            if entry.missing:
-                remedy = "the file no longer exists; delete its entries"
-            elif entry.found:
-                remedy = f"set it to {entry.found}"
-            else:
-                remedy = "delete it"
-            lines.append(
-                f"  {entry.path}, {value} in {scope}: baseline {entry.allowed}, "
-                f"found {entry.found} - {remedy}"
-            )
+    lines.extend(stale_lines(report.stale, lambda key: f"{key[1]} in {key[0]}"))
 
     if report.redefined:
         lines.append("")
@@ -482,14 +430,7 @@ def format_report(report: Report, tree: str = TREE) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
-    parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    args = parser.parse_args(argv)
-
-    root = (args.root or Path(__file__).resolve().parent.parent).resolve()
-    report = analyze(root)
-    print(format_report(report))
-    return 1 if report.errors else 0
+    return run_report(argv, __doc__, analyze, format_report)
 
 
 if __name__ == "__main__":

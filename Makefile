@@ -129,6 +129,10 @@ check: sync
 # rather than whenever somebody next notices (`PL-PBP5`). It is placed beside
 # this line because this is the first `tools/` script the target runs.
 	uv run python tools/ignore_check.py
+# Under `uv run` for the same kind of reason: it runs pylint, a `dev`
+# dependency, for its duplicate-code check alone. A block copied between two
+# modules fails here unless its baseline allows it (`PL-VWXL`).
+	uv run python tools/duplicate_code_check.py
 # `--cov=` takes the dotted module, never a path, and the run is the whole
 # suite: coverage of `core/` is the union of everything that exercises it, so
 # the threshold is only reachable from a whole-suite run. Deliberately not in

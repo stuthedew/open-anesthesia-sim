@@ -248,9 +248,9 @@ def test_discover_skips_silently_where_no_pull_request_is_open(
 ) -> None:
     # `make check` runs this offline and on branches nobody has opened anything
     # for, and must stay green there.
-    monkeypatch.setattr(pr_record_check, "repo_slug", lambda: "owner/repo")
-    monkeypatch.setattr(pr_record_check, "_branch", lambda: "claude/pl-hmzz-slug")
-    monkeypatch.setattr(pr_record_check, "open_pull_request", lambda slug, branch: None)
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_title_check, "_branch", lambda: "claude/pl-hmzz-slug")
+    monkeypatch.setattr(pr_title_check, "open_pull_request", lambda slug, branch: None)
     _install(
         monkeypatch,
         base={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra="")},
@@ -266,10 +266,10 @@ def test_discover_checks_against_the_open_pull_request_s_number(
 ) -> None:
     # The lookup failing is a skip; the check failing is not. A session that
     # has closed an item with its pull request open learns before it pushes.
-    monkeypatch.setattr(pr_record_check, "repo_slug", lambda: "owner/repo")
-    monkeypatch.setattr(pr_record_check, "_branch", lambda: "claude/pl-hmzz-slug")
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_title_check, "_branch", lambda: "claude/pl-hmzz-slug")
     monkeypatch.setattr(
-        pr_record_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
+        pr_title_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
     )
     _install(
         monkeypatch,
@@ -284,10 +284,10 @@ def test_discover_checks_against_the_open_pull_request_s_number(
 def test_discover_does_not_fail_on_a_tree_it_cannot_read(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(pr_record_check, "repo_slug", lambda: "owner/repo")
-    monkeypatch.setattr(pr_record_check, "_branch", lambda: "claude/pl-hmzz-slug")
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_title_check, "_branch", lambda: "claude/pl-hmzz-slug")
     monkeypatch.setattr(
-        pr_record_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
+        pr_title_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
     )
     monkeypatch.setattr(subprocess, "run", _git_answering())
     monkeypatch.delenv("PR_NUMBER", raising=False)
@@ -308,10 +308,10 @@ def _discover_on_disk(
     (directory / "PL-K7QX-a.md").write_text(on_disk, encoding="utf-8")
     monkeypatch.setattr(pr_title_check, "ROOT", root)
     _install(monkeypatch, **refs)
-    monkeypatch.setattr(pr_record_check, "repo_slug", lambda: "owner/repo")
-    monkeypatch.setattr(pr_record_check, "_branch", lambda: "claude/pl-t8pt-slug")
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_title_check, "_branch", lambda: "claude/pl-t8pt-slug")
     monkeypatch.setattr(
-        pr_record_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
+        pr_title_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
     )
     monkeypatch.delenv("PR_NUMBER", raising=False)
     monkeypatch.delenv("PR_HEAD", raising=False)
@@ -365,7 +365,7 @@ def test_with_no_base_named_the_base_is_docket_s(
         "run",
         _git_answering(head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="")}),
     )
-    monkeypatch.setattr(pr_record_check, "default_base", lambda root: "no-such-default")
+    monkeypatch.setattr(pr_title_check, "default_base", lambda root: "no-such-default")
     monkeypatch.delenv("PR_BASE", raising=False)
     monkeypatch.setenv("PR_NUMBER", "1050")
     monkeypatch.setattr("sys.argv", ["pr_record_check.py", "--head", "head"])

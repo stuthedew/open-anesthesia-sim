@@ -115,7 +115,7 @@ class Fact:
     copies: tuple[Place, ...]
 
 
-_PROSE = re.MULTILINE | re.DOTALL
+_ACROSS_LINES = re.MULTILINE | re.DOTALL
 
 
 def _action(action: str) -> Fact:
@@ -201,8 +201,8 @@ FACTS: tuple[Fact, ...] = (
                 r"^SECOND_PASS_PATHS = \(([^)]*)\)$",
                 _paths,
             ),
-            Place("CLAUDE.md", r"A defect in\s+(.*?),\s+or any finding", _paths, _PROSE),
-            Place("docs/worker.md", r"\*\*Never edit (`src/.*?)\.\*\*", _paths, _PROSE),
+            Place("CLAUDE.md", r"A defect in\s+(.*?),\s+or any finding", _paths, _ACROSS_LINES),
+            Place("docs/worker.md", r"\*\*Never edit (`src/.*?)\.\*\*", _paths, _ACROSS_LINES),
         ),
     ),
     Fact(
@@ -211,14 +211,14 @@ FACTS: tuple[Fact, ...] = (
             "CLAUDE.md",
             r"The simulator and the documentation a reader of it needs — (.*?) — are held",
             _paths,
-            _PROSE,
+            _ACROSS_LINES,
         ),
         (
             Place(
                 ".claude/rules/expert-review.md",
                 r"the \*\*simulator\*\* — (.*?) — and for",
                 _paths,
-                _PROSE,
+                _ACROSS_LINES,
             ),
         ),
     ),
@@ -229,14 +229,14 @@ FACTS: tuple[Fact, ...] = (
             r"The workflow apparatus that exists so agent sessions can be productive"
             r" — (.*?) — is held",
             _paths,
-            _PROSE,
+            _ACROSS_LINES,
         ),
         (
             Place(
                 ".claude/rules/expert-review.md",
                 r"apparatus \((.*?)\), which is held",
                 _paths,
-                _PROSE,
+                _ACROSS_LINES,
             ),
         ),
     ),
@@ -282,9 +282,9 @@ FACTS: tuple[Fact, ...] = (
         (
             Place(
                 "docs/apparatus.md",
-                r"(Nine of them are nonetheless .*? are the exception, run both\s+ways)",
+                r"(of them are nonetheless .*? are the exception, run both\s+ways)",
                 _tools,
-                _PROSE,
+                _ACROSS_LINES,
             ),
         ),
     ),
