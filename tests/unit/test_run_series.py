@@ -9,12 +9,12 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
 def test_a_window_refusing_the_wash_in_ratio_names_a_method_that_forms_it() -> None:
-    """The refusal sends a developer to a method of the window that exists (`PL-756M`).
+    """The error message names a method that `DrawnWindow` really has (`PL-756M`).
 
-    The message named `wash_in_readings`, which no module defines. So it sent
-    a reader looking for where F_A/F_I is formed to code that is not there.
-    The expected name is not copied from the message. It is checked against
-    the class itself.
+    The message used to name `wash_in_readings`, which no module defines. So a
+    reader looking for where F_A/F_I is computed was sent to code that does not
+    exist. The test does not take the expected name from a copy of the message.
+    Instead, it checks each method that the message names against the class itself.
     """
 
     window = DrawnWindow("sevoflurane", (), ())
