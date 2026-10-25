@@ -61,6 +61,11 @@ model an item warrants, so the queue answers this per item rather than per
 session. It prints one of two flags, and § "Which model each flag means"
 below is where they resolve.
 
+**Whether a cheaper setting holds up is measured, not assumed.** The model
+review, `.claude/skills/model-review/SKILL.md`, scores closed items by how
+their work held up and brings its recommendations to you with their evidence.
+`docs/model-review.md` holds its trials and its dated findings (`PL-63CB`).
+
 ### Which model each flag means
 
 **A dated instance, not a rule** (`.claude/rules/expert-review.md`). What
@@ -288,24 +293,10 @@ owner, 2026-10-19, ratified, over model and effort fields on each closed item,
 
 **The model review refreshes it monthly**, and after any generator or cluster
 appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
-cadence, `PL-63CB`). Until `.claude/skills/model-review/SKILL.md` exists, a
-refresh has three steps:
-
-<!-- absent: .claude/skills/model-review/SKILL.md -->
-
-1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
-   `claude-code-remote` MCP server. A page is too large to show inline, so the
-   harness saves it to a file. Copy each file unchanged and parse it with a
-   script, so that no model retypes a value. Keep a session when any of its
-   sources is this repository, not only its first.
-2. Fetch every Projects thread with `get_session`. `list_sessions` leaves
-   threads out, because they carry the `hearth-thread` tag, and a session
-   cannot pass the `tags` filter. Find them as the session ids in
-   `Claude-Session:` trailers on `main` and in `docs/pr-bodies/` that have no
-   ledger row yet.
-3. Rewrite the file, sorted by creation time, and keep any row whose session
-   the harness no longer returns. The harness's retention is unknown, and the
-   ledger exists so that this record outlives it.
+cadence, `PL-63CB`). `.claude/skills/model-review/SKILL.md` § "Refresh the
+records first" has the steps. The review also refreshes `docs/ci-runs.tsv`,
+the CI run history, with `python3 tools/ci_runs.py refresh`, because GitHub
+deletes a workflow run 90 days after it ran (`PL-4SFQ`).
 
 
 ## Settings that make sessions cheaper
