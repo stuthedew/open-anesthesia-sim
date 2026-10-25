@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.8
 touches: subprojects/docket/src/docket/python.py, subprojects/docket/src/docket/verify.py, tools/doc_check.py, subprojects/docket/tests/test_verify.py, tests/unit/test_doc_check.py
 added: 2026-10-25
 closed: 2026-10-25

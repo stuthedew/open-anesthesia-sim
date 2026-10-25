@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.8
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-10-25
