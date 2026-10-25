@@ -128,11 +128,47 @@ def test_a_changed_statement_does_not(
 def test_a_docstring_turned_into_code_is_a_change(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A string that stops being the first statement is no longer a docstring, so it counts."""
+    """A statement added above a docstring is a change, though the string itself is removed."""
 
     after = BEFORE.replace(
         '        """Return the flow."""\n', '        scale = 1\n        """Return the flow."""\n'
     )
+    root, revisions = _repository(tmp_path, {"src/lung.py": after})
+
+    assert AST_IDENTITY.main([*revisions, "src/lung.py"], root=root) == 1
+    assert capsys.readouterr().out.splitlines()[0] == "src/lung.py: changed"
+
+
+def test_an_attribute_docstring_added_or_reworded_reads_identical(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-6GP9`: a string under an assignment is a docstring, so editing one moves no code.
+
+    Only each body's first string was removed, so the v0.6.7 cut read 19 files
+    as changed whose only edit was an attribute docstring.
+    """
+
+    documented = BEFORE.replace(
+        "RATE = 2.5  # litres per minute\n", 'RATE = 2.5  # litres per minute\n"""The rate."""\n'
+    )
+    reworded = documented.replace('"""The rate."""', '"""The flow rate, in L/min."""')
+    root, revisions = _repository(tmp_path, {"src/lung.py": documented})
+
+    assert AST_IDENTITY.main([*revisions, "src/lung.py"], root=root) == 0
+    assert capsys.readouterr().out.splitlines()[0] == (
+        "src/lung.py: unchanged apart from docstrings and comments"
+    )
+    assert AST_IDENTITY.without_docstrings(
+        documented, "lung.py"
+    ) == AST_IDENTITY.without_docstrings(reworded, "lung.py")
+
+
+def test_a_string_turned_into_a_value_is_a_change(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A string that a statement uses is a value, not a docstring, so changing it counts."""
+
+    after = BEFORE.replace("RATE = 2.5  # litres per minute", 'RATE = 2.5\nUNIT = "L/min"')
     root, revisions = _repository(tmp_path, {"src/lung.py": after})
 
     assert AST_IDENTITY.main([*revisions, "src/lung.py"], root=root) == 1
