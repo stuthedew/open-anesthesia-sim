@@ -551,7 +551,7 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Nine of them are nonetheless *invoked* only under `uv run python`, and two
+Nine of them are nonetheless *invoked* only under `uv run python`, and three
 more both bare and under it (below), and the distinction is worth keeping
 straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` is the odd one and the only one
@@ -585,7 +585,10 @@ them belongs on the `uv run python` lines in both `Makefile` and
 `.github/workflows/quality.yml`, never in that workflow's floor section.
 
 `doc_check.py` and `possessive_section_check.py` are the exception, run both
-ways. They parse repository source as well - every module's docstrings, for
+ways. `branch_id_check.py` runs both ways in `quality.yml` too, though it
+reads only `git log` and the branch name, so the 3.11 parser has nothing it
+cannot read; the comment above its `uv run` step says why (`PL-CP74`). The
+other two parse repository source as well - every module's docstrings, for
 the citations in them - and the floor section runs them bare all the same,
 where each names on a "Not checked" line the files the floor parser cannot read
 and passes rather than failing on them. Both gates also run them through `uv
