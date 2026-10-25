@@ -1522,8 +1522,13 @@ def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skip
     root = _repo(tmp_path)
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(source)
     report = doc_check.analyze(root)
-    about = [line for line in report.declined if "thing.py" in line]
+    # Each check that reads docstrings declines the file in its own line, so
+    # that the line says what that check left unchecked. This one is the
+    # citation check's.
+    about = [line for line in report.declined if "thing.py" in line and "citation" in line]
     assert len(about) == 1 and f"core/thing.py{declined}" in about[0], report.declined
+    failures = [line for line in report.declined if "thing.py" in line and "of a failure" in line]
+    assert len(failures) == 1 and f"core/thing.py{declined}" in failures[0], report.declined
     assert not any("thing.py" in error for error in report.errors)
     assert "all resolve" not in doc_check.format_check(report)
 
@@ -11923,3 +11928,138 @@ def test_the_resident_baseline_reads_a_non_ascii_rule_file(tmp_path: Path) -> No
 
     assert baseline is not None
     assert [row.name for row in baseline[1]] == [".claude/rules/café.md"]
+
+
+def _raising_docstring_errors(tmp_path: Path, source: str) -> doc_check.Report:
+    """Run `check_raising_docstrings` over a package holding one module."""
+
+    package = tmp_path / doc_check.PACKAGE_ROOT
+    package.mkdir(parents=True)
+    (package / "module.py").write_text(textwrap.dedent(source), encoding="utf-8")
+    report = doc_check.Report()
+    doc_check.check_raising_docstrings(tmp_path, report)
+    return report
+
+
+def test_a_public_function_that_raises_names_the_failure_in_its_docstring(tmp_path: Path) -> None:
+    """A public function or method that raises must say so (`PL-GZPX`).
+
+    A private function, a private class's method and a function nested inside
+    another need not, since none of them is public.
+    """
+
+    report = _raising_docstring_errors(
+        tmp_path,
+        '''
+        def silent(value):
+            """Return the value."""
+            if value < 0:
+                raise ValueError(value)
+            return value
+
+
+        def stated(value):
+            """Return the value.
+
+            Raises:
+                ValueError: the value is negative.
+            """
+            if value < 0:
+                raise ValueError(value)
+            return value
+
+
+        def outer(value):
+            """Return the value, and reject a negative one."""
+
+            def inner():
+                raise ValueError(value)
+
+            return inner
+
+
+        def _private(value):
+            raise ValueError(value)
+
+
+        class Holder:
+            """A public class."""
+
+            def method(self):
+                """Do nothing useful."""
+                raise RuntimeError("no")
+
+            def _hidden(self):
+                raise RuntimeError("no")
+
+
+        class _Hidden:
+            def method(self):
+                raise RuntimeError("no")
+        ''',
+    )
+
+    assert [error.split(" raises,")[0] for error in report.errors] == [
+        f"{doc_check.PACKAGE_ROOT}/module.py:2 `silent`",
+        f"{doc_check.PACKAGE_ROOT}/module.py:36 `method`",
+    ]
+    assert report.declined == []
+
+
+def test_a_public_class_s_special_method_that_raises_names_the_failure(tmp_path: Path) -> None:
+    """A constructor that refuses a value must say so, in its own or its class's docstring.
+
+    Most of the simulator's refusals are raised in `__post_init__` or
+    `__init__`, which a caller meets by building the class. A blind review
+    found that the rule first skipped them as private names, and that
+    `PlaybackRate.__post_init__` raised with neither docstring saying so.
+    """
+
+    report = _raising_docstring_errors(
+        tmp_path,
+        '''
+        class Silent:
+            """A public class."""
+
+            def __post_init__(self):
+                raise ValueError("no")
+
+
+        class StatedOnTheClass:
+            """A public class.
+
+            Raises:
+                ValueError: always.
+            """
+
+            def __post_init__(self):
+                raise ValueError("no")
+
+
+        class StatedOnTheMethod:
+            """A public class."""
+
+            def __init__(self):
+                """Refuse every value."""
+                raise ValueError("no")
+
+
+        class _Hidden:
+            def __init__(self):
+                raise ValueError("no")
+        ''',
+    )
+
+    assert [error.split(" raises,")[0] for error in report.errors] == [
+        f"{doc_check.PACKAGE_ROOT}/module.py:5 `__post_init__`"
+    ]
+
+
+def test_a_module_the_interpreter_cannot_parse_is_declined_not_failed(tmp_path: Path) -> None:
+    """A file the bare `python3` cannot parse is listed as not checked (`PL-GZPX`)."""
+
+    report = _raising_docstring_errors(tmp_path, "def broken(:\n    pass\n")
+
+    assert report.errors == []
+    assert len(report.declined) == 1
+    assert "cannot parse this file" in report.declined[0]

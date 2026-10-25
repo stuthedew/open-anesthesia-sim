@@ -31,6 +31,10 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
 
 def test_rejects_agent_amount_above_circuit_capacity() -> None:
     circuit = BreathingCircuit(
@@ -203,7 +207,7 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: 
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^max_delivered_concentration_percent must be positive and finite$",
+        match="^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
     ):
         BreathingCircuit(
             circuit_volume_l=6.0,
@@ -381,14 +385,14 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
             "circuit_volume_l",
             0.0,
             SimulationConfigurationError,
-            "^circuit_volume_l must be positive and finite$",
+            "^circuit_volume_l must be positive and finite" + REFUSAL_REASON,
             id="zero-volume",
         ),
         pytest.param(
             "circuit_volume_l",
             nan,
             SimulationConfigurationError,
-            "^circuit_volume_l must be positive and finite$",
+            "^circuit_volume_l must be positive and finite" + REFUSAL_REASON,
             id="nan-volume",
         ),
         pytest.param(
@@ -453,7 +457,7 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
             "max_delivered_concentration_percent",
             Percent(0.0),
             SimulationConfigurationError,
-            "^max_delivered_concentration_percent must be positive and finite$",
+            "^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
             id="zero-maximum",
         ),
         pytest.param(
