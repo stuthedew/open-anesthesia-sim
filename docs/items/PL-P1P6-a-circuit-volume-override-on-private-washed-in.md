@@ -10,7 +10,7 @@ touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.m
 added: 2026-09-13
 closed: 2026-10-25
 pr: 1819
-verify: grep -q 'def test_a_larger_circuit_cannot_speed_the_elimination' tests/reference/test_published_wash_in_and_elimination.py && uv run pytest tests/reference/test_published_wash_in_and_elimination.py
+verify: grep -q 'def test_a_larger_circuit_can_only_slow_the_elimination' tests/reference/test_published_wash_in_and_elimination.py && grep -q 'test_a_larger_circuit_can_only_slow_the_elimination' docs/MODEL.md
 ---
 
 **Problem.** A circuit-volume override on _private_washed_in_system would let one test pin the direction that a larger circuit-side agent store can only slow the elimination
