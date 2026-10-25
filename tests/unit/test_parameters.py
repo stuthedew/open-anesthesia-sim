@@ -682,10 +682,10 @@ def test_every_payload_model_documents_why_it_exists() -> None:
     layout dictate the type that the simulation reads.
 
     The test walks the subclasses rather than listing them, for the same
-    reason as the strictness test that follows. The seventh payload model
-    added later should arrive documented by default, not because someone
-    remembered. This test does not check what the docstring *says*, which
-    cannot be checked. It checks only that the docstring exists.
+    reason as the strictness test that follows. A payload model added later
+    should arrive documented by default, not because someone remembered.
+    This test does not check what the docstring *says*, which cannot be
+    checked. It checks only that the docstring exists.
     """
 
     strict_base = parameters_module._StrictPayload
@@ -700,7 +700,7 @@ def test_every_payload_model_documents_why_it_exists() -> None:
 
 
 def test_every_payload_model_forbids_unknown_keys() -> None:
-    """Payload models added later must be strict too, not just today's eight.
+    """Payload models added later must be strict too, not only today's.
 
     Inheriting `_StrictPayload` is what makes a new payload model strict by
     default. This test walks the subclass tree, so it catches a model that
