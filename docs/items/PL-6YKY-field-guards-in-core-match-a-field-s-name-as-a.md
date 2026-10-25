@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: tests/unit/test_field_guards.py
 added: 2026-10-25
 closed: 2026-10-25

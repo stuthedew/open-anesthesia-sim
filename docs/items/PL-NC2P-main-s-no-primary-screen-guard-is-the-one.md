@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test, infra
 feature: core-guard-coverage
+milestone: v0.6.4
 touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
 closed: 2026-10-24

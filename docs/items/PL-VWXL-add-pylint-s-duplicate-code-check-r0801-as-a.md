@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor, infra
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: Makefile, pyproject.toml, uv.lock, tools/, tests/unit/, docs/apparatus.md, docket.toml, .github/workflows/quality.yml, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/validation.py
 blocked-by: PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)

@@ -3,11 +3,14 @@ id: PL-63CB
 title: Add a model-review skill that, on a cadence and after any generator or cluster, joins closed items to the sessions that worked them, scores each by how the work held up, screens every recorded attribute for associations, and brings recommendations with their evidence and n
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
+milestone: v0.6.4
 touches: .claude/skills/model-review, docs/model-review.md, docs/maintainer.md
 added: 2026-10-17
+closed: 2026-10-25
+pr: 1776
 payoff: model and effort are chosen per item type from measured reliability and cost rather than a cautious default, and the owner is handed the recommendations instead of having to ask
 verify: grep -q 'model-review' docs/maintainer.md && grep -q 'pre-registered' .claude/skills/model-review/SKILL.md
 ---
@@ -157,3 +160,23 @@ choice that needed rework or unintended behavior. Each monthly run does this:
 8. **Report.** When the corrected test is significant, put it to the owner:
    the effect with its 95% confidence interval, the counts, the confounders,
    and a recommendation.
+
+**Progress, 2026-10-25.** The skill exists at
+`.claude/skills/model-review/SKILL.md`, with the decision rules, the
+rule-of-three table, the record refreshes, the join from item to session, the
+outcome measures from `PL-4SFQ`, the design-fallout scoring, the screen, the
+effort monitoring steps above, the pre-registration template, the report
+format and the triggers. `docs/model-review.md` is the register, with the
+effort trial registered in the template's form. `docs/maintainer.md` §
+"Match model capability to the work" points at both, and its ledger section
+now points at the skill's refresh steps instead of restating them. **What is
+left:** the first review, which refreshes the ledger, scores the closed items
+and writes its findings to the register.
+
+**Done, 2026-10-25.** The first review ran and its findings are in
+`docs/model-review.md` § "Run of 2026-10-25, the first". Effort monitoring is
+not yet adequate: no item worked only at `high` has a closed window until
+2026-11-18, and each group needs 595 items. Its two findings that need work
+are filed under the `model-review` feature: `PL-J7YG` (the rework measure
+marks 69% of items) and `PL-2D1S` (red CI runs per pull request rose from 17%
+to 49% of items in five weeks). The next run is due about 2026-11-25.

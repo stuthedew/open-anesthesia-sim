@@ -30,6 +30,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from docket.shell import (
+    BASH_FLOOR,
     Assignment,
     FlatReading,
     Operator,
@@ -618,7 +619,10 @@ def _bash() -> str:
         [path, "-c", "echo $BASH_VERSION"], capture_output=True, text=True, check=True
     ).stdout.strip()
     major, minor = (int(part) for part in version.split(".")[:2])
-    assert (major, minor) >= (5, 2), f"{path} is bash {version}; the comparison needs 5.2 or newer"
+    floor = ".".join(map(str, BASH_FLOOR))
+    assert (major, minor) >= BASH_FLOOR, (
+        f"{path} is bash {version}; the comparison needs {floor} or newer"
+    )
     return path
 
 

@@ -3,11 +3,14 @@ id: PL-GH8L
 title: Four builder subagents each running the full suite at once drove the container's load average to about 30 on 4 cores, so bin/docket verify --self's make check step hit its fixed 1,800 s limit and gave no answer on three branches
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-builders
+milestone: v0.6.5
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1789
 payoff: a batch of builders in one container gets an accept or reject from verify --self on every branch, instead of a timeout that sends the check round again
 verify: grep -qiE 'cores|load average' .claude/skills/docket/modes/picking.md
 ---
@@ -23,3 +26,7 @@ verify: grep -qiE 'cores|load average' .claude/skills/docket/modes/picking.md
 **Reproduced 2026-10-24.** `grep -ciE 'scratchpad|foreground|cores|load average' .claude/skills/docket/modes/picking.md` prints 0.
 
 **Generator check.** This is one of the three hazards grouped in `PL-5PL5`, and it is not a generator for the reason that item gives.
+
+**Done, 2026-10-25.** `.claude/skills/docket/modes/picking.md` § "Mode: work several items at once" now ends with three rules a parent writes into every builder's brief: a scratch subfolder named after the item id, long commands in the foreground, and one full suite at a time, run by the parent.
+
+*The route chosen.* A written rule rather than a lock that serialises `make check`. Builders queued behind a lock would spend their wait inside the same 1,800 s limit, so the lock would move the timeout rather than remove it. The parent running each branch's `verify --self` in turn removes it.

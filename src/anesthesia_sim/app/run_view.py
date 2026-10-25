@@ -272,7 +272,8 @@ class RunView(QWidget):
             asks for a frame now. `SimulationView.present` handles the signal
             (`PL-R2YM`).
         case_restarted: Emitted when this run has started over from
-            induction. On a trunk run, that starts a new case, so every branch
+            induction, after a Reset or an accepted change of agent. On a
+            trunk run, that starts a new case, so every branch
             taken from the old run no longer compares with anything. The
             dashboard acts on the signal, because this view does not know
             which other runs are on screen.
@@ -587,8 +588,9 @@ class RunView(QWidget):
 
         The snapshot widgets are written first: the readouts, their clock and
         the accounting panel. The run-state widgets follow, through
-        `_write_statement`, which `present_halt` also calls. Here the banner is
-        the text that `dashboard_frame.notice` gives for a frame that drew.
+        `_write_statement`, which `present_halt` also calls. On this path the
+        banner shows the text that `dashboard_frame.notice` gives for a frame
+        that was drawn.
         Each chart writes the lines that depend on its window, such as which
         traces are above the axis, from its own frame (`PL-L59K`).
 
@@ -598,12 +600,13 @@ class RunView(QWidget):
         Raises:
             ValueError: If `setting_readouts` rejects the snapshot. That
                 happens for a control with no step of its resolution inside
-                the range the run accepts (`PL-7CRY`), or for a MAC that is
-                not positive.
+                the range the run accepts (`PL-7CRY`).
         """
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
+        self._restate_new_case_question(snapshot)
+        self._restate_reset_question()
 
         self._accounting_shown = accounting(snapshot)
 
@@ -624,6 +627,14 @@ class RunView(QWidget):
         `present_halt` calls it with the controller's record. So a halt shows
         the run on every widget that a frame would. A widget added to the
         statement is written on both paths or on neither.
+
+        This method also writes the playback line under the clock. That line
+        sits in the readout row, which `refresh` writes from the snapshot and
+        a halt does not write. But the line states the run's playback rate,
+        not a compartment value. Before `PL-P58M`, only the readout row wrote
+        it, so a rate chosen on a halted run reached the dropdown but not the
+        clock. On `refresh`, the readout row first writes the same text from
+        the same rate.
 
         Both paths write in one order. The agent colour comes first, before
         anything that shows it. The dials come last, because
@@ -671,6 +682,7 @@ class RunView(QWidget):
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
+        self._playback_rate_text.setText(format_playback_rate(self._playback_rate.multiplier))
         self._write_notice(statement.banner)
         self._write_settings(record)
 
@@ -1118,6 +1130,32 @@ class RunView(QWidget):
         self._reset_dialog = dialog
         dialog.open()
 
+    def _restate_reset_question(self) -> None:
+        """Rewrite an open Reset question from the runs as they stand now.
+
+        The trunk's Reset question names each branch it discards and the
+        instant that branch has run to. Reset stays enabled while the runs
+        step, and a branch goes on stepping while the question is open. So a
+        question written only once, when it opened, understated the branch
+        work that the reader was about to discard (`PL-WM5P`). The
+        dashboard's `ask_before_reset` callback reads every branch's
+        controller, and each controller has already stepped by the time this
+        run is refreshed.
+
+        If the callback now returns no question, the dialog is left as it
+        is. That case does not arise, because a branch's work only grows
+        while the question is open. Closing the dialog under the reader
+        would also be a surprise.
+        """
+
+        if self._reset_dialog is None or self._reset_question is None:
+            return
+
+        question = self._reset_question()
+
+        if question is not None:
+            self._reset_dialog.show_question(question)
+
     def _handle_reset_finished(self, result: int) -> None:
         self._resolve_reset(result == QDialog.DialogCode.Accepted)
 
@@ -1279,12 +1317,23 @@ class RunView(QWidget):
         recorded as refused (`PL-V2HC`). The confirmation path arrives here
         with a snapshot read when the question was asked, which a halt in
         the meantime outdates.
+
+        **An accepted switch emits `case_restarted`**, as Reset does, because
+        it too starts a new case. The signal is emitted inside the setting
+        call, after `set_agent` returns and before the frame is requested.
+        So the dashboard drops everything that belonged to the old case
+        before it draws, including a refusal on the branch panel
+        (`PL-BM6X`). A refused switch changes nothing and emits nothing.
         """
 
         if self._snapshot_for_a_control() is None:
             return
 
-        self._apply_setting(lambda: self.controller.set_agent(agent_id))
+        def switch() -> None:
+            self.controller.set_agent(agent_id)
+            self.case_restarted.emit()
+
+        self._apply_setting(switch)
 
     def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
         """Ask before discarding a recorded run, with the selector already reverted.
@@ -1308,6 +1357,32 @@ class RunView(QWidget):
         dialog.finished.connect(dialog.deleteLater)
         self._new_case_dialog = dialog
         dialog.open()
+
+    def _restate_new_case_question(self, snapshot: SimulationSnapshot) -> None:
+        """Rewrite an open new-case question from the frame's snapshot.
+
+        The question states how much run time and how many control changes
+        the new case discards. The run is not paused while the question is
+        open, so a running run goes on stepping. A question written only
+        once, when it opened, therefore understated what the reader was
+        about to lose (`PL-WM5P`). A halt does not rewrite the question. A
+        halted run does not step, so the figure from the last frame is still
+        correct.
+
+        Args:
+            snapshot: The snapshot the frame drew from.
+        """
+
+        if self._new_case_dialog is None or self._pending_agent_id is None:
+            return
+
+        self._new_case_dialog.show_question(
+            new_case_question(
+                snapshot,
+                AGENT_DISPLAY_NAMES[self._pending_agent_id],
+                len(self.adjustments(snapshot)),
+            )
+        )
 
     def _handle_new_case_finished(self, result: int) -> None:
         self._resolve_new_case(result == QDialog.DialogCode.Accepted)

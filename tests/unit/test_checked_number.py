@@ -1,11 +1,11 @@
-"""What a checked type is built from, pinned once where the rule is written.
+"""Tests of what a checked type is built from, pinned once, where the rule is written.
 
-`core/checked_number.py` decides for every checked type - `Fraction`,
-`Percent`, `SimulationStep`, the three flows, `CaseInstant` and `StepCount` -
-what may be built into one, that none is built from another, and how a zero is
-held; each type's own tests hold it to the rule, and these hold the rule
-itself, so that a change here fails before any type does (`PL-LLMN`,
-`PL-979Z`).
+`core/checked_number.py` sets the rule for every checked type: `Fraction`,
+`Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant` and
+`StepCount`. The rule says what may be built into one, that none is built from
+another, and how a zero is held. Each type's own tests check that the type
+follows the rule. These tests check the rule itself, so that a change to it
+fails here before any type's tests fail (`PL-LLMN`, `PL-979Z`).
 """
 
 import importlib
@@ -31,7 +31,7 @@ from anesthesia_sim.core.checked_number import (
     require_not_another_quantity,
     shown,
 )
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
@@ -60,6 +60,7 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     CaseInstant: 0.05,
     Fraction: 0.05,
     Percent: 0.05,
+    MacPercent: 0.05,
     StepCount: 1,
 }
 """A number to build each checked type from that every other type's range admits, bar one.
@@ -83,6 +84,7 @@ NAMED_AS: dict[type[Any], str] = {
     CaseInstant: "instant_s",
     Fraction: "fraction",
     Percent: "percent",
+    MacPercent: "mac_percent",
     StepCount: "step_count",
 }
 """What each constructor calls its value in a refusal: its parameter, the run's
@@ -92,8 +94,25 @@ concentration's default `name`."""
 ORDERED_PAIRS = [
     (built_as, building)
     for built_as, building in itertools.product(INSIDE_EVERY_RANGE, repeat=2)
-    if built_as is not building
+    if built_as is not building and not issubclass(built_as, building)
 ]
+"""Every ordered pair of two checked types, except a type built from its own subtype.
+
+`MacPercent` is a `Percent` that is above zero. So a `Percent` is rebuilt from a
+`MacPercent` as from its own kind, because a MAC is a percent of one
+atmosphere. The reverse is refused, because a `Percent` was not checked as a
+MAC (`PL-F9TC`)."""
+
+CONCENTRATION_FORM: dict[type[Any], str] = {
+    Fraction: "Fraction",
+    Percent: "Percent",
+    MacPercent: "Percent",
+}
+"""The concentration form that a refusal names when it says to convert rather than rebuild.
+
+A `MacPercent` is in the percent form. So the refusal of a `Fraction` handed to
+a `MacPercent` says to convert from a fraction to a percent, in the words that
+`Percent` uses."""
 
 
 def _every_subclass(base: type) -> list[type]:
@@ -278,10 +297,10 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
 
     assert not isinstance(raised.value, AnesthesiaSimulationError)
 
-    if {built_as, building} == {Fraction, Percent}:
+    if Fraction in {built_as, building} and {built_as, building} <= set(CONCENTRATION_FORM):
         assert str(raised.value).startswith(
-            f"{NAMED_AS[building]} of {value!r} is a {built_as.__name__}, not a "
-            f"{building.__name__}: convert it with"
+            f"{NAMED_AS[building]} of {value!r} is a {CONCENTRATION_FORM[built_as]}, not a "
+            f"{CONCENTRATION_FORM[building]}: convert it with"
         )
     else:
         assert str(raised.value) == (
@@ -368,6 +387,7 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
     CaseInstant: -1.0,
     Fraction: 1.5,
     Percent: 150.0,
+    MacPercent: 150.0,
     StepCount: -5,
 }
 """A number each checked type's own range refuses, written into a saved pickle by hand."""

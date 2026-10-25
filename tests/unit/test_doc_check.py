@@ -859,6 +859,292 @@ def test_each_of_several_markers_on_one_paragraph_reads_that_paragraph(tmp_path:
     assert _errors(root) == []
 
 
+# --- untied restatements -----------------------------------------------------
+
+STEP_MODULE = "from typing import Final\n\nSTEP_S: Final = Step(0.1)\n_PRIVATE_S = 0.1\nCOUNT = 3\n"
+
+
+def _with_step(root: Path) -> Path:
+    """Give the fixture's module a unit-named constant, as `SIMULATION_STEP_S` is."""
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        STEP_MODULE, encoding="utf-8"
+    )
+    return root
+
+
+def _untied(root: Path) -> list[str]:
+    return [error for error in _errors(root) if "no marker under its paragraph" in error]
+
+
+def test_a_figure_equal_to_a_stored_value_with_no_marker_is_refused(tmp_path: Path) -> None:
+    """The case the check exists for: a restatement nobody tied to its home (`PL-JS6P`)."""
+    root = _repo(tmp_path, model=_model_with("Blood takes up the demo agent at 0.5."))
+
+    assert _untied(root) == [
+        f"docs/MODEL.md:{MODEL.count(chr(10)) + 2}: 0.5 equals data/agents/demo.json "
+        "blood_gas_partition_coefficient = 0.5, and no marker under its paragraph says what it "
+        "is. If it restates that value, add `<!-- provenance: data/agents/demo.json "
+        "blood_gas_partition_coefficient = 0.5 -->` on a line of its own under the paragraph. "
+        "If it only coincides, add `<!-- not-restated: 0.5 -->`"
+    ]
+
+
+def test_a_restated_number_that_disagrees_with_its_home_fails(tmp_path: Path) -> None:
+    """A figure tied to a constant in code is held to that constant's value.
+
+    The step is restated as 0.2 s while the module holds 0.1 s, which is the
+    drift a marker naming a code home exists to catch.
+    """
+    root = _with_step(
+        _repo(
+            tmp_path,
+            model=_model_with(
+                "The run advances one step every 0.2 s.",
+                "<!-- provenance: core/thing.py STEP_S = 0.2 -->",
+            ),
+        )
+    )
+
+    assert any(
+        "states STEP_S = 0.2 but core/thing.py holds 0.1" in error for error in _errors(root)
+    )
+
+
+def test_a_figure_tied_to_a_constant_in_code_passes(tmp_path: Path) -> None:
+    root = _with_step(
+        _repo(
+            tmp_path,
+            model=_model_with(
+                "The run advances one step every 0.1 s.",
+                "<!-- provenance: core/thing.py STEP_S = 0.1 -->",
+            ),
+        )
+    )
+
+    assert _errors(root) == []
+
+
+def test_a_figure_equal_to_a_unit_named_constant_with_no_marker_is_refused(tmp_path: Path) -> None:
+    """A public constant whose name ends in a unit is a home, as a data key is."""
+    root = _with_step(_repo(tmp_path, model=_model_with("The run advances every 0.1 s.")))
+
+    assert len(_untied(root)) == 1
+    assert "0.1 s equals core/thing.py STEP_S = 0.1" in _untied(root)[0]
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "The model has 3 compartments.",  # a constant with no unit in its name
+        "The demo agent dissolves at 0.5 L.",  # the coefficient has no unit
+        "Two tissues share 2 parts.",  # a whole number is never a coefficient
+        "The step is 0.1 L.",  # the step is in seconds
+        "Version 0.5.1 shipped.",  # part of a version
+    ],
+    ids=["unitless-constant", "other-unit", "whole-number", "wrong-unit", "version"],
+)
+def test_a_figure_that_cannot_restate_a_stored_value_is_not_asked_about(
+    tmp_path: Path, prose: str
+) -> None:
+    """A figure is asked about only when its value and its unit both match a home."""
+    root = _with_step(_repo(tmp_path, model=_model_with(prose)))
+
+    assert _untied(root) == []
+
+
+def test_a_not_restated_marker_clears_a_figure_that_only_coincides(tmp_path: Path) -> None:
+    root = _with_step(
+        _repo(
+            tmp_path,
+            model=_model_with(
+                "A step of 0.1 s was tried in 2020, and a ratio of 0.5 was measured.",
+                "<!-- not-restated: 0.1 s, 0.5 -->",
+            ),
+        )
+    )
+
+    assert _errors(root) == []
+
+
+def test_a_not_restated_marker_listing_a_figure_its_paragraph_lacks_is_refused(
+    tmp_path: Path,
+) -> None:
+    """A declaration cannot outlive the sentence it was about."""
+    root = _repo(
+        tmp_path,
+        model=_model_with("Nothing here equals a stored value.", "<!-- not-restated: 0.5 -->"),
+    )
+
+    assert any(
+        "the `not-restated:` marker lists 0.5, which is not a figure in the paragraph above"
+        in error
+        for error in _errors(root)
+    )
+
+
+def _model_listing(*lines: str) -> str:
+    """`MODEL` with `lines` in place of "Known limitations"' one sentence.
+
+    A list appended at the end would join the fixture's last section, whose
+    list is a bound family, so the list is written where a paragraph stood.
+    """
+    return MODEL.replace("Nothing yet.", "\n".join(lines), 1)
+
+
+def test_a_marker_under_a_list_ties_a_figure_in_an_earlier_item(tmp_path: Path) -> None:
+    """A marker cannot stand inside a list item, so one under the list covers all of it."""
+    model = _model_listing(
+        "- The coefficient is 0.5.",
+        "- The fat coefficient is quoted elsewhere.",
+        "",
+        MARKER.format("0.5"),
+    )
+
+    assert _errors(_repo(tmp_path, model=model)) == []
+
+
+def test_a_marker_under_a_paragraph_does_not_tie_the_list_above_it(tmp_path: Path) -> None:
+    """A paragraph after a list is its own scope, as `PL-JZNV` requires."""
+    model = _model_listing(
+        "- The coefficient is 0.5.", "", "It dissolves at 0.5.", MARKER.format("0.5")
+    )
+
+    assert len(_untied(_repo(tmp_path, model=model))) == 1
+
+
+def test_readme_figures_are_held_to_their_homes_too(tmp_path: Path) -> None:
+    """`README.md` is the first page a reader trusts, so it is read as the model is."""
+    untied = _repo(tmp_path / "untied", readme=README + "\nThe coefficient is 0.5.\n")
+    stale = _repo(
+        tmp_path / "stale",
+        readme=README + "\nThe coefficient is 0.9.\n\n" + MARKER.format("0.9") + "\n",
+    )
+
+    assert [error.split(":")[0] for error in _untied(untied)] == ["README.md"]
+    assert any(
+        error.startswith("README.md (line") and "holds 0.5" in error for error in _errors(stale)
+    )
+
+
+def _with_constants(root: Path, extra: str) -> Path:
+    """Give the fixture's module the step constant and the lines in `extra`."""
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        STEP_MODULE + extra, encoding="utf-8"
+    )
+    return root
+
+
+def test_a_marker_ties_a_figure_only_to_the_value_it_names(tmp_path: Path) -> None:
+    """A marker for the coefficient does not clear a volume that shares its number.
+
+    Before this, a marker tied every figure in its paragraph whose number it
+    named, whatever the unit or the home. So a sentence restating a second
+    value of the same number went stale silently.
+    """
+    root = _with_constants(
+        _repo(
+            tmp_path,
+            model=_model_with(
+                "The pool holds 0.5 L, and blood takes up the demo agent at 0.5.",
+                MARKER.format("0.5"),
+            ),
+        ),
+        "POOL_L = 0.5\n",
+    )
+
+    untied = _untied(root)
+    assert len(untied) == 1
+    assert "0.5 L equals core/thing.py POOL_L = 0.5" in untied[0]
+
+
+def test_a_derived_marker_ties_its_figure_as_written_and_its_inputs(tmp_path: Path) -> None:
+    """A computed figure is tied as the marker writes it, and a figure equal to an input is too."""
+    model = _model_with(
+        "The step of 0.1 s gives 10.0 steps a second, and 10 s is something else.",
+        "<!-- derived: 10.0 from core/thing.py STEP_S = 0.1 -->",
+    )
+    root = _with_constants(_repo(tmp_path, model=model), "WAIT_S = 10\n")
+
+    untied = _untied(root)
+    assert len(untied) == 1
+    assert "10 s equals core/thing.py WAIT_S = 10" in untied[0]
+
+
+@pytest.mark.parametrize(
+    "prose",
+    ["The run advances every 100 ms.", "The run advances every 0.1 seconds."],
+    ids=["milliseconds", "word"],
+)
+def test_a_figure_in_another_spelling_of_its_unit_is_asked_about(
+    tmp_path: Path, prose: str
+) -> None:
+    """A step written in milliseconds, or with its unit as a word, is still the step."""
+    root = _with_step(_repo(tmp_path, model=_model_with(prose)))
+
+    assert len(_untied(root)) == 1
+    assert "equals core/thing.py STEP_S = 0.1" in _untied(root)[0]
+
+
+def test_a_not_restated_marker_reads_the_spelling_its_paragraph_uses(tmp_path: Path) -> None:
+    root = _with_step(
+        _repo(
+            tmp_path,
+            model=_model_with("A 100 ms timer was tried once.", "<!-- not-restated: 100 ms -->"),
+        )
+    )
+
+    assert _errors(root) == []
+
+
+def test_a_constant_used_as_an_index_is_not_a_stored_value(tmp_path: Path) -> None:
+    """`DELIVERED_AGENT_L = 6` names a place in the state vector, not 6 L."""
+    root = _with_constants(
+        _repo(tmp_path, model=_model_with("The circuit holds 6 L.")),
+        "POSITION_L = 6\n\n\ndef read(state):\n    return state[POSITION_L]\n",
+    )
+
+    assert _untied(root) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "unit"),
+    [
+        ("mac_awake.fraction_of_mac", None),
+        ("CARDIAC_OUTPUT_TOLERANCE_L_S", "L/s"),
+        ("SIMULATION_STEP_S", "s"),
+        ("CHART_AXIS_TOP_MAC", "MAC"),
+    ],
+)
+def test_a_names_ending_declares_its_unit(name: str, unit: str | None) -> None:
+    """A fraction of MAC has no unit, and a flow in L/s is not a time."""
+    assert doc_check._unit_of(name) == unit
+
+
+def test_a_figure_equal_to_several_values_names_them_all_and_suggests_none(tmp_path: Path) -> None:
+    """A ready-made marker for the first match could tie the figure to a value it does not mean."""
+    root = _with_constants(
+        _repo(tmp_path, model=_model_with("The run advances every 0.1 s.")),
+        "LONGEST_STEP_S = 0.1\n",
+    )
+
+    (untied,) = _untied(root)
+    assert "each of core/thing.py STEP_S = 0.1; core/thing.py LONGEST_STEP_S = 0.1" in untied
+    assert "<!-- provenance: <home> <key> = <value> -->" in untied
+
+
+def test_a_marker_under_a_list_does_not_tie_a_block_quote_before_it(tmp_path: Path) -> None:
+    """A list's scope reaches back over the list and stops at the quote above it."""
+    model = _model_listing(
+        "> Blood takes up the demo agent at 0.5.",
+        "",
+        "- The coefficient is 0.5.",
+        "",
+        MARKER.format("0.5"),
+    )
+
+    assert len(_untied(_repo(tmp_path, model=model))) == 1
+
+
 # --- citations --------------------------------------------------------------
 
 

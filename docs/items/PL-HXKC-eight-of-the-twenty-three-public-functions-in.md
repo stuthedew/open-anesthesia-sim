@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: documentation-standard
+milestone: v0.6.4
 touches: src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-05
 closed: 2026-10-24

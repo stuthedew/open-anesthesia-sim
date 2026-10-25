@@ -108,6 +108,7 @@ from anesthesia_sim.app.dashboard_frame import (
     bookmark_panel,
     branch_at_stake,
     comparing_fork_lock_text,
+    displayed_run_count,
     fork_offer,
     refused_setting_notice,
     run_label,
@@ -391,14 +392,7 @@ class SimulationView(QWidget):
                 safety-critical standard treats as a failure of the value.
         """
 
-        if not controllers:
-            raise ValueError("a dashboard displays at least one run; none was given")
-
-        if len(controllers) > MAX_DISPLAYED_RUNS:
-            raise ValueError(
-                f"{len(controllers)} runs given; at most {MAX_DISPLAYED_RUNS} may be "
-                f"displayed at once"
-            )
+        displayed_run_count(len(controllers))
 
         agent_ids = {controller.snapshot().agent_id for controller in controllers}
 
@@ -869,11 +863,7 @@ class SimulationView(QWidget):
                 "to take one from"
             )
 
-        if len(self._runs) >= MAX_DISPLAYED_RUNS:
-            raise ValueError(
-                f"{len(self._runs)} runs are already displayed; at most {MAX_DISPLAYED_RUNS} "
-                "may be displayed at once"
-            )
+        displayed_run_count(len(self._runs) + 1)
 
         agent_id = controller.snapshot().agent_id
         displayed = self._runs[0].snapshot().agent_id
@@ -928,9 +918,10 @@ class SimulationView(QWidget):
         reader reaches for to start one run again, which is precisely the
         wrong place to put a surprise (`PL-LQ19`).
 
-        **The case and a standing fork refusal answer to the run that ended,
-        not to how many runs are drawn**, so both are cleared on every trunk
-        Reset, a one-run one included. A refusal names an instant of the run
+        **The case and a standing fork refusal belong to the run that ended,
+        not to how many runs are drawn.** So both are cleared on every trunk
+        Reset and every accepted agent change, even when only one run is
+        drawn (`PL-BM6X`). A refusal names an instant of the run
         that has just started over, so it goes as the setting refusal
         `RunView._reset_now` clears does (`PL-75P5`). The case is a record
         of the trunk's run rather than of the display, so it is rebuilt

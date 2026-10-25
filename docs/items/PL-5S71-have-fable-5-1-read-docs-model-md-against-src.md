@@ -6,11 +6,11 @@ effort: M
 status: ready
 classes: docs, infra
 feature: api-credit-runs
-touches: tools/, tests/unit/, docs/items
+touches: tools/, tests/unit/, docs/items, docs/apparatus.md, docs/maintainer.md, docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
 payoff: the clinical specification gets one full reading by the strongest model against the stored values, so a contradiction a learner could be misled by is found and filed rather than left
-verify: grep -rqF '/v1/messages/batches' tools/
+verify: grep -qE '^\*\*Findings checked, ' docs/items/PL-5S71-*.md
 not-delegable: The run spends the owner's API credit from the owner's machine, which no session can reach, and each finding has to be confirmed against its cited source by a session before it is filed
 ---
 
@@ -51,3 +51,25 @@ classed `science` or `safety`, where the checker ranks it at `P1` and returns
 it to the current gate. Classing the review itself `science` would hold
 v0.6.0 until the owner runs a credit job on their machine, which no part of
 that release depends on (triage, 2026-10-19).
+
+**Built, 2026-10-25.** `tools/model_doc_review.py` builds the batch and
+`tests/unit/test_model_doc_review.py` tests how. Fable 5.1's context is 1M
+tokens, so the split the brief inferred is not needed: each of the 25 requests
+carries the whole document and all eight data files, about 215,000 tokens,
+behind one prompt-cache marker, and asks about one `##` section. That way a
+contradiction between two sections can be found, which a request carrying only
+its own section would miss. The model returns JSON with three kinds of finding:
+`data`, `internal` and `unit`. The cost bound on 2026-10-25 was $66.91. That
+bound assumes no cache hit and every request using all 48,000 of its output
+tokens. A request after the first that reads the cache pays a fortieth of the
+input price, so the bill should be much lower. `docs/maintainer.md` § "Have
+Fable 5.1 read the model document against the data, once" has the owner's
+four steps.
+
+What remains is the owner's run and the check. Until the findings file comes
+back, there is nothing here for a session to do. The session that receives it
+checks each finding against the document, the data file and the cited source.
+It files each confirmed finding as its own item, classed `science` or
+`safety`. It records each unconfirmed finding here, with the reason, in a paragraph
+that opens `**Findings checked, <date>.**`, which is what this item's
+`verify:` looks for, and then closes this item.

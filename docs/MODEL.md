@@ -187,6 +187,8 @@ stays a reviewer's question.
 | reading the hover's value as a live readout after the pointer has left the plot | the box answers only while the pointer is over the plot (§ "When it answers"): leaving takes it down at once, along with any pointer move still waiting to be answered, so no later frame answers for a pointer that has gone. Left up, it would re-answer every frame and, while a run plays, climb with the run for an instant the reader is not looking at (`PL-LTKL`) | `test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, in the chart's hover readout - on its first line where one run answers (§ "The hover and the run it belongs to") and on each value line where several do, every run inside the hover radius answering so that no hand movement can swap which is read (§ "Where more than one trace answers") - because the hover floats free of the legend and line width has no textual analogue; and on the three advisories that sit in a chart rather than on either run's panel, the wash-in state line, the off-scale notice and the count of control changes the chart could not mark (`PL-L59K`), which stack one line per run and so are named for the same reason the hover is - stacking order is declared nowhere on screen and the run names sit in the unconditional region above the charts, which would leave the branch's F_A/F_I readable as the trunk's and its off-scale notice attributable to a run whose traces are all inside the axis (`PL-25DD`); and in the headings of the two record panels, the agent-accounting validation in the sidebar and the control-change record in the unconditional region's right column, each of which stacks whole panels rather than lines, one per run, so the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column, because "What was changed during this run" over a list of settings read as the other run's says the trunk received an intervention it never got (`PL-C3GS`); and on the notice banner, which the runs share a place for, between their transport rows and their readouts, and which qualifies the values rather than showing one - "The values shown are the last completed step" read as the dashboard's says both runs' readouts are frozen at a failed step when one is still going, and "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order does not separate these at all, because a banner with nothing to say is hidden and takes no room: with one run halted, its banner stands in the same place whichever run it belongs to, while the words are identical (`PL-TSZM`, `PL-T91K`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height` |
 
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
 ### The row that was only partly mitigated until the Qt port
 
 The last row is the one worth reading closely, because its mitigation was
@@ -419,6 +421,7 @@ formed from cardiac output inherit the difference, so settings rebuilt from a
 per-second record would describe a run nobody set up. `UptakeEquationSettings`
 in `core/governing_equations.py` holds the flows this way, and `PL-SM5V`
 records the measurement.
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
@@ -436,8 +439,6 @@ control mark stamped `5400.0 s` on an axis reading `1h30m` was converting
 between two displayed forms of one quantity by hand, and at the supported
 24-hour run length the clock's top reading was `86400.0 s`, which is false
 precision on a boundary this document states in hours (`PL-Q4M4`, `PL-CZFY`).
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 24-hour from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The width the chart is drawing is the one thing still spelled out in words —
 `15 minutes` above an axis whose last tick reads `15m`. That is register
@@ -458,6 +459,7 @@ is path-independence: the product is a function of how far the run has gone,
 while a running total is a function of the order and number of the additions
 that reached it. Ten steps of 0.1 s sum to 0.9999999999999999 and multiply
 to 1.0.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 A step differing from the one a run has already taken is refused as a
 `SimulationConfigurationError` rather than added to the count. The product
@@ -563,6 +565,7 @@ names the gas. § "Model boundary" above carries the assumption that makes the
 two one quantity, and what would break it.
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
+<!-- not-restated: 2 % -->
 
 Two other places quote the same quantity in percent of an atmosphere and
 cannot do otherwise: a vaporizer dial and a MAC. The conversion between the
@@ -599,6 +602,7 @@ could not give back what a learner dialled. It is the rule § "Time" states for
 the flows, and `PL-NJPB` records the measurement. A refused setting is quoted
 back in the percent it was set in, against a vaporizer maximum held in the
 same unit.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 The interface also converts to the second display unit, a multiple of the
 running agent's 1 MAC. It is a rescaling of the percent above by one
@@ -611,6 +615,14 @@ $$
 What that quotient does and does not assert is "MAC multiples as a display
 unit"; it is not the definition of a modeled quantity and nothing in `core/`
 computes it.
+The divisor is held as a `MacPercent` (`core/concentration.py`), a `Percent`
+that refuses zero when it is built. So the quotient is never formed against a
+zero MAC, and every formatter that forms it refuses a divisor that was not
+built as one (`PL-F9TC`). The type sets no lower bound beyond zero. A MAC far
+below any real agent's would still give multiples too large to read, and the
+shipped MACs are 1.2% to 6.0%.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
 A concentration fraction must always be finite and satisfy:
 
@@ -991,6 +1003,7 @@ a layout (`PL-71CF`).
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- not-restated: 2 % -->
 
 **$`V_C`$ is the assembled breathing system, never a manufacturer's apparatus
 figure.** The model has one well-mixed gas compartment in front of the
@@ -1020,6 +1033,7 @@ such a total, and no source apportions it between the two (§ "Parameter
 provenance").
 <!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 <!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 
@@ -1137,6 +1151,9 @@ about thirteen times faster, for the same dial, than it would at the
 wrong shape for this machine property, and `docs/machine-abstraction.md`
 names the slot such a mode would occupy — a `closed_circuit` removal
 strategy, recorded there as not implemented.
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
+<!-- not-restated: 2 % -->
 
 ### Alveolar gas
 
@@ -1207,6 +1224,7 @@ $`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min:
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 1.6 percent from data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- not-restated: 2 % -->
 
 The last column is the one that decides it. Uptake removes 1.6% of each
 inspired alveolar volume for sevoflurane, which a fixed volume can ignore and
@@ -1415,9 +1433,14 @@ It is relative because the residual is rounding accumulated once per step, so it
 | desflurane | 4% | 1.60 L | 9.262e-14 L | 5.789e-14 |
 | desflurane | 2% | 0.80 L | 4.631e-14 L | 5.789e-14 |
 
+<!-- not-restated: 2 % -->
+
 Halving the dial halves the absolute residual exactly and leaves the relative one unchanged to four significant figures.
 
 Where the value comes from — worst relative residual at any step, measured the same day at the reference runs' own settings and at the corner of the supported envelope (fresh gas 10 L/min, alveolar ventilation 12 L/min, cardiac output 10 L/min, each agent at its calibrated dial maximum):
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 | Horizon | Reference settings | Worst envelope corner |
 | --- | --- | --- |
@@ -1495,6 +1518,7 @@ stopped.
 
 Three constants sit at 0.1 s, and they are three different kinds of
 statement:
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 ```text
 MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
@@ -1512,6 +1536,8 @@ ceiling deliberately; § "Supported simulation step" below states what the bound
 tolerates and says why those two coincide. Neither is derived from the other,
 and the coincidence is a fact about this configuration rather than an
 identity — which is why they are named apart.
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 `SIMULATION_TICK_INTERVAL_S` is not a step at all: it is how often the run
 loop wakes, in *real* seconds. It equals the step only because a tick that
@@ -1602,6 +1628,7 @@ an exact step bought was a tighter number rather than the correction of a wrong
 one, and no work planned at that date wanted it. Those measurements are carried
 in queue item PL-6GS0 and were produced by the v0.2.0 architecture review's
 verification harness, retired under PL-STNV.
+<!-- not-restated: 5 % -->
 
 **It was superseded on 2026-09-03** (project owner) on a ground the original
 did not weigh: not accuracy, but whether the code can be read as the model.
@@ -1664,12 +1691,14 @@ precision" makes about the last displayed digit still held. That derivation is
 void. The exact step has no truncation error at any step size and its
 propagator keeps every fraction in range at any step size, so accuracy no
 longer sets a largest step.
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 What a longer step still costs is **control resolution**. Settings are held
 constant across a step, so the step is the interval over which a change to a
 control is invisible to the model: at 0.1 s a slider move is resolved to a
 tenth of a second, and at 10 s a change made and reversed inside one step never
 happened at all.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Re-derived 2026-09-06 (`PL-X9KD`), and the honest result is that this is a
 declared tolerance rather than a derived limit.** The search for a limit was
@@ -1699,6 +1728,7 @@ concentrations, deliberately not counts of the readout: the readout's decimal
 count is a presentation decision (§ "Displayed precision") and must not reach
 back into the model. Worst displacement over all three agents at the shipped
 0.1 s step, from a control change landing one step late:
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 | Manoeuvre | Worst displacement | Binding agent |
 | --- | --- | --- |
@@ -1713,6 +1743,7 @@ $`9\times10^{-4}`$ to $`6.8\times10^{-2}`$ pp (Yasuda et al. 1989; § "Displayed
 precision" carries the measurement). So at 0.1 s an ordinary control action is
 timed to about a tenth of one parameter SD, which is the sense in which the
 step is fine enough.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Both control-resolution tables are held by a test**, which is not a formality:
 since `PL-X9KD` retired the accuracy derivation these figures are the whole
@@ -1732,6 +1763,7 @@ abrupt manoeuvre is not held inside that criterion. A ventilator start at this
 step displaces the alveolar reading by up to $`1.4\times10^{-1}`$ pp — about
 twice one parameter SD — for the duration of the transient it starts. Holding
 that inside one SD would need a step near 0.05 s.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Put to the project owner as a trade-off rather than a correction, and
 decided on 2026-09-06: the step stays at 0.1 s and that timing is accepted**
@@ -1743,6 +1775,7 @@ above it the control grid below is `multiplier × 0.1` s wide and dominates the
 step outright, so a reader at 60× would see no change at all. And frames are
 two grid steps apart even at 1×, so a 0.05 s step would resolve control timing
 to half of what the display can show.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 What is therefore accepted, and stated here rather than left for a reader to
 infer from a value: at the shipped step an abrupt ventilation change is timed
@@ -1752,6 +1785,7 @@ contributes more error than the parameters do. It is small in absolute terms —
 than removed. A reader comparing an abrupt ventilation change against a
 measurement should know that its *timing* is resolved to a tenth of a second
 and no better.
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
 **Everything above is per step of delay, and the interface waits one step for a
 control change only at 1× playback.** Which is to say: the table above is the
@@ -1769,6 +1803,10 @@ are that far apart:
 | 20× | 2 s | 4 s | 2.5 pp | 9.8×10⁻¹ pp | 2.56× |
 | 60× | 6 s | 12 s | 5.8 pp | 2.8 pp | 2.11× |
 | 300× | 30 s | 60 s | 1.0×10¹ pp | 1.0×10¹ pp | 1.03× |
+
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
+<!-- not-restated: 1 s -->
 
 The first three columns are in simulated seconds. "Worst" is the same
 measurement the table above reports, re-run at each rate over the same three
@@ -1832,8 +1870,7 @@ wherever the arithmetic happened to fail rather than where anybody had looked.
 It failed at about $`4.8\times10^{-304}`$ s, where the 86 400 s run length
 divided by the step overflows and `SimulationState` raised a bare
 `OverflowError` from outside the simulator's own exceptions.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 4.8e-304 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 What a finer step costs is rounding, and the sweep above already shows the
 start of it in "a finer step is slightly worse". Each step adds what it changed
@@ -1843,6 +1880,7 @@ Measured over 10 000 steps from 60 s into the default sevoflurane wash-in,
 against the same span taken in 0.1 s steps or as one exact step, this is the
 largest relative error in what any of the alveolar, vessel-rich, muscle and fat
 fractions changed by:
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 | Step | Worst relative error in the change |
 | --- | --- |
@@ -1854,6 +1892,10 @@ fractions changed by:
 | 0.1 ns | 1.0×10⁻⁴ |
 | 1 ps | 5.8×10⁻³ |
 | 10 fs | 3.2×10⁻¹ |
+
+<!-- not-restated: 1 ms -->
+
+<!-- not-restated: 2.4 -->
 
 Nothing raises at any of them: at $`10^{-14}`$ s the change those steps compute
 is a third wrong, and a single step's nearly half, and each is returned as an
@@ -1871,6 +1913,7 @@ is 0.02304 s. The table is a dated measurement rather than a gate, because the
 steps below the first row are outside the domain and no test can take them;
 lowering the floor is a measurement rather than an edit, starting with that
 test at the new floor.
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 **It also bounds the run's own arithmetic, which nothing did before.** At the
 floor the supported run length is 86 400 000 steps, and a float holds every
@@ -1899,6 +1942,10 @@ the breathing circuit at 60 s:
 | 1e-10 s | 3e-5 |
 | 1e-14 s | 4% for the pool and the circuit; the tissue did not change at all |
 
+<!-- not-restated: 1 ms -->
+
+<!-- not-restated: 0.1 s -->
+
 So `TissueGroup.advance`, `VenousBloodCompartment.advance` and
 `BreathingCircuit.advance_fresh_gas`, which `BreathingCircuit.advance` calls,
 each refuse a step below the floor through
@@ -1907,6 +1954,7 @@ same check, in the same words, that `require_supported_simulation_step` makes
 for the run. A compartment still takes a plain `float` rather than a
 `SimulationStep`, because the ceiling is how long the run holds its settings,
 and a compartment stepped alone at 1 s is correct.
+<!-- not-restated: 1 s -->
 
 The step a playback tick counts in is the run's own, so
 `PlaybackRate.steps_per_tick` takes a `SimulationStep` as the run does.
@@ -2102,6 +2150,9 @@ on De Wolf's authority, while every partition coefficient the two print is the
 same (`PL-0SG0`; each agent file's De Wolf note carries the figures, read
 2026-10-12 from PMC's XML record of PMC7943506). Citing either as though the
 value had been measured is the specific failure this section exists to prevent.
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- not-restated: 70 kg -->
 
 **Where this project stands, stated rather than implied.** Of the 37 rows in
 the provenance table below, 16 are tier 3, one is tier 2, 18 are tier 1, and
@@ -2349,6 +2400,7 @@ muscle 42.6 against 43. Five do not — skin 10.0 against 8.7, adipose 15.0
 against 14, blood 7.0 against 7.7, lung 0.8 against 1.4, bone 12.0 against a
 skeleton of 10 without marrow or 14.2 with — and **the liver is the outlier
 that matters: 5.7 against 2.4.**
+<!-- not-restated: 2.1, 2.4 -->
 
 **That gap has a candidate, and it is this file's arithmetic rather than the
 book's.** Liver 1,700 g plus gastrointestinal tract 2,000 plus spleen 150 plus
@@ -2356,6 +2408,7 @@ pancreas 70 is 3,920 g, **5.60% of 70 kg against Lowe's 5.7%** — the
 hepatoportal compartment an uptake model lumps because the splanchnic bed
 drains through the liver. No other grouping of Table 8 comes as close. Neither
 document says so, and it convicts nobody.
+<!-- not-restated: 70 kg -->
 
 **Why it is recorded rather than left out.**
 `tissue_groups.vessel_rich.volume_l` is stored as 6.0 L, and the only grouping
@@ -2368,6 +2421,9 @@ taken one link up the chain, and that decision is now visible where it was not.
 into the liver compartment is ordinary modelling, § "Tissue compartments" above
 already treats the vessel-rich group as one lumped tissue, and nothing here is
 sourced to ICRP.
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **References 19 and 20 are read too, and they measured nothing either.** Both
 were supplied by the project owner on 2026-09-10 and read at full text
@@ -2422,6 +2478,7 @@ from about twenty sources with a note on every row; some rows are animal
 one is neither: **"Skin shunt: Values chosen merely to complete cardiac
 output"** — 1,290 of 6,480 ml/min, **19.9% of the total** and the second-largest
 flow in the table.
+<!-- not-restated: 2.5 liters -->
 
 One assumption in that appendix is where this model's whole representation of
 perfusion comes from: "it has been thought legitimate to assume that **the
@@ -2440,6 +2497,7 @@ established now rather than outstanding — **and it is a statement about four
 documents that have been read, not about the world.** It does not follow that no
 origin exists: the book prints more than one table and Gas Man may lump
 differently.
+<!-- not-restated: 5 % -->
 
 **Two of the three coincidences above are lineage after all, and one is not**
 (`PL-ZD67`). The 2.5 L is Mapleson's functional residual capacity, a mean of
@@ -2452,12 +2510,15 @@ muscle 30 plus skin nutritive 3, which is exactly how Smith prints it — and it
 is *not* this file's 33.0, since Lowe's muscle row is 29.8 L at 70 kg and
 reproduces the stored value under no grouping. Alveolar ventilation 4 l/min
 stays a coincidence: Mapleson gives a formula, not a figure.
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Three of this file's stored values also appear in those tables**, and where
 each came from is settled in the paragraph after next rather than left as a
 resemblance: alveolar ventilation 4 l/min, functional residual capacity 2.5 l
 in reference 20's table only, and a skeletal muscle tissue volume of 33 litres.
 **No stored value moves on any of it.**
+<!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
 
 That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
 that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
@@ -2478,6 +2539,7 @@ gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
 worked 63.25 dl is what fixes the exponent independently of reading a
 superscript off a scan. `PL-YKSM` decided on 2026-09-08 that the fixed 5.0
 stays; § "Known limitations" below carries the reasoning.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **And the relation itself is derived, not measured — pages 17–19 say from
 what.** Page 59 states $`2M^{3/4}`$ without citing anything, and until
@@ -2500,12 +2562,15 @@ steps, and neither of the two constants is a cardiac-output measurement:
   output in dl/min. The figure also draws the composed edge directly —
   kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min — which is page 59's constant.
 
+<!-- not-restated: 2.4 -->
+
 So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference assumed constant across mammals. **4.84 L/min at 70 kg
 is therefore a derived interspecies extrapolation and must not be read as a
 measured human cardiac output.** § "Known limitations" below is where that
 matters — it is the one place this document sets the figure beside Cattermole
 et al.'s measured median — and it says so there (`PL-DZQT`).
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Checked against the book itself, the Workbook's attribution holds for three
 of the seven values and fails for four.** The vessel-rich pair reproduces
@@ -2520,6 +2585,14 @@ adipose at 10.5 L and 0.050). Alveolar volume is the third that holds, and it
 holds negatively: the book states no alveolar gas volume at all, lumping the
 circuit and the patient's FRC into a single ventilatory volume of "about
 100 dl", so the Workbook cannot have taken 2.5 L from it.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.perfusion_fraction = 0.18 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.fat.perfusion_fraction = 0.06 -->
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+<!-- not-restated: 0.050 -->
 
 **What survives for the other four is the split rather than the values.** The
 book's five non-vessel-rich compartments take 13 + 3 + 2 + 1 + 5 = 24% of
@@ -2530,6 +2603,7 @@ and redistributed the 24 across two compartments where the book has five, over
 a smaller tissue volume. That arithmetic is this project's and it convicts the
 Workbook of nothing — Gas Man may lump differently, or work from a page outside
 the range supplied. The data file carries the figures and the per-value detail.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Nothing is promoted or adopted by any of it.** All seven stay tier 3 and
 unadopted: reading where Gas Man's numbers came from is not evidence that they
@@ -2557,6 +2631,9 @@ Workbook. `venous_pool_volume_l` is 1.222 L, and the key was renamed from
 as the physiologic venous blood volume, which this is not. At the stored
 5.0 L/min cardiac output the mixed-venous time constant moves from 12.0 s to
 14.7 s.
+<!-- provenance: data/patients/reference_adult.json venous_pool_volume_l = 1.222 -->
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+<!-- not-restated: 70 kg -->
 
 **What that costs, measured rather than argued.** The 30-minute $`F_A/F_I`$
 wash-in distances are unchanged to two decimal places (+0.16, +0.31, +0.79,
@@ -2570,6 +2647,7 @@ wash-in and elimination validation test" already attributes to this model's
 rebreathing circuit rather than to tissue return, and it is a tenth of the gap
 it adds to. The nine
 oracle reference states were re-derived and re-pinned in the same change.
+<!-- not-restated: 0.31 -->
 
 **It also answers the arterial question, against the arterial reading.** The
 suspicion was that the stored 1.0 L might be an arterial compartment under a
@@ -2582,6 +2660,7 @@ against the 1.0/5.0 = 12.0 s this file held until 2026-09-07. That near
 agreement is a property of the time constant rather than of the volume, and it
 was not evidence of a shared lineage — nothing documents Gas Man as having taken
 anything from this paper.
+<!-- not-restated: 2 % -->
 
 **Where 1.0 L came from is answerable, and the answer changed on 2026-09-15.**
 The value entered the repository on 2026-08-22 in `875ba08`, "Build v0.1.0 sevo
@@ -2595,6 +2674,7 @@ Appendix E, page 183, and it describes the interface controls without carrying a
 number. The table that does carry numbers, Appendix B page 168, has a `Blood`
 row of 5.00 L and nothing at 1.0. On that evidence this section said, until
 2026-09-15, that none of the four sources ever cited for the value contained it.
+<!-- not-restated: 70 kg, 2.5 L, 4 L/min, 5 L/min -->
 
 **It is in the Workbook, one appendix further on.** Appendix C's `GASMAN.INI`
 listing, page 172, reads `[Volumes] … VEN=1.0`, and the v0.1.0 note's sentence
@@ -2606,6 +2686,7 @@ numbers were read off Appendix C, and every value in that sentence including
 1.0 L is on that page. `PL-XTMB` and `PL-3YZW` quote Appendix B and Appendix E
 and never Appendix C; whether that page was among those supplied on 2026-09-06
 and went unread is not recorded.
+<!-- not-restated: 0.76 -->
 
 **None of which promotes the value or argues for restoring it.** `VEN=1.0` is a
 program default, tier 3, and Davis and Mapleson's 1222 ml — tier 2, and the same
@@ -2756,13 +2837,43 @@ and names it. It never recomputes the figure: the rounding and the units are
 judgment, and a plausible wrong number in this document is worse than none.
 
 **Rewording a marked sentence is expected to fail the check.** That is the
-marker asking to be moved or updated with the sentence, not a false alarm. A
-number a data file does not hold — a solver tolerance, a flow-sweep point, a
-worked example — carries no marker and is not checked here, which is why the
-markers are explicit rather than a scan for numerals: `2.5` appears in this
-document as an alveolar volume in litres, a tolerance in seconds and a flow in
-litres per minute, and binding all three to one key would be confidently wrong
-in the places a reader trusts most.
+marker asking to be moved or updated with the sentence, not a false alarm.
+
+A marker can also name a constant in code, such as the shipped step, written
+as the module's path under the package and the constant's name:
+
+```text
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+```
+
+**A figure that equals a stored value must carry a marker** (`PL-JS6P`).
+`doc_check.py` finds each figure in this document and in `README.md` that
+equals a stored value in that value's unit. The stored values are every number
+in a parameter data file, and every public constant in the package whose name
+ends in a unit, such as `_S` or `_L_MIN`. A figure that restates its value
+carries a `provenance:` or `derived:` marker. A figure that only coincides with
+one carries a `not-restated:` marker that lists it:
+
+```text
+<!-- not-restated: 2 %, 0.05 -->
+```
+
+The check never decides which kind a figure is. `2.5` appears in this document
+as an alveolar volume in litres, a tolerance in seconds and a flow in litres
+per minute, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
+the next. Binding each to a key by its value would be confidently wrong in the
+places a reader trusts most. So the writer says which, and the check enforces
+only that somebody did. A marker ties a figure only to a value it names, in
+that value's unit, so a marker for the 6 L circuit does not clear desflurane's
+6% MAC in the same paragraph. The check reads a unit written as a word, such as
+"seconds", and a time in milliseconds, minutes or hours, which it converts to
+seconds. It does not read figures in math, in a list joined by slashes, or in a
+unit spelled in lower case, such as "l/min". A marker under a list covers the
+whole list, because a marker cannot stand inside a list item. A `not-restated:`
+marker that lists a figure its paragraph no longer holds fails, so the
+declaration cannot outlive its sentence. A number that equals no stored value,
+such as a flow-sweep point or a worked example, needs no marker.
+<!-- not-restated: 6 L, 6 % -->
 
 | Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
@@ -2812,6 +2923,7 @@ scaled from a weight, so changing the weight alone would not rescale them. The
 litres are Gas Man's form rather than its upstream's: Lowe and Ernst, the book
 the Workbook names, prints the same material as per cent of a 100 kg body with
 cardiac output an allometric function of mass (`PL-YKSM`).
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **The vessel-rich flow fraction is 0.76 here and 75.8% in the one reachable
 publication of the same parameter set**, and the difference is recorded rather
@@ -2828,6 +2940,7 @@ The consequence of the difference is 0.26% on the vessel-rich time constant,
 which is inside anything a learner reads off the curve; the provenance is the
 finding, not the arithmetic. `reference_adult.json`'s De Wolf entry carries it
 in full (`PL-0NQ1`).
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
 
 **The two machine rows adopt no source at all, which is a stronger statement
 than the reference patient's gap and is meant to be.** They are the apparatus
@@ -2873,6 +2986,10 @@ where no provenance row could reach them and changed neither value.
   file's 6.0 L circuit: at a smaller assembled volume the same flow opens a
   shorter lag, as § "What real workstations hold" below computes.
 
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
+<!-- not-restated: 10 L/min -->
+
 **One measured circle-system volume is now held, and it bounds the first row
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
 conventional circle system by water filling at **9860 ml** (*Anesth Analg*
@@ -2885,6 +3002,7 @@ lung inside the circuit and then model it again as the 2.5 L alveolar
 compartment. Subtracting the bag is not available — the paper states no bag
 volume, and a latex bag full of water distends past whatever it holds as a gas
 reservoir.
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
 What the measurement supplies instead is a **bound and an ordering**: a real
 conventional circle system's assembled volume, apparatus and patient circuit
@@ -2893,6 +3011,7 @@ Workbook's 8.0 L admissible and puts the three figures in one order with only
 one of them measured. At 4.0 L/min the implied circuit time constants are
 90 s, 120 s and 148 s.
 <!-- derived: 148 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 
 **Read the like-for-like comparison, not the bare one.** Targ measured an
 assembled system *plus* a lung; this model's corresponding total is
@@ -2920,6 +3039,8 @@ department. The stored 6.0 L lands within 2% of the Primus's assembled 5.9 L,
 which is a coincidence rather than a sourcing: it predates the survey and was
 kept on the ruling above.
 <!-- derived: 89 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
+<!-- not-restated: 2 % -->
 
 **And volume is not the whole of the difference**, which is the survey's
 finding rather than this document's. Fukuda et al. moved only the fresh gas
@@ -2961,6 +3082,7 @@ relocate the problem rather than remove it, would carry the same absent
 provenance, and would put the apparatus lag at **12 minutes**, longer than the
 demonstration it exists to make. What was wrong was the sentence.
 <!-- derived: 12 minutes from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
 **Two papers cited alongside Kalmar et al. in the survey do not bear on
 practice, and the survey now says so.** Candries et al. randomised 0.2 to
@@ -3030,6 +3152,10 @@ sufficient alone:
   measurement's own standard deviation. Close enough to suggest the route,
   never enough to name it.
 
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
+
 **The check has since been run, and the claim holds.** The project owner
 supplied Yasuda, Targ and Eger's full text later the same day; it was read at
 full text on 2026-09-13 and is in the private reference corpus. Its Table 1
@@ -3042,6 +3168,18 @@ at 37 °C. Against the nine stored values:
 | sevoflurane | 1.1 vs 1.15 ± 0.07 (−0.71 SD) | 2.4 vs 2.38 ± 1.03 (+0.02 SD) | 34.0 vs 34.0 ± 6.0 (exact) |
 | isoflurane | 2.1 vs 2.09 ± 0.10 (+0.10 SD) | 4.5 vs 4.40 ± 1.97 (+0.05 SD) | 70.0 vs 64.2 ± 12.3 (+0.47 SD) |
 | desflurane | 0.54 vs 0.54 ± 0.02 (exact) | 0.97 vs 0.94 ± 0.35 (+0.09 SD) | 13.0 vs 12.0 ± 2.0 (+0.50 SD) |
+
+<!-- not-restated: 0.05 -->
+
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 
 All nine sit within 0.71 SD of the measured mean and three reproduce it to the
 stored precision, which is not a coincidence available to a parameter set
@@ -3087,6 +3225,10 @@ brain, heart, liver, kidney and viscera, so 0.05 on a brain measurement is not a
 difference this structure can use. `PL-D6LX`'s original decision to keep the Gas
 Man values therefore stands, now for a better-evidenced reason than it had
 (`PL-ZP7Z`, `PL-B9K7`, `PL-FN5F`).
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
+<!-- not-restated: 0.05 -->
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
@@ -3174,6 +3316,9 @@ fixed under § "Assumptions" a dial position on either class means the same
 partial pressure, so nothing in the core has to know which device a given
 limit came from; the two classes come apart only under reduced ambient
 pressure, which is not modelled — see § "Known limitations".
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
 both of them presentation: choosing the starting position of the
@@ -3389,6 +3534,7 @@ against 0.025 — rather than each step against the finest, and additionally
 requires every gap to sit below a stated rounding-level bound. Two step sizes
 can only show that a pair of runs agree; three show that the step does not
 enter the answer.
+<!-- not-restated: 0.05 -->
 
 **What the third point asserts changed with the exact step, and it is now a
 stronger claim.** Under the operator split it required each gap to be *smaller*
@@ -3413,6 +3559,8 @@ margin is nearer two and a half times. What this holds is the floor's claim,
 that the solution at the declared floor is the shipped one; that test pins the
 floor at 1 ms as well, so moving it means re-taking these figures rather than
 editing a constant.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
@@ -3421,6 +3569,7 @@ satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
 has barely begun to fill at 60 s, so the split's 1.4e-6 in fraction was 0.55%
 of it. Under the exact step the two land about 4e-17 apart there (measured
 2026-10-03).
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 This gate is self-consistency across the supported steps, not correctness: a
 wrong transfer rate is exactly as step-independent as a right one and passes
@@ -3467,6 +3616,7 @@ takes the same number of steps. Driving the same trajectories at 0.05 s and
 desflurane on a *ventilator start* at the finest step. Against the operator
 split, whose worst over the same domain was 2.29e-4 at this step, the exact
 step is nine orders of magnitude closer to the independent solution.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Until 2026-09-07 this bound was 5e-12 and measured the wrong thing.** The
 oracle ran at half the shipped step, which is converged at held settings but
@@ -3496,6 +3646,7 @@ difference is the shipped side's own accumulation — moves the answer by up to
 spread by 3.7 times and the worst residual by 6.8. It remains nearly nine
 orders below the error of any method that is not exact, so the gate fails the
 moment method error returns — which is the only thing it is there to catch.
+<!-- not-restated: 0.05 -->
 
 **The domain the bound covers.** The domain is *trajectories*, not operating
 points. A run of the application is a sequence of settings held until someone
@@ -3524,6 +3675,10 @@ The gate therefore drives four kinds of run:
   compartment stays empty, and then perfusion to its maximum with the
   vaporizer closed. This is the worst trajectory the four sliders can reach.
 
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- not-restated: 5 % -->
+
 In every case the maximum is taken over the whole trajectory rather than at
 an endpoint, because the worst disagreement is always inside a transient — at
 held settings the wash-in one, at about 85 s; across a setting change the one
@@ -3545,6 +3700,7 @@ cardiac output during loading, which is worst at *zero* — the opposite end
 from the held-settings corner. That monotonicity is measured, not proved, so
 a change to the governing equations could move the maximum off these
 trajectories, and the sweep is worth re-running rather than trusted.
+<!-- not-restated: 5 L/min -->
 
 **The split's own coefficients are kept as history**, because they describe
 what this project shipped for eleven releases and because any later work on
@@ -3577,6 +3733,7 @@ at that same corner — a manoeuvre a user performs. Neither gate ever failed,
 because nothing it drove ever went where the error was. A release gate narrower
 than the reachable input domain is a verification claim broader than its
 evidence, whatever the method under it.
+<!-- not-restated: 2.4 -->
 
 **One safety disclosure this section used to carry is now withdrawn.** The
 split applied its transfers in order, so each compartment was driven across the
@@ -3635,6 +3792,8 @@ agents in two volunteer studies:
 | Desflurane | 0.90 ± 0.01 | n=8 | 2.0% | Anesthesiology 1991;74:489-98 |
 | Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | Anesthesiology 1991;74:489-98 |
 
+<!-- not-restated: 2.0 % -->
+
 - Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
   Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
   humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
@@ -3682,6 +3841,7 @@ agent by more than one published standard deviation — so an operating point
 chosen to make the comparison pass would make the result circular. It is
 instead the shipped default, cited to the Gas Man workbook under § "Parameter
 provenance", and fixed in v0.1.0 before any comparison to Yasuda existed.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
 Fresh gas flow is the one setting the test chooses, at 10 L/min, so that
 $`F_I`$ — the modeled *circuit* fraction, not the vaporizer dial — is settled
@@ -3694,6 +3854,7 @@ the two comparisons are not equally strong. One delivered fraction serves
 four different published $`F_I`$ values because the governing equations are
 linear in it, which the test asserts across the published range — for both
 ratios separately — rather than assumes.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 **The elimination comparison does not agree, and the model states the
 disagreement rather than a tolerance around it.** At the shipped defaults and
@@ -3701,6 +3862,7 @@ the same 10 L/min the wash-in comparison uses, the model holds more alveolar
 agent at five minutes than every cohort did (measured 2026-09-06 and
 re-measured 2026-09-07, the rows having moved 0.11 to 0.13 SD further above
 their means when `PL-8ZJQ` raised `venous_pool_volume_l` to 1.222 L):
+<!-- not-restated: 10 L/min, 1.222 L -->
 
 | Agent | Cohort | Model | Published | Distance |
 | --- | --- | --- | --- | --- |
@@ -3718,6 +3880,7 @@ relative. The claims the test
 does make about elimination, and that hold, are the published ordering by
 solubility (desflurane leaves fastest, then sevoflurane, then isoflurane),
 independence from the delivered fraction, and the sign of the departure.
+<!-- not-restated: 6 % -->
 
 **Most of that departure is the breathing system, not the tissue return**,
 and the difference is a property of the two ratios rather than of the model's
@@ -3757,6 +3920,7 @@ than a fixture and adds one more thing the interface would have to make
 visible. Nobody running the application sees the numbers below, and a
 restatement of them that drops this sentence has said something about the
 shipped model that is not true of it (measured 2026-09-07):
+<!-- not-restated: 1.1 -->
 
 | Agent | Cohort | Shipped | Open circuit | Published |
 | --- | --- | --- | --- | --- |
@@ -3783,6 +3947,7 @@ identity across the discards, and the flow independence the diagnostic buys:
 across the whole supported flow range the open-circuit elimination moves by
 4 × 10⁻⁶ published SD, against the 11.5 to 21.6 SD the shipped one moves
 between 1 and 10 L/min.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 Neither condition validates the elimination a user watches, and no test claims
 that it does. The elimination this simulator runs is the rebreathing one, and
@@ -3813,6 +3978,8 @@ removed (measured 2026-09-08):
 | Isoflurane | 1.45 | 1.57 ± 0.10 | −1.2 SD |
 | Desflurane | 2.24 | 1.29 ± 0.05 | +19 SD |
 
+<!-- not-restated: 0.05 -->
+
 At 2.24 desflurane's elimination lands on the published 0.140 and its wash-in
 row stays inside its published spread at +0.55 SD. That is not luck: the
 vessel-rich group is fully equilibrated after a 30-minute administration — its
@@ -3830,6 +3997,8 @@ group's, three years before the kinetic pair:
   PMID 2774233. Brain:blood, mean ± SD: I-653 (desflurane) 1.29 ± 0.05,
   isoflurane 1.57 ± 0.10, sevoflurane 1.70 ± 0.09, halothane 1.94 ± 0.17.
   Read from the abstract and checked against PubMed on 2026-09-08.
+
+<!-- not-restated: 0.05 -->
 
 Two of the three demanded values land on that measurement. Desflurane's is
 nineteen standard deviations above its own, and above what either other agent
@@ -3875,6 +4044,8 @@ below giving what it proposed and what killed it.
 | End-tidal sampling bias in a lung with ventilation-perfusion dispersion — a correction to the *published* value rather than to this model | a bias upward at both ends, growing as solubility falls | the one human measurement of that gradient has it larger for *more* soluble agents and negative through an elimination, so it moves the published value down and deepens the residual — struck below |
 | Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | nothing it can supply: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
 
+<!-- not-restated: 2.1 -->
+
 **The sixth row measured circuit-style rebreathing at an assumed ratio, and
 the apparatus turns out not to be that shape at all.** Yasuda 1991
 *Anesthesiology*, in its "Materials and Methods", puts about 50 ml of
@@ -3911,6 +4082,8 @@ range for a paralysed, normocapnic adult. Measured 2026-09-13, against the
 | 10 | 3.50 | −1.56 SD | +2.05 SD | −0.85 SD |
 | 12 | 3.40 | −1.38 SD | +2.30 SD | −1.08 SD |
 
+<!-- not-restated: 0.42 -->
+
 It moves desflurane the right way and carries between 0.44 and 0.95 SD of the
 2.33 — a quarter to two fifths, never the whole — and it buys that by pushing
 the isoflurane cohort that was inside its spread at +0.94 SD out to between
@@ -3933,6 +4106,7 @@ apparatus out. A comparison run at *their* alveolar ventilation must therefore
 not subtract it again. This model runs at 4.0 L/min, which
 `data/patients/reference_adult.json` records as a program default with no
 primary source behind it, and which is neither quantity.
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Both papers have since been read at full text, and the study publishes no
 ventilation at all** (`PL-ZDWL`, supplied by the project owner and read
@@ -3956,6 +4130,8 @@ dead-space decrement *lowers* alveolar ventilation, moving it **away** from
 4.11 rather than toward it. That is independent of the common-mode argument and
 stronger, because it is specific to the one cohort the mechanism would have to
 help.
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
+<!-- not-restated: 0.34 -->
 
 **These clearances are a consistency check on the operating point and must not
 be adopted as one.** They are fitted to the very elimination curves this
@@ -4000,6 +4176,7 @@ distribution at log SD 1.0 with a 5% shunt the arterial retention this model
 fixes at $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44%
 for desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
 residuals have, which is what made it attractive.
+<!-- not-restated: 5 % -->
 
 *What the methods sections settled, and it was in its favour.* The fifth table
 row rules out the **flow-weighted** alveolar reading, so the hypothesis rested
@@ -4063,6 +4240,7 @@ components or soda lime should not hinder induction of or recovery from
 anesthesia". For **desflurane**, then, the model's inert circuit is the
 assumption this measurement most nearly supports, and the candidate is struck
 on evidence rather than on argument.
+<!-- not-restated: 5 L/min -->
 
 **The direction rules it out independently, and that half needed no
 measurement.** A wall that dissolves agent through a 30-minute administration
@@ -4102,6 +4280,8 @@ and washout curves follow that order. But it does not bear on the residual.
   agents' inspired fraction zero by construction, so no circle-system wall
   effect is present in the published number at all.
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+
 The general form of that last point is worth keeping: **a mechanism belonging
 to this model's circle system cannot explain a disagreement with a measurement
 made without one.** It can only be a statement about what the simulator shows
@@ -4113,6 +4293,7 @@ across a solubility range of roughly six-fold — halothane's blood:gas is
 conventionally about 2.4, a textbook figure and not a parameter this project
 stores — the published five-minute ratios span only 0.14 to 0.25, which is a
 narrower spread than a perfusion-limited model produces.
+<!-- not-restated: 2.4 -->
 
 **What is still missing, now that the methods sections have been read.** The
 three things this section used to name as what would settle it — the breathing
@@ -4205,6 +4386,10 @@ transfers to whatever `PL-N092` writes in its place.
    published mean curves" records its size and direction hour by hour
    (`PL-KK1Q`), and asserts no agreement.
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+<!-- not-restated: 6 % -->
+
 #### The early wash-in curve against the published figures
 
 **The first 25 minutes are compared too, point by point** (`PL-R0NL`,
@@ -4237,6 +4422,10 @@ Measured 2026-10-18, as distance from each point's mean in its SD:
 | Isoflurane, n=7 | −0.70 to −0.83 SD | −0.19 SD | +0.34 to +0.76 SD |
 | Isoflurane, n=8 | −0.60 to −0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
 | Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+
+<!-- not-restated: 0.34 -->
+
+<!-- not-restated: 0.54, 0.76, 2.10 -->
 
 **Sevoflurane and isoflurane follow the published curves within one SD**, a
 little slow in the first 3 minutes and a little fast after 7.5. The one
@@ -4274,6 +4463,9 @@ shipped:
   blood:gas coefficients, and taking it for all three moves the two agents
   that agree now.
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- not-restated: 0.54 -->
+
 Raising desflurane's blood:gas also closes little of its washout residual
 (`PL-RFLN`). The open-circuit 5-minute ratio moves from −2.33 SD to −1.97 SD
 at 0.57, so the two findings do not share this cause in any useful sense.
@@ -4309,6 +4501,7 @@ above. The regression pins are not part of the gate. A pin, such as the
 on any change at all. It detects an accidental edit, and it says nothing about
 whether a published value would have caught a wrong one, so none of them may
 be cited as validation of a stored value.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 To measure what the gate can detect, each stored parameter was multiplied by
 a factor, for one agent at a time, with every other value as shipped. The
@@ -4330,6 +4523,8 @@ of the change that still passes every published-data assertion, measured on
 | Alveolar gas volume (FRC) | past −90% / +19% | −39% / +21% | −8% / +33% |
 | Circuit volume | past −90% / +76% | past −90% / +253% | −85% / +98% |
 
+<!-- not-restated: 5 %, 6 %, 8 % -->
+
 The first row is relative to the stored blood:gas coefficients, which are
 0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
@@ -4344,6 +4539,7 @@ both. Before the early points joined the gate, the same search on 2026-10-17
 put blood:gas at −14% / +5% for sevoflurane, −11% / +12% for isoflurane and
 −3% / +10% for desflurane, and the vessel-rich group at −22% to −46% below and
 +24% to +55% above. `PL-9YHR` holds that table.
+<!-- not-restated: 5 % -->
 
 **What a reader may conclude from a pass:**
 
@@ -4381,6 +4577,10 @@ put blood:gas at −14% / +5% for sevoflurane, −11% / +12% for isoflurane and
   F_I held at the airway and so never see the circuit. Muscle is held only
   loosely.
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+<!-- not-restated: 2.1, 8 % -->
+
 The two ratios respond to almost disjoint parts of the parameter set, which
 is why the edges fall where they do. Here is the movement per +10% in one
 coefficient, in each ratio's own published standard deviation, measured on
@@ -4393,6 +4593,8 @@ coefficient, in each ratio's own published standard deviation, measured on
 | Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
 | Fat tissue:gas | −0.00 | −0.00 |
 
+<!-- not-restated: 0.06 -->
+
 Wash-in at 30 minutes is a blood:gas measurement that barely sees the
 vessel-rich group, and elimination at five minutes is a vessel-rich
 measurement that barely sees blood:gas. That does not compete with the
@@ -4403,6 +4605,7 @@ moves with. This section is also the only place where the size and sign of
 this model's departure from a *measured* human washout are written down. Its
 departure from the fitted mean curves over the rest of the day is
 § "The first 24 hours of elimination against the published mean curves".
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Two tests hold the table to the code.**
 `test_the_published_data_gate_fails_at_a_stated_perturbation` asserts that
@@ -4421,8 +4624,10 @@ gate goes blind along a direction it resolves today. The second fails if the
 gate starts to resolve a change that this section says it cannot, so the
 table is measured again rather than left stale. Neither widens nor narrows
 `AGREEMENT_TOLERANCE_SD`: the limit is the published spread, not the band.
+<!-- not-restated: 1.10 -->
 
 #### The first 24 hours of elimination against the published mean curves
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **A measurement recorded beside the gate above, not a second gate** (`PL-KK1Q`,
 2026-09-27). Caveat 4 refuses to carry the five-minute comparison into the
@@ -4466,9 +4671,9 @@ no setting of the shipped simulator reaches. The stated times are the papers'
 own sampling times inside the first day (*Anesth Analg* p. 317), where the fit
 passes near a measured sample rather than interpolating, plus 1410 min, the
 run's last minute.
-<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 23.5 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 1410 min from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 10 L/min -->
+<!-- not-restated: 24 hours -->
 
 **The result, as model over fit.** Cohorts in the order sevoflurane and
 isoflurane from *Anesth Analg*, desflurane and isoflurane from *Anesthesiology*
@@ -4502,6 +4707,10 @@ rows were measured on 2026-10-17 and the rest on 2026-09-27):
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
 | 1410 | 0.82 | 0.72 | 1.41 | 0.75 |
 
+<!-- not-restated: 0.36 -->
+
+<!-- not-restated: 0.65, 0.76, 0.42, 0.54 -->
+
 The hours at which the shipped tail crosses the fitted curve, and where it
 stands between them:
 
@@ -4518,6 +4727,8 @@ the first study's isoflurane; desflurane rises back above it at 19.18 h, and
 the second study's isoflurane sits above it between 2.45 and 4.58 h, by 5% at
 most. Between 8 and 13 hours the open-circuit tail is a third to a half of the
 mean curve in every cohort (0.34 to 0.46).
+<!-- not-restated: 5 % -->
+<!-- not-restated: 0.34 -->
 
 **Read in stretches.** The shipped tail sits above the fitted curve at five
 minutes, which is the apparatus term the gate records. It falls below it from
@@ -4537,6 +4748,7 @@ with the apparatus gone, and only from the seventh hour in the shipped
 condition, because the rebreathing circuit and the muscle group's slow return,
 below, hold it above the curve until then: with the circuit's return taken away
 the same hours sit at or below it.
+<!-- not-restated: 2.1 -->
 
 The model's muscle group returns more slowly than the fitted muscle term, and
 that is what puts the peak of model over fit in hours 2 to 4 - in the open
@@ -4581,6 +4793,7 @@ and understates the difference.
 <!-- derived: 2500 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 2600 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
 <!-- derived: 1500 minutes from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
+<!-- not-restated: 2.1 -->
 
 It was tested by lowering the group's tissue:gas coefficient to 0.58 to 0.67 of
 its stored value, which makes its isolated time constant the fitted one's and
@@ -4596,6 +4809,7 @@ peak comes at 0.65 to 1.97 hours rather than 2.27 to 4.15, and the stretch above
 the curve ends at 1.6, 3.7 and 4.5 hours rather than 6.9, 7.3 and 8.4, and for
 desflurane never opens
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`).
+<!-- not-restated: 0.65 -->
 
 The late excess is the model's larger and slower fat term, and it is still
 growing when the run ends - the ratio rises between minutes 1400 and 1410 in
@@ -4657,6 +4871,7 @@ clearance sees the arterial partial pressure, which through the tail is the
 alveolar one, and never the stores that feed it. The model's own conservation
 identity is checked across the removals, which are recorded as exhausted agent
 so that § "Mass-balance identity" holds with the sink in place.
+<!-- not-restated: 5 %, 5.0 %, 1.3 -->
 
 **What a learner sees of it: nothing on screen, and the record gains the
 number.** The departures above are in $`F_A/F_{A0}`$, and at the gate's 1% dial
@@ -4669,6 +4884,8 @@ A higher dial scales $`F_{A0}`$ with it and keeps the trace above the floor for
 longer - a 6% desflurane dial until about the fifth hour, inside its stretch -
 so the shortfall is not out of reach of a learner who runs a case long, and
 the intertissue-diffusion note is where a reader of that tail is sent.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- not-restated: 6 % -->
 
 **Whether the result bears on § "Supported run length": it does not, and the
 reasoning is recorded there** so that the number is argued in one place. In
@@ -4677,7 +4894,7 @@ and the fat group's own size, present from the first hour and at the last, not
 the two omissions the 24 hours is argued against growing past negligible, so
 shortening the span would not take the tail out of them and extending it would
 add the late excess, which is still growing at the boundary.
-<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### Mass-balance test
 
@@ -4857,6 +5074,7 @@ per rendered frame instead would stop the same bookmark at a different
 concentration depending on how fast the case was being played, with nothing on
 screen saying so — and two branches nominally taken "at 0.8 ×MAC" would open
 from two different states.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A halt leaves the run paused, and resuming is explicit.** That is the
 consequence of the paragraph above rather than a separate choice: a halt is
@@ -5024,6 +5242,7 @@ that answering a window stops depending on how long the run has been going: a
 one-hour window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on
 a thirty-day one, against the 62.6 ms at four hours and 207.7 ms at twelve
 that the recorded path cost.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Where the cost does still move is the number of changes inside the window**,
 because each stretch in view needs its own propagator. Measured on the same
@@ -5064,6 +5283,7 @@ call at `max(150, plot width in pixels + 1)` columns (`chart_columns` in
 `app/chart_frame.py`). One run's call, following a 15-minute window on a
 30-minute run at 1x, median of 40 frames, before the propagators were kept and
 after:
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 | Changes in view | 150 columns | 1 069 columns | 2 401 columns |
 | --- | --- | --- | --- |
@@ -5083,6 +5303,7 @@ whose times ran about a quarter above the table's, sixty changes in view cost
 22.8 ms at 2 401. Two runs at 2 401 columns therefore take about 40-50 ms of a
 200 ms frame. Before, sixty changes in view on two runs at 1 069 columns took
 about 240 ms, longer than the frame they were drawn in.
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 **This is the only record.** Until PL-2FM6 a recorded history remained
 beside the definition and the chart was drawn from it, with "Closed-form
@@ -5100,6 +5321,7 @@ derived rather than recorded, and a derived value can be reached by more than
 one sequence of arithmetic. The fixed 0.1 s step used to make that impossible
 by leaving every caller the same width to take; a propagator exact over any
 horizon takes that away. This is the rule that replaces it.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 - **Canonical.** The state at an instant is one propagation from the keyframe
   opening the stretch that contains it, over the interval between the two.
@@ -5145,11 +5367,13 @@ bounds an order above what is printed here:
 | 1800 s | 1.0e-14, of 0.0301 | 3.1e-12 L, of 2.06 L |
 | 24 h | 8.0e-13, of 0.0300 | 3.1e-09 L, of 30.26 L |
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 The wider span is the worse case, because its columns are further apart and
 each chained propagation covers more ground; 24 h is the longest supported run
 under § "Supported run length", so the second row is the worst a supported run
 reaches at this column count.
-<!-- derived: 24 h from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The headroom differs by four orders between those two columns, which is why
 the rule is enforced rather than trusted.** A fraction is displayed as a
@@ -5161,6 +5385,7 @@ sits under three orders below that. Three orders is ample and it is not
 fourteen; a display value that reached the mass-balance readout would be
 wrong in a place a reader could eventually see, and it would look exactly like
 the right answer.
+<!-- not-restated: 6 L -->
 
 **What this requires of a branch.** `ROADMAP.md` item 12 asks a branched run
 to reproduce its parent element-wise rather than within a tolerance, and this
@@ -5199,6 +5424,7 @@ propagated over a different interval from its parent and landed one unit in
 the last place away. The measurement is still arithmetically true and it no
 longer describes a hazard this program can express: with one frame there is no
 offset for a caller to name and no conversion to get right.
+<!-- not-restated: 900 s -->
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
 way** (`PL-B8MK`, decided and built 2026-09-20). The
@@ -5284,6 +5510,8 @@ and what it does not:
   run in the item's measurement (2026-10-12) - ten orders below the 1e-4 a
   two-decimal percent can show - so no reader can see the difference, and it is
   the same for a fork at a control event or a halt.
+
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 A mark still ahead of the clock is refused rather than reached: the case holds
 no state there yet, and a fork there would be a prediction drawn as a run. It
@@ -5465,6 +5693,10 @@ setting outside it is refused rather than simulated:
 | Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` in `core/supported_ranges.py`, which every alveolar ventilation is built as |
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` in `core/supported_ranges.py`, which every cardiac output is built as |
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+
 Fresh gas flow carries a **second** bound that is not in this table and is
 not the model's: what the anesthesia machine in front of the patient can
 actually deliver. The subsection below separates the two claims.
@@ -5493,6 +5725,7 @@ step beside a rounded readout, and both would show a flow the run does not
 hold. `test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`
 in `tests/unit/test_dashboard_frame.py` holds it. The shipped patient states
 4.0 and 5.0 L/min, so nothing displayed changes.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
 clamped setting would simulate, display, and chart a value the user did not
@@ -5656,6 +5889,7 @@ guard for the reason the alveolar and tissue amounts do; the circuit and the
 validator roll back through theirs, which cannot refuse a state
 `capture_state()` produced, since nothing their captured values are held to
 can have moved since.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **Built from an `int` or a `float` and nothing else, with no sign at zero**
 (`PL-LLMN`). Until `PL-LLMN` each guard asked `math.isfinite` and then made
@@ -5687,6 +5921,7 @@ Those two have no supported range to refuse an `int` past the float range
 against, so they refuse it by name, as outside the range a `float` holds,
 before `isfinite` reads the value; what they admit, and the words they refuse
 a sign, a NaN or an infinity in, are unchanged.
+<!-- not-restated: 1 s -->
 
 **The dial's bound is enforced in both records that hold the pair, through one
 guard** (`PL-BBMG`). The delivered concentration has the same four ways in as a
@@ -5738,6 +5973,7 @@ desflurane over the *unperfused load, then dial off* trajectory of
 § "Independent-solution test" above, at the shipped 0.1 s step against the
 0.01-percentage-point displayed resolution, and they describe the method that
 shipped through v0.4.2:
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 | Setting | $`C`$ (s⁻¹) | Multiple of the bound | Last displayed digit uncertain by |
 | --- | --- | --- | --- |
@@ -5880,13 +6116,14 @@ computed steps rounds a whole step either way - to a last step a float past 24
 hours, or one short of a step landing on it - so a count is accepted exactly
 where the instant it stands at is, and a branch is built or refused alike
 whether it is taken from its parent's count or its parent's instant (`PL-8H2R`).
-<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
 | Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`: `CaseInstant`, which every instant a run opens, moves, keyframes, marks or branches at is built as, and `SimulationState`, which holds a `StepCount` to its step |
+
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 24 h from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
@@ -5896,6 +6133,7 @@ was taken. A fork at 23 h leaves one hour, not another twenty-four. Nothing
 enforces this separately: every guard on it reads the case's axis - a step
 count or a case instant - and a branch continues its parent's, so the
 arithmetic that bounds a trunk bounds every branch of it (`PL-J2TD`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The instant and the count are types, each checked once where it is built**
 (`PL-CN5S`, the second slice of `PL-51B7`, in the shape § "Supported input
@@ -5950,6 +6188,7 @@ it is the same: the interval is closed, so a run may complete the step that
 lands on 24 hours; and outside it the equations still solve exactly, as
 "What a setting outside the range costs" says of the flows. What stops at the
 boundary is the claim that the solution stands for a patient.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What bounds it is what this model omits.** Metabolism, first of all.
 § "Known limitations" records that this model has none, and § "Published
@@ -5998,6 +6237,8 @@ would add the late excess, which is still growing at the boundary. So the
 number stands, and what it certifies about how close the late tail runs to a
 measured washout inside it is exactly what that subsection measured, and
 nothing more.
+<!-- not-restated: 2.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Sevoflurane is the binding agent: 2% to 5% of the absorbed dose is
 metabolized, against far less for isoflurane and desflurane, and metabolism
@@ -6009,6 +6250,7 @@ perfusion dominate the trace, and progressively false once the only thing
 still moving is the slow tail this model gives no sink to. That review's
 dose-proportionality covers exposures of 0.35 to 9.5 MAC-hours, so past
 roughly ten MAC-hours even the size of the omission is unmeasured.
+<!-- not-restated: 2 %, 5 % -->
 
 - Kharasch ED. *Biotransformation of sevoflurane.* Anesth Analg
   1995;81(6 Suppl):S27-38. PMID 7486145,
@@ -6024,6 +6266,8 @@ which is exactly what tier 2 is legitimate for. A cap derived arithmetically
 from a metabolic rate would need the primary measurements instead, and would
 be a different and better limit than this one; it is not what is claimed
 here.
+<!-- not-restated: 2 %, 5 % -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Why 24 hours, and not a multiple of the slowest time constant.** The fat
 group's time constant is about 42 h, and a cap argued as several multiples of
@@ -6036,6 +6280,7 @@ this simulator is built to teach by a wide margin; and it sits inside the
 regime the source above calls clinically negligible for metabolism, near the
 outer edge of the exposure range over which that omission has been measured
 at all.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **This replaces a memory limit that was never a modelling one.** The figure
 carried before this section existed was 30 days, set on 2026-08-25 to size a
@@ -6072,6 +6317,7 @@ rather than on the one refused after it, so no run reads as running, or as
 paused, while standing where no step is left. A `SimulationDomainLimitError`
 the interface catches on some other path - a setting - is recorded as the
 reason and outranks the derived one.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Volatile sedation in intensive care is out of scope, deliberately.** It runs
 for days through an anesthetic-conserving device, and is exactly the regime
@@ -6108,6 +6354,7 @@ row here at all, so the only tool that checks this document against the data
 files could not see it: `check_provenance` walks data files in both
 directions, and a constant that never entered one is invisible to it.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 
 **Each parameter file is the single authority for its own values, and `core/`
 holds no copy of them.** `AlveolarCompartment` has no default for its gas
@@ -6137,6 +6384,7 @@ and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
 5.0 L/min) for the patient file (`PL-H8QP`, checked by breaking each in turn).
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6.0, default_fresh_gas_flow_l_min = 4.0 -->
+<!-- not-restated: 5.0 L/min -->
 
 **Why neither gets a supported range.** A supported range describes an
 envelope a run can be steered *within*: the four controls above each name an
@@ -6160,6 +6408,7 @@ coefficients are claimed to represent a patient only near the values shipped.
 This section stated the opposite justification until v0.4.x — that a small
 alveolar volume inflated the operator split's error — and that argument
 retired with the split.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The numerics do eventually object, and that is a backstop rather than a
 bound.** The same measurement, continued downward at the shipped 0.1 s step: an
@@ -6175,6 +6424,7 @@ as one — they sit far below any volume a caller would pass by mistake, and
 they say nothing about the physiological question above. Circuit volume has no
 such point: it was advanced up to $`10^{300}`$ L with accounting passing
 throughout.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **Below that the mass-balance guard stopped firing, and what refuses now is
 upstream of it** (`PL-3PRZ`). At $`10^{-300}`$ L the run advanced and returned
@@ -6216,6 +6466,7 @@ single mode decaying below the smallest subnormal is still
 propagated as 0.0, which is correct — `exp(-0.5 * 3600)` is a real number no
 double can hold — and is what separates a decayed entry from an annihilated
 matrix.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The last failure in this family is closed by a cap on the squarings**
 (`PL-2MD9`). Between $`10^{-8}`$ and $`10^{-19}`$ L the propagator stayed
@@ -6280,6 +6531,8 @@ reasons, and the third is the one that decides it:
   0.70 at 1 L/min, and 0.86 at zero. Refusing the last of those would
   truncate the demonstration one step before its clearest case. The same
   argument holds for alveolar ventilation at zero, which is apnoea.
+
+<!-- not-restated: 10 L/min, 5 L/min -->
 
 **What zero cardiac output does not claim.** It is a statement about agent
 transport and nothing else: uptake stops, so alveolar gas approaches inspired
@@ -6702,6 +6955,7 @@ must not interpolate, smooth, average, or otherwise synthesize a plotted
 value, and the instant the numeric readouts were formatted from must always
 be drawn, so that the end of a trace and the readouts beside it cannot
 disagree.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 The chart meets this by **evaluating the run's definition rather than reading
 samples back from a store**. `core/run_definition.py` answers the state at any
@@ -6768,6 +7022,11 @@ measured can draw inside its frame budget; and the whole of that error sits
 within 1 800 s of a dial change, beyond which the 290 s chord itself is within
 0.0024 pp. Measured 2026-09-14 against the closed-form state every 0.1 s, the
 step the run advances by, over five twelve-hour runs built in closed form.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- not-restated: 2 %, 6 % -->
 
 What the one-pixel rule leaves between drawn instants, measured on a 1 000 px
 plot, where the chord is the rung's span over 1 000:
@@ -6778,6 +7037,10 @@ plot, where the chord is the rung's span over 1 000:
 | 1 h | 3.6 s | 0.0052 pp | 0.032 pp | 0.032 pp |
 | 4 h | 14.4 s | 0.048 pp (circuit) | 0.28 pp (circuit) | 0.21 pp |
 | 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
+
+<!-- provenance: app/chart_time_base.py SELECTABLE_TIME_BASE_FLOOR_S = 900 -->
+
+<!-- not-restated: 2 %, 6 % -->
 
 Those are the mid-chord departures of a straight segment from a curve that
 passes through both of its ends: a vertical gap at an instant no display
@@ -6797,6 +7060,7 @@ the worst such gap at any rung is 0.0028 pp, on the mixed venous trace at the
 desflurane dial-down on the twelve-hour base: under a third of the readout's
 resolution. `tests/unit/test_run_definition.py` holds that case under half of
 it.
+<!-- not-restated: 2 % -->
 
 Pegging that residual to the displayed resolution is deliberate, and it does
 not cross the line drawn under § "Supported simulation step". That section
@@ -6936,6 +7200,7 @@ screen says so; `PL-2NYN` is the guard that would show the delivered rate
 beside the set one when fewer than 95% of ticks fire over a 50-tick window,
 and a delivered rate under 99% measured on the owner's own machine reopens
 the decision.
+<!-- not-restated: 100 ms -->
 
 The second is control resolution, and it is the one that limits what the
 sentence above may be taken to mean. Those two learners are comparing the
@@ -7477,6 +7742,8 @@ displayed fill from the standard's original value:
 | Isoflurane | 7.5P 4/12 | `#8D4192` | `#981D97` | 5.7 |
 | Desflurane | 10B 4/10 | `#0069A0` | `#00629B` | 2.6 |
 
+<!-- not-restated: 2.1 -->
+
 The sevoflurane and desflurane originals fall outside the sRGB gamut, so no
 display can reproduce them exactly and some deviation is unavoidable rather
 than a choice. Desflurane's *dimensions* are excluded from ISO 5360 by its
@@ -7611,6 +7878,7 @@ agent's `sources`) and this model's reference adult has no age parameter;
 MAC multiples of co-administered agents are additive and this model runs one
 agent at a time; and MAC is modified by opioids, temperature, and patient
 factors none of which are represented.
+<!-- not-restated: 6 % -->
 
 **The unit is written `×MAC`, not `MAC`.** "0.80 MAC" is read as a depth;
 "0.80 ×MAC" is read as what the number is. The multiplication sign is doing
@@ -7628,6 +7896,7 @@ states the running agent's 1 MAC in percent beside the chart — "1 MAC
 sevoflurane = 2.0%" — so a reader who disagrees with the divisor can see that
 they disagree, and can convert back to the percent the model actually
 computes.
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 
 **Nothing in `core/` computes a MAC multiple.** The transformation lives in
 `app/formatting.py` and takes the divisor as an argument; the divisor reaches
@@ -7657,6 +7926,7 @@ desflurane and every 1.67 ×MAC under isoflurane.
 <!-- derived: 1.39 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
 <!-- derived: 0.33 from data/agents/desflurane.json mac_percent = 6 -->
 <!-- derived: 1.67 from data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **Why 3, and why fixed.** Three is exactly desflurane's dial maximum divided
 by its 1 MAC, so the shared ceiling is anchored to a real device limit rather
@@ -7687,6 +7957,7 @@ floating point is 3.5999999999999996.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **What the divisor is worth.** `mac_percent` is a tier-3 value, and this
 section is where that matters most: it is now the divisor of every MAC number
@@ -7869,6 +8140,7 @@ furthest from where responsiveness actually returns. Measured on a 3-hour
 1 MAC sevoflurane case with the vaporizer turned off at 10 L/min, the
 alveolar trace crosses the band's centre at 2.83 min and the vessel-rich
 trace at 6.51 min — 2.30 times later.
+<!-- not-restated: 10 L/min -->
 
 <!-- derived: 2.83 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
@@ -7954,6 +8226,8 @@ descending-washout desflurane MAC-awake was found. The three fractions
 (0.31 isoflurane, 0.34 sevoflurane, 0.36 desflurane) sit in a narrow range,
 so each agent carries its own value rather than one fraction covering all
 three.
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
 
@@ -8067,6 +8341,7 @@ and 8.8 ms at ten thousand, against a 200 ms frame, and is recomputed only
 when the record changes; reaching the hundred thousand entries at which it
 would cost half a frame takes some three hours of unbroken dragging, at
 which point the record is under 9 MB.
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 ### F_A/F_I as a displayed ratio
 
@@ -8156,6 +8431,7 @@ today, and a rule holding only because a slider is absent is not one to build
 on. A crossing column above the ceiling is therefore not drawn at all, and the
 stretch ends where it would have: not clamped onto the ceiling, not
 interpolated onto it.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A blank stretch says which boundary it is.** "No agent has reached the
 circuit yet" and "the patient is returning agent" are opposite situations, and
@@ -8186,6 +8462,7 @@ ventilation, 1.83 at 12.0, 5.93 at 2.0 and 20.11 at 0.5, against predictions of
 wash-in fractions; that they are also unbounded is why no fitted axis would
 help.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4.0 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 **Displayed precision.** Two decimals, and *not* derived from the
 concentration resolution, deliberately: the quotient's own resolution depends
@@ -8211,6 +8488,7 @@ here. Conforming to 2.2 AA also satisfies the 2.1 AA that EN 301 549 and the
 2024 ADA Title II rule reference and the 2.0 AA that Section 508 does, though
 none of those instruments binds this project — AA is chosen as the right
 engineering bar for a teaching tool, not as a compliance obligation.
+<!-- not-restated: 2.1 -->
 
 Two criteria carry most of the weight:
 
@@ -8234,6 +8512,8 @@ Two criteria carry most of the weight:
   against the panel it is drawn on, each agent swatch read as a shape, and the
   active track of each parameter slider, which is how a control shows where its
   value sits in its range.
+
+<!-- not-restated: 4.5 -->
 
 **A color that carries meaning as text and as a graphic needs two values, not
 one.** The two minima differ by half again, so a single constant serving both
@@ -8636,6 +8916,8 @@ reference adult's flows displaces a displayed compartment by:
 | Vessel-rich tissue:gas | 1.3×10⁻² to 5.0×10⁻² pp |
 | Muscle tissue:gas | 1.3×10⁻² to 6.8×10⁻² pp |
 
+<!-- not-restated: 1.3 -->
+
 Each range runs over the three shipped agents, desflurane always the largest.
 The SDs are the measured ones "Parameter provenance" already records: Yasuda,
 Targ and Eger's human tissue coefficients, whose SDs are 3.9% of the mean for
@@ -8718,6 +9000,7 @@ per-agent MAC resolution would put different magnitudes at the same glyph
 position, which is the failure "Why the resolution is uniform rather than
 per-compartment" rejects below, arriving across agents instead of across
 compartments.
+<!-- not-restated: 0.06 -->
 
 The below-resolution form applies to the MAC line for the same reason it
 applies to the percent line, and matters more rather than less: a compartment
@@ -8774,6 +9057,7 @@ shipped `format_percent`'s, and the count is still zero (re-measured
 2026-10-17). Under the split they disagreed on the worst
 reachable trajectory for 0.2 s of a 900 s run with sevoflurane and 1.7 s with
 desflurane, at gaps up to 1.73 counts of the last displayed digit.
+<!-- not-restated: 0.2 s, 900 s -->
 
 That is a measurement on one platform rather than a guarantee, and the
 arithmetic behind it says why the gate keeps a threshold rather than asserting
@@ -8906,6 +9190,7 @@ differently, and the region keeps its own shares, because a Workspace switch
 must not change the width the row is laid out at. The left column never narrows below its own minimum width. At whatever width that leaves, the reservation rule above (`PL-3355`)
 still applies: every rung lays each panel out at its full reserved width, so
 no value is wrapped away from its unit.
+<!-- not-restated: 0.18 -->
 
 **Measured 2026-10-18: a 1366 px window opens on seven again, with one run or
 two.** On the offscreen font, a 1366 px window gives the region 1320 px. The
@@ -8932,6 +9217,7 @@ significant figures on the fat fraction would imply a relative resolution of
 0.1% on a number whose parameters are known to about 5%, over-claiming by a
 factor of fifty — and doing so most severely in the readouts where a reader has
 least ability to notice.
+<!-- not-restated: 5 % -->
 
 **Why not the 0.1 percentage points clinical monitors report.** Agent
 monitors display end-tidal and inspired concentrations to a tenth of a
@@ -9007,6 +9293,7 @@ the delivered dial — and the value applied to the model is exactly the value
 printed beside the control (`PL-25KS`); a control that could apply a value its
 own label rounds away would leave a reader unable to tell which value is the
 setting in force.
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **The agent-accounting panel's three amounts are displayed to 0.1 L, and its
 two residual lines as the power of ten each lies below, because they answer
@@ -9037,6 +9324,7 @@ fails, the run halts and the failure notice prints the signed values to six
 figures. Exactly zero reads `0 L`. `format_agent_residual` holds the form, and
 `tests/unit/test_formatting.py` pins it, including the pair of strings
 `5.601e-14 L` and `5.609e-14 L` that the two trees printed for one sample.
+<!-- not-restated: 2.1 -->
 
 The amounts
 are read against each other — delivered against exhausted plus stored — and
@@ -9062,6 +9350,8 @@ invites the liquid reading. `AGENT_VOLUME_DISPLAY_DECIMALS` holds the count,
 `format_agent_volume` the form, and `test_agent_amounts_precision` pins both.
 Precision in this interface is set by what each number is for, and the rule
 above governs the clinical readouts.
+<!-- not-restated: 0.18 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The chart plots the same percentages on a shared linear axis running from 0 to
 3 ×MAC of the running agent, and carries a second axis on the right reading
@@ -9078,6 +9368,7 @@ vertical range is denominated in MAC, and fixed" above carries why the range
 is what it is. Its horizontal extent is the selected time base rather than a
 fixed span, so seconds per pixel is the reader's choice; "The chart's time
 base" carries how a width is chosen and how it is ruled.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 `app/formatting.py` is where this section terminates: it holds the
 resolution as a single constant, derives the formatter, the below-resolution
@@ -9219,6 +9510,7 @@ and 43.8–81.4% (fat) would print *different* text. On the emergence case the
 fat hover at 3492 s reads either `0.03%   0.02 ×MAC` or `0.01%   <0.01 ×MAC`
 depending on which run answered — a threefold difference in stored agent
 between a run still carrying it and one 48 minutes into emergence.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **It goes on line 1 rather than on a fourth line** because line 1 is the line
 this section already calls *run context*, so naming the run completes it rather
@@ -9328,6 +9620,7 @@ a value unreachable; measured across the same cases, every compartment was
 answered for somewhere at 98% or more of the axis columns it is drawn at, worst
 being muscle at 2.0% on the single-run chart. The defect was that the reader got
 the wrong trace, never that a trace could not be got at.
+<!-- not-restated: 2.0 % -->
 
 So every run and every compartment whose drawn point is inside the radius
 answers. Nothing is left for a hand movement too small to aim with to decide,
@@ -9375,6 +9668,8 @@ selection held against the shipped function before any number was kept:
 | two runs, mixed venous + vessel-rich | 88.3–94.7% | 12–16 s / 32–52 s | 50.6–62.8% / 36.9–52.8% |
 | two runs, muscle + fat | 13.0–16.8% | 4 s / 4 s | 3.0–5.4% / 0.3–0.8% |
 | one run, 12 h axis | 84.5% | 288 s / 912 s | 37.3% / 33.3% |
+
+<!-- not-restated: 13.0 -->
 
 The premise that made it look cosmetic — that two adjacent columns usually print
 the same value — holds for fat and mostly for muscle, the pair it was first
@@ -9454,6 +9749,7 @@ clinical values. And it would arrive ahead of the v0.6.0 View contract that
 decides where a View's own settings live. Its strongest use, the washout tail,
 is a candidate for item 36's catalogue of views rather than a mode on this
 chart.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 `chart_frame.format_compared_trace_hover` and
 `chart_frame.format_compared_wash_in_hover` produce both forms above — through
@@ -9808,6 +10104,7 @@ list and is why it is stated rather than left implied. Measuring washin and
 washout in a real circuit at 0.5–5 L/min inflow against the ideal exponential,
 the same study found desflurane's curves "closely approximated the maximal
 possible theoretical rates" while the more soluble agents lagged.
+<!-- not-restated: 5 L/min -->
 
 Two things a reader should take from that and no more. The authors' own
 conclusion is that this absorption "should not hinder induction of or recovery
@@ -9897,6 +10194,8 @@ anesthetized without surgery and measured against their own awake baseline:
   behaved similarly, and in both the depression diminished with prolonged
   administration and with spontaneous rather than controlled ventilation.
 
+<!-- not-restated: 0.5 MAC -->
+
 Read together: the *sign* of the cardiac-output change depends on the carrier
 gas, the dose-response is **not monotonic**, and the effect changes with time
 at a fixed dose and with the mode of ventilation. This model has no second
@@ -9963,6 +10262,7 @@ curves" puts the shipped tail a third below the published mean curves from
 about the seventh hour to the twenty-first - half, from 3.4 to 15.3 hours, for
 desflurane - and above them before and after, and § "Supported run length"
 records why that leaves the number where it is (`PL-KK1Q`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The fat group's flow is twice a resting depot measurement and where human
 washout fits put it, and the two human sources do not agree about which way
@@ -9995,6 +10295,7 @@ about twice the truth, and the washout fits put it at or a little below.
 <!-- derived: 52 for sevoflurane from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
 <!-- derived: 31 for desflurane from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
+<!-- not-restated: 2.4, 2.1 -->
 
 Neither settles it, and for different reasons. The PET figure is one depot in
 one small cohort, awake and at rest, against a whole-body lumped compartment
@@ -10086,6 +10387,8 @@ that structure rather than from a run:
   size is known to about a factor of two, which is the
   fourth compartment's own between-subject spread.
 
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 **Eger and Saidman's review draws the same compartment, and names a fourth
 bias** (`PL-FBY3`). Their Table 3 (p. 1024) gives intertissue diffusion a group
 of its own, "a subset of the FG": 2.9 L, where the fat group is 14.5 L, with
@@ -10109,6 +10412,7 @@ effect-site compartment and parameterises its vessel-rich group as brain
 (§ "v0.2.0: isoflurane and desflurane"), so the vessel-rich trace is the one a
 learner reads as brain, and the one this bias spares. A route added later that
 drew its loss from that group would slow it, against the review.
+<!-- not-restated: 14.5 L -->
 
 **Eger and Saidman put the effect on late recovery rather than on emergence**,
 in the review whose title names the route: agent stored this way "returns to
@@ -10241,6 +10545,8 @@ extrapolation, and a reader weighing them equally would be weighing them wrongly
 (`PL-YKSM`), and the reason is structural rather than a preference between those
 two numbers — but the asymmetry is worth stating, because the number being
 declined is the weaker of the two.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 A time constant is $`V_i \lambda_{i:b} / Q_i`$ and this model stores
 compartment volumes as fixed litres, so scaling only the flow would make
@@ -10264,6 +10570,7 @@ that adult's run whatever the reference weight reads. Weight-varying physiology
 is `ROADMAP.md`'s planned-milestone item 30, and it is a package: compartment
 volumes, alveolar volume, alveolar ventilation, the perfusion fractions and MAC
 by age move together or none of them should.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **One reference condition, where the model physically has two.** "Agent
 amount" fixes the amount unit at 20 °C and 760 mmHg, dry, and nothing here
@@ -10339,6 +10646,8 @@ outside it:
 | Desflurane, Anesthesiology 1991;74:489-98 | 0.9079 | +0.79 SD | 0.8516 | −4.84 SD |
 | Isoflurane, Anesthesiology 1991;74:489-98 | 0.7414 | +0.38 SD | 0.6954 | −1.15 SD |
 
+<!-- not-restated: 0.31 -->
+
 Measured 2026-09-19 through `_wash_in_ratio` in
 `tests/reference/test_published_wash_in_and_elimination.py`, against that
 module's own published means and standard deviations.
@@ -10379,6 +10688,7 @@ is not delivering the same anesthetic, and nothing else in the simulator says
 so. The reason is that the delivered-concentration control is a vaporizer
 dial, and the two classes of vaporizer this project's three agents are drawn
 from respond to falling ambient pressure in opposite directions.
+<!-- not-restated: 6 % -->
 
 **Variable bypass — sevoflurane and isoflurane here.** The class of the
 Dräger Vapor 2000, Sevotec 5, Isotec 5 and Penlon Sigma Delta. Fresh gas is
@@ -10391,6 +10701,7 @@ altitude correction. Boumphrey and Marshall give the approximation as
 $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$, worked as isoflurane
 dialled 2% at 101.3 kPa delivering 4.05% at 50 kPa — 2.026 kPa of isoflurane
 either way.
+<!-- not-restated: 2 % -->
 
 **Gas–vapour blender — desflurane here.** The class of the Tec 6 and Tec 6
 Plus, which desflurane needs at all because it boils at 22.8 °C. The sump is
@@ -10470,6 +10781,8 @@ stored value, there being none:
   section carries both classes side by side. Supplied by the project owner and read in
   full 2026-09-06. **Owner-attested**: see the note below.
 
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
 **Two of those five are owner-attested rather than checkable, and this says
 which.** `docs/references/` cannot hold them: the repository is public, so a
 file placed there is redistributed rather than read privately, and
@@ -10484,6 +10797,7 @@ can re-open either. So the passage quoted from Datex-Ohmeda, the 1–18% range
 beside it, and the worked example attributed to Boumphrey and Marshall rest on
 that reading alone. Nothing stored depends on any of them; a reader wanting to
 verify one has to reach the document itself.
+<!-- not-restated: 18 % -->
 
 **Gas Man's own agreement with patients is phase-dependent, and wash-in is its
 worst phase.** Both this model's parameter set and its compartment structure
@@ -10511,6 +10825,10 @@ Split into the study's two phases it does not:
 | FLOW-i (n = 14) | maintenance, 15–60 min | 0% [−7, 5] | 6% [2, 10] |
 | Zeus (n = 14) | wash-in, 0–15 min | 7% [−6, 28] | 13% [6, 32] |
 | Zeus (n = 14) | maintenance, 15–60 min | −1% [−5, 5] | 5% [2, 9] |
+
+<!-- not-restated: 15 min -->
+
+<!-- not-restated: 18 %, 6 %, 5 % -->
 
 Brackets are the published interquartile ranges, and they carry more of the
 finding than the medians do: a quarter of FLOW-i patients were tracked worse

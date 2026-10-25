@@ -114,6 +114,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     fork_offer,
     halt_notice,
+    new_case_question,
     notice,
     run_label,
     slider_position,
@@ -183,7 +184,13 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    Percent,
+    fraction_from_percent,
+)
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -920,7 +927,8 @@ def test_a_dashboard_refuses_to_be_built_with_no_run() -> None:
     """A dashboard with no run has no agent, no ruler and nothing to draw."""
 
     with pytest.raises(
-        ValueError, match=re.escape("a dashboard displays at least one run; none was given")
+        ValueError,
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 0"),
     ):
         SimulationView(())
 
@@ -937,7 +945,7 @@ def test_a_dashboard_refuses_more_runs_than_may_be_displayed() -> None:
 
     with pytest.raises(
         ValueError,
-        match=re.escape(f"3 runs given; at most {MAX_DISPLAYED_RUNS} may be displayed at once"),
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 3"),
     ):
         SimulationView(tuple(SimulationController() for _ in range(MAX_DISPLAYED_RUNS + 1)))
 
@@ -2302,7 +2310,9 @@ FRAME_WIDGETS: dict[str, str] = {
     "_readout_row": (
         "the readouts and the clock they were read with, from the compartment "
         "values of the snapshot a frame drew from. The clock stays with its "
-        "readouts, so no row pairs one instant's clock with another's values."
+        "readouts, so no row pairs one instant's clock with another's values. "
+        "The playback line under the clock is run state, and the test below "
+        "compares it on its own (`PL-P58M`)."
     ),
     "_accounting_panels[0]._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "
@@ -2424,6 +2434,10 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
+    # The playback line is in `_readout_row`, which `FRAME_WIDGETS` exempts,
+    # so it is compared on its own below (`PL-P58M`).
+    run._playback_rate_dropdown.setCurrentIndex(run._playback_rate_dropdown.findData(5))
+    halted_playback_line = run._playback_rate_text.text()
     attributes = _widget_attributes(run)
     named = {id(widget) for widget in attributes.values()}
     halted = {name: _stated(widget, named) for name, widget in attributes.items()}
@@ -2449,6 +2463,35 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     )
     assert halted_banner == halt_notice(controller.record())
     assert run._notice_text.notice() == notice(controller.snapshot(), None)
+    assert halted_playback_line == run._playback_rate_text.text() == format_playback_rate(5)
+
+
+def test_a_halted_run_shows_the_new_playback_rate(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-P58M`: a halted run states one playback rate, the one the reader just chose.
+
+    The clock's second line sits in the readout row. A halt does not write
+    that row, because its readouts are compartment values that only a frame
+    can state. Until `PL-P58M`, a rate chosen on a halted run reached the
+    dropdown but not the clock, so the screen showed 5x in one place and 1x
+    in the other.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+
+    assert controller.has_failed is True
+    assert run._playback_rate_text.text() == format_playback_rate(1)
+
+    dropdown = run._playback_rate_dropdown
+    dropdown.setCurrentIndex(dropdown.findData(5))
+
+    assert dropdown.currentText() == format_playback_rate(5)
+    assert run._playback_rate_text.text() == format_playback_rate(5)
 
 
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
@@ -3382,6 +3425,35 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered(
     assert run._agent_dropdown.currentData() == before.agent_id
 
 
+def test_an_open_new_case_question_follows_a_running_run(application: QApplication) -> None:
+    """`PL-WM5P`: the question states what the new case discards as the run stands now.
+
+    The run is not paused while the question is open, so a running run goes
+    on stepping. Before the fix, the question was written only once, when it
+    opened, so its figure for the run time about to be discarded fell behind
+    the clock.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    opened_warning = dialog.body_labels[1].text()
+
+    _advance_to(controller, 120.0)
+    view.present(False)
+    snapshot = controller.snapshot()
+    question = new_case_question(snapshot, "Desflurane", len(run.adjustments(snapshot)))
+
+    assert dialog.body_labels[1].text() == question.body[1] != opened_warning
+    assert format_elapsed(snapshot.elapsed_s) in dialog.body_labels[1].text()
+    assert [label.text() for label in dialog.body_labels] == list(question.body)
+
+
 def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched(
     application: QApplication,
 ) -> None:
@@ -4235,7 +4307,7 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     chart = _concentration(view).chart
 
     assert _concentration(view).mac_reference_text.text() == format_mac_reference(
-        "Sevoflurane", 2.0
+        "Sevoflurane", MacPercent(2.0)
     )
     assert chart.one_mac_line() == 2.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -4246,12 +4318,14 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     # which would agree with a band the switch failed to rebuild (`PL-JPS2`).
     mac_awake = load_agent_parameters("desflurane").mac_awake
 
-    assert _concentration(view).mac_reference_text.text() == format_mac_reference("Desflurane", 6.0)
+    assert _concentration(view).mac_reference_text.text() == format_mac_reference(
+        "Desflurane", MacPercent(6.0)
+    )
     assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
         "Desflurane",
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=6.0,
+        mac_percent=MacPercent(6.0),
     )
     assert chart.one_mac_line() == 6.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -7414,6 +7488,156 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     )
 
 
+#: The widget types outside every run that may show differently on a halted
+#: dashboard and on the same dashboard once a frame draws it. Each type maps to
+#: the reason that only a frame can state it. The test below checks this list
+#: in both directions, as it checks `FRAME_WIDGETS`: an unlisted difference
+#: fails, and so does an entry that no longer differs (`PL-WM5P`).
+SURFACE_FRAME_WIDGETS: dict[str, str] = {
+    "QScrollBar": (
+        "the page's scroll bar follows the height the frame lays the page out at, "
+        "which is layout and states nothing about a run."
+    )
+}
+
+
+def _run_widget_ids(view: SimulationView) -> set[int]:
+    """Every widget a run holds, wherever its copies are placed, and every widget under each."""
+
+    held: set[int] = set()
+
+    for run in view.runs:
+        for widget in (run, *_widget_attributes(run).values()):
+            held.add(id(widget))
+            held.update(id(child) for child in widget.findChildren(QWidget))
+
+    return held
+
+
+def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
+    """Every widget in the window that no run holds, grouped by its type and the five above it."""
+
+    held = _run_widget_ids(view)
+    surfaces: dict[str, list[QWidget]] = {}
+
+    for widget in view.window().findChildren(QWidget):
+        if id(widget) in held:
+            continue
+
+        chain = " < ".join(type(w).__name__ for w in _ancestry(widget)[:6])
+        surfaces.setdefault(chain, []).append(widget)
+
+    return surfaces
+
+
+def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]:
+    """Return what a reader sees of every widget outside the runs, read afresh.
+
+    The window is walked again on each call. So a row that a frame adds, such
+    as a newly listed mark, shows up as a difference rather than as a widget
+    that nobody compares.
+    """
+
+    return {
+        chain: [_widget_state(widget) for widget in widgets]
+        for chain, widgets in _surface_widgets(view).items()
+    }
+
+
+def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt states the run on every panel outside the runs, found by a walk rather than a list.
+
+    `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
+    checks that each `RunView` has one writer of its run state (`PL-X7D5`).
+    The branch panel, the marks panel, the marks editor and every Area's
+    header sit outside the runs, and the halt restates them through
+    `halt_restatements` (`PL-5JTH`). `test_every_dashboard_control_is_restated_on_a_halt`
+    checks that each control is in a restated panel, but not what the panel
+    then says. This test checks what it says. The run is drawn, and the
+    branch panel is given a refusal. The refusal comes before the halt,
+    because a halted trunk disables the branch controls. Then, while every
+    frame fails, the test changes what the other panels state: it adds a
+    mark and changes the playback rate. Finally it compares the halted
+    screen, widget by widget, with the same dashboard once a frame draws it.
+    So a panel that only a frame writes fails this test even though no list
+    names it (`PL-WM5P`).
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    _opened_bookmark_dialog(view)
+    view.present(False)
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    trunk = view.runs[0]
+    trunk._playback_rate_dropdown.setCurrentIndex(trunk._playback_rate_dropdown.findData(5))
+    view.present(False)
+
+    assert case.trunk.has_failed is True
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+    halted = _surface_states(view)
+
+    monkeypatch.undo()
+    view.present(False)
+
+    drawn = _surface_states(view)
+    differing = {
+        chain.partition(" < ")[0]
+        for chain in set(halted) | set(drawn)
+        if halted.get(chain) != drawn.get(chain)
+    }
+
+    assert len(halted) > 20, "the walk found too few widgets to be reading the window"
+    assert sorted(differing - set(SURFACE_FRAME_WIDGETS)) == [], (
+        "these widgets outside every run read differently on a halted dashboard and on the "
+        "same dashboard drawn: restate them from SimulationView.halt_restatements, or name "
+        "their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them"
+    )
+    assert sorted(set(SURFACE_FRAME_WIDGETS) - differing) == [], (
+        "these widgets read alike on a halted dashboard and a drawn one now, so their "
+        "exemption is stale - remove the entry"
+    )
+
+
+def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard above catches a panel that a halt leaves as the last frame drew it.
+
+    The marks panel's restatement is switched off here. The mark added while
+    frames fail is then listed on the drawn dashboard and not on the halted
+    one, which is the stale state the guard exists to catch.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    view.present(False)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(view, "_restate_bookmark_panel", lambda: None)
+
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    view.present(False)
+    halted = _surface_states(view)
+
+    monkeypatch.undo()
+    view.present(False)
+
+    drawn = _surface_states(view)
+    differing = {
+        chain for chain in set(halted) | set(drawn) if halted.get(chain) != drawn.get(chain)
+    }
+
+    assert any("MarkListingLabel" in chain for chain in differing)
+
+
 def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -7759,6 +7983,44 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
     assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
 
+def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplication) -> None:
+    """`PL-BM6X`: an agent change clears a branch-panel notice about the case it ended.
+
+    An agent change on the trunk starts a new case, as Reset does. Until
+    `PL-BM6X`, only Reset told the dashboard so, and the branch panel went on
+    saying "Select an instant to branch at" about a case no longer on screen.
+    Both ways of changing the agent are checked: a run that has recorded
+    something asks first, and one that has recorded nothing switches at once.
+    """
+
+    view = _case_view(application, _branched_case())
+    trunk = view.runs[0]
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+    _select_agent(trunk, "desflurane")
+    dialog = trunk._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+
+    assert trunk.controller.agent_id == "desflurane"
+    assert view._fork_panel.notice.notice() is None
+
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert trunk.controller.snapshot().has_recorded_run is False
+
+    _select_agent(trunk, "isoflurane")
+
+    assert trunk._new_case_dialog is None
+    assert trunk.controller.agent_id == "isoflurane"
+    assert view._fork_panel.notice.notice() is None
+
+
 def test_a_branch_shows_the_agent_chip_in_place_of_the_selector(application: QApplication) -> None:
     """`PL-QRD1`, the branch half: a branch carries the agent of the case it continues.
 
@@ -7991,6 +8253,36 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     assert view.case is case
     assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == before
     assert view.runs[TRUNK_RUN_INDEX].snapshot().elapsed_s == pytest.approx(60.0)
+
+
+def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
+    """`PL-WM5P`: the Reset question names the branch work as it stands now, not when asked.
+
+    Reset stays enabled while the runs step, so a branch goes on running
+    while the trunk's question is open. The test compares the warning with a
+    literal string: four steps of 0.1 s from the 60 s fork reach 1m0.4s, and
+    four more reach 1m0.8s.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = _branch_holding_work(view, application, "elapsed")
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    branch._start_button.click()
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+    assert dialog is not None
+    assert "run to 1m0.4s" in dialog.body_labels[1].text()
+
+    _steps(branch, 4)
+    view.present(False)
+
+    assert dialog.body_labels[1].text() == (
+        "Run 2 — branched at 1m and run to 1m0.8s, 0 recorded control changes — will be "
+        "discarded along with its chart history. This cannot be undone."
+    )
+    assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
 
 
 def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
@@ -8227,9 +8519,7 @@ def test_adding_a_third_run_is_refused(application: QApplication) -> None:
 
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            f"2 runs are already displayed; at most {MAX_DISPLAYED_RUNS} may be displayed at once"
-        ),
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 3"),
     ):
         view.add_run(SimulationController())
 

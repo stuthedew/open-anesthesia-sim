@@ -61,6 +61,11 @@ model an item warrants, so the queue answers this per item rather than per
 session. It prints one of two flags, and § "Which model each flag means"
 below is where they resolve.
 
+**Whether a cheaper setting holds up is measured, not assumed.** The model
+review, `.claude/skills/model-review/SKILL.md`, scores closed items by how
+their work held up and brings its recommendations to you with their evidence.
+`docs/model-review.md` holds its trials and its dated findings (`PL-63CB`).
+
 ### Which model each flag means
 
 **A dated instance, not a rule** (`.claude/rules/expert-review.md`). What
@@ -288,24 +293,10 @@ owner, 2026-10-19, ratified, over model and effort fields on each closed item,
 
 **The model review refreshes it monthly**, and after any generator or cluster
 appears (project owner, 2026-10-19, ratified, over a weekly or a quarterly
-cadence, `PL-63CB`). Until `.claude/skills/model-review/SKILL.md` exists, a
-refresh has three steps:
-
-<!-- absent: .claude/skills/model-review/SKILL.md -->
-
-1. Page through `list_sessions` (`mine: true`, `limit: 100`) from the
-   `claude-code-remote` MCP server. A page is too large to show inline, so the
-   harness saves it to a file. Copy each file unchanged and parse it with a
-   script, so that no model retypes a value. Keep a session when any of its
-   sources is this repository, not only its first.
-2. Fetch every Projects thread with `get_session`. `list_sessions` leaves
-   threads out, because they carry the `hearth-thread` tag, and a session
-   cannot pass the `tags` filter. Find them as the session ids in
-   `Claude-Session:` trailers on `main` and in `docs/pr-bodies/` that have no
-   ledger row yet.
-3. Rewrite the file, sorted by creation time, and keep any row whose session
-   the harness no longer returns. The harness's retention is unknown, and the
-   ledger exists so that this record outlives it.
+cadence, `PL-63CB`). `.claude/skills/model-review/SKILL.md` § "Refresh the
+records first" has the steps. The review also refreshes `docs/ci-runs.tsv`,
+the CI run history, with `python3 tools/ci_runs.py refresh`, because GitHub
+deletes a workflow run 90 days after it ran (`PL-4SFQ`).
 
 
 ## Settings that make sessions cheaper
@@ -750,7 +741,9 @@ change, so a worker cannot see its own failures among them (`PL-TSH9`).
 to the end of `~/.zshrc`, which makes it `make` in a new Terminal window
 (the formula's own caveat, `Formula/m/make.rb` in Homebrew/homebrew-core,
 read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
-4.4.1 or newer.
+4.4.1 or newer. The runner refuses to start, before it spends any credit,
+while the bash or make on its `PATH` is older than bash 5.2 or GNU Make 4
+(`PL-44R1`).
 
 1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
    organization. This links one Console organization, and changing it later
@@ -793,6 +786,36 @@ bill, so read the Console's figure again at each launch rather than carrying
 the runner's last one forward. Runners before `PL-NQ0M` kept a ledger at
 `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads
 it now, so you can delete it.
+
+## Have Fable 5.1 read the model document against the data, once
+
+`tools/model_doc_review.py` sends `docs/MODEL.md` and every data file under
+`src/anesthesia_sim/data/` to Fable 5.1 through the Message Batches API, on the
+same API credit as the headless workers (`PL-5S71`). It sends one request per
+`##` section, 25 on 2026-10-25, and each request carries the whole document and
+the data. The model reports statements in its section that contradict a stored
+value, another statement or their own units. A session then checks each one and
+files the confirmed ones. Run it on your Mac from a checkout of `main`, with the
+key exported as in § "Spend the monthly API credit on delegable items", steps 1
+to 3.
+
+1. `uv run python tools/model_doc_review.py estimate` prints the number of
+   requests and the most the batch could cost, and sends nothing. On
+   2026-10-25 the bound was $66.91. The bound assumes no prompt-cache hit and
+   every request using its full output allowance, so the bill should be well
+   below it.
+2. `uv run python tools/model_doc_review.py submit --credit-left 197.72`, with
+   the figure from platform.claude.com/settings/billing, sends the batch. It
+   refuses when the bound is more than the credit left. It prints a batch id
+   that starts `msgbatch_`, and saves a manifest in
+   `~/.local/state/open-anesthesia-sim/model-doc-review/`.
+3. `uv run python tools/model_doc_review.py fetch <batch id>` reports progress
+   until the batch ends. Most batches end within an hour, and all within 24
+   hours. Once it has ended, it prints one line per section and writes
+   `<batch id>.findings.json` in the same folder.
+4. Attach that findings file to a project thread and ask for `PL-5S71`'s
+   findings to be checked. A section marked `not reviewed` names its reason,
+   and can be sent again in a later batch.
 
 ## Run tag-release yourself where a session cannot
 
