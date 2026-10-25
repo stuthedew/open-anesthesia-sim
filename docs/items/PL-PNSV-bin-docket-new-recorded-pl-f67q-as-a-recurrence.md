@@ -3,12 +3,14 @@ id: PL-PNSV
 title: bin/docket new recorded PL-F67Q as a recurrence of PL-S86L on 2026-10-25 because the new title cited PL-S86L and its file, though PL-F67Q is a different defect (finer-step coverage, not a stale claim); a recurrence means the same defect filed again, so a citing capture inflates the count that names promotion candidates
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: recurrence-signal
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 deferred-from: v0.7.0 - captured after the freeze, at the owner's request in the workflow lane, and built at once; the generator tier ranks it, not the gate
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1835
 payoff: A capture made while working an item is no longer counted as that item's defect firing again, so the promotion candidates bin/docket next names rest only on filings by sessions that did not know the item existed
 verify: grep -q 'def test_new_records_nothing_on_an_item_this_branch_claims' subprojects/docket/tests/test_cli.py
 impairs-generators: docket.cli.cmd_new records a recurrence on the item the filing branch is itself working, through duplicates.near_duplicates' working-tree key, so plan.recurrence_chains counts filings by a session that knew the item existed toward the promotion floor

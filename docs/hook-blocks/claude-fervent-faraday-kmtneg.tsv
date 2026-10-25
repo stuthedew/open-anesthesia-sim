@@ -5,3 +5,6 @@ time	session	guard	rule
 2026-10-25T21:07:04.369826+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	floor-interpreter-guard	floor-interpreter
 2026-10-25T21:20:17.491825+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	gate-status-guard	arm-piped
 2026-10-25T21:27:39.216292+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	floor-interpreter-guard	floor-interpreter
+2026-10-25T22:35:20.402081+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	gate-status-guard	status-swallowed
+2026-10-25T22:45:51.988527+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	push-check-guard	checks-failed
+2026-10-25T22:47:11.001934+00:00	f79a2dd9-8422-547c-ae8f-10e2457f5054	floor-interpreter-guard	floor-interpreter
