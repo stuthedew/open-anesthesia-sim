@@ -928,9 +928,10 @@ class SimulationView(QWidget):
         reader reaches for to start one run again, which is precisely the
         wrong place to put a surprise (`PL-LQ19`).
 
-        **The case and a standing fork refusal answer to the run that ended,
-        not to how many runs are drawn**, so both are cleared on every trunk
-        Reset, a one-run one included. A refusal names an instant of the run
+        **The case and a standing fork refusal belong to the run that ended,
+        not to how many runs are drawn.** So both are cleared on every trunk
+        Reset and every accepted agent change, even when only one run is
+        drawn (`PL-BM6X`). A refusal names an instant of the run
         that has just started over, so it goes as the setting refusal
         `RunView._reset_now` clears does (`PL-75P5`). The case is a record
         of the trunk's run rather than of the display, so it is rebuilt
