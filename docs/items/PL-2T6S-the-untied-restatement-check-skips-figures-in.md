@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1806
 payoff: a stored value restated in docs/MODEL.md as part of a slash list, with a lower-case unit, or as a symbol given a number in math can no longer go stale without an error
 verify: uv run pytest -q tests/unit/test_doc_check.py -k 'list_a_lower_case_unit or inside_an_equation' && uv run python tools/doc_check.py check
 reenters: PL-JS6P
