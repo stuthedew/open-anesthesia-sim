@@ -36,6 +36,7 @@ from .claims import (
     LIVE,
     Hold,
     Holdings,
+    claimed_here,
     holdings,
     settled_branches,
     unclaimed,
@@ -1484,6 +1485,12 @@ def cmd_new(args: argparse.Namespace) -> int:
     # defect, is what fell through that hole. Read once for the whole call,
     # since every title in it was captured from the same working tree.
     inferred = () if declared else _inferred_paths(args)
+    # An item this branch claims is never a candidate. The session filing the
+    # capture is working that item, so it knows the item exists, and a filing
+    # by a session that knew is not the defect firing again. Its paths are
+    # also the ones the working tree is changing, which is why the search
+    # found `PL-S86L` for `PL-F67Q` (`PL-PNSV`).
+    held = _claimed_here(args)
     captures: list[Item] = []
     for title in args.title:
         captures.append(_captured(new_id(taken), title, args))
@@ -1506,7 +1513,7 @@ def cmd_new(args: argparse.Namespace) -> int:
         found = near_duplicates(
             capture.title,
             declared or inferred,
-            items,
+            [item for item in items if item.identifier not in held],
             feature=capture.feature,
             items_dir=_invocation(args).tracked,
         )
@@ -1650,6 +1657,18 @@ def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
     if inv.git is None:
         return ()
     return working_paths(inv.root, runner=inv.git).paths
+
+
+def _claimed_here(args: argparse.Namespace) -> frozenset[str]:
+    """The items this branch's own commits claim, or none under `--no-git`.
+
+    Read once per invocation, as `_inferred_paths` is. A git that does not
+    answer gives an empty set, and the search then runs as it did before.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        return frozenset()
+    return claimed_here(inv.root, runner=inv.git)
 
 
 def _record_recurrence(

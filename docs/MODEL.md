@@ -3990,10 +3990,11 @@ accumulated rounding, and rounding does not grow with how far the settings
 move. The unperfused load gives the smallest figure although it runs longest,
 900 s against the others' 600 s. Its worst falls in the loading phase, while
 the blood and tissue states are still exactly zero and only the circuit and
-alveoli hold any agent. The gate also drives three of the five, the reference
-point, the ventilator start and the unperfused load, at 0.05 s and 0.025 s.
-That gives the worst figure measured: **5.89e-14**, for desflurane on a
-*ventilator start* at the finest step. The operator split's worst over the
+alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
+That gives the worst figure measured on any trajectory: **5.89e-14**, for
+desflurane on a *ventilator start* at the finest step. The next largest is 5.46e-14, for
+desflurane on the held *envelope corner* at the same step (measured
+2026-10-25, `PL-F67Q`). The operator split's worst over the
 same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the
 independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
@@ -4086,10 +4087,11 @@ with the step. Measured on 2026-10-25 (`PL-S86L`):
   peak in the last 1.5 s of a 600 s run. Desflurane peaks there on four of the
   five trajectories. Only sevoflurane on the ventilator start peaks inside a
   transient, 6.4 s after ventilation starts.
-- At 0.05 s and 0.025 s, only two of the nine pairs at each step peak in the
-  last 1.5 s. The ventilator start peaks in the circuit between 236 s and
-  283 s, while ventilation is still off, for every agent at 0.025 s and for
-  two of the three at 0.05 s. The 5.89e-14 above is one of these, at 236.1 s.
+- At 0.05 s, only four of the fifteen pairs peak in the last 1.5 s, and at
+  0.025 s only five do (`PL-F67Q`). The ventilator start peaks in the circuit
+  between 236 s and 283 s, while ventilation is still off, for every agent at
+  0.025 s and for two of the three at 0.05 s. The 5.89e-14 above is one of
+  these, at 236.1 s.
 - At every step, the unperfused load peaks during its loading phase, between
   350.8 s and the phase's end at 600 s, long after the circuit and alveoli
   have saturated.
