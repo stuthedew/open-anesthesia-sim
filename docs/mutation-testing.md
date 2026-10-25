@@ -93,7 +93,9 @@ changed line in the file, such as an import or a helper, selects the whole
 file. A blank line or a comment selects nothing. A branch that only adds tests
 has nothing to compare. On 2026-10-24 the two runs for one changed function in
 `tests/unit/test_dashboard_frame.py` took 197 s together, on four otherwise idle
-cores. Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
+cores, with the display modules' mutants alone. On 2026-10-25, with the core
+modules that file imports added, the same kind of change took 911 s, most of it
+in the branch run over the whole file (`PL-H57W`). Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
 what `bin/docket verify` saw.
 
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
