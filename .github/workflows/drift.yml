@@ -33,13 +33,17 @@ name: drift
 # and its report-only stance, and its own comment explains it (`PL-75D9`).
 # The `doc-quotes` job after it shares them too: it asks whether each quotation
 # of Claude Code's documentation is still on its page (`PL-S7LT`).
+# The `restated-constants` job last shares them as well: it asks whether any
+# test copies a supported-range limit's value instead of importing it
+# (`PL-0Z0F`).
 on:
   schedule:
     # 06:00 UTC on the first of the month. Monthly rather than weekly because
     # the signal is "something moved", and at a weekly cadence most runs would
     # say nothing while still costing a look. CPython ships annually and the
     # libraries here move in weeks, so a month is short enough that a break is
-    # still one version wide when it is found.
+    # still one version wide when it is found. The `restated-constants` job
+    # runs on this line too, and its own comment says why.
     - cron: '0 6 1 * *'
     # 06:00 UTC each Monday, for the `order` and `doc-quotes` jobs. A new
     # order dependence between tests can arrive with any pull request, so it
@@ -334,3 +338,49 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       - run: python3 tools/doc_quote_check.py
+
+  # Does any test copy a supported-range limit's value instead of importing it?
+  #
+  # A test that writes `86_400.0` where it means
+  # `MAXIMUM_ELAPSED_SIMULATION_TIME_S` passes until the limit moves, and then
+  # fails for a reason that is not a defect. `tools/restated_constants.py` runs
+  # the suite once for each numeric constant in `core/supported_ranges.py`,
+  # with that constant widened to a wrong value, and names each failing test
+  # whose file does not import the constant's name (`PL-0Z0F`). A red run names
+  # the tests. Each one should import the name, or compute its expected value
+  # from it, unless it is a pin meant to fail when the limit moves.
+  #
+  # Monthly, on the first cron line, rather than weekly. A copied value does
+  # no harm until a limit moves, and moving one is a deliberate safety-critical
+  # change, made rarely and with `docs/MODEL.md` revised beside it. So finding
+  # a new copy within a month is soon enough, and each run costs four runs of
+  # the suite, one for each limit that is not a floor at zero. The tool's
+  # docstring says why those floors are left alone. Before moving a limit, run
+  # this job by hand.
+  restated-constants:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
+    runs-on: ubuntu-latest
+    # Four runs of the suite, one after another, plus a short rerun of any
+    # test it reports. On 2026-10-25, on a 4-core container, seven runs took
+    # 53 minutes, about 7.5 minutes each. The jobs above put the suite at 9.5
+    # to 14 minutes on a hosted runner, so an honest run here is about 40 to
+    # 60 minutes. 240 minutes leaves four times the slowest of those, as the
+    # jobs above do, so the limit bounds a hang rather than a slow run.
+    timeout-minutes: 240
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The same step as the `dependencies` job's, for the same reason.
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
+      - uses: astral-sh/setup-uv@v9.0.0
+
+      # `--locked`, like `order`: this job varies one constant, so the versions
+      # are the ones every other run tests.
+      - run: uv sync --locked --dev
+
+      - run: uv run python tools/restated_constants.py

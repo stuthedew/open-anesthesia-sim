@@ -983,6 +983,10 @@ SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|not-restated|
 MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|not-restated|absent):")
 DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.(?:json|py)\s.+)$")
 MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.(?:json|py))\s+(?P<assertions>.+)$")
+# A number written with its thousands set apart by spaces, as this project
+# writes them: "86 400 s". `NUMBER_RE` reads that as 86 and 400, so the prose
+# under a marker, and a derived figure, are also read with this (`PL-NH53`).
+GROUPED_NUMBER_RE = re.compile(r"(?<![\d.])\d{1,3}(?: \d{3})+(?:\.\d+)?(?![\d.])")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
 
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
@@ -2382,6 +2386,9 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
             for found in PROSE_FIGURE_RE.finditer(scope_text)
             if found.group("unit") in UNIT_SCALES
         }
+        in_prose |= {
+            float(found.replace(" ", "")) for found in GROUPED_NUMBER_RE.findall(scope_text)
+        }
 
         for relative, key_path, stated, stored in resolved:
             if stated != stored:
@@ -2405,7 +2412,13 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
                 )
 
         if kind == "derived":
-            wanted = [float(number) for number in NUMBER_RE.findall(figure)]
+            # A grouped figure such as "86 400 000 steps" is one number, so it is
+            # read whole before `NUMBER_RE` would split it at its first space.
+            grouped = GROUPED_NUMBER_RE.match(figure.lstrip())
+            if grouped:
+                wanted = [float(grouped.group().replace(" ", ""))]
+            else:
+                wanted = [float(number) for number in NUMBER_RE.findall(figure)]
             if wanted and wanted[0] not in in_prose:
                 report.errors.append(
                     f"{where}: names the derived figure {figure!r}, which is not in the prose "

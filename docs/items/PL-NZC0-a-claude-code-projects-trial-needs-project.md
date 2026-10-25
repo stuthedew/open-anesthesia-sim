@@ -3,7 +3,7 @@ id: PL-NZC0
 title: A Claude Code Projects trial needs project instructions carrying the approach gate and the queue as the only source of work: the coordinator starts threads by default, and thread limits asked for in conversation are preferences rather than caps
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: docs
 feature: projects-trial
 touches: docs/items
@@ -153,3 +153,5 @@ passed both bars, so it is the way of working rather than a trial, and the
 project's rule is that a shared fact has one reviewed home. The choice is the
 owner's because it is a new workflow mechanism. Stuart's request to complete
 the workflow items lifts the generator pause for it.
+
+**Decided, 2026-10-25.** Yes: the coordinator protocol becomes a committed docket skill mode, and the project instructions point at it (project owner, 2026-10-25, ratified, over keeping it in Project settings). Stuart's words: "Agree with Recs except for 3", where 3 was `PL-5S71`'s run.

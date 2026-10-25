@@ -30,12 +30,13 @@ Manual instead and every prompt is denied; the `denials` count in the run's
 record and its log shows that
 (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
-**Effort is the project's own level.** Every run takes `effortLevel` from
-`.claude/settings.json`, the level an interactive session opens at, and passes
-it as `--effort`. The owner set `high` there for all work on 2026-10-19
-(`PL-6XZG`), so the runner keeps no level of its own to fall out of step
-with it (`PL-4N0K`). Without `--effort` every run took Opus 5.5's default,
-`medium` (`PL-KFJY`).
+**The model and effort come from the project's one table.** Each run asks
+`docket.toml`'s `[models]` table for the model and effort of its item, with
+the role `worker`, and passes them as `--model` and `--effort` (`PL-0XDM`). So
+the runner keeps no model or level of its own to fall out of step with the
+sessions' (`PL-4N0K`). Without `--effort` every run took Opus 5.5's default,
+`medium` (`PL-KFJY`). `--model` still overrides the model for one batch, as a
+trial needs.
 
 **`--no-push` is enforced, not asked for.** `PL-6FX6`'s trial runs Sonnet and
 Haiku copies of an item whose work must never leave the machine. The clone's
@@ -112,8 +113,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 import docket.cli as docket_cli  # noqa: E402
+from docket.config import load as load_config  # noqa: E402
 from docket.lines import record_text, split_lines  # noqa: E402
+from docket.model_choice import Choice, item_facts  # noqa: E402
 from docket.shell import BASH_FLOOR  # noqa: E402
+from docket.store import read_items  # noqa: E402
 from docket.vcs import REMOTE, call_git, default_base, read_git  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools"))
@@ -121,15 +125,6 @@ sys.path.insert(0, str(ROOT / "tools"))
 import worker_runs  # noqa: E402
 from doc_check import GNU_MAKE_FLOOR  # noqa: E402
 from open_pull_requests import origin_url  # noqa: E402
-
-#: The model the workers run on (project owner, 2026-10-19, ratified, over
-#: Sonnet 5.5 workers, `PL-80R5`).
-WORKER_MODEL = "claude-opus-5-5"
-
-#: The project settings file whose `effortLevel` every run takes.
-#: `docs/maintainer.md` § "Match effort to the standard the work is held to"
-#: says what it is set to and why.
-PROJECT_SETTINGS = ROOT / ".claude" / "settings.json"
 
 #: Variables Claude Code ranks above `--effort`, so a run that inherited one
 #: would not run at the level chosen for it
@@ -233,17 +228,41 @@ def run_docket_delegable() -> str:
     return out.getvalue()
 
 
-def read_effort_level(settings: Path = PROJECT_SETTINGS) -> str:
-    """The `effortLevel` the project's settings file holds.
+def role_choice(role: str, root: Path = ROOT) -> Choice:
+    """The model and effort `docket.toml`'s `[models]` table chooses for `role`.
 
     Raises:
-        Refused: the file sets no `effortLevel`, so no level is chosen and a
-            run would silently take the model's default.
+        Refused: the file has no `[models]` table, so no model is chosen and a
+            run would silently take the account's default.
     """
-    level = json.loads(settings.read_text(encoding="utf-8")).get("effortLevel")
-    if not isinstance(level, str) or not level:
-        raise Refused(f"{settings} sets no effortLevel, so no effort is chosen.")
-    return level
+    table = load_config(root).models
+    if table is None:
+        raise Refused(f"{root / 'docket.toml'} has no [models] table, so no model is chosen.")
+    return table.choose({"role": role})
+
+
+def worker_choices(items: Sequence[str], root: Path = ROOT) -> dict[str, Choice]:
+    """The model and effort the `[models]` table chooses for each item a worker runs.
+
+    The table sees each item's own facts, such as its classes and areas, with
+    the role `worker` in place of `delegable`. An item the store does not hold
+    is asked with the role alone.
+
+    Raises:
+        Refused: the file has no `[models]` table.
+    """
+    config = load_config(root)
+    table = config.models
+    if table is None:
+        raise Refused(f"{root / 'docket.toml'} has no [models] table, so no model is chosen.")
+    held = {item.identifier: item for item in read_items(root / config.items_dir)}
+    chosen: dict[str, Choice] = {}
+    for identifier in items:
+        found = held.get(identifier)
+        facts = item_facts(found, table, config.workflow_paths, delegable=True) if found else {}
+        facts["role"] = "worker"
+        chosen[identifier] = table.choose(facts)
+    return chosen
 
 
 #: Where `docs/maintainer.md` says how to install the bash and make a worker needs.
@@ -616,7 +635,9 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         required=True,
         help="the credit left, in US dollars, as the Console's billing page shows it now",
     )
-    parser.add_argument("--model", default=WORKER_MODEL, help=f"default {WORKER_MODEL}")
+    parser.add_argument(
+        "--model", default=None, help="override the model docket.toml's [models] table chooses"
+    )
     parser.add_argument("--item", action="append", default=[], help="an item to run; repeatable")
     parser.add_argument("--runs", type=int, default=1, help="without --item, how many to run")
     parser.add_argument("--per-run-usd", type=float, default=15.0, help="cap on one run")
@@ -635,7 +656,7 @@ def main(
     *,
     environ: Mapping[str, str] = os.environ,
     docket: Callable[[], str] = run_docket_delegable,
-    effort_level: Callable[[], str] = read_effort_level,
+    models: Callable[[Sequence[str]], Mapping[str, Choice]] = worker_choices,
     tools: Callable[[Mapping[str, str]], None] = check_tools,
     awake: Callable[[], str] = keep_awake,
 ) -> int:
@@ -644,15 +665,21 @@ def main(
         env = child_environment(environ)
         tools(env)
         items = choose(delegable_ids(docket), args.item, args.runs)
-        level = effort_level()
-        efforts = {item: level for item in items}
+        choices = models(items)
+        chosen_models = {item: args.model or choices[item].model for item in items}
+        efforts = {item: choices[item].effort for item in items}
         origin = origin_url(ROOT)
         if not origin:
             raise Refused(f"git could not name {REMOTE}'s URL, so there is nothing to clone.")
         left = args.credit_left
         if args.dry_run:
-            chosen = ", ".join(f"{item} at {efforts[item]}" for item in items) or "nothing"
-            print(f"Would run {chosen} effort on {args.model}; ${left:.2f} of credit left.")
+            chosen = (
+                ", ".join(
+                    f"{item} on {chosen_models[item]} at {efforts[item]} effort" for item in items
+                )
+                or "nothing"
+            )
+            print(f"Would run {chosen}; ${left:.2f} of credit left.")
             return 0
         print(awake())
         for item in items:
@@ -661,7 +688,7 @@ def main(
                 break
             run = work(
                 item,
-                model=args.model,
+                model=chosen_models[item],
                 effort=efforts[item],
                 per_run_usd=args.per_run_usd,
                 no_push=args.no_push,

@@ -210,7 +210,9 @@ def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
 
-@pytest.mark.parametrize("newest_instant_s", [-1.0, -0.001, math.nan, math.inf, 86_400.1])
+@pytest.mark.parametrize(
+    "newest_instant_s", [-1.0, -0.001, math.nan, math.inf, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1]
+)
 def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: float) -> None:
     """An axis drawn against a width nobody can account for is worse than none.
 
