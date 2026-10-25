@@ -6616,9 +6616,9 @@ not debt, `PL-5B1N`, is on it too, because a freeze carries every open entry of
 the previous list (`PL-JV5Q`). One item was untriaged at the cut: `PL-HDRN`,
 filed on 2026-10-24 with `PL-TDV9`'s pull request, which asks `bin/docket arm`
 to hold a simulator pull request whose blind review passes never ran. An
-untriaged item carries no class, so the class filter cannot read it. If its
-triage classes it as debt, it joins the second group, as Gate 2's thirteen
-untriaged entries did. How many
+untriaged item carries no class, so the class filter cannot read it. It was
+classed `infra`, which is not debt, and closed the same day by #1767, so it is
+not on this list. How many
 entries are closed is not recorded here, because a count written into a
 document goes stale the next time an item closes. `bin/docket wave` reads the
 list against `docs/items/` and reports it.
