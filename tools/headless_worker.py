@@ -112,7 +112,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 import docket.cli as docket_cli  # noqa: E402
-from docket.lines import split_lines  # noqa: E402
+from docket.lines import record_text, split_lines  # noqa: E402
 from docket.shell import BASH_FLOOR  # noqa: E402
 from docket.vcs import REMOTE, call_git, default_base, read_git  # noqa: E402
 
@@ -256,10 +256,10 @@ def tool_version(argv: Sequence[str], prefix: str) -> tuple[int, int] | None:
     None means the command could not run or printed no version after `prefix`.
     """
     try:
-        done = subprocess.run(list(argv), capture_output=True, text=True, check=False, timeout=30)
+        done = subprocess.run(list(argv), capture_output=True, check=False, timeout=30)
     except (OSError, subprocess.SubprocessError):
         return None
-    text = done.stdout.strip()
+    text = record_text(done.stdout).strip()
     if not text.startswith(prefix):
         return None
     found = re.match(r"(\d+)\.(\d+)", text[len(prefix) :])
