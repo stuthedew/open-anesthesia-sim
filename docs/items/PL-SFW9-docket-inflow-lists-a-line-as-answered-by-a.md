@@ -3,11 +3,13 @@ id: PL-SFW9
 title: docket inflow lists a line as answered by a successor head whatever the successor's status, so a line re-entered after its successor closed spent still reads as settled, where a no-successor answer is reopened by three later filings; PL-5DZ8 read as answered by PL-4S6C (done) while PL-TSXD re-entered it (found recording PL-N4FP)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/tests/test_inflow.py
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1757
 payoff: a mechanism that starts producing again after its successor head closed shows up as open in docket inflow, instead of being found only by a session reading items by hand
 verify: grep -qE 'def test_[a-z_]*successor[a-z_]*(closed|after)' subprojects/docket/tests/test_inflow.py
 impairs-generators: inflow.analyze builds successors from every head whose reenters names a line, whatever that head's status, and counts no filings after the head closed, so a line re-entered after its successor closed reads as settled and no generator is recorded
