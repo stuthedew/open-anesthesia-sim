@@ -348,19 +348,44 @@ def test_a_pr_field_read_by_hand_is_refused(tmp_path: Path) -> None:
     assert "So read the number with `model.pr_number`" in printed
 
 
-def test_pr_number_of_the_pr_field_and_other_digit_tests_are_accepted(tmp_path: Path) -> None:
+def test_pr_number_of_the_pr_field_and_whole_number_elsewhere_are_accepted(tmp_path: Path) -> None:
     """The one reader passes, and so do a presence test and digits that are not a `pr:` value."""
     _tree(
         tmp_path,
         tools__body=(
+            "from docket.digits import whole_number\n"
             "from docket.model import pr_number\n\n"
             "def number(item, count, number):\n"
-            "    if item.pr and pr_number(item.pr.strip()) is not None and count.isdigit():\n"
+            "    if item.pr and pr_number(item.pr.strip()) is not None and whole_number(count):\n"
             "        return item.pr == number, int(item.priority[1:])\n"
         ),
     )
 
     assert analyze(tmp_path, baseline={}).errors == 0
+
+
+def test_a_digit_test_outside_the_whole_number_reader_is_refused(tmp_path: Path) -> None:
+    """`PL-PNGQ`: `isdigit` and its kin are true for a superscript digit that `int` refuses."""
+    _tree(
+        tmp_path,
+        tools__count=(
+            "def count(said, word):\n"
+            "    if said.isdigit() or word.isdecimal() or word.isnumeric():\n"
+            "        return int(said)\n"
+        ),
+        docket__digits=(
+            "def whole_number(text):\n    return int(text) if text.isdigit() else None\n"
+        ),
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 1
+    for test in ("isdigit", "isdecimal", "isnumeric"):
+        assert f"tools/count.py:2: {test}() in count" in printed
+    assert "digits.py:" not in printed
+    assert "So read the number with `digits.whole_number`" in printed
 
 
 def test_the_baseline_covers_what_it_names_and_refuses_one_more(tmp_path: Path) -> None:

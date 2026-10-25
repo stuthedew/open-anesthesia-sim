@@ -165,6 +165,9 @@ hand-written forms of a predicate one module owns, where the syntax shows
 them. A membership test of `OPEN_STATUSES` or `CLOSED_STATUSES` outside
 `docket.model` is refused, because `Item.is_open` already answers it. So is
 an `isdigit`, `int` or pattern match applied to the `pr` field, because
-`model.pr_number` already reads it. A predicate that the check cannot
+`model.pr_number` already reads it. Since `PL-PNGQ` any other `isdigit`,
+`isdecimal` or `isnumeric` call outside `docket.digits` is refused too, because
+each is true for `'²'`, which `int` then refuses, and `digits.whole_number`
+already reads a whole number. A predicate that the check cannot
 recognise from its syntax, such as digits that only their source shows to be
 a pull request number, is still the judgment half.
