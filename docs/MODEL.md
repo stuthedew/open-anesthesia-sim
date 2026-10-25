@@ -4577,7 +4577,12 @@ gives the agent back during the washout. That keeps the circuit fraction high,
 and therefore the inspired fraction too, which *slows* the alveolar fall.
 Desflurane's residual is this model washing out too **fast**. A mechanism that
 can only slow a washout cannot produce that residual. So no amount of wall
-absorption would have helped, whatever the measurement had said.
+absorption would have helped, whatever the measurement had said. This model
+has no wall term, so a test cannot vary one. The circuit volume is the one
+circuit-side store it has, and
+`test_a_larger_circuit_can_only_slow_the_elimination` pins the direction on
+it (`PL-P1P6`). For every agent, the five-minute $`F_A/F_{A0}`$ rises at each
+step from half to twice the stored circuit volume.
 
 **The same study finds that a real circuit measurably retards sevoflurane and
 isoflurane. That is a limitation of this simulator, but it is not a candidate
