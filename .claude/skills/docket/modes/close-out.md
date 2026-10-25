@@ -319,3 +319,32 @@ page and decides which file a session reads.
    `PL-PRCS` records what the step costs. `PL-J6CK` measured what it buys on
    2026-10-19: long prose from the branch that ran it was awkward in 22% of
    blind verdicts, against 58% from branches that skipped it, so it is kept.
+
+9. **Run the blind generalist review passes on a simulator branch, before step
+   6's review, step 8's prose review and step 5's audit**, because a fix for a
+   finding changes the files those steps read. Every simulator pull request
+   gets one pass before it merges. One that changes the model's code, its
+   parameter files or `docs/MODEL.md` gets a second (project owner, 2026-10-24,
+   ratified, over two passes everywhere and over one pass everywhere,
+   `PL-TDV9`). `docket.arming.SECOND_PASS_PATHS` holds that list of paths.
+   `PL-TBQS`'s replay of 20 merged simulator pull requests found that one
+   blind generalist named about half of the defects filed later, as many as a
+   three-specialist panel.
+
+   Commit the work, then run `python3 tools/blind_review.py`. It prints how
+   many passes the branch owes. Where it owes none, this step is done.
+   Otherwise it builds one directory per pass outside the repository, holding
+   only the committed tree and the branch's diff, and prints one brief per
+   pass. Start one `general-purpose` subagent per brief, all in one message,
+   at the session's own model and effort. Give each its brief exactly as
+   printed and nothing else, so no pass sees this session's reasoning or
+   another pass's findings.
+
+   Treat each finding as a review comment on your own pull request. Check it
+   against the code first, because a reviewer can be wrong. Fix a real
+   `blocking` or `should-fix` finding on this branch, with the regression test
+   the standards ask for. File a real finding that is not this change's with
+   `bin/docket new`. Fix an `optional` one only where it is plainly correct
+   and small. List every finding in the pull request body with what happened
+   to it: fixed in a named commit, filed as an item, or rejected with the
+   reason. A fix made for a finding needs no further pass.

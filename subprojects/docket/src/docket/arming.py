@@ -509,6 +509,15 @@ READ_LIST = (
     "src/anesthesia_sim/data/ and README.md"
 )
 
+#: The paths whose change earns a second blind generalist review pass: the
+#: model's code, its parameter files and its specification. `CLAUDE.md`'s
+#: fix-in-place rule treats the same three as the clinical floor. A missed
+#: defect here can produce a wrong clinical value, so the second pass is spent
+#: here and not on every simulator change (project owner, 2026-10-24, ratified,
+#: over two passes on every simulator pull request and over one pass
+#: everywhere, `PL-TDV9`).
+SECOND_PASS_PATHS = ("src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md")
+
 
 def imports_product(tree: ast.Module) -> bool:
     """Whether a file imports the simulator, which makes any file under `tests/` the simulator's.
@@ -570,6 +579,26 @@ def waits_on_read(path: str, tooling: Collection[str] = ()) -> bool:
     return any(
         path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in READ_PATHS
     )
+
+
+def blind_passes(paths: Iterable[str], tooling: Collection[str] = ()) -> int:
+    """How many blind generalist review passes a change to `paths` owes before it merges.
+
+    None where no path is the simulator's, as `waits_on_read` decides it. Two
+    where a path lies under `SECOND_PASS_PATHS`, and one otherwise.
+    `PL-TBQS`'s replay of 20 merged simulator pull requests chose generalist
+    passes over a specialist panel, and the owner kept the second pass for the
+    clinical paths (`PL-TDV9`). `tools/blind_review.py` reads this.
+    """
+    simulator = [path for path in paths if waits_on_read(path, tooling)]
+    if not simulator:
+        return 0
+    second = any(
+        path == entry or (entry.endswith("/") and path.startswith(entry))
+        for path in simulator
+        for entry in SECOND_PASS_PATHS
+    )
+    return 2 if second else 1
 
 
 def arms_on_green(path: str, tooling: Collection[str] = ()) -> bool:

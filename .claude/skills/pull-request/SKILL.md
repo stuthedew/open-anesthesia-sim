@@ -37,6 +37,16 @@ carrying only captured items is not a pull request", `PL-WNCT`).
 first (`PL-S5MF`). Where a claim rides that first push, open the pull request as
 a draft, as `.claude/skills/docket/modes/start.md` explains.
 
+## Run the blind review passes before a simulator pull request is ready
+
+**A simulator pull request is not marked ready or armed until its blind
+generalist review passes have run and their findings are dealt with.**
+`python3 tools/blind_review.py` says how many it owes: one, or two where it
+changes the model's code, its parameter files or `docs/MODEL.md`. Close-out
+step 9 in `.claude/skills/docket/modes/close-out.md` says how to run them and
+where their findings go: fixed on the branch, filed as items, or rejected,
+each listed in the pull request body (`PL-TDV9`).
+
 ## Ask `bin/docket arm` before arming and before every later push
 
 **Whether a pull request arms is `bin/docket arm`'s answer, asked before
