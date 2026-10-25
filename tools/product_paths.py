@@ -38,3 +38,5 @@ APP_DIR = f"{PACKAGE_DIR}/app"
 DATA_DIR = f"{PACKAGE_DIR}/data"
 #: The Workspace, Area and View layout model.
 LAYOUT_DIR = f"{PACKAGE_DIR}/layout"
+#: The specification of the implemented model, relative to the repository root.
+MODEL_DOC = "docs/MODEL.md"

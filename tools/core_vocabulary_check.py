@@ -96,14 +96,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "subprojects" / "do
 from docket.roadmap import section_table
 
 from check_support import run_report
-from product_paths import CORE_DIR
+from product_paths import CORE_DIR, MODEL_DOC
 from workflow_paths_check import tracked_under
 
 #: The tree whose vocabulary is governed, relative to the repository root.
 CORE_TREE = CORE_DIR
 
-#: The specification the symbol map is read from.
-MODEL_DOC = "docs/MODEL.md"
 
 #: The section holding it, and the column naming the implementation.
 SYMBOLS_HEADING = "Symbols"

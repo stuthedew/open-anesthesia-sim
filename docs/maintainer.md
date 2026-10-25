@@ -785,6 +785,36 @@ the runner's last one forward. Runners before `PL-NQ0M` kept a ledger at
 `~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads
 it now, so you can delete it.
 
+## Have Fable 5.1 read the model document against the data, once
+
+`tools/model_doc_review.py` sends `docs/MODEL.md` and every data file under
+`src/anesthesia_sim/data/` to Fable 5.1 through the Message Batches API, on the
+same API credit as the headless workers (`PL-5S71`). It sends one request per
+`##` section, 25 on 2026-10-25, and each request carries the whole document and
+the data. The model reports statements in its section that contradict a stored
+value, another statement or their own units. A session then checks each one and
+files the confirmed ones. Run it on your Mac from a checkout of `main`, with the
+key exported as in § "Spend the monthly API credit on delegable items", steps 1
+to 3.
+
+1. `uv run python tools/model_doc_review.py estimate` prints the number of
+   requests and the most the batch could cost, and sends nothing. On
+   2026-10-25 the bound was $66.91. The bound assumes no prompt-cache hit and
+   every request using its full output allowance, so the bill should be well
+   below it.
+2. `uv run python tools/model_doc_review.py submit --credit-left 197.72`, with
+   the figure from platform.claude.com/settings/billing, sends the batch. It
+   refuses when the bound is more than the credit left. It prints a batch id
+   that starts `msgbatch_`, and saves a manifest in
+   `~/.local/state/open-anesthesia-sim/model-doc-review/`.
+3. `uv run python tools/model_doc_review.py fetch <batch id>` reports progress
+   until the batch ends. Most batches end within an hour, and all within 24
+   hours. Once it has ended, it prints one line per section and writes
+   `<batch id>.findings.json` in the same folder.
+4. Attach that findings file to a project thread and ask for `PL-5S71`'s
+   findings to be checked. A section marked `not reviewed` names its reason,
+   and can be sent again in a later batch.
+
 ## Run tag-release yourself where a session cannot
 
 `.github/workflows/tag-release.yml` tags each release on the commit that cut
