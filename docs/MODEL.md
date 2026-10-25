@@ -10825,10 +10825,11 @@ already missing its largest measured component. All else equal, the tail
 falls faster than the measurement from about the third hour. Neither omission
 moves the 24 hours by itself, and the measured gap does not either.
 § "The first 24 hours of elimination against the published mean
-curves" puts the shipped tail a third below the published mean curves from
-about the seventh hour to the twenty-first. For desflurane the tail is half the
-published mean, from 3.4 to 15.3 hours. The shipped tail is above the curves
-before and after that span. § "Supported run length" records why that leaves
+curves" puts the shipped tail below the published mean curves from about the
+seventh hour to the twenty-first, by about a third at the widest point. For
+desflurane the tail is below them from 3.4 to 15.3 hours, by about half at the
+widest point, near 8 hours. The shipped tail is above the curves before and
+after that span. § "Supported run length" records why that leaves
 the number where it is (`PL-KK1Q`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
