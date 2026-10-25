@@ -3,11 +3,12 @@ id: PL-84G1
 title: core/circuit.py set_circuit_volume checks the stored agent against the circuit volume by hand, with a vaguer message, instead of calling validation.require_room_for_the_agent_held as the alveolar, blood and tissue compartments do
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
-touches: src/anesthesia_sim/core/circuit.py, tests/unit/test_circuit.py
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_circuit.py
 added: 2026-10-19
+closed: 2026-10-25
 payoff: a refused circuit volume names the volume, the agent held and the room left, as the other three compartments' refusals already do
 verify: grep -q 'require_room_for_the_agent_held' src/anesthesia_sim/core/circuit.py
 ---
@@ -19,3 +20,5 @@ verify: grep -q 'require_room_for_the_agent_held' src/anesthesia_sim/core/circui
 **Done when.** `BreathingCircuit.set_circuit_volume` calls `validation.require_room_for_the_agent_held` with the circuit's capacity and its section of `docs/MODEL.md`. A test in `tests/unit/test_circuit.py` pins the new message, and the refused volume still leaves the circuit unchanged.
 
 **Checked 2026-10-24.** `set_circuit_volume` in `src/anesthesia_sim/core/circuit.py` raises `SimulationConfigurationError("circuit_volume_l is smaller than stored agent")` by hand. `require_room_for_the_agent_held` is called from `alveolar.py`, `blood.py` and `tissue.py`, and not from `circuit.py`.
+
+**Built 2026-10-25.** `set_circuit_volume` calls `require_room_for_the_agent_held` with the "Breathing circuit" section, and `tests/unit/test_circuit.py` pins the new message and the unchanged circuit.

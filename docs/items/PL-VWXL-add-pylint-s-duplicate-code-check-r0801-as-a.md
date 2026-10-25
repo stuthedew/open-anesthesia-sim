@@ -3,13 +3,14 @@ id: PL-VWXL
 title: Add pylint's duplicate-code check (R0801) as a ratchet over src/, tools/ and subprojects/docket/, with a baseline that can only shrink
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor, infra
 feature: one-source-of-truth
 touches: Makefile, pyproject.toml, uv.lock, tools/, tests/unit/, docs/apparatus.md, docket.toml, .github/workflows/quality.yml, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/validation.py
 blocked-by: PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)
 added: 2026-10-19
+closed: 2026-10-25
 payoff: copied logic fails make check instead of drifting apart
 verify: ! grep -q 'anesthesia_sim.core.blood' tools/duplicate_code_check.py
 ---
@@ -31,3 +32,5 @@ verify: ! grep -q 'anesthesia_sim.core.blood' tools/duplicate_code_check.py
 **What is left.** The pair `core/blood.py` and `core/tissue.py`: both make the same capacity and room checks when a partition coefficient is written. Removing it means a helper in `core/validation.py`, which is the clinical floor, so it is built with the core batch (`PL-84G1`, `PL-YHWH`, `PL-M85T`, `PL-6YKY`) and this item closes there, with `ALLOWED_BLOCKS` empty.
 
 **Blind review, 2026-10-25.** One pass on #1765 returned three `should-fix` findings in `tools/duplicate_code_check.py`, all fixed in `cfce8730`: a module pylint could not parse dropped out of the comparison silently, a block in three modules raised instead of being reported, and a contributor's own pylintrc could change the count.
+
+**Finished 2026-10-25.** The last block is gone. `core/validation.py` now holds `require_a_capacity_with_room_for_the_agent`, which makes the capacity check and the room-for-the-agent check together. The venous pool and each tissue group call it when a volume or a partition coefficient is written. `ALLOWED_BLOCKS` is empty, so any new copied block fails `make check`.

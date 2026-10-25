@@ -3,11 +3,12 @@ id: PL-6YKY
 title: Field guards in core/ match a field's name as a string (circuit.py's __setattr__ tests name == "circuit_volume_l", blood.py and tissue.py test name == "volume_l"), so renaming the field leaves its validation keyed to a name nothing sets any more and the check stops running without an error
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: one-source-of-truth
 touches: tests/unit/test_field_guards.py
 added: 2026-10-25
+closed: 2026-10-25
 payoff: a field guard in core/ cannot stop running because its field was renamed
 verify: grep -q 'def test_every_name_a_core_field_guard_compares_with_is_a_field' tests/unit/test_field_guards.py
 ---
@@ -21,3 +22,5 @@ verify: grep -q 'def test_every_name_a_core_field_guard_compares_with_is_a_field
 **Recommendation.** Keep the guards as they are, and add one test that reads each guarded class's `__setattr__` and checks that every name it compares with is a field of that class. That makes the next drift fail without restructuring seven modules. Replacing the string comparisons with a table keyed by field was considered; it would still key the table by name, so it moves the copy rather than removing it.
 
 **Done when.** A test under `tests/unit/` fails when a guard in `core/` compares with a name that is not a field of its class, and passes on the current tree. A deliberately misspelt guard name, tried once by hand, makes it fail.
+
+**Built 2026-10-25.** `tests/unit/test_field_guards.py` reads each `__setattr__` in `core/` and checks that every name it compares with is a field of its class. It found seven guarded classes, and fails if it finds fewer. A comparison with something other than a string or a string constant fails it too. A misspelt guard in `core/circuit.py`, tried once by hand, made it fail.
