@@ -995,6 +995,62 @@ class NoticeLabel(QLabel):
         return self._notice
 
 
+def lay_out_question(
+    dialog: QDialog, title: str, body: Sequence[QLabel], action_label: str, keep_label: str
+) -> tuple[QLabel, QPushButton, QPushButton]:
+    """Build a modal question that asks before something is discarded or changed.
+
+    `NewCaseDialog` and `WorkspaceQuestionDialog` are both laid out this way.
+    The title comes first. The `body` labels follow it, each at the dialog's fixed width.
+    The two buttons come last, with the destructive button first and the safe button last.
+    The action button is outlined and is never the default. The keep button is filled
+    and is the default. So pressing Return keeps everything as it was. Pressing Escape
+    or closing the dialog does the same. The action button's `clicked` signal runs
+    `accept()`, and the keep button's `clicked` signal runs `reject()`.
+
+    Args:
+        dialog: The dialog to build. This function calls `declare_interface_colours`
+            on it, which declares the dialog's surface.
+        title: The question, shown as the window title and as the first label.
+        body: The statements under the title, in reading order.
+        action_label: The destructive action's text.
+        keep_label: The safe action's text.
+
+    Returns:
+        The title label, the action button and the keep button.
+    """
+
+    dialog.setModal(True)
+    dialog.setWindowTitle(title)
+    declare_interface_colours(dialog)
+    title_label = styled_label(title, color=INK, bold=True, wrap=True)
+    action_button = QPushButton(action_label)
+    action_button.setAutoDefault(False)
+    action_button.setDefault(False)
+    action_button.setStyleSheet(outlined_button_stylesheet())
+    keep_button = QPushButton(keep_label)
+    keep_button.setDefault(True)
+    keep_button.setStyleSheet(filled_button_stylesheet())
+
+    column = QVBoxLayout(dialog)
+    column.setSpacing(NEW_CASE_DIALOG_SPACING)
+    column.addWidget(title_label)
+
+    for label in body:
+        label.setFixedWidth(NEW_CASE_DIALOG_WIDTH)
+        column.addWidget(label)
+
+    actions = QHBoxLayout()
+    actions.addStretch(1)
+    actions.addWidget(action_button)
+    actions.addWidget(keep_button)
+    column.addLayout(actions)
+
+    action_button.clicked.connect(dialog.accept)
+    keep_button.clicked.connect(dialog.reject)
+    return title_label, action_button, keep_button
+
+
 class NewCaseDialog(QDialog):
     """The confirmation asked before a recorded run is discarded for a new agent.
 
@@ -1036,40 +1092,15 @@ class NewCaseDialog(QDialog):
         """
 
         super().__init__(parent)
-        self.setModal(True)
-        self.setWindowTitle(question.title)
-        declare_interface_colours(self)
-        self.title_label = styled_label(question.title, color=INK, bold=True, wrap=True)
         opening, discard_warning, carry_over = question.body
         self.body_labels = (
             styled_label(opening, color=INK, wrap=True),
             styled_label(discard_warning, color=WARNING, bold=True, wrap=True),
             styled_label(carry_over, color=MUTED, wrap=True),
         )
-        self.discard_button = QPushButton(question.discard_label)
-        self.discard_button.setAutoDefault(False)
-        self.discard_button.setDefault(False)
-        self.discard_button.setStyleSheet(outlined_button_stylesheet())
-        self.keep_button = QPushButton(question.keep_label)
-        self.keep_button.setDefault(True)
-        self.keep_button.setStyleSheet(filled_button_stylesheet())
-
-        column = QVBoxLayout(self)
-        column.setSpacing(NEW_CASE_DIALOG_SPACING)
-        column.addWidget(self.title_label)
-
-        for label in self.body_labels:
-            label.setFixedWidth(NEW_CASE_DIALOG_WIDTH)
-            column.addWidget(label)
-
-        actions = QHBoxLayout()
-        actions.addStretch(1)
-        actions.addWidget(self.discard_button)
-        actions.addWidget(self.keep_button)
-        column.addLayout(actions)
-
-        self.discard_button.clicked.connect(self.accept)
-        self.keep_button.clicked.connect(self.reject)
+        self.title_label, self.discard_button, self.keep_button = lay_out_question(
+            self, question.title, self.body_labels, question.discard_label, question.keep_label
+        )
 
 
 class MarkRow(QWidget):

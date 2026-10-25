@@ -88,6 +88,10 @@ TEXT_MODE_KEYWORDS = frozenset({"text", "universal_newlines", "encoding", "error
 #: hold a raw `\r`, so the translation costs none of them a line.
 TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
     (
+        "tools/duplicate_code_check.py",
+        "run_pylint",
+    ): "runs pylint, whose JSON report is pylint's, not git's",
+    (
         "subprojects/docket/src/docket/cli.py",
         "_run_forge_command",
     ): "runs a project's configured forge command, whose answer is the forge's, not git's",

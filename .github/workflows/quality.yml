@@ -277,6 +277,9 @@ jobs:
       # trees it reads are held to the floor themselves, where `src/` is not,
       # which is why the eight tools further down are not here (`PL-4S6C`).
       - run: python3 tools/fact_home_check.py
+      # Bare: it reads configuration files as text and parses no Python. It
+      # refuses a configuration copy that differs from its home (`PL-SH0W`).
+      - run: python3 tools/config_home_check.py
       # Bare, unlike the `--verify` line further down: nothing has installed
       # `uv` at this point in the job, so every `verify:` command would be "not
       # found" and the replay would decline rather than answer. What is being
@@ -313,6 +316,11 @@ jobs:
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
       - run: uv run python tools/ignore_check.py
+        if: steps.scope.outputs.scope != 'items'
+      # Under `uv run` because it runs pylint, a `dev` dependency, for its
+      # duplicate-code check alone. An item file holds no code, so the fast
+      # path skips it (`PL-VWXL`).
+      - run: uv run python tools/duplicate_code_check.py
         if: steps.scope.outputs.scope != 'items'
       # `make check`'s pytest line, with `--cov-fail-under=100` replaced by
       # `--cov-report= --part 1/2`, and it has to stay that way: `core/` is at
