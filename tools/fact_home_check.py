@@ -36,12 +36,13 @@ Three rules over every tracked Python file under `tools/`,
    second answer to whether an item is open (`PL-TSXD`). An `isdigit`, `int`
    or pattern match applied to the `pr` field itself (`x.pr`, `x["pr"]`,
    `x.get("pr")`) is a second reading of `model.pr_number` (`PL-4DK2`).
-   Digits read from anywhere else are not refused, because whether a string
-   is a pull request number is decided by where it was read, which the
-   syntax does not show: `isdigit` reads counts and line numbers too, so a
-   forge command's output, a record's file name and a ref name reach
-   `pr_number` by review rather than by this check (`PL-N4FP`). This rule
-   started with an empty baseline.
+   Any other `isdigit`, `isdecimal` or `isnumeric` call is a second reading
+   of `digits.whole_number`, since each is true for `'²'`, which `int` then
+   refuses (`PL-PNGQ`). Whether digits read elsewhere are a pull request
+   number is decided by where they were read, which the syntax does not
+   show, so a forge command's output, a record's file name and a ref name
+   reach `pr_number` by review rather than by this check (`PL-N4FP`). This
+   rule started with an empty baseline.
 
 The sites the tree held when this landed sat in `BASELINE`, keyed by file,
 rule and enclosing scope and never by line. It only shrinks: a count above an
@@ -219,6 +220,18 @@ PREDICATES: tuple[Home, ...] = (
         ),
         remedy="read the number with `model.pr_number`",
     ),
+    Home(
+        rule="whole-number",
+        reads="tests text for digits by hand",
+        where=((DOCKET + "digits.py", None),),
+        why=(
+            "`digits.whole_number` is the one reading of a whole number in ASCII digits; "
+            "`isdigit`, `isdecimal` and `isnumeric` are each true for `'²'`, which `int` "
+            "then refuses with `ValueError`, so a count tested that way crashes where it "
+            "should read as no number (`PL-PNGQ`)"
+        ),
+        remedy="read the number with `digits.whole_number`",
+    ),
 )
 
 #: The names rule 3's `item-status` entry looks for on the right of `in`.
@@ -366,6 +379,8 @@ class _Readers(ast.NodeVisitor):
                 self._record(node, "shell-lexer", f"shlex.{function}")
         if (read := _hand_read_pr(node)) is not None:
             self._record(node, "pr-number", read)
+        elif isinstance(node.func, ast.Attribute) and node.func.attr in DIGIT_TESTS:
+            self._record(node, "whole-number", f"{node.func.attr}()")
         self.generic_visit(node)
 
     def visit_Compare(self, node: ast.Compare) -> None:

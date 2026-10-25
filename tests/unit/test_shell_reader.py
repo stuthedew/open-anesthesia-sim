@@ -39,7 +39,7 @@ HOOKS = REPO / ".claude" / "hooks"
 GUARD_IMPORTS = "import json, os, re, sys"
 
 #: The modules a guard's import of `shell_split` may add to those.
-LOADED = ["docket", "docket.shell", "shell_split"]
+LOADED = ["docket", "docket.digits", "docket.shell", "shell_split"]
 
 
 def _bare(script: str, cwd: Path) -> str:
