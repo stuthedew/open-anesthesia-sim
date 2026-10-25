@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: tools/, subprojects/docket/src/docket/
 added: 2026-10-24
 closed: 2026-10-25

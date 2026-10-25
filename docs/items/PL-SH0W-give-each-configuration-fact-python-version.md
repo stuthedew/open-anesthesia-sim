@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: pyproject.toml, Makefile, .github/workflows/, tools/, tests/unit/, docs/apparatus.md, docket.toml
 blocked-by: v0.6.0, PL-K88Z
 added: 2026-10-19

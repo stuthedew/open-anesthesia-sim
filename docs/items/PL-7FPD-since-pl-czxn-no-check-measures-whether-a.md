@@ -5,6 +5,7 @@ priority: P1
 effort: L
 status: done
 classes: safety
+milestone: v0.6.3
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml, docs/mutation-testing.md, .claude/skills/docket/modes/close-out.md
 added: 2026-10-24
 closed: 2026-10-24
