@@ -13,11 +13,6 @@ every category it names has the value it gives, and the first rule that holds
 decides. A new category is therefore a data edit: a reader that knows the fact
 passes it, and a rule that names a category no reader passes never holds.
 
-`excluded` lists the models nothing uses unless the project owner names one
-for that work (project owner, 2026-10-25: "Nothing should be using fable
-anymore unless I specifically say"). The default may not be one of them. A
-rule may name one, because a rule in this table is the owner naming it.
-
 `areas` names parts of the tree by path, so a rule can match where the work
 is, such as the simulator's core against the interface. An item's areas are
 those its `touches` reach.
@@ -33,7 +28,7 @@ from .model import Item, is_under
 #: The table's name in `docket.toml`.
 MODELS_TABLE = "models"
 #: The keys the table may hold.
-TABLE_KEYS = frozenset({"default", "excluded", "areas", "prices", "rule"})
+TABLE_KEYS = frozenset({"default", "areas", "prices", "rule"})
 #: The keys a rule may hold. `match` is required, with `model`, `effort` or both.
 RULE_KEYS = frozenset({"match", "model", "effort", "why"})
 #: The effort levels Claude Code accepts, lowest first (Claude Code docs,
@@ -89,7 +84,6 @@ class ModelTable:
 
     model: str
     effort: str
-    excluded: tuple[str, ...] = ()
     #: Each area's name and the paths it covers.
     areas: tuple[tuple[str, tuple[str, ...]], ...] = ()
     rules: tuple[ModelRule, ...] = ()
@@ -167,13 +161,7 @@ def parse(data: Mapping[str, object], source: str) -> ModelTable:
         raise ValueError(
             f"{source}: [{MODELS_TABLE}] default must name exactly `model` and `effort`"
         )
-    excluded = _strings(data.get("excluded", []), f"{source}: [{MODELS_TABLE}] excluded")
     model = _model(default["model"], f"{source}: [{MODELS_TABLE}] default.model")
-    if model in excluded:
-        raise ValueError(
-            f"{source}: [{MODELS_TABLE}] default.model is {model}, which `excluded` lists; "
-            "only a rule may name an excluded model"
-        )
     effort = _effort(default["effort"], f"{source}: [{MODELS_TABLE}] default.effort")
     areas_data = data.get("areas", {})
     if not isinstance(areas_data, dict):
@@ -198,7 +186,7 @@ def parse(data: Mapping[str, object], source: str) -> ModelTable:
         (name, *_price(entry, f"{source}: [{MODELS_TABLE}.prices] {name}"))
         for name, entry in prices_data.items()
     )
-    return ModelTable(model, effort, excluded, areas, rules, prices)
+    return ModelTable(model, effort, areas, rules, prices)
 
 
 def _price(entry: object, where: str) -> tuple[float, float]:

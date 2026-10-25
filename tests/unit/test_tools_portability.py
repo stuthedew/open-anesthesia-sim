@@ -96,8 +96,11 @@ SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 #: `subprojects/docket/src` and itself standard-library-only, by inserting that
 #: path rather than by installing anything. Anything else added to this set
 #: has to meet the same bar: present in a fresh clone, and no dependencies of
-#: its own outside the standard library.
-VENDORED = frozenset({"docket"})
+#: its own outside the standard library. `hook_input` meets it too:
+#: `tools/hook_blocks.py` reads where the guards log their refusals from it, in
+#: `.claude/hooks/`, by inserting that path, so the log has one home
+#: (`PL-SG93`).
+VENDORED = frozenset({"docket", "hook_input"})
 
 
 def _bare_python_floor() -> tuple[int, int]:

@@ -19,8 +19,15 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
+
+#: Where each guard's refusals are logged, one line each, on this machine. It
+#: is outside every checkout, so a refusal in one clone is still counted when
+#: another clone records a pull request. `HOOK_BLOCK_LOG` overrides it, which
+#: is how the tests keep their refusals out of the real log.
+BLOCK_LOG = Path.home() / ".local" / "state" / "open-anesthesia-sim" / "hook-blocks.tsv"
 
 
 def project_root() -> Path:
@@ -62,6 +69,61 @@ def bash_call(payload: str) -> BashCall | None:
         return None
     cwd = data.get("cwd")
     return BashCall(command, cwd if isinstance(cwd, str) else None)
+
+
+def block_log() -> Path:
+    """The local log of guard refusals, as `HOOK_BLOCK_LOG` or `BLOCK_LOG` names it."""
+    declared = os.environ.get("HOOK_BLOCK_LOG")
+    return Path(declared) if declared else BLOCK_LOG
+
+
+def session_of(payload: str) -> str:
+    """The session id a hook's JSON input carries, or an empty string."""
+    try:
+        data = json.loads(payload)
+    except ValueError:
+        return ""
+    session = data.get("session_id") if isinstance(data, dict) else None
+    return session if isinstance(session, str) else ""
+
+
+def deny(guard: str, rule: str, reason: str, payload: str) -> str:
+    """Log one refusal, and return the `PreToolUse` output that refuses the call.
+
+    The guards' refusals were recorded nowhere, so no guard's cost in defects
+    could be weighed against what it prevented (`PL-SG93`). Each refusal
+    appends one tab-separated line: the time in UTC, the session id, the
+    guard's name and the rule that refused. The command and the reason are
+    left out, because a command can carry a token. `tools/hook_blocks.py`
+    copies the lines into the repository when a pull request is recorded.
+
+    The time is to the microsecond, so two refusals in one second stay two
+    lines. A payload with no session id is not logged. Claude Code sends one
+    with every call, so a payload without one is a guard run by hand, such as
+    a session probing a guard's defect, and counting it would make that guard
+    look as if it refused more.
+
+    A log that cannot be written is skipped, because a refusal must still
+    refuse when the disk is full or the directory cannot be made.
+    """
+    session = session_of(payload)
+    if session:
+        line = "\t".join(
+            (datetime.now(UTC).isoformat(timespec="microseconds"), session, guard, rule)
+        )
+        try:
+            log = block_log()
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with log.open("a", encoding="utf-8") as stream:
+                stream.write(line + "\n")
+        except OSError:
+            pass
+    decision = {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": reason,
+    }
+    return json.dumps({"hookSpecificOutput": decision})
 
 
 if __name__ == "__main__":
