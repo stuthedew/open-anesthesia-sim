@@ -939,6 +939,14 @@ NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 # inputs this figure was computed from have moved"; what it never decides is
 # what the new figure should be.
 #
+# **The source may be a module as well as a data file** (`PL-NH53`). A figure
+# the simulator states in code rather than in data, such as the supported run
+# length `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, is named by its module under the
+# package and its constant's name: `core/supported_ranges.py
+# MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400`. The module is read with `ast`, so
+# nothing is imported, and only a constant assigned a plain number at the top
+# level can be named. Both marker kinds take it, with the same meaning.
+#
 # A bare scan for numerals was rejected and cannot be revived: `2.5` appears in
 # `docs/MODEL.md` as an alveolar volume, a solver tolerance in seconds and a
 # fresh-gas flow, and `4 L/min` appears as both the reference adult's alveolar
@@ -965,8 +973,12 @@ SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|absent):(?!.*
 #: A marker's kind after its comment's opening, on that line or a later one; a
 #: comment is read whole by `_split_markers`.
 MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|absent):")
-DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
-MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
+DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.(?:json|py)\s.+)$")
+MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.(?:json|py))\s+(?P<assertions>.+)$")
+# A number written with its thousands set apart by spaces, as this project
+# writes them: "86 400 s". `NUMBER_RE` reads that as 86 and 400, so a
+# `provenance:` marker for 86400 also reads the prose with this (`PL-NH53`).
+GROUPED_NUMBER_RE = re.compile(r"(?<![\d.])\d{1,3}(?: \d{3})+(?:\.\d+)?(?![\d.])")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
 
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
@@ -2141,6 +2153,33 @@ def _marked_block(lines: list[str], index: int) -> str:
     return "\n".join(lines[start:end])
 
 
+def _module_constants(path: Path) -> dict[str, float]:
+    """The module's top-level constants that are assigned a plain number, by name (`PL-NH53`).
+
+    The module is parsed rather than imported, so reading it runs nothing. A
+    constant assigned anything else, such as an expression or a call, is left
+    out, so a marker naming it is reported as naming no number rather than
+    being held to a value this function guessed.
+    """
+    constants: dict[str, float] = {}
+    for node in ast.parse(path.read_bytes(), filename=str(path)).body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if not isinstance(target, ast.Name):
+            continue
+        try:
+            number = ast.literal_eval(value)
+        except ValueError:
+            continue
+        if isinstance(number, (int, float)) and not isinstance(number, bool):
+            constants[target.id] = float(number)
+    return constants
+
+
 def _marker_assertions(
     body: str, where: str, root: Path, report: Report
 ) -> list[tuple[str, str, float, float]] | None:
@@ -2153,7 +2192,8 @@ def _marker_assertions(
     source = MARKER_SOURCE_RE.match(body)
     if source is None:
         report.errors.append(
-            f"{where}: expected `<data file>.json <key> = <value>, ...`, found {body!r}"
+            f"{where}: expected `<data file>.json <key> = <value>, ...` or "
+            f"`<module>.py <constant> = <value>, ...`, found {body!r}"
         )
         return None
 
@@ -2162,7 +2202,10 @@ def _marker_assertions(
     if not data_path.is_file():
         report.errors.append(f"{where}: cites {relative}, which does not exist")
         return None
-    document = json.loads(data_path.read_text(encoding="utf-8"))
+    if data_path.suffix == ".py":
+        document: object = _module_constants(data_path)
+    else:
+        document = json.loads(data_path.read_text(encoding="utf-8"))
 
     resolved: list[tuple[str, str, float, float]] = []
     for clause in source.group("assertions").split(","):
@@ -2248,7 +2291,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
             if derived is None:
                 report.errors.append(
                     f"{where}: a `derived:` marker reads `<figure> from <data file>.json "
-                    f"<key> = <value>, ...`; this one is {body!r}"
+                    f"<key> = <value>, ...`, or names a `<module>.py` and its constant; "
+                    f"this one is {body!r}"
                 )
                 continue
             figure, body = derived.group("figure"), derived.group("rest")
@@ -2259,6 +2303,7 @@ def check_prose_provenance(root: Path, report: Report) -> None:
 
         block = _marked_block(lines, index)
         in_prose = {float(number) for number in NUMBER_RE.findall(block)}
+        in_prose |= {float(number.replace(" ", "")) for number in GROUPED_NUMBER_RE.findall(block)}
 
         for relative, key_path, stated, stored in resolved:
             if stated != stored:

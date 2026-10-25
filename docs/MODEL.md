@@ -1830,6 +1830,8 @@ wherever the arithmetic happened to fail rather than where anybody had looked.
 It failed at about $`4.8\times10^{-304}`$ s, where the 86 400 s run length
 divided by the step overflows and `SimulationState` raised a bare
 `OverflowError` from outside the simulator's own exceptions.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 4.8e-304 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 What a finer step costs is rounding, and the sweep above already shows the
 start of it in "a finer step is slightly worse". Each step adds what it changed
@@ -1874,6 +1876,9 @@ whole count up to $`2^{53}\approx9.0\times10^{15}`$ exactly. Below about
 $`9.6\times10^{-12}`$ s a day is more steps than that, and `elapsed_s` would
 round the count before multiplying it by the step (§ "Simulated time is a count
 of steps, not a running total").
+<!-- derived: 86 400 000 steps from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 86 400 000 steps from core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- derived: 9.6e-12 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **It binds a compartment stepped on its own too, and the ceiling does not**
 (`PL-WP52`, 2026-10-19). A compartment is stepped at a run's step only by
@@ -1915,6 +1920,7 @@ The value is the measurement above taken as the floor (project owner,
 and over a floor at the 9.6e-12 s where a day's step count stops being exact,
 `PL-YZ17`). It was the session's recommendation rather than the owner's own
 specification, so ordinary evidence reopens it.
+<!-- derived: 9.6e-12 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader
@@ -4458,6 +4464,9 @@ no setting of the shipped simulator reaches. The stated times are the papers'
 own sampling times inside the first day (*Anesth Analg* p. 317), where the fit
 passes near a measured sample rather than interpolating, plus 1410 min, the
 run's last minute.
+<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 23.5 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 1410 min from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The result, as model over fit.** Cohorts in the order sevoflurane and
 isoflurane from *Anesth Analg*, desflurane and isoflurane from *Anesthesiology*
@@ -4666,6 +4675,7 @@ and the fat group's own size, present from the first hour and at the last, not
 the two omissions the 24 hours is argued against growing past negligible, so
 shortening the span would not take the tail out of them and extending it would
 add the late excess, which is still growing at the boundary.
+<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ### Mass-balance test
 
