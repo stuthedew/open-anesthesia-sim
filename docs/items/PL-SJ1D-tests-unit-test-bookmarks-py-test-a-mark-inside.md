@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/unit/test_bookmarks.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: the bookmark test's docstring agrees with the step and time its assertions check
 verify: ! grep -qF '45.4 s, at a coarser step' tests/unit/test_bookmarks.py
 ---

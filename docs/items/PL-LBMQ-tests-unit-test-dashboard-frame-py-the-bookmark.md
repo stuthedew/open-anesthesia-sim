@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/unit/test_dashboard_frame.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: the bookmark panel's tests say what they test, including reaching a mark
 verify: ! grep -qF 'Detection is `PL-CTD7` and is not' tests/unit/test_dashboard_frame.py
 ---

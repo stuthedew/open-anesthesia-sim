@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: the published-data comparison states correctly that its open-circuit inference was checked against the papers
 verify: ! grep -qF 'needs the full texts' tests/reference/test_published_wash_in_and_elimination.py
 ---

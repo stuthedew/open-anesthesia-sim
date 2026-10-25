@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: a reviewer checking the core's numerical method against docs/MODEL.md reads a docstring that describes the method the code runs
 verify: ! grep -qF 'applies five' src/anesthesia_sim/core/uptake_system.py && ! grep -qF 'would handle that span silently' src/anesthesia_sim/core/run_definition.py
 ---

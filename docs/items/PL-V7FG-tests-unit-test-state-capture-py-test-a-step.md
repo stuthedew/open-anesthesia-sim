@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/unit/test_state_capture.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: the state-capture test says it guards the propagator cache, which is what it guards
 verify: ! grep -qF 'that ventilation was set before the first step or after it' tests/unit/test_state_capture.py
 ---

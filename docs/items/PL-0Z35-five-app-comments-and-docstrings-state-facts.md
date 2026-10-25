@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/chart_frame.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: a contributor changing the chart's legend, strokes or disabled controls is told what the code does now, not what it did before
 verify: ! grep -qF 'only controls that are ever disabled are the agent selector' src/anesthesia_sim/app/qt_widgets.py && ! grep -qF 'three legend rows' src/anesthesia_sim/app/qt_chart.py && ! grep -qF 'The mark is finer than either reference' src/anesthesia_sim/app/theme.py
 ---

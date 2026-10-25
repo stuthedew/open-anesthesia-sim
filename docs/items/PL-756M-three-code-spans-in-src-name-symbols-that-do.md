@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1817
 payoff: every function an interface docstring or error message names can be found in the code
 verify: ! grep -qF 'plotted_wash_in_ratio' src/anesthesia_sim/app/wash_in.py && ! grep -qF 'wash_in_readings' src/anesthesia_sim/app/run_series.py && ! grep -qF 'ControlChange.value' src/anesthesia_sim/app/control_timeline.py
 ---
