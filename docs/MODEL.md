@@ -636,8 +636,8 @@ at 0.01% steps. The first failure is at 0.23%, and 0.9% comes back as
 0.9000000000000001. So a record kept as a fraction could not give back what a
 learner dialled. § "Time" states the same rule for the flows, and `PL-NJPB`
 records the measurement. A rejected setting is quoted back in the percent it
-was set in. It is compared against a vaporizer maximum that is stored in the
-same unit.
+was set in, beside the vaporizer maximum. That maximum is stored in the same
+unit, so the message gives both values in percent.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 The interface also converts to the second display unit, a multiple of the
@@ -675,9 +675,11 @@ out of range. Each raises a `TypeError`, before the range is checked, for
 anything that is not an `int` or a `float`, such as a `bool`, a `Decimal` or a
 string. Each raises the same error for a value that was built as any other
 checked quantity, such as a step, a flow, an instant or a count. Each stores
-minus zero as zero. `core/checked_number.py` states the rules on what counts
-as a number and on minus zero once, for the concentrations and for the flows (`PL-LLMN`, `PL-979Z`;
-§ "Supported input ranges"). Every place that stores a concentration takes the type. These
+minus zero as zero. `core/checked_number.py` states these rules once, for the
+concentrations and for the flows: what counts as a number, that one checked
+quantity is never built from another, and that minus zero is stored as zero
+(`PL-LLMN`, `PL-979Z`; § "Supported input ranges"). Every place that stores a
+concentration takes the type. These
 places are each compartment's setter, the driving fraction that a
 compartment's own closed form takes, `BreathingCircuit` when it is built or
 set, the `BreathingCircuitState` that a rollback restores it from, the
@@ -793,9 +795,9 @@ checked, rather than resting on convention.
    in the same experiment. This project's partition coefficients, MAC divisors
    and reference patient are the Gas Man set ("Source hierarchy"). So the
    trajectories that these amounts come out of are that program's arithmetic.
-   Every parameter feeding these volumes is shared with Gas Man. Adopting a
-   different reference for the same volumes would therefore make this model's
-   litre and Gas Man's litre different quantities.
+   Adopting a different reference for the same volumes would make this model's
+   litre and Gas Man's litre different quantities, even though every parameter
+   feeding these volumes is shared with Gas Man.
 
 **37 °C was the alternative, and it is not a poor one.** This model's
 partition coefficients were measured at 37 °C. The alveolar, venous and
@@ -871,8 +873,8 @@ into more than one compartment. For such a parameter, the cell names its
 definition in `core/parameters.py` rather than one of the copies. For example,
 $`\lambda_{b:g}`$ is an agent parameter, and `VenousBloodCompartment` and
 every `TissueGroup` keep a copy of it. Second, a symbol may be defined by the
-model but not stored by the implementation as an attribute of its own. For
-such a symbol, the cell is an em dash and says what the code reads in its place.
+model but have no expression of its own in the implementation. For such a
+symbol, the cell is an em dash and says what the code reads in its place.
 $`F_a`$ is the only such symbol.
 
 The two tissue coefficients are related by
@@ -4828,10 +4830,10 @@ put the vessel-rich group at −22% to −46% below and +24% to +55% above.
   pass still rules out a structurally wrong model. It does not rule out a
   mis-parameterized one.
 - **The gate now detects an alveolar gas volume that is too large.** Making
-  the volume a fifth to a third larger slows the first minute by more than
-  one SD for every agent. Doubling the volume moves sevoflurane's 1-minute
-  F_A/F_I from 0.537 to 0.429, which is −2.85 SD. Making the volume smaller
-  still goes unseen for sevoflurane.
+  the volume a fifth to a third larger slows the first minute enough to take
+  it outside one SD for every agent. Doubling the volume moves sevoflurane's
+  1-minute F_A/F_I from 0.537 to 0.429, which is −2.85 SD. Making the volume
+  smaller still goes unseen for sevoflurane.
 - **Desflurane's edges reflect its disagreement with the published data.**
   Its points from 1 to 10 minutes sit at +1.7 to +2.1 SD. They are checked
   only against the regression band, which ends at +2.5 SD. So its lower edge
@@ -7763,7 +7765,7 @@ $`F_A/F_I`$ is derived at the point of drawing.
   (`test_the_list_states_what_was_changed_and_to_what`,
   `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
   § "The control-input timeline"; and
-- $`F_A/F_I`$ over the run, on a dimensionless axis of its own. The axis is
+- $`F_A/F_I`$ over the run, on a dimensionless axis of its own. The plot is
   labelled as a ratio against the modelled inspired concentration, not against
   the vaporizer dial. The plot carries the control marks above, is ruled at the
   equilibrium that the curve approaches, and states where the ratio is not
@@ -7777,8 +7779,8 @@ $`F_A/F_I`$ is derived at the point of drawing.
 The six compartment concentrations above are requirements on the **numeric
 readouts**, not on the chart. The reader may show and hide the chart's
 compartment traces (see § "Interface boundary"). A required value must not
-leave the display when the curve that draws it does. The chart entries in this
-list are the MAC-awake band, the 1 MAC line, the control marks, and
+leave the display when the curve that draws it does. Four of the chart entries
+in this list are the MAC-awake band, the 1 MAC line, the control marks, and
 $`F_A/F_I`$. They are requirements on the chart itself, and the reader cannot
 hide them. The time base is the one chart entry above that the reader does
 choose. For the time base, this list requires that the width in force is
@@ -8104,10 +8106,9 @@ in the header of every Area (`PL-2KXB`).
 
 **A Workspace pins a run by its identity, and an absent pin is stated**
 (`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
-number, and the random token of the session that placed the run, which is
-not the session that saved or pinned it. A run with the same number in a later
-session is therefore a different run. When a pinned run is
-not open, the Workspace's Areas show a named "run not present" state. They
+number, and the random token of the session that placed the run. A run with
+the same number in a later session is therefore a different run. When a pinned
+run is not open, the Workspace's Areas show a named "run not present" state. They
 never show another run in its place, and the simulation is left untouched.
 `Workspace.shown_runs` decides which runs a Workspace's Views show. The tab
 strip (`PL-2KXB`) is where a reader sets a pin and sees the absent state.
@@ -11078,9 +11079,9 @@ value:
   **Full text**, read from the private reference corpus 2026-09-27: the brain
   drawn apart on p. 1022, Table 3 on p. 1024, the lean-tissue losses, the
   evidence and the 30% share on p. 1025, and recovery on p. 1032. It is
-  ranked tier 3 for two reasons: PubMed classifies it as a review, and its figures "illustrate
-  concepts but are not necessarily precise (quantitative) reflections of the
-  kinetics" (p. 1020).
+  a review, which is how PubMed classifies it. It is ranked tier 3 because its
+  figures "illustrate concepts but are not necessarily precise (quantitative)
+  reflections of the kinetics" (p. 1020).
 - Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
   dog: comparison of theory and measurement in individuals.* Br J Anaesth
   1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,
