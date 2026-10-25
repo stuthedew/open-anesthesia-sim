@@ -346,7 +346,7 @@ def _relative_drift(total_l: float, exact_l: Fraction) -> float:
     return float(abs(Fraction(total_l) - exact_l) / exact_l)
 
 
-def test_the_running_totals_do_not_drift_as_steps_add_up() -> None:
+def test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_tolerance() -> None:
     """Each running total stays within Kahan summation's bound of the exact sum.
 
     Until `PL-XST1`, each step's transfer was added to its total with a plain
@@ -390,6 +390,7 @@ def test_the_running_totals_do_not_drift_as_steps_add_up() -> None:
         COMPENSATED_SUM_BOUND
     )
     assert _relative_drift(plain_delivered_l, exact_delivered_l) > 1e4 * COMPENSATED_SUM_BOUND
+    assert COMPENSATED_SUM_BOUND < DOCUMENTED_RELATIVE_TOLERANCE / 10
 
 
 def test_a_transfer_whose_second_total_is_refused_writes_neither_total() -> None:
