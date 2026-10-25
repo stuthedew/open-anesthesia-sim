@@ -29,8 +29,9 @@ import importlib
 import inspect
 import re
 import time
-from collections.abc import Callable, Iterator, Sequence
-from dataclasses import replace
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, replace
+from functools import partial
 from typing import Any, Final, NoReturn
 
 import pytest
@@ -139,7 +140,7 @@ from anesthesia_sim.app.formatting import (
     format_wash_in_ratio,
     mac_multiple,
 )
-from anesthesia_sim.app.halt_gate import passes_halt_gate
+from anesthesia_sim.app.halt_gate import halt_gate, passes_halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
@@ -7497,26 +7498,33 @@ def _ancestry(widget: QWidget) -> list[QWidget]:
     return chain
 
 
-#: Each method of a view that is handed uncalled to another call and does not pass the
-#: halt gate, keyed by its class and name, with the reason it need not. Every other
-#: such method is a callback that Qt or a View calls from the event loop, so a raise
-#: inside it is lost unless it passes the gate (`PL-HJKN`). An entry that is no longer
-#: handed out, or that now passes the gate, fails the test, so the list stays true.
+#: Each callback that a view connects or hands out and that does not pass the halt gate,
+#: keyed by its class and its source text, with the reason it need not. Qt or a View
+#: calls every other callback from the event loop, so a raise inside it is lost unless
+#: it passes the gate (`PL-HJKN`). An entry that is no longer handed out, or that now
+#: passes the gate, fails the test, so the list stays true.
 _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
-    ("SimulationView", "_trunk_reset_question"): (
+    ("RunView", "dialog.deleteLater"): (
+        "it is Qt's own slot, which deletes the dialog once it closes, and it reads no run"
+    ),
+    ("SimulationView", "self._trunk_reset_question"): (
         "it returns the question that the trunk's Reset asks, and the trunk's own gated "
         "Reset slot calls it"
     ),
-    ("SimulationView", "_open_runs"): (
+    ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),
-    ("SimulationView", "_restate_fork_panel"): (
+    ("SimulationView", "self._restate_fork_panel"): (
         "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
         "requires that it not raise"
     ),
-    ("SimulationView", "_restate_bookmark_panel"): (
+    ("SimulationView", "self._restate_bookmark_panel"): (
         "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
         "requires that it not raise"
+    ),
+    ("SimulationView", "lambda: self.workspaces"): (
+        "it returns the Workspaces as the Areas draw them, for the tab strip to duplicate "
+        "or save, and it reads no run"
     ),
 }
 
@@ -7542,37 +7550,126 @@ def _own_method(node: ast.expr, view_class: type) -> str | None:
     return node.attr
 
 
-def _connected_slot_bypass(slot: ast.expr, view_class: type) -> str | None:
-    """Why the slot handed to a `.connect` call bypasses the halt gate, or None if it does not.
+def _callback_bypass(
+    callback: ast.expr, call: ast.Call, view_class: type, local_functions: set[str]
+) -> str | None:
+    """Why `callback`, handed to `call`, bypasses the halt gate, or None if it does not.
 
-    A slot passes when it is a gated method of the view, or a `partial` of one. A slot
-    that names no `self`, such as `dialog.deleteLater`, is another object's own slot
-    and passes too. A lambda or a local function cannot carry the gate, and a slot
-    reached through an attribute of the view, such as `self.controller.pause`, is
-    not the view's own.
+    A method of the view passes when it is gated, wherever it is handed. Handed to
+    `.connect`, every other slot bypasses the gate. That includes a lambda, a local
+    function, a slot of another object such as `run.controller.pause`, and a slot
+    reached through an attribute of the view such as `self.controller.pause`. Handed
+    to any other call, a lambda or a local function bypasses the gate too, because the
+    callee can keep it and call it from the event loop. The one exception is a call
+    to one of the view's own methods, which runs it inside the slot that called it.
+    Any other argument is a value, not a callback, so it returns None.
     """
 
-    if (
-        isinstance(slot, ast.Call)
-        and isinstance(slot.func, ast.Name)
-        and slot.func.id == "partial"
-        and slot.args
-    ):
-        slot = slot.args[0]
-
-    if isinstance(slot, (ast.Lambda, ast.Name)):
-        return "a lambda or a local function, which cannot pass the gate"
-
-    method = _own_method(slot, view_class)
+    method = _own_method(callback, view_class)
 
     if method is not None:
         gated = passes_halt_gate(inspect.getattr_static(view_class, method))
 
         return None if gated else f"{method} does not pass the gate"
 
-    names_self = any(isinstance(node, ast.Name) and node.id == "self" for node in ast.walk(slot))
+    local = isinstance(callback, ast.Lambda) or (
+        isinstance(callback, ast.Name) and callback.id in local_functions
+    )
 
-    return "a slot reached through the view that is not its own method" if names_self else None
+    if not (isinstance(call.func, ast.Attribute) and call.func.attr == "connect"):
+        if local and _own_method(call.func, view_class) is None:
+            return "a lambda or a local function that the callee may call from the event loop"
+
+        return None
+
+    if local or isinstance(callback, ast.Name):
+        return "a lambda or a function named bare, which cannot pass the gate"
+
+    names_self = any(
+        isinstance(node, ast.Name) and node.id == "self" for node in ast.walk(callback)
+    )
+
+    if names_self:
+        return "a slot reached through the view that is not its own method"
+
+    return "a slot of another object, which may read or change a run outside the gate"
+
+
+@dataclass(frozen=True)
+class _HaltGateReading:
+    """What `_halt_gate_bypasses` found in one view's source."""
+
+    #: Each call that hands out a callback bypassing the gate, as its source text and why.
+    bypasses: list[tuple[str, str]]
+    #: Each key of the exemptions whose callback passes the gate, so the entry is stale.
+    exempt_but_gated: list[tuple[str, str]]
+    #: Each key of the exemptions whose callback the source hands out.
+    exemptions_handed_out: set[tuple[str, str]]
+    #: How many `.connect` calls the source makes.
+    connections: int
+
+
+def _halt_gate_bypasses(
+    view_class: type, exemptions: Mapping[tuple[str, str], str]
+) -> _HaltGateReading:
+    """Each call in `view_class`'s source that hands out a callback bypassing the halt gate.
+
+    The source holds every connection the class makes, including those made in a
+    dialog built later. A `partial` handed to `.connect` is judged by the method it
+    wraps. A callback listed in `exemptions`, keyed by the class's name and the
+    callback's source text, is not reported as a bypass. It is reported as stale
+    when it passes the gate.
+    """
+
+    (class_node,) = ast.parse(inspect.getsource(view_class)).body
+    assert isinstance(class_node, ast.ClassDef), f"{view_class.__name__}'s source is not a class"
+    methods = [node for node in class_node.body if isinstance(node, ast.FunctionDef)]
+    local_functions = {
+        node.name
+        for method in methods
+        for node in ast.walk(method)
+        if isinstance(node, ast.FunctionDef) and node is not method
+    }
+    bypasses: list[tuple[str, str]] = []
+    exempt_but_gated: list[tuple[str, str]] = []
+    exemptions_handed_out: set[tuple[str, str]] = set()
+    connections = 0
+
+    for call in (node for node in ast.walk(class_node) if isinstance(node, ast.Call)):
+        called = call.func.attr if isinstance(call.func, ast.Attribute) else None
+
+        if called == "disconnect":
+            continue
+
+        callbacks = [*call.args, *(keyword.value for keyword in call.keywords)]
+
+        if called == "connect":
+            connections += 1
+            (slot,) = callbacks
+
+            if (
+                isinstance(slot, ast.Call)
+                and isinstance(slot.func, ast.Name)
+                and slot.func.id == "partial"
+                and slot.args
+            ):
+                slot = slot.args[0]
+
+            callbacks = [slot]
+
+        for callback in callbacks:
+            reason = _callback_bypass(callback, call, view_class, local_functions)
+            key = (view_class.__name__, ast.unparse(callback))
+
+            if key in exemptions:
+                exemptions_handed_out.add(key)
+
+                if reason is None:
+                    exempt_but_gated.append(key)
+            elif reason is not None:
+                bypasses.append((ast.unparse(call), reason))
+
+    return _HaltGateReading(bypasses, exempt_but_gated, exemptions_handed_out, connections)
 
 
 def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
@@ -7586,61 +7683,116 @@ def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
     `app/halt_gate.py`'s `halt_gate`, and this test makes the next slot pass it too
     (`PL-HJKN`).
 
-    The test reads each class's source, so it finds every connection, including the
-    ones made in a dialog built later. Each argument of a `.connect` call must pass
-    `_connected_slot_bypass`. Each method of the view handed uncalled to any other
-    call is a callback that a View or the tab strip calls from the event loop. It must
-    pass the gate, or be listed in `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason
-    it need not. A callback written as a lambda is not found, which is why a lambda
-    handed to `.connect` fails.
+    The test reads each class's source, and `_callback_bypass` says which callbacks
+    bypass the gate. Each one must pass the gate, or be listed in
+    `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it need not.
+    `test_the_halt_gate_check_finds_each_way_around_the_gate` shows that the check
+    catches each shape of bypass.
     """
 
     bypasses: list[str] = []
+    exempt_but_gated: list[tuple[str, str]] = []
     exemptions_handed_out: set[tuple[str, str]] = set()
 
     for view_class in (RunView, SimulationView):
-        tree = ast.parse(inspect.getsource(view_class))
-        connections = 0
+        reading = _halt_gate_bypasses(view_class, _HANDED_OUT_WITHOUT_THE_HALT_GATE)
+        bypasses.extend(f"{view_class.__name__}: {call}: {why}" for call, why in reading.bypasses)
+        exempt_but_gated.extend(reading.exempt_but_gated)
+        exemptions_handed_out |= reading.exemptions_handed_out
 
-        for call in (node for node in ast.walk(tree) if isinstance(node, ast.Call)):
-            called = call.func.attr if isinstance(call.func, ast.Attribute) else None
-
-            if called == "connect":
-                connections += 1
-                (slot,) = call.args
-                reason = _connected_slot_bypass(slot, view_class)
-
-                if reason is not None:
-                    bypasses.append(f"{view_class.__name__}: {ast.unparse(call)}: {reason}")
-
-                continue
-
-            if called == "disconnect":
-                continue
-
-            for argument in (*call.args, *(keyword.value for keyword in call.keywords)):
-                method = _own_method(argument, view_class)
-
-                if method is None:
-                    continue
-
-                key = (view_class.__name__, method)
-                gated = passes_halt_gate(inspect.getattr_static(view_class, method))
-
-                if key in _HANDED_OUT_WITHOUT_THE_HALT_GATE:
-                    exemptions_handed_out.add(key)
-
-                    if gated:
-                        bypasses.append(f"{key} passes the gate, so it leaves the exemptions")
-                elif not gated:
-                    bypasses.append(f"{view_class.__name__}.{method} is handed out ungated")
-
-        assert connections > 0, f"no connection found in {view_class.__name__}'s source"
+        assert reading.connections > 0, f"no connection found in {view_class.__name__}'s source"
 
     stale = set(_HANDED_OUT_WITHOUT_THE_HALT_GATE) - exemptions_handed_out
 
     assert not bypasses, "slots that bypass the halt gate:\n" + "\n".join(bypasses)
-    assert not stale, f"exempt methods that are no longer handed out: {sorted(stale)}"
+    assert not exempt_but_gated, f"exempt callbacks that pass the gate: {exempt_but_gated}"
+    assert not stale, f"exempt callbacks that are no longer handed out: {sorted(stale)}"
+
+
+class _ViewWiredAroundTheGate:
+    """A view that hands out callbacks in every shape the halt gate check must judge.
+
+    It is never built, and `_wire` is never called. The check reads its source.
+    """
+
+    controller: Any
+
+    def halt_for_slot(self, error: Exception) -> None:
+        raise AssertionError("the view is never built")
+
+    @halt_gate
+    def _gated(self) -> None:
+        pass
+
+    @halt_gate
+    def _gated_with_one(self, value: int) -> None:
+        pass
+
+    def _ungated(self) -> None:
+        pass
+
+    def _run_now(self, action: Callable[[], None]) -> None:
+        action()
+
+    def _wire(self, button: Any, run: Any, timer: Any) -> None:
+        def local() -> None:
+            self._gated()
+
+        button.clicked.connect(self._gated)
+        button.clicked.connect(partial(self._gated_with_one, 1))
+        button.clicked.connect(_bare_function)
+        button.clicked.connect(run.controller.pause)
+        button.clicked.connect(self._ungated)
+        button.clicked.connect(lambda: self._gated())
+        button.clicked.connect(local)
+        button.clicked.connect(self.controller.pause)
+        self._run_now(lambda: self._ungated())
+        self._run_now(local)
+        timer.singleShot(0, self._gated)
+        timer.singleShot(0, self._ungated)
+        timer.singleShot(0, lambda: self._gated())
+        timer.singleShot(0, local)
+
+
+def _bare_function() -> None:
+    """A module-level function that `_ViewWiredAroundTheGate` connects by its bare name."""
+
+
+def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
+    """The check reports each callback in `_ViewWiredAroundTheGate` that bypasses the gate.
+
+    The list below was written from that class's source by hand. A gated method, a
+    `partial` of one and a lambda run at once by the view's own method all pass. An
+    exempt callback passes until the gate covers it, and then the entry is reported
+    as stale (blind review of `PL-HJKN`).
+    """
+
+    reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {})
+
+    assert [call for call, _ in reading.bypasses] == [
+        "button.clicked.connect(_bare_function)",
+        "button.clicked.connect(run.controller.pause)",
+        "button.clicked.connect(self._ungated)",
+        "button.clicked.connect(lambda: self._gated())",
+        "button.clicked.connect(local)",
+        "button.clicked.connect(self.controller.pause)",
+        "timer.singleShot(0, self._ungated)",
+        "timer.singleShot(0, lambda: self._gated())",
+        "timer.singleShot(0, local)",
+    ]
+    assert reading.exempt_but_gated == []
+    assert reading.exemptions_handed_out == set()
+    assert reading.connections == 8
+
+    exempt = ("_ViewWiredAroundTheGate", "run.controller.pause")
+    gated = ("_ViewWiredAroundTheGate", "self._gated")
+    reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {exempt: "a test", gated: "a test"})
+
+    assert "button.clicked.connect(run.controller.pause)" not in [
+        call for call, _ in reading.bypasses
+    ]
+    assert reading.exempt_but_gated == [gated, gated]
+    assert reading.exemptions_handed_out == {exempt, gated}
 
 
 def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(

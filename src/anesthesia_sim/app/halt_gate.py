@@ -27,6 +27,10 @@ from typing import Any, Concatenate, Final, Protocol
 #: `passes_halt_gate` reads.
 _GATED_ATTRIBUTE: Final = "__passes_halt_gate__"
 
+#: The attribute that `halt_gate` sets on an exception that `halt_for_slot` raised.
+#: Each outer gate that the exception leaves passes it on and does not halt again.
+_RAISED_BY_THE_HALT_ATTRIBUTE: Final = "__raised_by_halt_for_slot__"
+
 
 class HaltingView(Protocol):
     """A view whose slots pass the halt gate, and what a raise inside one of them halts."""
@@ -52,7 +56,10 @@ def halt_gate[View: HaltingView, **Params](
     the view's `halt_for_slot` with it. So a slot that reads a refusing snapshot,
     or that a setting or a step makes raise, leaves the run halted and the halt on
     screen. A method that a gated slot calls may pass the gate as well. The inner
-    gate then halts and returns, and the outer one has nothing to catch.
+    gate then halts and returns, and the outer slot goes on. Stating the halt can
+    itself raise (`PL-TLH4`). That exception is marked, and each outer gate passes
+    it on rather than stating the whole halt a second time with the halt's own
+    exception as the reason.
 
     Qt hands a slot every argument of its signal, unless the slot takes fewer.
     The returned method does the same for `slot`. It takes `*args` itself, and
@@ -77,7 +84,14 @@ def halt_gate[View: HaltingView, **Params](
         try:
             call(view, *passed, **kwargs)
         except Exception as error:
-            view.halt_for_slot(error)
+            if getattr(error, _RAISED_BY_THE_HALT_ATTRIBUTE, False) is True:
+                raise
+
+            try:
+                view.halt_for_slot(error)
+            except Exception as halt_error:
+                setattr(halt_error, _RAISED_BY_THE_HALT_ATTRIBUTE, True)
+                raise
 
     setattr(gated, _GATED_ATTRIBUTE, True)
 

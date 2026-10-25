@@ -109,6 +109,45 @@ def test_a_raise_from_the_halt_itself_escapes_once_the_halt_is_called() -> None:
     assert [str(error) for error in view.halts] == ["the snapshot refused a value"]
 
 
+class _NestingView(_View):
+    """A view with a gated slot that calls another gated slot, as `_handle_fork` calls `present`."""
+
+    @halt_gate
+    def calls_a_raising_slot(self) -> None:
+        self.raises()
+        self.calls.append(("after the inner slot",))
+
+
+def test_a_raise_inside_a_nested_gated_slot_halts_once_and_the_outer_slot_goes_on() -> None:
+    view = _NestingView()
+
+    view.calls_a_raising_slot()
+
+    assert [str(error) for error in view.halts] == ["the snapshot refused a value"]
+    assert view.calls == [("after the inner slot",)]
+
+
+def test_a_raise_from_the_halt_inside_a_nested_gated_slot_halts_only_once() -> None:
+    """The halt's own exception passes through each outer gate, which does not halt again.
+
+    Each outer gate used to catch it as a new error and state the whole halt a second
+    time, with the halt's own exception as the reason (blind review of `PL-HJKN`).
+    """
+
+    class _FailingHaltNestingView(_NestingView):
+        def halt_for_slot(self, error: Exception) -> None:
+            super().halt_for_slot(error)
+            raise RuntimeError("the dials could not be written")
+
+    view = _FailingHaltNestingView()
+
+    with pytest.raises(RuntimeError, match="the dials could not be written"):
+        view.calls_a_raising_slot()
+
+    assert [str(error) for error in view.halts] == ["the snapshot refused a value"]
+    assert view.calls == []
+
+
 def test_passes_halt_gate_tells_a_gated_method_from_an_ungated_one() -> None:
     assert passes_halt_gate(_View.takes_nothing) is True
     assert passes_halt_gate(_View().takes_nothing) is True
