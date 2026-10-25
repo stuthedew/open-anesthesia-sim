@@ -1,14 +1,15 @@
 """Unit tests for `layout/serialization.py`, the layout as JSON.
 
-`PL-SSQW` Q5 decided what reading a layout owes its reader (project owner,
-2026-09-27, ratified): an invalid layout raises `LayoutFormatError` naming the
-invariant that failed and where, nothing is repaired, and a document from a
-newer build is refused as newer rather than as invalid, because the two are
-answered differently. These hold each named failure to a refusal that says
-which it was. The Workspace set document - the one file the application
-writes, holding every Workspace with its layout and each View's saved state -
-is read by the same rules, and its tests are below the layout's. The file
-around it is `layout/store.py`'s, tested in `test_layout_store.py`.
+`PL-SSQW` Q5 decided what reading a layout must give its reader (project owner,
+2026-09-27, ratified). An invalid layout raises `LayoutFormatError`, naming the
+invariant that failed and where. Nothing is repaired. A document from a newer
+build is refused as newer rather than as invalid, because each of the two
+calls for a different response. These tests check that each named failure produces a
+refusal that says which failure it was. The Workspace set document is read by
+the same rules, and its tests follow the layout's. It is the one file the
+application writes, and it holds every Workspace with its layout and each
+View's saved state. `layout/store.py` owns the file around that document, and
+`test_layout_store.py` tests that module.
 """
 
 import inspect
@@ -56,7 +57,7 @@ from anesthesia_sim.layout.workspace import (
 
 
 def document(**changes: object) -> dict[str, object]:
-    """A valid two-Area document, with any top-level field replaced."""
+    """Return a valid two-Area document, with any given top-level field replaced."""
 
     written: dict[str, object] = {
         "schema_version": LAYOUT_SCHEMA_VERSION,
@@ -84,7 +85,7 @@ def with_tree(tree: object, next_area_id: int = 3) -> str:
 
 
 def refused(text: str) -> str:
-    """The message reading `text` is refused with."""
+    """Return the message with which reading `text` is refused."""
 
     with pytest.raises(LayoutFormatError) as raised:
         layout_from_json(text)
@@ -93,9 +94,9 @@ def refused(text: str) -> str:
 
 
 def nested_tree(depth: int) -> dict[str, object]:
-    """A written tree whose deepest split sits `depth` deep, first child of first child down.
+    """Return a written tree whose deepest split is `depth` levels down a chain of first children.
 
-    Areas 1 to `depth` + 1, so the layout's counter is `depth` + 2.
+    The tree has Areas 1 to `depth` + 1, so the layout's counter is `depth` + 2.
     """
 
     def leaf(number: int) -> dict[str, object]:
@@ -114,7 +115,10 @@ def nested_tree(depth: int) -> dict[str, object]:
 
 
 def deep_in_the_stack[T](call: Callable[[], T], headroom: int) -> T:
-    """`call()`, made where only about `headroom` frames are left before the recursion limit."""
+    """Run `call()` where only about `headroom` frames are left before the recursion limit.
+
+    Return the result of `call()`.
+    """
 
     standing = 0
     frame = inspect.currentframe()
@@ -130,7 +134,7 @@ def deep_in_the_stack[T](call: Callable[[], T], headroom: int) -> T:
 
 
 def test_the_written_form_is_the_decided_shape() -> None:
-    """`PL-HJPY` Q5's illustration, with a split named a row rather than horizontal."""
+    """The output is `PL-HJPY` Q5's illustration, with the split named a row, not horizontal."""
 
     model = LayoutModel(
         (
@@ -154,7 +158,7 @@ def test_the_written_form_is_the_decided_shape() -> None:
 
 
 def test_the_body_carries_no_version_and_the_document_carries_one() -> None:
-    """A Workspace holds the body under its file's one version, so a body never holds its own."""
+    """A Workspace stores the body under its file's single version, so a body never has its own."""
 
     body = layout_to_dict(layout_from_json(json.dumps(document())))
 
@@ -167,8 +171,8 @@ def test_the_body_carries_no_version_and_the_document_carries_one() -> None:
 def test_a_document_from_a_newer_build_is_refused_as_newer_before_its_body_is_read() -> None:
     """`PL-SSQW` Q5: a newer file is the reader's own work, refused whole and left untouched.
 
-    Its body may follow rules this build does not know - here a key this
-    schema lacks - and it is still reported as newer, never as invalid.
+    Its body may follow rules that this build does not know, here a key that
+    this schema lacks. It is still reported as newer, never as invalid.
     """
 
     newer = json.dumps({"schema_version": LAYOUT_SCHEMA_VERSION + 1, "workspace_tabs": []})
@@ -181,12 +185,12 @@ def test_a_document_from_a_newer_build_is_refused_as_newer_before_its_body_is_re
 
 
 def test_a_newer_document_is_refused_as_newer_whatever_its_other_fields_hold() -> None:
-    """`PL-SSQW` Q5: no rule of this build's is applied to a newer body, its parse's included.
+    """`PL-SSQW` Q5: none of this build's rules, including its parser's, applies to a newer body.
 
-    `NaN`, a key given twice and a whole number longer than Python reads are
-    each this build's to refuse, and a newer build may write any of them.
-    Each was once refused by the parse, before the version was read, so the
-    document was reported invalid rather than newer.
+    This build refuses `NaN`, a key given twice and a whole number longer than
+    Python can read, but a newer build may write any of them. Each was once
+    refused by the parser before the version was read, so the document was
+    reported invalid rather than newer.
     """
 
     newer = LAYOUT_SCHEMA_VERSION + 1
@@ -206,7 +210,7 @@ def test_a_newer_document_is_refused_as_newer_whatever_its_other_fields_hold() -
 
 
 def test_a_version_given_twice_or_too_long_to_read_is_a_format_error() -> None:
-    """Which version wrote these cannot be known, so neither is read as newer, or as anything."""
+    """Which version wrote these is unknowable, so neither is treated as newer or as any version."""
 
     twice = refused('{"schema_version": 2, "schema_version": 2, "zoom": NaN}')
     too_long = refused('{"schema_version": ' + "9" * 5000 + "}")
@@ -243,7 +247,7 @@ def test_text_that_is_not_json_is_refused_as_such() -> None:
 
 
 def test_a_key_given_twice_is_refused_rather_than_resolved() -> None:
-    """`json` keeps the last of two equal keys silently; which was meant cannot be known."""
+    """`json` silently keeps the last of two equal keys, but which one was meant cannot be known."""
 
     twice = (
         f'{{"schema_version": {LAYOUT_SCHEMA_VERSION}, "next_area_id": 2, "next_area_id": 3, '
@@ -267,14 +271,14 @@ def test_non_finite_numbers_are_refused_by_name() -> None:
         assert f"{constant} is not a number a layout holds" in refused(text)
         assert f"windows[0].tree.sizes[0]: {constant} is not" in refused(text)
 
-    # A key that is not a name is written as an index, so the place still reads as a path.
+    # A key that is not a name is written as an index, so the place still looks like a path.
     unnamed = json.dumps(document()).replace('"windows"', '"zoom level": NaN, "windows"')
 
     assert "['zoom level']: NaN is not a number a layout holds" in refused(unnamed)
 
 
 def test_each_invariant_is_refused_by_name_and_place() -> None:
-    """`PL-SSQW` Q5's examples and the rest: the message says what broke and where."""
+    """For `PL-SSQW` Q5's examples and the rest, the message says what broke and where."""
 
     one = {"area": 1, "view": "concentration_chart"}
     two = {"area": 2, "view": "concentration_chart"}
@@ -351,7 +355,7 @@ def test_each_invariant_is_refused_by_name_and_place() -> None:
 
 
 def test_the_layouts_own_invariants_are_refused_by_name() -> None:
-    """No window, a shared id, a counter at or below an id in use: `PL-HJPY`'s three."""
+    """`PL-HJPY`'s three: no window, a shared id, and a counter at or below an id in use."""
 
     one = {"tree": {"area": 1, "view": "concentration_chart"}}
 
@@ -385,7 +389,7 @@ def test_a_file_whose_sizes_leave_an_area_no_width_is_refused() -> None:
 
 
 def test_a_view_kind_no_view_is_registered_under_loads() -> None:
-    """`PL-SSQW` Q5: an unknown kind is the registry's to report in its Area, not a file error."""
+    """`PL-SSQW` Q5: the registry reports an unknown kind in its Area, not as a file error."""
 
     model = layout_from_json(with_tree({"area": 1, "view": "retired_view"}, next_area_id=2))
 
@@ -394,7 +398,7 @@ def test_a_view_kind_no_view_is_registered_under_loads() -> None:
 
 
 def test_a_document_nested_past_what_can_be_read_is_refused_rather_than_crashing() -> None:
-    """No screen shows a layout nested this deep; reading one says so instead of overflowing."""
+    """No screen shows a layout nested this deep, and reading one says so instead of overflowing."""
 
     tree: object = {"area": 1, "view": "concentration_chart"}
 
@@ -409,10 +413,11 @@ def test_a_document_nested_past_what_can_be_read_is_refused_rather_than_crashing
 
 
 def test_a_tree_nested_past_the_depth_maximum_is_refused_with_its_path() -> None:
-    """`TREE_DEPTH_MAXIMUM`, checked before the reader recurses past it, naming the split's place.
+    """The reader checks `TREE_DEPTH_MAXIMUM` before recursing past it, and names the split's place.
 
-    The deepest tree the model holds reads back; one split deeper is refused
-    at the first split past the maximum, before anything below it is read.
+    The deepest tree that the model allows is read back. A tree one split deeper
+    is refused at the first split past the maximum, before anything below it
+    is read.
     """
 
     deepest = layout_from_json(with_tree(nested_tree(TREE_DEPTH_MAXIMUM), TREE_DEPTH_MAXIMUM + 2))
@@ -429,11 +434,12 @@ def test_a_tree_nested_past_the_depth_maximum_is_refused_with_its_path() -> None
 def test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands() -> None:
     """The reader recurses no deeper than the maximum, so where its caller stands cannot matter.
 
-    Unbounded, a tree 300 splits deep - one the model itself could build and
-    write - read from the top of the stack and was refused as nested too
-    deeply when the same text was read 150 frames short of the recursion
-    limit. Now it is refused for its depth from both, and the deepest tree
-    the model holds reads from both.
+    Before the reader was bounded, a tree 300 splits deep was read without
+    error from the top of the stack. The model itself could build and write
+    that tree. The same text was refused as nested too deeply when it was read
+    150 frames short of the recursion limit. Now the tree is refused for its
+    depth from both places, and the deepest tree that the model allows is read
+    from both.
     """
 
     accepted = with_tree(nested_tree(TREE_DEPTH_MAXIMUM), TREE_DEPTH_MAXIMUM + 2)
@@ -445,11 +451,11 @@ def test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands() -
 
 
 def test_a_caller_that_leaves_the_reader_too_little_stack_is_told_so() -> None:
-    """The backstop: a `RecursionError` the maximum cannot prevent is refused, naming its cause.
+    """As a backstop, a `RecursionError` the maximum cannot prevent is refused, naming its cause.
 
     Reading a tree at the maximum takes about a hundred frames. A caller that
-    leaves thirty runs the reader out of stack, and is refused by name rather
-    than handed the `RecursionError`.
+    leaves only thirty frames runs the reader out of stack. The caller then
+    gets a refusal that names the cause, rather than the `RecursionError`.
     """
 
     body = layout_to_dict(
@@ -463,9 +469,10 @@ def test_a_caller_that_leaves_the_reader_too_little_stack_is_told_so() -> None:
 def test_text_nested_past_what_the_parser_holds_is_refused_as_unreadable() -> None:
     """A million brackets deep, `json` runs out of stack, and that is a format error.
 
-    No version can be read from text the parser cannot finish, so a document
-    claiming a newer version is refused the same way: the one case the
-    newer-version rule cannot reach, which the module docstring names.
+    No version can be read from text that the parser cannot finish. So a
+    document claiming a newer version is refused the same way. This is the one
+    case to which the newer-version rule cannot apply, and the module
+    docstring names it.
     """
 
     brackets = "[" * 10**6 + "]" * 10**6
@@ -475,7 +482,10 @@ def test_text_nested_past_what_the_parser_holds_is_refused_as_unreadable() -> No
 
 
 def test_an_integer_too_long_to_read_is_a_format_error() -> None:
-    """Python refuses to read an int of more than 4,300 digits; that is a refusal, not an escape."""
+    """Python refuses to read an int of more than 4,300 digits, and the reader reports a refusal.
+
+    The refusal is a format error, and Python's own error does not escape.
+    """
 
     text = json.dumps(document()).replace('"next_area_id": 3', '"next_area_id": ' + "9" * 5000)
 
@@ -485,11 +495,11 @@ def test_an_integer_too_long_to_read_is_a_format_error() -> None:
     )
 
 
-# The Workspace set document, `PL-SSQW` Q2's one file.
+# Tests of the Workspace set document, the single file that `PL-SSQW` Q2 decided on.
 
 
 def workspace_body(**changes: object) -> dict[str, object]:
-    """A valid Workspace body over the two-Area layout, with any field replaced."""
+    """Return a valid Workspace body over the two-Area layout, with any given field replaced."""
 
     written: dict[str, object] = {
         "name": "Default",
@@ -806,7 +816,7 @@ class TestWorkspaceSetDocument:
 
 
 class TestVersionPlumbing:
-    """The parts a version bump will lean on, exercised with the version patched or a step faked."""
+    """Tests of the parts a version bump will rely on, with the version patched or a step faked."""
 
     def test_the_written_text_is_the_same_whatever_order_the_state_was_given_in(self) -> None:
         chart = ViewKind("concentration_chart")

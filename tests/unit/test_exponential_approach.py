@@ -1,9 +1,12 @@
-"""`core/exponential_approach.py`: the first-order approach every patient closed form takes.
+"""Tests of `core/exponential_approach.py`, the first-order approach every patient closed form uses.
 
-Four properties, each measured failing in an arrangement the module refused
-(its docstring carries the counts), each pinned here on the case that showed
-it, and the interval held across drawn states as well. The compartments that
-call it are walked in `tests/unit/test_compartment_primitives.py`.
+The tests cover four properties. Each one was measured failing in an
+arrangement of the formula that the module rejected, and the module's
+docstring gives the counts. Each property is pinned here on the case that
+showed the failure. A property-based test also checks, over drawn states,
+that the result stays between the start and the equilibrium. The
+compartments that call the function are exercised in
+`tests/unit/test_compartment_primitives.py`.
 """
 
 from decimal import Decimal, getcontext
@@ -15,26 +18,29 @@ from hypothesis import strategies as st
 
 from anesthesia_sim.core.exponential_approach import HALF_THE_GAP, exponential_approach
 
-# A step long enough, against this time constant, for `1 - exp(-dt/tau)` to
-# round to exactly 1.0: a full approach.
+# A step that is long enough, against this time constant, for
+# `1 - exp(-dt/tau)` to round to exactly 1.0. Such a step is a full approach.
 FULL_APPROACH_STEP_S = 60.0
 FULL_APPROACH_TIME_CONSTANT_S = 1.0
 
-# The time constant the share-of-the-gap test steps against, and the step at
-# which the form switches anchor: ln 2 time constants, where `1 - exp(-dt/tau)`
-# is a half - exactly, on glibc 2.39 (measured 2026-10-12), and within an ulp
-# of it on any libm faithful to the last place, which is what is asserted.
+# The time constant that the share-of-the-gap test steps against, and the step
+# at which the form switches anchor. The switch is at ln 2 time constants,
+# where `1 - exp(-dt/tau)` is a half. It is exactly a half on glibc 2.39
+# (measured 2026-10-12), and within an ulp of a half on any libm faithful to
+# the last place. The tests assert only the second of these.
 TIME_CONSTANT_S = 100.0
 SWITCH_STEP_S = log(2.0) * TIME_CONSTANT_S
 
-# States and step lengths, in time constants, the result is held against the
-# balance's solution taken to 40 digits. The first five are the states the
-# other tests use; the last two are where a form switching anchor at three
-# quarters of the gap, rather than a half, errs by 3.5 and 3.4 ulps at the two
-# longest of the step lengths named with them (searched 2026-10-12 over
-# 400,000 states of 1e-6 to 1,000 L): formed from the amount held there, its
-# term is three times its result. Nothing below a normal double: past about
-# 708 time constants the residual is subnormal and carries no precision.
+# The states, and the step lengths in time constants, at which the result is
+# checked against the balance's solution computed to 40 digits. The first five
+# states are the ones the other tests use. At the last two states, a form that
+# switched anchor at three quarters of the gap, rather than at a half, errs by
+# 3.5 and 3.4 ulps at the two longest of the step lengths named with them
+# (searched 2026-10-12 over 400,000 states of 1e-6 to 1,000 L). At those
+# states and lengths, that form computes the result from the amount held, and
+# the term it adds is three times the result. No case goes below a normal
+# double, because past about 708 time constants the residual is subnormal and
+# carries no precision.
 ACCURACY_STATES = (
     pytest.param(0.0, 6.0, id="filling-from-empty"),
     pytest.param(6.0, 0.0, id="washing-out-to-empty"),
@@ -58,21 +64,22 @@ ACCURACY_LENGTHS_IN_TIME_CONSTANTS = (
     20.0,
     40.0,
 )
-# Three ulps: the bound a form of four roundings owes under a libm faithful to
-# the last place, and two under one correctly rounded. Measured 2026-10-12 on
-# glibc 2.39, the worst case here is 1.6 ulps.
+# Three ulps is the bound that a form with four roundings must meet under a
+# libm faithful to the last place. Under a correctly rounded libm the bound is
+# two ulps. Measured 2026-10-12 on glibc 2.39, the worst case here is 1.6 ulps.
 ACCURACY_BOUND_ULPS = 3
 
-# Capacities two of the sevoflurane reference patient's tissue groups form, as
-# `TissueGroup.capacity_l` forms them, and fractions they can be loaded to from
-# which the full-approach sum formed from the amount held, `a + (c - a) * 1.0`,
-# lands one ulp over `c`: `fl(c - a)` is exactly half an ulp of `c` high, and
-# the sum rounds to even. The vessel-rich group, 6.0 L at a tissue:gas
-# coefficient of 1.1, does from 9.6% of fractions drawn uniformly below a
-# half; the muscle group, 33.0 L at 2.4, from 1.6% (200,000 draws each,
-# measured 2026-10-12). A 6 L group at 1.0, the one
-# `test_compartment_primitives.py` builds, never does, which is why the
-# landing is pinned here on the reference patient's capacities.
+# The capacities of two of the sevoflurane reference patient's tissue groups,
+# computed as `TissueGroup.capacity_l` computes them. Each is paired with
+# fractions it can be loaded to. From each such fraction, the full-approach
+# sum formed from the amount held, `a + (c - a) * 1.0`, lands one ulp above
+# `c`. That happens because `fl(c - a)` is exactly half an ulp of `c` too
+# high, and the sum rounds to even. The vessel-rich group, 6.0 L at a
+# tissue:gas partition coefficient of 1.1, overshoots from 9.6% of fractions
+# drawn uniformly below a half. The muscle group, 33.0 L at 2.4, overshoots
+# from 1.6% (200,000 draws each, measured 2026-10-12). A 6 L group at 1.0,
+# the one `test_compartment_primitives.py` builds, never overshoots. That is
+# why the overshoot is pinned here on the reference patient's capacities.
 OVERSHOOTING_STATES = (
     pytest.param(6.0 * 1.1, 0.3, id="vessel-rich-at-0.3"),
     pytest.param(6.0 * 1.1, 0.000561, id="vessel-rich-at-0.000561"),
@@ -81,16 +88,17 @@ OVERSHOOTING_STATES = (
     pytest.param(33.0 * 2.4, 0.07330126944954535, id="muscle-at-0.073"),
 )
 
-# Washouts from 6 L toward empty, in time constants, and the residual each
-# leaves. The sum formed from the amount held, `6 + (0 - 6) * g`, carries the
-# first to 2.1e-9 of itself and the second to 2.3e-4, rounding at the scale of
-# the 6 L; from 37.43 time constants `g` rounds to 1.0 and the sum is exactly
-# 0.0 (measured 2026-10-12).
+# Lengths, in time constants, of washouts from 6 L toward empty. Each washout
+# leaves a residual. The sum formed from the amount held, `6 + (0 - 6) * g`,
+# gives the first residual a relative error of 2.1e-9 and the second a
+# relative error of 2.3e-4, because the sum rounds at the scale of the 6 L.
+# From 37.43 time constants, `g` rounds to 1.0 and the sum is exactly 0.0
+# (measured 2026-10-12).
 WASHOUT_LENGTHS_IN_TIME_CONSTANTS = (20.0, 30.0, 40.0, 60.0)
 
-# Drawn states: amounts in litres either side of one another, steps and time
-# constants across the range the compartments form, the infinite time constant
-# of zero flow among them.
+# Drawn states for the property-based test. The amounts, in litres, can lie on
+# either side of one another. The steps and time constants span the range the
+# compartments produce, including the infinite time constant of zero flow.
 AMOUNTS_L = st.floats(min_value=0.0, max_value=1e3, allow_nan=False, allow_infinity=False)
 STEPS_S = st.floats(min_value=1e-3, max_value=1e6, allow_nan=False, allow_infinity=False)
 TIME_CONSTANTS_S = st.one_of(
@@ -111,9 +119,11 @@ def test_either_form_closes_the_textbook_share_of_the_gap(
 ) -> None:
     """The arrangement changes the rounding and not the equation.
 
-    Against `M_eq + (M - M_eq) exp(-dt/tau)`, the form `docs/MODEL.md`'s
-    balance integrates to, at a step formed from the amount held, at the
-    switch, and at one time constant, formed from the equilibrium.
+    The result is checked against `M_eq + (M - M_eq) exp(-dt/tau)`, the form
+    that `docs/MODEL.md`'s balance integrates to. It is checked at three
+    steps: a step at which the result is formed from the amount held, a step
+    at the switch, and a step of one time constant, at which the result is
+    formed from the equilibrium.
     """
 
     textbook = equilibrium + (initial - equilibrium) * exp(-step_s / TIME_CONSTANT_S)
@@ -130,11 +140,12 @@ def test_either_form_closes_the_textbook_share_of_the_gap(
 def test_the_two_forms_agree_where_the_anchor_switches(initial: float, equilibrium: float) -> None:
     """At ln 2 time constants the gap closed is a half, and the two forms agree.
 
-    The switch is the arrangement's one free choice, placed where the term
-    each form adds is the same size, so that nothing jumps across it: the two
-    forms agree there to within an ulp of the larger amount, and the result is
-    one of them. The half is asserted to within an ulp rather than exactly,
-    because exactly is a fact about one libm (`SWITCH_STEP_S`).
+    The switch point is the arrangement's one free choice. It is placed where
+    the term each form adds is the same size, so that the result does not
+    jump across it. There the two forms agree to within an ulp of the larger
+    amount, and the result equals one of them. The half is checked to within
+    an ulp rather than exactly, because an exact half is a fact about one
+    libm (`SWITCH_STEP_S`).
     """
 
     gap_closed = -expm1(-SWITCH_STEP_S / TIME_CONSTANT_S)
@@ -156,13 +167,15 @@ def test_the_two_forms_agree_where_the_anchor_switches(initial: float, equilibri
 def test_the_result_is_within_three_ulps_of_the_balance_solution(
     initial: float, equilibrium: float, length_in_time_constants: float
 ) -> None:
-    """Against the balance's solution taken to 40 digits, at every state and length named above.
+    """The result is within three ulps of the 40-digit balance solution at each state and length.
 
-    The four properties pinned above are exact facts at special points; this
-    is the accuracy everywhere between them, which the switch at a half is
-    what buys: a form switching at three quarters errs by 3.5 ulps at the
-    searched states, carrying a term three times its result. The bound admits
-    a switch anywhere up to a half, each of which is within it.
+    The four properties that the other tests in this file pin are exact facts
+    at special points. This
+    test checks the accuracy everywhere between them, which the switch at a
+    half provides. A form that switched at three quarters errs by 3.5 ulps at
+    the searched states, because it carries a term three times its result.
+    The bound allows a switch anywhere up to a half, because every such
+    switch stays within it.
     """
 
     getcontext().prec = 40
@@ -183,14 +196,15 @@ def test_the_result_is_within_three_ulps_of_the_balance_solution(
 def test_a_full_approach_lands_on_the_equilibrium_exactly(
     capacity_l: float, loaded_fraction: float
 ) -> None:
-    """Where the sum formed from the amount held lands an ulp over, the result is the equilibrium.
+    """Where the sum formed from the amount held lands an ulp high, the result is the equilibrium.
 
-    The first assertions are the measurement that makes the form taken from
-    the equilibrium load-bearing rather than cosmetic: at these states the
-    gap factor is exactly 1.0 and `a + (c - a) * 1.0` is one ulp of `c`
-    above `c`. Past the capacity, that is a write `TissueGroup.__setattr__`
-    refuses, so formed from the amount throughout, a tissue driven to a
-    fraction of one from these states raised from its own closed form.
+    The first assertions are the measurement that shows the form taken from
+    the equilibrium is needed, not cosmetic. At these states the gap factor
+    is exactly 1.0, and `a + (c - a) * 1.0` is one ulp of `c` above `c`. That
+    amount is past the capacity, and `TissueGroup.__setattr__` refuses to
+    write it. If the result were always formed from the amount, a tissue
+    driven to a fraction of one from these states would raise an error from
+    its own closed form.
     """
 
     loaded_amount_l = capacity_l * loaded_fraction
@@ -211,10 +225,10 @@ def test_a_full_approach_lands_on_the_equilibrium_exactly(
 def test_a_long_washout_keeps_its_residual(length_in_time_constants: float) -> None:
     """Formed from the equilibrium, the residual is a product and keeps its own precision.
 
-    The first assertion is the measurement that makes that form load-bearing
-    at long steps: formed from the 6 L held, the same step carries the
-    residual to no better than a part in 1e9, and from 37.43 time constants
-    reports exactly 0.0. The reference is the balance's solution taken to 28
+    The first assertion is the measurement that shows this form is needed at
+    long steps. Formed from the 6 L held, the same step computes the residual
+    no better than to one part in 1e9, and from 37.43 time constants it
+    reports exactly 0.0. The reference is the balance's solution computed to 28
     digits.
     """
 
@@ -234,11 +248,11 @@ def test_a_long_washout_keeps_its_residual(length_in_time_constants: float) -> N
 
 
 def test_a_short_step_closes_its_share_of_the_gap_exactly() -> None:
-    """`1 - exp(-dt/tau)` taken by `expm1` is exact where taken as written it is zero.
+    """Computed with `expm1`, `1 - exp(-dt/tau)` is exact where computing it as written gives zero.
 
     A step of 1e-20 time constants from empty toward 1 L closes 1e-20 L, bit
-    for bit; `1.0 - exp(-1e-20)` is 0.0, and a form taking its factor so
-    moves nothing at all.
+    for bit. `1.0 - exp(-1e-20)` is 0.0, so a form that computed its factor
+    that way would not move at all.
     """
 
     assert 1.0 - exp(-1e-20) == 0.0
@@ -246,14 +260,14 @@ def test_a_short_step_closes_its_share_of_the_gap_exactly() -> None:
 
 
 def test_the_change_is_anchored_at_the_amount_rather_than_at_the_fraction() -> None:
-    """Anchoring the fraction and re-forming the amount rounds once more, and can flip the sign.
+    """Anchoring at the fraction and re-forming the amount adds a rounding, which can flip the sign.
 
-    The instance: a 6 L capacity holding 1.8134844858482426 L, driven to a
-    fraction of one over 1 s against a time constant of 2.76e29 s, so the gap
-    factor is 3.6e-30 and leaves the fraction unchanged. Re-formed, the
-    amount is `6.0 * (1.8134844858482426 / 6.0)`, one ulp below what was
-    held: a return of 2.2e-16 L reported under a gradient driving agent in
-    (measured 2026-10-12).
+    In this instance, a 6 L capacity holds 1.8134844858482426 L and is driven
+    to a fraction of one over 1 s against a time constant of 2.76e29 s. The
+    gap factor is 3.6e-30, which leaves the fraction unchanged. Re-formed,
+    the amount is `6.0 * (1.8134844858482426 / 6.0)`, one ulp below what was
+    held. The step would then report that 2.2e-16 L of agent left, while the
+    gradient drives agent in (measured 2026-10-12).
     """
 
     capacity_l = 6.0
@@ -280,9 +294,9 @@ def test_at_zero_flow_the_result_is_the_start_exactly(initial: float, equilibriu
 
     `dt/inf` is `0.0`, `expm1(-0.0)` is `-0.0`, the step is formed from the
     amount held, and `initial + gap * 0.0` is `initial`. The first pair is
-    the primitives walk's own state: a compartment far below the input
-    driving it, where `d + (i - d)` rounds and the forms anchored at the
-    driving fraction needed a branch.
+    the state that the compartment-primitives walk uses: a compartment far
+    below the input driving it. There `d + (i - d)` rounds, and the forms
+    anchored at the driving fraction needed a branch.
     """
 
     assert exponential_approach(initial, equilibrium, 60.0, inf) == initial
@@ -293,10 +307,10 @@ def test_at_zero_flow_the_result_is_the_start_exactly(initial: float, equilibriu
 def test_the_result_lies_between_the_start_and_the_equilibrium(
     initial: float, equilibrium: float, step_s: float, time_constant_s: float
 ) -> None:
-    """Drawn states: the result never crosses either end, so the change has the gradient's sign.
+    """The result never passes either end, so the change has the gradient's sign.
 
-    Where `exp(-dt/tau)` underflows the step is a full approach, and lands on
-    the equilibrium exactly.
+    This is checked over drawn states. Where `exp(-dt/tau)` underflows, the
+    step is a full approach and lands exactly on the equilibrium.
     """
 
     approached = exponential_approach(initial, equilibrium, step_s, time_constant_s)

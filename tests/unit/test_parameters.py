@@ -32,8 +32,9 @@ from anesthesia_sim.core.parameters import (
     parse_reference_adult_parameters,
 )
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# The end of a shared guard's error message, which names the rejected value and
+# the reason (`PL-T137`). The guard's own tests pin each reason. These tests pin
+# the field.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
@@ -215,7 +216,7 @@ def test_loads_built_in_desflurane_parameters() -> None:
 def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_isoflurane() -> (
     None
 ):
-    """Directional check against the shared Gas Man source table (De Wolf et al. 2012)."""
+    """Check the solubility order against the shared Gas Man source table (De Wolf et al. 2012)."""
 
     desflurane = load_agent_parameters("desflurane")
     sevoflurane = load_agent_parameters("sevoflurane")
@@ -259,7 +260,7 @@ def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
     desflurane 6%, sevoflurane 2%, isoflurane 1.2%." It was read as full text
     from PubMed Central on 2026-10-17. Weber et al. 2021 (PMC7943506),
     Table 1, read the same way on the same day, prints the same Gas Man set
-    with sevoflurane 2.1 and isoflurane 1.1. This test types De Wolf's
+    with sevoflurane 2.1 and isoflurane 1.1. This test uses De Wolf's
     figures because De Wolf is the adopted authority. It cannot settle which
     paper is right, and each agent file records the disagreement (`PL-0SG0`).
 
@@ -297,7 +298,7 @@ def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
         # vaporizer setting of 8%".
         ("sevoflurane", 8.0),
         # Kelly and Kong 2011 (PMID 21749341). isoflurane.json's source entry
-        # reads it as both studied vaporizers being calibrated 0-5%. The
+        # takes it to say that both studied vaporizers are calibrated 0-5%. The
         # abstract, read through PubMed on 2026-10-17, names the two models
         # (Penlon Sigma Delta and Datex-Ohmeda Isotec 5) but not their scale.
         # The full text is not in PubMed Central, and the publisher refused the
@@ -403,18 +404,17 @@ def test_rejects_nonpositive_mac_percent() -> None:
 
 
 def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
-    """The record refuses a zero MAC divisor, not only the loader (`PL-0FJ8`).
+    """The record, and not only the loader, refuses a zero MAC divisor (`PL-0FJ8`).
 
     `Percent` admits zero, because a dial can read zero. So the payload's
     `PositivePercent` above was the only thing that kept a zero MAC out of an
     `AgentParameters`. A record built any other way, such as by
     `dataclasses.replace` in a test or a notebook, carried the zero to
     `format_mac_reference`, which printed `1 MAC sevoflurane = 0.0%`. Since
-    `PL-F9TC`, the record holds its MAC as a `MacPercent`, which refuses zero
+    `PL-F9TC`, the record stores its MAC as a `MacPercent`, which refuses zero
     when it is built. The record also refuses a MAC that was not built as
-    one, a `Percent` included. A negative
-    MAC never gets this far: `Percent` refuses it when built, and holds minus
-    zero as zero.
+    one, a `Percent` included. A negative MAC never gets this far: `Percent`
+    refuses it when built, and stores minus zero as zero.
     """
 
     sevoflurane = load_sevoflurane_parameters()
@@ -438,7 +438,7 @@ def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
 
 
 def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() -> None:
-    """`PL-HPKK`: the record, and not only the loader, refuses a zero maximum and a MAC above it.
+    """The record, and not only the loader, refuses a zero maximum and a MAC above it (`PL-HPKK`).
 
     The loader's `PositivePercent` and `_mac_percent_must_not_exceed_vaporizer_max`
     refuse both for a file. Until `PL-HPKK`, a record built by `dataclasses.replace`
@@ -493,7 +493,7 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
 
 
 def test_an_agent_file_with_its_mac_at_the_vaporizer_maximum_loads() -> None:
-    """The file is held to the record's rule, so a MAC equal to the maximum is accepted."""
+    """The loader applies the record's rule to a file, so a MAC equal to the maximum is accepted."""
 
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 8.0
@@ -503,15 +503,15 @@ def test_an_agent_file_with_its_mac_at_the_vaporizer_maximum_loads() -> None:
 
 
 def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
-    """Regression (PL-016): the only cross-field agent check must fail closed.
+    """The only cross-field agent check must fail closed (regression test for PL-016).
 
-    As a `field_validator` reading `info.data`, the guard saw
+    When the guard was a `field_validator` reading `info.data`, it saw
     `max_delivered_concentration_percent` only because that field happened
-    to be declared first. Reordering the two fields turned it into a
-    silent no-op, so a file declaring 40% MAC on a 5% vaporizer would load
-    clean — and `AgentUptakeSystem.for_agent()` starts every run at 1 MAC.
+    to be declared first. Reordering the two fields turned the guard into a
+    silent no-op. A file declaring 40% MAC on a 5% vaporizer would then load
+    cleanly, and `AgentUptakeSystem.for_agent()` starts every run at 1 MAC.
     A model validator runs after every field is populated, so declaration
-    order cannot reach it.
+    order cannot affect it.
     """
 
     decorators = parameters_module._AgentPayload.__pydantic_decorators__
@@ -521,8 +521,9 @@ def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
 
 
 def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> None:
-    """Run the shipped guard against a model declaring the two fields in
-    the order that previously defeated it.
+    """Run the shipped guard on a model that declares the two fields in either order.
+
+    One of the two orders is the one that previously defeated the guard.
     """
 
     guard = parameters_module._AgentPayload.__dict__["_mac_percent_must_not_exceed_vaporizer_max"]
@@ -548,8 +549,10 @@ def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> Non
 
 
 def test_every_shipped_agent_can_deliver_its_own_one_mac() -> None:
-    """`for_agent()` starts at 1 MAC, so no shipped file may declare a MAC
-    its own vaporizer cannot reach.
+    """No shipped agent file may declare a MAC that its own vaporizer cannot reach.
+
+    `for_agent()` starts every run at 1 MAC, so the vaporizer must be able to
+    deliver it.
     """
 
     for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
@@ -586,9 +589,9 @@ def test_rejects_missing_provenance() -> None:
 def test_rejects_unknown_top_level_agent_key() -> None:
     """A typo'd duplicate of a real key must fail, not be silently dropped.
 
-    This is the exact shape the review harness reproduced as P1-4: the
-    correctly spelled key is still present, so nothing is *missing* and the
-    load would otherwise succeed while the misspelled edit took no effect.
+    The review harness reproduced exactly this case as P1-4. The correctly
+    spelled key is still present, so nothing is *missing*. Without this check
+    the load would succeed, and the misspelled edit would have no effect.
     """
 
     payload = _valid_agent_payload()
@@ -637,8 +640,8 @@ def test_rejects_unknown_tissue_group_name() -> None:
     """An unmodeled compartment must fail rather than be quietly ignored.
 
     A file naming a `brain` group documents a four-compartment model while
-    the app runs three, and the perfusion-fraction sum check would not
-    catch it: the three modeled fractions still total 1.
+    the app runs three. The perfusion-fraction sum check would not catch
+    this, because the three modeled fractions still total 1.
     """
 
     payload = _valid_patient_payload()
@@ -668,20 +671,21 @@ def test_rejects_unknown_key_inside_a_tissue_group() -> None:
 
 
 def test_every_payload_model_documents_why_it_exists() -> None:
-    """The pair reads as duplication until something says it is not (PL-007).
+    """The pair looks like duplication until something says it is not (PL-007).
 
-    Each `_...Payload` is paired with a public, Pydantic-independent
-    dataclass, and the design is correct: it is what keeps the validation
-    library out of the rest of `core/`, and the two shapes differ - the
-    payload mirrors the file's nesting, the public type is flat. A reader who
-    does not find that written down is liable to "simplify" the pair away,
-    which would couple the compartments to Pydantic and let the JSON layout
-    dictate the type the simulation reads.
+    Each `_...Payload` is paired with a public dataclass that does not depend
+    on Pydantic, and the design is correct. The pairing keeps the validation
+    library out of the rest of `core/`. The two shapes also differ: the
+    payload mirrors the file's nesting, and the public type is flat. A reader
+    who does not find that written down is liable to "simplify" the pair
+    away. That would couple the compartments to Pydantic and let the JSON
+    layout dictate the type that the simulation reads.
 
-    Walked rather than listed, for the reason the strictness test above is
-    walked: the seventh payload model added later should arrive documented by
-    default rather than by being remembered. What the docstring *says* is not
-    checkable and is not checked here; that it exists is.
+    The test walks the subclasses rather than listing them, for the same
+    reason as the strictness test that follows. The seventh payload model
+    added later should arrive documented by default, not because someone
+    remembered. This test does not check what the docstring *says*, which
+    cannot be checked. It checks only that the docstring exists.
     """
 
     strict_base = parameters_module._StrictPayload
@@ -696,12 +700,12 @@ def test_every_payload_model_documents_why_it_exists() -> None:
 
 
 def test_every_payload_model_forbids_unknown_keys() -> None:
-    """Strictness must hold for models added later, not just today's eight.
+    """Payload models added later must be strict too, not just today's eight.
 
     Inheriting `_StrictPayload` is what makes a new payload model strict by
-    default; this walks the subclass tree so that a model which opts back
-    out — or one declared against `BaseModel` directly — is caught here
-    rather than by a data file loading wrong in the field.
+    default. This test walks the subclass tree, so it catches a model that
+    opts back out, or one declared against `BaseModel` directly. Such a model
+    is caught here rather than by a data file loading wrongly in use.
     """
 
     # Reaching for the private base is the point: it is the guard under test.
@@ -732,8 +736,8 @@ def test_every_agent_carries_a_mac_awake_fraction_below_its_mac() -> None:
 
     Awakening happens at a lower concentration than immobility to incision,
     so a stored band reaching 1 MAC is a data error rather than an unusual
-    agent. Checked against the shipped files, not a synthetic payload,
-    because that is what the chart actually draws.
+    agent. The test reads the shipped files, not a synthetic payload,
+    because the shipped files are what the chart actually draws.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -808,9 +812,9 @@ def test_rejects_a_mac_awake_band_reaching_zero() -> None:
 def test_rejects_a_mac_awake_band_reaching_one_mac() -> None:
     """An upper edge at 1 MAC would erase the decrement the chart exists to show.
 
-    The band and the 1 MAC line are drawn so the gap between them reads as
+    The band and the 1 MAC line are drawn so that the gap between them shows
     the decrement required for arousal. A band touching the anesthetizing
-    reference is not a rendering nuisance; it contradicts what MAC-awake is.
+    reference is not a rendering nuisance. It contradicts what MAC-awake is.
     """
 
     payload = _valid_agent_payload()
@@ -839,11 +843,11 @@ def test_rejects_a_mac_awake_fraction_above_one() -> None:
 
 
 def test_rejects_a_mac_awake_block_missing_its_reference_basis() -> None:
-    """A fraction with no stated denominator is the wrong-context failure.
+    """A fraction with no stated denominator invites a reading in the wrong context.
 
-    `_StrictPayload` also forbids an *extra* key here, so a file recording
-    the denominator under a name the loader does not know fails rather than
-    silently dropping it.
+    `_StrictPayload` also forbids an *extra* key here. So a file that records
+    the denominator under a name the loader does not know fails to load,
+    rather than the loader silently dropping the key.
     """
 
     payload = _valid_agent_payload()
@@ -868,8 +872,8 @@ def test_no_agent_file_stores_mac_awake_as_a_percent() -> None:
 
     A shipped file that also carried an absolute percent would give a later
     reader two values to choose between, one of which is anchored to a MAC
-    this project does not use. `_StrictPayload` already refuses the key; this
-    states the intent so a schema change has to argue with it.
+    this project does not use. `_StrictPayload` already refuses the key. This
+    test states the intent, so a schema change has to argue with it.
     """
 
     for agent_id, filename in AGENT_DATA_FILENAMES.items():
@@ -919,9 +923,10 @@ def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
     """`"adopted": "false"` is truthy, so a coercing loader would invert it.
 
     The field is a provenance claim about a safety-critical value, and the
-    two wrong readings are not symmetric: reading an unadopted primary as
-    adopted is the failure `docs/MODEL.md` § "Source hierarchy" exists to
-    prevent, and it is the one a loose truthiness test produces.
+    two wrong readings are not equally harmful. Treating an unadopted primary
+    source as adopted is the failure that `docs/MODEL.md` § "Source hierarchy"
+    exists to prevent. It is also the failure that a loose truthiness test
+    produces.
     """
 
     payload = _valid_agent_payload()
@@ -938,7 +943,7 @@ def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
 
 
 def test_rejects_a_source_entry_that_declares_no_authority_for() -> None:
-    """Required like `tier` and `adopted`, for the reason `_SourcePayload` gives."""
+    """`authority_for` is required like `tier` and `adopted`, for the reason in `_SourcePayload`."""
 
     payload = _valid_agent_payload()
     del _source_entries(payload)[0]["authority_for"]
@@ -963,7 +968,7 @@ def test_rejects_an_adopted_source_that_names_no_stored_value() -> None:
 
 
 def test_rejects_a_source_that_names_stored_values_while_not_adopted() -> None:
-    """The two fields must not disagree, or a reader of each gets a different answer.
+    """The two fields must not disagree, or a check of each would give a different result.
 
     A check reading `adopted` would report this source as cited only, and one
     reading `authority_for` would report it as the provenance of a stored
@@ -1038,8 +1043,8 @@ def test_rejects_an_authority_for_path_that_names_a_group_rather_than_a_value(
 ) -> None:
     """The values in a group can each have a different authority.
 
-    Naming `tissue_groups.fat` would claim its volume and its perfusion
-    fraction for one source without saying so of either.
+    Naming `tissue_groups.fat` would assign both its volume and its perfusion
+    fraction to one source, without naming either value.
     """
 
     payload = valid_payload()
@@ -1056,8 +1061,8 @@ def test_rejects_an_authority_for_path_that_names_a_group_rather_than_a_value(
 def test_rejects_an_authority_for_path_that_names_no_numeric_parameter(path: str) -> None:
     """`schema_version` is a number in the file and still not a stored parameter.
 
-    The other two are strings the file holds, and `authority_for` names the
-    numeric values the provenance table's rows are.
+    The other two are strings that the file stores. `authority_for` names
+    numeric values, which are the rows of the provenance table.
     """
 
     payload = _valid_agent_payload()
@@ -1071,10 +1076,10 @@ def test_rejects_an_authority_for_path_that_names_no_numeric_parameter(path: str
 
 
 def test_an_optional_value_the_file_leaves_out_has_no_authority_to_name() -> None:
-    """A machine profile silent on its startup flow stores none, so nothing backs one.
+    """A machine profile that omits its startup flow stores none, so no source can back one.
 
-    The same path loads while the flow is stated, which is also the machine
-    family carrying `authority_for` through to the public type.
+    The same path loads when the flow is stated. That case also checks that
+    the machine family carries `authority_for` through to the public type.
     """
 
     stated = _valid_breathing_circuit_payload()
@@ -1123,10 +1128,10 @@ def test_rejects_a_stored_value_named_by_two_sources() -> None:
 
 
 def test_a_patient_file_refusal_names_the_patient_family_and_the_entry() -> None:
-    """The refusal says which family of file and which entry, so it traces to one line.
+    """The error names the family of file and the entry, so it traces to one line.
 
-    Each family runs the same shared check, so the family in the message is
-    the one thing that tells a patient file's refusal from an agent file's.
+    Each family runs the same shared check. So the family in the message is
+    the only thing that tells a patient file's error from an agent file's.
     """
 
     payload = _valid_patient_payload()
@@ -1157,11 +1162,11 @@ def test_rejects_a_path_one_source_names_twice() -> None:
 
 
 def test_a_version_2_file_is_refused_by_its_version() -> None:
-    """Version 2 predates `authority_for`, and no family's window reaches back to it.
+    """Version 2 predates `authority_for`, and no family's version window extends back to it.
 
     A version 2 entry has no `authority_for`, so the file cannot be read as a
-    version 3 one. The refusal names the version, so its reader learns that the
-    file is older than the loader and not only that a field is missing.
+    version 3 one. The error names the version, so its reader learns that the
+    file is older than the loader, not only that a field is missing.
     """
 
     payload = _valid_agent_payload()
@@ -1180,7 +1185,7 @@ def test_a_version_2_file_is_refused_by_its_version() -> None:
 
 
 def test_the_shipped_files_load_and_carry_authority_for_to_the_public_type() -> None:
-    """One pinned example of the loaded link; the mapping itself lives in the data.
+    """Pin one example of the loaded link. The mapping itself lives in the data.
 
     De Wolf et al. 2012 is the example because its note once called it the
     authority for blood_gas_partition_coefficient alone, while the same file
@@ -1209,9 +1214,10 @@ def test_provenance_gap_is_absent_by_default() -> None:
 def test_an_explicit_null_provenance_gap_reads_the_same_as_an_absent_one() -> None:
     """A data file may write the key out as `null`, which is not an empty gap.
 
-    The omitted key never reaches the validator at all - Pydantic applies the
-    default instead - so the two spellings take different paths to the same
-    answer, and only this one exercises the validator's `None` branch.
+    An omitted key never reaches the validator at all, because Pydantic
+    applies the default instead. So the two spellings take different paths to
+    the same result, and only this one exercises the validator's `None`
+    branch.
     """
 
     payload = _valid_patient_payload()
@@ -1244,8 +1250,9 @@ def test_doc_check_holds_the_same_source_tier_vocabulary() -> None:
     """The two copies exist because `doc_check.py` runs without the virtualenv.
 
     It cannot import this package, so the vocabulary is written twice on
-    purpose; this is what stops the two drifting apart silently, which would
-    let a tier the loader rejects pass `make check` or the reverse.
+    purpose. This test stops the two copies from drifting apart silently.
+    Drift would let a tier that the loader rejects pass `make check`, or the
+    reverse.
     """
 
     assert tuple(doc_check.SOURCE_TIERS) == tuple(SOURCE_TIERS)
@@ -1267,12 +1274,12 @@ def test_every_shipped_source_declares_a_tier_and_an_adoption() -> None:
 
 
 def test_the_reference_patient_records_its_provenance_gap() -> None:
-    """It adopts no primary measurement for any of its eleven parameters.
+    """The reference patient adopts no primary measurement for any of its eleven parameters.
 
-    `PL-6Q8N` established that, and the gap is the reason the tier alone
-    cannot carry this rule: the file cites five primary measurements, every
-    one of them explicitly not adopted, so a check reading tiers would report
-    it as primary-sourced.
+    `PL-6Q8N` established that. This gap is why the tier alone cannot express
+    the rule. The file cites five primary measurements, and every one of them
+    is explicitly not adopted. So a check that reads only tiers would report
+    the file as primary-sourced.
     """
 
     patient = load_reference_adult_parameters()
@@ -1294,14 +1301,15 @@ def _loader_pointed_at(monkeypatch: Any, directory: Path) -> None:
 def test_a_missing_data_file_raises_the_boundary_type_this_module_promises(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
-    """`PL-B32L`: the stated boundary was false for a missing file.
+    """The module's stated error boundary was false for a missing file (`PL-B32L`).
 
-    The module docstring promises that every raise it makes to a caller is a
-    `SimulationConfigurationError`, and callers are written against it -
-    `app/simulation_view.py` catches the project hierarchy. Unwrapped,
-    `resource.open()` raised a bare `FileNotFoundError`, which is not an
-    `AnesthesiaSimulationError`, so a corrupted install escaped the one
-    boundary the core claims to present.
+    The module docstring promises that every exception it raises to a caller
+    is a `SimulationConfigurationError`, and callers rely on that promise.
+    For example, `app/simulation_view.py` catches the project's exception
+    hierarchy. Before the fix, `resource.open()` raised a bare
+    `FileNotFoundError`, which is not an `AnesthesiaSimulationError`. So a
+    corrupted install escaped the one boundary that the core claims to
+    present.
     """
 
     _loader_pointed_at(monkeypatch, tmp_path)
@@ -1316,7 +1324,7 @@ def test_a_missing_data_file_raises_the_boundary_type_this_module_promises(
 def test_a_malformed_data_file_raises_the_boundary_type_this_module_promises(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
-    """`PL-B32L`, the second of the two routes the audit named."""
+    """The second of the two routes that the `PL-B32L` audit named."""
 
     (tmp_path / "sevoflurane.json").write_text("{ not json", encoding="utf-8")
     _loader_pointed_at(monkeypatch, tmp_path)
@@ -1333,11 +1341,12 @@ def test_a_data_file_that_is_not_utf8_raises_the_boundary_type_too(
 ) -> None:
     """The third route, which `PL-B32L`'s own brief did not name.
 
-    The file is opened as text, so bytes that are not UTF-8 fail in the read
-    inside `json.load()` with a `UnicodeDecodeError` - a `ValueError`, and
-    not a `JSONDecodeError`. Catching only the two the audit listed would
-    have left this one escaping and the module docstring still false, which
-    is why the fix names three types and why this test exists separately.
+    The file is opened as text, so bytes that are not UTF-8 fail during the
+    read inside `json.load()`. They raise a `UnicodeDecodeError`, which is a
+    `ValueError` but not a `JSONDecodeError`. Catching only the two types that
+    the audit listed would have let this error escape, and left the module
+    docstring still false. That is why the fix names three types, and why
+    this test exists separately.
     """
 
     (tmp_path / "sevoflurane.json").write_bytes(b'{"id": "\xff\xfe"}')
@@ -1439,13 +1448,13 @@ def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() 
 
 
 def test_the_reference_circle_system_records_its_provenance_gap() -> None:
-    """It adopts nothing at all, which is stronger than adopting no primary.
+    """The reference circle system adopts no source, which is stronger than adopting no primary.
 
     Its circuit volume departs deliberately from the Workbook's published
-    8.0 L, and its fresh gas flow has no published counterpart anywhere this
-    project has reached, so both `sources` entries are cited and not adopted.
-    `check_source_tiers` requires the gap for the weaker case; this asserts
-    the stronger one the file actually states.
+    8.0 L. Its fresh gas flow has no published counterpart in any source this
+    project has reached. So both `sources` entries are cited and not adopted.
+    `check_source_tiers` requires the gap for the weaker case. This test
+    asserts the stronger case that the file actually states.
     """
 
     machine = load_reference_circle_system_parameters()
@@ -1457,14 +1466,15 @@ def test_the_reference_circle_system_records_its_provenance_gap() -> None:
 
 
 def test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why() -> None:
-    """`PL-8PS6`: the null is the record, and the gap is what makes it one.
+    """The null value is the record, and the provenance gap is what makes it one (`PL-8PS6`).
 
     `docs/machine-survey.md` § "(b8) Flow bounds, minimum oxygen flow, and the
     hypoxic guard" found no minimum oxygen flow, minimum total flow or
-    deliverable range for any of the eight machines it surveyed, so this
-    profile states the absence rather than inventing a plausible range. Under
-    it the model's envelope in `core/supported_ranges.py` is the only bound on
-    the flow, which is the behavior that shipped before the field existed.
+    deliverable range for any of the eight machines it surveyed. So this
+    profile states the absence rather than inventing a plausible range. With
+    no range declared, the model's envelope in `core/supported_ranges.py` is
+    the only bound on the flow. That is the behavior that shipped before the
+    field existed.
     """
 
     machine = load_reference_circle_system_parameters()
@@ -1476,7 +1486,7 @@ def test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why() -
 
 
 def test_a_machine_payload_may_declare_a_deliverable_flow_range() -> None:
-    """The route a real machine's flowmeter limits will travel."""
+    """Load a declared range, the route by which a real machine's flowmeter limits will arrive."""
 
     payload = _valid_breathing_circuit_payload()
     payload["deliverable_fresh_gas_flow_range"] = {"minimum_l_min": 0.2, "maximum_l_min": 15.0}
@@ -1491,8 +1501,9 @@ def test_a_machine_payload_may_declare_a_deliverable_flow_range() -> None:
 def test_a_machine_payload_omitting_the_range_declares_none_rather_than_unlimited() -> None:
     """A profile written before the field existed declared no range.
 
-    Silence reading as "no claim" is what makes the default safe: the model's
-    envelope still binds, and nothing infers a machine capable of any flow.
+    Treating silence as "no claim" is what makes the default safe. The
+    model's envelope still applies, and nothing infers a machine capable of
+    any flow.
     """
 
     machine = parse_breathing_circuit_parameters(_valid_breathing_circuit_payload())
@@ -1502,11 +1513,11 @@ def test_a_machine_payload_omitting_the_range_declares_none_rather_than_unlimite
 
 @pytest.mark.parametrize("silence", ("omitted", "null"))
 def test_a_machine_payload_may_state_no_default_fresh_gas_flow(silence: str) -> None:
-    """`PL-QW19`: no surveyed machine publishes a startup fresh gas flow.
+    """No surveyed machine publishes a startup fresh gas flow (`PL-QW19`).
 
-    So the key is optional, and leaving it out or writing `null` both read as
-    *this profile states none*. What a run opens at instead is `for_agent()`'s
-    to supply, and `tests/unit/test_circuit.py` asserts it.
+    So the key is optional, and leaving it out or writing `null` are both
+    treated as *this profile states none*. The flow a run opens at instead is
+    supplied by `for_agent()`, and `tests/unit/test_circuit.py` asserts it.
     """
 
     payload = _valid_breathing_circuit_payload()
@@ -1521,12 +1532,12 @@ def test_a_machine_payload_may_state_no_default_fresh_gas_flow(silence: str) -> 
 
 
 def test_a_misspelled_fresh_gas_flow_key_is_refused_rather_than_read_as_silence() -> None:
-    """Optional must not turn a typo into a silent fallback.
+    """Making the key optional must not turn a typo into a silent fallback.
 
-    While the key was required, `fresh_gas_flow_l_min` written in its place
-    failed twice over. Now only `extra="forbid"` stands between that typo and
-    a run opening at the teaching default from a file that reads as if it set
-    2.0 L/min, so the refusal is asserted by its reason.
+    While the key was required, writing `fresh_gas_flow_l_min` in its place
+    failed for two reasons. Now only `extra="forbid"` stops that typo from
+    opening a run at the teaching default, from a file that appears to set
+    2.0 L/min. So the test asserts the refusal by its reason.
     """
 
     payload = _valid_breathing_circuit_payload()
@@ -1539,7 +1550,7 @@ def test_a_misspelled_fresh_gas_flow_key_is_refused_rather_than_read_as_silence(
 
 @pytest.mark.parametrize("flow", ("4.0", True, 0.0, -1.0, float("inf")))
 def test_rejects_a_machine_payload_whose_stated_flow_is_not_a_positive_number(flow: object) -> None:
-    """Optional covers leaving the flow out, not what a stated one may be."""
+    """Being optional lets the flow be left out, but does not relax what a stated flow may be."""
 
     payload = _valid_breathing_circuit_payload()
     payload["default_fresh_gas_flow_l_min"] = flow
@@ -1549,11 +1560,11 @@ def test_rejects_a_machine_payload_whose_stated_flow_is_not_a_positive_number(fl
 
 
 def test_rejects_a_machine_payload_whose_declared_range_is_inverted() -> None:
-    """The ordering rule has one statement, in the type that owns the invariant.
+    """The ordering rule is stated once, in the type that owns the invariant.
 
-    `DeliverableFreshGasFlowRange.__post_init__` raises it, and the seam lets
-    it out unwrapped, so a data file and a direct construction are refused in
-    the same words.
+    `DeliverableFreshGasFlowRange.__post_init__` raises the error, and the
+    loader passes it on unwrapped. So a data file and a direct construction
+    are refused with the same message.
     """
 
     payload = _valid_breathing_circuit_payload()
@@ -1567,8 +1578,8 @@ def test_rejects_a_machine_payload_whose_declared_range_is_inverted() -> None:
 def test_rejects_a_machine_payload_whose_range_end_is_not_a_nonnegative_number(end: object) -> None:
     """Coercion is the failure this payload layer exists to stop.
 
-    `"0.2"` and `True` both load as numbers under Pydantic's defaults, and a
-    machine range that silently became 1.0 L/min would refuse settings a
+    `"0.2"` and `True` both load as numbers under Pydantic's defaults. A
+    machine range that silently became 1.0 L/min would refuse settings that a
     reader of the file expects to work.
     """
 
@@ -1588,11 +1599,11 @@ def test_rejects_a_machine_payload_whose_volume_is_not_positive() -> None:
 
 
 def test_rejects_a_machine_payload_carrying_a_key_the_schema_does_not_declare() -> None:
-    """The strictness walk covers the model; this covers the file's own shape.
+    """The strictness walk covers the model, and this test covers the file's own shape.
 
-    A units-suffixed variant of a real key is the failure mode `_StrictPayload`
-    exists for, and `fresh_gas_flow_l_min` without the `default_` prefix is the
-    one a reader of `BreathingCircuit` would reach for first.
+    A units-suffixed variant of a real key is the failure that `_StrictPayload`
+    exists to catch. `fresh_gas_flow_l_min`, without the `default_` prefix, is
+    the variant that a reader of `BreathingCircuit` would reach for first.
     """
 
     payload = _valid_breathing_circuit_payload()
@@ -1617,7 +1628,7 @@ def test_the_breathing_circuit_loader_shares_the_boundary_type_too(
 
 
 def _machine_window_widened_to_4(monkeypatch: Any) -> None:
-    """Widen the machine family to read 3 and 4, as a first real widening might."""
+    """Widen the machine family's window to versions 3 and 4, as a first real widening might."""
 
     monkeypatch.setattr(
         parameters_module,
@@ -1632,13 +1643,14 @@ def _machine_window_widened_to_4(monkeypatch: Any) -> None:
 
 
 def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: Any) -> None:
-    """`PL-HNWX`: widening one family's window moves nothing in the other two.
+    """Widening one family's version window changes nothing in the other two (`PL-HNWX`).
 
-    One integer checked by exact equality used to stand for agents, patients
-    and machines together, so raising it for a machine-only change refused the
-    three agent files and the patient file until each was edited for a change
-    it had nothing to do with. The last assertion is the independence itself:
-    the machine family reading 4 must not teach the agent family to.
+    One integer, checked by exact equality, used to serve agents, patients and
+    machines together. Raising it for a machine-only change refused the three
+    agent files and the patient file, until each was edited for a change it
+    had nothing to do with. The last assertion checks the independence
+    itself: the machine family reading version 4 must not make the agent
+    family read it too.
     """
 
     _machine_window_widened_to_4(monkeypatch)
@@ -1688,8 +1700,9 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
 ) -> None:
     """A reader of the error can tell a machine-schema problem from an agent one.
 
-    Below the window as well as above it: exact equality refused both, and a
-    window one version wide still does, so nothing that loads today changes.
+    The test covers versions below the window as well as above it. Exact
+    equality refused both, and a window one version wide still does, so
+    nothing that loads today changes.
     """
 
     payload = valid_payload()
@@ -1719,7 +1732,7 @@ def test_a_widened_window_names_both_of_its_ends_when_it_refuses(monkeypatch: An
 
 
 def test_a_schema_version_window_refuses_a_minimum_above_its_current() -> None:
-    """An inverted window admits no file, which would look like a broken file."""
+    """An inverted window accepts no file, and each rejection would look like a broken file."""
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -1733,8 +1746,9 @@ def test_a_window_reading_older_versions_must_say_why_they_still_read(reason: st
     """Raising `current` alone must not widen the window by default.
 
     An older file is validated against today's payload model, not translated
-    into it, so a key whose meaning changed between versions would load clean
-    and be misread. The reason is where the author says it has not.
+    into it. So a key whose meaning changed between versions would load
+    cleanly and be misread. The stated reason is where the author says that
+    no key's meaning has changed.
     """
 
     with pytest.raises(
@@ -1749,10 +1763,10 @@ def test_a_window_reading_older_versions_must_say_why_they_still_read(reason: st
 def test_a_boolean_schema_version_is_refused_even_where_a_window_reads_one(
     monkeypatch: Any,
 ) -> None:
-    """JSON `true` is Python's `1`, so a window reaching down to 1 must not read it.
+    """JSON `true` is Python's `1`, so a window extending down to 1 must not accept it.
 
     Exact equality with 2 refused it by accident. Once a window can widen, the
-    integer check is the only thing standing between a boolean and version 1.
+    integer check is the only thing that stops a boolean being read as version 1.
     """
 
     monkeypatch.setattr(

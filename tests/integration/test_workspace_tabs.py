@@ -67,7 +67,7 @@ def application() -> Iterator[QApplication]:
 
 
 class _Owner:
-    """What a dashboard does with the strip: hold the set, and draw the strip again on a change."""
+    """Stand in for a dashboard: hold the set, and redraw the strip on each change."""
 
     def __init__(self, workspaces: WorkspaceSet, runs: tuple[RunId, ...] = (_RUN_1,)) -> None:
         self.changes: list[WorkspaceSet] = []
@@ -95,13 +95,13 @@ def owner(application: QApplication) -> Iterator[_Owner]:
 
 
 def _with_mine(workspaces: WorkspaceSet) -> WorkspaceSet:
-    """The shipped set with a copy of the Default after it, and the Default active."""
+    """Return the shipped set with a copy of the Default after it, and the Default active."""
 
     return workspaces.duplicate(0).activate(0)
 
 
 def _entries(strip: WorkspaceTabs, index: int) -> list[tuple[str, bool]]:
-    """The tab's own entries: those before the first separator of its menu."""
+    """Return the tab's own entries, which are those before the first separator of its menu."""
 
     actions = strip.menu_for(index).actions()
     end = next((place for place, action in enumerate(actions) if action.isSeparator()), None)
@@ -114,7 +114,7 @@ def _named(operations: tuple[TabOperation, ...], label: str) -> TabOperation:
 
 
 def test_the_shipped_tabs_come_first_and_a_rule_follows_them(owner: _Owner) -> None:
-    """`PL-QW1Z` Q4: order and a separator, the set's own order within each group."""
+    """`PL-QW1Z` Q4: shipped tabs, a separator, the reader's own, each group in the set's order."""
 
     workspaces = owner.strip.workspaces
     assert [ws.name for ws in workspaces.workspaces] == [
@@ -229,7 +229,7 @@ def test_moves_stay_inside_the_tabs_group(owner: _Owner) -> None:
 
 
 def test_a_move_across_a_tab_of_the_other_group_lands_beside_its_neighbour() -> None:
-    """Induction's left neighbour in the strip is Default, two places along the set."""
+    """Induction's left neighbour in the strip is Default, which is two places away in the set."""
 
     workspaces = _with_mine(shipped_workspaces())
     moved = _named(tab_operations(workspaces, 2, ()), MOVE_LEFT_LABEL).result
@@ -274,7 +274,7 @@ def test_no_run_to_pin_is_shown_unavailable() -> None:
 
 
 def test_the_last_workspaces_delete_is_shown_unavailable_with_its_reason() -> None:
-    """`PL-WV9K` Q2: the floor is shown, never met as an error after a click."""
+    """`PL-WV9K` Q2: the one-Workspace minimum is shown, never met as an error after a click."""
 
     lone = WorkspaceSet((shipped_workspace(ShippedWorkspaceId("default")),), 0)
     delete = _named(tab_operations(lone, 0, ()), DELETE_LABEL)
@@ -333,7 +333,7 @@ def test_reset_asks_first_and_restores_the_shipped_layout_and_name(owner: _Owner
 
 
 def test_a_reset_the_set_refuses_is_shown_unavailable(application: QApplication) -> None:
-    """A shipped file that does not read, or a name another tab holds, is the reason shown."""
+    """The reason shown is a shipped file that fails to load, or a name another tab uses."""
 
     def broken(shipped_id: ShippedWorkspaceId) -> Workspace:
         raise ShippedWorkspaceError(f"{shipped_id}.json does not read")
@@ -432,7 +432,7 @@ def test_shift_f10_and_the_menu_key_open_the_tabs_menu(
 
 @pytest.fixture
 def shown(application: QApplication) -> Iterator[list[SimulationView]]:
-    """Every dashboard a test shows, closed after it."""
+    """Collect every dashboard that a test shows, and close each one after the test."""
 
     views: list[SimulationView] = []
     yield views
@@ -451,7 +451,7 @@ def _dashboard(
     *controllers: SimulationController,
     workspaces: WorkspaceSet | None = None,
 ) -> SimulationView:
-    """A dashboard over these runs, numbered from 1 in session `_SESSION`, shown and drawn once."""
+    """Return a dashboard over these runs, numbered from 1 in `_SESSION`, shown and drawn once."""
 
     view = SimulationView(
         controllers, run_identities=RunIdentities(_SESSION), workspaces=workspaces
@@ -505,8 +505,8 @@ def test_a_tab_switches_the_layout_and_leaves_the_run(
     view = _dashboard(application, shown, controller)
     run = view.runs[0]
     readouts = run.unconditional_widgets()
-    # The notice banner is hidden while it has nothing to say, so what is
-    # held is that each widget is shown as it was before the switch.
+    # The notice banner is hidden while it has nothing to say. So the test
+    # checks that each widget is shown or hidden as it was before the switch.
     visible = {value: widget.isVisibleTo(view) for value, widget in readouts.items()}
 
     QTest.mouseClick(view.tab_strip.tab_at(1), Qt.MouseButton.LeftButton)
@@ -603,7 +603,7 @@ def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
         assert frame.pin_label.text() == "Run 2"
         assert frame.content.isVisible()
 
-    # Both runs are still open, and the region still reads both.
+    # Both runs are still open, and the region still shows both.
     assert len(view.runs) == 2
 
     view.tab_strip.choose(_named(view.tab_strip.operations(0), "Unpin Run 2"))
@@ -615,7 +615,7 @@ def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
 def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """A run of an earlier session, numbered alike, is a different run (`PL-7Z84`)."""
+    """A run from an earlier session with the same number is a different run (`PL-7Z84`)."""
 
     earlier = RunId(SessionToken("f" * 32), 1)
     shipped = shipped_workspaces()

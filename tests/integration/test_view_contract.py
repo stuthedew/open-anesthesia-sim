@@ -168,7 +168,10 @@ def test_every_registered_kind_builds_a_widget_that_satisfies_the_contract(
 def test_a_view_reads_back_the_state_it_saved(
     application: QApplication, entry: RegisteredView
 ) -> None:
-    """The state is JSON-shaped and carries its version, and the View built from it says nothing."""
+    """The saved state is JSON-shaped and carries its version.
+
+    The View built from that state shows no notice.
+    """
 
     first = _built(entry)
     assert isinstance(first, View)
@@ -187,7 +190,7 @@ def test_a_view_reads_back_the_state_it_saved(
 def test_a_view_built_from_state_it_cannot_read_says_so(
     application: QApplication, entry: RegisteredView
 ) -> None:
-    """`PL-TH35` Q4: defaults drawn without a word would be the stale-state failure."""
+    """`PL-TH35` Q4: drawing the defaults without a notice would be the stale-state failure."""
 
     view = _built(entry, {STATE_VERSION_KEY: 999})
 
@@ -319,7 +322,7 @@ def test_a_chart_built_with_nothing_saved_fits_the_run(
 def test_a_version_1_chart_state_reads_as_fit_run_without_a_notice(
     application: QApplication, kind: str
 ) -> None:
-    """Version 1 held no setting, so nothing saved is lost and nothing is said."""
+    """Version 1 stored no setting, so nothing saved is lost and no notice is shown."""
 
     view = _chart(kind, {STATE_VERSION_KEY: 1})
 
@@ -338,7 +341,7 @@ def test_a_version_1_chart_state_reads_as_fit_run_without_a_notice(
         {STATE_VERSION_KEY: 2, "time_base_s": None},
         {STATE_VERSION_KEY: 2, "time_base_s": "900"},
         {STATE_VERSION_KEY: 2, "time_base_s": "Fit run"},
-        # A rung only fitting reaches, which the control cannot show.
+        # A rung that only fitting reaches, which the control cannot show.
         {STATE_VERSION_KEY: 2, "time_base_s": 60.0},
         {STATE_VERSION_KEY: 2, "time_base_s": 901.0},
         {STATE_VERSION_KEY: 2, "time_base_s": True},

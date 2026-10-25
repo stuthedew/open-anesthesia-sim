@@ -13,14 +13,14 @@ from anesthesia_sim.core.supported_ranges import CardiacOutput
 from anesthesia_sim.core.tissue import TissueGroup
 
 BLOOD_FLOW_L_MIN = 1.0
-"""The flow these tests perfuse a tissue at, in L/min, unless a test says otherwise.
+"""The flow at which these tests perfuse a tissue, in L/min, unless a test says otherwise.
 
-A tissue group stores no flow since `PL-HQF5`, so each closed form takes it.
+Since `PL-HQF5` a tissue group stores no flow, so each closed form takes the flow as an argument.
 """
 
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# The end of a shared guard's refusal message, which names the refused value and the reason
+# (`PL-T137`). The guard's own tests check each reason. The tests here check the field name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
@@ -79,13 +79,12 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
 def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     """An assignment straight onto the amount meets the constructor's refusal, and writes nothing.
 
-    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
-    same name: until `PL-544D` `TissueGroup` guarded no write at all, so an
-    amount past `capacity_l` was stored and its quotient refused only when the
-    snapshot built the `Fraction`. The write is refused in the constructor's
-    own words and leaves the field holding what it held; `dataclasses.replace`
-    and a copy write through the same `__setattr__`; an amount at the capacity
-    itself is written.
+    This is the tissue's counterpart of the test of the same name in
+    `tests/unit/test_alveolar.py`. Until `PL-544D`, `TissueGroup` guarded no write at all.
+    So an amount past `capacity_l` was stored, and its quotient was refused only when the
+    snapshot built the `Fraction`. The write is now refused in the constructor's own words,
+    and the field keeps the value it had. `dataclasses.replace` and a copy write through the
+    same `__setattr__`. An amount equal to the capacity itself is written.
     """
 
     tissue = _build_tissue()
@@ -255,19 +254,18 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
 def test_a_direct_write_is_held_to_the_constructors_checks(
     field: str, value: object, error: type[Exception], message: str
 ) -> None:
-    """An assignment past the constructor and the setters is refused as they refuse it.
+    """An assignment that bypasses the constructor and the setters is refused as they refuse it.
 
-    Until `PL-19Y0` only the agent amount was checked at the write
-    (`PL-544D`), so `perfusion_fraction = 7.0` and `volume_l = -1.0` were each
-    accepted on a built tissue. A valid perfusion fraction is refused too,
-    because the fraction is written once (`PL-Z0HN`), and a blood flow is no
-    field to write (`PL-HQF5`). A volume or a tissue:gas coefficient is also
-    held to the agent the tissue holds, since either shrinks the capacity the
-    partial pressure is the amount over: 0.5 under the 2.0 L held would put
-    this tissue at two atmospheres. A name that is no field passes the guard
-    to the slots, which refuse it, so a misspelt write cannot leave the field
-    it meant unchanged while appearing to succeed. Nothing is written when a
-    value is refused.
+    Until `PL-19Y0`, only the agent amount was checked at the write (`PL-544D`). So
+    `perfusion_fraction = 7.0` and `volume_l = -1.0` were each accepted on a built tissue. A
+    valid perfusion fraction is refused too, because the fraction is written once
+    (`PL-Z0HN`), and a blood flow is not a field that can be written (`PL-HQF5`). A volume or
+    a tissue:gas coefficient is also checked against the agent that the tissue holds.
+    Lowering either one shrinks the capacity, and the partial pressure is the amount held
+    divided by that capacity. A value of 0.5 for either one, with 2.0 L of agent held, would
+    put this tissue at two atmospheres. A name that is not a field passes the guard to the
+    slots, which refuse it. So a misspelt write cannot leave the intended field unchanged
+    while appearing to succeed. Nothing is written when a value is refused.
     """
 
     tissue = _build_tissue()
@@ -283,14 +281,13 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() -> None:
     """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
 
-    A volume or a tissue:gas coefficient giving a capacity equal to the agent
-    held is a partial pressure of exactly one atmosphere, and is written; the
-    coefficient's capacity is formed with the volume, not the blood:gas
-    coefficient, which this tissue holds at a quarter of its tissue:gas
-    one. `dataclasses.replace` builds a
-    new tissue through its constructor's writes, and a copy and a pickle
-    restore the fields one at a time through `__setattr__`, so a perfusion
-    fraction planted past the guard is refused when either is made rather than
+    A volume or a tissue:gas coefficient that gives a capacity equal to the agent held means
+    a partial pressure of exactly one atmosphere, and that value is written. The
+    coefficient's capacity is formed with the volume, not with the blood:gas coefficient,
+    which this tissue holds at a quarter of its tissue:gas coefficient.
+    `dataclasses.replace` builds a new tissue through its constructor's writes. A copy and a
+    pickle restore the fields one at a time through `__setattr__`. So a perfusion fraction
+    planted by bypassing the guard is refused when a copy or a pickle is made, rather than
     carried into the new tissue (`PL-19Y0`).
     """
 
@@ -322,11 +319,11 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 
 @pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
 def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
-    """A flow the closed form cannot be read at is refused, and the step changes nothing.
+    """A flow at which the closed form cannot be evaluated is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and its write refused it
-    (`PL-19Y0`). It is now the argument of `time_constant_s` and `advance`,
-    which refuse it in the same words before anything changes.
+    The flow was a stored field until `PL-HQF5`, and writing that field refused such a flow
+    (`PL-19Y0`). The flow is now the argument of `time_constant_s` and `advance`, which
+    refuse it in the same words before anything changes.
     """
 
     tissue = _build_tissue()
@@ -353,7 +350,7 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
 
 
 def test_a_tissue_is_perfused_at_its_fraction_of_the_cardiac_output() -> None:
-    """$`Q_i = f_iQ`$: a 0.2 fraction of 6.5 L/min is 1.3 L/min, formed where it is read.
+    """$`Q_i = f_iQ`$: a 0.2 fraction of 6.5 L/min is 1.3 L/min, computed when it is read.
 
     The expected flow is worked by hand. A bare `float` is refused, because
     only a `CardiacOutput` carries the supported range (`PL-HQF5`).
@@ -397,12 +394,11 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
     Increasing either $V_i$ or $\\lambda_{i:b}$, with flow held constant, must
     lengthen the tissue time constant.
 
-    Three otherwise identical groups at one blood flow isolate the two
-    factors: the second raises the volume alone, and the third raises the
-    tissue:gas coefficient alone, which raises $\\lambda_{i:b}$ because the
-    blood:gas coefficient is held fixed. The intermediate assertions state
-    that each variant moved only its own factor, and the one flow is passed to
-    all three, so a change to the fixture cannot leave the directional claims
+    Three groups that are otherwise identical, at one blood flow, isolate the two factors.
+    The second raises the volume alone. The third raises the tissue:gas coefficient alone,
+    which raises $\\lambda_{i:b}$ because the blood:gas coefficient is held fixed. The
+    intermediate assertions state that each variant moved only its own factor. The one flow
+    is passed to all three, so a change to the fixture cannot leave the directional claims
     below passing for the wrong reason.
     """
 
@@ -516,13 +512,12 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
 def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(factor: str) -> None:
     """Each factor of the capacity refuses a non-number by its own name, at its own write.
 
-    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
-    same shape: `capacity_l` multiplies the volume by the coefficient, and
-    while the amount's write read both before `__post_init__` had checked
-    them, a `str` in either came back as the multiplication's own
-    `TypeError`, naming neither, unless a `require_a_number` on each stood in
-    (`PL-544D`, found at review). Since `PL-19Y0` each factor's own write
-    checks it first.
+    This is the tissue's counterpart of the test of the same shape in
+    `tests/unit/test_alveolar.py`. `capacity_l` multiplies the volume by the coefficient.
+    While the amount's write read both factors before `__post_init__` had checked them, a
+    `str` in either one came back as the multiplication's own `TypeError`, which named
+    neither factor. Only a `require_a_number` call on each factor prevented that
+    (`PL-544D`, found at review). Since `PL-19Y0`, each factor's own write checks it first.
     """
 
     fields: dict[str, object] = dict(
@@ -541,11 +536,11 @@ def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(fa
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
     """`restore_state` writes what the tissue held, whatever the capacity has become.
 
-    The tissue's counterpart of `tests/unit/test_alveolar.py`'s test of the
-    same name (`PL-544D`, found at review): the volume is written past its own
-    guard, which since `PL-19Y0` refuses it, the rollback writes the captured
-    amount past the capacity guard, and the restored state is the one the step
-    began from, over capacity, for the snapshot's `Fraction` to refuse.
+    This is the tissue's counterpart of the test of the same name in
+    `tests/unit/test_alveolar.py` (`PL-544D`, found at review). The volume is written
+    directly, bypassing its own guard, which since `PL-19Y0` would refuse it. The rollback
+    then writes the captured amount, bypassing the capacity guard. The restored state is the
+    one that the step began from, over capacity, for the snapshot's `Fraction` to refuse.
     """
 
     tissue = _build_tissue()
@@ -566,7 +561,7 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
     The expected values are worked out by hand from the test tissue's
     parameters: a 2.0 L group with a tissue:blood coefficient of
     2.0 / 0.5 = 4.0. So 60 x 2.0 x 4.0 / 2.0 = 240 s at 2.0 L/min, and 96 s
-    at 5.0 L/min. Two flows, so a time constant formed at any fixed flow fails.
+    at 5.0 L/min. The test uses two flows, so a time constant formed at any single fixed flow fails.
     """
 
     tissue = _build_tissue()
@@ -636,14 +631,14 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
 ) -> None:
     """`PL-WP52`: a tissue group stepped on its own refuses a step shorter than 1 ms.
 
-    Rounding grows as the step shrinks in a tissue stepped alone, as it does in a
-    run. A tissue built as this one, held at a fraction of 0.01 and stepped toward
-    0.02 at 1 L/min, did not change at all over 10 000 steps of 1e-14 s, although
-    the exact change is not zero. The step is refused and the
-    amount held does not change. The floor itself is accepted, and so is a step of
-    1 s, longer than the run's 0.1 s ceiling, which does not apply to a
-    compartment stepped alone. The expected floor, 0.001 s, is written out here
-    rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    Rounding grows as the step shrinks in a tissue stepped alone, as it does in a run. A
+    tissue built like this one, held at a fraction of 0.01 and stepped toward 0.02 at
+    1 L/min, did not change at all over 10 000 steps of 1e-14 s, although the exact change
+    is not zero. The step is refused, and the amount held does not change. The lower bound
+    itself is accepted. So is a step of 1 s, which is longer than the run's 0.1 s upper
+    bound, because that upper bound does not apply to a compartment stepped alone. The
+    expected lower bound, 0.001 s, is written out here rather than read from
+    `MINIMUM_SIMULATION_STEP_S`.
     """
 
     tissue = _build_tissue()

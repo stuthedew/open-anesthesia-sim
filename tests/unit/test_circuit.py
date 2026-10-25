@@ -31,8 +31,9 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# This pattern matches the end of a shared guard's error message. The message
+# names the refused value and the reason it was refused (`PL-T137`). The
+# guard's own tests pin each reason. The tests here pin the field's name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
@@ -96,10 +97,10 @@ def test_zero_delivered_concentration_washes_out_circuit() -> None:
 def test_exact_update_is_independent_of_step_size() -> None:
     """One 60 s step and six hundred 0.1 s steps reach the same fraction.
 
-    Both circuits name their dial rather than taking the default, and the
-    first assertion is what makes the second mean something: with the
-    vaporizer off this comparison is satisfied by two circuits that both
-    stayed at zero, which is agreement about nothing.
+    Both circuits set their dial explicitly rather than taking the default.
+    The first assertion is what gives the second one meaning. With the
+    vaporizer off, two circuits that both stayed at zero would satisfy the
+    comparison, and that agreement would prove nothing.
     """
 
     one_step = BreathingCircuit(
@@ -182,7 +183,7 @@ def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> N
 
 
 def test_accepts_a_delivered_concentration_of_zero() -> None:
-    """The vaporizer off is always a valid dial position: it is washout."""
+    """A dial at zero, with the vaporizer off, is always valid, because it gives washout."""
 
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
@@ -196,13 +197,13 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
 
 @pytest.mark.parametrize("max_delivered_concentration_percent", [0.0, -0.0], ids=repr)
 def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: float) -> None:
-    """A vaporizer that delivers nothing has a percent but no maximum.
+    """Zero is a valid percent but not a valid vaporizer maximum, because it would deliver nothing.
 
-    Zero, either sign, is the one maximum the circuit itself refuses. A value
-    outside 0 to 100 cannot be built as a `Percent` to hand it, and
-    `tests/unit/test_concentration.py` pins those on the constructor, as it
-    does the dial's (`PL-4R3W`); the dial's own refusal here is the vaporizer
-    maximum, pinned above.
+    Zero, of either sign, is the one maximum that the circuit itself refuses.
+    A value outside 0 to 100 cannot be built as a `Percent` to pass to the
+    circuit. `tests/unit/test_concentration.py` pins those values on the
+    constructor, as it does for the dial (`PL-4R3W`). The dial refusal that
+    this file pins, above, is a dial set above the vaporizer maximum.
     """
 
     with pytest.raises(
@@ -217,8 +218,11 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: 
 
 
 def test_accepts_fresh_gas_flow_at_both_ends_of_the_supported_range() -> None:
-    """Zero is the vaporizer running into a closed system; the maximum is the
-    corner of the settings envelope every reference gate measures at."""
+    """The circuit accepts a fresh gas flow at both ends of the supported range.
+
+    Zero is the vaporizer running into a closed system. The maximum is the
+    corner of the settings envelope at which every reference gate measures.
+    """
 
     for fresh_gas_flow_l_min in (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN):
         circuit = BreathingCircuit(
@@ -238,10 +242,10 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
     """Regression (PL-0MLQ): the range was documented but never enforced.
 
     A bare circuit is an exact exponential at any flow, so this guard is not
-    about the circuit's own arithmetic — it is the model's declared input
-    domain, which since `PL-0YYV` the flow's own type carries: the refusal
-    here is `FreshGasFlow`'s, before the circuit is reached, on the same
-    argument the vaporizer maximum above rests on.
+    about the circuit's own arithmetic. It enforces the model's declared input
+    domain. Since `PL-0YYV`, the flow's own type carries that domain. So the
+    refusal here comes from `FreshGasFlow`, before the circuit is reached. The
+    reasoning is the same as for the vaporizer maximum above.
     """
 
     circuit = BreathingCircuit(
@@ -268,12 +272,13 @@ def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() ->
 def test_changing_circuit_volume_conserves_stored_agent() -> None:
     """A setter may not create or destroy agent (PL-006).
 
-    Agent is held as a fraction of the volume, so before this guard existed
-    `set_circuit_volume` scaled `agent_amount_l` with the volume: halving the
-    volume halved the agent in it. `docs/MODEL.md`'s required invariants say
-    otherwise in terms - "no compartment creates agent spontaneously" and
-    "changing a setting does not reset stored state" - and the conservation
-    check that can halt a run is computed from exactly this quantity.
+    The circuit stores agent as a fraction of its volume. So before this guard
+    existed, `set_circuit_volume` scaled `agent_amount_l` with the volume, and
+    halving the volume halved the agent in it. `docs/MODEL.md`'s required
+    invariants rule that out in so many words: "no compartment creates agent
+    spontaneously" and "changing a setting does not reset stored state". The
+    conservation check that can halt a run is also computed from exactly this
+    quantity.
     """
 
     circuit = BreathingCircuit(
@@ -296,9 +301,9 @@ def test_changing_circuit_volume_conserves_stored_agent() -> None:
 def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None:
     """A refused volume leaves the circuit exactly as it was.
 
-    The alternative - checking capacity after moving the volume - would leave
-    a caller who caught the error holding a circuit whose volume had changed
-    and whose concentration had not.
+    The alternative is to check the capacity after changing the volume. A
+    caller who caught the error would then hold a circuit whose volume had
+    changed but whose concentration had not.
     """
 
     circuit = BreathingCircuit(
@@ -323,12 +328,13 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
 def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> None:
     """The fraction a new volume gives is built before either field is written.
 
-    Since `PL-4R3W` building it is a check, so it can refuse - though only for
-    a fraction already held that no write would have accepted, which the
-    write past `__setattr__` below stands in for: since `PL-19Y0` the field's
-    own write refuses a bare `nan`. Built after the volume was written, a
-    refusal there left the volume moved and the fraction not, the partial
-    state the docstring rules out.
+    Since `PL-4R3W`, building the fraction is a check, so it can refuse. It
+    refuses only when the circuit already stores a fraction that no write would
+    have accepted. The test plants one by bypassing `__setattr__`, because
+    since `PL-19Y0` the field's own write refuses a bare `nan`. When the
+    fraction was built after the volume was written, a refusal left the volume
+    changed and the fraction not. The setter's docstring rules out that partial
+    state.
     """
 
     circuit = BreathingCircuit(
@@ -360,10 +366,11 @@ def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
 
 
 def _a_circuit_holding_agent() -> BreathingCircuit:
-    """A circuit holding agent at a 2% dial under an 8% vaporizer, on a machine declaring a range.
+    """Return a circuit with agent, a 2% dial, an 8% vaporizer maximum and a declared flow range.
 
-    Declared, unlike every shipped profile, so that a write can be held to the
-    machine's range as well as to the model's envelope.
+    Unlike every shipped profile, this machine declares a flow range. So a
+    write can be checked against the machine's range as well as the model's
+    envelope.
     """
 
     return BreathingCircuit(
@@ -505,20 +512,21 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
 def test_a_direct_write_is_held_to_the_constructors_checks(
     field: str, value: object, error: type[Exception], message: str
 ) -> None:
-    """An assignment past the constructor and the setters is refused as they refuse it.
+    """An assignment that bypasses the constructor and the setters is refused as they refuse it.
 
-    Each case but the bare flow (`PL-LBQY`) and the misspelt field was
-    accepted on a built circuit until `PL-19Y0`, for a snapshot to copy and the
-    readout beside the control to show: a sevoflurane dial of 50% against its
-    8% vaporizer, a bare-float dial, a zero circuit volume, an inspired
-    fraction of 1.5, and a machine range sharing no flow with the model's
-    envelope, which left `accepted_fresh_gas_flow_range_l_min` inverted at
-    (20.0, 10.0) (`PL-HJ7L`). A relation is refused from either side: the dial
-    above the maximum and the maximum under the dial, the flow outside the
-    machine's range and the range excluding the flow held. A name that is no
-    field passes the guard to the slots, which refuse it, so a misspelt write
-    cannot leave the flow it meant unchanged while appearing to succeed.
-    Nothing is written when a value is refused.
+    Until `PL-19Y0`, a built circuit accepted every case here except the bare
+    flow (`PL-LBQY`) and the misspelt field. A snapshot would then copy the
+    value, and the readout beside the control would show it. The accepted
+    values included a sevoflurane dial of 50% against its 8% vaporizer, a
+    bare-float dial, a zero circuit volume, an inspired fraction of 1.5, and a
+    machine range sharing no flow with the model's envelope. That last one
+    left `accepted_fresh_gas_flow_range_l_min` inverted at (20.0, 10.0)
+    (`PL-HJ7L`). A relation between two fields is refused from either side:
+    the dial above the maximum and the maximum below the dial, and the flow
+    outside the machine's range and the range excluding the current flow. The
+    guard passes a name that is not a field on to the slots, which refuse it.
+    So a misspelt write cannot appear to succeed while leaving the intended
+    flow unchanged. When a value is refused, nothing is written.
     """
 
     circuit = _a_circuit_holding_agent()
@@ -531,13 +539,14 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 
 
 def test_a_copy_of_a_circuit_is_held_to_the_same_checks() -> None:
-    """`replace`, a copy and a pickle each write through `__setattr__`, refusing what it refuses.
+    """`replace`, a copy and a pickle each write through `__setattr__`, so they refuse what it does.
 
-    `dataclasses.replace` builds a new circuit through its constructor's
-    writes, and a copy and a pickle of a `slots=True` dataclass restore its
-    fields one at a time through `__setattr__`, in field order. The dial is
-    written before the maximum, so the maximum's write is the one that refuses
-    a dial planted past the guard, in the dial's own words (`PL-19Y0`).
+    `dataclasses.replace` builds a new circuit through the writes that its
+    constructor makes. A copy and a pickle of a `slots=True` dataclass restore
+    its fields one at a time through `__setattr__`, in field order. The dial is
+    written before the maximum. So when a dial was planted by bypassing the
+    guard, the maximum's write is the one that refuses it, with the message a
+    refused dial gives (`PL-19Y0`).
     """
 
     circuit = _a_circuit_holding_agent()
@@ -569,15 +578,16 @@ def _a_sevoflurane_run_stepped_60_s() -> AgentUptakeSystem:
 
 
 def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_accounting() -> None:
-    """A volume's write checks what its constructor checks; conserving the agent is the setter's.
+    """A volume write checks what the constructor checks, and only the setter conserves the agent.
 
-    The circuit holds its agent as a fraction of its volume, so a volume
-    written straight onto the field moves the agent with it: halved on a run
-    stepped 60 s, it left half the agent the circuit held. No constructor
-    refuses a positive volume, so its write does not either (`PL-19Y0`), and
-    the step after it halts on the accounting identity and is rolled back
-    rather than carrying the lost agent forward. `set_circuit_volume` is the
-    write that conserves the agent, and the same step after it passes.
+    The circuit stores its agent as a fraction of its volume, so a volume
+    written straight onto the field changes the amount of agent with it.
+    Halving the volume on a run stepped 60 s left half the agent that the
+    circuit held. No constructor refuses a positive volume, so the field's
+    write does not refuse one either (`PL-19Y0`). Instead, the next step halts
+    on the accounting identity and is rolled back, rather than carrying the
+    lost agent forward. `set_circuit_volume` is the write that conserves the
+    agent, and the same step passes after it.
     """
 
     written_past = _a_sevoflurane_run_stepped_60_s()
@@ -598,17 +608,18 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
 
 
 def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
-    """Regression (PL-019): the class holds no agent-shaped dial position.
+    """Regression (PL-019): the class has no default dial position that suits only one agent.
 
-    The delivered dial defaulted to 8% - sevoflurane's vaporizer maximum -
-    on a class that knows nothing about agents. Two consequences, and the
-    second is the one that made it worth removing: declaring any lower
-    device limit raised at construction, and the message reported an "8%
-    requested" the caller had never written.
+    The delivered dial defaulted to 8%, which is sevoflurane's vaporizer
+    maximum, on a class that knows nothing about agents. That had two
+    consequences. Declaring any lower device limit raised an error at
+    construction. And the message reported an "8% requested" that the caller
+    had never written. The second consequence is the one that made the
+    default worth removing.
 
-    Zero is the only dial position every vaporizer of every agent has, so
-    it is the only one this class can hold without knowing which agent is
-    in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
+    Zero is the only dial position that every vaporizer of every agent has.
+    So it is the only default this class can use without knowing which agent
+    is in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
     """
 
     circuit = BreathingCircuit(
@@ -665,7 +676,7 @@ def test_the_flow_default_matches_the_shipped_machine_file() -> None:
 
 
 def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
-    """A run from the shipped profile carries its values, and the 90 s they give.
+    """A run built from the shipped profile uses its values, and the 90 s time constant they give.
 
     Before `PL-4YY1`, `for_agent()` passed neither value. So a run took its
     circuit volume and fresh gas flow from the field defaults in
@@ -693,11 +704,12 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
 # --- A profile that states no startup flow (PL-QW19) ---------------------------
 
 # No surveyed machine publishes a startup fresh gas flow, so a machine profile
-# may leave `default_fresh_gas_flow_l_min` out and the run supplies its opening
-# flow. `for_agent()` reads one hardcoded profile until `PL-2FZ9`, so these
-# tests hand it another the way `tests/integration/test_controller.py` hands it
-# an edited agent: by replacing the loader it calls. Each profile is the shipped
-# file with one thing changed, parsed as the loader parses it.
+# may leave `default_fresh_gas_flow_l_min` out, and the run then supplies its
+# opening flow. Until `PL-2FZ9` lands, `for_agent()` reads one hardcoded
+# profile. So these tests give it a different profile the same way
+# `tests/integration/test_controller.py` gives it an edited agent: by replacing
+# the loader that it calls. Each profile is the shipped file with one thing
+# changed, parsed the way the loader parses it.
 
 
 def _shipped_machine_payload() -> dict[str, object]:
@@ -727,12 +739,12 @@ def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teachin
     """`PL-QW19`: a profile that states no startup flow loads and runs.
 
     Before, the key was required, so a real machine's profile had to carry a
-    flow no manufacturer publishes. The volume is moved off the shipped 6.0 L
-    so that the run provably came from this profile: the shipped one states
-    the same 4.0 L/min as the fallback, so a flow alone could not tell them
-    apart. The circuit time constant is asserted beside the flow because it is
-    the quantity a learner reads off the early rise: 8.0 L at 4.0 L/min is
-    120 s.
+    flow that no manufacturer publishes. The test changes the volume from the
+    shipped 6.0 L, to prove that the run came from this profile. The shipped
+    profile states the same 4.0 L/min as the fallback, so the flow alone could
+    not tell the two apart. The test also asserts the circuit time constant,
+    because that is the quantity a learner reads off the early rise. 8.0 L at
+    4.0 L/min gives 120 s.
     """
 
     payload = _shipped_machine_payload()
@@ -749,11 +761,11 @@ def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teachin
 def test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The fallback fills a silence and never replaces a stated flow.
+    """The fallback applies only when the profile states no flow, and never replaces a stated one.
 
-    Needed because the shipped profile states the same 4.0 L/min as the
-    fallback, so a `for_agent()` that always took the fallback would pass
-    every other test in this file.
+    This test is needed because the shipped profile states the same 4.0 L/min
+    as the fallback. So a `for_agent()` that always took the fallback would
+    pass every other test in this file.
     """
 
     payload = _shipped_machine_payload()
@@ -768,11 +780,11 @@ def test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow(
 def test_a_silent_profile_whose_range_excludes_the_teaching_default_is_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The fallback is held to the machine's declared range, not fitted into it.
+    """The fallback must lie in the machine's declared range, and is not adjusted to fit it.
 
-    Refused by `BreathingCircuit` in the words it uses for a stated flow
-    outside the range, rather than opened at a flow the machine cannot set or
-    clamped to one nobody chose.
+    `BreathingCircuit` refuses it, in the words it uses for a stated flow
+    outside the range. The run is not opened at a flow the machine cannot
+    set, and the flow is not clamped to a value nobody chose.
     """
 
     payload = _shipped_machine_payload()
@@ -819,18 +831,19 @@ def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
 
 # --- The machine's deliverable flow range (PL-8PS6) --------------------------
 
-# The circuit is the one object holding both claims on the fresh gas flow: the
-# model's envelope in `core/supported_ranges.py` and the range a machine
-# profile declares. The tests below cover the machine half; the split itself -
-# that neither claim can be mistaken for the other - is pinned in
-# `tests/unit/test_supported_ranges.py`, beside the envelope it must not widen.
+# The circuit is the one object that holds both claims about the fresh gas
+# flow: the model's envelope in `core/supported_ranges.py` and the range that a
+# machine profile declares. The tests below cover the machine's range.
+# `tests/unit/test_supported_ranges.py` pins the split itself, so that neither
+# claim can be mistaken for the other. It does so beside the envelope, which
+# the machine's range must not widen.
 
 
 def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
-    """Closed, like every interval `core/supported_ranges.py` declares.
+    """A declared range is closed, like every interval that `core/supported_ranges.py` declares.
 
-    A machine's minimum-flow floor is a setting the machine reaches, not the
-    first one it refuses, and the same for the top of its flowmeter.
+    A machine's minimum flow is a setting the machine can reach, not the first
+    setting it refuses. The same is true of the top of its flowmeter.
     """
 
     circuit = BreathingCircuit(
@@ -848,10 +861,10 @@ def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
 
 
 def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
-    """The constructor is a third way in, so it carries the guard too.
+    """The constructor is a third way to set the flow, so it applies the guard too.
 
-    `BreathingCircuit(fresh_gas_flow_l_min=...)` reaches the field without
-    passing `set_fresh_gas_flow`, exactly as `PL-0MLQ` found for the model's
+    `BreathingCircuit(fresh_gas_flow_l_min=...)` sets the field without going
+    through `set_fresh_gas_flow`. `PL-0MLQ` found the same gap for the model's
     own envelope.
     """
 
@@ -867,12 +880,12 @@ def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
 
 
 def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
-    """`None` is an absence of claim, and it is what the shipped profile records.
+    """`None` means the profile makes no claim, and it is what the shipped profile records.
 
     No operator's manual or manufacturer specification giving a deliverable
-    range was reachable for any surveyed machine, so the field is `null` in
-    `data/machines/reference_circle_system.json` and the envelope is the only
-    bound - which is the behavior that shipped before the field existed.
+    range was reachable for any surveyed machine. So the field is `null` in
+    `data/machines/reference_circle_system.json`, and the envelope is the only
+    bound. That is the behavior that shipped before the field existed.
     """
 
     circuit = BreathingCircuit(
@@ -890,12 +903,13 @@ def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
 
 
 def test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built() -> None:
-    """Said once, rather than discovered one refused setting at a time.
+    """The mismatch is reported once, rather than discovered one refused setting at a time.
 
-    Every flow such a profile can deliver is outside the model's envelope and
-    every flow the model supports is outside the profile's range, so each
-    individual refusal would be correct while none of them said that the pair
-    is what cannot be simulated.
+    Every flow that such a profile can deliver is outside the model's
+    envelope, and every flow the model supports is outside the profile's
+    range. So each separate refusal would be correct, but none of them would
+    say that it is the pairing of this machine with the model that cannot be
+    simulated.
     """
 
     with pytest.raises(SimulationConfigurationError) as raised:
@@ -932,7 +946,7 @@ def test_a_range_touching_the_envelope_at_one_point_is_built() -> None:
 
 
 def test_a_range_whose_minimum_is_above_its_maximum_is_refused() -> None:
-    """An inverted range refuses every setting while looking like a capability."""
+    """An inverted range refuses every setting while appearing to describe what a machine can do."""
 
     with pytest.raises(SimulationConfigurationError, match="minimum above its maximum"):
         DeliverableFreshGasFlowRange(minimum_l_min=8.0, maximum_l_min=0.5)
@@ -950,11 +964,11 @@ def test_a_range_end_that_is_negative_or_not_finite_is_refused(value: float) -> 
 
 
 def test_a_range_may_be_floored_at_zero() -> None:
-    """The one machine property zero is meaningful for: a true off position.
+    """Zero is meaningful for one machine property: a true off position.
 
     `_validate_nonnegative_finite` exists in `core/parameters.py` for this
-    case alone, and a guard written as "positive and finite" would make a
-    machine whose common gas outlet turns off unrepresentable.
+    case alone. A guard written as "positive and finite" would make it
+    impossible to describe a machine whose common gas outlet turns off.
     """
 
     circuit = BreathingCircuit(
@@ -971,10 +985,11 @@ def test_a_range_may_be_floored_at_zero() -> None:
 
 
 def test_for_agent_passes_the_machine_file_s_declared_range_to_the_circuit() -> None:
-    """The route, not the value: the shipped profile's range is `None` today.
+    """This tests the route, not the value, because the shipped profile's range is `None` today.
 
-    What the assertion protects is that a profile which does declare a range
-    reaches the circuit, rather than being parsed and dropped at the seam.
+    The assertion protects the path by which a profile that does declare a
+    range reaches the circuit. Without it, the range could be parsed and then
+    dropped on its way from the profile to the circuit.
     """
 
     machine = load_reference_circle_system_parameters()
@@ -986,11 +1001,12 @@ def test_for_agent_passes_the_machine_file_s_declared_range_to_the_circuit() -> 
 
 # --- The one statement of the intersection (PL-7CRY) --------------------------
 
-# `accepted_fresh_gas_flow_range_l_min` is what the interface's fresh gas flow
-# control is bounded by, so it is held here to be exactly the flows the circuit
-# accepts: both of its ends taken, and the flow just past each refused, by the
-# model's guard or the machine's. "Just past" is far below any step a control
-# offers, so the ends are pinned as the closed interval and nothing wider.
+# `accepted_fresh_gas_flow_range_l_min` sets the bounds of the interface's fresh
+# gas flow control. So these tests require it to be exactly the flows that the
+# circuit accepts. Both of its ends must be accepted, and the flow just past
+# each end must be refused, by the model's guard or the machine's. "Just past"
+# is far smaller than any step a control offers, so the ends are pinned as the
+# closed interval and nothing wider.
 
 _JUST_PAST_AN_END_L_MIN = 1e-6
 
@@ -1002,7 +1018,7 @@ _JUST_PAST_AN_END_L_MIN = 1e-6
         (None, (MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN)),
         # Narrower at both ends: the machine's range.
         ((0.5, 8.0), (0.5, 8.0)),
-        # Wider at the top: the machine's floor and the model's ceiling.
+        # Wider at the top: the machine's minimum and the model's maximum.
         ((0.5, 15.0), (0.5, MAXIMUM_FRESH_GAS_FLOW_L_MIN)),
         # Touching the envelope at one flow: that flow alone.
         (
@@ -1016,9 +1032,9 @@ def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
 ) -> None:
     """Both ends are settings the circuit takes, and the flow past either is refused.
 
-    The property is read by a control the reader drags, so an end the
-    circuit refused would be a setting offered and then turned down, and a
-    range narrower than the circuit's would hide flows the run supports.
+    A control that the learner drags reads this property. So an end that the
+    circuit refused would be a setting offered and then turned down. A range
+    narrower than the circuit's would hide flows that the run supports.
     """
 
     lowest, highest = accepted
@@ -1053,9 +1069,9 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
     Rounding grows as the step shrinks in the circuit stepped alone, as it does in
     a run. Over 10 000 steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4%
     wrong. Both `advance_fresh_gas` and `advance` refuse the step, and the
-    inspired fraction does not change. The floor itself is accepted, and so is a
-    step of 1 s, longer than the run's 0.1 s ceiling, which does not apply to a
-    compartment stepped alone. The expected floor, 0.001 s, is written out here
+    inspired fraction does not change. The 1 ms minimum itself is accepted, and so
+    is a step of 1 s, longer than the run's 0.1 s maximum, which does not apply to
+    a compartment stepped alone. The expected minimum, 0.001 s, is written out here
     rather than read from `MINIMUM_SIMULATION_STEP_S`.
     """
 

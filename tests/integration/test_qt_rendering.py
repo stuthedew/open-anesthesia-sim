@@ -1,28 +1,33 @@
-"""The whole dashboard rendered headless at one fixed size, and read back as pixels.
+"""Render the whole dashboard headless at one fixed size, and read it back as pixels.
 
-`tests/integration/test_simulation_view.py` holds what the dashboard's
-widgets say; these tests hold what the dashboard *paints*, against a real
-run advanced several simulated minutes, under the `offscreen` platform
-`tests/conftest.py` selects. They are what lets a session in the web
-container review a presentation change at all (`PL-YCWZ`, closing
-`PL-2QMK`): the same grab a test reads is the screenshot `docs/worker.md`
-tells a session how to write.
+`tests/integration/test_simulation_view.py` tests what the dashboard's
+widgets say. These tests check what the dashboard *paints*, for a real run
+advanced several simulated minutes, under the `offscreen` platform that
+`tests/conftest.py` selects. Without them, a session in the web container
+could not review a presentation change at all (`PL-YCWZ`, closing
+`PL-2QMK`). The grab that a test reads is the same screenshot that
+`docs/worker.md` tells a session how to write.
 
-What is asserted is chosen for durability rather than pixel-exactness: that
-the agent badge is filled in the agent's own colour, that the 1 MAC line is
-painted on the row the axis maps its value to, that the alveolar trace stays
-inside the plot, that no readout is clipped by its panel, that the row and
-the sidebar sit inside the page, that the hover on the shipped chart says
-what the formatters say, and that its box, driven to the compartment
-chart's four corners and the wash-in plot's two ends, is painted inside the
-plot, hiding what is drawn beneath it, its text in `INK`. A pixel snapshot
-would be brittle across Qt versions and font stacks and would hold nothing
-a reader interprets.
+The assertions are chosen to last rather than to match pixels exactly. They
+check that:
 
-The dashboard is shown once for the module, at a size wide enough for the
-seven readouts and the sidebar to stand side by side without a horizontal
-scroll, and closed at the end. The hover-box test shows one of its own, at
-the same size, over a run that reaches the plot's edges.
+- the agent badge is filled in the agent's own colour;
+- the 1 MAC line is painted on the row to which the axis maps its value;
+- the alveolar trace stays inside the plot;
+- no readout is clipped by its panel;
+- the row and the sidebar sit inside the page;
+- the hover on the shipped chart says what the formatters say;
+- the hover box, moved to the compartment chart's four corners and the
+  wash-in plot's two ends, is painted inside the plot and hides what is
+  drawn beneath it, with its text in `INK`.
+
+A pixel snapshot would be brittle across Qt versions and font stacks, and it
+would check nothing that a reader interprets.
+
+The module shows the dashboard once and closes it at the end. The dashboard
+is wide enough for the seven readouts and the sidebar to stand side by side
+without a horizontal scroll. The hover-box test shows a dashboard of its own,
+at the same size, over a run that reaches the plot's edges.
 """
 
 from collections import Counter
@@ -90,11 +95,12 @@ _EVERY_VIEW = WorkspaceSet(
     0,
 )
 
-#: The size the dashboard is rendered at. Wide enough that the page's own
-#: minimum width - the seven readout panels beside one another, then the
-#: chart column beside the sidebar - fits inside the viewport, so the row
-#: and the sidebar are asserted inside the page rather than sized to it.
-#: The page is taller than this and scrolls; the grab shows its top.
+#: The size at which the dashboard is rendered. It is wide enough for the
+#: page's own minimum width to fit inside the viewport. That minimum is set by
+#: the seven readout panels beside one another, and by the chart column beside
+#: the sidebar. So the tests can assert that the row and the sidebar lie inside
+#: the page, rather than the page being sized to fit them. The page is taller
+#: than this and scrolls, and the grab shows its top.
 _WINDOW_WIDTH_PX = 1600
 _WINDOW_HEIGHT_PX = 1000
 
@@ -119,9 +125,10 @@ _INDUCTION_DIAL_PERCENT = 8.0
 _INDUCTION_S = 1200.0
 _FOLLOWING_WIDTH_S = 15 * 60
 
-#: How far the box may cross the plot's edge, in pixels: the two rectangles
-#: are mapped in floating point, and a box anchored on a point at the edge
-#: lands on the edge itself, measured outside by under 0.05 px (`PL-J0F7`).
+#: How far the box may cross the plot's edge, in pixels. The two rectangles
+#: are mapped in floating point. A box anchored on a point at the edge lands on
+#: the edge itself, and it is measured as outside by less than 0.05 px
+#: (`PL-J0F7`).
 _EDGE_TOLERANCE_PX = 0.5
 
 #: How many drawn points apart the least-height hover test samples the
@@ -137,9 +144,10 @@ _TALL_CHART_HEIGHT_PX = 700
 #: border and the anti-aliasing either side of it.
 _BOX_BORDER_INSET_PX = 2
 
-#: How much of what is drawn beneath a box may still show through it: the
-#: text's own pixels land on a few. Measured 0 to 1% with the fill, and 56 to
-#: 100% with the fill taken away (`PL-J0F7`).
+#: The largest share of the pixels drawn beneath a box that may still show
+#: through it. A few show through because the text's own pixels land on them.
+#: The measured share was 0 to 1% with the fill, and 56 to 100% with the fill
+#: taken away (`PL-J0F7`).
 _SHOWING_THROUGH_FRACTION = 0.05
 
 #: The fewest pixels that must be drawn beneath a box before the test checks the box's fill. With
@@ -152,8 +160,8 @@ _SHOWING_THROUGH_FRACTION = 0.05
 #: same 45. With the minimum at 40, the 5% limit still allows only 2 pixels to show through.
 _DRAWN_BENEATH_MIN_PX = 40
 
-#: Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
-#: pointer position before answering it.
+#: Sixty times the hover's own cooldown of 1/60 s, which is the longest the
+#: hover waits on a pointer position before it responds.
 _HOVER_DELIVERY_MS = 1000
 
 
@@ -165,13 +173,13 @@ def application() -> Iterator[QApplication]:
 
 
 def _concentration(view: SimulationView) -> ConcentrationView:
-    """The concentration chart View in the dashboard's first Area that shows one."""
+    """Return the concentration chart View in the dashboard's first Area that shows one."""
 
     return next(v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
 
 
 def _wash_in(view: SimulationView) -> WashInView:
-    """The F_A/F_I View in the dashboard's first Area that shows one."""
+    """Return the F_A/F_I View in the dashboard's first Area that shows one."""
 
     return next(v for v in view.layout_container.views() if isinstance(v, WashInView))
 
@@ -183,7 +191,7 @@ def _advance(controller: SimulationController, seconds: float) -> None:
 
 @pytest.fixture(scope="module")
 def dashboard(application: QApplication) -> Iterator[SimulationView]:
-    """The dashboard over one run, five minutes in, a dial change, three more, shown once.
+    """Show the dashboard once, over one run: five minutes, a dial change, then three minutes more.
 
     The order is the one `main.py` follows: show, let the layout settle,
     then present, because the first frame reads the plot's laid-out width.
@@ -246,10 +254,10 @@ def _within(widget: QWidget, page: QWidget) -> bool:
 def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
     """Move the pointer onto one pixel of a chart, as the platform delivers a move.
 
-    To the widget under that pixel rather than through `QTest.mouseMove`,
-    which moves the platform cursor: the offscreen platform gives that move to
-    a window it finds at the screen position, and the module's own dashboard
-    stands at the same place.
+    The move goes to the widget under that pixel rather than through
+    `QTest.mouseMove`, which moves the platform cursor. The offscreen platform
+    gives a cursor move to whichever window it finds at the screen position,
+    and the module's own dashboard is at the same position.
     """
 
     under = chart.childAt(pixel)
@@ -266,11 +274,11 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 
 
 def _wait_for(condition: Callable[[], bool]) -> None:
-    """Run the event loop until `condition` holds or `_HOVER_DELIVERY_MS` has passed.
+    """Run the event loop until `condition` is true or `_HOVER_DELIVERY_MS` has passed.
 
-    The way `QTRY_COMPARE` waits: a move inside the hover's cooldown is
-    answered when the cooldown ends, from a timer rather than inside the move,
-    and the caller asserts what then holds.
+    This waits the way `QTRY_COMPARE` does. The hover responds to a move made
+    during its cooldown when the cooldown ends, from a timer rather than inside
+    the move. The caller then asserts what is true.
     """
 
     deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
@@ -280,10 +288,10 @@ def _wait_for(condition: Callable[[], bool]) -> None:
 
 
 def _painted_with_the_pointer_off(chart: ConcentrationChart | WashInChart) -> QImage:
-    """The chart as painted once the pointer has left the plot and the box has gone.
+    """Return the chart as painted once the pointer has left the plot and the box has gone.
 
-    Over the axis rather than outside the widget, so the move is the plot's
-    own and the box answers it by hiding.
+    The pointer moves onto the axis rather than outside the widget, so the
+    plot receives the move and the box responds by hiding.
     """
 
     _move_pointer(chart, QPoint(1, 1))
@@ -293,7 +301,7 @@ def _painted_with_the_pointer_off(chart: ConcentrationChart | WashInChart) -> QI
 
 
 def _hover_on(chart: ConcentrationChart | WashInChart, time_s: float, value: float) -> None:
-    """Move the pointer onto one drawn point, and wait for the box to answer it."""
+    """Move the pointer onto one drawn point, and wait for the box to appear."""
 
     _move_pointer(chart, QPoint(*chart.plot_pixel(time_s, value)))
     _wait_for(lambda: chart.hover_text() is not None)
@@ -312,7 +320,7 @@ def _distance(colour: QColor, to: str) -> float:
     )
 
 
-#: How many paints the page's height is followed for after the first frame.
+#: For how many paints after the first frame the test follows the page's height.
 _FOLLOWED_PAINTS = 5
 
 
@@ -337,8 +345,8 @@ def _induction_view(application: QApplication) -> SimulationView:
     application.processEvents()
     view.present(False)
     width = next(base for base in SELECTABLE_TIME_BASES if base.span_s == _FOLLOWING_WIDTH_S)
-    # Each chart holds its own window (`PL-L59K`), so both are set, as one
-    # shared control set them before.
+    # Each chart keeps its own time window (`PL-L59K`), so both are set.
+    # Before that change, one shared control set them both.
     for selector in (_concentration(view).time_base_selector, _wash_in(view).time_base_selector):
         index = selector.findData(str(width.span_s))
         assert index >= 0, "the time-base control does not offer the 15-minute width"
@@ -351,7 +359,7 @@ def _induction_view(application: QApplication) -> SimulationView:
 
 @pytest.fixture
 def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
-    """`_induction_view`, painted once, so the plots' pixel mapping is the one drawn."""
+    """Yield the `_induction_view` dashboard painted once, so its pixel mapping is the drawn one."""
 
     view = _induction_view(application)
     # pyqtgraph's view box updates its mapping from data to pixels only when
@@ -367,7 +375,7 @@ def induction_dashboard(application: QApplication) -> Iterator[SimulationView]:
 def test_the_dashboard_page_keeps_its_height_from_its_first_paint(
     application: QApplication,
 ) -> None:
-    """`PL-MXMG`: the page has its final height as soon as a frame is drawn.
+    """The page has its final height as soon as a frame is drawn (`PL-MXMG`).
 
     Before the fix, the page sized the Areas from what each View needed before
     Qt had handled the layout requests that the View's frame posted. At that
@@ -426,7 +434,7 @@ def test_the_agent_badge_is_painted_in_the_agents_own_fill(dashboard: Simulation
 
 
 def test_the_one_mac_line_is_painted_where_the_axis_says(dashboard: SimulationView) -> None:
-    """The dashed line stands on the row `plot_pixel` maps `mac_percent` to, three rows deep."""
+    """The dashed line lies on the row to which `plot_pixel` maps `mac_percent`, three rows deep."""
 
     chart = _concentration(dashboard).chart
     frame = _drawn_frame(dashboard)
@@ -438,8 +446,9 @@ def test_the_one_mac_line_is_painted_where_the_axis_says(dashboard: SimulationVi
     for row in (y - 1, y, y + 1):
         along.update(image.pixelColor(x, row).name() for x in range(left_x + 2, right_x - 2))
 
-    # A dash pattern leaves gaps, so a quarter of the row is the bar rather
-    # than the whole of it; a single anti-aliased crossing would not reach it.
+    # A dash pattern leaves gaps, so the test requires the bar's colour along a
+    # quarter of the row rather than all of it. A single anti-aliased crossing
+    # would not reach that count.
     assert along[ONE_MAC_LINE_COLOR.lower()] >= (right_x - left_x) // 4, along
 
 
@@ -462,7 +471,7 @@ def test_the_alveolar_trace_is_drawn_inside_the_plot(dashboard: SimulationView) 
 
 
 def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> None:
-    """`PL-3355`: every value and every second unit fits the width its panel gives it."""
+    """Each panel's value, in both of its units, fits the width the panel gives it (`PL-3355`)."""
 
     panels = dashboard.runs[0]._readout_row.panels
 
@@ -535,7 +544,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 
 
 def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: SimulationView) -> None:
-    """A hover on the dashboard's own chart says agent, compartment gloss and both units."""
+    """A hover on the shipped chart gives the agent, the compartment, its gloss and both units."""
 
     chart = _concentration(dashboard).chart
     frame = _drawn_frame(dashboard)
@@ -556,7 +565,7 @@ def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: Simul
 def test_the_hover_box_stays_inside_the_plot_at_every_edge(
     induction_dashboard: SimulationView,
 ) -> None:
-    """`PL-J0F7`: at each corner and end the box is painted inside the plot, over what lies beneath.
+    """At each corner and end the box is painted inside the plot, over what is beneath (`PL-J0F7`).
 
     The box sits to the right of its point and above it. It flips to the
     left past the middle of the window. It flips below the point where the
@@ -565,17 +574,17 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
     corners. The right edge matters most, because a following window keeps
     its newest point there and a reader's pointer spends most of its time
     there. The wash-in plot is tested at its two ends, where the left-right
-    flip happens. Each case is a point a pointer
-    can rest on, its pixel inside the plot: the window's first instant stands
-    on the left edge, where its pixel can fall outside and rightly no hover
-    answers.
+    flip happens. Each case is a point that a pointer can rest on, with its
+    pixel inside the plot. The window's first instant lies on the left edge.
+    Its pixel can fall outside the plot, and then, correctly, no hover box
+    appears.
 
-    The plot's background is `PANEL` too, so the fill is held by what it
-    hides - the plot painted with the pointer off it, against the plot with
-    the box up - and the text by its darkest pixel, which a glyph's stem
-    paints in `INK` or close to it in any font, rather than by a count of
-    exact `INK` pixels, which a font rendered with sub-pixel smoothing can
-    leave at none.
+    The plot's background is also `PANEL`, so the test checks the fill by what
+    it hides. It compares the plot painted with the pointer off it against the
+    plot with the box showing. The test checks the text by its darkest pixel,
+    which a glyph's stem paints in `INK` or close to it in any font. It does
+    not count exact `INK` pixels, because a font rendered with sub-pixel
+    smoothing can leave none.
     """
 
     chart = _concentration(induction_dashboard).chart
@@ -690,8 +699,8 @@ def test_the_hover_box_stays_inside_a_plot_at_its_least_height(
     escaped = []
 
     for time_s, ratio in points:
-        # Off the plot first, so the box measured below is the one this point
-        # raised rather than the last point's.
+        # Move off the plot first, so that the box measured below is the one
+        # this point raised, not the previous point's.
         _painted_with_the_pointer_off(chart)
         _hover_on(chart, time_s, ratio)
         box = chart.hover_box()
@@ -703,8 +712,9 @@ def test_the_hover_box_stays_inside_a_plot_at_its_least_height(
         ).contains(box):
             escaped.append((time_s, ratio, box))
 
-    # The plot is short enough that a fraction of the axis would have put the
-    # box outside it, or the test proves nothing about the flip.
+    # The plot must be short enough that a flip decided at a fraction of the
+    # axis would have put the box outside it. Otherwise the test proves nothing
+    # about the flip.
     assert box_height is not None
     assert area.height() < 4 * box_height, (area.height(), box_height)
     assert not escaped, (
@@ -721,7 +731,7 @@ def test_no_hover_box_is_left_outside_a_plot_that_shrinks_under_a_resting_pointe
     The reader then shrinks the Area while the run is paused and the pointer
     rests, so no frame is drawn and no pointer event arrives. Before the fix
     the box stayed where the tall plot had put it, with its top cut off above
-    the short plot. Now the hover is answered again for the pointer's
+    the short plot. Now the hover responds again to the pointer's
     position. That position may no longer be near any drawn point, and then
     no box is the correct result. Either way, no box stands outside the plot.
     """

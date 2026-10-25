@@ -1,24 +1,24 @@
-"""What the dashboard claims, held without a toolkit.
+"""Tests of what the dashboard shows, run without a GUI toolkit.
 
-`app/dashboard_frame.py` is where the dashboard's presentation-correctness
-claims live - which word states the run's state, which banner outranks
-which, what each readout and setting says, what the captions and the
-new-case question say - and every test here runs with no display and no
-widget, which is the point of that module. The tests are the Flet suite's
-(`tests/unit/test_simulation_view.py`) re-expressed against the frame
-functions, under the same names where the claim survives the port, so the
-verify lines and `docs/MODEL.md` citations that name them keep pointing at
-a test that holds the same thing (`PL-25KS`).
+`app/dashboard_frame.py` holds the dashboard's presentation-correctness
+claims. They say which word states the run's state, which banner takes
+priority over which, what each readout and setting says, and what the
+captions and the new-case question say. Every test here runs with no display
+and no widget, which is the reason that module exists. The tests are the
+Flet suite's tests (`tests/unit/test_simulation_view.py`) rewritten against
+the frame functions. Where a claim survived the port, its test keeps the same
+name. The verify lines and `docs/MODEL.md` citations that name those tests
+therefore still point at a test that checks the same thing (`PL-25KS`).
 
-Snapshots come either from a real `SimulationController` stepped at the
-shipped step, or from `_snapshot`, a fixture whose MAC and MAC-awake resolve
-from the named agent's data file so a test cannot pair one agent's
-
-concentrations with another agent's divisor. Where a claim needs the frame
-the chart drew - the off-scale notice, the undrawn-mark count, the
-time-axis caption - `_FakeController` answers `drawn_window` with exactly
-the samples the fixture wrote, so the test asserts the frame's reading of
-those samples rather than the sampler's column placement.
+Snapshots come from one of two places. One is a real `SimulationController`
+stepped at the shipped step. The other is `_snapshot`, a fixture that takes
+MAC and MAC-awake from the named agent's data file. A test therefore cannot
+pair one agent's concentrations with another agent's divisor. Some claims
+need the frame that the chart drew: the off-scale notice, the count of
+undrawn marks, and the time-axis caption. For those, `_FakeController`
+returns exactly the samples the fixture wrote when asked for its
+`drawn_window`. The test then checks how the frame treats those samples, not
+where the sampler placed its columns.
 """
 
 import json
@@ -210,20 +210,20 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
-# The identities a dashboard gives the first runs it places, in order, which
-# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
-# rather than from where it is drawn (`PL-7Z84`).
+# The identities that a dashboard gives to the first runs it places, in
+# order. They render as "Run 1", "Run 2" and "Run 3". A run is named from its
+# identity, not from where it is drawn (`PL-7Z84`).
 TEST_SESSION = SessionToken("0" * 32)
 RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
 FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
 COMPARED = ComparedRuns(run_label(FIRST_RUN), run_label(SECOND_RUN))
 
-#: The agent every fixture here runs unless it says otherwise. Named once
-#: because the snapshot and the recorded run have to agree on it.
+#: The agent every fixture here runs unless it says otherwise. It is named
+#: once because the snapshot and the recorded run have to agree on it.
 _DEFAULT_AGENT = "sevoflurane"
 
-#: The plot width every frame here is assembled for. Wide enough that no
-#: fixture is thinned, so a drawn point is a fixture sample.
+#: The plot width every frame here is assembled for. It is wide enough that
+#: no fixture is thinned, so every drawn point is a sample the fixture wrote.
 _PLOT_WIDTH_PX = 900.0
 
 
@@ -261,7 +261,7 @@ def _sample(
 
 
 def _state_of(sample: _Sample, substance_id: str) -> tuple[float, ...]:
-    """One recorded sample as a state vector, in `governing_equations`' order."""
+    """Return one recorded sample as a state vector, in the order `governing_equations` uses."""
 
     values = sample.substances[substance_id]
     state = [0.0] * STATE_SIZE
@@ -275,17 +275,17 @@ def _state_of(sample: _Sample, substance_id: str) -> tuple[float, ...]:
 
 
 def _panel(marks: BookmarkSet) -> BookmarkPanel:
-    """That set's panel on one run, with every mark standing as still reachable."""
+    """Return the panel for that set of marks on one run, with every mark still reachable."""
 
     return bookmark_panel(marks, _one_run(_unreached(marks)))
 
 
 def _one_run(standings: BookmarkStandings) -> tuple[RunMarks, ...]:
-    """A lone run's marks, which is what a panel test wants unless it is comparing.
+    """Return a lone run's marks, which a panel test wants unless it compares runs.
 
-    A lone run is given no name - `SimulationView._rename_runs` states the
-    rule and `run_label` is where the word comes from when there is one - so
-    the label here is the one the dashboard would pass and no row draws it.
+    A lone run is given no name. `SimulationView._rename_runs` states that
+    rule, and `run_label` supplies the name when a run has one. The label here
+    is therefore the one the dashboard would pass, and no row draws it.
     """
 
     return (RunMarks(run_label(FIRST_RUN), standings),)
@@ -304,8 +304,8 @@ def _two_runs(trunk: BookmarkStandings, branch: BookmarkStandings) -> tuple[RunM
 def _unreached(marks: BookmarkSet) -> BookmarkStandings:
     """Standings for a run that has reached none of its marks and can still reach all.
 
-    Which is what a panel test wants by default: the rows carry the mark's own
-    value, and the standing is the one that adds no words to them.
+    A panel test wants these standings by default. The rows show each mark's
+    own value, and this standing adds no words to them.
     """
 
     return _standings(marks)
@@ -321,7 +321,7 @@ def _standings(
     stopped_at_cap: bool = False,
     run_failed: bool = False,
 ) -> BookmarkStandings:
-    """One run's standings on that set, defaulting to a run that has just opened."""
+    """Return one run's standings on that set, by default for a run that has just opened."""
 
     return marks.standings(
         reached_instants_s=reached_instants_s,
@@ -356,12 +356,13 @@ def _snapshot(
 ) -> SimulationSnapshot:
     """Build a snapshot, defaulting MAC and MAC-awake from the named agent's data file.
 
-    Both resolve from the data file rather than from a literal so that a
-    test naming an agent cannot pair that agent's concentrations with
-    another agent's MAC, which is the presentation failure the MAC readouts
-    have to be proof against. The six compartment fractions are read from
-    the last sample of `history` under the agent the snapshot names. The run
-    is a trunk's, begun at induction, as `_unreached` assumes of its marks.
+    Both come from the data file rather than from a literal. A test that
+    names an agent therefore cannot pair that agent's concentrations with
+    another agent's MAC. That pairing is the presentation failure the MAC
+    readouts must prevent. The six compartment fractions are read from the
+    last sample of `history`, under the agent that the snapshot names. The
+    run is a trunk that began at induction, as `_unreached` assumes of its
+    marks.
     """
 
     if history is None:
@@ -417,12 +418,12 @@ def _snapshot(
 class _FakeController:
     """A run whose drawn window is exactly the samples the fixture wrote.
 
-    The real controller evaluates its definition at instants it chooses; a
-    fake has no definition, and inventing one would make every frame test
-    here assert the sampler's column placement rather than the reading
-    under test. Only `snapshot()`, `drawn_window()` and `opened_from` are
-    answered, because those are the three things `assemble_chart_frame` asks
-    a run for.
+    The real controller evaluates its run definition at instants it chooses.
+    A fake has no definition. Inventing one would make every frame test here
+    check where the sampler placed its columns, rather than the behaviour
+    under test. The fake provides only `snapshot()`, `drawn_window()` and
+    `opened_from`, because those are the three things that
+    `assemble_chart_frame` asks a run for.
     """
 
     def __init__(
@@ -433,8 +434,8 @@ class _FakeController:
     ) -> None:
         self.snapshot_value = snapshot
         self.history_value = history
-        #: Where this run forked, or `None` for one that is not a branch.
-        #: A frame marks the fork, so the fake has to be able to be one.
+        #: Where this run forked, or `None` for a run that is not a branch.
+        #: A frame marks the fork, so the fake must be able to act as a branch.
         self.opened_from = opened_from
 
     def snapshot(self) -> SimulationSnapshot:
@@ -459,7 +460,7 @@ class _FakeController:
 def _fake_controller(
     history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
 ) -> _FakeController:
-    """A fake whose snapshot and history come from one run, built together."""
+    """Build a fake whose snapshot and history describe the same run."""
 
     snapshot = _snapshot(history=history, **snapshot_fields)
 
@@ -476,7 +477,7 @@ def _frame(
     time_base: ChartTimeBase | None = None,
     adjustments: tuple[ControlAdjustment, ...] = (),
 ) -> ChartFrame:
-    """The frame one tick would draw for one run, under "Fit run" unless told otherwise."""
+    """Return the frame one tick would draw for one run, under "Fit run" unless told otherwise."""
 
     return assemble_chart_frame(
         (RunInput(run_label(FIRST_RUN), controller, controller.snapshot(), adjustments),),
@@ -487,7 +488,7 @@ def _frame(
 
 
 def _compared_frame(*controllers: Any) -> ChartFrame:
-    """The frame one tick would draw for several runs, named as the dashboard names them."""
+    """Return the frame one tick would draw for several runs, named as the dashboard names them."""
 
     return assemble_chart_frame(
         tuple(
@@ -543,11 +544,11 @@ def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
 
 
 def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
-    """A real, paused run holding both elapsed time and a recorded input.
+    """A real, paused run that has both elapsed time and a recorded input.
 
-    Both halves deliberately: `SimulationSnapshot.has_recorded_run` reads
-    the two together, and a fixture carrying only one would leave the other
-    unexercised by every test built on it.
+    The fixture has both on purpose. `SimulationSnapshot.has_recorded_run`
+    checks the two together, and a fixture with only one would leave the
+    other untested by every test built on it.
     """
 
     controller = SimulationController()
@@ -578,15 +579,14 @@ def _settings_by_control(snapshot: SimulationSnapshot) -> dict[ControlInput, Any
 def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
     """The interface may not run the model outside its supported domain.
 
-    `SIMULATION_STEP_S` is the dashboard's cadence and
-    `MAXIMUM_SIMULATION_STEP_S` is `core/`'s declared control-resolution
-    tolerance; they are separate decisions that happen to coincide today,
-    and this is what stops them from parting company unnoticed. The
-    relation is `<=` rather than equality on purpose: a numerical method
-    that supported a coarser step would not make a coarser step a good
-    render cadence. The domain's other end, `MINIMUM_SIMULATION_STEP_S`, is
-    held here too (`PL-YZ17`), though no cadence a display would want comes
-    near it.
+    `SIMULATION_STEP_S` is the dashboard's cadence. `MAXIMUM_SIMULATION_STEP_S`
+    is the control-resolution tolerance that `core/` declares. They are
+    separate decisions that happen to be equal today, and this test stops
+    them from drifting apart unnoticed. The test uses `<=` rather than
+    equality on purpose. A numerical method that supported a coarser step
+    would not make a coarser step a good render cadence. The test also checks
+    the other end of the domain, `MINIMUM_SIMULATION_STEP_S` (`PL-YZ17`),
+    although no cadence a display would want comes near it.
     """
 
     assert SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S
@@ -594,7 +594,7 @@ def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
 
 
 def test_a_tick_is_one_simulation_step_of_real_time() -> None:
-    """The equality every displayed playback rate is derived through.
+    """Check the equality from which every displayed playback rate is derived.
 
     A tick advances `steps_per_tick` steps, and calling that "N times real
     time" is true only because one tick is one step long.
@@ -604,11 +604,12 @@ def test_a_tick_is_one_simulation_step_of_real_time() -> None:
 
 
 def test_a_frame_is_two_control_grid_steps_at_every_rate() -> None:
-    """The premise of the argument `PL-NBWP` was settled on.
+    """Check the premise on which the argument in `PL-NBWP` was settled.
 
-    A reader sees the run at half the resolution they can act on it at, at
-    every rate the ladder offers; `docs/MODEL.md` § "Supported simulation
-    step" argues from this ratio, so it is held here rather than derived.
+    At every rate the ladder offers, a reader sees the run at half the
+    resolution at which they can act on it. `docs/MODEL.md` § "Supported
+    simulation step" argues from this ratio, so this test checks the ratio
+    directly rather than deriving it.
     """
 
     assert RENDER_INTERVAL_S == 2.0 * SIMULATION_TICK_INTERVAL_S
@@ -617,10 +618,10 @@ def test_a_frame_is_two_control_grid_steps_at_every_rate() -> None:
 def test_the_dashboard_displays_at_most_two_runs() -> None:
     """`ROADMAP.md` § "v0.5.0 - the case you can branch": never more than two.
 
-    The constructor's refusal is `SimulationView`'s and is tested with the
-    widget; the number itself is the frame's, and `PL-HLD5`'s two-level
-    encoding (run on line width, under a cap of two compartments) has
-    nothing left to draw a third run with.
+    The constructor's refusal belongs to `SimulationView` and is tested with
+    the widget. The number itself belongs to the frame. `PL-HLD5`'s two-level
+    encoding shows the run as line width, under a cap of two compartments, so
+    it has nothing left with which to draw a third run.
     """
 
     assert MAX_DISPLAYED_RUNS == 2
@@ -661,14 +662,14 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
 
     assert banner is not None
     assert "the step could not be completed" in banner
-    # PL-026: the numbers beside the banner are the last completed step,
-    # because the core rolls a failed step back. The reader has to be told
-    # that much - a banner that only says something went wrong leaves them
-    # to guess whether the values are a solution of the model or debris.
-    # Whether a step was rolled back is the failure's own message's to say
-    # (`SimulationNumericalError`'s does), not the banner's of every
-    # failure: a setting that raised and a displayed value the interface
-    # refused failed no step (`PL-7DJK`).
+    # PL-026: the numbers beside the banner come from the last completed
+    # step, because the core rolls a failed step back. The reader must be
+    # told that much. A banner that only says something went wrong leaves
+    # them to guess whether the values are a solution of the model or debris.
+    # Whether a step was rolled back is for the failure's own message to say,
+    # as the message of `SimulationNumericalError` does. The banner does not
+    # say it for every failure, because a setting that raised and a displayed
+    # value the interface refused did not fail a step (`PL-7DJK`).
     assert "last completed step" in banner
     assert "rolled back" not in banner
     assert banner == (
@@ -687,12 +688,12 @@ def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
 def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step() -> None:
     """`halt_notice` is the banner `present_halt` writes, with no frame on screen for it.
 
-    A displayed value the interface refused is the case that reaches a
-    reader this way: the frame refuses again on every attempt, so this
-    banner is the last one written. It says what is true of that screen -
-    the frame drawn before the stop, not the step the run stopped at - and
-    blames no step, where the drawn banner's old wording sent the reader to
-    a step that had been rolled back when none had failed (`PL-7DJK`).
+    A displayed value that the interface refused reaches a reader this way.
+    The frame refuses the value again on every attempt, so this banner is the
+    last one written. The banner says what is true of that screen: it shows
+    the frame drawn before the stop, not the step at which the run stopped.
+    It blames no step. The drawn banner's old wording sent the reader to a
+    step that had been rolled back, when no step had failed (`PL-7DJK`).
     """
 
     reason = (
@@ -721,13 +722,13 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
 
 
 def test_a_halt_is_stated_from_the_run_status_alone() -> None:
-    """The three halt widgets are settled by a `RunStatus`, which no compartment value is built for.
+    """A `RunStatus`, which carries no compartment value, decides the three halt widgets.
 
     `present_halt` reads `SimulationController.record()` rather than a
-    snapshot, because the snapshot's own `Fraction`s are among the values a
-    halt can be for (`PL-7DJK`). So `status_word`, `transport` and
-    `halt_notice` each answer a bare status - and a record and a snapshot
-    are each one, which is what keeps every frame-drawing caller unchanged.
+    snapshot, because the snapshot's own `Fraction`s are among the values
+    that can cause a halt (`PL-7DJK`). So `status_word`, `transport` and
+    `halt_notice` each accept a bare status. A record and a snapshot are each
+    a status, so every caller that draws a frame stays unchanged.
     """
 
     limit = "this run has reached 86400 s of simulated time"
@@ -748,21 +749,21 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     assert (transport(running).start_enabled, transport(running).pause_enabled) == (False, True)
     assert halt_notice(failed) is not None
     assert "TypeError: boom" in (halt_notice(failed) or "")
-    # Nothing is wrong with the state a run stops on at the supported run
-    # length, so the frame that follows draws and the one wording serves.
+    # Nothing is wrong with the state in which a run stops at the supported
+    # run length. The next frame therefore draws, and one wording serves both.
     assert halt_notice(at_limit) == notice(at_limit, None)
     assert halt_notice(paused) is None
     assert halt_notice(running) is None
 
 
 def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends() -> None:
-    """One run states one thing whether a frame drew it or the controller's record is all there is.
+    """A run is stated the same way whether a frame drew it or only the controller's record exists.
 
-    `RunView._write_statement` is the one writer of the run-state widgets,
-    called with the snapshot a frame drew from and with
-    `SimulationController.record()` where none can draw (`PL-X7D5`). The
-    statement reads only what the two share, so a halt states every widget a
-    frame would, from the same functions the frame uses.
+    `RunView._write_statement` is the only writer of the run-state widgets.
+    It is called with the snapshot a frame drew from, and with
+    `SimulationController.record()` where no frame can draw (`PL-X7D5`). The
+    statement reads only what the two share. A halt therefore states every
+    widget that a frame would, using the same functions the frame uses.
     """
 
     controller = _paused_run_with_history()
@@ -791,8 +792,9 @@ def test_a_run_statement_carries_the_locks_and_the_banner_it_is_given() -> None:
     """The statement carries what only the caller knows, exactly as given, and guesses nothing.
 
     Whether the run is a branch, and whether a second run is drawn, are facts
-    that only the view holds. Which banner wording applies depends on whether
-    a frame drew, and only the caller knows that (`halt_notice`, `notice`).
+    that only the view knows. Which banner wording applies depends on whether
+    a frame was drawn, and only the caller knows that (`halt_notice`,
+    `notice`).
     """
 
     record = _paused_run_with_history().record()
@@ -809,24 +811,28 @@ def test_a_run_statement_carries_the_locks_and_the_banner_it_is_given() -> None:
 
 
 def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
-    """Reset is the door every failure wording names; a refused Reset's banner names another.
+    """Failure wordings name Reset as the way out, so a refused Reset's banner names another.
 
-    `SimulationController.reset()` can refuse, before it clears anything, and
-    the view halts the run on it through the failed-step path (`PL-M4M0`).
+    `SimulationController.reset()` can refuse before it clears anything. When
+    it does, the view halts the run through the failed-step path (`PL-M4M0`).
     The failure wording would then end by sending the reader to the control
-    that was just refused, so the exit says Reset was refused and names the
-    door open on every run. No setting can repair the refusal, because only a
-    perfusion fraction written past its guard builds the record Reset refuses
-    (`PL-HQF5`, `PL-Z0HN`). So the exit says so, and sends the reader to close
-    and reopen the application. Until `PL-01GY` it named the setting the
-    refusal names, whose dial no longer rebuilds the record. A new case is not
-    open on every run: it is the agent selector, which a comparison locks and
-    which a branch has not got. Which of two wordings states the refusal turns on what the
-    banner's reason is: a controller keeps the first failure it was given,
-    so on a run that had failed for something else the exit has to carry
-    the refusal itself, and on one that had not, or that this same refusal
-    already stopped, it points at the banner's reason, so a Reset pressed
-    twice is stated once.
+    that was just refused. So the exit sentence says that Reset was refused,
+    and names a way out that is open on every run. No setting can repair the
+    refusal, because only a perfusion fraction written past its guard builds
+    the record that Reset refuses (`PL-HQF5`, `PL-Z0HN`). So the exit sentence
+    says that no setting can repair it, and sends the reader to close and
+    reopen the application. Until `PL-01GY` the exit sentence named the
+    setting that the refusal names, but that setting's dial no longer rebuilds
+    the record. Starting a new case is not open on every run, because it uses
+    the agent selector, which a comparison locks and which a branch does not
+    have.
+
+    The banner's reason decides which of two wordings states the refusal. A
+    controller keeps the first failure it was given. On a run that had already
+    failed for another reason, the exit sentence must carry the refusal
+    itself. On a run that had not failed, or that this same refusal already
+    stopped, the exit sentence points at the banner's reason, so a Reset pressed twice is stated
+    once.
     """
 
     error = SimulationConfigurationError(
@@ -888,10 +894,10 @@ def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
 
 
 def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -> None:
-    """The whole point of the separate field: a correct stop reads as one.
+    """A correct stop is shown as a stop, which is the reason the field is separate.
 
-    A run that reaches the limit has done everything right - the core refused
-    the next step before taking it, nothing was miscalculated, nothing was
+    A run that reaches the limit has done everything right. The core refused
+    the next step before taking it, nothing was miscalculated, and nothing was
     rolled back. Presenting that as "simulation error" would spend the one
     signal this interface has for a real fault on a model that is working.
     """
@@ -912,10 +918,10 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
     """No step failed and none was rolled back, so neither may be claimed.
 
-    A notice describing an event that did not happen is the presentation
-    half of the safety-critical standard - the correct number under the
-    wrong label - and it points the reader at the model's own limits rather
-    than at an imagined defect.
+    A notice that describes an event that did not happen fails the
+    presentation half of the safety-critical standard: it puts the correct
+    number under the wrong label. This notice points the reader at the
+    model's own limits rather than at an imagined defect.
     """
 
     banner = notice(
@@ -930,8 +936,8 @@ def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
     assert "rolled back" not in banner
     assert "error" not in banner.lower()
     assert "failed" not in banner.lower()
-    # It says *why* the limit is where it is: a boundary with no reason reads
-    # as an arbitrary restriction rather than as the edge of the model.
+    # The banner says *why* the limit is where it is. A boundary given with no
+    # reason looks like an arbitrary restriction, not the edge of the model.
     assert "metabolism" in banner
     assert "last completed step" in banner
     assert banner == (
@@ -974,11 +980,11 @@ def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
 def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
     """A `SimulationConfigurationError` means the core rejected a value and changed nothing.
 
-    The run is untouched and must not be marked failed, so the refusal is
-    worded as a notice about one control over a run that goes on unchanged
-    (`PL-YK2V`). `halt_disposition` is never consulted for it: which
-    exceptions reach that function is `RunView._apply_setting`'s, tested
-    with the widget.
+    The run is untouched and must not be marked failed. The refusal is
+    therefore worded as a notice about one control, over a run that goes on
+    unchanged (`PL-YK2V`). `halt_disposition` is never called for it.
+    `RunView._apply_setting` decides which exceptions reach that function,
+    and that is tested with the widget.
     """
 
     refused = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
@@ -1007,7 +1013,7 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
 
 
 def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:
-    """Start only where the controller would accept it; Pause only while running; Reset always.
+    """Start is offered only if the controller accepts it, Pause only while running, Reset always.
 
     The selector is locked exactly while running, because choosing an agent
     discards the case and the selector returns on Pause (`PL-61WW`).
@@ -1038,9 +1044,10 @@ def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:
 def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
     """A halt stops the run for every exception and mislabels none.
 
-    A regression in the routing would not break the halt - the run still
-    stops - it would only put "simulation error" over a model that stopped
-    exactly where `docs/MODEL.md` says it must. Nothing but a test notices.
+    A regression in the routing would not break the halt, because the run
+    would still stop. It would only put "simulation error" over a model that
+    stopped exactly where `docs/MODEL.md` says it must. Only a test would
+    notice.
     """
 
     error = SimulationDomainLimitError("this run has reached 86400 s of simulated time")
@@ -1052,7 +1059,7 @@ def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
 
 
 def test_halt_run_still_treats_an_unrecognised_exception_as_a_failure() -> None:
-    """The narrow case is the named one, so anything else falls through safely."""
+    """Only the narrow, named case is a supported limit, so anything else is a failure."""
 
     assert halt_disposition(ValueError("mass balance violated")) == (
         HaltDisposition.FAILURE,
@@ -1063,9 +1070,9 @@ def test_halt_run_still_treats_an_unrecognised_exception_as_a_failure() -> None:
 def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
     """`PL-YK2V`: a `TypeError` from a future refactor stops the run like a modelling failure.
 
-    It is recorded with its type, because the reader is looking at a
-    display that can no longer be trusted to describe the run and the
-    reason has to be readable.
+    It is recorded with its type. The reader is looking at a display that
+    can no longer be trusted to describe the run, so the reason must be
+    readable.
     """
 
     assert halt_disposition(TypeError("a future refactor changed a signature")) == (
@@ -1075,10 +1082,10 @@ def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
 
 
 def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused() -> None:
-    """`PL-V6M0`: `SimulationExecutionError` is the run being unable to continue safely.
+    """`PL-V6M0`: `SimulationExecutionError` means the run cannot continue safely.
 
-    The opposite of a refused setting, so it takes the failure channel with
-    the rest of the hierarchy.
+    That is the opposite of a refused setting, so the error takes the failure
+    channel with the rest of the hierarchy.
     """
 
     assert halt_disposition(SimulationExecutionError("the run cannot continue safely")) == (
@@ -1153,7 +1160,7 @@ def test_the_snapshot_fixture_settings_are_all_distinct() -> None:
 
 
 def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
-    """The pre-run reading must not outlive a change to the resolution."""
+    """The value shown before a run must not go stale when the display resolution changes."""
 
     empty = format_percent(Fraction(0.0))
 
@@ -1164,10 +1171,11 @@ def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
 def test_a_real_run_displays_a_filling_compartment_as_below_resolution() -> None:
     """End to end: real model, real step, real units, displayed string.
 
-    Fat is the compartment the PL-040 decision turns on. Two minutes into a
-    1 MAC sevoflurane run it holds agent but less than 0.01% of it, so the
-    display must say so rather than round it to an empty compartment; by
-    twenty minutes it has risen into the resolved range.
+    The PL-040 decision turns on the fat compartment. Two minutes into a
+    1 MAC sevoflurane run, fat holds some agent, but its reading is less than
+    0.01%. The display must say so rather than round it to an empty
+    compartment. By twenty minutes the reading has risen into the resolved
+    range.
     """
 
     controller = SimulationController()
@@ -1176,9 +1184,9 @@ def test_a_real_run_displays_a_filling_compartment_as_below_resolution() -> None
 
     assert controller.snapshot().fat_partial_pressure_fraction > 0.0
     assert _readouts_by_name(controller.snapshot())["Fat"][1] == "<0.01%"
-    # The alveolar reading over the same interval is an ordinary value at
-    # the documented resolution, so the marker is specific to what is
-    # genuinely below it rather than a formatting quirk.
+    # At the same instant, the alveolar reading is an ordinary value at the
+    # documented resolution. The marker therefore appears only for a value
+    # that is genuinely below the resolution, and is not a formatting quirk.
     assert _readouts_by_name(controller.snapshot())["Alveolar"][1] == "0.61%"
 
     _advance_to(controller, 1_200.0)
@@ -1199,11 +1207,11 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
     """The hedge is a safety requirement, not a wording preference.
 
     `docs/MODEL.md` § "Minimum displayed outputs" requires "alveolar or
-    end-tidal-equivalent concentration": dead space, airway sampling delay,
-    shunt and V/Q mismatch are all in "Known limitations", so what this
-    readout holds is not end-tidal in any patient, and end-tidal is the name
-    of a measurement (`PL-NV9W`). The gloss being drawn smaller than the
-    name is the widget's and is tested with it.
+    end-tidal-equivalent concentration". Dead space, airway sampling delay,
+    shunt and V/Q mismatch are all listed in "Known limitations". The value
+    this readout shows is therefore not end-tidal in any patient, and
+    end-tidal is the name of a measurement (`PL-NV9W`). The widget draws the
+    gloss smaller than the name, and that is tested with the widget.
     """
 
     by_name = _readouts_by_name(_snapshot())
@@ -1217,8 +1225,9 @@ def test_every_compartment_is_readable_in_mac_multiples() -> None:
     """PL-DHV7's own acceptance criterion: the second unit is on every compartment.
 
     A MAC multiple on the vessel-rich, muscle and fat readouts is what makes
-    a wash-in comparable across agents. "Simulated time" holds the line
-    with the playback rate instead; the six compartments each carry one.
+    a wash-in comparable across agents. "Simulated time" uses that line for
+    the playback rate instead. Each of the six compartments carries a MAC
+    multiple.
     """
 
     snapshot = _snapshot(history=(_sample(60.0, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
@@ -1239,7 +1248,7 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
     A divisor left over from a previously selected agent would produce a
     plausible number under the correct label, which is the presentation
     failure `CLAUDE.md` treats as a safety failure rather than a cosmetic
-    one; every MAC line is read from the snapshot's own divisor.
+    one. Every MAC line is read from the snapshot's own divisor.
     """
 
     sevoflurane = _snapshot(history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
@@ -1261,9 +1270,9 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
 def test_the_playback_rate_is_drawn_under_the_clock_it_governs(rate: PlaybackRate) -> None:
     """A rate is a mode, and the clock is where it would be misread.
 
-    `PL-SN2C` requires the multiplier beside the elapsed-time readout - not
-    merely somewhere on the page, and not only when it is not 1x - stated by
-    the same formatter the selector's options use.
+    `PL-SN2C` requires the multiplier beside the elapsed-time readout, not
+    merely somewhere on the page. It must show at 1x too. The same formatter
+    that writes the selector's options must state it.
     """
 
     clock = readouts(_snapshot(), rate)[0]
@@ -1273,7 +1282,7 @@ def test_the_playback_rate_is_drawn_under_the_clock_it_governs(rate: PlaybackRat
 
 
 def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
-    """`PL-Q4M4`: the clock and the axis state one quantity one way."""
+    """`PL-Q4M4`: the clock and the axis state the same quantity in the same form."""
 
     clock = readouts(
         _snapshot(history=(_sample(5400.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),)), DEFAULT_PLAYBACK_RATE
@@ -1284,10 +1293,11 @@ def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
 
 
 def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
-    """`PL-TCD1`: one frame, one vocabulary, following the agent.
+    """`PL-TCD1`: one frame uses one vocabulary, and the heading follows the agent.
 
-    Stated from a snapshot and from the record a halt is written from alike,
-    since the heading names an agent and no compartment value (`PL-1YDD`).
+    The heading is stated the same way from a snapshot and from the record
+    that a halt is written from, because it names an agent and no
+    compartment value (`PL-1YDD`).
     """
 
     assert substance_heading(_snapshot()) == "Modelled concentrations: Sevoflurane"
@@ -1310,9 +1320,10 @@ def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
 def test_every_readout_holds_its_gloss_and_second_unit_lines_open() -> None:
     """Seven panels on one baseline (`PL-8M05`): every line is a non-empty string.
 
-    A readout with no gloss and the clock with no MAC multiple still hold
-    their lines, so a widget drawing the four lines never collapses one.
-    The widest reflow step seats all seven side by side.
+    A readout with no gloss, and the clock with no MAC multiple, still keep
+    those lines open. A widget that draws the four lines therefore never
+    collapses one. The widest reflow step places all seven panels side by
+    side.
     """
 
     panels = readouts(_snapshot(), DEFAULT_PLAYBACK_RATE)
@@ -1332,9 +1343,9 @@ def test_every_readout_holds_its_gloss_and_second_unit_lines_open() -> None:
 def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
     """`PL-3355`: a panel reserves width for the widest value it can show.
 
-    The clock just before the supported run length is the widest value
-    line - every component of the compound form present, with tenths - and
-    the longest playback rate is the widest second line. Both are derived
+    The clock just before the supported run length gives the widest value
+    line, because every component of the compound form is present, with
+    tenths. The longest playback rate gives the widest second line. Both are derived
     from the formatters rather than measured, so a change to either form
     moves the reservation with it.
     """
@@ -1355,12 +1366,13 @@ def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
 def test_the_sliders_span_the_supported_input_ranges() -> None:
     """The interface offers exactly the domain the model declares.
 
-    Equality in both directions: a slider reaching past a supported maximum
-    hands the reader a setting `core/` refuses, and one stopping short
-    silently narrows the reachable domain below what the reference gates
-    were driven at (`PL-0MLQ`). The fresh gas flow's envelope is the whole
-    of its range here because the shipped machine profile declares no
-    deliverable range; one that declares a range narrows it
+    The test checks equality at both ends. A slider that reaches past a
+    supported maximum offers the reader a setting that `core/` refuses. A
+    slider that stops short silently narrows the reachable domain below the
+    values at which the reference gates were run (`PL-0MLQ`). Here the fresh
+    gas flow slider spans the model's whole envelope, because the shipped
+    machine profile declares no deliverable range. A profile that declares a
+    range narrows it
     (`test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range`).
     """
 
@@ -1429,14 +1441,15 @@ def _controller_on_a_machine_declaring(
 ) -> SimulationController:
     """A controller whose machine profile declares a deliverable fresh gas flow range.
 
-    The shipped profile declares none, so the run is built from that file with
-    the range added and nothing else changed, parsed as the loader parses it,
-    and handed to `AgentUptakeSystem.for_agent()` by replacing the loader it
-    calls - the route `tests/unit/test_circuit.py` hands it another profile by,
-    until `PL-2FZ9` lets a run name its machine. A range of two `None`s keeps
-    the shipped profile's undeclared range. The shipped profile opens the run
-    at 4.0 L/min, so each range here holds that flow, and `opening_flow_l_min`
-    states another opening flow in its place.
+    The shipped profile declares no range. This fixture therefore builds the
+    run from that file with the range added and nothing else changed, and
+    parses it as the loader does. It hands the result to
+    `AgentUptakeSystem.for_agent()` by replacing the loader that method calls.
+    `tests/unit/test_circuit.py` uses the same route to give it another
+    profile, until `PL-2FZ9` lets a run name its machine. A range of two
+    `None`s keeps the shipped profile's undeclared range. The shipped profile
+    opens the run at 4.0 L/min, so each range here contains that flow.
+    `opening_flow_l_min` sets a different opening flow in its place.
     """
 
     payload = json.loads(
@@ -1463,14 +1476,15 @@ def test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range(
 ) -> None:
     """A machine that cannot set what the model supports is not offered it (`PL-7CRY`).
 
-    The profile declares 0.5 to 8.0 L/min, inside the model's envelope at
-    both ends, so the control narrows at both. Read from a real controller
-    rather than a fixture snapshot, so the path is the one the interface
-    runs: profile, circuit, snapshot, control. Each end is held exact rather
-    than merely inside: the run accepts both and refuses the step past each,
-    in the machine's words, so the control is no narrower than the machine
-    either. The other two flows keep the model's envelope, which no machine
-    property bounds.
+    The profile declares 0.5 to 8.0 L/min, which is inside the model's
+    envelope at both ends, so the control narrows at both ends. The settings
+    are read from a real controller rather than a fixture snapshot, so the
+    path is the one the interface runs: profile, circuit, snapshot, control.
+    The test checks that each end is exact, not merely inside the range. The
+    run accepts both ends and refuses the step past each one, in the
+    machine's words, so the control is no narrower than the machine either.
+    The other two flows keep the model's envelope, because no machine
+    property limits them.
     """
 
     controller = _controller_on_a_machine_declaring(monkeypatch, 0.5, 8.0)
@@ -1505,11 +1519,12 @@ def test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it(
 ) -> None:
     """A slider's ends are the steps just inside the range, never steps rounded past it.
 
-    A machine floored at 0.25 L/min is a plausible profile, and at the flow
-    control's one decimal the step nearest it is 0.2 L/min, which the machine
-    refuses; rounding half to even takes 8.75 to 8.8 the same way at the top.
-    So the floor is the first step above, 0.3, and the ceiling the last step
-    below, 8.7, each taken through the slider's own round trip and accepted.
+    A machine with a minimum of 0.25 L/min is a plausible profile. At the
+    flow control's one decimal place, the step nearest that minimum is
+    0.2 L/min, which the machine refuses. Rounding half to even takes 8.75 to
+    8.8 in the same way at the top. So the slider's minimum is the first step
+    above, 0.3, and its maximum is the last step below, 8.7. Each is taken
+    through the slider's own round trip, and the run accepts it.
     """
 
     controller = _controller_on_a_machine_declaring(monkeypatch, 0.25, 8.75)
@@ -1529,14 +1544,14 @@ def test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it(
 
 
 def test_a_control_with_no_step_inside_its_range_fails_rather_than_offering_a_refused_one() -> None:
-    """No step to offer is a raise, not a slider collapsed onto a step outside the range.
+    """A control with no step to offer raises, rather than collapsing onto a step outside the range.
 
-    A machine range narrower than one 0.1 L/min step and holding none is
-    implausible and is shipped by nothing, but the profile format admits it,
-    and the alternative is a plausible-looking control whose only setting the
-    run refuses. A raise on a refresh is stated as a halt
-    (`SimulationView.present`), and one while the dashboard is built stops it
-    opening.
+    A machine range that is narrower than one 0.1 L/min step and contains no
+    step is implausible, and no shipped profile has one. The profile format
+    allows it, though, and the alternative is a plausible-looking control
+    whose only setting the run refuses. A raise during a refresh is stated as
+    a halt (`SimulationView.present`). A raise while the dashboard is being
+    built stops the dashboard from opening.
     """
 
     with pytest.raises(
@@ -1549,10 +1564,10 @@ def test_a_control_with_no_step_inside_its_range_fails_rather_than_offering_a_re
 
 
 def test_the_no_step_refusal_is_pinned_whole() -> None:
-    """The whole sentence the "Simulation stopped" banner shows for a control with no step.
+    """Pin the whole sentence the "Simulation stopped" banner shows for a control with no step.
 
-    The test above matches the sentence's opening, so the source it cites
-    could change unseen (`PL-79PK`).
+    The test above matches only the start of the sentence, so the source the
+    sentence cites could change unseen (`PL-79PK`).
     """
 
     with pytest.raises(ValueError) as refusal:
@@ -1567,9 +1582,9 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
 @pytest.mark.parametrize(
     ("minimum_l_min", "maximum_l_min", "opening_flow_l_min", "refusal"),
     (
-        # Between two 0.1 L/min steps: the slider would sit at 2.2, since
-        # `slider_position` rounds half to even, and the readout would print
-        # 2.2 over a run at 2.25.
+        # This flow lies between two 0.1 L/min steps. The slider would sit at
+        # 2.2, because `slider_position` rounds half to even, and the readout
+        # would print 2.2 while the run used 2.25.
         (
             None,
             None,
@@ -1579,9 +1594,9 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
             "those steps (docs/MODEL.md, \"The model's envelope and a machine's deliverable "
             'range are two claims")',
         ),
-        # The floor of a range declared off the grid: the run accepts 0.25,
-        # but the slider's floor is the step just inside, 0.3, and the readout
-        # would print 0.2 beside it.
+        # This flow is the minimum of a range declared off the grid. The run
+        # accepts 0.25, but the slider's minimum is the step just inside, 0.3,
+        # and the readout would print 0.2 beside it.
         (
             0.25,
             8.75,
@@ -1602,12 +1617,12 @@ def test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused(
 ) -> None:
     """A profile cannot open the run at a flow its slider and readout cannot both show (`PL-1KQ9`).
 
-    The run accepts each of these flows, so the core opens it there. The
-    controls are what refuse it, as the dashboard builds them, because a
-    slider position is a printed value (`PL-25KS`, decision D4), and a slider
-    standing at a neighbouring step beside a rounded readout would show a
-    flow the run does not hold. The whole sentence is pinned, since it is
-    what the reader sees in place of a dashboard.
+    The run accepts each of these flows, so the core opens the run there. The
+    controls refuse the flow when the dashboard builds them, because a slider
+    position is a printed value (`PL-25KS`, decision D4). A slider standing
+    at a neighbouring step, beside a rounded readout, would show a flow the
+    run is not using. The whole sentence is pinned, because the reader sees
+    it in place of a dashboard.
     """
 
     controller = _controller_on_a_machine_declaring(
@@ -1638,9 +1653,9 @@ def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
     maximum_l_min: float | None,
     opening_flow_l_min: float,
 ) -> None:
-    """An opening flow on one of the slider's steps opens, at each end of the offered range too.
+    """A run opens at a flow on one of the slider's steps, including each end of the offered range.
 
-    The slider stands on the stated flow and the readout prints it, which is
+    The slider stands on the stated flow and the readout prints it. That is
     the property the refusal above protects.
     """
 
@@ -1662,9 +1677,9 @@ def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
 @pytest.mark.parametrize(
     ("control", "controller_settings", "refusal"),
     (
-        # Between two 0.1 L/min steps: the slider would sit at 5.2, since
-        # `slider_position` rounds half to even, and the readout would print
-        # 5.2 over a run at 5.25.
+        # This value lies between two 0.1 L/min steps. The slider would sit at
+        # 5.2, because `slider_position` rounds half to even, and the readout
+        # would print 5.2 while the run used 5.25.
         (
             ControlInput.ALVEOLAR_VENTILATION,
             {"alveolar_ventilation_l_min": AlveolarVentilation(5.25)},
@@ -1747,13 +1762,13 @@ def test_an_opening_ventilation_or_cardiac_output_on_the_slider_grid_opens(
         # Whole steps are offered as they are, which is every shipped range.
         (0.0, 10.0, FLOW_DISPLAY_DECIMALS, (0.0, 10.0)),
         (0.0, 8.0, CONCENTRATION_DISPLAY_DECIMALS, (0.0, 8.0)),
-        # Ends that are steps although their product with 100 is not a whole
-        # float - 0.07 * 100 is 7.000000000000001 and 0.29 * 100 is
-        # 28.999999999999996 - so neither may be pushed off itself, inward.
+        # These ends are steps, although their products with 100 are not
+        # whole floats: 0.07 * 100 is 7.000000000000001 and 0.29 * 100 is
+        # 28.999999999999996. Neither end may be moved inward off itself.
         (0.07, 0.29, CONCENTRATION_DISPLAY_DECIMALS, (0.07, 0.29)),
-        # Ends one unit in the last place outside a step, whose product with
-        # 10 rounds onto that step: the step is outside the range, and is not
-        # offered.
+        # Each of these ends is one unit in the last place outside a step, and
+        # its product with 10 rounds onto that step. The step is outside the
+        # range, so it is not offered.
         (math.nextafter(1.7, math.inf), 9.0, FLOW_DISPLAY_DECIMALS, (1.8, 9.0)),
         (0.5, math.nextafter(0.9, -math.inf), FLOW_DISPLAY_DECIMALS, (0.5, 0.8)),
         # Ends between steps move inward, never outward.
@@ -1802,8 +1817,8 @@ def test_slider_drag_labels_match_the_readouts_beside_them() -> None:
 def test_a_slider_position_round_trips_to_the_value_printed_beside_it() -> None:
     """The value applied to the model is exactly the value printed beside the slider.
 
-    At both resolutions: one decimal for the three flows, two for the
-    delivered percent. A position is a count of the display resolution, so
+    The test covers both resolutions: one decimal place for the three flows,
+    and two for the delivered percent. A position is a count of the display resolution, so
     the value it decodes to formats to itself.
     """
 
@@ -1823,10 +1838,11 @@ def test_a_slider_position_round_trips_to_the_value_printed_beside_it() -> None:
 def test_the_fresh_gas_flow_control_names_the_common_gas_outlet() -> None:
     """The gloss is a safety requirement, not a wording preference.
 
-    "Fresh gas flow" alone is what a flowmeter bank is labelled, and a
-    flowmeter reads the carrier gas only; the model's circuit balance makes
-    this the whole post-vaporizer stream, 22% apart at desflurane's 18%
-    dial (`PL-71CF`). The gloss's size and italic are the widget's.
+    "Fresh gas flow" alone is the label on a flowmeter bank, and a flowmeter
+    measures only the carrier gas. In the model's circuit balance, this flow
+    is the whole stream leaving the vaporizer. The two differ by 22% at
+    desflurane's 18% dial (`PL-71CF`). The widget sets the gloss's size and
+    italic style.
     """
 
     setting = _settings_by_control(_snapshot())[ControlInput.FRESH_GAS_FLOW]
@@ -1861,11 +1877,12 @@ def test_refresh_view_updates_delivered_concentration_label_for_current_agent() 
 
 
 def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> None:
-    """Two ceilings that used to be one, and had to stop being one (`PL-CC23`).
+    """Two ceilings that used to be the same one, and had to become separate (`PL-CC23`).
 
-    The delivered dial tracks the real vaporizer cap; the chart's ceiling is
-    the same MAC multiple for every agent. Desflurane is where the numbers
-    coincide and the reasons do not; isoflurane is where they visibly part.
+    The delivered dial tracks the real vaporizer cap. The chart's ceiling is
+    the same MAC multiple for every agent. For desflurane the two numbers
+    are equal but the reasons differ. For isoflurane the two numbers visibly
+    differ.
     """
 
     desflurane = _fake_controller(
@@ -1891,7 +1908,7 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
 
 
 def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
-    """The one control a reader sets, in the units of the traces it fills."""
+    """The dial, the one control a reader sets, is shown in the units of the traces it fills."""
 
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
@@ -1901,7 +1918,7 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
 
 
 def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
-    """The readout heading's copy of the dial, in the dial's own two units (`PL-NWTM`).
+    """The readout heading repeats the dial in the dial's own two units (`PL-NWTM`).
 
     2.5% sevoflurane over its 2.0% MAC is 1.25 ×MAC, worked here by hand
     rather than read back from the readout under test.
@@ -1913,7 +1930,7 @@ def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
 
 
 def test_the_delivered_line_refuses_a_flow_readout() -> None:
-    """A flow has no MAC line, and printed as the dial it would name a flow as a concentration."""
+    """A flow has no MAC line, and printing it as the dial would show a flow as a concentration."""
 
     flow = _settings_by_control(_snapshot())[ControlInput.FRESH_GAS_FLOW]
 
@@ -1937,7 +1954,7 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
         snapshot.alveolar_partial_pressure_fraction, MacPercent(6.0)
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
-    # the alveolar compartment is somewhere below it and above nothing.
+    # the alveolar compartment is above zero and below that 1 MAC.
     alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.0
     assert 0.0 < alveolar_mac < 1.0
     assert _settings_by_control(snapshot)[ControlInput.DELIVERED].secondary == "1.00 ×MAC"
@@ -1979,7 +1996,7 @@ def test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed(
 
 
 def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
-    """The dial's percent is what is held, and the model reads its fraction (`PL-NJPB`)."""
+    """The dial is stored as a percent, and the model reads it as a fraction (`PL-NJPB`)."""
 
     controller = SimulationController()
 
@@ -1996,7 +2013,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """The three amounts at one decimal of a litre (`PL-TG60`); each residual as a decade."""
+    """Amounts show one decimal of a litre (`PL-TG60`), and each residual shows a power of ten."""
 
     panel = accounting(_snapshot(passes_validation=True))
 
@@ -2122,7 +2139,7 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
 
 
 def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> None:
-    """The count sits in a chart the runs share, so it names whose changes it counts (`PL-25DD`)."""
+    """The count is in a chart the runs share, so it names the run it counts for (`PL-25DD`)."""
 
     timeline = tuple(
         _control_change(
@@ -2172,8 +2189,8 @@ def test_the_unlisted_count_stands_alone_in_the_overflow_line() -> None:
 def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> None:
     """The panel and the legend both say a mark is a setting, never a reading.
 
-    That these strings reach the assembled interface is the widget's claim,
-    tested with it; this holds the words themselves.
+    The widget's tests check that these strings reach the assembled
+    interface. This test checks the words themselves.
     """
 
     assert CONTROL_TIMELINE_CAPTION == (
@@ -2289,16 +2306,16 @@ def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> Non
 
 
 def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat() -> None:
-    """The failure mode PL-CC23's fixed ceiling introduces, and its guard.
+    """The failure mode that PL-CC23's fixed ceiling introduces, and the guard against it.
 
-    A clipped trace draws as a horizontal line at the top of the plot, and a
-    horizontal line reads as a plateau, so the plot says so rather than
-    relying on the reader noticing.
+    A clipped trace is drawn as a horizontal line at the top of the plot, and
+    a horizontal line looks like a plateau. The plot therefore says that the
+    trace is clipped, rather than relying on the reader to notice.
     """
 
     # 8% circuit is 4 MAC of sevoflurane, against a 6% (3 MAC) ceiling.
-    # Alveolar at 5% stays inside it, which is what makes this a test of
-    # *which* compartments are named rather than only that something was.
+    # Alveolar at 5% stays below the ceiling. That makes this a test of
+    # *which* compartments are named, not only of whether any is named.
     history = (
         _sample(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         _sample(1.0, 0.08, 0.05, 0.01, 0.01, 0.0, 0.0),
@@ -2308,8 +2325,8 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     assert text is not None
     assert "Circuit" in text
     assert "Alveolar" not in text
-    # The notice has to say where the unclipped number is, or it reports a
-    # problem and leaves the reader without the value.
+    # The notice must say where the unclipped number is. Otherwise it reports
+    # a problem and leaves the reader without the value.
     assert "readouts above" in text
     assert "3.00 ×MAC" in text
     assert text == (
@@ -2381,7 +2398,10 @@ def test_a_hidden_trace_is_not_named_as_off_scale() -> None:
 
 
 def test_a_lone_run_s_shared_line_is_left_unnamed() -> None:
-    """One run has nothing to be told apart from, which is the rule the panels follow."""
+    """A lone run's line gets no name, because there is no other run to tell it apart from.
+
+    The panels follow the same rule.
+    """
 
     frame = _frame(_fake_controller(history=_run_history(40)))
 
@@ -2389,12 +2409,12 @@ def test_a_lone_run_s_shared_line_is_left_unnamed() -> None:
 
 
 def test_a_compared_run_s_shared_line_opens_with_the_run_s_own_name() -> None:
-    """The name the legend and the run's panel use, leading the line rather than trailing it.
+    """The line opens with the name the legend and the run's panel use, rather than ending with it.
 
-    Both lines this composes sit in a column the runs share, so the run is
-    the only thing telling two otherwise identical openings apart - and a
-    differentiator behind a wrapped sentence is one the reader must hunt for
-    (`PL-25DD`).
+    Both lines that this function composes sit in a column the runs share.
+    The run name is the only thing that tells two otherwise identical
+    openings apart. A name placed after a wrapped sentence is one the reader
+    must hunt for (`PL-25DD`).
     """
 
     frame = _compared_frame(
@@ -2406,7 +2426,10 @@ def test_a_compared_run_s_shared_line_opens_with_the_run_s_own_name() -> None:
 
 
 def test_the_shared_line_takes_its_name_from_the_frame_that_drew_the_value() -> None:
-    """One source for both, so no caller can pair one run's name with another's line."""
+    """The name and the line come from the same frame.
+
+    So no caller can pair one run's name with another run's line.
+    """
 
     frame = _compared_frame(
         _fake_controller(history=_run_history(40)), _fake_controller(history=_run_history(40))
@@ -2417,7 +2440,7 @@ def test_the_shared_line_takes_its_name_from_the_frame_that_drew_the_value() -> 
 
 
 def test_a_shared_line_for_a_run_the_frame_does_not_hold_is_refused() -> None:
-    """An unattributable line is a failure rather than one that silently loses its name."""
+    """A line that cannot be attributed to a run fails, rather than silently losing its name."""
 
     single = _frame(_fake_controller(history=_run_history(40)))
 
@@ -2467,7 +2490,7 @@ def test_off_scale_notice_refuses_a_negative_run_index() -> None:
     )
     compared = _compared_frame(_fake_controller(history=inside), _fake_controller(history=above))
 
-    # The frame is what the test says: the last run is the one off scale.
+    # Check that the frame is as described: the last run is the one off scale.
     assert off_scale_notice(compared, 0) is None
     assert off_scale_notice(compared, 1) is not None
 
@@ -2505,7 +2528,7 @@ def test_wash_in_state_lines_refuse_snapshots_that_do_not_match_the_frame() -> N
 
 
 def test_a_lone_run_s_banner_is_left_unnamed() -> None:
-    """The rule the panels and both legends follow, so the attribution is not standing text."""
+    """The panels and both legends follow this rule, so a run name never becomes standing text."""
 
     assert compared_run_notice("Simulation stopped — it failed.", None) == (
         "Simulation stopped — it failed."
@@ -2513,7 +2536,7 @@ def test_a_lone_run_s_banner_is_left_unnamed() -> None:
 
 
 def test_a_compared_run_s_banner_opens_with_the_run_s_own_name() -> None:
-    """All three notices assert something about a run and name none (`PL-TSZM`)."""
+    """Each of the three notices says something about a run but names no run (`PL-TSZM`)."""
 
     assert compared_run_notice("Simulation stopped — it failed.", "Run 2") == (
         "Run 2: Simulation stopped — it failed."
@@ -2529,12 +2552,13 @@ def test_a_compared_run_s_banner_opens_with_the_run_s_own_name() -> None:
 
 
 def test_the_banner_s_name_is_separated_by_a_colon_not_a_second_em_dash() -> None:
-    """Every notice already opens `label — detail`, so a prefixed em dash reads as that one.
+    """Every notice already opens with `label — detail`, so a prefixed em dash would look like it.
 
-    `COMPARED_RUN_LINE_TEMPLATE` may use one because the lines it names -
-    "Now: F_A/F_I", "Above the top of the plot:" - carry no em dash of their
-    own. These do, and two at different depths make "Run 2" read as the
-    banner's own label with "Simulation stopped" as its detail (`PL-TSZM`).
+    `COMPARED_RUN_LINE_TEMPLATE` may use an em dash, because the lines it
+    names, such as "Now: F_A/F_I" and "Above the top of the plot:", have no
+    em dash of their own. The notices do have one. Two em dashes at different
+    depths would make "Run 2" look like the banner's own label, with
+    "Simulation stopped" as its detail (`PL-TSZM`).
     """
 
     named = compared_run_notice("Simulation stopped — it failed.", "Run 2")
@@ -2552,26 +2576,27 @@ def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
 
 
 def test_a_banner_for_a_run_whose_name_is_empty_is_refused() -> None:
-    """A bare leading colon looks like a formatting fault and reads as a run called nothing."""
+    """A bare leading colon looks like a formatting fault, and like a run whose name is blank."""
 
     with pytest.raises(ValueError, match="cannot be empty"):
         compared_run_notice("Simulation stopped — it failed.", "")
 
 
 def test_a_lone_run_s_panel_headings_are_left_unnamed() -> None:
-    """One run has nothing to be told apart from, so the sidebar gains no standing text."""
+    """A lone run has no other run to be told apart from, so the sidebar gains no fixed text."""
 
     assert compared_panel_heading(ACCOUNTING_HEADING, None) == "Agent accounting validation"
     assert compared_panel_heading(CONTROL_TIMELINE_HEADING, None) == "Control changes"
 
 
 def test_a_compared_run_s_panel_heading_closes_with_the_run_s_own_name() -> None:
-    """The kind of record leads and the run trails, which is the legend's order not the line's.
+    """The kind of record comes first and the run last, which is the legend's order, not the line's.
 
-    A panel is found by the kind of record it holds - four stack in the
-    sidebar once a branch is drawn, two of each kind - so the kind leads and
-    the run tells two panels of one kind apart, exactly as the compartment
-    leads a compared legend entry (`PL-C3GS`).
+    A reader finds a panel by the kind of record it holds. Once a branch is
+    drawn, four panels stack in the sidebar, two of each kind. So the kind
+    comes first, and the run name tells two panels of the same kind apart. A
+    compared legend entry puts the compartment first in exactly the same way
+    (`PL-C3GS`).
     """
 
     assert (
@@ -2585,7 +2610,7 @@ def test_a_compared_run_s_panel_heading_closes_with_the_run_s_own_name() -> None
 
 
 def test_a_panel_heading_is_named_without_knowing_which_panel_it_is() -> None:
-    """Any heading, so the next view to earn an area takes the same attribution."""
+    """Any heading works, so the next view that gets its own area takes the same attribution."""
 
     assert (
         compared_panel_heading("Bookmarked states", run_label(FIRST_RUN))
@@ -2594,7 +2619,7 @@ def test_a_panel_heading_is_named_without_knowing_which_panel_it_is() -> None:
 
 
 def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
-    """A blank plot reads as a display that has failed, not as an empty view."""
+    """A blank plot looks like a display that has failed, not like an empty view."""
 
     controller = _fake_controller(history=_run_history(600))
 
@@ -2635,9 +2660,9 @@ def test_the_confirmation_names_both_agents_and_what_survives_the_switch() -> No
 def test_the_carry_over_sentence_names_only_settings_the_reader_can_set() -> None:
     """`PL-0Q1T`: a list of what a discard costs, in things the reader chose.
 
-    The circuit volume does carry over, so naming it was true - and
-    lopsided: `PL-GYH2` retired the only setter that could have changed it.
-    Asserted as the property rather than against the string.
+    The circuit volume does carry over, so naming it was true. It was also
+    lopsided, because `PL-GYH2` retired the only setter that could have
+    changed it. The test checks the property rather than the exact string.
     """
 
     sentence = NEW_CASE_CARRYOVER_TEMPLATE.lower()
@@ -2650,8 +2675,9 @@ def test_the_carry_over_sentence_names_only_settings_the_reader_can_set() -> Non
 def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> None:
     """The press a reader makes without reading must not destroy the run.
 
-    The labels name their outcomes; which button is filled, last and the
-    default is the dialog's and is tested with it.
+    The labels name their outcomes. The dialog decides which button is
+    filled, placed last and made the default, and that is tested with the
+    dialog.
     """
 
     question = new_case_question(_paused_run_with_history().snapshot(), "Desflurane", 1)
@@ -2666,8 +2692,8 @@ def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> N
 def test_a_branch_holding_nothing_is_not_at_stake() -> None:
     """`PL-W5WX`: a branch just taken holds nothing, so the trunk's Reset asks nothing about it.
 
-    A branch opens standing at its fork, so its elapsed time is past zero
-    from the start; what it holds is counted from the fork (`PL-7TBQ`).
+    A branch opens at its fork, so its elapsed time is greater than zero
+    from the start. What it holds is counted from the fork (`PL-7TBQ`).
     """
 
     branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
@@ -2676,7 +2702,10 @@ def test_a_branch_holding_nothing_is_not_at_stake() -> None:
 
 
 def test_a_branch_run_past_its_fork_is_at_stake_with_both_instants() -> None:
-    """The run it reached is stated as the instant its clock reads, from a branch stepped there."""
+    """How far the branch has run is stated as the instant its clock reads.
+
+    The test uses a branch actually stepped to that instant.
+    """
 
     branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
     branch.start()
@@ -2689,7 +2718,7 @@ def test_a_branch_run_past_its_fork_is_at_stake_with_both_instants() -> None:
 
 
 def test_a_branch_whose_snapshot_refuses_is_at_stake_with_no_instant_stated() -> None:
-    """What cannot be read is not known to be nothing, so the question is still asked."""
+    """A branch that cannot be read is not known to hold nothing, so the question is still asked."""
 
     assert branch_at_stake("Run 2", CaseInstant(60.0), None, 0) == BranchAtStake(
         name="Run 2", began_at_s=60.0, elapsed_s=None, adjustment_count=0
@@ -2697,10 +2726,10 @@ def test_a_branch_whose_snapshot_refuses_is_at_stake_with_no_instant_stated() ->
 
 
 def test_the_trunk_reset_question_names_both_runs_and_what_the_trunk_keeps() -> None:
-    """Every line of the question, as literals, so the wording is the test's and not the code's.
+    """Every line of the question is a literal here, so the test, not the code, owns the wording.
 
     The keep button is named for the branch, because the branch is what the
-    reader keeps by declining; the trunk is not touched either way.
+    reader keeps by declining. The trunk is not touched either way.
     """
 
     question = trunk_reset_question("Run 1", (BranchAtStake("Run 2", 60.0, 330.5, 2),))
@@ -2728,12 +2757,12 @@ def test_a_trunk_reset_question_about_no_branch_is_refused() -> None:
 
 
 def test_readout_columns_are_the_widest_rung_whose_panels_fit() -> None:
-    """Seven across where seven panels fit, else four, two, one (`PL-8M05`).
+    """Seven columns where seven panels fit, otherwise four, two or one (`PL-8M05`).
 
-    The rungs are fixed and the widths are not: a panel 100 px wide with
-    10 px between neighbours needs 760 px for seven, 430 for four and 210
-    for two, and the count steps down one pixel below each. One column is
-    the floor, even for a row narrower than a single panel.
+    The rungs are fixed, but the widths are not. A panel 100 px wide, with
+    10 px between neighbours, needs 760 px for seven, 430 for four and 210
+    for two. The count steps down one pixel below each of those widths. The
+    minimum is one column, even for a row narrower than a single panel.
     """
 
     equal = (100.0,) * 7
@@ -2749,13 +2778,13 @@ def test_readout_columns_are_the_widest_rung_whose_panels_fit() -> None:
 
 
 def test_each_column_is_held_to_the_widest_panel_it_holds_and_not_to_the_clocks() -> None:
-    """The clock's wide reservation costs its own column and no other (`PL-3355`).
+    """The clock's wide reservation widens its own column and no other (`PL-3355`).
 
-    A clock 195 px wide beside six compartments of 135 px, with 6 px between
-    columns: seven across needs 195 + 6 x 135 + 6 x 6 = 1041 px, not
-    7 x 195 + 36 = 1401; four across puts the clock and the fifth panel in
-    one column, so the row needs 195 + 3 x 135 + 18 = 618 px; two across
-    needs 195 + 135 + 6 = 336; one needs the clock's 195.
+    Take a clock 195 px wide beside six compartments of 135 px, with 6 px
+    between columns. Seven across needs 195 + 6 x 135 + 6 x 6 = 1041 px, not
+    7 x 195 + 36 = 1401. Four across puts the clock and the fifth panel in
+    one column, so the row needs 195 + 3 x 135 + 18 = 618 px. Two across
+    needs 195 + 135 + 6 = 336. One column needs the clock's 195.
     """
 
     widths = (195.0, 135.0, 135.0, 135.0, 135.0, 135.0, 135.0)
@@ -2776,7 +2805,7 @@ def test_each_column_is_held_to_the_widest_panel_it_holds_and_not_to_the_clocks(
 
 
 def test_the_reservations_give_the_clock_its_elapsed_form_and_the_compartments_theirs() -> None:
-    """One reservation per panel, the clock's the widest elapsed form (`PL-3355`)."""
+    """One reservation per panel, and the clock's is the widest elapsed form (`PL-3355`)."""
 
     assert len(READOUT_RESERVATIONS) == len(READOUT_PANELS)
     assert READOUT_RESERVATIONS[0] == (WIDEST_READOUT_VALUE, WIDEST_READOUT_SECONDARY)
@@ -2790,9 +2819,9 @@ def test_the_reservations_give_the_clock_its_elapsed_form_and_the_compartments_t
 def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() -> None:
     """`PL-2K1R`: the interpretation line, distinct from the use disclaimer.
 
-    Short, beside the values it qualifies, and saying what the value *is*
-    rather than what the reader must not do. Its placement on the readout
-    section's heading row is the widget's claim.
+    The line is short, sits beside the values it qualifies, and says what the
+    value *is* rather than what the reader must not do. The widget's tests
+    check that it is placed on the readout section's heading row.
     """
 
     assert INTERPRETATION_DISCLAIMER_TEXT == "Model outputs — not measurements."
@@ -2801,9 +2830,9 @@ def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() ->
 def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
     """`PL-GMM7`: the one string that carries the project's regulatory posture, verbatim.
 
-    Coverage cannot hold it - the line executes whenever the dashboard is
-    built - so the words are pinned here, and
-    `test_the_dashboard_carries_the_educational_disclaimer` holds that the
+    Coverage cannot protect it, because the line executes whenever the
+    dashboard is built. So the words are pinned here, and
+    `test_the_dashboard_carries_the_educational_disclaimer` checks that the
     dashboard places them.
     """
 
@@ -2815,9 +2844,10 @@ def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
 
 # ----------------------------------------------------------- bookmark panel
 #
-# What the two listings claim, and the one thing they must not claim: that a
-# mark has been *reached*. Detection is `PL-CTD7` and is not built, so a row
-# implying a crossing would put an unbuilt guarantee on screen (`PL-LPLD`).
+# These tests cover what the two listings claim, and the one thing they must
+# not claim: that a mark has been *reached*. Detection is `PL-CTD7` and is not
+# built, so a row that implied a crossing would put an unbuilt guarantee on
+# screen (`PL-LPLD`).
 
 
 def _marks() -> BookmarkSet:
@@ -2833,9 +2863,9 @@ def _marks() -> BookmarkSet:
 def _target_row(target: MacTarget, *, reached: bool = False, run_failed: bool = False) -> str:
     """The row a lone run draws for `target`, given what that run has done.
 
-    Through `bookmark_panel`, the one path a drawn row takes (`PL-08CR`): the
-    standing is computed from the run's facts rather than handed in, so a test
-    here pins the words on the path a reader meets.
+    The row is built through `bookmark_panel`, the only path a drawn row
+    takes (`PL-08CR`). The standing is computed from the run's facts rather
+    than passed in, so a test here pins the words on the path a reader sees.
     """
 
     marks = BookmarkSet().with_mac_target(target)
@@ -2857,9 +2887,10 @@ def _time_row(
 ) -> str:
     """The row a lone run draws for `bookmark`, given where its clock stands.
 
-    As `_target_row`, through `bookmark_panel`: a bookmark at or behind the
-    clock is passed, one before the run's own opening is inherited, and one
-    still ahead takes the cap's word, the failure's, or none.
+    Like `_target_row`, it goes through `bookmark_panel`. A bookmark at or
+    behind the clock is passed. A bookmark before the run's own opening is
+    inherited. A bookmark still ahead takes the cap's word, the failure's
+    word, or no word.
     """
 
     marks = BookmarkSet().with_time_bookmark(bookmark)
@@ -2908,8 +2939,8 @@ def test_a_target_names_its_compartment_and_its_height() -> None:
 
 
 def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
-    # One table rather than a second list of compartment words, so a row and
-    # the curve it is read against cannot come to disagree.
+    # One table is used rather than a second list of compartment words, so a
+    # row and the curve it is read against cannot drift apart.
     for quantity in COMPARTMENT_QUANTITIES:
         target = MacTarget(quantity, MacMultiple(0.8))
 
@@ -2918,7 +2949,7 @@ def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
 
 def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
     # A target listed at `0.8 x MAC` beside a readout showing `0.80 x MAC`
-    # would read as two quantities where there is one, so both go through
+    # would look like two quantities where there is one. So both go through
     # `render_mac_multiple` rather than through two spellings of one rule.
     height = MacMultiple(0.8)
     target = MacTarget(RecordedQuantity.ALVEOLAR, height)
@@ -2941,9 +2972,10 @@ def test_two_heights_on_one_compartment_are_told_apart_on_the_row() -> None:
 
 
 def test_marks_are_listed_oldest_first() -> None:
-    # The opposite of the control-change list, deliberately: that is a record
-    # a reader chases the newest entry of, and this is a standing set they add
-    # to and scan, so a row that moves is one they have to find again.
+    # This order is deliberately the opposite of the control-change list. In
+    # that record a reader looks for the newest entry. The marks are a lasting
+    # set that the reader adds to and scans, and a row that moves is one they
+    # have to find again.
     marks = (
         BookmarkSet()
         .with_time_bookmark(TimeBookmark(CaseInstant(120.0), "first"))
@@ -2957,10 +2989,11 @@ def test_marks_are_listed_oldest_first() -> None:
 
 
 def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
-    # Conditional text rather than standing text
-    # (`.claude/rules/ui-reader.md`): a standing repeated on every row would
-    # be chrome, and the rows whose state a reader has to know are the ones
-    # where something has happened.
+    # This is conditional text rather than standing text
+    # (`.claude/rules/ui-reader.md`). If every row carried words for its
+    # standing, those words would be standing text, which is decoration. The
+    # rows whose state a reader needs to know are the ones where something has
+    # happened.
     panel = bookmark_panel(_marks(), _one_run(_unreached(_marks())))
     everything = " ".join((*panel.times.rows, *panel.targets.rows)).lower()
 
@@ -2975,14 +3008,15 @@ def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
 
 
 def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing() -> None:
-    """`PL-N3N5`, at the row a learner reads it off.
+    """`PL-N3N5`, checked at the row a learner reads.
 
-    A failed run's marks drew as silence - `STILL_RUNNING` renders as nothing
-    at all on an unattributed row - so the one run on screen said the mark was
-    still ahead of it by saying nothing about it, beside its own panel reading
-    "Stopped - simulation error". The word has to name the failure rather than
-    the cap: they stop a run for opposite reasons, and only one of them is a
-    statement about what the model supports.
+    A failed run's marks used to be drawn with no words, because
+    `STILL_RUNNING` renders as nothing at all on an unattributed row. So the
+    one run on screen implied, by saying nothing, that the mark was still
+    ahead of it, beside its own panel reading "Stopped - simulation error".
+    The word must name the failure rather than the cap. The two stop a run
+    for opposite reasons, and only one of them is a statement about what the
+    model supports.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0), "check")
@@ -2996,11 +3030,11 @@ def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing(
 
 
 def test_every_standing_a_run_can_report_has_a_word_to_draw_it_with() -> None:
-    """A member added without an entry is a `KeyError` at the moment of drawing.
+    """An enum member added without a table entry raises `KeyError` at the moment of drawing.
 
-    `_with_standing` indexes the table, so the failure lands in the panel of a
-    running app rather than in anything a reviewer reads - which is why the
-    enum is walked here rather than the table.
+    `_with_standing` indexes the table, so the failure would appear in the
+    panel of a running app, not in anything a reviewer reads. That is why
+    this test walks the enum rather than the table.
     """
 
     for standing in MarkStanding:
@@ -3010,14 +3044,15 @@ def test_every_standing_a_run_can_report_has_a_word_to_draw_it_with() -> None:
 def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_on() -> None:
     """`PL-3K9B`: two claims, so two words.
 
-    "Passed" is where the clock stands, re-read every time the row is drawn.
-    "Reached" is what the run did, and a clock taken backwards - a rewind, a
-    truncation at a mark - would revoke it while the mark went on being
-    perfectly reachable.
+    "Passed" describes where the clock stands, and it is re-read every time
+    the row is drawn. "Reached" describes what the run did. A clock taken
+    backwards, by a rewind or a truncation at a mark, would revoke "Reached"
+    while the mark went on being perfectly reachable.
 
-    A bookmark is never `REACHED` on a drawn row - `_time_bookmark_standing`
-    has no such case - so the two words are compared on the two rows that
-    carry them: a bookmark the clock stands on, and a target the run crossed.
+    A bookmark is never `REACHED` on a drawn row, because
+    `_time_bookmark_standing` has no such case. So the two words are compared
+    on the two rows that carry them: a bookmark the clock stands on, and a
+    target the run crossed.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
@@ -3033,10 +3068,11 @@ def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_
 
 
 def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
-    # "Not reached" alone would be true of both, and would tell a learner that
-    # a bookmark standing before this branch's fork might arrive if they kept
-    # running. `CLAUDE.md`'s safety-critical standard is what rules that out:
-    # the model can decide it outright, so a row must not imply otherwise.
+    # "Not reached" alone would be true of both. It would also tell a learner
+    # that a bookmark before this branch's fork might arrive if they kept
+    # running. `CLAUDE.md`'s safety-critical standard rules that out: the
+    # model can decide the question outright, so a row must not imply
+    # otherwise.
     bookmark = TimeBookmark(CaseInstant(600.0))
     at_the_cap = _time_row(bookmark, stopped_at_cap=True)
     inherited = _time_row(bookmark, opened_at_s=900.0, elapsed_s=900.0)
@@ -3063,11 +3099,11 @@ def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
 def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> None:
     """`PL-LHBY`, `PL-4KZD`: an unattributed clause is a claim about the case.
 
-    So it may be drawn only where it holds of every run on screen. That is
-    what makes a lone run's row the degenerate case of the compared one
-    rather than a second path through the panel - a lone run agrees with
-    itself - and it is why a quiet row does not grow a run name per run it is
-    quiet on.
+    So it may be drawn only where it is true of every run on screen. That rule
+    makes a lone run's row the degenerate case of the compared row, not a
+    second path through the panel, because a lone run agrees with itself. It
+    is also why a quiet row does not gain a run name for each run it is quiet
+    on.
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
@@ -3081,9 +3117,9 @@ def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> No
 
 
 def test_two_runs_still_running_for_a_mark_add_no_words_to_its_row() -> None:
-    # The same rule at the standing that draws as silence: a comparison whose
-    # runs have both yet to reach a mark has nothing to report about it, and
-    # a run name on every quiet row would be the standing chrome
+    # The same rule applies to the standing that is drawn with no words. When
+    # neither compared run has reached a mark yet, there is nothing to report
+    # about it. A run name on every quiet row would be the standing text that
     # `.claude/rules/ui-reader.md` rules out.
     marks = _marks()
     unreached = _unreached(marks)
@@ -3098,11 +3134,12 @@ def test_two_runs_still_running_for_a_mark_add_no_words_to_its_row() -> None:
 def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so() -> None:
     """`PL-LHBY`, the silent negative, reproduced offscreen against `4c282700`.
 
-    A MAC target the branch halts on while the trunk is still running for it.
-    Drawn from the reference run the row said nothing at all, so a branch
-    stopping at a mark the learner set was indistinguishable on screen from a
-    Pause - the one indication that a run stopped where it was asked to
-    existed for a lone run and vanished as soon as a second was drawn.
+    The case is a MAC target on which the branch halts while the trunk is
+    still running for it. When the row was drawn from the reference run, it
+    said nothing at all. A branch that stopped at a mark the learner set
+    therefore looked the same on screen as a Pause. The one sign that a run
+    had stopped where it was asked to existed for a lone run, and vanished as
+    soon as a second run was drawn.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
@@ -3114,11 +3151,12 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
 
     (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).targets.rows
 
-    # Pinned whole rather than by `in`, which holds the shape of the row and
-    # not merely its contents: the mark stated once however many runs are
-    # shown, the runs in drawing order, and each clause naming its run before
-    # its answer. Every one of those is a way of attributing an answer to the
-    # wrong run that still reads plausibly on the screen.
+    # The row is pinned whole rather than checked with `in`, so the test checks
+    # the row's shape and not merely its contents. The mark is stated once
+    # however many runs are shown, the runs appear in drawing order, and each
+    # clause names its run before its answer. Breaking any one of those would
+    # attribute an answer to the wrong run while still looking plausible on
+    # screen.
     assert row == (
         f"Alveolar 0.50 ×MAC"
         f"{MARK_STANDING_JOINER}{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}"
@@ -3130,11 +3168,11 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
 def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() -> None:
     """`PL-LHBY`, the false positive, and the worse half of the pair.
 
-    An inherited instant the branch provably cannot reach read as the trunk's
-    `passed`, so the screen asserted of the displayed branch something the
-    model can decide is false - which `CLAUDE.md`'s safety-critical standard
-    treats as a failure of the displayed value, the correct standing under
-    the wrong run being the wrong standing.
+    An inherited instant that the branch provably cannot reach was shown as
+    the trunk's `passed`. The screen therefore claimed something about the
+    displayed branch that the model can determine is false. `CLAUDE.md`'s
+    safety-critical standard treats that as a failure of the displayed value,
+    because the correct standing under the wrong run is the wrong standing.
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
@@ -3152,11 +3190,12 @@ def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() 
 def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
     """`PL-LHBY`: `BEFORE_THIS_BRANCH` had no screen it could appear on.
 
-    It exists so a learner is not told something false about a mark a branch
-    carries but cannot reach, and the panel read the reference run - which is
-    the trunk, opened at zero, and no instant stands before that. The
-    vocabulary was unreachable by construction rather than by accident, so
-    this asserts the word itself rather than only the row that carries it.
+    The standing exists so that a learner is not told something false about a
+    mark that a branch carries but cannot reach. The panel used to read the
+    reference run, which is the trunk. The trunk opens at zero, and no instant
+    lies before that. The word was unreachable by construction rather than by
+    accident, so this test checks the word itself rather than only the row
+    that carries it.
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0)))
@@ -3169,14 +3208,14 @@ def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
 
 
 def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> None:
-    """The compared table's own walk, and it asks for more than the plain one.
+    """Walk the compared table, which demands more than the plain table does.
 
     `MARK_STANDING_TEXT` may draw a standing as silence, because an
     unattributed row states one answer and silence is unambiguous there.
-    Beside a named run it is not: a clause that rendered as a bare run name
-    would leave the reader to decide whether that run had no answer or had
-    not been asked. So every member owes a word here, which is what a new
-    member added without one would fail on.
+    Beside a named run, silence is ambiguous. A clause that rendered as a bare
+    run name would leave the reader to decide whether that run had no answer
+    or had not been asked. So every member needs a word here, and a new
+    member added without one fails this test.
     """
 
     for standing in MarkStanding:
@@ -3184,13 +3223,13 @@ def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> No
 
 
 def test_no_two_standings_share_a_word_on_an_attributed_row() -> None:
-    """`PL-3K9B`'s wording guarantee, held where a learner actually compares.
+    """`PL-3K9B`'s wording guarantee, checked where a learner actually compares runs.
 
-    "Passed" and "reached" are two words because they are two claims, and the
-    two unreachable outcomes are worded apart so that neither reads as the
-    other. Both were pinned on `MARK_STANDING_TEXT` alone - the form a lone
-    run draws - and the row where the distinction earns its keep is the
-    two-run row, which draws from this table instead.
+    "Passed" and "reached" are two words because they are two claims. The two
+    unreachable outcomes are worded differently so that neither can be
+    mistaken for the other. Both were pinned only on `MARK_STANDING_TEXT`,
+    the form a lone run draws. The distinction matters most on the two-run
+    row, which draws from this table instead.
     """
 
     said = tuple(MARK_STANDING_COMPARED_TEXT[standing] for standing in MarkStanding)
@@ -3201,15 +3240,15 @@ def test_no_two_standings_share_a_word_on_an_attributed_row() -> None:
 def test_the_attributed_standing_words_describe_the_mark_and_not_the_transport() -> None:
     """`MARK_ATTRIBUTION_TEMPLATE` makes the run the grammatical subject.
 
-    So a standing borrowing one of the transport's own words would assert
-    what the clock is doing rather than where the mark stands - and this
-    interface says what the clock is doing a few lines away, in
+    So a standing that borrowed one of the transport's own words would state
+    what the clock is doing, not where the mark stands. This interface
+    already says what the clock is doing a few lines away, in
     `STATUS_RUNNING_TEXT` and its neighbours, on that run's own panel. The
-    entry this catches is `STILL_RUNNING`, whose attributed form read "still
-    running" and so contradicted the panel beside it on every paused run,
-    while claiming more than `MarkStanding.STILL_RUNNING` is licensed to: it
-    says the run *can still reach* the mark and has not yet, which is about
-    the mark rather than about the clock.
+    entry this test catches is `STILL_RUNNING`. Its attributed form read
+    "still running", which contradicted the panel beside it on every paused
+    run. It also claimed more than `MarkStanding.STILL_RUNNING` means. That
+    standing says the run *can still reach* the mark and has not reached it
+    yet, which is about the mark rather than about the clock.
     """
 
     transport = (STATUS_RUNNING_TEXT, STATUS_PAUSED_TEXT, STATUS_FAILED_TEXT)
@@ -3222,9 +3261,9 @@ def test_the_attributed_standing_words_describe_the_mark_and_not_the_transport()
 
 
 def test_a_panel_drawn_for_no_run_is_refused() -> None:
-    # An obvious failure rather than a plausible-looking panel: the case's
-    # marks listed under standings nobody had answered would be rows a reader
-    # could read a standing off.
+    # Fail obviously rather than draw a plausible-looking panel. The case's
+    # marks, listed under standings that no run had supplied, would be rows
+    # from which a reader could read a standing.
     with pytest.raises(ValueError, match="at least one run"):
         bookmark_panel(_marks(), ())
 
@@ -3245,22 +3284,23 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 
 
 #: A mark the trunk has passed, as `BranchedCase.mark_fork_points` lists it.
-#: 45.35 s lies inside the step that ends at 454 x 0.1 s, so the instant the
-#: learner marked and the instant a branch taken there opens at are two
-#: numbers, and a test can tell which one an entry carries.
+#: 45.35 s lies inside the step that ends at 454 x 0.1 s. The instant the
+#: learner marked and the instant at which a branch taken there opens are
+#: therefore two different numbers, and a test can tell which one an entry
+#: carries.
 _MARK_INSIDE_A_STEP = MarkForkPoint(
     TimeBookmark(CaseInstant(45.35), "the decision point"), CaseInstant(454 * 0.1)
 )
 
 
 def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
-    """`BranchedCase.fork_points_s` in, `format_elapsed` out, one entry per instant.
+    """Each instant from `BranchedCase.fork_points_s` is one entry, labelled by `format_elapsed`.
 
-    Induction is offered rather than filtered out: a fork at zero is a
-    second management of the whole case, and dropping it would leave a case
-    that has recorded nothing with an empty selector beside a live button.
-    Every entry is a recorded control event, taken through `fork_at`, so
-    none carries a mark.
+    Induction is offered rather than filtered out. A fork at zero is a second
+    way of managing the whole case. Dropping it would leave a case that has
+    recorded nothing with an empty selector beside a live button. Every entry
+    here is a recorded control event, taken through `fork_at`, so no entry
+    carries a mark.
     """
 
     offer = fork_offer((0.0, 60.0, 185.0), marks=(), comparing=None, here=None)
@@ -3276,11 +3316,11 @@ def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
 
 
 def test_fork_offer_requires_the_marks_to_be_stated() -> None:
-    """A caller that forgets the third door is refused, rather than offering two silently.
+    """A caller that forgets the third way to branch is refused, rather than silently offering two.
 
-    `marks` has no default, so a call site written before `PL-W4XQ` - or one
-    that never asked the case for its marks - fails where it is written,
-    instead of drawing a selector that leaves every passed mark off with
+    `marks` has no default. A call site written before `PL-W4XQ`, or one that
+    never asked the case for its marks, therefore fails where it is written.
+    It does not draw a selector that leaves out every passed mark with
     nothing on screen to say so.
     """
 
@@ -3291,9 +3331,10 @@ def test_fork_offer_requires_the_marks_to_be_stated() -> None:
 def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out() -> None:
     """The display is capped at two runs and there is no run selector yet.
 
-    A refused control that does not say how to un-refuse itself is a dead
-    end rather than a mode, so the reason names the Reset that ends the
-    comparison - by the run it belongs to, which is the test below.
+    A refused control that does not say how to lift the refusal is a dead end
+    rather than a mode. So the reason names the Reset that ends the
+    comparison, by the run that Reset belongs to. The test below checks that
+    naming.
     """
 
     offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=None)
@@ -3305,23 +3346,26 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
 def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
     """`PL-WG73`: "Reset the case to end this one" named no control on screen.
 
-    The bare word "Reset" was all the old assertion held, and it held while
-    the sentence pointed at a "case" nothing is labelled with. What a learner
-    can act on is a run's name and the word on its transport button, so both
-    named controls are asserted as the pair the screen draws them as.
+    The old assertion checked only the bare word "Reset", and it passed while
+    the sentence pointed at a "case" that nothing on screen is labelled with.
+    A learner can act on a run's name and the word on its transport button.
+    So the test checks both named controls as the pair in which the screen
+    draws them.
 
-    **Each clause is asserted against the run it is about, rather than the
-    sentence against both names.** Naming both controls correctly and pairing
-    them with each other's outcomes would send the learner to the same wrong
-    button as the sentence this replaced, and a test reading the whole string
-    cannot tell the two apart. So the way out is read on its own: it names the
-    trunk's Reset, it does not mention the branch at all, and what it says
-    that press costs is the case starting over.
+    **Each clause is checked against the run it is about, rather than the
+    whole sentence against both names.** A sentence could name both controls
+    correctly but pair each with the other's outcome. That would send the
+    learner to the same wrong button as the sentence this replaced, and a
+    test that reads the whole string cannot tell the two apart. So the way
+    out is checked on its own. It names the trunk's Reset, it does not
+    mention the branch at all, and it says that the press costs the case
+    starting over.
 
-    The clause after it is the branch's, named for what it does *instead*,
-    because that is the Reset a learner reaches for - it belongs to the run
-    they are trying to end, and pressing it discards what that run has
-    simulated since its fork while leaving the lock exactly where it was.
+    The clause after it is about the branch's Reset, and names what that
+    button does *instead*. A learner reaches for that Reset, because it
+    belongs to the run they are trying to end. Pressing it discards what that
+    run has simulated since its fork, and leaves the lock exactly where it
+    was.
     """
 
     way_out, _, instead = comparing_fork_lock_text(COMPARED).partition(";")
@@ -3338,8 +3382,8 @@ def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
 def test_fork_offer_offers_no_fork_here_while_the_trunk_is_going() -> None:
     """The second control is absent rather than present and inert (`PL-TYWQ`).
 
-    The selector is unaffected: pausing records no keyframe, so the control at
-    the paused point and the selector never trade rows with each other.
+    The selector is unaffected. Pausing records no keyframe, so the control
+    at the paused point and the selector never exchange rows.
     """
 
     offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=None)
@@ -3350,13 +3394,13 @@ def test_fork_offer_offers_no_fork_here_while_the_trunk_is_going() -> None:
 
 
 def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
-    """`PL-Y2SL`: paused anywhere, the control appears and says the instant it will branch at.
+    """`PL-Y2SL`: on any pause, the control appears and names the instant it will branch at.
 
-    A separate control rather than a row in the selector, because the two
-    offers have different lifetimes: an entry in the selector stays until the
-    case itself changes, and this one is gone on the trunk's next step. It is
-    labelled rather than bare, so the instant a press will branch at is
-    readable without inferring it from the run clock.
+    It is a separate control rather than a row in the selector, because the
+    two offers last for different times. An entry in the selector stays until
+    the case itself changes, but this control is gone on the trunk's next
+    step. It carries a label, so the reader can see the instant a press will
+    branch at without inferring it from the run clock.
     """
 
     here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
@@ -3366,9 +3410,9 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     assert offer.here_offered is True
     assert offer.here_label == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(45.0))
     assert format_elapsed(45.0) in offer.here_label
-    # The permanent list is left exactly as it was: the paused point adds no
-    # row to it and removes none, which is what keeps its membership from
-    # changing under a reader who looked away.
+    # The permanent list stays exactly as it was. The paused point adds no row
+    # to it and removes none, so its entries do not change while a reader
+    # looks away.
     assert _offered_instants(offer) == (0.0, 60.0)
     assert _offered_labels(offer) == tuple(format_elapsed(instant_s) for instant_s in (0.0, 60.0))
 
@@ -3376,12 +3420,12 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
 def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
     """A halt keeps its ratified words, and a plain pause does not borrow them.
 
-    The instant is the one the trunk stands at, `HereForkPoint.fork_s`, which
-    for a mark lying inside a step is the step's end rather than the marked
-    instant: the frame is handed no marked instant at all, so it cannot label
-    the button with one. Which kind of mark stopped it is not handed over
-    either - one label serves a marked instant and a marked height alike,
-    because which marks were crossed is the bookmark panel's row to state.
+    The instant is the one at which the trunk stands, `HereForkPoint.fork_s`.
+    For a mark inside a step, that is the step's end rather than the marked
+    instant. The frame is given no marked instant at all, so it cannot label
+    the button with one. The frame is not told which kind of mark stopped the
+    trunk either. One label serves a marked instant and a marked height
+    alike, because the bookmark panel's row states which marks were crossed.
     """
 
     halted_s = 45.4
@@ -3398,13 +3442,14 @@ def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
 
 
 def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() -> None:
-    """The cap is on branches, not on the door one came through.
+    """The cap limits branches, whichever control a branch would be taken through.
 
-    A second branch would have to replace the shown one while the first went
-    on living inside `BranchedCase`, whichever control took it - so the
-    transient control goes with the permanent one rather than staying live to
-    be refused on press. `.claude/rules/expert-review.md` prefers the
-    interface that prevents the error to the one that reports it.
+    A second branch, whichever control took it, would have to replace the
+    shown one while the first went on living inside `BranchedCase`. So the
+    transient control is removed along with the permanent one, rather than
+    staying live only to be refused when pressed.
+    `.claude/rules/expert-review.md` prefers the interface that prevents the
+    error to the one that reports it.
     """
 
     for stopped_on_mark in (False, True):
@@ -3420,10 +3465,10 @@ def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() ->
 def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
     """A refusal describes a press of a control that is no longer on screen.
 
-    The lock and the refusal are two lines of two severities rather than one
-    line of two meanings, so the question is not which wins but whether a
-    message about a vanished control should still be standing. It should
-    not.
+    The lock and the refusal are two lines of different severity, not one
+    line with two meanings. So the question is not which one wins, but
+    whether a message about a vanished control should still be shown. It
+    should not.
     """
 
     refusal = "Setting refused: no keyframe at 30.0 s"
@@ -3439,11 +3484,12 @@ def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
 def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> None:
     """`PL-W4XQ`: the marks the trunk has passed are offered beside the control events.
 
-    One list, earliest first, because both kinds stay on offer until the case
-    itself changes; a learner paused at 3 h who marks 1 h finds the mark
-    where it falls on the clock, between the decision points either side of
-    it. Sorted here rather than trusted to arrive in order, so the marks are
-    placed by instant whatever order they are handed over in.
+    Both kinds go in one list, earliest first, because both stay on offer
+    until the case itself changes. A learner paused at 3 h who marks 1 h
+    finds the mark where it falls on the clock, between the decision points
+    on either side of it. The list is sorted here rather than trusted to
+    arrive in order, so the marks are placed by instant whatever order they
+    are passed in.
     """
 
     early = MarkForkPoint(TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0))
@@ -3470,10 +3516,10 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
     """A mark inside a step is reached at the step's end, and the entry names that instant.
 
     `BranchedCase.fork_at_mark` opens the branch at `MarkForkPoint.fork_s`, so
-    that is the instant the entry has to carry: labelled with the typed 45.35 s
-    it would name a time the branch does not open at - the wrong label on a
-    correct value, which `CLAUDE.md`'s safety-critical standard counts as a
-    failure of the value. The words are restated rather than built from the
+    that is the instant the entry must carry. A label with the typed 45.35 s
+    would name a time at which the branch does not open. That is the wrong
+    label on a correct value, which `CLAUDE.md`'s safety-critical standard
+    counts as a failure of the value. The words are restated rather than built from the
     template, so an edit to the template cannot move both sides at once.
     """
 
@@ -3489,13 +3535,13 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
 def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     """Two entries rather than one, and always in this order.
 
-    A mark set on a recorded control event is a different door: `fork_at`
-    opens at the keyframe, and `fork_at_mark` at the step reaching the mark,
-    standing on its crossing. So neither entry swallows the other, and their
-    order is the order the two lists are given in, which keeps one case
-    listing the same way every time. The case's own opening is the boundary:
-    a mark there is reached by no step and opens at the opening keyframe, and
-    it is listed after it.
+    A mark set on a recorded control event is a different way to branch.
+    `fork_at` opens at the keyframe, and `fork_at_mark` opens at the step that
+    reaches the mark, standing on its crossing. So neither entry absorbs the
+    other. Their order is the order in which the two lists are given, which
+    keeps one case listed the same way every time. The case's own opening is
+    the boundary case. A mark there is reached by no step and opens at the
+    opening keyframe, and it is listed after that keyframe.
     """
 
     at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))
@@ -3525,14 +3571,15 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
 
 
 def test_each_entry_carries_the_door_it_is_taken_through() -> None:
-    """A control event carries no mark and is taken at its instant; a mark carries itself.
+    """A control event's entry carries no mark, and a mark's entry carries the mark itself.
 
-    The mark is carried rather than an instant because `fork_at_mark` takes
-    the mark and finds the step itself. A caller handing back an entry's float
-    instead would ask for 45.4 s where the learner marked 45.35 s, and through
-    `fork_at` that is refused as no keyframe. The mark is the very object the
-    case listed, name and all, so nothing between the frame and the press
-    builds it again.
+    A control event is taken at its instant. A mark's entry carries the mark
+    rather than an instant, because `fork_at_mark` takes the mark and finds
+    the step itself. A caller that passed back an entry's float instead would
+    ask for 45.4 s where the learner marked 45.35 s, and `fork_at` refuses
+    that because no keyframe is there. The mark is the same object the case
+    listed, name and all, so nothing between the frame and the press builds
+    it again.
     """
 
     offer = fork_offer(
@@ -3550,11 +3597,11 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
 
 
 def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> None:
-    """The cap is on branches, so a passed mark opens no way round the lock.
+    """The cap limits branches, so a passed mark opens no way around the lock.
 
-    The lock, its reason, the control at the paused point and the refusal read
-    exactly as they do with no marks at all: the marks are entries in the
-    control the lock replaces, not a further control the cap could miss.
+    The lock, its reason, the control at the paused point and the refusal are
+    exactly as they are with no marks at all. The marks are entries in the
+    control that the lock replaces, not a further control the cap could miss.
     """
 
     here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True)
@@ -3575,7 +3622,7 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
 
 
 def test_the_agent_selector_is_shown_only_on_a_paused_lone_trunk() -> None:
-    """Three reasons replace it with the chip, and a paused single run is none of them."""
+    """Three conditions replace the selector with the chip, and a paused lone run meets none."""
 
     offered = transport(_snapshot(is_running=False))
 
@@ -3597,12 +3644,12 @@ def test_the_agent_selector_is_shown_only_on_a_paused_lone_trunk() -> None:
 def test_the_chip_names_the_lock_that_lasts_longest(
     is_running: bool, is_branch: bool, comparing: bool, expected: str
 ) -> None:
-    """A reader acts on the reason, so it has to be one the named gesture can lift.
+    """A reader acts on the reason, so it must name a lock that the named action can lift.
 
-    A branch's selector never returns - `set_agent` refuses a branch - a
-    comparison's returns on Reset, and a running run's returns on Pause.
-    Naming the shortest lock that happens to hold would send a reader to
-    Pause for something Pause cannot lift.
+    A branch's selector never returns, because `set_agent` refuses a branch.
+    A comparison's selector returns on Reset, and a running run's selector
+    returns on Pause. Naming the shortest lock that happens to apply would
+    send a reader to Pause for something Pause cannot lift.
     """
 
     locked = transport(_snapshot(is_running=is_running), is_branch=is_branch, comparing=comparing)
@@ -3621,7 +3668,7 @@ def test_a_run_is_named_by_its_number_in_its_session() -> None:
 
 @pytest.mark.parametrize("position", [0, 1, True])
 def test_a_run_is_not_named_from_a_drawing_position(position: object) -> None:
-    """A drawing position names whichever run stands there, so it is refused (`PL-7Z84`)."""
+    """A drawing position names whichever run is drawn there, so it is refused (`PL-7Z84`)."""
 
     with pytest.raises(TypeError, match="a run is named from its RunId"):
         run_label(position)  # type: ignore[arg-type]

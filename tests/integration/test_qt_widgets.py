@@ -109,7 +109,10 @@ def _grid(row: ReadoutRow) -> QGridLayout:
 
 
 def _cells(row: ReadoutRow) -> list[tuple[int, int]]:
-    """Where each panel sits, in panel order; every panel occupies exactly one cell."""
+    """Return the cell where each panel sits, in panel order.
+
+    Every panel occupies exactly one cell.
+    """
 
     grid = _grid(row)
     occupied: dict[QWidget, list[tuple[int, int]]] = {}
@@ -129,7 +132,7 @@ def _cells(row: ReadoutRow) -> list[tuple[int, int]]:
 
 
 def _width_for(row: ReadoutRow, columns: int) -> int:
-    """The narrowest row that seats `columns` panels at their own reservations and spacing."""
+    """Return the narrowest row width for `columns` panels at their reservations and spacing."""
 
     return row.width_for(columns)
 
@@ -140,7 +143,7 @@ def _resize(application: QApplication, row: ReadoutRow, width: int) -> None:
 
 
 def _one_line_height(like: QLabel) -> int:
-    """The height of a one-line label in `like`'s font, from a label that cannot wrap."""
+    """Return the height of a one-line label in `like`'s font, from a label that cannot wrap."""
 
     reference = QLabel("0s")
     reference.setFont(like.font())
@@ -149,7 +152,7 @@ def _one_line_height(like: QLabel) -> int:
 
 
 def _printed_value(setting: SettingReadout, value: float) -> float:
-    """The number the readout beside the slider prints for `value`, read back."""
+    """Return the number that the readout beside the slider prints for `value`, parsed back."""
 
     if setting.control is ControlInput.DELIVERED:
         return float(format_percent(fraction_from_percent(Percent(value))).rstrip("%"))
@@ -187,12 +190,12 @@ def test_no_metric_value_wraps_away_from_its_unit(application: QApplication) -> 
 def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
     application: QApplication,
 ) -> None:
-    """The row is read across, so no panel may be shaped unlike its neighbours (`PL-8M05`).
+    """The row is scanned across, so no panel may differ in shape from its neighbours (`PL-8M05`).
 
-    Every panel draws all four lines - a spacer where it has no gloss or
-    no second unit - at the sizes that rank them, and the widest rung of
-    the ladder seats every readout side by side in equal columns, so an
-    eighth panel cannot silently split the row.
+    Every panel draws all four lines, at the sizes that rank them. Where a
+    panel has no gloss or no second unit, it draws a spacer in that line.
+    The widest rung of the ladder seats every readout side by side in equal
+    columns, so an eighth panel cannot silently split the row.
     """
 
     row = _row(application, 2000)
@@ -247,13 +250,14 @@ def test_the_clock_reserves_its_width_so_the_panel_cannot_move(application: QApp
 
 
 def test_the_readout_row_reflows_where_its_panels_stop_fitting(application: QApplication) -> None:
-    """The row steps down the ladder at the width its own reservation sets (`PL-8M05`).
+    """The row steps down the ladder at the width that its own reservation sets (`PL-8M05`).
 
     At the narrowest width that seats seven panels of the measured
-    reservation with the grid's spacing between them, the row is seven
-    across; one pixel narrower it is four; and at every step no panel is
-    laid outside the row. The widths are read from the row rather than
-    written here, so the test holds on any font and at any display scale.
+    reservation, with the grid's spacing between them, the row is seven
+    across. One pixel narrower, it is four across. At every step, no panel
+    is laid outside the row. The test reads the widths from the row rather
+    than writing them here, so it still passes on any font and at any
+    display scale.
     """
 
     row = _row(application, 2000)
@@ -295,13 +299,13 @@ def test_the_readout_row_reflows_where_its_panels_stop_fitting(application: QApp
 def test_a_narrowed_readout_row_reflows_rather_than_widening_its_scroll_area(
     application: QApplication,
 ) -> None:
-    """The row's minimum is one column's, so a container can narrow it and it steps down.
+    """The row's minimum width is one column's, so a container can narrow it and it steps down.
 
-    A row reporting its seven-column minimum could never be narrowed by a
-    scroll area, which widens its page to the widest minimum and scrolls;
-    the readout row would then never reflow and the page would overhang
-    every window narrower than seven panels. Every panel keeps its own
-    reservation, so no value wraps at the narrower count (`PL-3355`).
+    If the row reported its seven-column minimum, a scroll area could never
+    narrow it, because a scroll area widens its page to the widest minimum
+    and scrolls. The readout row would then never reflow, and the page would
+    overhang every window narrower than seven panels. Every panel keeps its
+    own reservation, so no value wraps at the narrower count (`PL-3355`).
     """
 
     row = _row(application, 2000)
@@ -414,8 +418,8 @@ def test_a_readout_row_carries_a_second_row_s_readings_under_one_name_each(
 ) -> None:
     """Each panel gains the other run's value, its second unit and its run's name.
 
-    The other row is hidden, and deleting the readings it returns leaves each
-    panel with its own five labels again, as dropping a branch does.
+    The other row is hidden. Deleting the returned readings leaves each panel
+    with its own five labels again, as dropping a branch does.
     """
 
     row = _row(application, 1400)
@@ -592,12 +596,13 @@ def test_the_slider_active_track_is_the_accent(application: QApplication) -> Non
 
 
 def _under_a_dark_host(button: QPushButton) -> QPushButton:
-    """Give one button the palette a dark host appearance supplies.
+    """Give one button the palette that a dark host appearance supplies.
 
-    Set on the widget rather than the application so it cannot leak into the
-    other tests sharing the module-scoped `QApplication`. The values stand in
-    for what macOS supplies in Dark appearance, where `PL-DHBX` was reported:
-    a near-white `ButtonText` over a dark `Button`.
+    The palette is set on the widget rather than on the application, so that
+    it cannot leak into the other tests that share the module-scoped
+    `QApplication`. The values stand in for what macOS supplies in Dark
+    appearance, where `PL-DHBX` was reported: a near-white `ButtonText` over
+    a dark `Button`.
     """
 
     palette = QPalette(button.palette())
@@ -610,7 +615,7 @@ def _under_a_dark_host(button: QPushButton) -> QPushButton:
 
 
 def _channel_distance(one: str, other: str) -> int:
-    """The largest per-channel difference between two colours, 0-255."""
+    """Return the largest per-channel difference between two colours, from 0 to 255."""
 
     first, second = QColor(one), QColor(other)
 
@@ -622,7 +627,7 @@ def _channel_distance(one: str, other: str) -> int:
 
 
 def _transport_button(enabled: bool) -> QPushButton:
-    """One transport button in the state under test."""
+    """Return one transport button in the state under test."""
 
     button = QPushButton("Pause")
     button.setEnabled(enabled)
@@ -631,7 +636,7 @@ def _transport_button(enabled: bool) -> QPushButton:
 
 
 def _drawn(button: QPushButton, application: QApplication) -> list[str]:
-    """Every pixel of a rendered button, as upper-case hex names."""
+    """Return every pixel of a rendered button as an upper-case hex colour name."""
 
     button.resize(90, 30)
     button.show()
@@ -653,17 +658,18 @@ def test_a_transport_button_draws_the_theme_rather_than_the_host_palette(
 ) -> None:
     """Start, Pause and Reset keep their own colours under a dark host appearance.
 
-    The regression test for `PL-DHBX`, in both states, because the defect
-    arrived twice. The buttons set no foreground at all, so they took Qt's
-    palette `ButtonText` - the host appearance's value, not this interface's -
-    and went illegible under macOS Dark while every surface around them stayed
-    this light theme's. The first fix declared `:enabled` only, and the project
-    owner's screenshots then showed the *unavailable* button still absent: Start
-    while running, Pause while paused. So both states are pinned here.
+    This is the regression test for `PL-DHBX`, in both states, because the
+    defect arrived twice. The buttons set no foreground at all, so they took
+    Qt's palette `ButtonText`. That is the host appearance's value, not this
+    interface's. So the buttons became illegible under macOS Dark, while every
+    surface around them stayed in this light theme. The first fix declared
+    `:enabled` only. The project owner's screenshots then showed that the
+    *unavailable* button was still missing: Start while running, and Pause
+    while paused. So this test pins both states.
 
-    The bare button is rendered beside each so the test cannot pass vacuously:
-    if the platform plugin ignored the palette, both halves would agree and the
-    second assertion would fail.
+    The bare button is rendered beside each one, so that the test cannot pass
+    vacuously. If the platform plugin ignored the palette, both renderings
+    would agree, and the second assertion would fail.
     """
 
     bare = _drawn(_under_a_dark_host(_transport_button(enabled)), application)
@@ -674,9 +680,9 @@ def test_a_transport_button_draws_the_theme_rather_than_the_host_palette(
     assert max(set(drawn), key=drawn.count) == PANEL.upper()
     assert max(set(bare), key=bare.count) != PANEL.upper()
 
-    # No pixel need land exactly on the declared colour - the glyphs are
-    # antialiased - so the label is identified by which declared colour its
-    # darkest pixel is nearest: the theme's, never the palette's white.
+    # The glyphs are antialiased, so no pixel need match the declared colour
+    # exactly. The test therefore finds the declared colour nearest to the
+    # label's darkest pixel. It must be the theme's, never the palette's white.
     darkest = min(drawn, key=lambda name: QColor(name).lightness())
     other = MUTED if expected == INK else INK
 
@@ -720,7 +726,11 @@ def _dialog() -> NewCaseDialog:
 def test_the_new_case_dialogs_default_button_is_the_one_that_keeps_the_case(
     application: QApplication,
 ) -> None:
-    """Destructive first and outlined; safe last, filled and the default; Escape keeps."""
+    """The safe button is the default, and Escape keeps the case.
+
+    The destructive button comes first and is outlined. The safe button comes
+    last and is filled.
+    """
 
     dialog = _dialog()
     question = new_case_question(SimulationController().snapshot(), "Isoflurane", 0)
@@ -777,7 +787,7 @@ def test_the_discard_button_is_drawn_before_the_keep_button(application: QApplic
 
 
 def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
-    """The editor's form at this place in its column: 0 for times, 1 for targets."""
+    """Return the editor's form at this index in its column: 0 for times, 1 for targets."""
 
     column = dialog.layout()
     item = None if column is None else column.itemAt(index)
@@ -916,9 +926,9 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
 def test_the_startup_window_is_sized_from_the_screen_and_centred() -> None:
     """The normal geometry: a fraction of the screen, centred, never below the minimum (`PL-005`).
 
-    The window opens maximized over it (`PL-Z4K6`), so these are the cases for
-    what a reader gets back on un-maximizing; the launcher test in
-    `tests/unit/test_bootstrap.py` holds the state the window opens in.
+    The window opens maximized over this geometry (`PL-Z4K6`). So these cases
+    check what a reader gets back on un-maximizing the window. The launcher
+    test in `tests/unit/test_bootstrap.py` checks the state the window opens in.
     """
 
     assert 0.0 < WINDOW_SCREEN_FRACTION <= 1.0
@@ -932,8 +942,8 @@ def test_the_startup_window_is_sized_from_the_screen_and_centred() -> None:
     assert initial_window_geometry(QRect(0, 0, 1000, 600), QSize(100, 100), 1.0) == QRect(
         0, 0, 1000, 600
     )
-    # A minimum wider than the fraction wins on that axis alone, and the
-    # window stays centred on the available area even where it overhangs.
+    # A minimum wider than the fraction wins, on that axis only. The window
+    # stays centred on the available area even where it overhangs that area.
     assert initial_window_geometry(QRect(0, 0, 1000, 600), QSize(900, 100), 0.5) == QRect(
         50, 150, 900, 300
     )

@@ -1,11 +1,11 @@
-"""The compartment selection the dashboard owns, held without a toolkit.
+"""Tests of the compartment selection that the dashboard owns, without a widget toolkit.
 
-`app/compartment_selection.py` holds which compartments the chart draws as a
-value rather than as the state of the legend's boxes (`PL-VN6M`). Two
-properties carry the safety argument, and both are held here: no selection
-over the cap can be built, so the boxes and the curves drawn from one
-selection cannot disagree; and a reader's click is honoured, with the
-longest-standing compartment making room for it. The second is checked
+`app/compartment_selection.py` stores which compartments the chart draws as a
+value, rather than as the state of the legend's boxes (`PL-VN6M`). The safety
+argument rests on two properties, and these tests check both. First, no
+selection over the cap can be built, so the boxes and the curves drawn from one
+selection cannot disagree. Second, a reader's click is honoured, and the
+longest-standing compartment makes room for it. The second property is checked
 against every selection a reader can reach, not a handful of examples.
 """
 
@@ -36,9 +36,9 @@ FAT = RecordedQuantity.FAT
 def _reachable() -> frozenset[CompartmentSelection]:
     """Every selection a reader can reach by clicking, on one run and on two.
 
-    Walked breadth first from the selection the dashboard opens with, and from
-    the selection a second run reduces it to, over every click a legend can
-    send: each compartment, shown or hidden.
+    The walk is breadth first. It starts from the selection the dashboard opens
+    with, and from the selection that a second run reduces it to. It follows
+    every click a legend can send: each compartment, shown or hidden.
     """
 
     starts = (INITIAL_COMPARTMENT_SELECTION, INITIAL_COMPARTMENT_SELECTION.with_run_count(2))
@@ -59,11 +59,11 @@ def _reachable() -> frozenset[CompartmentSelection]:
     return frozenset(seen)
 
 
-# ------------------------------------------------------------- what it holds
+# ------------------------------------------------- what a selection contains
 
 
 def test_the_dashboard_opens_on_every_compartment_on_one_run() -> None:
-    """What a reader who has chosen nothing sees: all six, in table order."""
+    """A reader who has chosen nothing sees all six compartments, in table order."""
 
     assert INITIAL_COMPARTMENT_SELECTION.order == COMPARTMENT_QUANTITIES
     assert INITIAL_COMPARTMENT_SELECTION.run_count == 1
@@ -71,7 +71,7 @@ def test_the_dashboard_opens_on_every_compartment_on_one_run() -> None:
 
 
 def test_what_is_shown_is_in_table_order_whatever_order_it_was_asked_for_in() -> None:
-    """The order is the click rule's; the drawn order is the table's, as the chart draws it."""
+    """The click rule uses the stored order, and the shown order follows the chart's table order."""
 
     selection = CompartmentSelection((FAT, CIRCUIT, MUSCLE), 1)
 
@@ -80,7 +80,7 @@ def test_what_is_shown_is_in_table_order_whatever_order_it_was_asked_for_in() ->
 
 
 def test_every_selection_a_reader_can_reach_is_exactly_what_the_chart_draws() -> None:
-    """The property the legend's agreement with the plot rests on.
+    """The legend's agreement with the plot rests on this property.
 
     `assemble_chart_frame` draws `compared_compartments` of the selection it
     is handed, and the legend checks `shown`. For every reachable selection
@@ -90,8 +90,8 @@ def test_every_selection_a_reader_can_reach_is_exactly_what_the_chart_draws() ->
 
     reachable = _reachable()
 
-    # Every ordering of every subset on one run, and every ordering of every
-    # subset of at most the cap on two: the walk reaches the whole space.
+    # The walk reaches the whole space: every ordering of every subset on one
+    # run, and every ordering of every subset no larger than the cap on two runs.
     assert len(reachable) == sum(
         len(list(permutations(COMPARTMENT_QUANTITIES, size)))
         for size in range(len(COMPARTMENT_QUANTITIES) + 1)
@@ -106,7 +106,7 @@ def test_every_selection_a_reader_can_reach_is_exactly_what_the_chart_draws() ->
 
 
 def test_a_selection_cannot_be_changed_in_place() -> None:
-    """The legend keeps the selection it was last shown, which must stay the owner's value."""
+    """The legend keeps the selection it was last shown, so it must stay the dashboard's value."""
 
     with pytest.raises(FrozenInstanceError):
         INITIAL_COMPARTMENT_SELECTION.order = ()  # type: ignore[misc]
@@ -116,11 +116,12 @@ def test_a_selection_cannot_be_changed_in_place() -> None:
 
 
 def test_every_click_from_every_reachable_selection_follows_the_rule() -> None:
-    """Hide removes; show adds as the newest; over the cap, the oldest makes room.
+    """Hiding removes, showing adds as the newest, and over the cap the oldest makes room.
 
-    Checked against an oracle that counts against `COMPARED_COMPARTMENT_CAP`
-    directly, rather than through `compared_compartments` as the module does,
-    so the two routes to the cap are held to one answer.
+    The test checks against an oracle that counts against
+    `COMPARED_COMPARTMENT_CAP` directly, rather than through
+    `compared_compartments` as the module does. So the two routes to the cap
+    must give the same result.
     """
 
     for selection in _reachable():
@@ -163,7 +164,7 @@ def test_a_check_over_the_cap_drops_the_longest_standing_compartment() -> None:
 
 
 def test_a_click_for_the_state_already_held_changes_nothing() -> None:
-    """Showing a shown compartment does not renew its place, so it is not saved from the cap."""
+    """Showing an already shown compartment does not renew its place, so the cap can drop it."""
 
     selection = CompartmentSelection((CIRCUIT, ALVEOLAR), 2)
 
@@ -175,7 +176,7 @@ def test_a_click_for_the_state_already_held_changes_nothing() -> None:
 
 
 def test_one_run_takes_every_check_and_drops_nothing() -> None:
-    """The cap binds only once a second run spends the width channel."""
+    """The cap applies only once a second run uses line width to tell the runs apart."""
 
     selection = CompartmentSelection((), 1)
 
@@ -187,7 +188,7 @@ def test_one_run_takes_every_check_and_drops_nothing() -> None:
 
 
 def test_a_reader_may_hide_every_compartment() -> None:
-    """An empty selection is a state the dashboard says so about, not one it refuses."""
+    """The dashboard reports an empty selection as empty, rather than refusing it."""
 
     selection = INITIAL_COMPARTMENT_SELECTION
 
@@ -202,7 +203,10 @@ def test_a_reader_may_hide_every_compartment() -> None:
 
 
 def test_a_second_run_keeps_exactly_what_the_chart_would_draw() -> None:
-    """The top of the compartment table: `compared_compartments`' rule, not a pair chosen here."""
+    """The reduced selection is the top of the compartment table, by `compared_compartments`' rule.
+
+    The test does not choose the pair itself.
+    """
 
     reduced = INITIAL_COMPARTMENT_SELECTION.with_run_count(2)
 
@@ -212,7 +216,7 @@ def test_a_second_run_keeps_exactly_what_the_chart_would_draw() -> None:
 
 
 def test_the_run_count_keeps_the_click_order_of_what_it_keeps() -> None:
-    """What survives the cap keeps its standing, so the next check over it drops the right one."""
+    """What the cap keeps stays in click order, so the next check drops the right one."""
 
     selection = CompartmentSelection((FAT, MUSCLE, CIRCUIT), 1).with_run_count(2)
 
@@ -222,7 +226,7 @@ def test_the_run_count_keeps_the_click_order_of_what_it_keeps() -> None:
 
 
 def test_every_selection_on_one_run_reduces_to_what_the_chart_draws_for_two() -> None:
-    """Whatever the reader had chosen, the second run's boxes are the second run's curves."""
+    """Whatever the reader had chosen, the boxes on two runs match the curves drawn for two runs."""
 
     for size in range(len(COMPARTMENT_QUANTITIES) + 1):
         for chosen in combinations(COMPARTMENT_QUANTITIES, size):
@@ -232,7 +236,7 @@ def test_every_selection_on_one_run_reduces_to_what_the_chart_draws_for_two() ->
 
 
 def test_back_to_one_run_a_reduced_selection_stays_reduced() -> None:
-    """Nothing remembers what the cap took off, as nothing did while the legend held it."""
+    """Nothing remembers what the cap removed, just as when the legend stored the selection."""
 
     reduced = INITIAL_COMPARTMENT_SELECTION.with_run_count(2)
     restored = reduced.with_run_count(1)
@@ -242,7 +246,7 @@ def test_back_to_one_run_a_reduced_selection_stays_reduced() -> None:
 
 
 def test_the_same_run_count_keeps_the_same_selection() -> None:
-    """Told the run count it already has, the selection loses nothing and reorders nothing."""
+    """Given the run count it already has, the selection drops nothing and reorders nothing."""
 
     selection = CompartmentSelection((FAT, CIRCUIT), 2)
 
@@ -253,7 +257,7 @@ def test_the_same_run_count_keeps_the_same_selection() -> None:
 
 
 def test_a_selection_over_the_cap_is_refused() -> None:
-    """The one state in which the boxes would name a curve the plot is not drawing."""
+    """This is the one state in which the boxes would name a curve that the plot is not drawing."""
 
     with pytest.raises(ValueError, match="would leave 1 off the plot"):
         CompartmentSelection((CIRCUIT, ALVEOLAR, FAT), 2)
@@ -337,8 +341,9 @@ def test_the_selection_and_the_dashboard_refuse_one_range_in_one_sentence(run_co
 def test_importing_the_selection_loads_no_toolkit() -> None:
     """The selection is a value the dashboard holds, so it loads no widget library.
 
-    Asserted of everything the module reaches when it is imported, in a fresh
-    interpreter, since this test process may already hold Qt from another test.
+    The test checks every module that importing the selection loads, in a
+    fresh interpreter, because this test process may already have Qt loaded
+    from another test.
     """
 
     probe = (

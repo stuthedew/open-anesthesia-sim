@@ -1,29 +1,31 @@
 """The declared input domain, and what happens at and outside its edges.
 
-Regression cover for PL-0MLQ: `docs/MODEL.md` declared a closed supported
-interval for each control, and only the delivered concentration's was
-enforced. `AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and
-simulated, and the interface's sliders were the only thing keeping a run
-inside the domain the verification gates cover.
+This module is regression cover for PL-0MLQ. `docs/MODEL.md` declared a
+closed supported interval for each control, but only the interval for the
+delivered concentration was enforced. `AgentUptakeSystem.set_cardiac_output(1000.0)`
+was accepted and simulated. The interface's sliders were the only thing that
+kept a run inside the domain that the verification gates cover.
 
-Since `PL-0YYV` each flow is a type - `FreshGasFlow`, `AlveolarVentilation`
-and `CardiacOutput` - built only through its guard, and every field that
-stores a flow takes the type. The tests under "Each flow is a type" hold that
-the type admits and refuses exactly what its guard does, keeps the value it
-was built from, and is required wherever a flow is stored - at the write to
-the compartment's field itself since `PL-LBQY`, whoever makes it - and, since
-`PL-LLMN`, that it is built from a number and nothing else, and holds minus
-zero as zero. Since `PL-CN5S` the case instant and the step count are types
-too, `CaseInstant` and `StepCount`, and the tests under "The case instant and
-the step count are types" hold them to the same, the instant's number check
-and its zero since `PL-7N8P`.
+Since `PL-0YYV`, each flow is a type: `FreshGasFlow`, `AlveolarVentilation`
+and `CardiacOutput`. Each type can be built only through its guard, and every
+field that stores a flow takes the type. The tests under "Each flow is a type"
+check that the type accepts and rejects exactly what its guard does, and that
+it keeps the value it was built from. They check that the type is required
+wherever a flow is stored. Since `PL-LBQY`, that includes the write to the
+compartment's field itself, whoever makes the write. Since `PL-LLMN`, they
+also check that a flow is built from a number and nothing else, and that it
+stores minus zero as zero. Since `PL-CN5S`, the case instant and the step
+count are types too, `CaseInstant` and `StepCount`. The tests under "The case
+instant and the step count are types" check them in the same way. Since
+`PL-7N8P`, those tests also check that the instant is built only from a
+number and stores minus zero as zero.
 
 The endpoints are tested as carefully as the rejections. Every range is
-closed, and both ends are load-bearing: one reference gate trajectory holds
-cardiac output at zero for its loading phase, and the envelope corner every
-reference gate drives sits on all three maxima at once. A guard that quietly
-excluded an endpoint would take a measured case out of the reachable domain
-without failing anything.
+closed, and both ends matter. One reference gate trajectory keeps cardiac
+output at zero for its loading phase. The envelope corner that every reference
+gate drives sits on all three maxima at once. A guard that quietly excluded an
+endpoint would take a measured case out of the reachable domain without
+failing anything.
 """
 
 import copy
@@ -79,9 +81,12 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 class Control(NamedTuple):
-    """One control: its guard, the type only that guard builds, the closed
-    interval it declares, and the compartment of `AgentUptakeSystem` that
-    stores it."""
+    """One control, as the tests in this module need it.
+
+    The record holds the control's guard, the type that only that guard
+    builds, the closed interval that the guard declares, and the compartment
+    of `AgentUptakeSystem` that stores the control.
+    """
 
     name: str
     guard: Callable[[float], None]
@@ -133,11 +138,12 @@ def test_accepts_both_endpoints_and_the_interior(control: Control) -> None:
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_rejects_the_smallest_value_above_the_maximum(control: Control) -> None:
-    """The refusal starts at the first float outside the interval.
+    """The guard rejects every value from the first float above the maximum.
 
     A guard written with `>=` instead of `>` would pass every other test in
-    this module while making the envelope corner — the operating point the
-    exact-step reference gate measures at — unreachable.
+    this module. It would also make the envelope corner unreachable. The
+    envelope corner is the operating point at which the exact-step reference
+    gate measures.
     """
 
     with pytest.raises(SimulationConfigurationError):
@@ -156,9 +162,9 @@ def test_rejects_a_flow_far_outside_the_domain(control: Control, scale: float) -
 def test_rejects_a_value_that_is_negative_or_not_finite(control: Control, value: float) -> None:
     """One guard covers the whole domain, so NaN cannot slip past a comparison.
 
-    `nan` compares false against every bound, so a range check written as two
-    comparisons and nothing else would accept it and then poison every
-    downstream state silently.
+    `nan` compares false against every bound. A range check written as two
+    comparisons and nothing else would accept it. The NaN would then silently
+    poison every downstream state.
     """
 
     with pytest.raises(SimulationConfigurationError):
@@ -167,7 +173,7 @@ def test_rejects_a_value_that_is_negative_or_not_finite(control: Control, value:
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_the_refusal_names_the_setting_the_value_and_the_interval(control: Control) -> None:
-    """A refusal a caller cannot act on is barely better than a wrong number."""
+    """A refusal that a caller cannot act on is barely better than a wrong number."""
 
     rejected = control.maximum * 10.0
 
@@ -183,22 +189,23 @@ def test_the_refusal_names_the_setting_the_value_and_the_interval(control: Contr
 
 # --- Each flow is a type, built only through its guard (PL-0YYV) ------------
 #
-# The guard above runs once, where a flow is built as its type, and every field
-# and signature past that point takes the type, so the check is made nowhere
-# else. That is only as good as the type: it has to hold the value it was built
-# from exactly, refuse in the guard's own words, come back from a copy as
-# itself, and be demanded wherever a bare float could otherwise be stored in
-# its place.
+# The guard above runs once, where a flow is built as its type. Every field and
+# signature past that point takes the type, so the check is made nowhere else.
+# That design is only as good as the type. The type has to keep the value it was
+# built from exactly, and refuse in the guard's own words. It has to come back
+# from a copy as itself. It has to be required wherever a bare float could
+# otherwise be stored in its place.
 
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_the_type_holds_the_value_it_was_built_from_exactly(control: Control) -> None:
-    """Built at either end and between, the type is the float it was given, bit for bit.
+    """At either end and between, the type keeps the float it was given, bit for bit.
 
     A type that rounded or re-derived its value would move the envelope corner
-    the reference gates measure at; `hex` compares the bits rather than the
-    printed digits, and two of the values carry a full mantissa, since a
-    rounding to any number of decimals leaves the endpoints where they are.
+    at which the reference gates measure. `hex` compares the bits rather than
+    the printed digits. Two of the values carry a full mantissa. Rounding to
+    any number of decimals would leave the endpoints where they are, so only
+    values like these can show that the type rounds.
     """
 
     midpoint = (control.minimum + control.maximum) / 2.0
@@ -214,7 +221,7 @@ def test_the_type_holds_the_value_it_was_built_from_exactly(control: Control) ->
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_the_type_refuses_what_its_guard_refuses_in_the_guards_words(control: Control) -> None:
-    """One check, so the type can neither admit what the guard refuses nor word it differently."""
+    """The type and its guard share one check, so they reject the same values in the same words."""
 
     for value in (nextafter(control.maximum, inf), control.maximum * 10.0, -1.0, nan, inf, -inf):
         with pytest.raises(SimulationConfigurationError) as by_the_guard:
@@ -228,12 +235,12 @@ def test_the_type_refuses_what_its_guard_refuses_in_the_guards_words(control: Co
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_arithmetic_on_a_flow_is_a_plain_float(control: Control) -> None:
-    """A quantity derived from a flow is not a checked flow, and must not read as one.
+    """A quantity derived from a flow is not a checked flow, and must not look like one.
 
-    Two flows at the maximum sum to a value past it; were the sum still the
-    type, it would carry a promise of a check that never ran. A subclass of
-    `float` returns `float` from every operator, which is what keeps the
-    promise to what was actually built.
+    Two flows at the maximum sum to a value above the maximum. If the sum were
+    still the type, it would promise a check that never ran. A subclass of
+    `float` returns `float` from every operator, so the promise applies only
+    to what was actually built.
     """
 
     at_maximum = control.flow_type(control.maximum)
@@ -245,11 +252,11 @@ def test_arithmetic_on_a_flow_is_a_plain_float(control: Control) -> None:
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_a_flow_survives_copy_and_pickle_as_its_type(control: Control) -> None:
-    """A record copied or stored keeps its flows checked, not demoted to floats.
+    """A copied or stored record keeps its flows as checked types, not plain floats.
 
     `dataclasses.replace` copies the fields it is not given, and a saved run
-    would come back through `pickle`; each rebuilds the flow through the
-    type's own constructor, so the guard runs again and the type is kept.
+    would come back through `pickle`. Each of these rebuilds the flow through
+    the type's own constructor, so the guard runs again and the type is kept.
     """
 
     built = control.flow_type(control.maximum)
@@ -261,15 +268,17 @@ def test_a_flow_survives_copy_and_pickle_as_its_type(control: Control) -> None:
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> None:
-    """A float never built as the type is refused where it would be stored, in range or not.
+    """A float that was never built as the type is refused where it would be stored.
 
-    The static half of the check is the annotation, which a caller outside
-    `mypy`'s reach - a notebook, a test, a deserializer - never sees. The
-    runtime half lives where a flow is stored: the compartment's setter, its
-    constructor, and the settings record. Each refuses a bare float and names
-    the type to build; the forwarding setter on `AgentUptakeSystem` reaches the
-    same refusal. The value is the one already held, so what is refused is the
-    missing check and not the number, and nothing changes on refusal.
+    This holds whether or not the float is in range. The static half of the
+    check is the annotation. A caller outside `mypy`'s reach, such as a
+    notebook, a test or a deserializer, never sees the annotation. The runtime
+    half lives where a flow is stored: the compartment's setter, its
+    constructor, and the settings record. Each of them refuses a bare float and
+    names the type to build. The forwarding setter on `AgentUptakeSystem` leads
+    to the same refusal. The test uses the value the compartment already
+    stores, so what is refused is the missing check and not the number.
+    Nothing changes when the value is refused.
     """
 
     system = AgentUptakeSystem.default()
@@ -304,12 +313,12 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -> None:
-    """A flow of another type is named as that, and not told to rebuild as this one.
+    """The refusal names a flow of another type by that type, and prescribes no rebuild.
 
-    A fresh gas flow arriving where a cardiac output belongs is a swapped
+    A fresh gas flow that arrives where a cardiac output belongs is a swapped
     argument. A refusal that prescribed `CardiacOutput(4.0)` would have the
-    caller check and store the wrong quantity under the right type, so the
-    message names the type the value was built as and prescribes nothing.
+    caller check and store the wrong quantity under the right type. So the
+    message names the type that the value was built as, and prescribes nothing.
     """
 
     system = AgentUptakeSystem.default()
@@ -337,15 +346,15 @@ def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -
 def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument(
     control: Control, other: object
 ) -> None:
-    """Named as the quantity it was built as, and not told to rebuild as this flow.
+    """The refusal names what the value was built as, and does not say to rebuild it as this flow.
 
-    Until `PL-848D` `_require_built` named only the other two flows, so a
+    Until `PL-848D`, `_require_built` named only the other two flows. So a
     `StepCount(5)` handed in as a fresh gas flow was told to build
-    `FreshGasFlow(...)` from it, the rebuild the flows' own refusal of each
-    other exists to prevent. Every checked quantity is one record now
-    (`core/checked_number.py`), so the step, a count, an instant and both
-    forms of a concentration are refused in the words the other flows are,
-    and nothing is written.
+    `FreshGasFlow(...)` from it. That is the rebuild that the flows' refusal of
+    each other exists to prevent. Every checked quantity now shares one record
+    (`core/checked_number.py`). So the step, a count, an instant and both forms
+    of a concentration are refused in the same words as the other flows, and
+    nothing is written.
     """
 
     system = AgentUptakeSystem.default()
@@ -366,13 +375,13 @@ def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swappe
 
 
 NOT_A_NUMBER = (True, numpy.True_, Decimal("2.5"), Decimal("sNaN"), "2.5")
-"""What a flow was built from before `PL-LLMN`, and what came of it.
+"""Values that are not numbers, and what a flow built from each did before `PL-LLMN`.
 
-`True` and `numpy.True_` were each a flow of 1.0 L/min, the `Decimal` one of
-2.5 L/min, the signalling NaN escaped as `math.isfinite`'s `ValueError` and
-the string as its `TypeError`, naming neither the setting nor the range. The
-NumPy `bool` is here because it is not a `bool`: a guard refusing `bool` alone
-admits it.
+`True` and `numpy.True_` were each built as a flow of 1.0 L/min, and the
+`Decimal` as a flow of 2.5 L/min. The signalling NaN escaped as
+`math.isfinite`'s `ValueError`, and the string escaped as its `TypeError`.
+Neither error named the setting or the range. The NumPy `bool` is here
+because it is not a `bool`: a guard that refuses only `bool` accepts it.
 """
 
 
@@ -382,14 +391,15 @@ def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
 ) -> None:
     """A flow is built from an int or a float and nothing else, and has no sign at zero.
 
-    Each of `NOT_A_NUMBER` is refused by the guard and the type alike, before
-    any comparison reads it, with a `TypeError` in the simulator's words
-    naming the setting, the value and its type - a programming error in the
-    caller, as `require_fresh_gas_flow` names a bare float, and not a refused
-    setting. Minus zero is the supported zero that arithmetic reaches with a
-    sign, so it is held as zero and `format_flow` prints it as the flow it is,
-    where it printed `-0.0 L/min`. An `int` is admitted as a `float` is, and
-    both hold the number they were built from (`PL-LLMN`).
+    The guard and the type both refuse each value in `NOT_A_NUMBER`, before
+    any comparison reads it. The refusal is a `TypeError` in the simulator's
+    words that names the setting, the value and its type. It reports a
+    programming error in the caller, as `require_fresh_gas_flow` does for a
+    bare float, and not a refused setting. Minus zero is the supported zero
+    that arithmetic can reach with a sign. So it is stored as zero, and
+    `format_flow` prints it as the flow it is, where it used to print
+    `-0.0 L/min`. An `int` is accepted just as a `float` is, and both keep the
+    number they were built from (`PL-LLMN`).
     """
 
     for value in NOT_A_NUMBER:
@@ -452,9 +462,10 @@ def test_a_setting_s_range_refusal_is_pinned_whole(
     """The whole sentence the "Setting refused" banner shows for each flow control.
 
     `refused_setting_notice` prints a refusal word for word, so the sentence
-    is what a learner reads. The other tests here match a phrase of it, which
-    passes with the name, the value or the interval wrong (`PL-79PK`). The
-    interval in each expected sentence is typed from `docs/MODEL.md` §
+    is what a learner reads. The other tests here match only a phrase of it,
+    and such a match passes even when the name, the value or the interval is
+    wrong (`PL-79PK`). The interval in each expected sentence is copied by
+    hand from `docs/MODEL.md` §
     "Supported input ranges": 0 to 10 L/min of fresh gas, 0 to 12 L/min of
     alveolar ventilation and 0 to 10 L/min of cardiac output.
     """
@@ -467,12 +478,12 @@ def test_a_setting_s_range_refusal_is_pinned_whole(
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_an_int_past_the_float_range_is_refused_against_the_interval(control: Control) -> None:
-    """An `int` too large for a `float` is outside every interval here, and is refused as that.
+    """An `int` too large for a `float` is outside every interval here, and is refused as such.
 
-    `math.isfinite` raises `OverflowError` converting it, which is the same
-    escape in Python's words that `PL-7N8P` records for the case instant; the
-    closed interval compares it exactly instead. One too long to print is
-    named by how long it is, as a refused count is (`PL-5F76`).
+    `math.isfinite` raises `OverflowError` when it converts such an int. That
+    is the same escape in Python's words that `PL-7N8P` records for the case
+    instant. The closed interval instead compares the int exactly. An int too
+    long to print is named by its length, as a refused count is (`PL-5F76`).
     """
 
     with pytest.raises(SimulationConfigurationError, match="is outside the supported input range"):
@@ -488,23 +499,24 @@ def test_an_int_past_the_float_range_is_refused_against_the_interval(control: Co
 
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control: Control) -> None:
-    """An assignment straight onto the field is the fifth way in, and meets the same refusal.
+    """Assigning straight to the field is a fifth way to set a flow, and meets the same refusal.
 
     `mypy` refuses `circuit.fresh_gas_flow_l_min = 1000.0` in `src/`, and the
-    compartments' own methods write the field from a checked flow; what
-    reaches it is a caller `mypy` does not read, which until `PL-LBQY` was
-    caught only when the next step rebuilt the settings - after the snapshot
-    had copied the bare float and the readout had shown it. The compartment's
-    `__setattr__` now runs the flow's `require_*` at the write, in its words,
-    and leaves the field holding what it held, so the settings a snapshot is
-    built from never see it. A flow built as its type is written, by the
-    setter and by assignment alike; the type is all the write checks, so the
-    setter's own relations - the machine's range, the tissue flows - stay the
-    setter's. The constructor, `dataclasses.replace`, a copy and a pickle
-    write through the same `__setattr__`, the last two because the compartment
-    is a `slots=True` dataclass whose state is restored one field at a time, so
-    a bare float smuggled past the guard is refused by each of them, before
-    the patient's `__post_init__` can touch a tissue flow.
+    compartments' own methods write the field from a checked flow. So an
+    unchecked write comes from a caller that `mypy` does not read. Until
+    `PL-LBQY`, such a write was caught only when the next step rebuilt the
+    settings. By then the snapshot had copied the bare float and the readout
+    had shown it. The compartment's `__setattr__` now runs the flow's
+    `require_*` at the write, in that function's words, and leaves the field
+    holding its old value. So the settings that a snapshot is built from never
+    see the bare float. A flow built as its type is written, by the setter and
+    by assignment alike. The type is all that the write checks, so the setter
+    alone checks its own relations, such as the machine's range and the tissue
+    flows. The constructor, `dataclasses.replace`, a copy and a pickle all
+    write through the same `__setattr__`. A copy and a pickle do so because the
+    compartment is a `slots=True` dataclass whose state is restored one field
+    at a time. So each of the four refuses a bare float smuggled past the
+    guard, before the patient's `__post_init__` can touch a tissue flow.
     """
 
     system = AgentUptakeSystem.default()
@@ -547,19 +559,19 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
     """A new cardiac output written straight to the field is refused, not stored.
 
     The test above checks the type of every flow at the write. Before
-    `PL-KFNP`, the type was all that the patient's write checked, so a
-    `CardiacOutput(6.0)` assigned past `set_cardiac_output` was stored while
-    every stored flow stayed at its share of 5.0. Since `PL-HQF5` no
-    compartment stores a flow, and the refusal is kept so that the setter
-    stays the one way to change the output. The message names the refused
-    output, the output the patient keeps and `set_cardiac_output`. The field
-    and the settings record keep their values, and the run steps on. The
-    check is on the value, so writing the output the patient already holds is
-    accepted. A wrong type is refused by the field and by the setter before
-    anything changes. The setter moves every flow: the expected flows are the
-    reference adult's fractions (0.76, 0.18 and 0.06, typed from
-    `data/patients/reference_adult.json`) times 10.0 L/min, worked here. The
-    constructor, `dataclasses.replace`, a copy and a pickle each build a
+    `PL-KFNP`, the type was all that the patient's write checked. So a
+    `CardiacOutput(6.0)` assigned past `set_cardiac_output` was stored, while
+    every stored flow stayed at its share of 5.0. Since `PL-HQF5`, no
+    compartment stores a flow. The refusal is kept so that the setter remains
+    the one way to change the output. The message names the refused output,
+    the output the patient keeps, and `set_cardiac_output`. The field and the
+    settings record keep their values, and the run can still step. The check
+    is on the value, so writing the output that the patient already holds is
+    accepted. The field and the setter both refuse a wrong type before
+    anything changes. The setter moves every flow. The expected flows are the
+    reference adult's fractions (0.76, 0.18 and 0.06, copied by hand from
+    `data/patients/reference_adult.json`) times 10.0 L/min, worked out here.
+    The constructor, `dataclasses.replace`, a copy and a pickle each build a
     patient at the output written (`PL-KFNP`).
     """
 
@@ -618,30 +630,32 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
 #
-# The fifth bound, and the only one on the run rather than on a setting. It is
-# regression cover for a limit that was declared in conversation on 2026-08-25,
-# recorded in a dropped item, and enforced nowhere: a run could reach day 45 of
-# a cap set at 30 days and go on displaying two-decimal concentrations, in a
-# regime `docs/MODEL.md` already declines to validate over.
+# This is the fifth bound, and the only one on the run rather than on a
+# setting. It is regression cover for a limit that was declared in conversation
+# on 2026-08-25, recorded in a dropped item, and enforced nowhere. A run could
+# reach day 45 of a cap set at 30 days and go on displaying two-decimal
+# concentrations, in a regime over which `docs/MODEL.md` already declines to
+# validate the model.
 #
-# The boundary is pinned in both directions deliberately. A guard that refused
-# one step early would take the endpoint out of a closed interval every other
-# range in this module includes; one that refused a step late would let a run
-# display a state outside the declared domain, which is the defect itself.
+# The boundary is pinned in both directions on purpose. A guard that refused
+# one step early would take the endpoint out of the closed interval, although
+# every other range in this module includes its endpoints. A guard that
+# refused one step late would let a run display a state outside the declared
+# domain, which is the defect itself.
 
 
 def test_the_supported_run_length_is_twenty_four_hours() -> None:
     """The declared number, pinned so a silent edit fails rather than ships.
 
-    `docs/MODEL.md` § "Supported run length" argues this value from what the
-    model omits, and `core/supported_ranges.py` carries the argument and its
-    source. Moving it is a safety-critical change; moving it by accident is
-    what this catches.
+    `docs/MODEL.md` § "Supported run length" argues for this value from what
+    the model omits, and `core/supported_ranges.py` carries the argument and
+    its source. Changing the value is a safety-critical change, and this test
+    catches a change made by accident.
 
-    It is the one test meant to fail when the number moves. The tests that
+    This is the one test meant to fail when the number changes. The tests that
     check text or counts derived from the limit read
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than restating it (`PL-T5J5`),
-    so a deliberate move edits the constant, this test and that section of
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than restating it (`PL-T5J5`).
+    So a deliberate change edits the constant, this test and that section of
     `docs/MODEL.md`.
     """
 
@@ -656,25 +670,26 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
 def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_s: float) -> None:
     """The step count is whole, and the run it allows stays inside the span.
 
-    Checked across a spread of steps rather than only the shipped 0.1 s,
-    because the count is derived from the step: a step that
-    does not divide the span evenly must round *down*, leaving the last
-    completed step at or below the boundary and never past it, and the next
-    step past it.
+    The test checks a spread of steps rather than only the shipped 0.1 s,
+    because the count is derived from the step. For a step that does not
+    divide the span evenly, the count must round *down*. The last completed
+    step then lands at or below the boundary and never past it, and the next
+    step lands past it.
 
-    The last five are the regression cases (`PL-8H2R`). At
+    The last five steps are the regression cases (`PL-8H2R`). At
     `768 / 1_000_000 * 100` s, which is 0.07680000000000001, the floored
-    quotient was one step too many and stopped at 86400.00000000001 s; at
-    0.02304 s it was one short of the step that lands on 86400.0 s. At 1e-12
-    s it was eight short and at 1e-300 s further still, where many counts
-    round to one simulated time and only a search on that time finds the
-    last. At 5e-304 s the count is near the largest a float holds, so a
-    search bracket built by doubling the guess would itself overflow there.
+    quotient was one step too many, and the run stopped at 86400.00000000001 s.
+    At 0.02304 s the count was one short of the step that lands on 86400.0 s.
+    At 1e-12 s it was eight short. At 1e-300 s it was further short still.
+    There, many counts round to one simulated time, and only a search on that
+    time finds the last count. At 5e-304 s the count is near the largest value
+    a float holds, so a search bracket built by doubling the guess would itself
+    overflow.
 
-    No run can take the last three since `PL-YZ17` put them below
-    `MINIMUM_SIMULATION_STEP_S`, as none can take the four above 0.1 s. They
-    stay because `maximum_step_count` is arithmetic on the step it is handed,
-    and what they caught was in that arithmetic.
+    Since `PL-YZ17` put the last three below `MINIMUM_SIMULATION_STEP_S`, no
+    run can take them, just as no run can take the four above 0.1 s. They stay
+    because `maximum_step_count` is arithmetic on the step it is given, and the
+    defects they caught were in that arithmetic.
     """
 
     count = maximum_step_count(simulation_step_s)
@@ -685,13 +700,14 @@ def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_
 
 
 def test_every_step_in_a_family_that_rounds_both_ways_stops_inside_the_span() -> None:
-    """Swept over a family of computed steps, not only the two found by hand.
+    """The test sweeps a family of computed steps, not only the two found by hand.
 
-    The steps `0.1 / n` held 54 counts one step too many and 104 one too few
-    for n up to 2 000 before `PL-8H2R` (measured 2026-10-03), so this sweep
-    fails in both directions on a count read off the quotient alone. Each
-    step is checked on the two products that define the count, which is
-    what a run's `elapsed_s` is, rather than on the quotient.
+    Before `PL-8H2R`, the steps `0.1 / n` gave 54 counts that were one step
+    too many and 104 that were one too few, for n up to 2 000 (measured
+    2026-10-03). So this sweep fails in both directions on a count read off
+    the quotient alone. Each step is checked on the two products that define
+    the count, rather than on the quotient. Each product is what a run's
+    `elapsed_s` is at that count.
     """
 
     wrong = [
@@ -708,11 +724,11 @@ def test_every_step_in_a_family_that_rounds_both_ways_stops_inside_the_span() ->
 
 
 def test_the_step_that_lands_on_the_limit_is_counted_at_a_step_the_quotient_undercounts() -> None:
-    """0.02304 s divides 24 hours exactly in floating point, so the run reaches it.
+    """0.02304 s divides 24 hours exactly in floating point, so the run reaches the limit.
 
-    3 750 000 steps of 0.02304 s land on exactly 86400.0 s, and the quotient
+    3 750 000 steps of 0.02304 s land on exactly 86400.0 s. The quotient
     rounds down to 3 749 999, which stopped the run 0.02304 s short of the
-    limit a learner would read (`PL-8H2R`).
+    limit that a learner would read (`PL-8H2R`).
     """
 
     assert maximum_step_count(0.02304) == 3_750_000
@@ -723,8 +739,8 @@ def test_a_step_whose_quotient_overcounts_stops_one_step_earlier() -> None:
     """The count whose last step lands a float past the limit is not allowed.
 
     1 125 000 steps of `768 / 1_000_000 * 100` s land at 86400.00000000001 s,
-    which the case-instant guard refuses; the count stops at 1 124 999,
-    the last whose simulated time is inside the span (`PL-8H2R`).
+    which the case-instant guard refuses. So the count stops at 1 124 999, the
+    last count whose simulated time is inside the span (`PL-8H2R`).
     """
 
     simulation_step_s = 768 / 1_000_000 * 100
@@ -736,17 +752,17 @@ def test_a_step_whose_quotient_overcounts_stops_one_step_earlier() -> None:
 def test_the_shipped_step_reaches_the_boundary_exactly() -> None:
     """At 0.1 s the span is a whole number of steps, and the run lands on it.
 
-    Not implied by the test above, which only requires the last step to be
-    inside the span. Here it is *on* it: the last step a run may take at
-    0.1 s lands exactly on the limit, so a learner watching a run to its
-    limit reads the limit itself rather than a value a tenth of a second
-    short of it. A count one step either side lands a tenth away, so this
-    pins the count as well.
+    This is not implied by the test above, which only requires the last step
+    to be inside the span. Here the last step is *on* the boundary. The last
+    step that a run may take at 0.1 s lands exactly on the limit. So a learner
+    watching a run to its limit reads the limit itself, rather than a value a
+    tenth of a second short of it. A count one step to either side lands a
+    tenth of a second away, so this test pins the count as well.
 
-    Not a property of every limit. Every whole number of hours from 1 to 720
-    lands exactly in floating point (measured 2026-10-03, `PL-T5J5`); a limit
-    that did not would fail here, because a learner would then read a value
-    a tenth of a second short of it.
+    Landing exactly is not a property of every limit. Every whole number of
+    hours from 1 to 720 lands exactly in floating point (measured 2026-10-03,
+    `PL-T5J5`). A limit that did not land exactly would fail here, because a
+    learner would then read a value a tenth of a second short of it.
     """
 
     assert maximum_step_count(0.1) * 0.1 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -759,19 +775,20 @@ def test_a_run_may_complete_the_step_that_reaches_the_boundary() -> None:
 
 
 def test_the_step_that_would_cross_the_boundary_is_refused() -> None:
-    """Standing exactly on the limit, the next step is the one refused."""
+    """When a run stands exactly on the limit, the next step is the one refused."""
 
     with pytest.raises(SimulationDomainLimitError):
         require_supported_run_length(maximum_step_count(0.1), 0.1)
 
 
 def test_a_run_already_past_the_boundary_is_refused_too() -> None:
-    """A count beyond the limit refuses as well, rather than only equality.
+    """A count beyond the limit is refused too, not only a count equal to it.
 
-    `>=` rather than `==`, so a count past the boundary cannot step on
-    because it never met it exactly. A `SimulationState` can no longer be
-    built standing there - `require_supported_step_count` refuses it first
-    (`PL-BMY5`) - so on that path this is the second guard, not the only one.
+    The guard uses `>=` rather than `==`, so a count past the boundary cannot
+    keep stepping just because it never met the boundary exactly. A
+    `SimulationState` can no longer be built at such a count, because
+    `require_supported_step_count` refuses it first (`PL-BMY5`). So on that
+    path this guard is the second guard, not the only one.
     """
 
     with pytest.raises(SimulationDomainLimitError):
@@ -779,12 +796,12 @@ def test_a_run_already_past_the_boundary_is_refused_too() -> None:
 
 
 def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
-    """A boundary with no reason reads as an arbitrary restriction.
+    """A boundary given without a reason looks like an arbitrary restriction.
 
     The message carries the time reached, the limit, and where the limit is
-    argued, for the reason the flow refusals carry theirs: a reader who
-    cannot trace a refusal to the domain it defends cannot tell a modelling
-    limit from a bug.
+    argued. It carries them for the same reason that the flow refusals carry
+    theirs. A reader who cannot trace a refusal to the domain it protects
+    cannot tell a modelling limit from a bug.
     """
 
     with pytest.raises(SimulationDomainLimitError) as raised:
@@ -801,9 +818,10 @@ def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
 def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
     """Nothing handed in was wrong, so "correct it and carry on" is not offered.
 
-    The type is what the interface reads to decide whether to tell a reader
-    the simulator broke, so it is part of the displayed output rather than an
-    implementation detail (`docs/MODEL.md`, "Supported run length").
+    The interface uses the exception's type to decide whether to tell a reader
+    that the simulator broke. So the type is part of the displayed output
+    rather than an implementation detail (`docs/MODEL.md`, "Supported run
+    length").
     """
 
     with pytest.raises(SimulationDomainLimitError) as raised:
@@ -816,11 +834,12 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 # --- A point on the span handed in rather than reached (PL-BMY5, PL-73ZN) ---
 #
 # A branch is built where its parent stood: a `SimulationState` at the parent's
-# step count and a `RunDefinition` opening at one of its keyframes. Those are
-# values a caller passes, so they are refused as configuration errors, and the
-# step-count guard has to agree with the step's guard about where the span
-# ends - or a branch taken where its parent stopped would be refused, or one
-# no run could reach would be accepted.
+# step count, and a `RunDefinition` that opens at one of the parent's
+# keyframes. Those are values that a caller passes, so they are refused as
+# configuration errors. The step-count guard has to agree with the step's
+# guard about where the span ends. Otherwise a branch taken where its parent
+# stopped would be refused, or a branch that no run could reach would be
+# accepted.
 
 
 @pytest.mark.parametrize(
@@ -831,10 +850,11 @@ def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
 ) -> None:
     """The count a run stops on is legal to stand on and illegal to step from.
 
-    Both guards read `maximum_step_count`, so they agree at every step,
-    including the last two, at which the quotient alone put that count a step
-    either side of the span (`PL-8H2R`). Where the count falls is the next
-    test's question; this one asks only that the two count guards agree.
+    Both guards read `maximum_step_count`, so they agree at every step. That
+    includes the last two steps, at which the quotient alone put that count
+    one step to either side of the span (`PL-8H2R`). Where the count falls is
+    the next test's question. This test asks only that the two count guards
+    agree.
     """
 
     limit = maximum_step_count(simulation_step_s)
@@ -865,15 +885,16 @@ def _accepted(guard: Callable[[], None]) -> bool:
 def test_the_step_count_and_the_case_instant_bound_the_same_span(
     simulation_step_s: float, steps_past_the_limit: int
 ) -> None:
-    """A count is accepted exactly where the instant it stands at is (`PL-8H2R`).
+    """The count guard accepts a count exactly where the instant guard accepts its instant.
 
-    A branch at a bookmark is built from its parent's step count and a branch
-    at a control event from its parent's instant, so the two guards have to
-    draw the span's end in the same place or the same fork is built one way
-    and refused the other. At `768 / 1_000_000 * 100` s the count guard
-    accepted a run standing at 86400.00000000001 s, which the instant guard
-    refuses; at 0.02304 s it refused a count standing on 86400.0 s, which the
-    instant guard accepts.
+    A branch at a bookmark is built from its parent's step count, and a branch
+    at a control event is built from its parent's instant. So the two guards
+    have to put the end of the span in the same place. Otherwise the same fork
+    would be built one way and refused the other. Before `PL-8H2R`, at
+    `768 / 1_000_000 * 100` s, the count guard accepted a run standing at
+    86400.00000000001 s, which the instant guard refuses. At 0.02304 s, the
+    count guard refused a count standing on 86400.0 s, which the instant guard
+    accepts.
     """
 
     step_count = maximum_step_count(simulation_step_s) + steps_past_the_limit
@@ -886,12 +907,12 @@ def test_the_step_count_and_the_case_instant_bound_the_same_span(
 
 
 def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None:
-    """Counts rather than a time, because the counts are exact.
+    """The refusal gives counts rather than a time, because counts are exact.
 
-    One step past the limit at a step that does not divide it would print as
-    a time indistinguishable from the limit at the precision a message
-    rounds to; the count beside the largest one allowed cannot be misread.
-    The limit is read from its constant, which
+    Consider a run one step past the limit, at a step that does not divide the
+    limit evenly. Its time, printed at the precision that a message rounds to,
+    would look the same as the limit. The count, printed beside the largest count
+    allowed, cannot be misread. The limit is read from its constant, which
     `test_the_supported_run_length_is_twenty_four_hours` pins.
     """
 
@@ -910,10 +931,10 @@ def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None
 
 
 def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
-    """A computed step is named exactly, not rounded to one that reads as another.
+    """A computed step is printed exactly, not rounded to a value that looks like another step.
 
-    `768 / 1_000_000 * 100` is 0.07680000000000001; rounded to six figures it
-    would read as 0.0768, a step the run was not taken at.
+    `768 / 1_000_000 * 100` is 0.07680000000000001. Rounded to six figures, it
+    would print as 0.0768, a step at which the run was not taken.
     """
 
     simulation_step_s = 768 / 1_000_000 * 100
@@ -926,13 +947,13 @@ def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
 
 
 def test_a_step_count_too_long_to_print_is_refused() -> None:
-    """Refused with the simulator's own error, named by how long it is (`PL-5F76`).
+    """The count is refused with the simulator's own error, and named by its length (`PL-5F76`).
 
-    CPython will not print an integer past `sys.get_int_max_str_digits`
-    digits, so a refusal that printed the count raised `ValueError` while it
-    was being written, and the run-length refusal, which multiplies it by the
-    step, raised `OverflowError`. Either escaped the simulator's exceptions
-    where every guard here promises one of its own.
+    CPython will not print an integer longer than `sys.get_int_max_str_digits`
+    digits. So a refusal that printed the count raised `ValueError` while the
+    message was being written. The run-length refusal, which multiplies the
+    count by the step, raised `OverflowError`. Either error escaped the
+    simulator's exceptions, where every guard here promises one of its own.
     """
 
     too_long = 10**5000
@@ -959,11 +980,12 @@ def test_a_step_count_too_long_to_print_is_refused() -> None:
 def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> None:
     """The type refusals name a bare count the way the range refusals do (`PL-CN5S`).
 
-    Each prints what it was handed, so without `shown` a bare count past
-    `sys.get_int_max_str_digits` digits would raise `ValueError` while the
-    `TypeError` was being written, which is the escape `PL-5F76` closed for
-    the count, `PL-CN5S` never opened for the instant, and `PL-848D` closed
-    for the step and the three flows, which printed with `repr` until then.
+    Each type refusal prints the value it was given. Without `shown`, a bare
+    count longer than `sys.get_int_max_str_digits` digits would raise
+    `ValueError` while the `TypeError` was being written. `PL-5F76` closed
+    that escape for the count, and `PL-CN5S` never opened it for the instant.
+    `PL-848D` closed it for the step and the three flows, which printed with
+    `repr` until then.
     """
 
     too_long = 10**5000
@@ -1001,7 +1023,7 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
 
 @pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])
 def test_a_case_instant_is_supported_over_the_closed_span(instant_s: float) -> None:
-    """Both ends included, like every interval here: a run may stand on the far end."""
+    """Both ends are included, like every interval here, so a run may stand on the far end."""
 
     require_supported_case_instant(instant_s)
 
@@ -1022,7 +1044,7 @@ def test_a_case_instant_outside_the_span_is_refused(instant_s: float) -> None:
     """Refused on either side, and when it is not a finite number at all.
 
     `nan` fails every comparison, so a guard written only as a test against
-    the maximum would let it through; one expression refuses every case with
+    the maximum would let it through. One expression refuses every case with
     one message, as `_require_supported` does for the flows.
     """
 
@@ -1049,14 +1071,15 @@ def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
 
 # --- The case instant and the step count are types (PL-CN5S) ----------------
 #
-# As each flow is above: the instant is checked against the span once, where it
-# is built as a `CaseInstant`, and the count for what a count can be checked for
-# alone - whole and nonnegative - once, where it is built as a `StepCount`. How
-# many steps fit depends on the step, so that half stays with the record
-# holding the pair, `SimulationState`. Each type holds what it was built from,
-# refuses in its check's own words, and comes back from a copy as itself; the
-# test modules of the records that store them hold each one to refusing a
-# value that was never built as the type.
+# These types work as each flow does above. The instant is checked against the
+# span once, where it is built as a `CaseInstant`. The count is checked once,
+# where it is built as a `StepCount`, for what a count can be checked for on
+# its own: that it is whole and nonnegative. How many steps fit depends on the
+# step, so that half of the check stays with the record that holds the pair,
+# `SimulationState`. Each type keeps what it was built from, refuses in its
+# check's own words, and comes back from a copy as itself. The test modules of
+# the records that store these types check that each record refuses a value
+# that was never built as the type.
 
 
 @pytest.mark.parametrize(
@@ -1071,7 +1094,7 @@ def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
     ],
 )
 def test_a_case_instant_is_the_instant_it_was_built_from_exactly(instant_s: float) -> None:
-    """Bit for bit, at both ends of the span and between, as each flow is."""
+    """Like a flow, an instant keeps its value bit for bit, at the span's ends and between."""
 
     built = CaseInstant(instant_s)
 
@@ -1081,7 +1104,7 @@ def test_a_case_instant_is_the_instant_it_was_built_from_exactly(instant_s: floa
 
 
 def test_a_case_instant_refuses_what_its_guard_refuses_in_the_guards_words() -> None:
-    """One check, so the type can neither admit what the guard refuses nor word it differently."""
+    """The type and its guard share one check, so they reject the same values in the same words."""
 
     for instant_s in (
         nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
@@ -1104,17 +1127,18 @@ def test_a_case_instant_refuses_what_its_guard_refuses_in_the_guards_words() -> 
 def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words() -> None:
     """An instant is built from an int or a float and nothing else, and has no sign at zero.
 
-    Each of `NOT_A_NUMBER` is refused by the guard and the type alike, before
-    any comparison reads it, with a `TypeError` in the simulator's words
-    naming the value and its type, as each flow refuses it (`PL-LLMN`). Until
-    `PL-7N8P` `True` and `numpy.True_` were each an instant of 1 s on the
-    case's axis, `Decimal('2.5')` one of 2.5 s, and the string and the
-    signalling NaN escaped in `math.isfinite`'s words. An `int` past the
-    float range is compared exactly and refused against the run length, in
-    the words any instant outside it is, where `isfinite` raised
-    `OverflowError`; one too long to print is named by how long it is, as a
-    refused count is (`PL-5F76`). Minus zero is held as zero, and an `int` is
-    admitted as a `float` is.
+    The guard and the type both refuse each value in `NOT_A_NUMBER`, before
+    any comparison reads it. The refusal is a `TypeError` in the simulator's
+    words that names the value and its type, as each flow's refusal does
+    (`PL-LLMN`). Until `PL-7N8P`, `True` and `numpy.True_` were each an
+    instant of 1 s on the case's axis, and `Decimal('2.5')` was an instant of
+    2.5 s. The string and the signalling NaN escaped in `math.isfinite`'s
+    words. An `int` past the float range is compared exactly and refused
+    against the run length, in the same words as any other instant outside it.
+    Before that fix, `isfinite` raised `OverflowError` for such an int. An int
+    too long to print is named by its length, as a refused count is
+    (`PL-5F76`). Minus zero is stored as zero, and an `int` is accepted just as
+    a `float` is.
     """
 
     for value in NOT_A_NUMBER:
@@ -1156,18 +1180,18 @@ def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_o
 
 
 def _id(value: object) -> str:
-    """A parameter's test id, naming a count too long to print by how long it is."""
+    """Return a parameter's test id, naming a count too long to print by its length."""
 
     return describe_count(value) if isinstance(value, int) else repr(value)
 
 
 @pytest.mark.parametrize("step_count", [0, 1, 864_000, 2**63, 10**5000], ids=_id)
 def test_a_step_count_is_any_whole_nonnegative_count_however_long(step_count: int) -> None:
-    """Whole and nonnegative is all a count is checked for alone.
+    """On its own, a count is checked only for being whole and nonnegative.
 
     A count past the span is built here, because whether it is past the span
-    depends on the step it is paired with: `SimulationState` refuses the
-    pair, and names a count too long to print by how long it is.
+    depends on the step it is paired with. `SimulationState` refuses the pair,
+    and names a count too long to print by its length.
     """
 
     built = StepCount(step_count)
@@ -1179,11 +1203,11 @@ def test_a_step_count_is_any_whole_nonnegative_count_however_long(step_count: in
 
 @pytest.mark.parametrize("step_count", [-1, -(10**5000)], ids=_id)
 def test_a_step_count_refuses_what_is_not_a_whole_nonnegative_count(step_count: object) -> None:
-    """In the words `SimulationState` used for it before the count was a type.
+    """The refusal uses the words that `SimulationState` used before the count was a type.
 
-    A count below zero stands before the run began, and is the one refusal
-    left to a configuration error: what is not an `int` at all is a
-    programming error, below.
+    A count below zero would stand before the run began. It is the one refusal
+    left as a configuration error, because a value that is not an `int` at all
+    is a programming error, as the next test shows.
     """
 
     with pytest.raises(SimulationConfigurationError, match="whole, nonnegative number of steps"):
@@ -1192,15 +1216,15 @@ def test_a_step_count_refuses_what_is_not_a_whole_nonnegative_count(step_count: 
 
 @pytest.mark.parametrize("step_count", [2.5, 2.0, nan, inf, True, False, "3", None], ids=_id)
 def test_a_step_count_refuses_what_is_not_an_int_as_a_programming_error(step_count: object) -> None:
-    """A `TypeError`, as the flows refuse what is not a number (`PL-LLMN`).
+    """The refusal is a `TypeError`, as when a flow refuses what is not a number (`PL-LLMN`).
 
-    `2.0` is whole and is refused all the same: a count is an `int`, so a
+    `2.0` is whole and is refused all the same. A count is an `int`, so a
     `float` handed in is a sign that something computed it as a time. A
     `bool` is an `int` to Python and is refused with the rest, which
     `SimulationState` did not do before the count was a type: `True` is not a
-    count of steps. Until `PL-LLMN` these were configuration errors, and a
-    caller catching the exception a refused setting raises would have caught
-    its own slip with it.
+    count of steps. Until `PL-LLMN`, these were configuration errors. A caller
+    that caught the exception a refused setting raises would have caught its
+    own mistake along with it.
     """
 
     with pytest.raises(TypeError) as raised:
@@ -1212,13 +1236,13 @@ def test_a_step_count_refuses_what_is_not_an_int_as_a_programming_error(step_cou
 
 
 def test_arithmetic_on_an_instant_or_a_count_is_a_plain_number() -> None:
-    """What is derived from one is not checked, and must not read as checked.
+    """A value derived from an instant or a count is not checked, and must not look checked.
 
-    The instant one step past the end of the span is past it, and so is the
-    count one step past the last a run may take at the coarsest step; were
-    either sum still the type, it would carry a promise of a check that never
-    ran. `SimulationState` builds the type again where it stores the next
-    count and where it reports the instant it stands at.
+    The instant one step past the end of the span is outside the span. So is
+    the count one step past the last step that a run may take at the coarsest
+    step. If either sum were still the type, it would promise a check that
+    never ran. `SimulationState` builds the type again where it stores the
+    next count and where it reports the instant it stands at.
     """
 
     at_the_end = CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S)
@@ -1234,7 +1258,7 @@ def test_arithmetic_on_an_instant_or_a_count_is_a_plain_number() -> None:
 
 @pytest.mark.parametrize("built", [CaseInstant(600.0), StepCount(6_000)], ids=repr)
 def test_an_instant_and_a_count_survive_copy_and_pickle_as_their_types(built: object) -> None:
-    """Rebuilt through the type's own constructor, so the check runs again and the type is kept."""
+    """Each is rebuilt through its type's constructor, which checks it again and keeps the type."""
 
     for copied in (copy.copy(built), copy.deepcopy(built), pickle.loads(pickle.dumps(built))):
         assert type(copied) is type(built)
@@ -1242,12 +1266,12 @@ def test_an_instant_and_a_count_survive_copy_and_pickle_as_their_types(built: ob
 
 
 def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
-    """The runtime half of each type refuses the missing check, not the number.
+    """Each type refuses an unchecked value for the missing check, not for its number.
 
-    An equal plain number, a `bool` and `None` are each refused by name, and
-    the refusal says what to build without repeating the value as the thing
-    to build it from: `CaseInstant(True)` was built, as 1 s, until `PL-7N8P`,
-    and `StepCount(None)` never was.
+    An equal plain number, a `bool` and `None` are each refused by name. The
+    refusal says what to build, without offering the value as the thing to
+    build it from. `CaseInstant(True)` was built, as 1 s, until `PL-7N8P`, and
+    `StepCount(None)` never was.
     """
 
     for unbuilt in (600.0, 600, True, None):
@@ -1285,12 +1309,12 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
 def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argument(
     other: object,
 ) -> None:
-    """Named as the quantity it was built as, and not told to rebuild as an instant.
+    """The refusal names what the value was built as, and does not say to rebuild it as an instant.
 
     A count of 600 steps, or the 0.1 s step, arriving where an instant belongs
     is a swapped argument. A refusal that prescribed `CaseInstant(600)` would
-    have the caller build an instant of 600 s from it, which passes every
-    check and is the wrong quantity, so the message prescribes nothing.
+    have the caller build an instant of 600 s from it. That instant passes
+    every check and is the wrong quantity, so the message prescribes nothing.
     """
 
     with pytest.raises(TypeError) as raised:
@@ -1319,7 +1343,7 @@ def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argume
 def test_another_quantity_handed_in_as_a_count_is_refused_as_a_swapped_argument(
     other: object,
 ) -> None:
-    """Named as the quantity it was built as, and not told to rebuild as a count."""
+    """The refusal names what the value was built as, and does not say to rebuild it as a count."""
 
     with pytest.raises(TypeError) as raised:
         require_step_count(other)
@@ -1333,22 +1357,23 @@ def test_another_quantity_handed_in_as_a_count_is_refused_as_a_swapped_argument(
 
 # --- The model envelope against the machine's range (PL-8PS6) ---------------
 
-# The two claims coincided in one pair of constants until PL-8PS6. The module
-# above declares the *model's* envelope; a machine profile declares what that
-# machine can physically set, and the effective limit on the control is the
-# intersection. What the test below pins is that neither can be mistaken for
-# the other: a machine range narrower than the envelope refuses in the
-# machine's name, and a flow outside the envelope refuses in the model's name
-# even on a machine that could deliver it.
+# The two claims shared one pair of constants until PL-8PS6. The module above
+# declares the *model's* envelope. A machine profile declares what that machine
+# can physically set. The effective limit on the control is the intersection of
+# the two. The test below pins that neither limit can be mistaken for the
+# other. A machine range narrower than the envelope refuses in the machine's
+# name. A flow outside the envelope is refused in the model's name, even on a
+# machine that could deliver it.
 
 
 def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> None:
-    """Each side refuses in its own name, so a reader can tell which bound bit.
+    """Each limit refuses in its own name, so a reader can tell which limit applied.
 
     The safety property is the second assertion rather than the first. A
     machine whose flowmeter runs past the envelope must not widen the domain
-    the compartment model is claimed over - so the flow it *can* deliver is
-    still refused, and the refusal says the model is what refused it.
+    over which the compartment model is claimed to hold. So the flow that the
+    machine *can* deliver is still refused, and the refusal says that the
+    model refused it.
     """
 
     machine_range = DeliverableFreshGasFlowRange(

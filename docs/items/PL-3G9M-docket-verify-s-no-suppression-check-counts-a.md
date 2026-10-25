@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: verify-false-reject
+milestone: v0.6.7
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25

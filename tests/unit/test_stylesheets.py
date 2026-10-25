@@ -1,13 +1,14 @@
-"""Tests for `app/stylesheets.py`: each stylesheet composed in one place, and no toolkit there.
+"""Tests for `app/stylesheets.py`: each stylesheet is composed in one place that loads no toolkit.
 
-`PL-Y4YX` moved the ten composers the view modules held into one module beside
-`app/theme.py` and kept the toolkit out of both (project owner, 2026-10-03,
-ratified). Two properties make that more than a file move, and each is held
-here: the module imports with no toolkit loaded, which is why it could sit
-beside the theme at all, and every stylesheet a widget under `app/` is given is
-a call to one of its composers, which is what making each visual decision once
-means in the tree. What the strings draw is held where a widget is built to
-show it, in `tests/integration/`.
+`PL-Y4YX` moved the ten composers that the view modules held into one module
+beside `app/theme.py`, and kept the toolkit out of both (project owner,
+2026-10-03, ratified). Two properties make that more than a file move, and
+this file tests each of them. First, the module imports with no toolkit
+loaded, which is why it could sit beside the theme at all. Second, every
+stylesheet given to a widget under `app/` is a call to one of its composers.
+That is what making each visual decision once means in the code. What the
+strings draw is tested where a widget is built to show it, in
+`tests/integration/`.
 """
 
 import ast
@@ -21,7 +22,7 @@ from anesthesia_sim.app import stylesheets, theme
 #: The interface's package directory, which every module styling a widget is in.
 APP = Path(stylesheets.__file__).parent
 
-#: The packages the interface's toolkit arrives as.
+#: The top-level packages that make up the interface's toolkit.
 TOOLKIT_PACKAGES = frozenset({"PySide6", "shiboken6", "pyqtgraph"})
 
 #: Every function the module defines, which is every composer it offers.
@@ -31,19 +32,21 @@ COMPOSERS = frozenset(
     if member.__module__ == stylesheets.__name__
 )
 
-#: The modules that style a widget today. Held so that the walk below cannot
-#: pass by reading nothing, which a moved package or a renamed method would do.
+#: The modules that style a widget today. They are listed so that the walk
+#: below cannot pass by finding nothing, as it would after a package moved or a
+#: method was renamed.
 STYLING_MODULES = frozenset(
     {"qt_chart.py", "qt_widgets.py", "run_surfaces.py", "run_view.py", "simulation_view.py"}
 )
 
 
 def test_the_composers_import_with_no_toolkit_loaded() -> None:
-    """A fresh interpreter imports the module, and the theme under it, and holds no toolkit.
+    """A fresh interpreter imports the module and the theme it uses, and loads no toolkit.
 
-    Run apart from this session, which the integration tests have already
-    loaded PySide6 into, so that what is measured is what the import itself
-    costs - including anything `app/theme.py` imports on its behalf.
+    The import runs in a separate process, because the integration tests
+    have already loaded PySide6 into this one. The test therefore measures
+    only what the import itself loads, including anything that `app/theme.py`
+    imports on the module's behalf.
     """
 
     loaded = subprocess.run(
@@ -64,10 +67,11 @@ def test_the_composers_import_with_no_toolkit_loaded() -> None:
 
 
 def test_the_module_imports_nothing_but_the_theme_and_the_standard_library() -> None:
-    """An import inside a composer would load the toolkit after the import above had passed.
+    """An import inside a composer would load the toolkit after the test above had passed.
 
-    It could name the toolkit, or a view module that imports it, so what is
-    bounded is everything the module imports rather than the toolkit's names.
+    Such an import could name the toolkit, or a view module that imports the
+    toolkit. The test therefore limits everything the module imports, rather
+    than checking only for the toolkit's names.
     """
 
     tree = ast.parse(Path(stylesheets.__file__).read_text(encoding="utf-8"))
@@ -88,7 +92,7 @@ def test_the_module_imports_nothing_but_the_theme_and_the_standard_library() -> 
 
 
 def _composer_names(tree: ast.Module) -> frozenset[str]:
-    """The names a module imports composers under, less any it also binds to something else."""
+    """Return the names under which a module imports composers, minus any it also rebinds."""
 
     imported = {
         alias.asname or alias.name
@@ -115,10 +119,11 @@ def _composer_names(tree: ast.Module) -> frozenset[str]:
 
 
 def _stylesheet_writes(tree: ast.Module) -> list[tuple[int, ast.expr | None]]:
-    """Each stylesheet a module gives a widget, with its line, or None where its shape is not one.
+    """Return each stylesheet that a module gives a widget, with its line number.
 
-    Qt takes one three ways: `setStyleSheet`, the `styleSheet=` keyword its
-    constructors accept, and `setProperty("styleSheet", ...)`.
+    The stylesheet is None where the call does not have the expected shape.
+    Qt accepts a stylesheet in three ways: `setStyleSheet`, the `styleSheet=`
+    keyword its constructors accept, and `setProperty("styleSheet", ...)`.
     """
 
     writes: list[tuple[int, ast.expr | None]] = []
@@ -146,14 +151,15 @@ def _stylesheet_writes(tree: ast.Module) -> list[tuple[int, ast.expr | None]]:
 
 
 def test_every_stylesheet_under_app_is_a_composer_call() -> None:
-    """A stylesheet written out where a widget is given it is a visual decision made a second time.
+    """A stylesheet written out at the widget that uses it repeats a visual decision.
 
-    Each one must be a call to a function `app/stylesheets.py` defines, by a
-    name the module imports it under and binds to nothing else. A colour a
-    widget's role decides is still passed at the call site -
-    `foreground_stylesheet(MUTED)` - so the method `tools/contrast_check.py`
-    cites for a pair is where the pair is chosen; what may not be written
-    there is the stylesheet itself.
+    Each stylesheet must be a call to a function that `app/stylesheets.py`
+    defines. The call must use the name under which the module imports that
+    function, and the module must bind that name to nothing else. A colour
+    that a widget's role decides is still passed at the call site, as in
+    `foreground_stylesheet(MUTED)`. The method that `tools/contrast_check.py`
+    cites for a colour pair is therefore where the pair is chosen. What may
+    not be written there is the stylesheet itself.
     """
 
     writes_read: dict[str, int] = {}

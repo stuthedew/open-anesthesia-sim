@@ -64,9 +64,9 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 def _advance_for(controller: SimulationController, duration_s: float) -> None:
     """Advance a running controller to `duration_s` at the largest supported step.
 
-    Simulated time comes from taking supported steps rather than from asking
-    for one large one: `MAXIMUM_SIMULATION_STEP_S` is the declared
-    control-resolution tolerance, and a step past it is refused.
+    The helper reaches the simulated time by taking many supported steps, not
+    by asking for one large step. `MAXIMUM_SIMULATION_STEP_S` is the declared
+    control-resolution tolerance, and the controller refuses a longer step.
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
@@ -74,18 +74,19 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
-    """Make the tissue flows sum to `cardiac_output_l_min`, past the tissues' guard.
+    """Make the tissue flows sum to `cardiac_output_l_min`, bypassing the tissues' guard.
 
-    Each tissue's perfusion fraction is scaled by `cardiac_output_l_min` over
-    the patient's output, and written past the tissue's own guard. The patient
-    keeps its output. The settings record that a run's definition opens on
-    then refuses the tissue flows, because they no longer sum to the output.
-    It refuses them at the next step and at Reset (`PL-M4M0`), and no setting
-    repairs them. No guarded write can make this record now. Every flow is
-    formed from the output (`PL-HQF5`), and a fraction is written once
-    (`PL-Z0HN`). Until then, a tissue's `set_blood_flow` made it, and a
-    cardiac output change repaired it. `_with_the_tissue_fractions_put_back`
-    stands in for that repair.
+    Each tissue's perfusion fraction is multiplied by `cardiac_output_l_min`
+    divided by the patient's cardiac output. The new fraction is written
+    directly, bypassing the tissue's own guard. The patient's cardiac output
+    does not change. The settings record that opens the run's definition then
+    rejects the tissue flows, because they no longer sum to the cardiac output.
+    It rejects them at the next step and at Reset (`PL-M4M0`), and no setting
+    repairs them. No guarded write can produce this record now. Every flow is
+    computed from the cardiac output (`PL-HQF5`), and a fraction is written
+    only once (`PL-Z0HN`). Before those changes, a tissue's `set_blood_flow`
+    could produce the record, and a change of cardiac output repaired it.
+    `_with_the_tissue_fractions_put_back` stands in for that repair.
     """
 
     patient = controller._state.uptake_system.patient
@@ -96,10 +97,10 @@ def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_
 
 
 def _with_the_tissue_fractions_put_back(controller: SimulationController) -> None:
-    """Write back the reference adult's perfusion fractions, past the tissues' guard.
+    """Write back the reference adult's perfusion fractions, bypassing the tissues' guard.
 
-    The fractions are typed from `data/patients/reference_adult.json`. With
-    them back, the settings record no longer refuses the tissue flows.
+    The fractions are typed in by hand from `data/patients/reference_adult.json`.
+    Once they are back, the settings record no longer rejects the tissue flows.
     """
 
     for tissue, fraction in zip(
@@ -139,9 +140,9 @@ def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> N
     """Regression (PL-015): an explicitly requested fraction above a
     vaporizer's real maximum must fail, not be silently clamped.
 
-    Clamping produced a run whose every displayed value came from a dial
-    position the caller never asked for, which is indistinguishable on
-    screen from one they did.
+    Clamping produced a run in which every displayed value came from a dial
+    position the caller never asked for. On screen, that run looked exactly
+    like a run at a position they had asked for.
     """
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
@@ -263,9 +264,11 @@ def test_controller_can_be_constructed_for_a_different_agent() -> None:
 
 
 def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration() -> None:
-    """Circuit, flow, ventilation, and cardiac output carry over; the
-    delivered concentration resets to the new agent's own 1 MAC instead
-    (see test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac).
+    """The circuit volume, fresh gas flow, ventilation and cardiac output carry over.
+
+    The delivered concentration does not. It resets to the new agent's own
+    1 MAC instead (see
+    test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac).
     """
 
     controller = SimulationController(
@@ -303,7 +306,7 @@ _ORDERED_AGENT_PAIRS = tuple(permutations(AGENT_DATA_FILENAMES, 2))
 
 
 def _run_with_non_default_settings(agent_id: str) -> SimulationController:
-    """A paused run of `agent_id` whose four carried settings are not the defaults.
+    """A paused run of `agent_id` whose four carried-over settings are not the defaults.
 
     The data files give a 6.0 L circuit, 4.0 L/min of fresh gas, 4.0 L/min of
     alveolar ventilation and 5.0 L/min of cardiac output. Each value here
@@ -325,9 +328,10 @@ def _switched_after_a_run_of(previous_agent_id: str, new_agent_id: str) -> Simul
     """A run of `previous_agent_id` that has taken up agent, then switched to `new_agent_id`.
 
     Before the switch the run has taken 90 s of uptake into every compartment,
-    with the dial moved to 1.5 times the previous agent's MAC at 60 s. So
-    the compartments hold agent, the dial is off its default and the timeline
-    holds a change. A switch that kept any of these would show it.
+    with the dial moved to 1.5 times the previous agent's MAC at 60 s. So the
+    compartments contain agent, the dial is not at its default, and the
+    timeline contains a change. A switch that kept any of these would show
+    the difference.
     """
 
     run = _run_with_non_default_settings(previous_agent_id)
@@ -389,9 +393,9 @@ def test_a_switched_run_branches_as_a_fresh_run_of_that_agent_does(
     A branch rebuilds its agent and patient from the data files. Before it
     opens, `_branch_from` refuses a branch whose rebuilt settings differ from
     the settings of the run it comes from. So a switch that kept the previous
-    agent's patient is refused here, with the coefficient that differs named.
-    A switch that is right gives the branch that a fresh run of the new agent
-    gives.
+    agent's patient is refused here, and the error names the coefficient that
+    differs. A correct switch gives the same branch that a fresh run of the
+    new agent gives.
     """
 
     branches = []
@@ -444,10 +448,10 @@ def test_start_advance_pause_sequence_is_deterministic() -> None:
 def _samples_a_snapshot_carries(controller: SimulationController) -> int:
     """Count the recorded samples reachable from one `snapshot()`.
 
-    Walked over the fields rather than asserted against a named one,
-    because the defect this guards is a *field* - any field - that carries
-    the run. Naming one would go on passing after it was renamed or
-    replaced by a second copy under another name.
+    The helper walks every field rather than checking one named field. The
+    defect it guards against is a *field*, any field, that carries the run. A
+    check of one named field would keep passing after that field was renamed,
+    or after a second copy appeared under another name.
     """
 
     snapshot = controller.snapshot()
@@ -465,20 +469,20 @@ def _samples_a_snapshot_carries(controller: SimulationController) -> int:
 
 
 def test_a_frame_reads_only_the_window_it_draws() -> None:
-    """PL-0VM7: what crosses this boundary is the window, never the run.
+    """PL-0VM7: only the drawn window crosses this boundary, never the whole run.
 
-    A frame's cost was proportional to how long the simulation had been
-    running: `snapshot()` copied every sample ever recorded, five times a
-    second, and the chart discarded all but the few hundred inside its
-    axis. Timing is too flaky to assert, so the count of values crossing
-    the boundary is asserted instead - it is the quantity the cost was
-    proportional to, and it is exact.
+    A frame's cost used to be proportional to how long the simulation had
+    been running. `snapshot()` copied every sample ever recorded, five times
+    a second, and the chart discarded all but the few hundred inside its
+    axis. Timing is too flaky to assert, so the test asserts the count of
+    values that cross the boundary instead. The cost was proportional to that
+    count, and the count is exact.
 
-    Stronger since `PL-2FM6` than it was written to be: the window is the
-    states at the instants drawn, so it is bounded by the column budget
-    outright rather than by the window's width in samples. Two runs an
-    order of magnitude apart, read at the same axis, hand over the same
-    number of states.
+    Since `PL-2FM6`, the test is stronger than it was written to be. The
+    window holds the states at the drawn instants, so the column budget
+    bounds it directly, not the window's width in samples. Two runs whose
+    lengths differ by an order of magnitude, read at the same axis, hand over
+    the same number of states.
     """
 
     window_s = 30.0
@@ -496,28 +500,29 @@ def test_a_frame_reads_only_the_window_it_draws() -> None:
             "the snapshot is carrying recorded history again"
         )
         assert len(window.times_s) <= 150 + 2
-        # The window is the run's tail, and it ends on the instant the
+        # The window is the end of the run, and it ends at the instant the
         # readouts were built from.
         assert window.times_s[0] == pytest.approx(elapsed_s - window_s)
         assert window.times_s[-1] == pytest.approx(elapsed_s)
 
         drawn.append(len(window.times_s))
 
-    # The run grew ten-fold; what one frame reads did not grow with it. The
-    # single column of slack is the grid's phase rather than growth: columns
-    # are multiples of the spacing measured from `t = 0`, so two windows of
-    # equal width sitting at different points on that grid fit one more or
-    # one fewer of them.
+    # The run grew ten-fold, but the amount one frame reads did not grow with
+    # it. The one column of slack comes from where each window sits on the
+    # grid, not from growth. Columns fall at multiples of the spacing measured
+    # from `t = 0`. So two windows of equal width at different places on that
+    # grid can hold one column more or one column fewer.
     assert abs(drawn[1] - drawn[0]) <= 1
 
 
 def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
-    """The trace's right-hand end and the metrics beside it are one instant.
+    """The right-hand end of the trace and the metrics beside it show the same instant.
 
-    Split across two reads by PL-0VM7, so the property that was previously
-    structural - one snapshot carried both - is now asserted. A window
-    ending one sample short of the readouts would draw a chart that
-    disagreed with the numbers printed beside it.
+    PL-0VM7 split the trace and the metrics into two separate reads. Before
+    that, one snapshot carried both, so they agreed by structure. Now the test
+    asserts that they agree. A window that ended one sample before the
+    readouts would draw a chart that disagreed with the numbers printed
+    beside it.
     """
 
     controller = SimulationController()
@@ -541,20 +546,21 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
 
 
 def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> None:
-    """The same pairing, audited against the state vector the chart draws from.
+    """Audit the same pairing against the state vector that the chart draws from.
 
-    `COMPARTMENT_STATE_INDEX` is what `_build_history_sample` was once the
-    chart evaluates the run definition instead of reading recorded samples
-    (`PL-2FM6`): a position in `governing_equations`' state order rather
-    than a compartment accessor. It is the one place a trace could come to
-    carry another compartment's values, and a swap here would reach a
-    labelled curve drawn entirely from numbers the model really produced -
-    which is why it is audited against the core rather than restated.
+    `COMPARTMENT_STATE_INDEX` took over the pairing that `_build_history_sample`
+    held, once the chart began evaluating the run definition instead of
+    reading recorded samples (`PL-2FM6`). Each entry is a position in
+    `governing_equations`' state order, not a compartment accessor. This table
+    is the one place where a trace could come to carry another compartment's
+    values. A swap here would put a curve under the wrong label, drawn
+    entirely from numbers the model really produced. That is why the test
+    checks the table against the core rather than restating it.
 
-    The three tissue groups are the entries worth the audit: they are
-    consecutive positions from `FIRST_TISSUE_FRACTION`, so this table
-    assumes `PatientCompartmentsState.tissues`' order and would keep
-    passing every other check if that order changed.
+    The three tissue groups are the entries most worth the audit. They sit at
+    consecutive positions starting from `FIRST_TISSUE_FRACTION`, so the table
+    assumes the order of `PatientCompartmentsState.tissues`. If that order
+    changed, the table would keep passing every other check.
     """
 
     controller = SimulationController()
@@ -575,24 +581,25 @@ def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> No
         RecordedQuantity.FAT: system.patient.fat.partial_pressure_fraction,
     }
 
-    # Every compartment the interface draws has an entry, and the derived
-    # ratio has none: it is a quotient of two of these rather than a state.
+    # Every compartment the interface draws has an entry. The derived ratio
+    # has none, because it is the quotient of two of these, not a state.
     assert set(COMPARTMENT_STATE_INDEX) == set(COMPARTMENT_QUANTITIES)
     assert RecordedQuantity.WASH_IN_RATIO not in COMPARTMENT_STATE_INDEX
 
-    # ...and sixty seconds in they are far enough apart that a swap shows.
+    # Sixty seconds into the run, the values are far enough apart that a
+    # swap would show.
     drawn = [state[COMPARTMENT_STATE_INDEX[quantity]] for quantity in COMPARTMENT_QUANTITIES]
     assert len(set(drawn)) == len(drawn)
     assert drawn[0] > 100.0 * drawn[-1]
 
 
 def test_a_run_records_the_agent_it_is_a_run_of() -> None:
-    """The substance a sample is keyed by is the agent the snapshot names.
+    """The substance that keys a sample is the agent that the snapshot names.
 
-    They are read together on every frame - the view addresses the run
-    under `snapshot.agent_id` - so a run recorded under any other
-    identifier would raise rather than draw, and `set_agent` has to leave
-    the two agreeing.
+    The view reads the two together on every frame, because it looks the run
+    up under `snapshot.agent_id`. A run recorded under any other identifier
+    would raise an error instead of drawing. So `set_agent` must leave the
+    two in agreement.
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -626,9 +633,9 @@ def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
     for start_s in (0.0, 0.05, 7.3, 19.9, 20.0):
         window = controller.drawn_window(start_s, elapsed_s, 150)
 
-        # Exactly the edge asked for, rather than the first sample at or
-        # after it: a column is evaluated wherever it is wanted, so there
-        # is no longer a cut that could land inside the drawn window.
+        # The window starts exactly at the requested edge, not at the first
+        # sample at or after it. A column is evaluated wherever it is needed,
+        # so no cut can land inside the drawn window any more.
         assert window.times_s[0] == pytest.approx(start_s)
         assert window.times_s[-1] == pytest.approx(elapsed_s)
 
@@ -668,22 +675,22 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     assert after.fresh_gas_flow_l_min == 3.0
     assert after.delivered_concentration_percent == 6.0
     # The circuit volume is a fixed model parameter, so a settings change
-    # must leave it exactly where the session was built with it (`PL-GYH2`).
+    # must leave it at exactly the value the session was built with (`PL-GYH2`).
     assert after.circuit_volume_l == before.circuit_volume_l
 
 
 def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> None:
-    """`PL-GYH2`: the app layer offers no route to the circuit volume.
+    """`PL-GYH2`: the app layer offers no way to change the circuit volume.
 
-    It is set once, from the value this controller is built with, and no
-    interface control reaches it thereafter. The setter that used to sit on
-    `SimulationController` was public and unbounded, so it let any caller of
-    the app layer put the circuit outside the domain `docs/MODEL.md`
-    verifies - for a control the interface has never offered. Asserted on
-    the class rather than on an instance so that re-adding the method fails
-    here whatever a run has done.
+    The volume is set once, from the value this controller is built with, and
+    no interface control can change it after that. The setter that used to be
+    on `SimulationController` was public and had no bounds. Any caller of the
+    app layer could use it to put the circuit outside the domain that
+    `docs/MODEL.md` verifies, through a control the interface has never
+    offered. The test asserts on the class rather than on an instance, so
+    re-adding the method fails here whatever a run has done.
 
-    `BreathingCircuit.set_circuit_volume` is deliberately untouched: it is
+    `BreathingCircuit.set_circuit_volume` is deliberately left in place. It is
     how the parameter reaches the circuit at all, and it is where the
     conservation and capacity guards live (`PL-006`, `tests/unit/test_circuit.py`).
     """
@@ -699,10 +706,10 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
 
 
 def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
-    """`is_running` alone cannot carry the difference, so the reason does.
+    """`is_running` alone cannot show the difference, so the failure reason does.
 
-    A pause and a failure both stop the run, but only one of them leaves
-    state a reader can trust. The snapshot has to say which it is.
+    A pause and a failure both stop the run, but only a pause leaves a state
+    that a reader can trust. The snapshot has to say which one happened.
     """
 
     controller = SimulationController()
@@ -753,7 +760,7 @@ def test_a_failed_session_does_not_advance() -> None:
 
 
 def test_the_first_failure_reason_is_the_one_kept() -> None:
-    """A later raise reacting to the same broken state must not mask it."""
+    """A later error raised by the same broken state must not hide the first reason."""
 
     controller = SimulationController()
     controller.start()
@@ -822,21 +829,22 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
 
 
 class _FatThatRefusesTheStep(TissueGroup):
-    """A fat group that refuses the fraction the exact step hands it.
+    """A fat group that rejects the fraction that the exact step gives it.
 
-    Until `PL-GS5X` these tests reached a failing step through the model, on
-    a patient file whose lungs one supported step of uptake could overdraw.
-    The exact step closed that route for good rather than for these numbers:
-    it is the solution of a system whose every off-diagonal entry is a
-    transfer rate, so its propagator is entrywise nonnegative and no
-    parameter set can make it carry a compartment out of range.
+    Until `PL-GS5X`, these tests reached a failing step through the model
+    itself. They used a patient file in which one supported step of uptake
+    could draw more agent from the lungs than the lungs held. The exact step
+    closed that route for good, not only for those numbers. The exact step is
+    the solution of a system in which every off-diagonal entry is a transfer
+    rate. So its propagator is nonnegative in every entry, and no parameter
+    set can make it carry a compartment out of range.
 
-    What these tests are about is unchanged and still worth covering - that a
-    numerical failure reaching the app boundary halts the run, leaves the
-    chart history alone and leaves every displayed value bit-identical - so
-    the failure is injected here instead. `tests/unit/
-    test_uptake_system_failure.py` carries the same construction and the
-    reasoning behind it; fat is the group armed because
+    What these tests check has not changed and is still worth covering. A
+    numerical failure that reaches the app boundary must halt the run, leave
+    the chart history alone and leave every displayed value bit-identical.
+    So the failure is injected here instead. `tests/unit/
+    test_uptake_system_failure.py` uses the same construction and explains
+    the reasoning behind it. Fat is the group that is armed, because
     `_write_state_vector` writes it last.
     """
 
@@ -847,7 +855,7 @@ class _FatThatRefusesTheStep(TissueGroup):
 
 
 def _controller_one_setting_from_a_failed_step() -> SimulationController:
-    """A run 60 s in, whose next step a compartment refuses mid-write."""
+    """A run 60 s in, whose next step a compartment rejects partway through the write."""
 
     controller = SimulationController(agent_id="isoflurane")
     controller.start()
@@ -868,14 +876,14 @@ def _controller_one_setting_from_a_failed_step() -> SimulationController:
 
 
 def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
-    """PL-026 end to end, at the boundary the chart is actually drawn from.
+    """PL-026 end to end, at the boundary that the chart is actually drawn from.
 
-    The item's complaint was about what a halted run displays, and the
-    traces are drawn from the recorded history rather than from the
-    compartments directly. A failed step must therefore leave the history
-    exactly as long as it was, ending on the same sample: a history one
-    entry longer would put a point on the chart that no completed step
-    produced, at a simulation time that never happened.
+    The item's complaint was about what a halted run displays, and the traces
+    are drawn from the recorded history rather than from the compartments
+    directly. A failed step must therefore leave the history exactly as long
+    as it was, ending on the same sample. A history one entry longer would put
+    a point on the chart that no completed step produced, at a simulation
+    time that never happened.
     """
 
     controller = _controller_one_setting_from_a_failed_step()
@@ -893,13 +901,13 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
 
 
 def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
-    """The metrics beside the chart, held to the same standard.
+    """Hold the metrics beside the chart to the same standard.
 
-    Every concentration the dashboard shows comes off this snapshot, so
-    the rollback in `core/` is only worth having if it reaches here
-    unchanged. `==` rather than `pytest.approx`, for the reason the core
-    test gives: the claim is that nothing was written, not that what was
-    written came back close.
+    Every concentration the dashboard shows comes from this snapshot, so the
+    rollback in `core/` is only worth having if its result arrives here
+    unchanged. The test uses `==` rather than `pytest.approx`, for the reason
+    the core test gives: the claim is that nothing was written, not that what
+    was written came back close.
     """
 
     controller = _controller_one_setting_from_a_failed_step()
@@ -921,8 +929,9 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
     assert after.muscle_partial_pressure_fraction == before.muscle_partial_pressure_fraction
     assert after.fat_partial_pressure_fraction == before.fat_partial_pressure_fraction
 
-    # The mass-accounting panel too: it is a displayed value like any other,
-    # and its totals are the two the validator accumulates during a step.
+    # The mass-accounting panel is checked too. It is a displayed value like
+    # any other, and its totals are the two that the validator accumulates
+    # during a step.
     assert after.delivered_agent_l == before.delivered_agent_l
     assert after.exhausted_agent_l == before.exhausted_agent_l
     assert after.stored_agent_l == before.stored_agent_l
@@ -947,10 +956,10 @@ def test_a_setting_change_is_recorded_with_the_time_it_took_effect() -> None:
 def test_every_control_records_under_its_own_stable_identifier() -> None:
     """The stored identifiers are the timeline's contract with future runs.
 
-    They are asserted as literal strings rather than against the enum,
-    because the enum is what a rename would move and these are what a
-    recorded run would then no longer be readable under. PL-9SH6 and
-    PL-3TLK rename two of the setters underneath them in v0.4.1.
+    The test asserts them as literal strings, not against the enum. A rename
+    would change the enum, and a recorded run stored under the old strings
+    could then no longer be read. PL-9SH6 and PL-3TLK rename two of the
+    setters underneath them in v0.4.1.
     """
 
     controller = SimulationController()
@@ -983,10 +992,10 @@ def test_every_recorded_control_carries_its_declared_unit() -> None:
 def test_the_delivered_dial_is_recorded_as_the_percent_the_core_holds() -> None:
     """Recording the model's fraction would break re-application.
 
-    The timeline's claim is that re-applying it reproduces the run, and
-    re-applying means calling the setter, which takes the percent the dial
-    was set to (`PL-NJPB`). A record of 0.03 where the circuit holds 3.0
-    would be a hundredfold error handed to whatever replays it.
+    The timeline claims that re-applying it reproduces the run. Re-applying
+    means calling the setter, which takes the percent the dial was set to
+    (`PL-NJPB`). A record of 0.03 where the circuit stores 3.0 would hand a
+    hundredfold error to whatever replays it.
     """
 
     controller = SimulationController()
@@ -1001,11 +1010,12 @@ def test_the_delivered_dial_is_recorded_as_the_percent_the_core_holds() -> None:
 def test_the_control_timeline_records_the_vaporizer_percent_as_dialled() -> None:
     """The recorded change and the run segment both give back the dial exactly.
 
-    `PL-NJPB`. Both records held the fraction the dial's percent was divided
-    into, and a fraction times a hundred misses the percent it came from at
-    some dial positions: 0.9% read back as 0.9000000000000001. The first
-    assertion establishes 0.9 as such a position, and both recorded values
-    are compared with it by equality rather than to a tolerance.
+    `PL-NJPB`. Both records used to store the fraction, which is the dial's
+    percent divided by a hundred. At some dial positions, that fraction times
+    a hundred does not equal the percent it came from: 0.9% read back as
+    0.9000000000000001. The first assertion shows that 0.9 is such a
+    position. Both recorded values are then compared with it by equality,
+    not within a tolerance.
     """
 
     assert percent_from_fraction(fraction_from_percent(Percent(0.9))) != 0.9
@@ -1023,7 +1033,7 @@ def test_the_control_timeline_records_the_vaporizer_percent_as_dialled() -> None
 
 
 def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
-    """A slider re-entering a position it already holds is not a change."""
+    """A slider set again to the position it is already at is not a change."""
 
     controller = SimulationController()
     current = controller.snapshot().fresh_gas_flow_l_min
@@ -1034,11 +1044,11 @@ def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
 
 
 def test_a_refused_setting_records_nothing() -> None:
-    """It never took effect, so it is not part of the run.
+    """A refused setting never took effect, so it is not part of the run.
 
-    The guarantee is structural rather than incidental: the recorder runs
-    after the core's setter returns, so a raise reaches the interface with
-    the timeline untouched.
+    The guarantee comes from the structure, not from chance. The recorder runs
+    after the core's setter returns, so an error raised by the setter reaches
+    the interface with the timeline untouched.
     """
 
     controller = SimulationController()
@@ -1051,7 +1061,7 @@ def test_a_refused_setting_records_nothing() -> None:
 
 
 def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None:
-    """Only the value standing when a step runs is ever integrated.
+    """Only the value in place when a step runs is ever integrated.
 
     A dial dragged from 2% through 3% to 4% between two steps is one change
     from 2% to 4% as far as the run is concerned, and a timeline that
@@ -1083,7 +1093,7 @@ def test_a_change_undone_within_one_step_leaves_no_entry() -> None:
 
 
 def test_the_same_control_changed_across_two_steps_records_both() -> None:
-    """Each step the run was computed under is its own recorded setting."""
+    """A setting is recorded for each step that the run was computed under."""
 
     controller = SimulationController()
     controller.start()
@@ -1098,7 +1108,7 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
 
 
 def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
-    """One drag of one slider reads as one act, however many steps it spans."""
+    """One drag of one slider counts as one adjustment, however many steps it spans."""
 
     controller = SimulationController()
     controller.start()
@@ -1112,7 +1122,7 @@ def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
 
 
 def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
-    """Timing cannot separate them; the input boundary can.
+    """Timing cannot separate two drags, but the input boundary can.
 
     Two turns of the same dial arrive as a run of changes to one control,
     exactly as one turn does. Only the interface knows where the first
@@ -1158,7 +1168,7 @@ def test_reset_restarts_adjustment_numbering() -> None:
     """A run's adjustments are numbered from its own beginning.
 
     Carrying the count across a reset would make the first adjustment of a
-    fresh run read as the fourth of something the reader cannot see.
+    fresh run appear as the fourth of something the reader cannot see.
     """
 
     controller = SimulationController()
@@ -1196,10 +1206,10 @@ def test_the_constructor_overrides_are_not_recorded_as_changes() -> None:
 def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
     """The mark belongs at the instant the run changed, and it is drawn there.
 
-    The chart rules its control mark at `elapsed_s`, and `PL-2FM6` makes
-    that instant a column of the drawn window as well - so the mark and the
-    kink in the trace beneath it are the same instant by construction
-    rather than by two reads agreeing.
+    The chart draws its control mark as a line at `elapsed_s`. Since
+    `PL-2FM6`, that instant is also a column of the drawn window. So the mark
+    and the kink in the trace beneath it fall at the same instant by
+    construction, not because two reads happen to agree.
     """
 
     controller = SimulationController()
@@ -1218,11 +1228,11 @@ def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
 
 
 def test_a_run_nobody_has_touched_holds_nothing_to_discard() -> None:
-    """The state a fresh session leaves, and the state `reset()` returns to.
+    """Check the state of a new session, which is also the state `reset()` returns to.
 
-    `SimulationSnapshot.has_recorded_run` is what lets the interface tell a
-    destructive agent change from a harmless one, so the two ends of it are
-    pinned rather than left to a caller's reading.
+    `SimulationSnapshot.has_recorded_run` lets the interface tell an agent
+    change that would destroy a run from a harmless one. So the tests pin both
+    of its values rather than leaving them to a caller's interpretation.
     """
 
     controller = SimulationController()
@@ -1242,8 +1252,8 @@ def test_a_setting_changed_before_the_run_starts_is_something_to_discard() -> No
     """Elapsed time alone would miss this one.
 
     A vaporizer turned before Start is a recorded input at zero simulated
-    time, and it is part of the case a reader set up; a check reading only
-    the clock would call this run empty and discard it without asking.
+    time, and it is part of the case that a reader set up. A check that read
+    only the clock would call this run empty and discard it without asking.
     """
 
     controller = SimulationController()
@@ -1258,8 +1268,8 @@ def test_a_setting_changed_before_the_run_starts_is_something_to_discard() -> No
 def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
     """Reset is the way to make an agent change cost nothing.
 
-    Not incidental: it is what a reader who wants a different agent and does
-    not want their case is told to do, so it has to actually clear both
+    This matters. A reader who wants a different agent and does not want to
+    keep their case is told to use Reset. So Reset must really clear both
     halves of the predicate.
     """
 
@@ -1273,10 +1283,10 @@ def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
 
 
 def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
-    """A switch that has just been paid for must not immediately re-arm.
+    """Right after a confirmed switch, the new run must not count as something to discard.
 
-    Confirming a new case and then re-opening the selector would otherwise
-    ask about a case with nothing in it.
+    Otherwise a learner who confirmed a new case and then opened the selector
+    again would be asked about a case with nothing in it.
     """
 
     controller = SimulationController()
@@ -1288,11 +1298,11 @@ def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
 
 
 def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
-    """`PL-7TBQ`: a branch is built already standing at its fork, which is not a touch.
+    """`PL-7TBQ`: a new branch is built at its fork, and being built there is not a learner's act.
 
-    Its clock is the case's, so its elapsed time is past zero the instant it
-    exists. Counted from zero, it held a run to lose before the learner had
-    done anything to it; counted from where it began, it holds nothing.
+    The branch uses the case's clock, so its elapsed time is past zero as soon
+    as it exists. Counted from zero, it held a run to lose before the learner
+    had done anything to it. Counted from where it began, it holds nothing.
     """
 
     trunk = _trunk_with_two_changes()
@@ -1311,7 +1321,7 @@ def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
 
 
 def test_a_fresh_branch_taken_at_a_bookmark_holds_nothing_to_destroy() -> None:
-    """The other door to a fork, whose instant is the step the trunk halted on."""
+    """Check the other way to fork, at the step on which the trunk halted."""
 
     marked = _trunk_halted_on_a_bookmark()
     branch = BranchedCase(marked).fork_here()
@@ -1332,7 +1342,7 @@ def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -
 
 
 def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
-    """The timeline half, on a branch: a change made at the fork is the learner's own act."""
+    """Check the timeline half on a branch: a change made at the fork is the learner's act."""
 
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
@@ -1345,10 +1355,10 @@ def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
 
 
 def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
-    """The case `PL-7TBQ` measured: advanced, changed and reset, it still read as a run to lose.
+    """The case `PL-7TBQ` measured: a branch advanced, changed and reset still had a run to lose.
 
-    A branch's reset returns it to its fork rather than to zero, so what
-    reset leaves on a branch is the fresh branch, and has to read as one.
+    A branch's reset returns it to its fork rather than to zero. So a reset
+    branch is a fresh branch, and it must count as one.
     """
 
     trunk = _trunk_with_two_changes()
@@ -1367,11 +1377,12 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
 def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
     """Three stopped states, and the snapshot has to tell them apart.
 
-    A pause, a failure and the supported run length all leave `is_running`
-    false, and only the middle one means anything on screen is untrustworthy.
-    The interface reads these two fields to decide what to say, so a run that
-    stopped correctly reporting `failure_reason` would put "simulation error"
-    over a sound model (`docs/MODEL.md`, "Supported run length").
+    A pause, a failure and reaching the supported run length all leave
+    `is_running` false. Only a failure means that something on screen cannot
+    be trusted. The interface reads these two fields to decide what to say.
+    So if a run that stopped correctly reported a `failure_reason`, the
+    interface would show "simulation error" over a sound model
+    (`docs/MODEL.md`, "Supported run length").
     """
 
     controller = SimulationController()
@@ -1389,12 +1400,13 @@ def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
 
 
 def test_a_session_at_the_supported_run_length_cannot_be_resumed() -> None:
-    """Start would be refused by the core on its first tick.
+    """The core would refuse Start on its first tick.
 
-    Raising rather than quietly declining, for the reason a failed session
-    does: a Start that silently does nothing is a control presenting itself
-    as working. The message says which of the two states it is, so the
-    refusal a caller reports is not a guess.
+    The controller raises an error rather than quietly declining, for the
+    same reason a failed session does. A Start that silently does nothing is
+    a control that pretends to work. The message says which of the two
+    stopped states the session is in, so a caller that reports the refusal
+    does not have to guess.
     """
 
     controller = SimulationController()
@@ -1408,7 +1420,7 @@ def test_a_session_at_the_supported_run_length_cannot_be_resumed() -> None:
 
 
 def test_the_first_supported_limit_reason_is_the_one_kept() -> None:
-    """A later tick reaching the same boundary must not overwrite it."""
+    """A later tick that reaches the same boundary must not overwrite the first reason."""
 
     controller = SimulationController()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
@@ -1418,7 +1430,7 @@ def test_the_first_supported_limit_reason_is_the_one_kept() -> None:
 
 
 def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> None:
-    """Reset is the only way out, so it has to actually be one."""
+    """Reset is the only way out of this state, so it must really work."""
 
     controller = SimulationController()
     controller.start()
@@ -1448,23 +1460,24 @@ def test_switching_agent_clears_the_supported_limit() -> None:
     assert controller.snapshot().supported_limit_reason is None
 
 
-# `PL-T691`: the controller holds the run as its settings over time as well as
-# as recorded samples, and the two must describe the same run. The tests below
-# hold the closed form to the recorded path it is meant to replace, end to end
-# through the controller's own setters rather than against the core directly.
-# `PL-2FM6` is what removes the recorded half; until it lands, this agreement
-# is the strongest check available, because a divergence in either path fails
-# it.
+# `PL-T691`: the controller stores the run in two forms, as its settings over
+# time and as recorded samples. The two must describe the same run. The tests
+# below check the closed form against the recorded path that it is meant to
+# replace. They work end to end through the controller's own setters, not
+# against the core directly. `PL-2FM6` removes the recorded half. Until it
+# lands, this agreement is the strongest check available, because a
+# divergence in either path fails it.
 
 CLOSED_FORM_AGREEMENT = 1e-13
-"""How far the closed form may sit from the recorded run, as a fraction of 1 atm.
+"""How far the closed form may differ from the recorded run, as a fraction of 1 atm.
 
-Measured 2026-09-07 over the 120 s run below - 1 201 samples, six
-compartments each, largest fraction reached 0.0205 - the worst disagreement
-is 6.7e-16, which is about three units in the last place of the values being
-compared. Pinned two orders above that so an ordinary floating-point wobble
-does not fail the suite, and nine orders below the 1e-4 a two-decimal percent
-readout can show so a real divergence still does.
+The disagreement was measured on 2026-09-07 over the 120 s run below. That run has
+1 201 samples of six compartments each, and the largest fraction it reaches
+is 0.0205. The worst disagreement is 6.7e-16, which is about three units in
+the last place of the values being compared. The tolerance is set two orders
+of magnitude above that, so an ordinary floating-point wobble does not fail
+the suite. It is also nine orders of magnitude below the 1e-4 that a
+two-decimal percent readout can show, so a real divergence still fails it.
 """
 
 
@@ -1472,11 +1485,11 @@ def _advance_through_halts(controller: SimulationController, duration_s: float) 
     """Advance `duration_s`, resuming wherever a marked crossing halts the run.
 
     A marked run halts on the step that crosses one of its marks (`PL-CTD7`),
-    which is an ordinary pause. A driver that did not resume would leave a
-    marked run standing at its first crossing while an unmarked one ran on,
-    so the two would differ by where the marks were rather than by anything
-    the model computed. Unmarked runs never halt, so this is `_advance_for`
-    for every caller that has no marks.
+    and the halt is an ordinary pause. A driver that did not resume would
+    leave a marked run stopped at its first crossing while an unmarked run
+    went on. The two runs would then differ because of where the marks were,
+    not because of anything the model computed. Unmarked runs never halt, so
+    for a caller with no marks this helper behaves exactly like `_advance_for`.
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
@@ -1500,9 +1513,9 @@ def _run_with_two_changes(controller: SimulationController) -> None:
 def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
     """The run definition's segments and the timeline's entries describe one run.
 
-    They are separate records on purpose - one is what the model integrated,
-    the other is what a reader is shown - so what has to be checked is that
-    they agree about when the run changed.
+    They are separate records on purpose. One is what the model integrated,
+    and the other is what a reader is shown. So the test checks that they
+    agree about when the run changed.
     """
 
     controller = SimulationController()
@@ -1518,9 +1531,9 @@ def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
 def test_a_refused_setting_leaves_the_run_definition_describing_the_run() -> None:
     """A setting the core rejects never took effect, so it opens no segment.
 
-    The same property the control timeline has, for the same reason: the core
-    raises before anything is recorded, and the run it left untouched is the
-    one both records describe.
+    The control timeline has the same property, for the same reason. The core
+    raises an error before anything is recorded, and both records describe
+    the run that it left untouched.
     """
 
     controller = SimulationController()
@@ -1543,22 +1556,23 @@ def test_resetting_starts_the_run_definition_over() -> None:
 
     assert len(controller.run_segments) == 1
     assert controller.drawn_window(0.0, 0.0, 150).times_s == (0.0,)
-    # The axis outlives the run it was showing, and is clipped to nothing.
+    # The axis outlives the run it was showing, so the window is clipped to
+    # nothing but the instant at zero.
     assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
 def test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was() -> None:
     """`reset()` refuses before it clears anything, so a refused Reset is not a half reset.
 
-    The settings record a run's definition opens on is built from the
-    compartments, and it refuses tissue flows that no longer sum to the
-    cardiac output. Read after the state had been cleared, as it was before
-    `PL-M4M0`, the refusal left the run half reset: compartments and clock
-    at zero, the old definition and timeline kept, no failure recorded and
-    the run still marked running. Read first, the refusal leaves everything
-    as it was - the run still going, on its own state and definition - and
-    what the refusal means is the interface's to decide
-    (`RunView._handle_reset`).
+    The settings record that opens a run's definition is built from the
+    compartments. It rejects tissue flows that no longer sum to the cardiac
+    output. Before `PL-M4M0`, the record was read after the state had been
+    cleared, and the refusal left the run half reset. The compartments and
+    the clock were at zero, but the old definition and timeline were kept, no
+    failure was recorded, and the run was still marked as running. Now the
+    record is read first, and the refusal leaves everything as it was. The
+    run keeps going, on its own state and definition. The interface decides
+    what the refusal means (`RunView._handle_reset`).
     """
 
     controller = SimulationController()
@@ -1620,12 +1634,13 @@ def test_a_setting_the_record_refuses_leaves_the_run_on_its_previous_setting(
     error is raised, so the banner is right.
 
     Until `PL-HQF5`, a cardiac output change repaired the mismatch, because
-    it set every compartment's flow from the new output. The only way left to
-    the mismatch is a perfusion fraction written past its guard, which no
-    output repairs. So the cardiac output is refused and written back too,
-    and its write-back leaves every tissue flow where it was, which it could
-    not do while a changed fraction moved the flows it set (`PL-Z0HN`). With
-    the fractions put back, the output and then the setting are accepted.
+    it set every compartment's flow from the new output. Now the only way to
+    produce the mismatch is a perfusion fraction written directly, bypassing
+    its guard, and no cardiac output repairs that. So the cardiac output is
+    refused and written back too. Its write-back leaves every tissue flow
+    where it was. It could not do that while a changed fraction moved the
+    flows that the write-back set (`PL-Z0HN`). Once the fractions are put
+    back, the cardiac output and then the setting are accepted.
     """
 
     controller = SimulationController()
@@ -1702,11 +1717,11 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
 ) -> None:
     """A setting the run definition never recorded stops the run before it is stepped (`PL-XRN8`).
 
-    The readouts come from the steps and the chart from the run definition. A
-    step at a setting the definition does not hold would make them describe
-    two different runs, so the controller refuses the step instead. Each write
-    here is a core setter the interface never calls, at a value other than
-    the reference default.
+    The readouts come from the steps, and the chart comes from the run
+    definition. A step at a setting that the definition does not contain would
+    make them describe two different runs. So the controller refuses the step
+    instead. Each write here calls a core setter that the interface never
+    calls, with a value other than the reference default.
     """
 
     controller = SimulationController()
@@ -1730,7 +1745,7 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
 
 
 def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting() -> None:
-    """Reset starts a new run from what the core holds, so it steps again (`PL-XRN8`).
+    """Reset starts a new run from the core's current settings, so it steps again (`PL-XRN8`).
 
     The expected trajectory is a fresh controller built at the same cardiac
     output, rather than anything read from the controller under test.
@@ -1759,7 +1774,7 @@ def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting(
 
 
 def test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step() -> None:
-    """A branch records its own settings at its fork, and holds its core to them (`PL-XRN8`)."""
+    """A branch records its own settings at its fork and enforces them on its core (`PL-XRN8`)."""
 
     trunk = SimulationController()
     trunk.start()
@@ -1781,7 +1796,7 @@ def test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_
 
 
 def test_changing_agent_starts_the_run_definition_over() -> None:
-    """`set_agent` begins a new run, and a run definition is of one run only."""
+    """`set_agent` begins a new run, and a run definition describes only one run."""
 
     controller = SimulationController()
     _run_with_two_changes(controller)
@@ -1792,7 +1807,7 @@ def test_changing_agent_starts_the_run_definition_over() -> None:
 
 
 def test_a_paused_run_s_definition_stops_where_the_run_did() -> None:
-    """Pausing stops the run, so it stops what the run definition will answer for."""
+    """Pausing stops the run, so the run definition returns no values past the pause."""
 
     controller = SimulationController()
     controller.start()
@@ -1802,21 +1817,21 @@ def test_a_paused_run_s_definition_stops_where_the_run_did() -> None:
 
     elapsed_s = controller.snapshot().elapsed_s
 
-    # The axis may reach past a paused run; the trace stops where the run
-    # did rather than being extended into a prediction.
+    # The axis may extend past a paused run. The trace stops where the run
+    # stopped and is not extended into a prediction.
     window = controller.drawn_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 150)
 
     assert window.times_s[-1] == pytest.approx(elapsed_s)
 
 
 def test_the_drawn_window_is_clipped_to_the_run_not_to_the_axis() -> None:
-    """The axis reaches past the run by design; the trace must not.
+    """The axis extends past the run by design, but the trace must not.
 
-    `following_window` keeps empty axis to the right of the newest instant
-    and `fitted_window` returns the chosen rung's full width however short
-    the run, both so a trace's slope means the same thing at every moment.
-    So the drawn range ends where the run does, and says so in `times_s`
-    rather than being padded to the axis.
+    `following_window` keeps empty axis to the right of the newest instant.
+    `fitted_window` returns the chosen rung's full width however short the
+    run is. Both do this so that a trace's slope means the same thing at every
+    moment. So the drawn range ends where the run ends, and `times_s` shows
+    that, rather than being padded to the axis.
     """
 
     controller = SimulationController()
@@ -1833,9 +1848,9 @@ def test_the_drawn_window_is_clipped_to_the_run_not_to_the_axis() -> None:
 def test_the_drawn_window_places_a_column_on_every_control_change() -> None:
     """A dial change inside the window is an instant the chart actually plots.
 
-    `PL-4RBD`'s guarantee, delivered structurally: the columns are evaluated
-    rather than selected, so the event is a column instead of a sample the
-    decimation had to be persuaded to keep.
+    This is `PL-4RBD`'s guarantee, now provided by the structure. The columns
+    are evaluated rather than selected, so the change is a column itself, not
+    a sample that the decimation had to be persuaded to keep.
     """
 
     controller = SimulationController()
@@ -1865,7 +1880,7 @@ def test_a_drawn_window_refuses_another_substance() -> None:
 
 
 def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
-    """F_A/F_I is a quotient of two states, so it is not read as one."""
+    """F_A/F_I is a quotient of two states, so the window does not treat it as a state."""
 
     controller = SimulationController()
     controller.start()
@@ -1879,13 +1894,14 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
 
 
 def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment answer `quotient` for its partial-pressure fraction.
+    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
 
-    The one route left to a quotient outside 0 to 1: no supported setting
-    reaches one (`core/concentration.py`), and since `PL-544D` an amount
-    written past the capacity is refused at the write, so the quotient every
-    alveolar compartment answers is replaced, for the snapshot and the stepper
-    alike, rather than reached through the stored amount.
+    This is the one way left to get a quotient outside 0 to 1. No supported
+    setting produces one (`core/concentration.py`). Since `PL-544D`, an
+    amount larger than the capacity is refused when it is written. So the
+    helper replaces the quotient that every alveolar compartment returns, for
+    the snapshot and the stepper alike, rather than producing it through the
+    stored amount.
     """
 
     monkeypatch.setattr(
@@ -1896,18 +1912,18 @@ def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: fl
 def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_status_answers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`snapshot()` builds each compartment's fraction under its name; `status()` builds none.
+    """`snapshot()` builds each compartment's fraction under its name, and `status()` builds none.
 
-    The compartments hold amounts, and the quotient read from one carries no
-    proof, so the snapshot builds the `Fraction` and refuses a quotient past
-    1 - reached here by replacing the quotient the alveolar compartment
-    answers, since no supported setting reaches one (`core/concentration.py`)
-    and a write past the capacity is refused since `PL-544D`. The refusal
-    names the compartment as a step
-    would (`run_series.COMPARTMENT_FRACTION_NAMES`), and `status()`, which
-    the interface states the halt from, still answers for the same run; a
-    snapshot is a `RunStatus` too, so what reads one reads either
-    (`PL-7DJK`).
+    The compartments store amounts, and a quotient computed from one carries
+    no proof that it is in range. So the snapshot builds the `Fraction` and
+    rejects a quotient greater than 1. The test reaches such a quotient by
+    replacing the quotient that the alveolar compartment returns. No supported
+    setting produces one (`core/concentration.py`), and since `PL-544D` a
+    write beyond the capacity is refused. The refusal names the compartment
+    as a step would (`run_series.COMPARTMENT_FRACTION_NAMES`). `status()`,
+    which the interface uses to report the halt, still returns a result for
+    the same run. A snapshot is a `RunStatus` too, so code that reads one can
+    read either (`PL-7DJK`).
     """
 
     controller = SimulationController()
@@ -1938,13 +1954,13 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
 
 
 def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`settings()` answers for a run whose `snapshot()` refuses, with the settings the run holds.
+    """`settings()` returns the run's settings even when the run's `snapshot()` refuses.
 
-    A `RunSettings` is built from the agent and the four settings the
-    compartments hold, each a checked type built when it was set, and no
-    compartment value, so a dial dragged into a halt can be written from
-    what the run holds (`PL-85LJ`); a snapshot is a `RunSettings` too, so
-    what reads one reads either.
+    A `RunSettings` is built from the agent and the four settings that the
+    compartments store. Each setting is a checked type, built when it was
+    set, and no compartment value is used. So a dial dragged into a halt can
+    still be set from what the run stores (`PL-85LJ`). A snapshot is a
+    `RunSettings` too, so code that reads one can read either.
 
     The test sets each of the four settings to a value that differs from the
     others and from its default, and expects back what it set. The shipped
@@ -1994,13 +2010,13 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
 def test_set_agent_on_a_run_whose_snapshot_refuses_raises_before_it_changes_anything(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`set_agent` carries the settings over from the snapshot, so its refusal is `set_agent`'s.
+    """`set_agent` carries the settings over from the snapshot, so the refusal is `set_agent`'s.
 
-    The snapshot is read before the run is paused, so the refusal leaves the
-    run as it was - running, on its agent, nothing failed - as a refused
-    setting does everywhere else; and `agent_id` still answers, from the
-    settings record and no compartment, which is what the interface puts the
-    selector back to (`PL-V2HC`).
+    The snapshot is read before the run is paused. So the refusal leaves the
+    run as it was: running, on its own agent, with nothing failed. A refused
+    setting behaves the same way everywhere else. `agent_id` still returns a
+    result, read from the settings record and not from any compartment. The
+    interface puts the selector back to that agent (`PL-V2HC`).
     """
 
     controller = SimulationController()
@@ -2023,10 +2039,10 @@ def test_set_agent_on_a_run_whose_snapshot_refuses_raises_before_it_changes_anyt
 def test_wash_in_is_formed_per_drawn_column() -> None:
     """The ratio is a property of the instant plotted, not of a recorded sample.
 
-    Every drawn instant gets a quotient, and a run that has just started
-    carries both the opening stretch with no quotient at all and the wash-in
-    that follows it - so the boundary between them falls on a column the
-    chart plots rather than on a sample it might not have selected.
+    Every drawn instant gets a quotient. A run that has just started contains
+    both the opening stretch, which has no quotient at all, and the wash-in
+    that follows it. So the boundary between them falls on a column that the
+    chart plots, not on a sample that the chart might not have selected.
     """
 
     controller = SimulationController()
@@ -2045,10 +2061,11 @@ def test_wash_in_is_formed_per_drawn_column() -> None:
 
 
 def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:
-    """A window before the run began is empty rather than an error.
+    """A window that lies wholly after the run's current end is empty rather than an error.
 
-    It is an ordinary state at the very start of a run, and an empty window
-    draws nothing - which is correct, and is not the same as drawing a zero.
+    This is an ordinary state at the very start of a run. An empty window
+    draws nothing, which is correct, and drawing nothing is not the same as
+    drawing a zero.
     """
 
     controller = SimulationController()
@@ -2061,14 +2078,15 @@ def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:
 
 
 def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
-    """The other half of the same ordinary state, and the one a branch reaches.
+    """The other half of the same ordinary state, the half that a branch meets.
 
-    A branch holds no state before the instant it was forked at, and since
-    `PL-ZMRT` its run definition refuses such an instant rather than answering
-    from the nearest keyframe it happens to hold. So the window is clipped to
-    the run's opening and comes back empty where the axis ends to the left of
-    it - not raised out of the render loop, which is what clipping to a literal
-    zero instead of to the opening would have caused on an ordinary frame.
+    A branch has no state before the instant it was forked at. Since
+    `PL-ZMRT`, its run definition refuses such an instant rather than
+    returning a value from the nearest keyframe it happens to have. So the
+    window is clipped to the run's opening, and it comes back empty when the
+    axis ends to the left of the opening. It does not raise an error out of
+    the render loop. Clipping to a literal zero instead of to the opening
+    would have raised that error on an ordinary frame.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2080,7 +2098,7 @@ def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
     assert window.times_s == ()
     assert window.states == ()
 
-    # And the trunk, on the same axis, draws it: the two differ because the
+    # The trunk draws something on the same axis. The two differ because the
     # branch did not exist yet, not because the axis was rejected.
     assert trunk.drawn_window(0.0, fork_s / 2, 150).times_s != ()
 
@@ -2088,23 +2106,25 @@ def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
 def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() -> None:
     """`PL-4RBD`: a dial change that leaves the trace rising is still a drawn point.
 
-    The defect this closes was a property of selecting recorded extremes:
-    turned down, the kink was a local maximum and was drawn; turned up
-    mid-rise the trace kept rising, the kink was interior to a bucket, and
-    the polyline went straight through the one instant a reader was looking
-    for. Re-measured 2026-09-08 at the shipped time bases, that reached
-    0.65 pp on the alveolar trace at the 12 h base - 0.32 MAC.
+    The defect this test closes came from selecting recorded extremes. When
+    the dial was turned down, the kink was a local maximum and was drawn.
+    When the dial was turned up mid-rise, the trace kept rising and the kink
+    fell inside a bucket. The polyline then went straight through the one
+    instant a reader was looking for. Re-measured on 2026-09-08 at the shipped
+    time bases, the error reached 0.65 pp on the alveolar trace at the 12 h
+    base, which is 0.32 MAC.
 
-    Evaluating columns removes it at every width rather than at the widths
-    somebody remembered to check, which is why this walks the whole ladder:
-    the event is a column because it is an event, not because the spacing
-    happened to land on it.
+    Evaluating columns removes the defect at every width, not only at the
+    widths somebody remembered to check. That is why the test walks the whole
+    ladder of time bases. The change is a column because it is an event, not
+    because the spacing happened to land on it.
     """
 
     controller = SimulationController()
     controller.start()
     _advance_for(controller, duration_s=60.0)
-    # Turned *up* mid-rise: the case a selection of extremes could not reach.
+    # The dial is turned *up* mid-rise, the case that a selection of extremes
+    # could not capture.
     controller.set_delivered_concentration_percent(Percent(4.0))
     change_s = controller.snapshot().elapsed_s
     _advance_for(controller, duration_s=60.0)
@@ -2120,11 +2140,11 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
         assert window.times_s[-1] == pytest.approx(min(time_base.span_s, elapsed_s))
 
 
-# `PL-J2TD`: a fork resumes into a live run. The tests below hold the seam
-# between a canonical keyframe state and a running system - what a branch opens
-# at, what its clock reads, and what it refuses - end to end through the
-# controller, because the two records a branch has to keep agreeing are only
-# both present here.
+# `PL-J2TD`: a fork resumes into a live run. The tests below check the seam
+# between a canonical keyframe state and a running system: the state a branch
+# opens at, what its clock reads, and what it refuses. They work end to end
+# through the controller, because only the controller holds both of the
+# records that a branch must keep in agreement.
 
 COMPARTMENT_SNAPSHOT_FIELDS = (
     "inspired_partial_pressure_fraction",
@@ -2136,35 +2156,35 @@ COMPARTMENT_SNAPSHOT_FIELDS = (
 )
 """The six compartment fractions a snapshot carries, named as the snapshot names them.
 
-Written out rather than derived from `COMPARTMENT_QUANTITIES`, because that
-tuple is keyed by the quantity the *chart* draws and one of its names differs
-from the snapshot's: the circuit's drawn quantity is `circuit` while the field
-is `inspired_partial_pressure_fraction`, since the state is named for the
-clinical quantity and the container is still the circuit.
+The names are written out rather than derived from `COMPARTMENT_QUANTITIES`.
+That tuple is keyed by the quantity the *chart* draws, and one of its names
+differs from the snapshot's. The circuit's drawn quantity is `circuit`, while
+the snapshot field is `inspired_partial_pressure_fraction`. The state is named
+for the clinical quantity, but the container is still the circuit.
 """
 
 BRANCH_AGREEMENT = 1e-14
-"""How far a branch's live state may sit from its parent's, in fractions of 1 atm.
+"""How far a branch's live state may differ from its parent's, in fractions of 1 atm.
 
-The two reach the same instant by different routes: the parent steps the whole
-way from induction, while the branch is stood at a keyframe the canonical path
-computed and steps only from there. `docs/MODEL.md` § "Closed-form agreement
-test" is what governs that comparison, and stating the bound in fractions of
-one atmosphere rather than relatively is its reasoning - a relative bound would
-tighten without limit on the near-zero fat fraction of a 120 s run and say
-nothing about a displayed digit.
+The two reach the same instant by different routes. The parent steps the whole
+way from induction. The branch is placed at a keyframe that the canonical path
+computed, and steps only from there. `docs/MODEL.md` § "Closed-form agreement
+test" governs that comparison. It also gives the reason for stating the bound
+in fractions of one atmosphere rather than as a relative bound. A relative
+bound would tighten without limit on the near-zero fat fraction of a 120 s
+run, and it would say nothing about a displayed digit.
 
-Measured 2026-09-14 on the run below: the worst disagreement across all six
-compartments is 2.7e-16, about one unit in the last place, and the two
-cumulative accumulators agree to 1.6e-15 L. Pinned two orders above that so an
-ordinary floating-point wobble does not fail the suite, and ten orders below
-the 1e-4 that a two-decimal percent readout can show so a real divergence
-still does.
+Measured on 2026-09-14 on the run below, the worst disagreement across all six
+compartments is 2.7e-16, about one unit in the last place. The two cumulative
+accumulators agree to 1.6e-15 L. The bound is set two orders of magnitude
+above that, so an ordinary floating-point wobble does not fail the suite. It
+is also ten orders of magnitude below the 1e-4 that a two-decimal percent
+readout can show, so a real divergence still fails it.
 """
 
 
 def _trunk_with_two_changes() -> SimulationController:
-    """A 120 s sevoflurane run carrying two setting changes, so it holds three keyframes."""
+    """A 120 s sevoflurane run with two setting changes, so it has three keyframes."""
 
     controller = SimulationController()
     _run_with_two_changes(controller)
@@ -2176,13 +2196,14 @@ def _trunk_with_two_changes() -> SimulationController:
 def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     """The item's own deliverable, in one test.
 
-    A branch opens at a canonical keyframe state of another run, and both its
-    clock and its definition stand at the instant it was forked from, because a
-    branch is one patient's case under a second management and uptake is a
-    function of time since induction. The two are asserted together because
-    their agreement is the property `PL-ZMRT` bought: while the definition
-    opened at a zero of its own, a branch carried two time frames and every
-    reader had to know which one it was holding.
+    A branch opens at a canonical keyframe state of another run. Both its
+    clock and its definition start at the instant it was forked from. That is
+    because a branch is one patient's case under a second management, and
+    uptake is a function of time since induction. The test asserts the clock
+    and the definition together, because their agreement is what `PL-ZMRT`
+    delivered. While the definition opened at a zero of its own, a branch
+    carried two time frames, and every reader had to know which one it was
+    using.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2190,10 +2211,10 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
 
     branch = trunk.resumed_at(fork_s)
 
-    # The clock is the case's: the branch stands at the fork instant, not at zero.
+    # The branch uses the case's clock: it starts at the fork instant, not at zero.
     assert branch.snapshot().elapsed_s == fork_s
 
-    # And so is the definition, which opens *at* the keyframe it carries.
+    # The definition uses the case's clock too, and opens *at* the keyframe it carries.
     assert branch.run_segments[0].opening.instant_s == fork_s
     assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
 
@@ -2210,9 +2231,10 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
 
     assert branch.snapshot().elapsed_s == fork_s + 10.0
 
-    # The opening does not move, and the reach follows the clock exactly: after
-    # `PL-ZMRT` those are one quantity rather than two related by an offset, so
-    # asserting their equality is asserting that no frame conversion is left.
+    # The opening does not move, and the reach follows the clock exactly. Since
+    # `PL-ZMRT`, the reach and the clock are one quantity, not two related by
+    # an offset. So asserting that they are equal asserts that no frame
+    # conversion is left.
     assert branch.run_segments[0].opening.instant_s == fork_s
     assert branch._run_definition.reached_s == branch.snapshot().elapsed_s
 
@@ -2220,12 +2242,13 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
 def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s() -> None:
     """The 24 h supported run length is the patient's, not each branch's.
 
-    `require_supported_run_length` reads a step count, so a branch restarting
-    that count would be handed a fresh envelope - a fork taken late could then
-    be advanced well past the span `docs/MODEL.md` § "Supported run length"
-    declares, in the regime `core/supported_ranges.py` argues the omitted
-    metabolism dominates, with every guard passing. Continuing the parent's
-    count is what makes the envelope the case's, and it needs no second guard.
+    `require_supported_run_length` reads a step count, so a branch that
+    restarted the count would get a fresh envelope. A fork taken late could
+    then be advanced well past the span that `docs/MODEL.md` § "Supported run
+    length" declares, with every guard passing. That is the regime in which,
+    as `core/supported_ranges.py` argues, the omitted metabolism dominates.
+    Continuing the parent's count makes the envelope the case's, and it needs
+    no second guard.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2241,13 +2264,14 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
 def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     """`ROADMAP.md` item 12, element-wise rather than within a tolerance.
 
-    The parent is advanced past the fork and the branch the same way, and
-    every instant they share must agree entry for entry on the canonical path.
-    The instants probed are the case's own - a whole number of steps times the
-    step, which is the only way simulated time is ever formed here - and both
-    runs are asked for each one directly. There is nothing to convert: since
-    `PL-ZMRT` the branch's definition opens at the fork on that same axis, so
-    parent and child form their intervals from the identical pair of floats.
+    The parent and the branch are both advanced past the fork in the same way.
+    At every instant they share, they must agree entry for entry on the
+    canonical path. The instants probed are the case's own: a whole number of
+    steps times the step, which is the only way simulated time is ever formed
+    here. Both runs are asked for each instant directly. There is nothing to
+    convert. Since `PL-ZMRT`, the branch's definition opens at the fork on
+    that same axis, so parent and child form their intervals from the
+    identical pair of floats.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2277,25 +2301,26 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
 def test_a_branch_on_its_own_axis_would_not_reproduce_its_parent() -> None:
     """Why the branch opens at the fork, measured at this seam rather than quoted.
 
-    A definition opening at a zero of its own is the arrangement `PL-ZMRT`
-    replaced, and it was not wrong so much as conditional: it reproduced the
-    parent exactly *provided* every caller reached it by subtracting the fork
-    instant, and silently did not when a caller named the branch's own elapsed
-    time instead. The difference is real because the subtraction does not
-    round-trip - with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
-    9.999999974752427e-07 and not 1e-6 - so the two routes are exact solutions
-    of the same equations composed in different orders, and `PL-Z3W6` requires
-    sameness of the composition rather than of the solution.
+    `PL-ZMRT` replaced the arrangement in which a definition opened at a zero
+    of its own. That arrangement was not so much wrong as conditional. It
+    reproduced the parent exactly *provided* every caller reached it by
+    subtracting the fork instant. It silently failed when a caller named the
+    branch's own elapsed time instead. The difference is real because the
+    subtraction does not round-trip. With a fork at 900 s,
+    `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 and not 1e-6. So the
+    two routes are exact solutions of the same equations composed in
+    different orders, and `PL-Z3W6` requires the composition to be the same,
+    not only the solution.
 
-    Measured on the run below, over the 601 case instants the branch and its
-    parent share: the shipped branch, asked for the case's own instants, agrees
-    with its parent at every one, while a definition opened at its own zero and
-    asked for `steps * step` differs at **354 of them**. The second run is
-    built here rather than obtained from the controller, because the controller
-    can no longer produce one - which is the point.
+    Measured on the run below, the branch and its parent share 601 case
+    instants. Asked for the case's own instants, the shipped branch agrees
+    with its parent at every one. A definition opened at its own zero and
+    asked for `steps * step` differs at **354 of them**. The test builds the
+    second run itself rather than getting it from the controller, because the
+    controller can no longer produce one, which is the point.
 
-    It fails honestly if the two ever coincide, which would mean the hazard had
-    stopped existing and this test had stopped saying anything.
+    The test fails openly if the two ever coincide. That would mean the hazard
+    no longer existed and the test no longer showed anything.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2343,13 +2368,13 @@ def test_a_branch_on_its_own_axis_would_not_reproduce_its_parent() -> None:
 
 
 def test_a_branch_steps_to_where_its_parent_stepped() -> None:
-    """The live path agrees too, which is the half a canonical comparison cannot see.
+    """The live path agrees too, and a canonical comparison cannot see that half.
 
-    The parent stepped from induction to 120 s; the branch was stood at the
-    60 s keyframe and stepped from there. At the same case instant the two must
-    describe one patient - which is the whole claim a comparison of two
-    managements rests on, because everything before the fork has to be the same
-    history rather than a reproduction of it.
+    The parent stepped from induction to 120 s. The branch was placed at the
+    60 s keyframe and stepped from there. At the same case instant, the two
+    must describe one patient. Any comparison of two managements rests on that
+    claim, because everything before the fork has to be the same history, not
+    a reproduction of it.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2374,20 +2399,21 @@ def test_a_branch_steps_to_where_its_parent_stepped() -> None:
 
 
 def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:
-    """The chart reads one time axis whichever run fills it.
+    """The chart uses one time axis, whichever run fills it.
 
     `drawn_window` takes the axis the caller has set and returns the instants
-    it drew, and both are the case's time on a branch as on a trunk - there is
-    no second frame for either to be in since `PL-ZMRT`. A window that came
-    back measured from the fork would draw a correct trace at the wrong place
-    on a labelled axis, which `CLAUDE.md`'s safety-critical standard counts as
-    a presentation failure rather than a lesser kind.
+    it drew. On a branch, as on a trunk, both are in the case's time. Since
+    `PL-ZMRT`, there is no second time frame for either to be in. A window
+    measured from the fork would draw a correct trace at the wrong place on a
+    labelled axis. `CLAUDE.md`'s safety-critical standard counts that as a
+    presentation failure, not as a lesser kind of error.
 
-    This passes a left edge below the branch's fork deliberately: it is what
-    exercises the clamp in `drawn_window`, which clips to the run's own
+    The test deliberately passes a left edge earlier than the branch's fork.
+    That exercises the clamp in `drawn_window`, which clips to the run's own
     opening rather than to zero. Clipping to zero would ask the definition for
-    an instant before the branch existed, which it refuses, so an ordinary
-    frame on a branch would raise out of the render loop.
+    an instant before the branch existed. The definition refuses such an
+    instant, so an ordinary frame on a branch would raise an error out of the
+    render loop.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2417,24 +2443,25 @@ def test_a_trunk_s_drawn_window_spans_the_axis_it_was_asked_for() -> None:
 
 
 def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> None:
-    """What one time frame buys the chart, which is why `PL-2R2C` needed no fix.
+    """One shared time frame aligns the chart's columns, so `PL-2R2C` needed no fix.
 
     `RunDefinition.evaluate_anchored` lays its grid on absolute multiples of
-    the spacing measured in the definition's own frame - deliberately, because
-    a grid anchored to the window instead makes every drawn point a new instant
-    on every frame, which `PL-Q197` measured as what saturated the client. While
-    a branch's definition opened at a zero of its own, that put its columns at
-    `fork + m x spacing` against the trunk's `m x spacing`: on this 13-column
-    120 s axis, with the fork deliberately off the grid at 55.3 s, 2 of the
-    branch's 8 columns landed where the trunk also drew. A learner could not
-    then read "at this instant the trunk was here and the branch was there" off
-    matched points, and any difference trace or shared tooltip built on the
-    assumption would be wrong rather than coarse.
+    the spacing, measured in the definition's own frame. This is deliberate. A
+    grid anchored to the window instead makes every drawn point a new instant
+    on every frame, and `PL-Q197` measured that as the cause of the saturated
+    client. While a branch's definition opened at a zero of its own, its
+    columns fell at `fork + m x spacing`, against the trunk's `m x spacing`.
+    On this 13-column 120 s axis, with the fork deliberately off the grid at
+    55.3 s, 2 of the branch's 8 columns landed where the trunk also drew. A
+    learner then could not read "at this instant the trunk was here and the
+    branch was there" from matched points. Any difference trace or shared
+    tooltip built on that assumption would be wrong, not merely coarse.
 
-    One frame makes them coincide with nothing added to the display path: both
-    definitions are on the case's axis, so both grids are the same multiples.
-    The fork instant itself is a column on the trunk because it is a setting
-    change, and the branch's first column because it is where the branch opens.
+    One time frame makes the columns coincide, with nothing added to the
+    display path. Both definitions are on the case's axis, so both grids use
+    the same multiples. The fork instant itself is a column on the trunk
+    because it is a setting change. It is the branch's first column because
+    it is where the branch opens.
     """
 
     trunk = SimulationController()
@@ -2455,9 +2482,9 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     trunk_columns = trunk.drawn_window(0.0, stop_s, 13).times_s
     branch_columns = branch.drawn_window(0.0, stop_s, 13).times_s
 
-    # The fork is deliberately not a multiple of the 10 s spacing: where it is
-    # one, the two grids coincide whatever frame the branch is in, and the test
-    # would pass without saying anything.
+    # The fork is deliberately not a multiple of the 10 s spacing. If it were,
+    # the two grids would coincide whatever frame the branch was in, and the
+    # test would pass without showing anything.
     assert fork_s % ((stop_s - 0.0) / 12) != 0.0
 
     assert set(branch_columns) <= set(trunk_columns), (
@@ -2466,8 +2493,8 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     )
     assert len(branch_columns) > 2
 
-    # The axis reaches to the left of the fork; the branch's window is clipped
-    # at its opening rather than refused, and starts exactly there.
+    # The axis extends to the left of the fork. The branch's window is clipped
+    # at its opening rather than refused, and it starts exactly there.
     assert branch_columns[0] == fork_s
     assert branch_columns[-1] == trunk_columns[-1]
 
@@ -2475,14 +2502,15 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
 def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> None:
     """The learner's actual first act on a branch, which is to change something.
 
-    `RunDefinition.record_change` replaces the open segment's settings in place
-    where the run has not advanced past that segment's own opening, rather than
-    recording a zero-length stretch nothing was ever computed under. That test
-    is an equality between the run's reach and its first keyframe's instant,
-    and on a branch both of those are now the fork instant where they used to
-    be zero - so it is worth asserting rather than reading, since a version
-    that seeded only one of the two would open a zero-length segment here and
-    the run would still look right.
+    When the run has not advanced past the open segment's own opening,
+    `RunDefinition.record_change` replaces that segment's settings in place.
+    It does not record a zero-length stretch that nothing was ever computed
+    under. The check it makes is an equality between the run's reach and its
+    first keyframe's instant. On a branch, both of those are now the fork
+    instant, where they used to be zero. So the behaviour is worth asserting
+    rather than assuming from the code. A version that initialised only one
+    of the two would open a zero-length segment here, and the run would still
+    look right.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2509,10 +2537,10 @@ def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> No
 def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
     """The litres a branch reports are the patient's, not the branch's own.
 
-    A branch restarting them at zero would report a mass-balance readout that
-    is correct about the branch and wrong about the patient, at the instant a
-    learner is most likely to compare two managements by how much agent each
-    used.
+    A branch that restarted them at zero would show a mass-balance readout
+    that is correct for the branch and wrong for the patient. It would do so
+    at the moment a learner is most likely to compare two managements by how
+    much agent each used.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2530,8 +2558,8 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
 def test_a_branch_opens_with_its_own_empty_control_timeline() -> None:
     """A branch records the acts its own learner makes, not its parent's.
 
-    The pre-branch history belongs to the trunk and is not reproduced here;
-    what a branch carries forward is the *state* that history produced.
+    The history before the fork belongs to the trunk and is not reproduced
+    here. What a branch carries forward is the *state* that history produced.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2542,11 +2570,12 @@ def test_a_branch_opens_with_its_own_empty_control_timeline() -> None:
 
 
 def test_a_branch_inherits_its_parent_s_settings_at_the_fork() -> None:
-    """Replayed from the recorded timeline, then checked against the segment.
+    """The settings are replayed from the recorded timeline, then checked against the segment.
 
-    The check is the point: a branch that assembled a system matrix its parent
-    never used would diverge from its first step, inside the tolerance that
-    holds the two records together and reported by nothing.
+    The check is the point. A branch that assembled a system matrix its parent
+    never used would diverge from its first step. The divergence would stay
+    inside the tolerance that keeps the two records in agreement, and nothing
+    would report it.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2562,11 +2591,11 @@ def test_a_settings_mismatch_names_the_setting_that_differs(
 ) -> None:
     """Regression (`PL-NC62`): the refusal states what differs, never a cause.
 
-    A branch re-reads the agent's data file when it is rebuilt, so a file
-    edited between the trunk and the branch fails the settings check with the
-    control timeline blameless. The refusal said the timeline did not
-    reproduce its own segments whatever had differed, which sent its reader
-    into the one part that was working.
+    A branch re-reads the agent's data file when it is rebuilt. So a file
+    edited between the trunk and the branch fails the settings check, even
+    though the control timeline is not at fault. Whatever had differed, the
+    refusal used to say that the timeline did not reproduce its own segments.
+    That sent its reader to the one part that was working.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2591,7 +2620,7 @@ def test_a_settings_mismatch_names_the_setting_that_differs(
 def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Three tissue groups share each field name, so the group is named with it."""
+    """Three tissue groups share each field name, so the message names the group too."""
 
     trunk = _trunk_with_two_changes()
     on_file = load_reference_adult_parameters()
@@ -2608,12 +2637,13 @@ def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
 
 
 def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`PL-NC62`'s second gap: an agent reference no equation reads is checked too.
+    """`PL-NC62`'s second gap: an agent reference that no equation reads is checked too.
 
-    The MAC divides every MAC multiple on screen, and a branch re-reads it from
-    the agent's file. Rebuilt under another, the branch would show one
-    concentration as two multiples beside its parent while every equation
-    setting agreed, so the settings check alone let it through.
+    Every MAC multiple on screen is a concentration divided by the MAC, and a
+    branch re-reads the MAC from the agent's file. A branch rebuilt under a
+    different MAC would show one concentration as a different multiple from
+    its parent's, while every equation setting agreed. So the settings check
+    alone let it through.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2682,16 +2712,17 @@ def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
 
 
 def test_resumed_at_refuses_an_instant_no_setting_changed_at_and_names_the_other_doors() -> None:
-    """The refusal gives the door's scope as its reason, not an arithmetic limit (`PL-54V0`).
+    """The refusal gives the method's scope as its reason, not an arithmetic limit (`PL-54V0`).
 
-    `resumed_at` opens at the run's opening or a recorded setting change. An
-    instant between two of them is not beyond reproducing - `resumed_at_mark`
-    and `resumed_here` both fork there and reproduce the run element-wise -
-    it is another door's, so the message says which, and names the keyframes
-    this run does hold so a caller can pick one. The reason it used to give,
-    that opening there "would restart from two propagations where the run took
-    one", is true only of a construction no door uses, and a reader who
-    believed it would reach for the refused fix of recording a keyframe there.
+    `resumed_at` opens at the run's opening or at a recorded setting change.
+    An instant between two of them can still be reproduced: `resumed_at_mark`
+    and `resumed_here` both fork there and reproduce the run element-wise.
+    Such an instant belongs to another method, so the message says which one.
+    It also names the keyframes this run does have, so a caller can pick one.
+    The reason the message used to give was that opening there "would restart
+    from two propagations where the run took one". That is true only of a
+    construction that no fork method uses. A reader who believed it would
+    reach for the refused fix of recording a keyframe there.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2719,10 +2750,10 @@ def test_an_instant_the_run_never_reached_is_refused() -> None:
 
 
 def test_a_non_finite_fork_instant_cannot_be_built() -> None:
-    """Named separately from the keyframe refusal, which would be the wrong reason.
+    """This refusal is separate from the keyframe refusal, which would give the wrong reason.
 
-    Since `PL-CN5S` it is refused where the instant is built, so no run is
-    ever asked to branch at one.
+    Since `PL-CN5S`, a non-finite instant is refused when the instant is
+    built, so no run is ever asked to branch at one.
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
@@ -2731,12 +2762,12 @@ def test_a_non_finite_fork_instant_cannot_be_built() -> None:
 
 @pytest.mark.parametrize("instant_s", [0.0, float("inf")])
 def test_a_fork_instant_not_built_as_a_case_instant_is_refused(instant_s: float) -> None:
-    """Whatever its value, and before the keyframes are searched (`PL-CN5S`).
+    """The instant is refused whatever its value, before the keyframes are searched (`PL-CN5S`).
 
-    A bare `0.0` is refused although the trunk holds a keyframe there: nothing
-    has checked it, and the refusal says so rather than that the run holds no
-    keyframe, which would be the wrong reason. `fork_at` forwards here, so
-    it refuses the same way.
+    A bare `0.0` is refused even though the trunk has a keyframe there,
+    because nothing has checked it. The refusal says so. It does not say that
+    the run has no keyframe there, which would be the wrong reason. `fork_at`
+    forwards to this method, so it refuses the same way.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2746,11 +2777,12 @@ def test_a_fork_instant_not_built_as_a_case_instant_is_refused(instant_s: float)
 
 
 def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None:
-    """A trunk whose frame failed offers no fork point and refuses each door (`PL-T2Q2`).
+    """A trunk whose frame failed offers no fork point and refuses every fork (`PL-T2Q2`).
 
-    The record is the run's, like a failure, so a reset clears it and the
-    fresh run offers its opening again. A failure alone does not refuse:
-    a trunk whose own step failed keeps its keyframes.
+    The failed-frame record belongs to the run, as a failure does. So a reset
+    clears it, and the fresh run offers its opening again. A failure alone
+    does not cause a refusal: a trunk whose own step failed keeps its
+    keyframes.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2780,16 +2812,16 @@ def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None
 
 
 def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> None:
-    """`PL-TFX5`'s shape: one trunk with N branches, and sub-forks deliberately out.
+    """`PL-TFX5`'s shape: one trunk with N branches, and sub-forks deliberately excluded.
 
-    They multiply without bound and buy little over re-branching from the
-    trunk, and that is the whole of the reason. It once also rested on a
-    branch's keyframes being its definition's own, so that an instant handed
-    to this on a branch meant something other than the same number handed to
-    the trunk; `PL-ZMRT` retired that - every run's instants are the case's
-    now - and `SimulationController.resumed_at` states the surviving reason
-    alone. A guard defended by an argument that has stopped being true is one
-    a later reader removes.
+    Sub-forks multiply without bound and give little that re-branching from
+    the trunk does not. That is the whole reason. The rule once also rested on
+    a branch's keyframes belonging to its own definition. An instant passed to
+    this method on a branch then meant something different from the same
+    number passed to the trunk. `PL-ZMRT` retired that, because every run's
+    instants are now the case's. `SimulationController.resumed_at` states only
+    the reason that remains. A later reader removes a guard whose argument has
+    stopped being true.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2823,11 +2855,11 @@ def test_a_branch_starts_paused() -> None:
 
 
 def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None:
-    """A branch's beginning is the fork; the case's induction is not a state it holds.
+    """A branch begins at the fork, and the case's induction is not a state it has.
 
-    Clearing to an empty system would stand the patient at no agent at a case
-    time the model says they are loaded - a plausible state that never
-    happened.
+    Clearing to an empty system would put the patient at no agent, at a case
+    time when the model says they are loaded with agent. That is a plausible
+    state that never happened.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2851,13 +2883,13 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
 
 def test_a_branch_reset_the_core_refuses_leaves_the_branch_exactly_as_it_was() -> None:
-    """A branch's reset reads the same record first, so a refused one stands where it did.
+    """A branch's reset reads the same record first, so a refused reset leaves the branch as it was.
 
-    The branch's route back to its fork, `_open_at`, records the settings in
-    force at the fork; before `PL-M4M0` it read them there, after the state
-    had been stood back at the fork, so a refusal left the branch at the
-    fork under its old definition with nothing recorded. `reset()` now reads
-    the record before anything moves and hands it in.
+    `_open_at` takes the branch back to its fork and records the settings in
+    force at the fork. Before `PL-M4M0`, it read those settings itself, after
+    the state had already been moved back to the fork. So a refusal left the
+    branch at the fork under its old definition, with nothing recorded.
+    `reset()` now reads the record before anything moves and passes it in.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2902,24 +2934,25 @@ def test_a_branch_is_the_agent_and_patient_its_parent_was() -> None:
     assert at_fork.circuit_volume_l == trunk.snapshot().circuit_volume_l
 
 
-"""`PL-TFX5`: a case is one trunk and the branches taken from it, held flat.
+"""`PL-TFX5`: a case is one trunk and the branches taken from it, kept flat.
 
-The clause `SimulationController.resumed_at` cannot carry on its own. It makes
-one branch and hands it back detached, so two calls produce two controllers
-that each know the instant they opened at and none of which knows the others
-exist. `BranchedCase` is what makes them one case, and what makes the flat
-shape structural: the trunk is the only run it will fork, so a sub-fork is not
-an operation to decline.
+`SimulationController.resumed_at` cannot enforce this clause on its own. It
+makes one branch and returns it detached. So two calls produce two
+controllers that each know the instant they opened at, and neither knows the
+other exists. `BranchedCase` makes them one case, and it builds the flat shape
+into the structure. The trunk is the only run it will fork, so a sub-fork is
+not an operation it ever has to refuse.
 """
 
 
 def test_a_case_forks_at_every_instant_the_trunk_offers() -> None:
     """`PL-TFX5`'s first clause: any recorded control event is a branch point.
 
-    `fork_points_s` is the run's keyframes, which are its opening and every
-    setting change the model was actually stepped under - so this asserts the
-    two agree as well as that each one forks, because a fork point list that
-    quietly omitted one would still pass a test that only walked the list.
+    `fork_points_s` is the run's keyframes: its opening and every setting
+    change that the model was actually stepped under. So the test asserts that
+    the list agrees with the timeline, as well as that each point forks. A
+    list of fork points that quietly left one out would still pass a test that
+    only walked the list.
     """
 
     case = BranchedCase(_trunk_with_two_changes())
@@ -2938,11 +2971,11 @@ def test_a_case_forks_at_every_instant_the_trunk_offers() -> None:
 
 
 def test_a_case_holds_two_branches_taken_at_one_decision_point() -> None:
-    """The comparison the milestone is named for, so nothing makes a point unique.
+    """The comparison the milestone is named for, so a fork point can be used more than once.
 
-    Coast against hold, from the same instant: two branches at one fork point
-    are the normal case rather than a duplicate to reject, and they must be
-    separately managed once taken.
+    Coasting against holding, from the same instant: two branches at one fork
+    point are the normal case, not a duplicate to reject. Once taken, they
+    must be managed separately.
     """
 
     case = BranchedCase(_trunk_with_two_changes())
@@ -2964,9 +2997,9 @@ def test_a_case_holds_two_branches_taken_at_one_decision_point() -> None:
 def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
     """`PL-TFX5`'s third clause, against the whole of `fork_points_s`.
 
-    The trunk surviving is what separates a comparison from an undo. It is
-    checked after every branch has been advanced and re-dialled, because a
-    branch sharing a compartment with its parent would show nothing until
+    The trunk's survival is what separates a comparison from an undo. The test
+    checks it after every branch has been advanced and re-dialled, because a
+    branch that shared a compartment with its parent would show nothing until
     something moved.
     """
 
@@ -2988,12 +3021,12 @@ def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
 
 
 def test_a_case_cannot_be_rooted_in_a_branch() -> None:
-    """`PL-TFX5`'s fourth clause, as an interface that cannot state a sub-fork.
+    """`PL-TFX5`'s fourth clause, as an interface that cannot express a sub-fork.
 
-    `resumed_at` refuses a branch of a branch and keeps doing so - that is the
-    guard for a caller holding two controllers. This is the other half: a case
-    built on a branch would offer `fork_at` over a second generation, so it is
-    refused at construction rather than at the fork.
+    `resumed_at` refuses a branch of a branch and keeps doing so. That is the
+    guard for a caller that holds two controllers. This test covers the other
+    half. A case built on a branch would offer `fork_at` over a second
+    generation, so the case is refused when it is built, not at the fork.
     """
 
     trunk = _trunk_with_two_changes()
@@ -3004,7 +3037,7 @@ def test_a_case_cannot_be_rooted_in_a_branch() -> None:
 
 
 def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -> None:
-    """The refusal reaches through the case rather than being softened by it."""
+    """The refusal passes through the case unchanged rather than being softened by it."""
 
     case = BranchedCase(_trunk_with_two_changes())
     between_s = (case.fork_points_s[-2] + case.fork_points_s[-1]) / 2.0
@@ -3020,14 +3053,14 @@ def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -
 def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> None:
     """`PL-TFX5`'s last clause, against a patient value that moves during the run.
 
-    Cardiac output is the one patient quantity a control can move, so it is
-    the only one that distinguishes "the branch carries its parent's patient"
-    from "the branch rebuilds the same reference patient from the same data
-    file". A run that never moves it asserts the second while reading like the
-    first, because `_setting_at` then falls through to the value in force now.
-    So this moves it mid-run and forks *before* the move: the branch must carry
-    the value the case was computed under at the fork, which is no longer the
-    value the trunk is standing at.
+    Cardiac output is the one patient quantity that a control can change. So
+    it is the only one that tells "the branch carries its parent's patient"
+    apart from "the branch rebuilds the same reference patient from the same
+    data file". A run that never changes it checks the second claim while
+    appearing to check the first, because `_setting_at` then falls through to
+    the value in force now. So this test changes it mid-run and forks *before*
+    the change. The branch must carry the value the case was computed under at
+    the fork, which is no longer the trunk's current value.
     """
 
     trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=CardiacOutput(4.2))
@@ -3056,11 +3089,12 @@ def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> 
 def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
     """`PL-TFX5`: a branch that could re-choose its agent is a second case.
 
-    `set_agent` begins a new run, and `_build_state` clears `opened_from` with
-    everything else - so without this refusal a branch becomes a trunk in
-    silence, `reset()` stops returning it to its fork, `resumed_at` accepts it,
-    and the case it was taken from goes on listing it. The trunk is unaffected:
-    changing the case's agent is still the explicit new case it always was.
+    `set_agent` begins a new run, and `_build_state` clears `opened_from` along
+    with everything else. Without this refusal, a branch would silently become
+    a trunk. `reset()` would stop returning it to its fork, `resumed_at` would
+    accept it, and the case it was taken from would go on listing it. The
+    trunk is unaffected: changing the case's agent still starts an explicit
+    new case, as it always did.
     """
 
     trunk = _trunk_with_two_changes()
@@ -3081,24 +3115,25 @@ def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
 def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -> None:
     """`PL-TFX5`'s first clause, against the case that used to break it.
 
-    "A run can be forked at any recorded control event" binds two records that
-    collapse redundant changes by different rules, so it holds only while those
-    rules agree. `RunDefinition.record_change` compares whole settings against
-    the previous stretch and is order-independent; the control timeline
-    compares one entry, and used to compare only the newest one.
+    The clause "A run can be forked at any recorded control event" ties two
+    records together. They collapse redundant changes by different rules, so
+    the clause is true only while those rules agree.
+    `RunDefinition.record_change` compares the whole settings against the
+    previous stretch, and its result does not depend on order. The control
+    timeline compares one entry, and it used to compare only the newest one.
 
-    Two dials nudged and both put back **interleaved** - F up, C up, F back, C
-    back - is what separated them: each move's predecessor was the other
-    control, so no collapse fired, and four entries stood at an instant the run
-    never changed at while the definition correctly held no keyframe there. The
-    nested order collapsed to nothing, so the defect was order-dependent and
-    invisible to a test that moved two controls once each. A learner reaches it
-    while paused, where `advance()` is a no-op and every control they touch
-    carries one instant.
+    What separated the two records was two dials nudged and both put back in
+    **interleaved** order: F up, C up, F back, C back. Each move's predecessor
+    was the other control, so no collapse happened. Four entries remained at
+    an instant at which the run never changed, while the definition correctly
+    had no keyframe there. The nested order collapsed to nothing. So the
+    defect depended on order, and a test that moved two controls once each
+    could not see it. A learner meets it while paused, when `advance()` does
+    nothing and every control they touch carries the same instant.
 
-    Asserted as the property rather than as the repair: every stamp the reader
-    is shown is an instant the run holds a keyframe for, and `resumed_at`
-    accepts each one.
+    The test asserts the property rather than the repair. Every time stamp the
+    reader is shown is an instant at which the run has a keyframe, and
+    `resumed_at` accepts each one.
     """
 
     trunk = SimulationController()
@@ -3116,12 +3151,12 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     timeline = trunk.snapshot().control_timeline
     openings = [segment.opening.instant_s for segment in trunk.run_segments]
 
-    # Nothing the model saw differs, so neither record has anything to say.
+    # Nothing the model saw has changed, so neither record shows a change.
     assert [change.elapsed_s for change in timeline] == openings[1:]
     assert openings == [0.0]
 
-    # And the general property, on a run that does change: every stamp a reader
-    # is shown is a fork point, which is what the clause promises.
+    # Now the general property, on a run that does change. Every time stamp a
+    # reader is shown is a fork point, which is what the clause promises.
     trunk.start()
     _advance_for(trunk, duration_s=30.0)
     trunk.set_alveolar_ventilation(AlveolarVentilation(6.0))
@@ -3139,12 +3174,12 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
 
 # --------------------------------------------------------------- bookmarks
 #
-# `tests/unit/test_bookmarks.py` holds what a mark refuses. What is here is
-# the controller's half: that the collections reach a reader through the
-# snapshot, and what happens to them at the three points a run starts over -
-# `reset`, `set_agent` and a fork. Each of those three is a decision rather
-# than a consequence, so each has a test saying which way it went and why
-# (`PL-LPLD`).
+# `tests/unit/test_bookmarks.py` covers what a mark rejects. This section
+# covers the controller's half. It checks that the collections reach a reader
+# through the snapshot. It also checks what happens to them at the three
+# points where a run starts over: `reset`, `set_agent` and a fork. Each of
+# those three is a decision rather than a consequence, so each has a test
+# that says which way it went and why (`PL-LPLD`).
 
 
 def test_a_fresh_run_is_marked_at_nothing() -> None:
@@ -3175,8 +3210,8 @@ def test_the_two_collections_are_added_to_and_removed_from_independently() -> No
 
 
 def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
-    # The snapshot is a read-only view of one instant, so a panel holding one
-    # from an earlier tick must not come to describe a later run.
+    # The snapshot is a read-only view of one instant. A panel that keeps a
+    # snapshot from an earlier tick must not come to describe a later run.
     controller = SimulationController()
     before = controller.snapshot()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
@@ -3196,9 +3231,9 @@ def test_a_marked_instant_cannot_be_marked_twice_through_the_controller() -> Non
 
 
 def test_resetting_a_run_keeps_its_marks() -> None:
-    # A reset is for taking the same case again, and it is the same case the
-    # learner was asking about - so the marks go with the settings rather than
-    # with the state.
+    # A reset is for running the same case again, and it is the same case the
+    # learner was asking about. So the marks stay with the settings rather
+    # than with the state.
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
     controller.start()
@@ -3211,8 +3246,8 @@ def test_resetting_a_run_keeps_its_marks() -> None:
 def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     # A MAC target is a multiple of whichever agent is running, so 0.8 x MAC
     # stays 0.8 x MAC of the new agent rather than becoming the old agent's
-    # absolute concentration under a new divisor. Reaching the same multiple at
-    # a different time is what a learner changing agent is there to see.
+    # absolute concentration under a new divisor. A learner who changes agent
+    # wants to see the same multiple reached at a different time.
     controller = SimulationController()
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
     controller.add_mac_target(target)
@@ -3228,11 +3263,11 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
-    # The opposite of the control timeline, and for the opposite reason: the
-    # timeline is the record of what was done to a run, and a mark is a
+    # Marks behave the opposite way to the control timeline, for the opposite
+    # reason. The timeline records what was done to a run, and a mark is a
     # question about what is still to come. A comparison is two managements
-    # answering one question, so a learner made to re-enter the marks could
-    # compare two branches at two different heights with nothing saying so.
+    # answering one question. A learner made to re-enter the marks could
+    # compare two branches at two different heights, with nothing to show it.
     trunk = _trunk_with_two_changes()
     target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3))
     trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "the decision point"))
@@ -3243,14 +3278,15 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
 
     assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45.0), "the decision point"),)
     assert marks.mac_targets == (target,)
-    # And the timeline still starts empty, which is the half that does not
-    # come across.
+    # The timeline still starts empty, because it is the half that does not
+    # carry over.
     assert branch.snapshot().control_timeline == ()
 
 
 def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
-    # Inherited at the fork and not shared afterwards: the two runs are two
-    # managements, and a mark added to one is a question asked of that one.
+    # Marks are inherited at the fork and not shared afterwards. The two runs
+    # are two managements, and a mark added to one is a question asked of that
+    # one.
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
@@ -3260,17 +3296,17 @@ def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
 
 
 def test_a_mark_changes_nothing_the_run_computes() -> None:
-    # The property that lets a mark be carried across a fork at all, and the
-    # one `PL-B8MK` measured the alternative against: recording a keyframe
-    # where a run halts moves the trunk's own later answers, and holding a mark
-    # in a collection beside the run moves nothing. Element-wise rather than
-    # within a tolerance, because that is the claim.
+    # This property is what lets a mark be carried across a fork at all.
+    # `PL-B8MK` measured the alternative against it. Recording a keyframe where
+    # a run halts changes the trunk's own later results. Keeping a mark in a
+    # collection beside the run changes nothing. The comparison is element-wise
+    # rather than within a tolerance, because that is the claim.
     #
-    # It survives `PL-CTD7` unchanged, and the claim is now the stronger one:
-    # the marked run below is *stopped twice* on the way through, at 45 s and
-    # where the alveolar compartment crosses 0.8 ×MAC, and still computes the
-    # same trajectory element-wise. A halt costs the run no simulated time and
-    # moves no state - it only declines to take the next step until asked.
+    # The test still applies unchanged after `PL-CTD7`, and the claim is now
+    # stronger. The marked run below is *stopped twice* on the way: at 45 s,
+    # and where the alveolar compartment crosses 0.8 ×MAC. It still computes
+    # the same trajectory element-wise. A halt costs the run no simulated time
+    # and changes no state. It only declines to take the next step until asked.
     marked = SimulationController()
     marked.add_time_bookmark(TimeBookmark(CaseInstant(45.0)))
     marked.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8)))
@@ -3293,11 +3329,11 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
 
 
 def _advance_until_halted(controller: SimulationController, limit_s: float) -> None:
-    """Step a running controller until a mark halts it, or say it never did.
+    """Step a running controller until a mark halts it, or raise if no mark does.
 
-    The halt is what a bookmark fork is taken at, so a test that silently ran
-    past one would go on to fork at whatever instant it happened to stop at
-    and assert nothing about the case it meant to.
+    A bookmark fork is taken at the halt. A test that silently ran past the
+    halt would fork at whatever instant it happened to stop at, and it would
+    assert nothing about the case it was meant to test.
     """
 
     for _ in range(round(limit_s / MAXIMUM_SIMULATION_STEP_S)):
@@ -3312,9 +3348,9 @@ def _advance_until_halted(controller: SimulationController, limit_s: float) -> N
 def _trunk_halted_on_a_bookmark() -> SimulationController:
     """A run stopped where a mark lies between two of its keyframes.
 
-    One setting change, at 30 s, so the run holds keyframes at 0 s and 30 s
-    and at nothing else; the mark is at 45.3 s, which is neither of them. That
-    is the ordinary case rather than a contrived one - on the 120 s run the
+    The run has one setting change, at 30 s, so it has keyframes at 0 s and
+    30 s and nowhere else. The mark is at 45.3 s, which is neither of them.
+    That is the ordinary case, not a contrived one. On the 120 s run that the
     other fork tests use, 3 of the 1 201 instants a halt could land on are
     keyframes.
     """
@@ -3332,9 +3368,10 @@ def _trunk_halted_on_a_bookmark() -> SimulationController:
 def _the_same_case_never_marked(steps: int) -> SimulationController:
     """`_trunk_halted_on_a_bookmark`'s case without the mark, run the same distance.
 
-    Driven by step count rather than by duration, because the marked run stops
-    part-way through a step budget and a second run told to advance "45.3 s"
-    would take a different number of steps and so stand at a different float.
+    The run is driven by step count rather than by duration. The marked run
+    stops partway through a step budget. A second run told to advance "45.3 s"
+    would take a different number of steps, and so it would stop at a
+    different float.
     """
 
     controller = SimulationController()
@@ -3351,22 +3388,23 @@ def _the_same_case_never_marked(steps: int) -> SimulationController:
 def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it() -> None:
     """`PL-B8MK`'s deliverable, and both halves of it.
 
-    Either half alone is satisfiable by a design this project refused.
-    Recording a keyframe where the run halts makes the branch exact against
-    the trunk it forked from - and displaces that trunk's own later answers,
-    48 of 54 elements against the same case built unmarked, so marking a run
-    would change it. Doing nothing at all leaves the trunk untouched and
-    refuses the fork. So the two are asserted together: the branch reproduces
-    its parent element-wise from the fork onwards, *and* the trunk is
-    element-for-element the case it would have been had nobody marked it.
+    A design this project refused could satisfy either half alone. Recording a
+    keyframe where the run halts makes the branch exact against the trunk it
+    forked from. But it also changes that trunk's own later results: 48 of 54
+    elements differed from the same case built unmarked, so marking a run
+    would change it. Doing nothing at all leaves the trunk untouched but
+    refuses the fork. So the two halves are asserted together. The branch
+    reproduces its parent element-wise from the fork onwards, *and* the trunk
+    is, element for element, the case it would have been if nobody had marked
+    it.
     """
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
     fork_steps = marked._state.step_count
 
-    # The premise this rests on: the fork is an instant the trunk holds no
-    # keyframe for, so the refused route would have had to record one there.
+    # The premise: the trunk has no keyframe at the fork instant, so the
+    # refused route would have had to record one there.
     assert fork_s not in [segment.opening.instant_s for segment in marked.run_segments]
 
     branch = marked.resumed_here()
@@ -3382,10 +3420,10 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     unmarked = _the_same_case_never_marked(steps=marked._state.step_count)
     unmarked.pause()
 
-    # The trunk is the case it would have been unmarked: the same keyframes,
-    # at the same instants, holding the same states. A keyframe recorded where
-    # the run halted would show up here as a fourth opening the unmarked run
-    # does not have.
+    # The trunk is the case it would have been without the mark: the same
+    # keyframes, at the same instants, with the same states. A keyframe
+    # recorded where the run halted would show up here as a third opening
+    # that the unmarked run does not have.
     assert marked._state.step_count == unmarked._state.step_count
     assert marked.snapshot().elapsed_s == unmarked.snapshot().elapsed_s
     assert [segment.opening.instant_s for segment in marked.run_segments] == [
@@ -3415,12 +3453,12 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
 def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> None:
     """The route this project chose, stated as the structure it produces.
 
-    The branch stands at the bookmark - its clock, its live system - while its
-    run definition opens at the keyframe *at or before* that instant, carrying
-    that keyframe's own state. Every instant after the fork is then one
-    propagation from the same keyframe the trunk propagates from, which is
-    what `docs/MODEL.md` § "What this requires of a branch" relaxes the second
-    of its two conditions to.
+    The branch's clock and live system are at the bookmark. Its run definition
+    opens at the keyframe *at or before* that instant, with that keyframe's
+    own state. Every instant after the fork is then one propagation from the
+    same keyframe that the trunk propagates from. `docs/MODEL.md` § "What this
+    requires of a branch" relaxes the second of its two conditions to exactly
+    that.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3441,22 +3479,22 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
 
 
 def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
-    """The clip is read from the fork rather than from the definition's opening.
+    """The window is clipped at the fork, not at the definition's opening.
 
-    The definition can answer for the stretch between the keyframe it opens at
-    and the fork, because that stretch is the parent's. The branch did not
-    live it. Drawing it would put the trunk's trajectory on screen under the
-    branch's identity - the right numbers in the wrong patient context, which
-    `CLAUDE.md`'s safety-critical standard counts as a failure in its own
-    right.
+    The definition can return values for the stretch between the keyframe it
+    opens at and the fork, because that stretch belongs to the parent. The
+    branch did not live through it. Drawing it would show the trunk's
+    trajectory under the branch's identity. Those are the right numbers in the
+    wrong patient context, and `CLAUDE.md`'s safety-critical standard counts
+    that as a failure in its own right.
     """
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
     branch = marked.resumed_here()
 
-    # An axis ending inside the interval the definition can answer for and the
-    # branch never lived draws nothing at all.
+    # An axis that ends inside the interval that the definition covers, and
+    # that the branch never lived through, draws nothing at all.
     assert 30.0 < fork_s - 5.0 < fork_s
     window = branch.drawn_window(0.0, fork_s - 5.0, 150)
 
@@ -3468,52 +3506,54 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
 
     assert spanning.times_s == (fork_s,)
 
-    # And the trunk, on the same axis, draws the stretch the branch declines
-    # to: the two differ because the branch did not exist yet.
+    # On the same axis, the trunk draws the stretch that the branch does not.
+    # The two differ because the branch did not exist yet.
     assert marked.drawn_window(0.0, fork_s - 5.0, 150).times_s != ()
 
 
 WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
 """Bound on |trunk drawn - branch drawn| at a column the two runs share.
 
-Measured at or below 2.8e-15 on the case below; set an order above that so an
-ordinary floating-point wobble does not fail the suite, and eleven orders below
-the 1e-4 `docs/MODEL.md` § "Displayed precision" resolves, which is the point
-the measurement makes.
+The divergence was measured at or below 2.8e-15 on the case below. The bound
+is set an order of magnitude above that, so an ordinary floating-point wobble
+does not fail the suite. It is also eleven orders of magnitude below the 1e-4
+that `docs/MODEL.md` § "Displayed precision" resolves, which is the point the
+measurement makes.
 """
 
 
 def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
     """`PL-Z3W6` at the sampled points a learner actually sees.
 
-    "Every sampled point" has a second reading, and it is the one the release
+    "Every sampled point" has a second meaning, and it is the one the release
     is for: the columns the chart draws. A learner does not compare two runs at
-    whole steps of the solver - they compare them at the vertices of two
-    overlaid traces, and a divergence before the fork is what would make a
-    difference after it unattributable to the one setting that was changed.
+    whole steps of the solver. They compare them at the vertices of two
+    overlaid traces. A divergence before the fork would make it impossible to
+    attribute a difference after the fork to the one setting that was changed.
 
     Three things are asserted, and they are three different claims:
 
     - **The branch adds exactly one column the trunk does not draw, and it is
       the fork.** A control-event fork adds none, because a control event is a
-      column on every run that has one; a bookmark's instant is not, so the
-      branch draws it as the left end of its own clipped range. What that
-      vertex marks is where the two stop being one run.
+      column on every run that has one. A bookmark's instant is not, so the
+      branch draws it as the left end of its own clipped range. That vertex
+      marks where the two stop being one run.
     - **Canonically, they agree element for element at every column they do
-      share.** This is the guarantee, asked at the drawn instants rather than
-      at the solver's: 0 of 2 160 elements differ over 240 shared columns.
-    - **The drawn values at those columns do not** - 1 909 of the same 2 160,
-      worst 2.7e-15 - because `evaluate_anchored` chains one propagator across
-      consecutive columns and breaks at a bound, so the trunk chains through
-      the fork while the branch restarts there. Without this half the first two
-      would be satisfied by a display path that had quietly become the
-      canonical one, and `docs/MODEL.md` § "The canonical evaluation rule"
-      would be enforcing a separation that no longer existed.
+      share.** This is the guarantee, checked at the drawn instants rather
+      than at the solver's: 0 of 2 160 elements differ over 240 shared columns.
+    - **The drawn values at those columns do not.** 1 909 of the same 2 160
+      differ, the worst by 2.7e-15. That is because `evaluate_anchored` chains
+      one propagator across consecutive columns and breaks the chain at a
+      bound. So the trunk chains through the fork, while the branch restarts
+      there. Without this third claim, a display path that had quietly become
+      the canonical one would satisfy the first two. `docs/MODEL.md` § "The
+      canonical evaluation rule" would then be enforcing a separation that no
+      longer existed.
 
-    The third is why the second is worth asserting at all: a reader taking a
-    difference between two drawn traces sees a few units in the last place here
-    where two identical runs should read zero, and the canonical agreement is
-    what says the case did not disagree with itself.
+    The third claim is why the second is worth asserting at all. A reader who
+    takes the difference between two drawn traces sees a few units in the last
+    place here, where two identical runs should show zero. The canonical
+    agreement is what shows that the case did not disagree with itself.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3566,13 +3606,14 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
 def test_a_paused_trunk_branches_where_it_stands() -> None:
     """`PL-Y2SL`'s deliverable: paused anywhere, the learner can branch right there.
 
-    The trunk stands at 120 s, which is neither a keyframe nor a mark - the
-    instant no door reached before, so a learner had to mark it first. The
-    branch is the bookmark fork's construction with the clock naming the fork:
-    it stands at the clock, its definition opens at the keyframe the trunk's
-    stretch opens at, and it reproduces the trunk element-wise from the fork
-    on, while the trunk is left the case it was. It takes no instant, so there
-    is none to get wrong.
+    The trunk is paused at 120 s, which is neither a keyframe nor a mark.
+    Before this item, no fork method reached such an instant, so a learner had
+    to mark it first. The branch uses the bookmark fork's construction, with
+    the clock giving the fork instant. The branch starts at the clock, and its
+    definition opens at the keyframe where the trunk's current stretch opens.
+    It reproduces the trunk element-wise from the fork on, and the trunk stays
+    the case it was. The method takes no instant, so there is no instant to
+    get wrong.
     """
 
     trunk = _trunk_with_two_changes()
@@ -3582,7 +3623,7 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
         (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
     ]
 
-    # The premise: nothing is recorded where the trunk stands.
+    # The premise: nothing is recorded where the trunk is paused.
     assert fork_s not in [instant_s for instant_s, _ in keyframes]
     assert trunk.snapshot().bookmark_halt is None
     assert trunk.here_fork_point == HereForkPoint(fork_s, stopped_on_mark=False)
@@ -3616,12 +3657,12 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
 
 
 def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None:
-    """A step spends the halt; while the run goes nothing is offered, and a pause offers anew.
+    """A step uses up the halt, nothing is offered while the run goes, and a pause offers again.
 
-    Where a running run stands moves with each step, so an instant read off it
-    is gone before it can be taken, and the door refuses it rather than fork a
-    step or a tick later than the label said. Paused again, the run offers where
-    it then stands, no longer on the mark.
+    A running run's position moves with each step, so an instant read from it
+    is gone before it can be taken. The fork method refuses it rather than
+    fork a step or a tick later than the label said. Once paused again, the
+    run offers the place where it then is, which is no longer on the mark.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3646,11 +3687,12 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
 
 
 def test_a_failed_run_offers_no_place_to_branch_where_it_stands() -> None:
-    """A failure is not a pause, so where a failed run stands is neither offered nor taken.
+    """A failure is not a pause, so a failed run's position is neither offered nor taken.
 
-    `RunStatus.failure_reason` refuses to present the one as the other, and a
-    branch there would resume what `fail` says is not resumed. The keyframes the
-    run passed before it are still branched at, as the refusal says.
+    `RunStatus.failure_reason` keeps a failure from being presented as a
+    pause. A branch there would resume a run that `fail` says is not resumed.
+    The run can still be branched at the keyframes it passed before the
+    failure, as the refusal says.
     """
 
     trunk = _trunk_with_two_changes()
@@ -3682,14 +3724,15 @@ def test_a_run_at_its_opening_offers_no_place_to_branch_where_it_stands() -> Non
 
 
 def test_a_mark_added_inside_the_halting_step_reads_passed_on_the_branch() -> None:
-    """A mark the halting step crossed reads passed on the branch, however late (`PL-2N43`).
+    """A mark the halting step crossed shows as passed on the branch, however late (`PL-2N43`).
 
-    A 45.35 s mark halts the run at the end of the step reaching it, 45.4 s, and
-    a 45.33 s mark added while the run stands there lies inside that same step.
-    The halt's record names only what was marked when the run stopped, so a
-    branch seeded from it opened just past a mark it had no record of and read
-    it as before the branch, where the trunk and `resumed_at_mark` read it as
-    passed. Asked of the marks as they stand, the step's crossing names both.
+    A 45.35 s mark halts the run at the end of the step that reaches it, at
+    45.4 s. A 45.33 s mark added while the run is stopped there lies inside
+    that same step. The halt's record names only what was marked when the run
+    stopped. So a branch started from that record opened just past a mark it
+    had no record of. It showed the mark as before the branch, while the trunk
+    and `resumed_at_mark` showed it as passed. When the step's crossing is
+    computed from the current marks, it names both.
     """
 
     trunk = SimulationController()
@@ -3711,11 +3754,12 @@ def test_a_mark_added_inside_the_halting_step_reads_passed_on_the_branch() -> No
 def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it() -> None:
     """`resumed_at` keeps its keyframe rule unchanged, halt or no halt.
 
-    What `PL-B8MK` added is a second door, not a wider one, and `PL-Z3W6` did
-    not widen it either: every instant a run can be halted at is already
-    reachable through `resumed_here`. A marked instant the run has run past
-    is reachable too, through `resumed_at_mark` (`PL-W4XQ`) - a third door,
-    which still leaves this one's scope where it was.
+    `PL-B8MK` added a second fork method rather than widening this one, and
+    `PL-Z3W6` did not widen it either. Every instant at which a run can be
+    halted is already reachable through `resumed_here`. A marked instant that
+    the run has gone past is reachable too, through `resumed_at_mark`
+    (`PL-W4XQ`). That is a third method, and it leaves this method's scope
+    unchanged.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3743,11 +3787,12 @@ def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> 
 def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> None:
     """`reset()` preserves settings, and the definition has to follow.
 
-    A branch reset after its learner has dialled something new stands at the
-    fork state under the new settings. A definition still opening at the
-    parent's earlier keyframe would propagate that keyframe forward under
-    settings the parent never used and draw the branch from a state it is not
-    in - the readouts saying one thing and the trace another, about one run.
+    A branch reset after its learner has dialled something new is at the fork
+    state under the new settings. A definition still opening at the parent's
+    earlier keyframe would propagate that keyframe forward under settings the
+    parent never used. It would draw the branch from a state the branch is not
+    in. The readouts would then say one thing and the trace another, about one
+    run.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3763,7 +3808,7 @@ def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> No
 
 
 def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened() -> None:
-    """The flat shape is the whole of the structure, by whichever door a branch arrived."""
+    """The flat shape applies to every branch, whichever fork method made it."""
 
     marked = _trunk_halted_on_a_bookmark()
     branch = marked.resumed_here()
@@ -3774,7 +3819,7 @@ def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened()
 
 
 def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
-    """The case-level door, which keeps the branch rather than handing it out loose."""
+    """The case-level fork method keeps the branch rather than returning it detached."""
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
@@ -3786,20 +3831,20 @@ def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
     assert case.runs == (marked, branch)
     assert branch.opened_from is not None
     assert branch.opened_from.fork.instant_s == fork_s
-    # The trunk is left standing where it was, still on its halt.
+    # The trunk stays where it was, still stopped at its halt.
     assert marked.snapshot().elapsed_s == fork_s
     assert marked.snapshot().bookmark_halt is not None
 
 
 def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachable() -> None:
-    """The standings read where the branch *began*, not where its definition opens.
+    """The standings are taken from where the branch *began*, not where its definition opens.
 
     A bookmark branch's definition opens at the keyframe at or before the
-    fork, and the stretch between is the parent's. A mark lying in it can
-    never be reached going forward, so the row has to say so. Reading the
-    definition's own opening instead - which was the same number for every
-    branch until `PL-B8MK` - would tell a learner to wait for something no
-    step can arrive at.
+    fork, and the stretch between them belongs to the parent. A mark in that
+    stretch can never be reached going forward, so the row must say so. Until
+    `PL-B8MK`, the definition's own opening was the same number as the fork
+    for every branch. Using it here instead would tell a learner to wait for
+    something that no step can reach.
     """
 
     marked = SimulationController()
@@ -3827,19 +3872,20 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
 
 # ------------------------------------------- a mark the run is at or behind
 #
-# `PL-3K9B`'s seven measured cases, run end to end rather than asserted
-# against `BookmarkSet.standings` directly, because the defect was never in
-# that function: it was in what the controller handed it. Each is the same
-# claim - `STILL_RUNNING` says the run can still reach the mark, and in none
-# of these could any step ever make that true.
+# These are `PL-3K9B`'s seven measured cases. They run end to end rather than
+# being asserted against `BookmarkSet.standings` directly, because the defect
+# was never in that function. It was in what the controller passed to it.
+# Each case makes the same claim. `STILL_RUNNING` says the run can still reach
+# the mark, and in none of these cases could any step ever make that true.
 
 
 def test_a_branch_forked_at_a_mark_on_the_step_grid_reads_it_as_passed() -> None:
     """Case A, and the common one: every whole second is on the 0.1 s grid.
 
-    The branch's first `before_s` is the fork itself and `before_s` only
-    increases, so `crossed_between`'s strict `<` means no step the branch ever
-    takes can cross this instant. Stepped well past it to say so.
+    The branch's first `before_s` is the fork itself, and `before_s` only
+    increases. Because `crossed_between` uses a strict `<`, no step the branch
+    ever takes can cross this instant. The test steps well past it to show
+    that.
     """
 
     marked = SimulationController()
@@ -3862,11 +3908,11 @@ def test_a_branch_forked_at_a_mark_on_the_step_grid_reads_it_as_passed() -> None
 def test_one_act_off_the_step_grid_reads_the_same_as_on_it() -> None:
     """Case B, and the whole of what it is about.
 
-    A halt lands on the step that crossed the mark, so an instant that is not
-    a multiple of the step in binary is halted at a few parts in 1e16 past
-    itself - and both rows render as `45.3s`. Two branches taken by the
-    identical act must not give a reader two different accounts of it on the
-    strength of that.
+    A halt lands on the step that crossed the mark. So an instant that is not
+    a multiple of the step in binary is halted a few parts in 1e16 past
+    itself, and both rows display as `45.3s`. Two branches taken by the
+    identical act must not give a reader two different accounts of it because
+    of that.
     """
 
     on_the_grid = TimeBookmark(CaseInstant(30.0))
@@ -3888,11 +3934,11 @@ def test_one_act_off_the_step_grid_reads_the_same_as_on_it() -> None:
 def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> None:
     """Case C, the worst of the seven by consequence.
 
-    The branch's whole identity is *the management taken at this height*, so a
-    panel on which the trunk's row reads reached and the branch's reads still
-    running has the two runs disagreeing about the one instant they share by
-    construction. A target has no clock to be placed against, so this is the
-    case the seeded crossing is carried for.
+    The branch's whole identity is *the management taken at this height*.
+    Suppose a panel showed the trunk's row as reached and the branch's row as
+    still running. The two runs would then disagree about the one instant that
+    they share by construction. A target has no clock time to compare against,
+    so this is the case that the seeded crossing is carried for.
     """
 
     marked = SimulationController()
@@ -3901,7 +3947,8 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
     marked.start()
     _advance_until_halted(marked, limit_s=400.0)
 
-    # A height stops the run as an instant does, and the offer says so alike.
+    # A height stops the run as an instant does, and the offered fork point
+    # says so in the same way.
     assert marked.here_fork_point == HereForkPoint(
         marked.snapshot().elapsed_s, stopped_on_mark=True
     )
@@ -3917,10 +3964,10 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
 def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> None:
     """Case D, with no branch in it at all.
 
-    Marking an instant the case has just run past is what a learner does when
-    something interesting has already happened, and nothing refuses the act.
-    The instant can never enter the halt set - the clock is already past it -
-    so the halt set is not what can answer it.
+    A learner marks an instant the case has just run past when something
+    interesting has already happened, and nothing refuses that. The instant
+    can never enter the halt set, because the clock is already past it. So the
+    halt set cannot decide the mark's standing.
     """
 
     run = SimulationController()
@@ -3942,12 +3989,12 @@ def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> 
 
 
 def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_there() -> None:
-    """Case E, at the door that predates bookmark forks entirely.
+    """Case E, at the fork method that predates bookmark forks entirely.
 
-    The trunk halted on the mark and a setting was then changed there, so the
-    halt is a keyframe too. `resumed_at` asks the step ending at it what it
-    crossed, as `resumed_here` does, so the branch opens standing on the halt's
-    crossing rather than on none (`PL-1ZQ4`, case 3).
+    The trunk halted on the mark, and a setting was then changed there, so the
+    halt is a keyframe too. Like `resumed_here`, `resumed_at` asks the step
+    that ends at the keyframe what it crossed. So the branch opens at the
+    halt's crossing rather than at no crossing (`PL-1ZQ4`, case 3).
     """
 
     marked = SimulationController()
@@ -3971,11 +4018,11 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
 
 
 def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_passed() -> None:
-    """Case F: `_forget_unmarked` drops what the run did with it, and the clock still answers.
+    """Case F: `_forget_unmarked` drops the run's record of the mark, and the clock still decides.
 
-    Removing a mark clears what the run did with it, which is right - the row
-    is gone. An equal mark added afterwards is a new question about the same
-    instant, and the run's clock is still standing on it.
+    Removing a mark clears the run's record of it, which is right, because the
+    row is gone. An equal mark added afterwards is a new question about the
+    same instant, and the run's clock is still at that instant.
     """
 
     marked = SimulationController()
@@ -3993,12 +4040,12 @@ def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_pass
 
 
 def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() -> None:
-    """Case G: the crossing a branch opened on has to survive a reset, or it returns.
+    """Case G: the crossing a branch opened at must survive a reset, or the defect returns.
 
     A branch's reset returns it to its fork, which is the crossing it opens
-    on - so the halt it is standing at and what it has crossed are part of
-    where it is rather than of what an earlier run did. `_open_at` is reset's
-    path as well as the fork's, which is what makes the two stand identically.
+    at. So the halt it is stopped at, and what it has crossed, are part of
+    where it is, not of what an earlier run did. `_open_at` is the path for
+    both a reset and a fork, which is why the two end in identical states.
     """
 
     marked = SimulationController()
@@ -4021,11 +4068,11 @@ def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() ->
 
 
 def test_a_mark_unmarked_on_a_branch_does_not_come_back_with_its_reset() -> None:
-    """The crossing a branch stands on is filtered by what is marked *now*, not by what was.
+    """The crossing a branch is stopped at is filtered by what is marked *now*, not by what was.
 
-    A halt naming a row the panel no longer draws is the stale state
-    `_forget_unmarked` exists to prevent, and a reset re-seeding from the fork
-    is the one place it could have been reintroduced.
+    A halt that names a row the panel no longer draws is the stale state that
+    `_forget_unmarked` exists to prevent. A reset that starts again from the
+    fork is the one place where that state could have come back.
     """
 
     marked = SimulationController()
@@ -4044,14 +4091,14 @@ def test_a_mark_unmarked_on_a_branch_does_not_come_back_with_its_reset() -> None
 def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_fork() -> None:
     """The bookmark analogue of reopening a branch's first segment in place.
 
-    A branch forked at a control event opens its definition at the fork, so a
-    dial turned before it steps rewrites that one segment and the branch still
-    holds one. A bookmark branch has already reached past its definition's
-    opening, so the change opens a second segment at the fork instead -
-    carrying the fork's own state, which is what keeps the branch from
+    A branch forked at a control event opens its definition at the fork. So a
+    dial turned before it steps rewrites that one segment, and the branch
+    still has one segment. A bookmark branch has already reached past its
+    definition's opening. So the change opens a second segment at the fork
+    instead, carrying the fork's own state. That keeps the branch from
     propagating its parent's keyframe forward under settings the parent never
-    used. The record the two keep of themselves still agree: the control
-    timeline's stamps are exactly the segment openings after the first.
+    used. The branch's two records still agree: the control timeline's time
+    stamps are exactly the segment openings after the first.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4076,10 +4123,11 @@ def test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fo
     A branch is drawn on the trunk's own columns so the two traces can be read
     against each other. A fork at a control event adds nothing, because a
     control event is already a drawn instant on both. A bookmark's instant is
-    not, so the branch draws its own first point there and the trunk does not
-    - one vertex, at the instant the two runs stop being the same run, holding
-    the value both of them hold. Pinned rather than left implicit, so that a
-    later change widening it is a failure rather than a surprise.
+    not, so the branch draws its own first point there and the trunk does not.
+    That is one vertex, at the instant the two runs stop being the same run,
+    with the value both runs have there. The test pins this rather than
+    leaving it implicit, so a later change that adds more such columns fails
+    here rather than coming as a surprise.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4098,7 +4146,7 @@ def test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fo
 
 
 def test_a_case_refuses_a_fork_where_its_trunk_stands_while_the_trunk_is_going() -> None:
-    """The refusal reaches through `BranchedCase` as the keyframe one does, and the offer too."""
+    """The refusal passes through `BranchedCase` as the keyframe refusal does, and the offer too."""
 
     trunk = _trunk_with_two_changes()
     case = BranchedCase(trunk)
@@ -4116,12 +4164,12 @@ def test_a_case_refuses_a_fork_where_its_trunk_stands_while_the_trunk_is_going()
 
 
 def test_a_bookmark_halt_is_not_one_of_the_fork_points_the_case_offers() -> None:
-    """The two doors stay separate, which is what keeps that list stable.
+    """The two fork methods stay separate, which keeps the list of fork points stable.
 
-    `fork_points_s` is the trunk's keyframes, and a halt records none - so the
-    list does not change membership as the run halts and resumes, and a caller
-    holding an instant from it cannot ask for a fork at a mark the run has
-    since stepped past.
+    `fork_points_s` is the trunk's keyframes, and a halt records none. So the
+    list does not change its members as the run halts and resumes. A caller
+    holding an instant from the list cannot ask for a fork at a mark that the
+    run has since stepped past.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4131,7 +4179,7 @@ def test_a_bookmark_halt_is_not_one_of_the_fork_points_the_case_offers() -> None
     assert case.fork_points_s == (0.0, 30.0)
     assert fork_s not in case.fork_points_s
 
-    # And it is forkable all the same, by the other door.
+    # The halt can still be forked, by the other fork method.
     assert case.fork_here().began_at_s == fork_s
 
 
@@ -4155,14 +4203,14 @@ def test_two_branches_may_be_taken_at_one_bookmark() -> None:
     assert case.branches == (first, second)
     assert first.began_at_s == second.began_at_s == fork_s
     assert first.run_segments[0].opening.state == second.run_segments[0].opening.state
-    # The trunk is still standing on its halt, having been read twice and
-    # written neither time.
+    # The trunk is still stopped at its halt. It was read twice and written
+    # neither time.
     assert marked.snapshot().elapsed_s == fork_s
     assert marked.snapshot().bookmark_halt is not None
 
 
 def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
-    """The flat shape holds at the new door too, and it says the same thing."""
+    """The flat shape still applies to the newer fork method, with the same message."""
 
     marked = _trunk_halted_on_a_bookmark()
     branch = marked.resumed_here()
@@ -4179,15 +4227,16 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
 
 
 def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork() -> None:
-    """Where the two doors meet, and the arithmetic does not notice.
+    """Where the two fork methods meet, and the arithmetic does not notice.
 
-    A halt is an ordinary pause and the setters apply unconditionally, so a
-    learner may stop on a mark and dial something before branching. That opens
-    a segment at the halt instant, which makes the fork a keyframe after all -
-    the definition opens *at* the fork, and the two answers `_open_at` chooses
-    between are one keyframe and itself. Pinned because it is the one path
-    where a bookmark fork and a control-event fork are the same fork, and a
-    later change that special-cased the halt would have to keep it so.
+    A halt is an ordinary pause, and the setters apply unconditionally. So a
+    learner may stop on a mark and dial something before branching. That
+    opens a segment at the halt instant, which makes the fork a keyframe after
+    all. The definition opens *at* the fork, and the two options that
+    `_open_at` chooses between are the same keyframe. The test pins this
+    because it is the one path where a bookmark fork and a control-event fork
+    are the same fork. A later change that treated the halt as a special case
+    would have to keep them the same.
     """
 
     marked = SimulationController()
@@ -4222,14 +4271,15 @@ def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork(
 def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
     """Where a branch's definition opens cannot depend on the order of a dial and a reset.
 
-    Dial, dial back, reset and dial, reset, dial back end at one branch: the
-    same settings, the same live state, the same snapshot. Deciding where the
-    definition opens from the settings standing at the moment of the reset
-    gives the second of them the fork rather than the parent's keyframe, so it
-    restarts from two propagations where the parent took one and quietly stops
-    reproducing - 40 of 45 elements, with nothing on screen to say so.
-    `_open_at` records the dialled settings as a change at the fork instead,
-    and `record_change`'s own collapse rule notices the dial-back.
+    "Dial, dial back, reset" and "dial, reset, dial back" end at one branch:
+    the same settings, the same live state, the same snapshot. Suppose the
+    reset decided where the definition opens from the settings in place at
+    that moment. The second sequence would then open at the fork rather than
+    at the parent's keyframe. It would restart from two propagations where the
+    parent took one, and quietly stop reproducing the parent in 40 of 45
+    elements, with nothing on screen to show it. Instead, `_open_at` records
+    the dialled settings as a change at the fork, and `record_change`'s own
+    collapse rule notices the dial-back.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4278,12 +4328,12 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
 
 
 def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
-    """The structure the reset leaves, which is what makes the order not matter.
+    """Check the structure that the reset leaves, which is why the order does not matter.
 
-    The parent's stretch stays the parent's - its keyframe, its settings - and
-    what the learner has dialled is a change the branch made at its own
-    beginning. The keyframe that opens is the fork's own state, so the trace
-    starts where the readouts say the branch is standing.
+    The parent's stretch, with its keyframe and its settings, stays the
+    parent's. What the learner has dialled is a change the branch made at its
+    own beginning. The keyframe that opens with that change is the fork's own
+    state, so the trace starts where the readouts say the branch is.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4303,20 +4353,22 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
 
 # --- A mark the run has passed, returned to (PL-W4XQ) -------------------------
 #
-# The act the owner described a time bookmark for: paused at 3 h, mark 1 h and
-# go back to it. Neither other door reaches it - `resumed_at` opens only at a
-# keyframe and `resumed_here` only where the run stands - so `resumed_at_mark`
-# is a third, built from the halt fork's construction. The
-# cases scale the owner's hours down to seconds: nothing in the fork depends on
-# the scale, and the suite pays for every step it takes.
+# This is the act the owner described a time bookmark for: paused at 3 h, mark
+# 1 h and go back to it. Neither of the other fork methods reaches it.
+# `resumed_at` opens only at a keyframe, and `resumed_here` only where the run
+# is stopped. So `resumed_at_mark` is a third method, built from the halt
+# fork's construction. The cases scale the owner's hours down to seconds.
+# Nothing in the fork depends on the scale, and the suite pays for every step
+# it takes.
 
 
 def _trunk_paused_past_a_change(past_s: float = 180.0) -> SimulationController:
     """The item's case at a minute's scale: a setting change at 30 s, then on to `past_s`.
 
-    Keyframes at 0 s and 30 s and nowhere else, so an instant past 30 s that a
-    learner marks is one the trunk holds no keyframe for, and one no step
-    crossed while it was marked - the case both earlier doors refuse.
+    The run has keyframes at 0 s and 30 s and nowhere else. So the trunk has
+    no keyframe at an instant past 30 s that a learner marks, and no step
+    crossed that instant while it was marked. Both earlier fork methods refuse
+    that case.
     """
 
     controller = SimulationController()
@@ -4332,11 +4384,11 @@ def _trunk_paused_past_a_change(past_s: float = 180.0) -> SimulationController:
 def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     """`PL-W4XQ`'s deliverable: an instant marked after the run passed it, and returned to.
 
-    When the item was filed both doors refused it: the trunk holds no keyframe
-    there, and no step ever crossed a mark set after the clock had gone by. The
-    branch opens where a halt would have stopped the run, from the trunk's
-    canonical state there, reproduces the trunk element-wise from that instant
-    on, and leaves the trunk exactly the case it was.
+    When the item was filed, both fork methods refused it. The trunk has no
+    keyframe there, and no step ever crossed a mark set after the clock had
+    gone by. The branch opens where a halt would have stopped the run, from
+    the trunk's canonical state there. It reproduces the trunk element-wise
+    from that instant on, and it leaves the trunk exactly the case it was.
     """
 
     trunk = _trunk_paused_past_a_change()
@@ -4349,7 +4401,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
         trunk.resumed_at(CaseInstant(60.0))
 
-    # Where the paused trunk stands is a door of its own, and it is not the mark.
+    # The paused trunk's own position is a separate fork point, and it is not the mark.
     here = trunk.here_fork_point
 
     assert here is not None
@@ -4384,12 +4436,13 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
 def test_a_mark_set_behind_the_clock_forks_where_its_halt_would_have() -> None:
     """Marking late changes when the mark was set, and nothing about the branch.
 
-    One case run twice. Marked before its clock reached 45.3 s, it halted there
-    and was forked at the halt; marked only once the clock had passed it, no
-    step crossed it and the fork comes through `resumed_at_mark`. The two
-    branches open at the same step - 45.300000000000004 s, the end of the step
-    that reached the typed 45.3 - from the same state, inside the same stretch,
-    standing on the same crossing.
+    The same case is run twice. In the first run, the mark is set before the
+    clock reaches 45.3 s, so the run halts there and is forked at the halt. In
+    the second, the mark is set only after the clock has passed it. No step
+    crosses it, and the fork comes through `resumed_at_mark`. The two branches
+    open at the same step, 45.300000000000004 s, which is the end of the step
+    that reached the typed 45.3. They open from the same state, inside the
+    same stretch, at the same crossing.
     """
 
     at_the_halt = _trunk_halted_on_a_bookmark().resumed_here()
@@ -4411,11 +4464,11 @@ def test_a_mark_set_behind_the_clock_forks_where_its_halt_would_have() -> None:
 
 
 def test_a_mark_the_run_halted_on_is_returned_to_alike_before_and_after_it_steps_on() -> None:
-    """The halt is a permission a step spends, and the mark it stopped on is not.
+    """A step uses up the halt, but not the mark that the run stopped at.
 
-    Standing on the halt, both doors give one branch. Once the trunk steps on,
-    `resumed_here` opens where it then stands, as it should - and the mark
-    still gives the branch the halt gave.
+    While the trunk is at the halt, both fork methods give the same branch.
+    Once the trunk steps on, `resumed_here` opens where the trunk then is, as
+    it should. The mark still gives the branch that the halt gave.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -4436,12 +4489,13 @@ def test_a_mark_the_run_halted_on_is_returned_to_alike_before_and_after_it_steps
 def test_a_branch_returned_to_a_mark_off_the_step_grid_reads_it_as_passed(
     typed_s: float, steps: int
 ) -> None:
-    """A mark a few parts in 1e16 off the grid, or inside a step outright, is opened just past.
+    """A branch at a mark a few parts in 1e16 off the grid, or inside a step, opens just past it.
 
-    That puts the mark before the branch's own beginning, which the clock alone
-    would call `BEFORE_THIS_BRANCH` - unreachable, the wrong answer for the one
-    mark the branch was taken at. The crossing the branch opens standing on is
-    what says the two are one (`PL-3K9B`, case B), and a reset keeps it.
+    That puts the mark before the branch's own beginning. The clock alone
+    would call the mark `BEFORE_THIS_BRANCH`, meaning unreachable. That is the
+    wrong answer for the one mark the branch was taken at. The crossing at
+    which the branch opens is what shows that the mark and the fork are one
+    event (`PL-3K9B`, case B), and a reset keeps that crossing.
     """
 
     trunk = _trunk_paused_past_a_change()
@@ -4465,10 +4519,11 @@ def test_a_branch_returned_to_a_mark_off_the_step_grid_reads_it_as_passed(
 def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too() -> None:
     """The crossing is reconstructed by the rule that halts a run, so it names every mark crossed.
 
-    One run finds the step a height is crossed on by halting there. A second,
-    identical run marks that instant and that height only once its clock is
-    well past both, so no step halted on either. Returning to the instant opens
-    the branch standing on both, as a halt there would have.
+    One run finds the step on which a height is crossed, by halting there. A
+    second, identical run marks that instant and that height only after its
+    clock is well past both, so no step halted on either. Returning to the
+    instant opens the branch at a crossing that names both, as a halt there
+    would have.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "the decision point")
@@ -4497,25 +4552,27 @@ def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too
 
 
 def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() -> None:
-    """One answer per mark, whichever run is asked and whichever order the mark and branch came in.
+    """One result per mark, whichever run is asked and whichever order the mark and branch came in.
 
-    The three cases `PL-1ZQ4` reproduced, each built on the step a 0.3 xMAC
-    alveolar target is crossed on. A finder run halts there to name it. Each
-    case asks that one step about marks added after it was taken:
+    These are the three cases that `PL-1ZQ4` reproduced. Each is built on the
+    step on which a 0.3 xMAC alveolar target is crossed. A finder run halts
+    there to identify that step. Each case asks that one step about marks
+    added after it was taken:
 
-    1. A trunk paused on the step, with the target added afterwards, read
-       the target as still running while a branch opened there read it as
+    1. A trunk paused on the step, with the target added afterwards, showed
+       the target as still running, while a branch opened there showed it as
        reached. They still disagreed 300 s later.
     2. A trunk halted on the step by a time mark. Marks added before
-       `fork_here` read passed and reached on the branch; added to both runs
-       after it, before this branch and still running.
+       `fork_here` showed as passed and reached on the branch. Marks added to
+       both runs after `fork_here` showed as before this branch and still
+       running.
     3. The same halt with a setting changed on it, so the halt is a keyframe
-       too. `fork_at` there opened on no crossing where `fork_here` opened on
-       the halt's.
+       too. `fork_at` there opened at no crossing, while `fork_here` opened at
+       the halt's crossing.
 
-    Every run here stands on that step or opened on it, so each mark inside
-    the step reads as crossed by it: the late time mark passed and the target
-    reached (`docs/MODEL.md` § "Halting on a marked crossing").
+    Every run here is stopped on that step or opened on it, so each mark
+    inside the step counts as crossed by it: the late time mark as passed, and
+    the target as reached (`docs/MODEL.md` § "Halting on a marked crossing").
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
@@ -4553,8 +4610,8 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
 
     reached = (MarkStanding.PASSED, MarkStanding.PASSED, MarkStanding.REACHED)
 
-    # Case 1: a plain pause, the target added afterwards, and the time marks
-    # added with it so every run is asked about the same three.
+    # Case 1: a plain pause, with the target added afterwards. The time marks
+    # are added with it, so every run is asked about the same three marks.
     paused = SimulationController()
     paused.start()
 
@@ -4576,7 +4633,8 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
     assert paused.snapshot().elapsed_s == from_the_pause.snapshot().elapsed_s
     assert standings(paused) == standings(from_the_pause) == reached
 
-    # Case 2: the late marks added before the branch, and after it to both.
+    # Case 2: one trunk gets the late marks before it is branched. The other is branched
+    # first, and then both runs get the marks.
     marked_first = halted_on_the_step()
     add_late_marks(marked_first)
     branched_after_marking = BranchedCase(marked_first).fork_here()
@@ -4588,7 +4646,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
     assert standings(marked_first) == standings(branched_after_marking) == reached
     assert standings(branched_first) == standings(branched_before_marking) == reached
 
-    # Case 3: the halt made a keyframe by a setting change, then both doors.
+    # Case 3: a setting change makes the halt a keyframe, then both fork methods are used.
     changed_on_the_halt = halted_on_the_step()
     changed_on_the_halt.set_fresh_gas_flow(FreshGasFlow(3.0))
     add_late_marks(changed_on_the_halt)
@@ -4606,10 +4664,10 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
 
 
 def test_a_mark_at_the_case_s_opening_returns_to_induction_with_no_crossing() -> None:
-    """No step reaches it: the run stands on it from the start, so the fork is the opening.
+    """No step reaches it, because the run is at it from the start, so the fork is the opening.
 
-    It is the branch `resumed_at` gives at the opening keyframe, and the clock
-    alone reads the mark as passed there.
+    The branch is the one that `resumed_at` gives at the opening keyframe, and
+    the clock alone shows the mark as passed there.
     """
 
     trunk = _trunk_paused_past_a_change()
@@ -4627,7 +4685,7 @@ def test_a_mark_at_the_case_s_opening_returns_to_induction_with_no_crossing() ->
 
 
 def test_a_mark_is_returned_to_by_its_instant_whatever_label_the_caller_holds() -> None:
-    """Matched as removal matches, and the crossing carries the mark as the run holds it."""
+    """The mark is matched as removal matches it, and the crossing carries the run's own copy."""
 
     trunk = _trunk_paused_past_a_change()
     held = TimeBookmark(CaseInstant(60.0), "what if")
@@ -4641,7 +4699,7 @@ def test_a_mark_is_returned_to_by_its_instant_whatever_label_the_caller_holds() 
 
 
 def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:
-    """The case holds no state there yet, and a fork there would be a prediction drawn as a run."""
+    """The case has no state there yet, and a fork there would be a prediction drawn as a run."""
 
     trunk = _trunk_paused_past_a_change()
     ahead = TimeBookmark(CaseInstant(600.0))
@@ -4654,7 +4712,7 @@ def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:
 
 
 def test_an_instant_nobody_marked_cannot_be_returned_to_as_a_mark() -> None:
-    """The door takes a mark the run holds; marking the instant is the learner's act first."""
+    """The method takes a mark the run has, so the learner must mark the instant first."""
 
     trunk = _trunk_paused_past_a_change()
 
@@ -4663,7 +4721,7 @@ def test_an_instant_nobody_marked_cannot_be_returned_to_as_a_mark() -> None:
 
 
 def test_a_branch_cannot_be_returned_to_a_mark_it_has_passed() -> None:
-    """The flat shape holds at the third door too, and says the same thing."""
+    """The flat shape still applies to the third fork method, with the same message."""
 
     trunk = _trunk_paused_past_a_change()
     mark = TimeBookmark(CaseInstant(60.0))
@@ -4680,7 +4738,7 @@ def test_a_branch_cannot_be_returned_to_a_mark_it_has_passed() -> None:
 
 
 def test_the_marks_a_trunk_can_be_returned_to_are_the_ones_its_standings_call_passed() -> None:
-    """Earliest first, each with the step instant a branch opens at, and none still ahead."""
+    """The marks come earliest first, each with the step instant a branch opens at, none ahead."""
 
     trunk = _trunk_paused_past_a_change()
     later = TimeBookmark(CaseInstant(120.0), "added first")
@@ -4704,7 +4762,7 @@ def test_the_marks_a_trunk_can_be_returned_to_are_the_ones_its_standings_call_pa
 
 
 def test_a_trunk_that_has_not_stepped_can_be_returned_only_to_a_mark_at_its_opening() -> None:
-    """With no step taken there is no step to reach anything, and the opening is where it stands."""
+    """With no step taken, no mark can be reached, and the run is still at its opening."""
 
     trunk = SimulationController()
     at_induction = TimeBookmark(CaseInstant(0.0))
@@ -4720,7 +4778,7 @@ def test_a_trunk_that_has_not_stepped_can_be_returned_only_to_a_mark_at_its_open
 
 
 def test_a_case_keeps_a_branch_returned_to_a_mark_its_trunk_has_passed() -> None:
-    """The case-level door, which keeps the branch and adds no instant to `fork_points_s`."""
+    """The case-level method keeps the branch and adds no instant to `fork_points_s`."""
 
     trunk = _trunk_paused_past_a_change()
     mark = TimeBookmark(CaseInstant(60.0))
@@ -4738,7 +4796,7 @@ def test_a_case_keeps_a_branch_returned_to_a_mark_its_trunk_has_passed() -> None
 
 
 def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> None:
-    """The refusal reaches through `BranchedCase` as the other two doors' do."""
+    """The refusal passes through `BranchedCase`, as the other two fork methods' refusals do."""
 
     trunk = _trunk_paused_past_a_change()
     ahead = TimeBookmark(CaseInstant(600.0))
@@ -4753,32 +4811,33 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
 
 # --- Standing on the supported run length with no step refused (PL-5291) ------
 #
-# The core refuses the step *from* the last supported count, so a run that
-# stops only when a step is refused reads as an ordinary pause on every route
-# that puts it on 24:00:00 without one: a trunk halted there on a mark, a
-# branch forked there, and a branch reset onto such a fork. Each of these
-# offered Start, showed no limit notice, and told a learner an unreached mark
-# was still ahead of a run that could not step. Every assertion below is read
-# end to end - the controller's snapshot through the pure dashboard functions a
-# frame is written from - at the shipped 0.1 s step, because that is the step
-# whose last supported count lands exactly on 24 hours (`PL-8H2R`).
+# The core refuses the step *from* the last supported count. So a run that
+# stops only when a step is refused looks like an ordinary pause on every route
+# that brings it to 24:00:00 without a refused step. Those routes are a trunk
+# halted there on a mark, a branch forked there, and a branch reset onto such
+# a fork. Each of these offered Start, showed no limit notice, and told a
+# learner that an unreached mark was still ahead of a run that could not step.
+# Every assertion below is checked end to end, from the controller's snapshot
+# through the pure dashboard functions that a frame is built from. They use
+# the shipped 0.1 s step, because that is the step whose last supported count
+# lands exactly on 24 hours (`PL-8H2R`).
 #
-# Stepping a run to 24 hours costs about 30 s, so the two runs that do it are
-# built once per pytest run and shared between xdist workers, and nothing below
-# changes what another test reads of them: a fork leaves its parent untouched,
-# and the one dial moved on a stopped run alters nothing a stopped run is asked
-# about.
+# Stepping a run to 24 hours takes about 30 s. So the two runs that do it are
+# built once per pytest run and shared between xdist workers. Nothing below
+# changes what another test reads from them. A fork leaves its parent
+# untouched, and the one dial moved on a stopped run changes nothing that a
+# stopped run is asked about.
 
-#: A height the fat group cannot reach at 1 MAC delivered, so the mark stays
-#: outstanding on every run below and its standing is the question.
+#: A height the fat group cannot reach at 1 MAC delivered. The mark stays
+#: unreached on every run below, so its standing is what the tests check.
 _UNREACHABLE_TARGET = MacTarget(RecordedQuantity.FAT, MacMultiple(3.0), "never")
 
 
 def _step_onto_the_supported_run_length(controller: SimulationController) -> None:
     """Take exactly the supported number of 0.1 s steps, and no refused one.
 
-    `maximum_step_count` is the count the run may stand on; the step after it
-    is the one the core refuses, and nothing here takes it.
+    `maximum_step_count` is the largest step count the run may reach. The core
+    refuses the step after it, and this helper never takes that step.
     """
 
     controller.start()
@@ -4830,11 +4889,12 @@ def trunk_halted_on_a_mark_at_the_limit(
     )
 
 
-#: The two runs above, each with the simulated minutes it steps through.
-#: `tests/conftest.py` deals every test reading one back to back at the head
-#: of one xdist worker's first slice (`PL-K5VM`). Each run is built once per
-#: pytest run, and a worker that `worksteal` hands one of these tests reads the
-#: run through `computed_once` rather than building it again (`PL-ZWQS`).
+#: The two runs above, each with the number of simulated minutes it steps
+#: through. `tests/conftest.py` schedules every test that reads one of them
+#: back to back, at the start of one xdist worker's first slice (`PL-K5VM`).
+#: Each run is built once per pytest run. A worker that `worksteal` gives one
+#: of these tests reads the run through `computed_once` rather than building
+#: it again (`PL-ZWQS`).
 MODULE_FIXTURE_MINUTES = {
     fixture.name: MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
     for fixture in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit)
@@ -4842,7 +4902,7 @@ MODULE_FIXTURE_MINUTES = {
 
 
 def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:
-    """The message the core refuses this run's next step with, asked of the core."""
+    """The message with which the core refuses this run's next step, taken from the core."""
 
     with pytest.raises(SimulationDomainLimitError) as refusal:
         require_supported_run_length(
@@ -4853,12 +4913,12 @@ def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:
 
 
 def _assert_reads_as_stopped_at_the_supported_run_length(run: SimulationController) -> None:
-    """What `PL-5291` is done when: every reader says the run stands at the limit.
+    """Check `PL-5291`'s completion condition: every reader says the run is at the limit.
 
-    The snapshot carries the reason the refused step would give, Start is
-    refused and not offered, the banner names the limit, and a mark the run
-    never reached is "not reached within the supported run length" rather than
-    still ahead. Not a failure, on any of them.
+    The snapshot carries the reason the refused step would give. Start is
+    refused and not offered. The banner names the limit. A mark the run never
+    reached shows as "not reached within the supported run length", not as
+    still ahead. None of them shows a failure.
     """
 
     snapshot = run.snapshot()
@@ -4888,13 +4948,13 @@ def _assert_reads_as_stopped_at_the_supported_run_length(run: SimulationControll
 def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """The run halts where it stands rather than one refused tick later.
+    """The run halts on the step that arrives at the limit, not one refused tick later.
 
-    No step was refused: the run took exactly the supported count and stopped
-    on it. Reading the limit from the state is what makes that the same stop
-    the refusal used to produce, and halting on arrival is what keeps the
-    snapshot's contract - `is_running` false wherever a limit reason is set -
-    without a flag that only a refusal could set.
+    No step was refused: the run took exactly the supported count of steps and
+    stopped there. Because the limit is read from the state, this stop is the
+    same stop that the refusal used to produce. Halting on arrival keeps the
+    snapshot's contract, which is that `is_running` is false wherever a limit
+    reason is set. It does so without a flag that only a refusal could set.
     """
 
     trunk = trunk_stepped_onto_the_limit
@@ -4902,8 +4962,8 @@ def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_ar
     assert trunk._state.step_count == maximum_step_count(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
-    # A further tick is the no-op a paused run's is: nothing raised, and the
-    # clock exactly where the last supported step left it.
+    # A further tick does nothing, as it does on a paused run. Nothing is
+    # raised, and the clock stays exactly where the last supported step left it.
     trunk.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert trunk.snapshot().elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -4912,7 +4972,10 @@ def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_ar
 def test_a_trunk_halted_on_a_mark_at_the_supported_run_length_reads_as_stopped_there(
     trunk_halted_on_a_mark_at_the_limit: SimulationController,
 ) -> None:
-    """The first row of `PL-5291`'s table: halted on a mark at 24:00:00, "Paused", Start offered."""
+    """The first row of `PL-5291`'s table: a trunk halted on a mark at 24:00:00.
+
+    That trunk showed "Paused" and offered Start.
+    """
 
     trunk = trunk_halted_on_a_mark_at_the_limit
     snapshot = trunk.snapshot()
@@ -4927,14 +4990,14 @@ def test_a_trunk_halted_on_a_mark_at_the_supported_run_length_reads_as_stopped_t
 def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there(
     trunk_halted_on_a_mark_at_the_limit: SimulationController,
 ) -> None:
-    """The route the item is titled for: a branch built standing on 24:00:00.
+    """The route the item is named for: a branch built at 24:00:00.
 
-    `_open_at` builds the state at the parent's count and never asks whether
-    it has room for a step, and nothing refuses one until Start is pressed. A
-    branch is a new controller, so a flag the parent held would not have
-    reached it either; the limit has to be read from the state the branch
-    stands in. Taken through the mark door, since where the trunk stands at the
-    limit is not offered as a place to branch (`PL-Y2SL`).
+    `_open_at` builds the state at the parent's step count and never asks
+    whether there is room for another step. Nothing refuses a step until Start
+    is pressed. A branch is a new controller, so a flag on the parent would
+    not have reached it either. The limit has to be read from the branch's own
+    state. The branch is taken through `resumed_at_mark`, because the trunk's
+    position at the limit is not offered as a place to branch (`PL-Y2SL`).
     """
 
     branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
@@ -4948,12 +5011,12 @@ def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_
 def test_a_branch_forked_where_a_dial_moved_on_the_supported_run_length_reads_as_stopped_there(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """The other fork door: a keyframe a dial laid on 24:00:00 after the run stopped there.
+    """The other fork method: a keyframe that a dial made at 24:00:00 after the run stopped.
 
-    The dial is moved here, on the shared trunk, because a dial moved on a
-    stopped run changes nothing a stopped run is asked about: the control
-    change is recorded at the instant the run stands on, and the run goes on
-    standing there.
+    The dial is moved here, on the shared trunk, because moving a dial on a
+    stopped run changes nothing that a stopped run is asked about. The control
+    change is recorded at the instant where the run is stopped, and the run
+    stays there.
     """
 
     trunk = trunk_stepped_onto_the_limit
@@ -4973,11 +5036,11 @@ def test_a_branch_reset_onto_a_fork_on_the_supported_run_length_reads_as_stopped
 ) -> None:
     """Reset returns a branch to its fork, and a fork on the limit has no span left.
 
-    The last row of `PL-5291`'s table. Reset clears the recorded reason, as it
-    must for a trunk going back to zero; a branch going back to a fork on
-    24:00:00 then read as paused again, with Start offered again. Read from
-    the state, the limit is where the branch stands, and a reset leaves it
-    standing there.
+    This is the last row of `PL-5291`'s table. Reset clears the recorded
+    reason, as it must for a trunk going back to zero. A branch going back to
+    a fork at 24:00:00 then showed as paused again, with Start offered again.
+    Now the limit is read from the state, so the branch is at the limit, and a
+    reset leaves it there.
     """
 
     branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_mark(
@@ -4992,13 +5055,14 @@ def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_st
     trunk_stepped_onto_the_limit: SimulationController,
     trunk_halted_on_a_mark_at_the_limit: SimulationController,
 ) -> None:
-    """A stop at the limit is not a pause, so where the run stands is neither offered nor taken.
+    """A stop at the limit is not a pause, so the run's position is neither offered nor taken.
 
-    No step is left to take there, so a branch opened where the run stands
-    could never be run, and while one comparison is the cap only the trunk's
-    Reset, discarding the case, would take it off the chart (`PL-Y2SL`). Both
-    ways a run arrives there are refused alike, stepped onto the limit and
-    halted on a mark at it; the refusal names the doors that still fork there.
+    No step is left to take there, so a branch opened where the run is stopped
+    could never be run. While the case allows only one comparison, only the trunk's
+    Reset, which discards the case, would take that branch off the chart
+    (`PL-Y2SL`). Both ways of arriving there are refused alike: stepping onto
+    the limit, and halting on a mark at it. The refusal names the fork methods
+    that still work there.
     """
 
     for trunk in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit):
@@ -5013,12 +5077,13 @@ def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_st
 
 # --- Each branch refusal a learner can read, pinned whole (PL-79PK) -----------
 #
-# `SimulationView` shows a refused branch, and a refused agent change, word for
-# word in the "Setting refused" banner. The tests above match a phrase of each
-# message, which passes with the instant, the reason or the advice wrong. Each
-# expected sentence below is typed from the run the test builds: the two-change
-# trunk changes a setting at 30 s and 60 s and stops at 120 s, and the
-# paused-past-a-change trunk changes one at 30 s and stops at 180 s.
+# `SimulationView` shows the message for a refused branch, and for a refused
+# agent change, word for word in the "Setting refused" banner. The tests above
+# match one phrase of each message, so they pass even when the instant, the
+# reason or the advice is wrong. Each expected sentence below is typed by hand
+# from the run the test builds. The two-change trunk changes a setting at 30 s
+# and 60 s and stops at 120 s. The paused-past-a-change trunk changes one
+# setting at 30 s and stops at 180 s.
 
 
 def test_a_branch_s_agent_change_refusal_is_pinned_whole() -> None:

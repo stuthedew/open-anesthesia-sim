@@ -1,17 +1,19 @@
-"""What a mark refuses, and what the two collections hold apart.
+"""Test what a mark rejects, and how the two collections keep the two kinds of mark apart.
 
-`app/bookmarks.py` decides nothing about a run: it decides what a learner is
-allowed to have *asked*. So the claims here are all about the boundary — which
-values are refused and with what message — and about the collections keeping
-the two kinds separable, which is the property `PL-LPLD` was scoped on.
+`app/bookmarks.py` decides nothing about a run. It decides what a learner is
+allowed to have *asked*. So the claims here are all about the boundary: which
+values are refused, and with what message. They are also about the two
+collections keeping the two kinds of mark separable, which is the property
+`PL-LPLD` was scoped on.
 
-Detection arrived with `PL-CTD7` and is tested here too, in two halves that
-stay apart. The predicates and the standings are pure — two readings in, an
-answer out — so they are asserted directly, including the boundary cases no
-live run reproduces on demand. The halt itself is a property of the advance
-loop rather than of a value, so it is asserted against a real
-`SimulationController` stepped at 1× and at 300×: the claim `PL-CTD7` exists
-to make is that those two agree, and nothing short of running them can say so.
+Crossing detection arrived with `PL-CTD7` and is tested here too, in two
+halves that stay apart. The predicates and the standings (each mark's status in
+a run) are pure functions: two readings go in, and a result comes out. So they
+are asserted directly, including the boundary cases that no live run
+reproduces on demand. The halt itself is a property of the advance loop rather
+than of a value. So it is asserted against a real `SimulationController`
+stepped at 1× and at 300×. The claim that `PL-CTD7` exists to make is that
+those two agree, and only running them can show it.
 """
 
 import math
@@ -33,12 +35,12 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
 
-#: The step every run in this file is taken at, matching the interface's own.
+#: The step at which every run in this file is taken, matching the interface's own step.
 STEP_S = SimulationStep(0.1)
 
-#: A burst of steps one tick advances at 300× real time, which is the coarsest
-#: rung `app/playback.py` offers and the worst case `PL-CTD7` is about: 30
-#: simulated seconds with nothing serviced between the steps.
+#: The burst of steps that one tick advances at 300× real time. That is the
+#: coarsest rate that `app/playback.py` offers, and the worst case that `PL-CTD7`
+#: is about: 30 simulated seconds with nothing serviced between the steps.
 STEPS_PER_TICK_AT_300X = 300
 
 
@@ -47,7 +49,7 @@ def _target(
     multiple: float = 0.8,
     label: str | None = None,
 ) -> MacTarget:
-    """A MAC target, so a test states only the field it is about."""
+    """Build a MAC target with defaults, so that a test states only the field it is about."""
 
     return MacTarget(quantity, MacMultiple(multiple), label)
 
@@ -70,10 +72,11 @@ def test_a_time_bookmark_keeps_the_name_it_was_given_without_surrounding_space()
     "instant_s", [-1.0, math.inf, -math.inf, math.nan, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 1.0]
 )
 def test_an_instant_no_case_reaches_cannot_be_marked(instant_s: float) -> None:
-    """Before the case opened, at an instant no clock reaches, or past the span (`PL-CN5S`).
+    """No mark can be made before the case opens, at an instant no clock reaches, or past the span.
 
-    The mark is built from a `CaseInstant`, which refuses each in the
-    supported run length's own words, so no set ever holds one.
+    `PL-CN5S`: the mark is built from a `CaseInstant`, which refuses each of
+    these instants with a message that names the supported run length. So no set
+    ever holds such a mark.
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
@@ -82,7 +85,7 @@ def test_an_instant_no_case_reaches_cannot_be_marked(instant_s: float) -> None:
 
 @pytest.mark.parametrize("instant_s", [600.0, math.nan])
 def test_a_time_bookmark_refuses_an_instant_not_built_as_a_case_instant(instant_s: float) -> None:
-    """Whatever its value, because nothing has checked it (`PL-CN5S`)."""
+    """The instant is refused whatever its value, because nothing has checked it (`PL-CN5S`)."""
 
     with pytest.raises(TypeError, match="instant_s of .* was not built as CaseInstant"):
         TimeBookmark(instant_s)  # type: ignore[arg-type]
@@ -100,10 +103,10 @@ def test_a_blank_name_is_refused_rather_than_read_as_no_name() -> None:
 
 
 def test_no_mark_of_either_kind_carries_a_crossing_direction() -> None:
-    # The scope floor took one from the reference simulator and the project
-    # owner removed it on 2026-09-20: a height is a height, and a run that
-    # passes through it going up and again coming down has reached what was
-    # marked both times.
+    # The minimum scope, taken from the reference simulator, included a crossing
+    # direction. The project owner removed it on 2026-09-20. A height is a
+    # height, and a run that passes through it going up, and again coming down,
+    # has reached the marked height both times.
     assert not hasattr(TimeBookmark(CaseInstant(600.0)), "direction")
     assert not hasattr(_target(), "direction")
 
@@ -120,31 +123,32 @@ def test_a_mac_target_names_the_compartment_it_is_read_against() -> None:
 
 @pytest.mark.parametrize("quantity", COMPARTMENT_QUANTITIES)
 def test_every_drawn_compartment_may_carry_a_target(quantity: RecordedQuantity) -> None:
-    # The scope floor is the six graphed compartments rather than the alveolar
-    # trace alone (`PL-LPLD`), so this is the whole of what a picker may offer.
+    # The minimum scope covers the six graphed compartments, not the alveolar
+    # trace alone (`PL-LPLD`). So these six are everything a picker may offer.
     assert _target(quantity).quantity is quantity
 
 
 def test_the_wash_in_ratio_may_not_carry_a_target() -> None:
-    # It is a quotient of two compartments rather than a concentration, so a
-    # multiple of MAC of it is not a quantity the model holds - and it is the
-    # one member of `RecordedQuantity` a compartment picker could offer by
-    # mistake.
+    # The wash-in ratio is a quotient of two compartments rather than a
+    # concentration. So a multiple of MAC of it is not a quantity that the model
+    # represents. It is also the one member of `RecordedQuantity` that a
+    # compartment picker could offer by mistake.
     with pytest.raises(SimulationConfigurationError, match="not one of"):
         _target(RecordedQuantity.WASH_IN_RATIO)
 
 
 @pytest.mark.parametrize("multiple", [0.0, -0.5, math.inf, math.nan])
 def test_a_target_at_a_height_no_compartment_can_cross_is_refused(multiple: float) -> None:
-    # Zero goes with the negatives: a compartment opens at zero, so every run
-    # would stand on such a target before it began.
+    # Zero is rejected along with the negatives. Every compartment starts at
+    # zero, so every run would already be at such a target before it began.
     with pytest.raises(SimulationConfigurationError, match="height above zero"):
         _target(multiple=multiple)
 
 
 def test_a_target_refusal_names_the_height_that_failed() -> None:
-    # `.claude/rules/sources-and-docstrings.md`: a refusal names what was
-    # refused, so a rejected setting stays traceable to the input behind it.
+    # `.claude/rules/sources-and-docstrings.md` requires a refusal to name what
+    # was refused, so that a rejected setting stays traceable to the input
+    # behind it.
     with pytest.raises(SimulationConfigurationError, match=r"-0\.5"):
         _target(multiple=-0.5)
 
@@ -206,12 +210,12 @@ def test_an_instant_already_marked_may_not_be_marked_again() -> None:
 
 
 def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
-    """The whole sentence the bookmark dialog shows when an instant is marked twice.
+    """Pin the whole sentence that the bookmark dialog shows when an instant is marked twice.
 
-    The test above matches "marked once", which passes with the instant
-    missing from the message (`PL-79PK`). The MAC-target twin is not pinned:
-    it names its crossing by the Python repr of an enum member, which is a
-    defect of its own rather than a sentence to freeze.
+    The test above matches only "marked once", which would pass even with the
+    instant missing from the message (`PL-79PK`). The matching MAC-target message
+    is not pinned. It names its crossing by the Python repr of an enum member,
+    which is a defect of its own rather than a sentence to freeze.
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
@@ -288,26 +292,25 @@ def test_a_removal_refusal_names_the_crossing_it_could_not_find() -> None:
 
 
 def test_a_set_built_directly_from_repeated_marks_is_refused_too() -> None:
-    # The invariant is the collection's rather than the adder's, so a caller
-    # constructing one cannot get round it.
+    # The collection enforces the invariant, not the method that adds a mark.
+    # So a caller that constructs a set directly cannot get round it.
     with pytest.raises(SimulationConfigurationError, match="marked once"):
         BookmarkSet((TimeBookmark(CaseInstant(600.0)), TimeBookmark(CaseInstant(600.0))))
 
 
 # ------------------------------------------------------- crossing predicates
 #
-# A crossing is a transition between two readings rather than a comparison at
-# one (project owner, 2026-09-20). Everything below turns on that: the
-# boundary cases are where a comparison-at-one-reading rule would either stall
-# a run forever on a height it settled at, or halt it again the moment it was
-# resumed.
+# A crossing is a transition between two readings, not a comparison made at one
+# reading (project owner, 2026-09-20). Everything below depends on that. At the
+# boundary cases, a rule that compared a single reading would either stall a run
+# forever on a height it settled at, or halt it again the moment it was resumed.
 
 
 def _readings(**multiples: float) -> dict[RecordedQuantity, MacMultiple]:
-    """One side of a step, naming every compartment a target could be set on.
+    """Build the readings on one side of a step, for every compartment a target could use.
 
-    Unnamed compartments read zero, which is where a case opens, so a test
-    states only the compartment it is about.
+    Compartments that are not named read zero, which is where a case opens. So a
+    test states only the compartment it is about.
     """
 
     readings = {quantity: MacMultiple(0.0) for quantity in COMPARTMENT_QUANTITIES}
@@ -326,7 +329,7 @@ def test_a_time_bookmark_is_crossed_by_the_step_that_reaches_it() -> None:
 
 
 def test_a_time_bookmark_is_not_crossed_again_by_the_step_after_it() -> None:
-    """The span is closed above and open below, so one instant is reached once."""
+    """Each step covers an interval open below and closed above, so an instant is reached once."""
 
     bookmark = TimeBookmark(CaseInstant(30.0))
 
@@ -336,15 +339,16 @@ def test_a_time_bookmark_is_not_crossed_again_by_the_step_after_it() -> None:
 
 # ----------------------------------------------- the step that reaches a mark
 #
-# `TimeBookmark.steps_to_reach` is `crossed_between` read the other way round:
-# the count it returns is the step that predicate names, so it is where a halt
-# stops and where `resumed_at_mark` forks (`PL-W4XQ`). Asserted against the
-# predicate itself, on the grid products `SimulationState.elapsed_s` forms,
-# rather than against a second formula for the same step.
+# `TimeBookmark.steps_to_reach` is the inverse of `crossed_between`. The count it
+# returns is the step that the predicate names as the crossing step. So that
+# count is where a halt stops and where `resumed_at_mark` forks (`PL-W4XQ`). The
+# tests below check it against the predicate itself, at the grid products (step
+# count times step size) that `SimulationState.elapsed_s` forms. They do not
+# check it against a second formula for the same step.
 
 
 def _reaching_step_is_the_crossing_one(instant_s: float, step: SimulationStep) -> bool:
-    """Whether `steps_to_reach` names the step `crossed_between` says reaches it."""
+    """Return whether `steps_to_reach` names the step that `crossed_between` says reaches it."""
 
     bookmark = TimeBookmark(CaseInstant(instant_s))
     count = bookmark.steps_to_reach(step)
@@ -356,12 +360,13 @@ def _reaching_step_is_the_crossing_one(instant_s: float, step: SimulationStep) -
 
 
 def test_every_instant_a_learner_can_type_is_reached_on_the_step_the_halt_names() -> None:
-    """All 36 001 one-decimal instants to an hour, the dialog's own resolution.
+    """Check all 36 001 one-decimal instants up to an hour, the dialog's own resolution.
 
-    12 767 of them are not a whole number of 0.1 s steps in binary - `453 x
-    0.1` is 45.300000000000004 - so a fork instant built from the typed value
-    would be refused, and one built by rounding would sometimes land a step
-    early. Each is reached by exactly the step `crossed_between` picks.
+    12 767 of them are not a whole number of 0.1 s steps in binary. For example,
+    `453 x 0.1` is 45.300000000000004. So a fork instant built from the typed
+    value would be refused, and one built by rounding would sometimes land a step
+    early. Each instant is reached by exactly the step that `crossed_between`
+    picks.
     """
 
     misses = [
@@ -374,7 +379,7 @@ def test_every_instant_a_learner_can_type_is_reached_on_the_step_the_halt_names(
 
 
 def test_every_grid_instant_is_reached_by_the_step_that_lands_on_it() -> None:
-    """The products themselves, which a halted run and its branches stand on."""
+    """Check the grid products themselves, the instants where a halted run and its branches sit."""
 
     misses = [
         count
@@ -388,8 +393,8 @@ def test_every_grid_instant_is_reached_by_the_step_that_lands_on_it() -> None:
 def test_a_quotient_rounded_up_does_not_place_the_mark_a_step_late() -> None:
     """`0.30000000000000004 / 0.1` is 3.0000000000000004, whose ceiling is 4.
 
-    The third step lands exactly on that instant, so it is the one that
-    reaches it; trusting the ceiling would fork a step after the halt.
+    The third step lands exactly on that instant, so the third step is the one
+    that reaches it. Trusting the ceiling would fork one step after the halt.
     """
 
     instant_s = 3 * STEP_S
@@ -414,7 +419,7 @@ def test_a_mark_inside_a_step_is_reached_at_the_step_s_end_and_not_rounded_back(
 
 @pytest.mark.parametrize("step_s", [0.001, 0.025, 0.05, 0.1])
 def test_off_grid_instants_are_reached_on_the_crossing_step_at_every_step(step_s: float) -> None:
-    """Instants between grid points, at steps across the supported range."""
+    """Check instants between grid points, at steps across the supported range."""
 
     step = SimulationStep(step_s)
     instants = [round(k * 0.137, 6) for k in range(1, 2001)]
@@ -423,13 +428,13 @@ def test_off_grid_instants_are_reached_on_the_crossing_step_at_every_step(step_s
 
 
 def test_a_mark_at_the_case_s_opening_is_reached_by_no_step() -> None:
-    """A run stands on it before stepping, and `crossed_between` never fires for it."""
+    """A run is already at that instant before it steps, and `crossed_between` never fires there."""
 
     assert TimeBookmark(CaseInstant(0.0)).steps_to_reach(STEP_S) == 0
 
 
 def test_the_last_supported_instant_is_reached_on_the_last_supported_step() -> None:
-    """The far boundary: the count stays inside the span rather than running off it."""
+    """At the far boundary, the count stays inside the supported span and does not run past it."""
 
     last = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
     count = last.steps_to_reach(STEP_S)
@@ -446,7 +451,11 @@ def test_steps_to_reach_refuses_a_step_not_built_as_one() -> None:
 
 
 def test_a_held_bookmark_is_found_by_its_instant_and_returned_as_the_set_holds_it() -> None:
-    """The label the set holds comes back, which is the key a standing answers to."""
+    """The lookup returns the bookmark as the set stores it, with its label.
+
+    The standings are keyed by the stored bookmark, label included, so that is the
+    bookmark a caller needs in order to look up its standing.
+    """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
 
@@ -477,10 +486,10 @@ def test_a_target_is_crossed_going_down_as_well_as_going_up() -> None:
 
 
 def test_a_target_a_run_settles_exactly_on_is_crossed_once_and_not_again() -> None:
-    """The case a comparison at one reading could never let a run past.
+    """This is the case in which a rule comparing one reading would never let a run past.
 
-    Tested as "the reading is at or above the height", every subsequent step
-    of a run sitting exactly on the height would report a crossing and the run
+    If the rule were "the reading is at or above the height", every later step of
+    a run sitting exactly on the height would report a crossing, and the run
     could not be advanced at all.
     """
 
@@ -491,7 +500,7 @@ def test_a_target_a_run_settles_exactly_on_is_crossed_once_and_not_again() -> No
 
 
 def test_a_target_is_not_crossed_by_leaving_its_height_in_either_direction() -> None:
-    """Which is what makes a halt resumable without re-halting on the same step."""
+    """Leaving the height is not a crossing, so a halted run resumes without halting there again."""
 
     target = _target(multiple=0.8)
 
@@ -549,7 +558,7 @@ def test_a_crossing_naming_no_mark_at_all_is_refused() -> None:
 
 
 def test_a_crossing_refuses_an_instant_not_built_as_a_case_instant() -> None:
-    """The halt a run reports is stored, so it checks the type of its instant (`PL-CN5S`)."""
+    """A run stores the crossing it halted on, so the crossing checks its instant (`PL-CN5S`)."""
 
     with pytest.raises(TypeError, match="instant_s of 30.0 was not built as CaseInstant"):
         BookmarkCrossing(30.0, (TimeBookmark(CaseInstant(30.0)),))  # type: ignore[arg-type]
@@ -568,13 +577,13 @@ def _standings(
     stopped_at_cap: bool = False,
     run_failed: bool = False,
 ) -> object:
-    """This set's standings, so a test states only the fact it is about.
+    """Compute this set's standings with defaults, so that a test states only the fact it is about.
 
-    `elapsed_s` defaults to the run's own opening, which is a run that has not
-    stepped: every marked instant is still ahead of it, so a test that is
-    about something other than the clock is not quietly answered by it. The
-    instants are built as `CaseInstant`s here, as a run's own clock builds
-    them, so a test states them as numbers.
+    `elapsed_s` defaults to the run's own opening, which describes a run that has
+    not stepped. Every marked instant is still ahead of such a run. So a test
+    about something other than the clock does not get its result quietly from the
+    clock. The instants are built as `CaseInstant`s here, as a run's own clock
+    builds them, so that a test can state them as plain numbers.
     """
 
     return marks.standings(
@@ -599,11 +608,11 @@ def test_a_mark_the_run_can_still_reach_stands_as_still_running() -> None:
 
 
 def test_a_height_the_run_halted_on_stands_as_reached() -> None:
-    """A target's own word, and the only mark that reads it.
+    """`REACHED` is a target's own standing, and only a target can have it.
 
-    A height is not ordered by a clock - a compartment arrives, leaves and may
-    arrive again - so what the run *did* is the only thing that can be said of
-    one, which is what `REACHED` says.
+    A height is not ordered by a clock. A compartment arrives at it, leaves it,
+    and may arrive again. So the only thing that can be said of a height is what
+    the run *did*, and that is what `REACHED` says.
     """
 
     target = _target()
@@ -615,12 +624,12 @@ def test_a_height_the_run_halted_on_stands_as_reached() -> None:
 
 
 def test_an_instant_the_run_halted_on_stands_as_passed_rather_than_reached() -> None:
-    """The two vocabularies, at the one place they could have been confused.
+    """The two kinds of mark use different standings, and this is where they could be confused.
 
-    The run halted on this instant, which is the historical claim `REACHED`
-    makes - and the standing is still the positional one, because a clock
-    taken backwards would revoke the history while the mark went on being
-    perfectly reachable (`PL-3K9B`).
+    The run halted on this instant, which is the historical claim that `REACHED`
+    makes. But the standing is still the positional one. A clock taken backwards
+    would revoke the history, while the mark stayed perfectly reachable
+    (`PL-3K9B`).
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
@@ -633,7 +642,7 @@ def test_an_instant_the_run_halted_on_stands_as_passed_rather_than_reached() -> 
 
 
 def test_a_relabelled_mark_keeps_what_the_run_did_with_it() -> None:
-    """Matched the way `without_mac_target` matches, so a rename is not a new question."""
+    """The mark is matched the way `without_mac_target` matches, so a rename is not a new mark."""
 
     renamed = _target(label="second gas on")
     marks = BookmarkSet().with_mac_target(renamed)
@@ -646,9 +655,9 @@ def test_a_relabelled_mark_keeps_what_the_run_did_with_it() -> None:
 def test_a_target_still_outstanding_at_the_supported_run_length_says_it_was_not_reached() -> None:
     """A threshold above a compartment's asymptote, which is never reached.
 
-    The run stops at `docs/MODEL.md` § "Supported run length" having answered
-    the question, so the row must not go on saying the run is still working
-    on it.
+    The run stops at the limit in `docs/MODEL.md` § "Supported run length", and
+    by then it has answered the question. So the row must not go on saying that
+    the run is still working on it.
     """
 
     above_the_asymptote = _target(multiple=0.95)
@@ -662,10 +671,10 @@ def test_a_target_still_outstanding_at_the_supported_run_length_says_it_was_not_
 def test_a_bookmark_before_a_branch_fork_reads_apart_from_the_cap_case() -> None:
     """The fourth outcome, and the reason there are four rather than three.
 
-    A branch inherits its trunk's marks, so a bookmark before the fork comes
-    across and can never be reached going forward. Reporting it as "not
-    reached within the cap" would say that running longer might reach it,
-    which is false.
+    A branch inherits its trunk's marks. So a bookmark before the fork is carried
+    over, and the branch can never reach it going forward. Reporting it as "not
+    reached within the cap" would say that running longer might reach it, which
+    is false.
     """
 
     inherited = TimeBookmark(CaseInstant(120.0))
@@ -678,17 +687,17 @@ def test_a_bookmark_before_a_branch_fork_reads_apart_from_the_cap_case() -> None
 
 
 def test_a_mark_outstanding_on_a_failed_run_is_not_reported_as_still_reachable() -> None:
-    """`PL-N3N5`, the sixth outcome and the state the other five cannot see.
+    """The sixth outcome (`PL-N3N5`), for the state that the other five cannot express.
 
-    `SimulationController.start` refuses a failed session - "cannot resume a
-    failed simulation ... reset it first" - because its next step would raise
-    as its last one did. `STILL_RUNNING` says the run *can still reach* the
-    mark and has not yet, so the first half of it is false of every mark such
-    a run has not reached.
+    `SimulationController.start` refuses a failed session with "cannot resume a
+    failed simulation ... reset it first", because its next step would raise as
+    its last one did. `STILL_RUNNING` says that the run *can still reach* the
+    mark and has not reached it yet. The first half of that is false for every
+    mark that such a run has not reached.
 
-    Both kinds are asserted because the failure ends a clock and a height
-    alike, which is what puts it in both vocabularies rather than in the
-    bookmark's alone.
+    Both kinds of mark are asserted, because the failure ends a clock and a
+    height alike. That is why the outcome is a standing for both kinds rather
+    than for the bookmark alone.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
@@ -702,14 +711,14 @@ def test_a_mark_outstanding_on_a_failed_run_is_not_reported_as_still_reachable()
 
 
 def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> None:
-    """The two refusals stop a run for opposite reasons, so they are two answers.
+    """The two refusals stop a run for opposite reasons, so they are two different standings.
 
-    At the cap the model has answered the question and a longer run would not
-    change the answer; in a failure it could not answer at all. Reporting a
-    failure as the cap would tell a learner the mark lies beyond what the
-    model supports, which is a claim about the model rather than about this
-    run - and a fresh run started by the reset the failure demands would
-    falsify it.
+    At the cap, the model has answered the question, and a longer run would not
+    change the answer. In a failure, the model could not answer at all. Reporting
+    a failure as the cap would tell a learner that the mark lies beyond what the
+    model supports. That is a claim about the model rather than about this run. A
+    fresh run, started by the reset that the failure demands, would show the
+    claim to be false.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
@@ -725,13 +734,14 @@ def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> N
 
 
 def test_the_cap_answers_for_a_run_standing_at_it_that_then_failed() -> None:
-    """Which of the two refusals a run carrying both reports, and why it is the cap.
+    """A run that carries both refusals reports the cap, and this is why.
 
-    `SimulationController.advance` takes no step on a stopped run, so a run
-    standing at the cap and failed was failed by a setting *after* it had run
-    out of supported time: the cap is what the mark went unreached within, and
-    the failure came after the question had been answered. It is also the more
-    durable of the two, being the one the reset would not clear.
+    `SimulationController.advance` takes no step on a stopped run. So a run that
+    stands at the cap and has failed was failed by a setting *after* it ran out
+    of supported time. The cap is the limit within which the mark went unreached,
+    and the failure came after the question had been answered. The cap is also
+    the more durable of the two, because it is the one that the reset would not
+    clear.
     """
 
     bookmark = TimeBookmark(CaseInstant(600.0))
@@ -745,12 +755,12 @@ def test_the_cap_answers_for_a_run_standing_at_it_that_then_failed() -> None:
 
 
 def test_a_failure_stops_a_clock_without_taking_it_back() -> None:
-    """What the failure does not revoke: the two answers about what has happened.
+    """A failure does not revoke the two standings that describe what has already happened.
 
     A marked instant at or behind the clock was passed, and a height the run
-    halted on was reached, whatever stopped the run afterwards. Reporting
-    either as unreached would withdraw a true claim about the case, which is
-    the mirror of the defect this outcome was added for.
+    halted on was reached, whatever stopped the run afterwards. Reporting either
+    as unreached would withdraw a true claim about the case. That would be the
+    mirror image of the defect that this outcome was added for.
     """
 
     passed = TimeBookmark(CaseInstant(30.0))
@@ -766,12 +776,12 @@ def test_a_failure_stops_a_clock_without_taking_it_back() -> None:
 
 
 def test_an_inherited_bookmark_on_a_failed_branch_still_reads_before_the_branch() -> None:
-    """The statically decidable answer outranks the failure, as it does the cap.
+    """The statically decidable standing takes precedence over the failure, as it does over the cap.
 
-    An instant before the fork could not have been reached by this branch had
-    it run perfectly, so naming the failure would suggest the failure is why -
-    and a reset returns a branch to its fork rather than to the case's
-    opening, so the next run of it cannot reach the instant either.
+    This branch could not have reached an instant before the fork even if it had
+    run perfectly. So naming the failure would suggest that the failure is the
+    reason. A reset also returns a branch to its fork rather than to the case's
+    opening, so the next run of the branch cannot reach the instant either.
     """
 
     inherited = TimeBookmark(CaseInstant(120.0))
@@ -783,13 +793,13 @@ def test_an_inherited_bookmark_on_a_failed_branch_still_reads_before_the_branch(
 
 
 def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable() -> None:
-    """The defect `PL-3K9B` names, at the comparison that caused it.
+    """Test the defect that `PL-3K9B` names, at the comparison that caused it.
 
-    `STILL_RUNNING` says the run can still reach the mark. A clock only
-    increases, so an instant at or behind it can never be reached again -
-    whatever put the clock there. Both halves are asserted, because the
-    failure was a row that said the wrong one of the two rather than a row
-    that said nothing.
+    `STILL_RUNNING` says that the run can still reach the mark. A clock only
+    increases, so an instant at or behind it can never be reached again, whatever
+    put the clock there. Both halves are asserted, because the failure was a row
+    that showed the wrong one of the two standings, not a row that showed
+    nothing.
     """
 
     at_the_fork = TimeBookmark(CaseInstant(300.0))
@@ -805,12 +815,12 @@ def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable() -> None:
 
 
 def test_a_bookmark_at_a_branch_s_own_fork_instant_reads_passed() -> None:
-    """Case A: the branch opens standing on it, and no step it takes can cross it.
+    """Case A: the branch opens exactly at the mark, so no step it takes can cross the mark.
 
-    `TimeBookmark.crossed_between` needs `before_s < instant_s`, and the
-    branch's first `before_s` is the fork itself, so the halt set can never
-    acquire this instant however long the branch runs. The clock is what
-    answers it.
+    `TimeBookmark.crossed_between` needs `before_s < instant_s`, and the branch's
+    first `before_s` is the fork itself. So the halt set can never acquire this
+    instant, however long the branch runs. The clock comparison is what decides
+    this standing.
     """
 
     at_the_fork = TimeBookmark(CaseInstant(300.0))
@@ -822,16 +832,16 @@ def test_a_bookmark_at_a_branch_s_own_fork_instant_reads_passed() -> None:
 
 
 def test_a_seeded_halt_answers_a_fork_that_opened_just_past_its_own_mark() -> None:
-    """Case B: the one case the clock comparison cannot see.
+    """Case B: the one case that the clock comparison cannot detect.
 
-    A halt lands on the step that *crossed* the mark, so an instant that is
-    not a multiple of the step in binary is crossed by a step landing a few
-    parts in 1e16 past it - 45.3 marked, 45.300000000000004 forked at. The
-    branch then opens after its own mark, `opened_at_s <= instant_s` is false,
-    and only the crossing seeded from the fork knows the two are one crossing.
-    Without it the row would read `before this branch opened` while the
-    identical act one step-grid over read `passed`, and both rows render their
-    instant as `45.3s`.
+    A halt lands on the step that *crossed* the mark. So an instant that is not a
+    multiple of the step in binary is crossed by a step that lands a few parts in
+    1e16 past it: 45.3 marked, 45.300000000000004 forked at. The branch then
+    opens after its own mark, and `opened_at_s <= instant_s` is false. Only the
+    crossing seeded from the fork records that the two are one crossing. Without
+    that seeded crossing, the row would read `before this branch opened`, while
+    the identical act one step-grid over would read `passed`. Both rows render
+    their instant as `45.3s`.
     """
 
     marked = 45.3
@@ -853,9 +863,9 @@ def test_a_seeded_halt_answers_a_fork_that_opened_just_past_its_own_mark() -> No
 def test_a_bookmark_at_the_case_s_opening_reads_passed_on_an_ordinary_trunk() -> None:
     """The same arithmetic with no branch in it at all.
 
-    `crossed_between` needs `before_s < 0.0` and no run's clock is negative,
-    so a mark on induction could never enter the halt set either. It is a
-    strange thing to mark and not an impossible one.
+    `crossed_between` needs `before_s < 0.0`, and no run's clock is negative. So
+    a mark at induction could never enter the halt set either. It is a strange
+    thing to mark, but not an impossible one.
     """
 
     induction = TimeBookmark(CaseInstant(0.0))
@@ -865,11 +875,12 @@ def test_a_bookmark_at_the_case_s_opening_reads_passed_on_an_ordinary_trunk() ->
 
 
 def test_a_clock_standing_before_its_own_run_s_opening_is_refused() -> None:
-    """Rather than placing every row against a run that does not exist.
+    """The standings are refused rather than placing every row against a run that does not exist.
 
-    The two are one run's own numbers, so crossed over they are two runs'.
-    Clamping would answer plausibly, which is the outcome the safety-critical
-    standard puts an obvious failure ahead of.
+    The opening and the clock are one run's own numbers. If they are crossed
+    over, they must come from two different runs. Clamping would give a
+    plausible result, and the safety-critical standard prefers an obvious
+    failure to that outcome.
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(120.0)))
@@ -881,10 +892,10 @@ def test_a_clock_standing_before_its_own_run_s_opening_is_refused() -> None:
 def test_a_bookmark_at_the_end_of_the_run_length_waits_for_the_run_to_get_there() -> None:
     """The far end is markable and reachable, so nothing about it is decided early.
 
-    A mark past the span was once answered `NOT_REACHED_WITHIN_CAP` at once,
-    so a learner was not left waiting out a simulated day for it. Since
-    `PL-CN5S` no such mark can be made - the `CaseInstant` it would be built
-    from is refused - so the one left at the edge is the span's own end,
+    A mark past the span was once given `NOT_REACHED_WITHIN_CAP` immediately, so
+    that a learner was not left waiting out a simulated day for it. Since
+    `PL-CN5S`, no such mark can be made, because the `CaseInstant` it would be
+    built from is refused. So the mark left at the edge is the span's own end,
     which a run reaches and crosses like any other mark.
     """
 
@@ -897,7 +908,7 @@ def test_a_bookmark_at_the_end_of_the_run_length_waits_for_the_run_to_get_there(
 
 
 def test_a_standing_asked_for_a_mark_that_was_never_evaluated_is_refused() -> None:
-    """Rather than defaulting, which would draw a row asserting an answer nobody has."""
+    """The request is refused, because a default would draw a row for a mark nobody evaluated."""
 
     standings = _standings(BookmarkSet())
 
@@ -910,18 +921,20 @@ def test_a_standing_asked_for_a_mark_that_was_never_evaluated_is_refused() -> No
 
 # ---------------------------------------------------- halting on a crossing
 #
-# The half that has to be run rather than asserted. `PL-CTD7`'s claim is that
-# the halt lands on the step that crossed, whatever the playback multiplier,
-# so these drive a real `SimulationController` the way `run_view.step_tick`
-# drives one: a burst of steps with nothing serviced between them.
+# This is the half that has to be run rather than asserted directly. `PL-CTD7`
+# claims that the halt lands on the step that crossed, whatever the playback
+# multiplier. So these tests drive a real `SimulationController` the way
+# `run_view.step_tick` drives one: a burst of steps with nothing serviced
+# between them.
 
 
 def _step_until_halt(run: SimulationController, *, limit: int = 20_000) -> BookmarkCrossing | None:
     """Advance one step at a time until the run halts, or `limit` steps pass.
 
     Returns:
-        What the run halted on, or `None` where it never halted. `None` rather
-        than raising, so a test can assert that a run was *not* stopped.
+        The crossing that the run halted on, or `None` if it never halted. It
+        returns `None` rather than raising, so that a test can assert that a run
+        was *not* stopped.
     """
 
     for _ in range(limit):
@@ -936,11 +949,11 @@ def _step_until_halt(run: SimulationController, *, limit: int = 20_000) -> Bookm
 def _tick_until_halt(
     run: SimulationController, *, steps_per_tick: int, limit: int = 20_000
 ) -> BookmarkCrossing | None:
-    """The same, advanced in whole bursts the way a tick at `multiplier ×` does.
+    """Advance in whole bursts, the way a tick at `multiplier ×` does, until the run halts.
 
-    Nothing is read between the steps of a burst, which is exactly the
-    condition that made per-frame detection overshoot: the run is only asked
-    whether it is still running once the burst has finished.
+    Nothing is read between the steps of a burst. That is exactly the condition
+    that made per-frame detection overshoot: the run is asked whether it is still
+    running only after the burst has finished.
     """
 
     for _ in range(0, limit, steps_per_tick):
@@ -954,7 +967,7 @@ def _tick_until_halt(
 
 
 def _alveolar_mac_multiple(run: SimulationController) -> MacMultiple:
-    """What the alveolar readout beside the target would say, in the target's unit."""
+    """Return what the alveolar readout beside the target would show, in the target's unit."""
 
     snapshot = run.snapshot()
 
@@ -962,12 +975,13 @@ def _alveolar_mac_multiple(run: SimulationController) -> MacMultiple:
 
 
 def test_a_target_halts_on_every_crossing_in_either_direction() -> None:
-    """Up through 0.5 ×MAC and back down through it stops the run twice.
+    """Rising through 0.5 ×MAC and falling back through it stops the run twice.
 
-    The decision of 2026-09-20: a target carries no crossing direction, so a
-    case that passes through a marked height on the way up and again on the
-    way down has reached what the learner marked both times. Halting only
-    once would make `MacTarget`'s own docstring false for the second crossing.
+    This follows the decision of 2026-09-20: a target carries no crossing
+    direction. So a case that passes through a marked height on the way up, and
+    again on the way down, has reached what the learner marked both times.
+    Halting only once would make `MacTarget`'s own docstring false for the second
+    crossing.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
@@ -980,7 +994,7 @@ def test_a_target_halts_on_every_crossing_in_either_direction() -> None:
     assert rising is not None
     assert rising.mac_targets == (target,)
 
-    # The vaporizer off, and the same height crossed again coming down.
+    # Turn the vaporizer off, so that the same height is crossed again coming down.
     run.set_delivered_concentration_percent(Percent(0.0))
     run.start()
     falling = _step_until_halt(run)
@@ -991,12 +1005,12 @@ def test_a_target_halts_on_every_crossing_in_either_direction() -> None:
 
 
 def test_a_halt_lands_on_the_same_step_at_1x_and_at_300x() -> None:
-    """The whole of `PL-CTD7`: the playback rate does not move the halt.
+    """The whole claim of `PL-CTD7`: the playback rate does not move the halt.
 
     A crossing tested once per rendered frame would land up to
-    `multiplier × 0.1` s late — 30 simulated seconds at 300× — so the two runs
-    below would stop at different concentrations from one another while both
-    claimed to have stopped at 0.5 ×MAC.
+    `multiplier × 0.1` s late, which is 30 simulated seconds at 300×. The two
+    runs below would then stop at different concentrations from one another,
+    while both claimed to have stopped at 0.5 ×MAC.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
@@ -1017,12 +1031,13 @@ def test_a_halt_lands_on_the_same_step_at_1x_and_at_300x() -> None:
 
 
 def test_a_halt_leaves_the_run_paused_on_the_crossing_step() -> None:
-    """So a control change made from the halt acts where the learner was looking.
+    """A halt pauses the run, so a control change made then acts where the learner was looking.
 
-    A setting changed while the run plays first acts at a tick boundary
-    (`PL-NBWP`), which at 300× is up to 30 simulated seconds after the value
-    on screen. No step is taken while paused, so a halt that pauses makes the
-    pause-change-resume route automatic rather than something to know.
+    A setting changed while the run plays first takes effect at a tick boundary
+    (`PL-NBWP`). At 300× that is up to 30 simulated seconds after the value on
+    screen. No step is taken while the run is paused. So a halt that pauses makes
+    the pause, change and resume route automatic, rather than something the
+    learner has to know.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
@@ -1036,14 +1051,14 @@ def test_a_halt_leaves_the_run_paused_on_the_crossing_step() -> None:
     assert halt is not None
     assert not snapshot.is_running
     assert snapshot.elapsed_s == halt.instant_s
-    # Neither a failure nor the end of the supported domain: an ordinary pause.
+    # The halt is neither a failure nor the end of the supported domain. It is an ordinary pause.
     assert snapshot.failure_reason is None
     assert snapshot.supported_limit_reason is None
     assert snapshot.bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
 
 
 def test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances() -> None:
-    """The boundary case, taken from the run itself so the height is landed on exactly.
+    """The boundary case, with the height taken from the run itself so the run lands on it exactly.
 
     A rule closed on both sides would report a crossing on every step from
     here on, and the run could never be advanced past the target at all.
@@ -1083,10 +1098,10 @@ def test_a_time_bookmark_halts_the_run_on_the_step_that_reaches_it() -> None:
 
 
 def test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted() -> None:
-    """Detection observes the run; it does not change it.
+    """Detection observes the run and does not change it.
 
     The marked run is stepped to the same instant through a halt and a resume,
-    and has to stand where the unmarked one stands. `CLAUDE.md` requires
+    and it has to end where the unmarked run ends. `CLAUDE.md` requires
     deterministic results for identical inputs, and a halt is not an input.
     """
 

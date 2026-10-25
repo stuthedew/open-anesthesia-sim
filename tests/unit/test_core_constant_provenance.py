@@ -1,5 +1,7 @@
-"""Every number a `core/` dataclass field defaults to must be one the provenance
-table selects, unless it stands for an empty state or the whole (`PL-65HT`).
+"""Each numeric default of a `core/` dataclass field must be a value the provenance table selects.
+
+The one exception is a value that stands for an empty state or the whole
+(`PL-65HT`).
 
 `tools/doc_check.py`'s `check_provenance` checks `docs/MODEL.md`'s provenance
 table against the data files in both directions. So it cannot see a scientific
@@ -53,7 +55,7 @@ class _Default:
 
 
 def _core_dataclasses() -> list[type[Any]]:
-    """Every dataclass defined under `core/`, the package's own module included."""
+    """Return every dataclass defined under `core/`, including those in the package's own module."""
 
     modules = [anesthesia_sim.core] + [
         importlib.import_module(module.name)
@@ -73,7 +75,7 @@ def _core_dataclasses() -> list[type[Any]]:
 
 
 def _numeric_defaults(classes: Iterable[type[Any]]) -> list[_Default]:
-    """Each class's numeric field defaults, a default factory's result included."""
+    """Return each class's numeric field defaults, including a default factory's result."""
 
     defaults = []
     for cls in classes:
@@ -92,17 +94,18 @@ def _numeric_defaults(classes: Iterable[type[Any]]) -> list[_Default]:
 
 
 def _empty_or_whole(value: float) -> bool:
-    """Zero, or the whole of the value's own scale: 1, or 100 for a `Percent`."""
+    """Return whether the value is zero or the whole of its scale: 1, or 100 for a `Percent`."""
 
     whole = 100.0 if isinstance(value, Percent) else 1.0
     return value in (0.0, whole)
 
 
 def _selected_values() -> frozenset[float]:
-    """Every number in the Selected-value column of `docs/MODEL.md`'s provenance table.
+    """Return every number in the Selected-value column of `docs/MODEL.md`'s provenance table.
 
-    Read through the parser `check_provenance` uses, so the table compared
-    against here is the one that check holds to the data files.
+    The table is read through the parser that `check_provenance` uses. So the
+    table compared here is the same one that the check compares with the data
+    files.
     """
 
     rows, note = doc_check._provenance_rows(
@@ -119,7 +122,7 @@ def _selected_values() -> frozenset[float]:
 
 
 def _unsourced(defaults: Iterable[_Default], selected: frozenset[float]) -> list[_Default]:
-    """The defaults that are neither empty nor whole and that `selected` does not hold."""
+    """Return the defaults that are neither empty nor whole and that `selected` lacks."""
 
     return [
         default
@@ -133,11 +136,11 @@ def test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_t
 ):
     """A fifth `core/` constant cannot arrive with no data file behind it.
 
-    The four there today - the alveolar gas volume and ventilation, the
-    circuit volume and the fresh gas flow - each restate a data file's value,
-    and pass. The walk is required to have read something, so a change that
-    stopped it finding the package's modules fails here rather than passing an
-    empty screen.
+    There are four today: the alveolar gas volume and ventilation, the circuit
+    volume and the fresh gas flow. Each restates a data file's value, and
+    passes. The walk must find at least one default, so a change that stopped
+    it finding the package's modules fails here, rather than passing an empty
+    screen.
     """
 
     defaults = _numeric_defaults(_core_dataclasses())
@@ -160,14 +163,15 @@ def test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_t
 
 
 def test_the_screen_refuses_an_unsourced_default_and_passes_empty_state_and_the_whole() -> None:
-    """Each branch of the comparison, on a dataclass built to reach it.
+    """Each branch of the comparison is exercised on a dataclass built to reach it.
 
     A dead space of 0.15 L is `PL-65HT`'s own example of a constant entering
-    `core/` with no source, and 0.35 L the same arriving through a factory. A
-    1% dial is a value on a `Percent`'s scale that is neither empty nor whole,
-    where 1 on any other scale is the whole. A volume of 6.0 L passes because
-    the set it is compared against selects 6.0, which is the screen's limit
-    and no proof of where that field's value came from.
+    `core/` with no source. A default of 0.35 L is the same case arriving
+    through a factory. A 1% dial setting is a value on a `Percent`'s scale that
+    is neither empty nor whole, whereas 1 on any other scale is the whole. A
+    volume of 6.0 L passes because the set it is compared against selects 6.0.
+    That shows the screen's limit, and proves nothing about where that field's
+    value came from.
     """
 
     @dataclasses.dataclass

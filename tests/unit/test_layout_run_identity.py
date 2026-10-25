@@ -1,9 +1,9 @@
-"""Unit tests for `layout/run_identity.py`: what a run is called by, wherever it is drawn.
+"""Unit tests for `layout/run_identity.py`, which names a run the same way wherever it is drawn.
 
 `PL-7Z84`: a run's identity is the session that placed it and its number in
-that session. These hold the two properties a pin rests on: no number is given
-out twice in a session, and a run from another session is never the same run,
-whatever its number.
+that session. These tests check the two properties that a pin depends on. No
+number is given out twice in a session, and a run from another session is
+never the same run, whatever its number.
 """
 
 import pytest

@@ -1,9 +1,10 @@
-"""Unit tests for `layout/migrations.py`: the version, and the steps that read the ones before it.
+"""Unit tests for `layout/migrations.py`: the schema version, and the steps that read older ones.
 
-`PL-SSQW` Q5 (project owner, 2026-09-27, ratified): a set document an older
-build wrote is migrated in memory, one step per version. Most of these hold the
-hook to its contract with a chain of the test's own. The build's own chain has
-one step, which `PL-7Z84` added with `pinned_run` at version 2.
+`PL-SSQW` Q5 (project owner, 2026-09-27, ratified) decided that a Workspace set
+document written by an older build is migrated in memory, one step per version.
+Most of these tests check the migration hook against its contract, using a
+chain of steps that the test defines itself. The build's own chain has one
+step, which `PL-7Z84` added with `pinned_run` at version 2.
 """
 
 import json
@@ -157,8 +158,8 @@ def test_a_schema_version_is_checked_once_and_a_step_builds_through_it() -> None
     """`PL-8JV2`: `SchemaVersion` checks the version rule once, and builds each step's version.
 
     Before `SchemaVersion` existed, `Migration`, the reader's `_check_version`
-    and `oldest_readable` each held their own copy of the rule or had none, and
-    a bare `int` reached the store.
+    and `oldest_readable` each had their own copy of the rule, or no check at
+    all, and a bare `int` reached the store.
     """
 
     assert SchemaVersion(1) == 1

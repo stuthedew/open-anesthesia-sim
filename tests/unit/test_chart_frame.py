@@ -1,9 +1,10 @@
-"""What one frame of the chart claims, held without a toolkit.
+"""Tests of what one frame of the chart claims, checked without a GUI toolkit.
 
 `app/chart_frame.py` is where the chart's presentation-correctness claims
-live - which compartment a curve carries, where the references stand, which
-instants are drawn, what a hover says - and every test here runs with no
-display and no plotting library, which is the point of that module.
+live. They include which compartment a curve shows, where the reference
+lines sit, which instants are drawn, and what a hover says. Every test here
+runs with no display and no plotting library, which is the purpose of that
+module.
 """
 
 from dataclasses import replace
@@ -140,7 +141,10 @@ def test_every_compartment_has_exactly_one_trace_in_listed_order() -> None:
 
 
 def test_the_six_line_styles_are_the_ones_the_model_document_tabulates() -> None:
-    """`docs/MODEL.md` § "The six compartment traces": pattern in px, width in px."""
+    """Each trace matches its row in `docs/MODEL.md` § "The six compartment traces".
+
+    The dash pattern and the width are both in px.
+    """
 
     table = {
         RecordedQuantity.CIRCUIT: (None, 3, "solid"),
@@ -173,7 +177,10 @@ def test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line() -> None:
 
 
 def test_the_hover_gloss_is_the_readout_row_s_required_hedge() -> None:
-    """`PL-NV9W` and `PL-8M05`: the two compartments a clinician would set beside a monitor."""
+    """`PL-NV9W` and `PL-8M05`: only two compartments get a hover gloss.
+
+    They are the two compartments that a clinician would compare with a monitor.
+    """
 
     glosses = {style.quantity: style.gloss for style in COMPARTMENT_TRACES}
 
@@ -202,7 +209,7 @@ def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() 
     for quantity, shown in _snapshot_fractions(controller).items():
         assert len(run.fractions[quantity]) == len(run.times_s)
         # The score's evaluation and the compartment's own canonical state
-        # agree to floating-point composition, not exactly.
+        # agree only to within the rounding of composed floating-point steps.
         assert run.fractions[quantity][-1] == pytest.approx(shown, abs=1e-8)
         assert run.percents(quantity)[-1] == pytest.approx(shown * 100.0, abs=1e-6)
 
@@ -249,14 +256,14 @@ def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
 
 
 def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_length() -> None:
-    """ "Fit run" is fitted to where the case stands, and a branch stands past its length.
+    """ "Fit run" reaches the case's current instant, which for a branch is later than its length.
 
-    A branch opens at its fork on the case's own axis, so it stands at the
-    fork plus what it has run since: here 150 s, against 30 s of its own. The
-    fitted window is pinned at induction, so its width has to reach that
-    instant. Fitted to the runs' lengths instead, it would end at the trunk's
-    120 s and draw the branch's whole half-minute as one point at its fork
-    (`PL-59WB`).
+    A branch starts at its fork on the case's own time axis. Its current
+    instant is therefore the fork plus the time it has run since: here 150 s,
+    against 30 s of its own. The fitted window is pinned at induction, so its
+    width has to reach that instant. If the window were fitted to the runs'
+    lengths instead, it would end at the trunk's 120 s. It would then draw the
+    branch's whole half-minute as one point at its fork (`PL-59WB`).
     """
 
     trunk = _run(120.0)
@@ -275,7 +282,7 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
 
     assert (branch.began_at_s, newest_s) == pytest.approx((120.0, 150.0))
     assert frame.start_s == 0.0
-    # The narrowest rung that reaches the instant, so not a coarser one either.
+    # The frame uses the narrowest rung that reaches the instant, not a coarser one.
     assert frame.time_base == next(base for base in TIME_BASE_LADDER if base.span_s >= newest_s)
     assert frame.runs[1].times_s[0] == pytest.approx(120.0)
     assert frame.runs[1].times_s[-1] == pytest.approx(newest_s)
@@ -364,7 +371,7 @@ def test_a_mark_before_a_sliding_window_s_start_is_neither_drawn_nor_counted() -
 
 
 def test_chart_columns_is_one_per_pixel_boundary_and_never_below_the_floor() -> None:
-    """`PL-GS3R`: the count follows the plot, not the span, and a fraction rounds up."""
+    """`PL-GS3R`: the count follows the plot's width, not the span, and rounds a fraction up."""
 
     for width in (0.0, 1.0, 100.0, 149.0):
         assert chart_columns(width) == CHART_COLUMN_BUDGET_PER_SERIES
@@ -379,11 +386,12 @@ def test_chart_columns_is_one_per_pixel_boundary_and_never_below_the_floor() -> 
 
 
 def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> None:
-    """`PL-9LNF`: a wider plot owes a resample, a narrower or equal one does not.
+    """`PL-9LNF`: a wider plot needs a resample, and a narrower or equal one does not.
 
-    The expected answers come from `chart_columns`'s stated rule, one column
-    per pixel boundary: a frame sampled at 900 px has 901 columns, so a plot
-    of 900 or 899.5 px needs none more, and one of 900.5 px needs 902.
+    The expected values come from `chart_columns`'s stated rule of one column
+    per pixel boundary. A frame sampled at 900 px has 901 columns. A plot of
+    900 or 899.5 px therefore needs no more columns, and a plot of 900.5 px
+    needs 902.
     """
 
     run = _run(1200.0)
@@ -404,13 +412,14 @@ def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> N
 
 
 def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
-    """The guarantee `docs/MODEL.md` § "What the chart draws" states, at every rung.
+    """Check the guarantee in `docs/MODEL.md` § "What the chart draws" at every rung.
 
     A frame drawn for a plot `_PLOT_WIDTH_PX` wide divides the axis into at
-    least that many intervals, so consecutive drawn instants are never more
-    than `span / width` apart - one pixel of time - whichever width the
-    reader chose. Held on the drawn instants themselves rather than on the
-    column count alone, because the instants are what the plot rules between.
+    least that many intervals. Consecutive drawn instants are therefore never
+    more than `span / width` apart, which is one pixel of time, whichever
+    width the reader chose. The test checks the drawn instants themselves
+    rather than only the column count, because the plot draws its line
+    segments between those instants.
     """
 
     controller = _run(1200.0)
@@ -429,7 +438,7 @@ def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
 
 
 def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
-    """A frame drawn for no stated width would be drawn at the floor, silently."""
+    """A frame with no valid width would otherwise be drawn silently at the minimum column count."""
 
     controller = _run(10.0)
 
@@ -491,8 +500,9 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     controller.set_delivered_concentration_percent(Percent(2.0))
     controller.start()
     _advance(controller, 600.0)
-    # Shutting the vaporizer lets the circuit fall below the alveoli: the
-    # patient returns agent, which is elimination and not wash-in.
+    # Turning the vaporizer off lets the circuit concentration fall below the
+    # alveolar concentration. The patient then returns agent to the circuit,
+    # which is elimination and not wash-in.
     controller.set_delivered_concentration_percent(Percent(0.0))
     _advance(controller, 300.0)
     frame = assemble_chart_frame(
@@ -512,8 +522,9 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
 
 
 def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...]) -> RunFrame:
-    # Built as `assemble_chart_frame` builds them: a frame holds `Fraction`s,
-    # each under its compartment's name, so nothing drawn from it can refuse.
+    # Build the fractions as `assemble_chart_frame` does. A frame holds
+    # `Fraction`s, each named for its compartment, so nothing drawn from the
+    # frame can reject a value.
     fractions = {
         quantity: tuple(
             Fraction(fraction, name=COMPARTMENT_FRACTION_NAMES[quantity])
@@ -563,7 +574,7 @@ def _frame(
 
 
 def test_the_hover_reads_as_the_specification_shows() -> None:
-    """`docs/MODEL.md` § "The chart's hover readout": the worked example, verbatim."""
+    """The hover matches the worked example in `docs/MODEL.md` § "The chart's hover readout"."""
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
 
@@ -578,12 +589,12 @@ def test_the_hover_reads_as_the_specification_shows() -> None:
 def _input_refusing_a_drawn_column(
     controller: SimulationController, quantity: RecordedQuantity, value: float
 ) -> RunInput:
-    """`_input(controller)`, whose drawn window carries `value` in `quantity`'s last column.
+    """Return `_input(controller)` with `value` written into `quantity`'s last drawn column.
 
-    The one route to a drawn fraction outside 0 to 1, since no supported
-    setting computes one (`core/concentration.py`): a drawn window is the
-    closed form's evaluation, so the value is written into the window the
-    controller answers with rather than into any compartment.
+    This is the only way to get a drawn fraction outside 0 to 1, because no
+    supported setting computes one (`core/concentration.py`). A drawn window
+    is an evaluation of the closed form. The value is therefore written into
+    the window that the controller returns, rather than into any compartment.
     """
 
     real_drawn_window = controller.drawn_window
@@ -605,14 +616,15 @@ def _input_refusing_a_drawn_column(
 def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists() -> None:
     """Every value a frame draws is built as a `Fraction` when the frame is assembled.
 
-    `core/concentration.py`'s fourth limit: a computed fraction rounded past
-    1, which only a 100% dial can make and no supported setting reaches, is
-    refused rather than clamped to 100.00% or drawn above the axis
-    (`PL-4R3W`). It is refused in `assemble_chart_frame`, before a
-    `ChartFrame` exists, so the toolkit is never handed a frame whose first
-    traces convert and whose last refuses - which is what left four traces
-    redrawn and two standing on the frame before (`PL-7DJK`). The value is
-    the one that reproduced it, in the muscle column.
+    This is the fourth limit in `core/concentration.py`. A computed fraction
+    that rounds past 1 is rejected, rather than clamped to 100.00% or drawn
+    above the axis (`PL-4R3W`). Only a 100% dial can produce such a fraction,
+    and no supported setting reaches one. `assemble_chart_frame` rejects it
+    before a `ChartFrame` exists. The toolkit is therefore never given a
+    frame whose first traces convert and whose last trace fails. Such a frame
+    once left four traces redrawn and two still showing the previous frame
+    (`PL-7DJK`). The value used here is the one that reproduced that defect,
+    in the muscle column.
     """
 
     run = _input_refusing_a_drawn_column(_run(60.0), RecordedQuantity.MUSCLE, 1.0000000000001568)
@@ -625,12 +637,13 @@ def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists
 
 
 def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
-    """Each of the six constructions names its quantity, in the words `_write_state_vector` uses.
+    """Each of the six fractions is named for its quantity, as `_write_state_vector` names it.
 
-    "fraction of 1.0000000000000002" said which value was refused and not
-    which compartment, against the convention `Fraction`'s docstring states
-    (`PL-SPN6`); `run_series.COMPARTMENT_FRACTION_NAMES` is the one table
-    the frame, the snapshot and the MAC multiples name from (`PL-7DJK`).
+    The message "fraction of 1.0000000000000002" said which value was
+    rejected but not which compartment. That broke the convention that
+    `Fraction`'s docstring states (`PL-SPN6`).
+    `run_series.COMPARTMENT_FRACTION_NAMES` is the one table from which the
+    frame, the snapshot and the MAC multiples take their names (`PL-7DJK`).
     """
 
     for quantity in COMPARTMENT_QUANTITIES:
@@ -644,13 +657,13 @@ def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
 
 
 def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> None:
-    """The conversion, the hover and the cursor readouts read a `Fraction` the frame built.
+    """The conversion, the hover and the cursor readouts use the `Fraction`s that the frame built.
 
-    What `RunFrame.fractions` promises, checked at the type: every drawn
-    value is a `Fraction` and the axis top a `Percent`, so `percents`,
-    `format_trace_hover` and `nearest_trace_point` build nothing and cannot
-    be the first to refuse a value after a frame has started to draw
-    (`PL-7DJK`).
+    This checks, by type, what `RunFrame.fractions` promises. Every drawn
+    value is a `Fraction`, and the axis top is a `Percent`. `percents`,
+    `format_trace_hover` and `nearest_trace_point` therefore build nothing.
+    None of them can be the first to reject a value after a frame has started
+    to draw (`PL-7DJK`).
     """
 
     frame = assemble_chart_frame(
@@ -667,12 +680,13 @@ def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> 
 
 
 def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled() -> None:
-    """Three MACs of an agent whose MAC is above a third of an atmosphere is no percent.
+    """Three MACs of an agent whose MAC exceeds a third of an atmosphere is not a valid percent.
 
-    No shipped agent reaches it (`Percent`'s docstring in
-    `core/concentration.py`), so the MAC is written onto the snapshot. Built
-    at assembly and named, the refusal comes before the chart draws rather
-    than from the off-scale notice after it (`PL-7DJK`).
+    No shipped agent has such a MAC (`Percent`'s docstring in
+    `core/concentration.py`), so the test writes the MAC onto the snapshot.
+    The axis top is built and named at assembly. The rejection therefore
+    comes before the chart draws, rather than from the off-scale notice
+    afterwards (`PL-7DJK`).
     """
 
     controller = _run(60.0)
@@ -688,11 +702,13 @@ def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled(
 
 
 def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
-    """`docs/MODEL.md` § "The hover and the run it belongs to": on line 1, conditional.
+    """The hover names the run on line 1, and only while more than one run is drawn.
 
-    The run goes in the line the specification already calls run context, and
-    only while there is a second run to tell it apart from - the same
-    condition the width channel carries in `run_trace_style`.
+    This follows `docs/MODEL.md` § "The hover and the run it belongs to". The
+    run's name goes in the line that the specification already calls run
+    context. It appears only while there is a second run to tell it apart
+    from. That is the same condition that `run_trace_style` uses for its
+    width channel.
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -721,7 +737,7 @@ def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
 
 
 def test_a_hover_cannot_be_answered_for_a_chart_drawing_no_runs() -> None:
-    """A readout claiming to compare while naming no run is what this prevents."""
+    """This prevents a readout that claims to compare runs while naming none."""
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
 
@@ -734,15 +750,15 @@ def test_a_hover_cannot_be_answered_for_a_chart_drawing_no_runs() -> None:
 
 
 def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None:
-    """The regression `PL-MN4J` was filed for, end to end from the pointer.
+    """Test the regression that `PL-MN4J` was filed for, end to end from the pointer.
 
     Where two runs' points for one compartment are both inside the radius,
-    every one of them answers (`PL-JVHL`) and each value is attributed to
-    the run it belongs to (`PL-MN4J`). Measured on a branched sevoflurane
-    case, the two runs' fat points sit inside the 12 px radius over 100% of
-    the shared axis, and 43.8-81.4% of those hovers print different values,
-    so an unattributed value is the correct number under the wrong
-    management.
+    the hover reports every one of them (`PL-JVHL`). It attributes each value
+    to the run it belongs to (`PL-MN4J`). On a measured branched sevoflurane
+    case, the two runs' fat points lie inside the 12 px radius over 100% of
+    the shared axis, and 43.8-81.4% of those hovers print different values.
+    An unattributed value can therefore be a correct number credited to the
+    wrong run, and so to the wrong management.
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -757,8 +773,8 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     assert nearer_first is not None
     assert abs(1.45 - 1.43) / 0.0167 < 12.0, "the two points must contend for this to test anything"
 
-    # Which point is marginally nearer settles nothing: one box, both runs,
-    # each named, in drawing order.
+    # It does not matter which point is marginally nearer. Both pointer
+    # positions give one box showing both runs, each named, in drawing order.
     assert nearer_second.readout == nearer_first.readout
     assert tuple(reading.run for reading in nearer_second.readings) == (0, 1)
     assert nearer_second.readout.splitlines() == [
@@ -768,23 +784,24 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
         "Run 2 \u00b7 20m8s   1.45%   0.73 \u00d7MAC",
     ]
 
-    # The values differ, which is what makes the attribution load-bearing.
+    # The values differ, which is why the attribution matters.
     assert nearer_second.readout.splitlines()[2] != nearer_second.readout.splitlines()[3]
 
 
 def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> None:
-    """`PL-JVHL`: every run inside the radius answers, so nothing turns on the nearer point.
+    """`PL-JVHL`: every run inside the radius is reported, so nothing depends on the nearer point.
 
     The geometry is the one the item measured, reduced to the two fat traces
-    it turns on. Reference adult on sevoflurane, trunk held at 1 MAC, branch
-    forked at 10 min with the vaporizer turned off, a 60-minute axis 900 px
-    wide and `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at
-    3492 s the run still carrying agent reads 0.03% and the one 48 minutes
-    into emergence reads 0.01%, which the percent axis - fixed at 3 MAC
-    (`CHART_AXIS_TOP_MAC`) - puts 1.2 px apart. Both points are inside the 12 px
-    radius across the whole hoverable band, and the rule that kept the
-    single globally nearest point flipped which run answered on 75.4-99.9%
-    of the fat axis.
+    that matter. The case is the reference adult on sevoflurane. The trunk is
+    held at 1 MAC, and the branch forks at 10 min with the vaporizer turned
+    off. The axis spans 60 minutes and is 900 px wide and
+    `theme.CHART_HEIGHT` tall, which gives 4.00 s/px and 0.0167 %/px. At
+    3492 s, the run still carrying agent shows 0.03%, and the run 48 minutes
+    into emergence shows 0.01%. The percent axis is fixed at 3 MAC
+    (`CHART_AXIS_TOP_MAC`), so these two points are 1.2 px apart. Both points
+    are inside the 12 px radius across the whole hoverable band. The old rule
+    kept only the single nearest point overall, and it switched which run was
+    reported on 75.4-99.9% of the fat axis.
     """
 
     reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
@@ -799,11 +816,11 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     on_trunk = still_carrying.percents(RecordedQuantity.FAT)[0]
     on_branch = emerging.percents(RecordedQuantity.FAT)[0]
     midpoint = (on_trunk + on_branch) / 2.0
-    # Under 1.5 px apart; the item measured the real case at 0.2-1.4 px, which
-    # is why nothing a reader can see distinguishes these two traces.
+    # The two traces are less than 1.5 px apart. The item measured the real
+    # case at 0.2-1.4 px, which is why a reader cannot see which trace is which.
     assert abs(on_trunk - on_branch) / 0.0167 < 2.0
-    # Pixel offsets from the midpoint of the two traces at 3492 s, two at a
-    # time, which is the hand movement the item measured.
+    # Pixel offsets from the midpoint of the two traces at 3492 s, in steps of
+    # two pixels, which is the hand movement the item measured.
     offsets = tuple(range(-12, 13, 2))
 
     def hover(x_px: int, y_px: int) -> tuple[int, ...]:
@@ -812,7 +829,7 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
         return () if target is None else tuple(reading.run for reading in target.readings)
 
     def contending(x_px: int, y_px: int) -> bool:
-        """Whether both runs' fat points are inside the radius of this pointer."""
+        """Return whether both runs' fat points are inside the radius of this pointer."""
 
         return all(
             nearest_trace_point(
@@ -823,7 +840,7 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
         )
 
     def marginally_nearer(y_px: int) -> int:
-        """Which run the retired rule would have answered for: the nearer point's."""
+        """Return the run that the retired rule would have reported: the nearer point's run."""
 
         percent = midpoint + y_px * 0.0167
 
@@ -831,7 +848,7 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
 
     contended = [(x, y) for x in offsets for y in offsets if contending(x, y)]
     assert len(contended) > len(offsets) ** 2 // 2, "the geometry must contend to test anything"
-    # The geometry is the ambiguous one: the retired rule does flip across it.
+    # The geometry is ambiguous: the retired rule does switch runs across it.
     assert {marginally_nearer(y) for _, y in contended} == {0, 1}
 
     for x_px, y_px in contended:
@@ -841,8 +858,8 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
             if contending(*neighbour):
                 assert hover(*neighbour) == hover(x_px, y_px)
 
-    # Both values are reached, and they differ - which is what made the flip
-    # consequential rather than cosmetic.
+    # Both values are reported, and they differ. That difference is what made
+    # the switch between runs matter, rather than being cosmetic.
     readout = nearest_trace_point(frame, 3492.0, midpoint, **reach)
     assert readout is not None
     assert readout.readout.splitlines()[2:] == [
@@ -852,15 +869,17 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
 
 
 def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
-    """The geometry `PL-0RZ0` measured, reduced to the pair it turns on.
+    """Return the geometry that `PL-0RZ0` measured, reduced to the pair of traces that matter.
 
-    Reference adult on sevoflurane, a 60-minute axis 900 px wide and
-    `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at 20 minutes on
-    the branched case the trunk's muscle reads 0.19% and its fat 0.01%, which
-    the percent axis - fixed at 3 MAC (`CHART_AXIS_TOP_MAC`) - puts 10.7 px apart, well
-    inside the 12 px radius. Muscle and fat are the pair a reader comparing
-    two runs picks most often, and the pair whose values differ most: a median
-    17.1-17.9x across the measured cases, every flip twofold or more.
+    The case is the reference adult on sevoflurane, on a 60-minute axis
+    900 px wide and `theme.CHART_HEIGHT` tall. That gives 4.00 s/px and
+    0.0167 %/px. At 20 minutes on the branched case, the trunk's muscle shows
+    0.19% and its fat shows 0.01%. The percent axis is fixed at 3 MAC
+    (`CHART_AXIS_TOP_MAC`), so these points are 10.7 px apart, well inside the
+    12 px radius. Muscle and fat are the pair that a reader comparing two runs
+    picks most often. They are also the pair whose values differ most: by a
+    median of 17.1-17.9x across the measured cases, and by twofold or more at
+    every switch.
     """
 
     times_s = tuple(1160.0 + 4.0 * column for column in range(20))
@@ -882,23 +901,24 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
 
 
 def test_two_compartments_within_one_hover_radius_answer_under_their_own_names() -> None:
-    """`PL-0RZ0`: every compartment inside the radius answers, so nothing turns on the nearer trace.
+    """`PL-0RZ0`: every compartment inside the radius is reported, not just the nearer trace.
 
-    The rule `PL-JVHL` settled for the run, one axis over. It left distance to
-    pick the compartment, on the reasoning that a reader aims at a curve;
-    `PL-0RZ0` measured two or more compartments inside the radius over
-    15.2-45.7% of the two-run chart's hoverable area, a 2 px move changing
-    which one answered on 6.6-13.6% of contended pointer pairs, and the two
-    winning points a median 0.9 px apart - so there was no aim to respect and
-    the box did not move when the answer changed.
+    This is the rule that `PL-JVHL` settled for runs, applied to compartments.
+    `PL-JVHL` left distance to pick the compartment, reasoning that a reader
+    aims at a curve. `PL-0RZ0` then measured the two-run chart. Two or more
+    compartments were inside the radius over 15.2-45.7% of its hoverable
+    area. A 2 px move changed which compartment was reported on 6.6-13.6% of
+    contended pointer pairs. The two winning points were a median 0.9 px
+    apart. There was therefore no aim to respect, and the box did not move
+    when the reported compartment changed.
     """
 
     frame, reach = _contended_muscle_and_fat()
     still_carrying, emerging = frame.runs
     on_muscle = still_carrying.percents(RecordedQuantity.MUSCLE)[0]
     on_fat = still_carrying.percents(RecordedQuantity.FAT)[0]
-    # The contention this tests: the two traces are inside one radius of each
-    # other, so no pointer position lies on one and not the other.
+    # This is the contention under test. The two traces are within one radius
+    # of each other, so no pointer position lies on one and not the other.
     assert 0.0 < (on_muscle - on_fat) / 0.0167 < 12.0
     offsets = tuple(range(-12, 13, 2))
     midpoint = (on_muscle + on_fat) / 2.0
@@ -913,10 +933,10 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
         )
 
     def contending(x_px: int, y_px: int) -> bool:
-        """Whether every one of the four traces has a drawn point inside this pointer's radius.
+        """Return whether each of the four traces has a drawn point inside this pointer's radius.
 
-        Asked trace by trace, each on a frame drawing only itself, so that the
-        rule under test cannot be what decides the question put to it.
+        Each trace is checked on a frame that draws only that trace. The rule
+        under test therefore cannot decide the question that is put to it.
         """
 
         return all(
@@ -932,7 +952,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
         )
 
     def marginally_nearer(y_px: int) -> RecordedQuantity:
-        """Which compartment the retired rule would have answered for: the nearer trace's."""
+        """Return the compartment that the retired rule would have reported, the nearer trace's."""
 
         percent = midpoint + y_px * 0.0167
 
@@ -944,7 +964,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
 
     contended = [(x, y) for x in offsets for y in offsets if contending(x, y)]
     assert len(contended) > len(offsets) ** 2 // 4, "the geometry must contend to test anything"
-    # The geometry is the ambiguous one: the retired rule does flip across it.
+    # The geometry is ambiguous: the retired rule does switch compartments across it.
     assert {marginally_nearer(y) for _, y in contended} == {
         RecordedQuantity.MUSCLE,
         RecordedQuantity.FAT,
@@ -963,8 +983,8 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
             if contending(*neighbour):
                 assert hover(*neighbour) == hover(x_px, y_px)
 
-    # Every value is reached, each under its own compartment and run, and the
-    # two compartments differ by the severalfold the item measured.
+    # Every value is reported, each under its own compartment and run. The two
+    # compartments differ severalfold, as the item measured.
     target = nearest_trace_point(frame, 1200.0, midpoint, **reach)
     assert target is not None
     assert target.quantities == (RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
@@ -982,12 +1002,12 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
 
 
 def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
-    """`_hover_context`'s rule reaches the compartment lines: one run drawn is not a comparison.
+    """`_hover_context`'s rule applies to the compartment lines: one drawn run is not a comparison.
 
-    The single-run chart draws all six compartments and has the same exposure
-    - `PL-0RZ0` measured two or more inside the radius over 37.0% of its
-    hoverable area - so this form fires there too, where naming the only run
-    would imply a comparison that is not on screen.
+    The single-run chart draws all six compartments and has the same
+    exposure. `PL-0RZ0` measured two or more compartments inside the radius
+    over 37.0% of its hoverable area. This form therefore appears there too.
+    Naming the only run there would imply a comparison that is not on screen.
     """
 
     frame, reach = _contended_muscle_and_fat()
@@ -1012,11 +1032,11 @@ def _retired_nearest_instant(
     percent: float,
     reach: dict[str, float],
 ) -> float | None:
-    """The instant the retired rule answered one trace at: its drawn point nearest in pixels.
+    """Return the instant the retired rule reported for one trace: its point nearest in pixels.
 
-    The counterfactual the `PL-1K9G` tests are held against, so that a
-    geometry which stops exercising the retired rule's failure fails as a
-    geometry rather than passing as a fix.
+    This is the counterfactual against which the `PL-1K9G` tests are checked.
+    A geometry that stops exercising the retired rule's failure then fails as
+    a geometry, rather than passing as a fix.
     """
 
     distance, instant = min(
@@ -1034,28 +1054,33 @@ def _retired_nearest_instant(
 
 
 def _named_instant(run: RunFrame, time_s: float) -> float:
-    """The drawn instant nearest `time_s` in time, ties to the earlier: what the pointer names."""
+    """Return the drawn instant nearest `time_s`, which is the instant the pointer names.
+
+    A tie goes to the earlier instant.
+    """
 
     return min(run.times_s, key=lambda drawn_s: (abs(drawn_s - time_s), drawn_s))
 
 
 def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
-    """`PL-1K9G`: the pointer names the instant, and every trace of a run answers at it.
+    """`PL-1K9G`: the pointer names the instant, and every trace of a run is reported at it.
 
-    The retired rule kept each trace's drawn point nearest the pointer in
-    pixels, so a steep trace and a flat one inside one radius answered at
-    different columns - the pointer's height deciding which - and one box
-    labelled two compartments of one run with two instants. Measured on the
-    single-run chart, 70.1% of the boxes holding two or more of one run's
-    readings mixed instants, up to 72 s apart on the 60-minute axis and 15
-    minutes apart on the 12-hour one, and 91.9% of those printed digits the
-    same compartments do not print at one shared instant.
+    The retired rule kept, for each trace, the drawn point nearest the
+    pointer in pixels. A steep trace and a flat one inside one radius were
+    therefore reported at different columns, and the pointer's height decided
+    which. One box then labelled two compartments of one run with two
+    different instants. On the single-run chart, 70.1% of the boxes holding
+    two or more of one run's readings mixed instants. The instants were up to
+    72 s apart on the 60-minute axis and up to 15 minutes apart on the 12-hour
+    axis. 91.9% of those boxes printed digits that the same compartments do
+    not show at one shared instant.
 
-    The geometry is that shape reduced to two traces: vessel-rich flat and
-    mixed venous rising two pixels a column through it, at the 60-minute
-    axis's 4.00 s/px and 0.0167 %/px. The pointer is a quarter of a column
-    past 20m, which is the instant it names, and three pixels above the flat
-    trace - where the steep one's nearest point is three columns on.
+    The geometry here is that shape reduced to two traces. Vessel-rich is
+    flat, and mixed venous rises through it by two pixels a column, at the
+    60-minute axis's 4.00 s/px and 0.0167 %/px. The pointer is a quarter of a
+    column past 20m, which is the instant it names. It is three pixels above
+    the flat trace, where the steep trace's nearest point is three columns
+    later.
     """
 
     reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
@@ -1069,8 +1094,8 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
     time_s = 1201.0
     above_flat = run.percents(RecordedQuantity.VESSEL_RICH)[0] + 3 * 0.0167
 
-    # The geometry is one the retired rule split: its two traces answered
-    # twelve seconds apart under this pointer.
+    # The retired rule split this geometry. Under this pointer, it reported
+    # the two traces twelve seconds apart.
     assert {
         _retired_nearest_instant(run, quantity, time_s, above_flat, reach)
         for quantity in frame.visible
@@ -1089,7 +1114,7 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
         "Vessel-rich · 20m   0.60%   0.30 ×MAC",
     ]
 
-    # And no height at which anything answers moves it.
+    # No pointer height at which the hover reports anything moves the instant.
     for y_px in range(-12, 13):
         moved = nearest_trace_point(frame, time_s, above_flat + y_px * 0.0167, **reach)
 
@@ -1099,17 +1124,18 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
 
 @pytest.mark.parametrize("compared", [False, True], ids=["one run", "two runs"])
 def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compared: bool) -> None:
-    """`PL-1K9G` on real runs: the instant a value is labelled with is the pointer's time alone.
+    """`PL-1K9G` on real runs: the instant that labels a value depends only on the pointer's time.
 
-    Under the retired rule a purely vertical 2 px movement moved it on 44.9%
-    of such movements on the single-run chart, and moved the printed value on
-    35.1% - by up to 0.13 percentage points on the 60-minute axis and 0.39 on
-    the 12-hour one, with nothing else in the box moving. Swept here across
-    the dial change at ten minutes and the live end at twenty, where the fast
-    compartments are steepest, at every other pixel of height and at three
-    points between each pair of columns, one of them the exact midpoint: every
-    run that answers does so at its own drawn instant nearest the pointer in
-    time, whatever the pointer's height.
+    Under the retired rule, a purely vertical 2 px movement changed the
+    instant on 44.9% of such movements on the single-run chart. It changed the
+    printed value on 35.1%, by up to 0.13 percentage points on the 60-minute
+    axis and 0.39 on the 12-hour axis, while nothing else in the box moved.
+    This test sweeps across the dial change at ten minutes and the live end at
+    twenty minutes, where the fast compartments are steepest. It checks every
+    other pixel of height, and three points between each pair of columns, one
+    of them the exact midpoint. Every run that is reported is reported at its
+    own drawn instant nearest the pointer in time, whatever the pointer's
+    height.
     """
 
     trunk = _run(600.0)
@@ -1146,8 +1172,8 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
     ]
     heights = [y_px * reach["percent_per_pixel"] for y_px in range(0, 361, 2)]
 
-    # The region is one where the retired rule labelled values with an
-    # instant the pointer's time does not name.
+    # In this region, the retired rule labelled values with an instant that
+    # the pointer's time does not name.
     assert any(
         _retired_nearest_instant(run, quantity, time_s, percent, reach)
         not in (None, _named_instant(run, time_s))
@@ -1177,34 +1203,38 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
 
 
 def test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach() -> None:
-    """The radius still decides whether a trace answers - measured at the instant the pointer names.
+    """The radius still decides whether a trace is reported, measured at the named instant.
 
-    A steep trace passes within the radius of a pointer beside it at an
-    instant several columns away, and the retired rule answered with that
-    point. Answering from the named instant's point whatever its distance was
-    the other way to make the instant a function of the pointer's time, and
-    it was measured and refused: where this rule declines, it would have hung
-    the dot and the box a median 13.5 px and up to 42.5 px from the pointer on
-    the 60-minute axis, and up to 146 px on the 12-hour one - a value the
-    reader is nowhere near, reported as the one under the pointer.
+    A steep trace passes within the radius of a pointer beside it, at an
+    instant several columns away. The retired rule reported that point. The
+    other way to make the instant depend only on the pointer's time was to
+    report the named instant's point whatever its distance. That option was
+    measured and rejected. Where this rule reports nothing, that option would
+    have placed the dot and the box a median 13.5 px and up to 42.5 px from
+    the pointer on the 60-minute axis, and up to 146 px away on the 12-hour
+    axis. It would have reported a value that the reader is nowhere near as
+    the one under the pointer.
     """
 
     reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
     times_s = tuple(1160.0 + 4.0 * column for column in range(18))
-    # Twenty pixels a column: the near-vertical step a dial change draws.
+    # The trace rises twenty pixels a column, like the near-vertical step that
+    # a dial change draws.
     run = _run_frame(times_s, circuit=tuple(0.0005 + column * 0.00334 for column in range(18)))
     frame = _frame(run, visible=(RecordedQuantity.CIRCUIT,))
     circuit = run.percents(RecordedQuantity.CIRCUIT)
     time_s = 1201.0
 
-    # Level with the step three columns on: 2.75 px from that point, which the
-    # retired rule answered with, and 60 px above the point at 20m.
+    # The pointer is level with the trace three columns later. It is 2.75 px
+    # from that point, which the retired rule reported, and 60 px above the
+    # point at 20m.
     assert _retired_nearest_instant(run, RecordedQuantity.CIRCUIT, time_s, circuit[13], reach) == (
         1212.0
     )
     assert nearest_trace_point(frame, time_s, circuit[13], **reach) is None
 
-    # On the trace at the instant the pointer names, it answers there.
+    # With the pointer on the trace at the named instant, the hover reports
+    # that point.
     on_trace = nearest_trace_point(frame, time_s, circuit[10], **reach)
 
     assert on_trace is not None
@@ -1212,17 +1242,19 @@ def test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach()
 
 
 def test_the_wash_in_hover_answers_at_the_instant_the_pointer_names() -> None:
-    """`PL-1K9G` on the wash-in plot, which measured its distance in the same two dimensions.
+    """`PL-1K9G` on the wash-in plot, which also measured distance in both dimensions.
 
-    One trace per run, so no box there could mix one run's instants - but a
-    purely vertical 2 px movement moved the one instant it reports on
-    23.9-44.4% of such movements across the measured cases, the printed ratio
-    with it on 7.7-20.6%. A run's stretches are one set of drawn instants, so
-    the pointer names one of them across the gap between two stretches too.
+    The wash-in plot has one trace per run, so no box there could mix one
+    run's instants. But a purely vertical 2 px movement changed its one
+    reported instant on 23.9-44.4% of such movements across the measured
+    cases. It changed the printed ratio on 7.7-20.6%. A run's stretches form
+    one set of drawn instants, so the pointer names one of them even in the
+    gap between two stretches.
     """
 
     reach = dict(seconds_per_pixel=4.0, ratio_per_pixel=0.00575, radius_pixels=12.0)
-    # Rising two pixels a column, as early wash-in does on the 60-minute axis.
+    # This stretch rises two pixels a column, as early wash-in does on the
+    # 60-minute axis.
     early = WashInStretch(
         tuple(40.0 + 4.0 * column for column in range(10)),
         tuple(0.30 + 0.0115 * column for column in range(10)),
@@ -1241,7 +1273,8 @@ def test_the_wash_in_hover_answers_at_the_instant_the_pointer_names() -> None:
 
     assert reported and set(reported) == {56.0}
 
-    # In the gap, nearer in time to the late stretch: it answers, at its first point.
+    # In the gap, nearer in time to the late stretch, the hover reports the
+    # late stretch's first point.
     in_gap = nearest_wash_in_point(frame, 92.0, 0.80, **reach)
 
     assert in_gap is not None
@@ -1249,12 +1282,12 @@ def test_the_wash_in_hover_answers_at_the_instant_the_pointer_names() -> None:
 
 
 def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() -> None:
-    """A run with nothing drawn has no instant to name, so it answers nothing; the rest still do.
+    """A run with nothing drawn has no instant to name, so only the other runs are reported.
 
     `SimulationController.drawn_window` always draws both ends of the range a
-    run covers, so no assembled frame holds such a run; it is held here
-    because the bisection that names the instant would otherwise read one
-    before the first column of an empty run, on both plots.
+    run covers, so no assembled frame contains such a run. The case is tested
+    here anyway. Without a guard, the bisection that names the instant would
+    read one position before the first column of an empty run, on both plots.
     """
 
     drawn = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -1271,7 +1304,7 @@ def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() ->
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
-    """`docs/MODEL.md`'s measured table: fat at 48.3 s is `<0.01%`, never `3.52e-05`."""
+    """As in `docs/MODEL.md`'s measured table, fat at 48.3 s shows as `<0.01%`, never `3.52e-05`."""
 
     run = _run_frame((48.3,), fat=(3.52e-7,), circuit=(0.0262,), mixed_venous=(0.005,))
 
@@ -1314,7 +1347,8 @@ def test_the_hover_answers_every_drawn_point_within_reach_and_nothing_else() -> 
         fat=(0.0, 0.0001, 0.0002),
     )
     frame = _frame(run)
-    # One second and one hundredth of a percent per pixel: a 12 px reach.
+    # Each pixel is one second wide and one hundredth of a percent tall, and
+    # the reach is 12 px.
     reach = dict(seconds_per_pixel=1.0, percent_per_pixel=0.01, radius_pixels=12.0)
 
     on_alveolar = nearest_trace_point(frame, 103.0, 1.02, **reach)
@@ -1327,10 +1361,11 @@ def test_the_hover_answers_every_drawn_point_within_reach_and_nothing_else() -> 
     assert tuple(reading.run for reading in on_alveolar.readings) == (0,)
     assert on_alveolar.readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, 1, 1)
 
-    # Between two columns, on the 1 MAC line: no drawn point is near, and a
-    # reference never answers.
+    # The pointer is between two columns, on the 1 MAC line. No drawn point is
+    # near, and a reference line is never reported.
     assert nearest_trace_point(frame, 150.0, 2.0, **reach) is None
-    # Beyond reach in pixels, however close in seconds.
+    # A point beyond reach in pixels is not reported, however close it is in
+    # seconds.
     assert nearest_trace_point(frame, 100.0, 1.2, **reach) is None
 
 
@@ -1355,16 +1390,17 @@ def test_the_wash_in_hover_answers_its_own_stretches_in_its_own_units() -> None:
     assert target.quantities == (RecordedQuantity.WASH_IN_RATIO,)
     assert (target.anchor.time_s, target.anchor.value) == (100.0, 0.71)
     assert target.readout.splitlines()[1:] == [WASH_IN_HOVER_LABEL, "0.71"]
-    # On the equilibrium line, away from the trace: the reference is silent.
+    # On the equilibrium line, away from the trace, the reference line reports
+    # nothing.
     assert nearest_wash_in_point(frame, 100.0, 1.0, **reach) is None
 
 
 def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
-    """Answering for every run in reach is not answering for every run drawn.
+    """Reporting every run in reach is not the same as reporting every run drawn.
 
-    The second run's alveolar point is 30 px away, so one run answers and the
-    readout is the three-line form `docs/MODEL.md` derives - still naming the
-    run, because two are drawn (`PL-MN4J`).
+    The second run's alveolar point is 30 px away, so only one run is
+    reported. The readout is the three-line form that `docs/MODEL.md`
+    derives. It still names the run, because two runs are drawn (`PL-MN4J`).
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -1381,12 +1417,13 @@ def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
 
 
 def test_a_compared_hover_states_each_run_s_own_instant() -> None:
-    """Two runs answer at their own drawn points, which need not be the same instant.
+    """Two runs are reported at their own drawn points, which need not share an instant.
 
-    Both runs sit on the shared anchored grid, but each adds the columns its
-    own control events fall on, so the points nearest one pointer can be up
-    to one grid column apart - 4 s here. One instant above a column of values
-    would assert a simultaneity the readings do not have.
+    Both runs lie on the shared anchored grid. Each run also adds the columns
+    on which its own control events fall. The points nearest one pointer can
+    therefore be up to one grid column apart, which is 4 s here. One instant
+    above a column of values would claim a simultaneity that the readings do
+    not have.
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -1427,9 +1464,10 @@ def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are(
 def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -> None:
     """The agent is named once, above the values, so the runs must share it.
 
-    `assemble_chart_frame` already refuses such a frame - one MAC ruler is
-    drawn across every run - so this is the second guard rather than the
-    first, on the one line that turns a per-run qualifier into a shared one.
+    `assemble_chart_frame` already rejects such a frame, because one MAC ruler
+    is drawn across every run. This check is therefore the second guard
+    rather than the first. It guards the one line that turns a per-run
+    qualifier into a shared one.
     """
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -1493,13 +1531,15 @@ def test_a_single_run_is_drawn_exactly_as_the_compartment_table_says() -> None:
 
 
 def test_two_runs_differ_only_in_width_and_the_first_is_the_wider() -> None:
-    """`PL-HLD5`: compartment on style and colour, run on width, read locally.
+    """`PL-HLD5`: style and colour show the compartment, and width shows the run.
 
-    The first is widened rather than the second narrowed because a branch
-    reproduces its parent up to the fork, so the two curves coincide there
-    and the narrower has to be the one drawn on top - and because nothing is
-    then drawn thinner than the single-run chart draws it, which is what
-    keeps every trace's contrast against the panel where it was measured.
+    The width only has to tell apart two adjacent curves of one compartment, so
+    it is read locally rather than across the plot. The first run is widened,
+    rather than the second narrowed, for two reasons. A branch reproduces its
+    parent up to the fork, so the two curves coincide there, and the narrower
+    one has to be drawn on top. Also, nothing is then drawn thinner than the
+    single-run chart draws it. That keeps every trace's contrast against the
+    panel at the width where the contrast was measured.
     """
 
     for style in COMPARTMENT_TRACES:
@@ -1515,7 +1555,7 @@ def test_two_runs_differ_only_in_width_and_the_first_is_the_wider() -> None:
 
 
 def test_a_style_is_refused_for_a_run_the_chart_is_not_drawing() -> None:
-    """A width for a run that is not there would be a width nothing on screen carries."""
+    """A width for a run that is not on the chart would describe nothing on screen."""
 
     for run_index, run_count in ((1, 1), (-1, 2), (2, 2), (0, 0)):
         with pytest.raises(ValueError, match="runs on the chart"):
@@ -1548,7 +1588,7 @@ def test_a_nonnegative_run_index_is_built_and_compares_as_its_int(index: int) ->
 
 @pytest.mark.parametrize("index", [-1, -2])
 def test_a_negative_run_index_is_refused(index: int) -> None:
-    """Python reads -1 as the last run, so it would name the wrong run's values (`PL-7694`)."""
+    """Python treats -1 as the last run, so it would name the wrong run's values (`PL-7694`)."""
 
     with pytest.raises(ValueError, match=f"counted from 0, not {index}"):
         RunIndex(index)
@@ -1575,7 +1615,7 @@ def test_a_frame_s_run_count_is_the_checked_count_of_its_runs() -> None:
 
 
 def test_one_run_draws_every_compartment_the_reader_left_shown() -> None:
-    """The cap is what frees the width channel, so it binds only once it is needed."""
+    """The cap exists to free the width channel, so it applies only when that channel is needed."""
 
     assert compared_compartments(COMPARTMENT_QUANTITIES, 1) == (COMPARTMENT_QUANTITIES, 0)
 
@@ -1587,8 +1627,8 @@ def test_two_runs_cap_the_drawn_compartments_and_count_what_they_removed() -> No
 
     assert len(drawn) == COMPARED_COMPARTMENT_CAP
     assert undrawn == len(COMPARTMENT_QUANTITIES) - COMPARED_COMPARTMENT_CAP
-    # Table order, not the order a reader clicked, so the drawn pair is the
-    # same pair whichever route reached the selection.
+    # The drawn pair follows table order, not the order a reader clicked, so
+    # it is the same pair whichever route reached the selection.
     assert drawn == COMPARTMENT_QUANTITIES[:COMPARED_COMPARTMENT_CAP]
 
 
@@ -1620,7 +1660,7 @@ def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() ->
 
 
 def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
-    """The one instant two compared runs stop being the same run is marked."""
+    """The frame marks the one instant at which two compared runs stop being the same run."""
 
     trunk = _run(60.0)
     trunk.begin_control_adjustment()
@@ -1640,14 +1680,14 @@ def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
 
 
 def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_opening() -> None:
-    """The one instant two runs stop being the same run, when it is not a keyframe.
+    """The frame marks the instant at which two runs diverge, even when that is not a keyframe.
 
     A bookmark branch's run definition opens at the keyframe *before* the
-    fork, so a frame taking the definition's own opening for the branch point
-    would draw the line where the trunk was still the only run - the fork at a
-    time it did not happen, which is what the assembly's own comment guards
-    against. `opened_from.fork.instant_s` is the fork's instant whichever door
-    the branch came through.
+    fork. A frame that took the definition's own opening as the branch point
+    would draw the line where the trunk was still the only run. That would
+    put the fork at a time it did not happen, which the assembly's own
+    comment guards against. `opened_from.fork.instant_s` is the fork's
+    instant, whichever way the branch was created.
     """
 
     trunk = SimulationController()

@@ -22,8 +22,9 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# This pattern matches the end of a shared guard's refusal, which names the
+# refused value and the reason (`PL-T137`). The guard's own tests pin each
+# reason. These tests pin the field.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
@@ -43,18 +44,19 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
 
 
 def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
-    """An assignment straight onto the amount meets the constructor's refusal, and writes nothing.
+    """A direct assignment to the amount gets the constructor's refusal, and writes nothing.
 
     `set_partial_pressure_fraction` takes a `Fraction`, so no setter could
-    store an amount past the alveolar capacity; until `PL-544D` the field
-    could, and the quotient read from it - a partial pressure above one
-    atmosphere - was refused only when `SimulationController.snapshot()`
-    built the `Fraction` two layers later. The compartment's `__setattr__`
-    now holds the amount to `gas_volume_l` at the write, in the constructor's
-    own words, and leaves the field holding what it held; `dataclasses.replace`
-    and a copy write through the same `__setattr__`, as the flows' guard test
-    shows for a flow (`PL-LBQY`). An amount at the capacity itself is written:
-    a fraction of exactly one is the top of the range, not past it.
+    store an amount past the alveolar capacity. Until `PL-544D`, a direct
+    write to the field could. The quotient read from it, a partial pressure
+    above one atmosphere, was refused only when
+    `SimulationController.snapshot()` built the `Fraction` two layers later.
+    The compartment's `__setattr__` now checks the amount against
+    `gas_volume_l` at the write, with the constructor's own message. When it refuses, the
+    field keeps its old value. `dataclasses.replace` and a copy write through
+    the same `__setattr__`, as the flows' guard test shows for a flow
+    (`PL-LBQY`). An amount equal to the capacity is written, because a
+    fraction of exactly one is the top of the range, not past it.
     """
 
     alveoli = AlveolarCompartment(
@@ -156,16 +158,17 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
 def test_a_direct_write_is_held_to_the_constructors_checks(
     field: str, value: object, error: type[Exception], message: str
 ) -> None:
-    """An assignment past the constructor and the setters is refused as they refuse it.
+    """An assignment that bypasses the constructor and the setters is refused as they refuse it.
 
-    Until `PL-19Y0` only the ventilation's type and the agent amount were
-    checked at the write, so `gas_volume_l = 0.0` was accepted on a built
-    compartment and the next fraction divided by it. The volume is now checked
-    at its own write, for its own sign and against the agent held: 0.5 L under
-    the 0.625 L held would put the alveolar partial pressure at 1.25
-    atmospheres. A name that is no field passes the guard to the slots, which
-    refuse it, so a misspelt write cannot leave the field it meant unchanged
-    while appearing to succeed. Nothing is written when a value is refused.
+    Until `PL-19Y0`, only the ventilation's type and the agent amount were
+    checked at the write. So `gas_volume_l = 0.0` was accepted on a built
+    compartment, and the next fraction divided by it. The volume is now
+    checked at its own write, for its own sign and against the agent held. A
+    volume of 0.5 L, less than the 0.625 L held, would put the alveolar
+    partial pressure at 1.25 atmospheres. A name that is not a field passes
+    the guard to the slots, which refuse it. So a misspelt write cannot leave
+    the intended field unchanged while appearing to succeed. Nothing is
+    written when a value is refused.
     """
 
     alveoli = AlveolarCompartment(
@@ -181,16 +184,16 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 
 
 def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() -> None:
-    """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
+    """The capacity bound is inclusive, and `replace`, a copy and a pickle pass the same checks.
 
-    A volume equal to the agent held is a partial pressure of exactly one
-    atmosphere, the top of the range rather than past it, as
-    `set_circuit_volume` admits for the circuit. `dataclasses.replace` builds
-    a new compartment, whose constructor writes the volume before the amount,
-    so the amount's write is the one that refuses there; a copy and a pickle
-    restore the fields one at a time through `__setattr__`, in the same order,
-    so a volume planted past the guard is refused when either is made
-    (`PL-19Y0`).
+    A volume equal to the agent held gives a partial pressure of exactly one
+    atmosphere. That is the top of the range rather than past it, as
+    `set_circuit_volume` accepts for the circuit. `dataclasses.replace`
+    builds a new compartment, whose constructor writes the volume before the
+    amount. So the amount's write is the one that refuses there. A copy and a
+    pickle restore the fields one at a time through `__setattr__`, in the
+    same order. So a volume planted by bypassing the guard is refused when
+    either is made (`PL-19Y0`).
     """
 
     alveoli = AlveolarCompartment(
@@ -224,11 +227,12 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
     """A bad volume is refused under its own name, at its own write.
 
     The constructor writes `gas_volume_l` before `agent_amount_l`, and each
-    write checks its own field (`PL-19Y0`), so the volume is refused before
-    the amount's capacity check reads it. Until then `__post_init__` refused
-    it after that read, which kept a leniency for a capacity that was not
-    positive, and that leniency admitted every amount once a bad volume had
-    been written past the constructor (`PL-544D`, found at review).
+    write checks its own field (`PL-19Y0`). So the volume is refused before
+    the amount's capacity check reads it. Before that change, `__post_init__`
+    refused the volume after that read. The capacity check therefore kept a
+    leniency for a capacity that was not positive. That leniency accepted
+    every amount once a bad volume had been written in a way that bypassed
+    the constructor (`PL-544D`, found at review).
     """
 
     with pytest.raises(SimulationConfigurationError, match="gas_volume_l"):
@@ -241,13 +245,14 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
 def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_number: object) -> None:
     """The volume's own write refuses a non-number by the volume's name, before anything reads it.
 
-    The capacity check `PL-544D` put in the amount's write read `gas_volume_l`
-    before `__post_init__` had required it, so a `require_a_number` there
-    stood in for the volume's own check: without it the comparison's own
-    `TypeError` came back - "'<' not supported between instances of 'float'
-    and 'str'" - naming neither the field nor its constraint, the shape
-    `PL-3800` had removed (found at review). Since `PL-19Y0` the volume's own
-    write requires it first, and the stand-in is gone.
+    The capacity check that `PL-544D` put in the amount's write read
+    `gas_volume_l` before `__post_init__` had required it to be a number. So
+    a `require_a_number` in that check stood in for the volume's own check.
+    Without it, the comparison's own `TypeError` came back: "'<' not
+    supported between instances of 'float' and 'str'". That message named
+    neither the field nor its constraint, which is the kind of message that
+    `PL-3800` had removed (found at review). Since `PL-19Y0`, the volume's
+    own write requires a number first, and the stand-in is gone.
     """
 
     with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
@@ -260,14 +265,15 @@ def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_numbe
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
     """`restore_state` writes what the compartment held, whatever the capacity has become.
 
-    A rollback that could raise would replace the step's own error and leave
-    the compartments restored after this one holding the failed step
-    (`AgentUptakeSystem.restore_state`), so it writes the slot past
-    `__setattr__` (`PL-544D`, found at review). The volume is written past its
-    own guard, which since `PL-19Y0` refuses it, because what is under test is
-    the rollback and not how the capacity came to be below the amount; the
-    state restored is the one the step began from, over capacity as it already
-    was, for the snapshot's `Fraction` to refuse.
+    A rollback that could raise would replace the step's own error. It would
+    also leave the compartments restored after this one holding the failed
+    step (`AgentUptakeSystem.restore_state`). So the rollback writes the slot
+    directly, bypassing `__setattr__` (`PL-544D`, found at review). The test
+    writes the volume by bypassing its own guard, which has refused such a
+    volume since `PL-19Y0`. It does so because the rollback is under test,
+    not how the capacity came to be below the amount. The state restored is
+    the one the step began from, already over capacity, for the snapshot's
+    `Fraction` to refuse.
     """
 
     alveoli = AlveolarCompartment(
@@ -312,8 +318,11 @@ def test_reset_clears_agent_and_preserves_settings() -> None:
 
 
 def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
-    """Zero is apnoea, a supported and deliberately teachable input; the
-    maximum is the corner of the settings envelope the gates measure at."""
+    """Accept zero ventilation and the maximum.
+
+    Zero is apnoea, a supported input that is deliberately teachable. The
+    maximum is the corner of the settings envelope at which the gates measure.
+    """
 
     for alveolar_ventilation_l_min in (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN):
         alveoli = AlveolarCompartment(
@@ -369,7 +378,7 @@ def test_an_alveolar_compartment_cannot_be_built_without_its_volume_or_ventilati
 
 
 def test_for_agent_builds_the_alveoli_at_the_patient_file_s_values() -> None:
-    """A run from the shipped patient file carries its values, and the 37.5 s they give.
+    """A run built from the shipped patient file has its values, and the 37.5 s they give.
 
     This test asserts the ventilation time constant as well as the two inputs,
     for the same reason that `PL-4YY1` asserted the circuit's 90 s. 37.5 s is
