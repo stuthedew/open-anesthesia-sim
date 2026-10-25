@@ -188,7 +188,7 @@ def test_a_multiplier_that_is_not_a_whole_number_is_refused(multiplier: object) 
 def test_an_unusable_interval_is_refused(interval: float) -> None:
     """A non-positive or non-finite interval has no step count to give."""
 
-    with pytest.raises(SimulationConfigurationError):
+    with pytest.raises(SimulationConfigurationError, match="tick_interval_s"):
         PlaybackRate(1).steps_per_tick(
             tick_interval_s=interval, simulation_step_s=SimulationStep(0.1)
         )
@@ -196,6 +196,21 @@ def test_an_unusable_interval_is_refused(interval: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         PlaybackRate(1).steps_per_tick(
             tick_interval_s=0.1, simulation_step_s=SimulationStep(interval)
+        )
+
+
+@pytest.mark.parametrize("interval", [True, "0.1"])
+def test_a_tick_interval_that_is_not_a_number_is_refused(interval: object) -> None:
+    """The interval passes the same number check as every core quantity (`PL-F9TC`).
+
+    `True` was accepted as an interval of 1 s before the check was read from
+    `core.validation`.
+    """
+
+    with pytest.raises(TypeError, match="tick_interval_s"):
+        PlaybackRate(1).steps_per_tick(
+            tick_interval_s=interval,  # type: ignore[arg-type]
+            simulation_step_s=SimulationStep(0.1),
         )
 
 

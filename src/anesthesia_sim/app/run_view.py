@@ -599,8 +599,7 @@ class RunView(QWidget):
         Raises:
             ValueError: If `setting_readouts` rejects the snapshot. That
                 happens for a control with no step of its resolution inside
-                the range the run accepts (`PL-7CRY`), or for a MAC that is
-                not positive.
+                the range the run accepts (`PL-7CRY`).
         """
 
         self._presented = True

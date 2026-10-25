@@ -87,7 +87,7 @@ from anesthesia_sim.app.theme import (
     VESSEL_RICH_COLOR,
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
-from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
+from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
@@ -652,7 +652,7 @@ class RunFrame:
     branch_point_s: CaseInstant | None
     agent_id: str
     agent_display_name: str
-    mac_percent: Percent
+    mac_percent: MacPercent
     elapsed_s: CaseInstant
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
@@ -732,7 +732,7 @@ class ChartFrame:
     tick_times_s: tuple[float, ...]
     columns: int
     plot_width_px: float
-    mac_percent: Percent
+    mac_percent: MacPercent
     axis_top_percent: Percent
     grid_interval_percent: float
     percent_ticks: tuple[tuple[float, str], ...]

@@ -615,6 +615,10 @@ $$
 What that quotient does and does not assert is "MAC multiples as a display
 unit"; it is not the definition of a modeled quantity and nothing in `core/`
 computes it.
+The divisor is held as a `MacPercent` (`core/concentration.py`), a `Percent`
+that refuses zero when it is built. So the quotient is never formed against a
+zero MAC, and every formatter that forms it refuses a divisor that was not
+built as one (`PL-F9TC`).
 
 A concentration fraction must always be finite and satisfy:
 

@@ -44,7 +44,13 @@ from typing import Final
 
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, percent_from_fraction
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    percent_from_fraction,
+    require_mac_percent,
+)
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
@@ -294,7 +300,7 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     return f"{rendered}{_PERCENT}"
 
 
-def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> MacMultiple:
+def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -> MacMultiple:
     """Convert a partial-pressure-equivalent fraction to multiples of 1 MAC.
 
     The whole arithmetic of the second display unit, in one place, so the
@@ -326,23 +332,20 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> M
         The concentration as a multiple of the agent's 1 MAC.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive. A
-            non-positive divisor cannot produce a meaningful multiple,
-            and `CLAUDE.md` requires an obvious failure over a
-            plausible-looking number — the loader's `PositivePercent`
-            already makes one unreachable from a shipped data file, so
-            one arriving here means something upstream is wrong.
+        TypeError: `mac_percent` was not built as a `MacPercent`. A
+            `MacPercent` is checked once, when it is built, to be above zero,
+            so a divisor of zero cannot reach this function
+            (`core/concentration.py`, `PL-F9TC`).
         TypeError: the fraction was not built as a `Fraction`, which
             `percent_from_fraction` refuses as `format_percent` says.
     """
 
-    if not mac_percent > 0.0:
-        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+    require_mac_percent("mac_percent", mac_percent)
 
     return MacMultiple(percent_from_fraction(partial_pressure_fraction) / mac_percent)
 
 
-def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> str:
+def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -> str:
     """Render a partial-pressure-equivalent fraction as a MAC multiple.
 
     The same three rules `format_percent` follows, for the same reasons,
@@ -371,9 +374,9 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
         zero.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive.
-        TypeError: the fraction was not built as a `Fraction`, as
-            `mac_multiple` refuses it.
+        TypeError: `mac_percent` was not built as a `MacPercent`, or the
+            fraction was not built as a `Fraction`, as `mac_multiple` refuses
+            each.
     """
 
     return render_mac_multiple(mac_multiple(partial_pressure_fraction, mac_percent))
@@ -408,7 +411,7 @@ def render_mac_multiple(multiple: MacMultiple) -> str:
     return f"{rendered}{MAC_UNIT_SUFFIX}"
 
 
-def format_mac_reference(agent_display_name: str, mac_percent: Percent) -> str:
+def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> str:
     """State the divisor every MAC multiple on screen was produced with.
 
     `CLAUDE.md` requires a clinically meaningful displayed value to be
@@ -429,7 +432,14 @@ def format_mac_reference(agent_display_name: str, mac_percent: Percent) -> str:
 
     Returns:
         A one-line statement of the agent's 1 MAC in percent.
+
+    Raises:
+        TypeError: `mac_percent` was not built as a `MacPercent`. A zero
+            MAC would print `1 MAC = 0.0%`, and a `MacPercent` refuses zero
+            when it is built (`core/concentration.py`, `PL-F9TC`).
     """
+
+    require_mac_percent("mac_percent", mac_percent)
 
     return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}{_PERCENT}"
 
@@ -438,7 +448,7 @@ def mac_awake_band_percent(
     *,
     fraction_of_mac: MacMultiple,
     standard_deviation_fraction_of_mac: MacMultiple,
-    mac_percent: Percent,
+    mac_percent: MacPercent,
 ) -> tuple[float, float]:
     """Place the MAC-awake band on the chart's percent axis, as (lower, upper).
 
@@ -482,16 +492,19 @@ def mac_awake_band_percent(
         atmosphere, lower first.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive, or if the
-            band's lower edge would not be. Neither is drawable, and
-            `CLAUDE.md` requires an obvious failure over a
-            plausible-looking number. The loader's `_MacAwakePayload`
-            already makes both unreachable from a shipped data file, so
-            one arriving here means something upstream is wrong.
+        TypeError: `mac_percent` was not built as a `MacPercent`. A
+            `MacPercent` is checked once, when it is built, to be above zero,
+            so a divisor of zero cannot reach this function
+            (`core/concentration.py`, `PL-F9TC`).
+        ValueError: If the band's lower edge would not be strictly
+            positive. That band is not drawable, and `CLAUDE.md` requires
+            an obvious failure over a plausible-looking number. The
+            loader's `_MacAwakePayload` already makes it unreachable from
+            a shipped data file, so one arriving here means something
+            upstream is wrong.
     """
 
-    if not mac_percent > 0.0:
-        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+    require_mac_percent("mac_percent", mac_percent)
 
     lower_fraction = fraction_of_mac - standard_deviation_fraction_of_mac
 
@@ -511,7 +524,7 @@ def format_mac_awake_reference(
     *,
     fraction_of_mac: MacMultiple,
     standard_deviation_fraction_of_mac: MacMultiple,
-    mac_percent: Percent,
+    mac_percent: MacPercent,
 ) -> str:
     """State what the MAC-awake band was drawn from, in one line.
 
@@ -538,7 +551,8 @@ def format_mac_awake_reference(
         A one-line statement of the band's centre and its edges.
 
     Raises:
-        ValueError: For the inputs `mac_awake_band_percent` refuses.
+        TypeError, ValueError: For the inputs `mac_awake_band_percent`
+            refuses.
     """
 
     lower_percent, upper_percent = mac_awake_band_percent(
@@ -557,7 +571,7 @@ def format_mac_awake_reference(
     )
 
 
-def chart_axis_top_percent(mac_percent: Percent) -> float:
+def chart_axis_top_percent(mac_percent: MacPercent) -> float:
     """Give the compartment chart's axis top, in percent, for one agent.
 
     The chart plots percent, so the ceiling has to be handed over in
@@ -573,19 +587,19 @@ def chart_axis_top_percent(mac_percent: Percent) -> float:
         Top of the chart's percent axis.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive. A
-            non-positive divisor would give an axis of zero or negative
-            height, and a chart drawn against one would place every
-            trace somewhere meaningless rather than failing.
+        TypeError: `mac_percent` was not built as a `MacPercent`. A zero
+            MAC would give an axis of zero height, and a chart drawn
+            against one would place every trace somewhere meaningless
+            rather than failing. A `MacPercent` refuses zero when it is
+            built (`core/concentration.py`, `PL-F9TC`).
     """
 
-    if not mac_percent > 0.0:
-        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+    require_mac_percent("mac_percent", mac_percent)
 
     return CHART_AXIS_TOP_MAC * mac_percent
 
 
-def chart_grid_interval_percent(mac_percent: Percent) -> float:
+def chart_grid_interval_percent(mac_percent: MacPercent) -> float:
     """Give the compartment chart's horizontal rule spacing, in percent.
 
     The same conversion `chart_axis_top_percent` makes, for the same
@@ -601,16 +615,16 @@ def chart_grid_interval_percent(mac_percent: Percent) -> float:
         Spacing between the chart's horizontal rules, in percent.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive.
+        TypeError: `mac_percent` was not built as a `MacPercent`, as
+            `chart_axis_top_percent` says.
     """
 
-    if not mac_percent > 0.0:
-        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+    require_mac_percent("mac_percent", mac_percent)
 
     return CHART_GRID_INTERVAL_MAC * mac_percent
 
 
-def mac_axis_ticks(max_percent: float, mac_percent: Percent) -> tuple[tuple[float, str], ...]:
+def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[float, str], ...]:
     """Place the chart's MAC axis labels against a percent-valued axis.
 
     The chart plots percent and always has: a MAC axis is the same
@@ -638,11 +652,11 @@ def mac_axis_ticks(max_percent: float, mac_percent: Percent) -> tuple[tuple[floa
         axis unlabelled rather than inventing a scale for it.
 
     Raises:
-        ValueError: If `mac_percent` is not strictly positive.
+        TypeError: `mac_percent` was not built as a `MacPercent`, as
+            `chart_axis_top_percent` says.
     """
 
-    if not mac_percent > 0.0:
-        raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
+    require_mac_percent("mac_percent", mac_percent)
 
     if not max_percent > 0.0:
         return ()

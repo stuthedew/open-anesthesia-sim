@@ -35,10 +35,12 @@ from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState
 from anesthesia_sim.core.concentration import (
     PERCENT_PER_UNIT_FRACTION,
     Fraction,
+    MacPercent,
     Percent,
     fraction_from_percent,
     percent_from_fraction,
     require_fraction,
+    require_mac_percent,
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -554,6 +556,61 @@ def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
         TypeError, match="^mac_percent of 0.02 is a Fraction, not a Percent: convert it"
     ):
         replace(sevoflurane, mac_percent=Fraction(0.02))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [nextafter(0.0, 1.0), 1.2, 2.0, 6.0, 100.0])
+def test_a_mac_above_zero_is_the_number_it_was_built_from(value: float) -> None:
+    """A `MacPercent` is a `Percent` above zero, and holds the number as given."""
+
+    built = MacPercent(value)
+
+    assert type(built) is MacPercent
+    assert isinstance(built, Percent)
+    assert built == value
+
+
+def test_a_mac_of_zero_is_refused_where_it_is_built_and_pinned_whole() -> None:
+    """Every MAC multiple shown divides by the MAC, so a zero is refused once, when built.
+
+    `PL-F9TC` moved this refusal here from the five formatters that divided
+    by a MAC and from `AgentParameters`. The message names the value as the
+    type holds it, so an `int` zero and minus zero are both named 0.0.
+    """
+
+    for zero in (0.0, -0.0, 0):
+        with pytest.raises(SimulationConfigurationError) as refused:
+            MacPercent(zero)
+
+        assert str(refused.value) == (
+            "mac_percent of 0.0 is not a MAC: a MAC is above 0%, because every MAC multiple "
+            "shown divides by it"
+        )
+
+    with pytest.raises(SimulationConfigurationError, match="^desflurane_mac of 0.0 is not a MAC"):
+        MacPercent(0.0, name="desflurane_mac")
+
+    with pytest.raises(SimulationConfigurationError, match="^mac_percent of 150.0 is outside 0"):
+        MacPercent(150.0)
+
+
+def test_only_a_mac_built_as_one_passes_where_a_mac_is_required() -> None:
+    """A dial setting is a `Percent` too, so it is refused where a MAC is required.
+
+    A `MacPercent` passes wherever a `Percent` is required, since it is one.
+    """
+
+    require_mac_percent("mac_percent", MacPercent(2.0))
+    require_percent("mac_percent", MacPercent(2.0))
+
+    for unchecked in (2.0, Percent(2.0)):
+        with pytest.raises(TypeError, match="^mac_percent of 2.0 was not built as MacPercent"):
+            require_mac_percent("mac_percent", unchecked)
+
+    with pytest.raises(TypeError, match="^mac_percent of 2.0 was built as Percent"):
+        MacPercent(Percent(2.0))
+
+    with pytest.raises(TypeError, match="is a Fraction, not a Percent: convert it"):
+        require_mac_percent("mac_percent", Fraction(0.02))
 
 
 def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:

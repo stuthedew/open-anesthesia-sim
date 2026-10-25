@@ -41,6 +41,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
+    RunCount,
     RunIndex,
     TraceStyle,
     trace_style,
@@ -521,6 +522,37 @@ _TENTHS_PER_SECOND: Final = 10
 _CLOCK_TENTHS: Final = range(1, _TENTHS_PER_SECOND)
 
 
+def displayed_run_count(run_count: int) -> RunCount:
+    """Build `run_count` as a `RunCount`, checking that the dashboard can display that many runs.
+
+    `RunCount` refuses anything that is not a count of at least one run. The
+    upper bound, `MAX_DISPLAYED_RUNS`, is a limit of the dashboard rather than
+    of counts in general, so this function checks it. It is the one place that
+    states the range. The dashboard checks the runs it is built with and a run
+    it adds here, and a compartment selection checks the runs it is drawn
+    across (`PL-F9TC`).
+
+    Raises:
+        TypeError: If `run_count` is a `bool` or not an `int` (`RunCount`).
+        ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
+            The message gives that range and the count refused.
+    """
+
+    out_of_range = ValueError(
+        f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not {run_count}"
+    )
+
+    try:
+        count = RunCount(run_count)
+    except ValueError as error:
+        raise out_of_range from error
+
+    if count > MAX_DISPLAYED_RUNS:
+        raise out_of_range
+
+    return count
+
+
 def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     """Return the branch selector's widest possible entry, as `advance_px` measures it.
 
@@ -975,8 +1007,9 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
 
     Raises:
         ValueError: If the snapshot's elapsed time is negative or not finite
-            (`format_elapsed`), or its `agent_mac_percent` is not strictly
-            positive (`format_mac_multiple`).
+            (`format_elapsed`).
+        TypeError: If its `agent_mac_percent` was not built as a
+            `MacPercent` (`format_mac_multiple`).
     """
 
     mac_percent = snapshot.agent_mac_percent
@@ -1175,9 +1208,9 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
         One `SettingReadout` per control.
 
     Raises:
-        ValueError: If `agent_mac_percent` is not strictly positive
-            (`format_mac_multiple`, on the delivered dial's MAC line), or if
-            no step of a control's display resolution lies inside the range
+        TypeError: If `agent_mac_percent` was not built as a `MacPercent`
+            (`format_mac_multiple`, on the delivered dial's MAC line).
+        ValueError: If no step of a control's display resolution lies inside the range
             the run accepts for it (`offered_range`): a control that can
             offer no accepted setting fails visibly rather than offering a
             refused one. No shipped range reaches it; a machine profile

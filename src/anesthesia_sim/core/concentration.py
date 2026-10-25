@@ -110,7 +110,7 @@ right, so twelve hand-written conversions were twelve chances at one.
 
 from __future__ import annotations
 
-from typing import Final, NewType
+from typing import Final, NewType, Self
 
 from anesthesia_sim.core.checked_number import (
     CheckedQuantity,
@@ -218,7 +218,7 @@ class Percent(float, CheckedQuantity):
 
     __slots__ = ()
 
-    def __new__(cls, percent: float, *, name: str = "percent") -> Percent:
+    def __new__(cls, percent: float, *, name: str = "percent") -> Self:
         if isinstance(percent, Fraction):
             raise _fraction_where_a_percent_belongs(name, percent)
 
@@ -232,6 +232,45 @@ class Percent(float, CheckedQuantity):
             )
 
         return super().__new__(cls, negative_zero_as_zero(percent))
+
+
+class MacPercent(Percent):
+    """An agent's 1 MAC as a percent of one atmosphere: a `Percent` that is above zero.
+
+    The MAC divides every MAC multiple the interface shows, and it is the
+    number in the `1 MAC = x%` reference beside the chart. A MAC of zero would
+    make every multiple infinite and the reference read `1 MAC = 0.0%`. So the
+    check that a MAC is above zero is made once, when one of these is built.
+    `AgentParameters` holds the agent's MAC as one, and each formatter in
+    `app/formatting.py` that divides by a MAC takes one (`PL-F9TC`). Before
+    that, `AgentParameters` refused a zero MAC through `require_positive_finite`,
+    and `app/formatting.py` tested `mac_percent > 0` again in five functions.
+
+    It is built from a number, as `Percent` is. It refuses a value already
+    built as a `Percent`, as every checked type refuses a value built as
+    another, because a dial setting and a MAC are both percents and neither
+    should pass for the other unnoticed. The upper end of the range is
+    `Percent`'s 100%, which `Percent` says is an instance rather than a rule.
+
+    Raises:
+        TypeError: for the reasons `Percent` gives, or the value was built as
+            a `Percent`.
+        SimulationConfigurationError: for the reasons `Percent` gives, or the
+            value is zero. The message gives the value under `name`.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, percent: float, *, name: str = "mac_percent") -> Self:
+        built = super().__new__(cls, percent, name=name)
+
+        if built == 0.0:
+            raise SimulationConfigurationError(
+                f"{name} of {shown(built)} is not a MAC: a MAC is above 0%, because every "
+                "MAC multiple shown divides by it"
+            )
+
+        return built
 
 
 MacMultiple = NewType("MacMultiple", float)
@@ -383,6 +422,39 @@ def require_percent(name: str, percent: object) -> None:
         f"{name} of {shown(percent)} was not built as Percent, it is "
         f"{type(percent).__name__}: build it as Percent(...) where it is set, which checks "
         'it against 0 to 100 once (docs/MODEL.md, "Concentrations")'
+    )
+
+
+def require_mac_percent(name: str, mac_percent: object) -> None:
+    """Require a value that was built as a `MacPercent`, and so checked.
+
+    The runtime half of the type, as `require_percent` is for a percent. It
+    runs where a MAC is held, in `AgentParameters`, and where one is divided
+    by, in the formatters of `app/formatting.py` (`PL-F9TC`).
+
+    Args:
+        name: What the value is where it is handed in, for the message.
+        mac_percent: What was handed in.
+
+    Raises:
+        TypeError: `mac_percent` is not a `MacPercent`. That includes a bare
+            `float` and a `Percent`, whatever its value, because neither was
+            checked as a MAC.
+    """
+
+    if isinstance(mac_percent, MacPercent):
+        return
+
+    if isinstance(mac_percent, Fraction):
+        raise _fraction_where_a_percent_belongs(name, mac_percent)
+
+    if not isinstance(mac_percent, Percent):
+        require_not_another_quantity(name, mac_percent, MacPercent)
+
+    raise TypeError(
+        f"{name} of {shown(mac_percent)} was not built as MacPercent, it is "
+        f"{type(mac_percent).__name__}: build it as MacPercent(...) where the agent's MAC "
+        "is read, which checks once that it is above 0% and at most 100%"
     )
 
 

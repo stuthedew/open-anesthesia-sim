@@ -96,6 +96,7 @@ from typing import Final
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.validation import require_positive_finite
 
 #: How far the derived step count may sit from a whole number and still be
 #: treated as that whole number. The conversion is a ratio of two float
@@ -155,11 +156,13 @@ class PlaybackRate:
             The whole number of steps, at least one.
 
         Raises:
-            TypeError: If `simulation_step_s` is not a `SimulationStep`, so
-                nothing has checked it against `core`'s supported range
-                (`core/simulation_step.py`).
+            TypeError: If `tick_interval_s` is not an `int` or a `float`, or
+                is a `bool`. Also if `simulation_step_s` is not a
+                `SimulationStep`, so nothing has checked it against `core`'s
+                supported range (`core/simulation_step.py`).
             SimulationConfigurationError: If the tick interval is not
-                positive and finite; if the step count
+                positive and finite, as `core.validation.require_positive_finite`
+                checks (`PL-F9TC`); if the step count
                 these give is too large to count, which a vanishing step or
                 an enormous tick used to raise as a bare `OverflowError`
                 (`PL-YZ17`); or if this rate does not land on a whole number
@@ -168,12 +171,7 @@ class PlaybackRate:
                 playing at a rate other than the one displayed.
         """
 
-        if tick_interval_s <= 0.0 or not math.isfinite(tick_interval_s):
-            raise SimulationConfigurationError(
-                f"tick_interval_s must be a positive number of real seconds, "
-                f"not {tick_interval_s!r}"
-            )
-
+        require_positive_finite("tick_interval_s", tick_interval_s)
         require_simulation_step(simulation_step_s)
 
         exact = self.multiplier * tick_interval_s / simulation_step_s

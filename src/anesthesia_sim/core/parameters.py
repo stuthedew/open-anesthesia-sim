@@ -35,7 +35,13 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, mo
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
-from anesthesia_sim.core.concentration import MacMultiple, Percent, require_percent
+from anesthesia_sim.core.concentration import (
+    MacMultiple,
+    MacPercent,
+    Percent,
+    require_mac_percent,
+    require_percent,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import require_positive_finite
 
@@ -274,29 +280,26 @@ class AgentParameters:
     duplication.
 
     Raises:
-        TypeError: `max_delivered_concentration_percent` or `mac_percent` was
-            not built as a `Percent`. A `Fraction` and a bare `float` are both
-            refused (`core/concentration.py`'s `require_percent`). Each value's
-            range was checked when its `Percent` was built, so nothing here
-            checks it again. A MAC passed in as a fraction would be a hundred
-            times too small, and every MAC multiple shown divides by it
-            (`PL-4R3W`).
-        SimulationConfigurationError: `mac_percent` is zero. A `Percent`
-            refuses a negative value when it is built, so zero is the only
-            non-positive value it can hold. The MAC is the divisor of every
-            MAC multiple shown, and of the `1 MAC = x%` reference beside the
-            chart. So the record refuses a zero MAC when it is built, through
-            `core/validation.py`'s `require_positive_finite`. Otherwise
-            `format_mac_reference` would print `1 MAC = 0.0%`, and the five
-            formatters that divide by the MAC would refuse at draw time
-            (`PL-0FJ8`). For a shipped file, the loader's `PositivePercent`
-            refuses a zero MAC first. This check makes the same refusal for a
-            record built any other way, including by `dataclasses.replace`.
-            Also raised when `max_delivered_concentration_percent` is zero, for
-            the same reason, or when `mac_percent` is above it. The loader's
-            `_mac_percent_must_not_exceed_vaporizer_max` refuses a MAC above the
-            maximum for a file, and this check refuses it for every other
-            record. A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a
+        TypeError: `max_delivered_concentration_percent` was not built as a
+            `Percent`, or `mac_percent` was not built as a `MacPercent`. A
+            `Fraction` and a bare `float` are both refused
+            (`core/concentration.py`'s `require_percent` and
+            `require_mac_percent`). Each value's range was checked when it was
+            built, so nothing here checks it again. A MAC passed in as a
+            fraction would be a hundred times too small, and every MAC multiple
+            shown divides by it (`PL-4R3W`).
+        SimulationConfigurationError: `max_delivered_concentration_percent`
+            is zero. A `Percent` refuses a negative value when it is built, so
+            zero is the only non-positive value it can hold, and a vaporizer
+            that delivers nothing has no dial to set. A zero MAC cannot reach
+            this record: a `MacPercent` refuses zero when it is built, because
+            the MAC divides every MAC multiple shown and is the number in the
+            `1 MAC = x%` reference beside the chart (`PL-0FJ8`, `PL-F9TC`).
+            For a shipped file, the loader's `PositivePercent` refuses a zero
+            MAC first. Also raised when `mac_percent` is above the vaporizer
+            maximum. The loader's `_mac_percent_must_not_exceed_vaporizer_max`
+            refuses a MAC above the maximum for a file, and this check refuses
+            it for every other record. A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a
             dial cannot be set above the vaporizer maximum, so such a run would
             open at a dial setting the vaporizer cannot deliver (`PL-HPKK`).
     """
@@ -309,7 +312,7 @@ class AgentParameters:
     muscle_tissue_gas_partition_coefficient: float
     fat_tissue_gas_partition_coefficient: float
     max_delivered_concentration_percent: Percent
-    mac_percent: Percent
+    mac_percent: MacPercent
     mac_awake: MacAwakeReference
     sources: tuple[SourceReference, ...]
     # Why no primary source is adopted, where none is; `None` where one is.
@@ -320,11 +323,10 @@ class AgentParameters:
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
-        require_percent("mac_percent", self.mac_percent)
+        require_mac_percent("mac_percent", self.mac_percent)
         require_positive_finite(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
-        require_positive_finite("mac_percent", self.mac_percent)
         require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
 
     @property
@@ -1095,7 +1097,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         muscle_tissue_gas_partition_coefficient=coefficients.muscle,
         fat_tissue_gas_partition_coefficient=coefficients.fat,
         max_delivered_concentration_percent=(Percent(model.max_delivered_concentration_percent)),
-        mac_percent=Percent(model.mac_percent),
+        mac_percent=MacPercent(model.mac_percent),
         mac_awake=MacAwakeReference(
             fraction_of_mac=MacMultiple(model.mac_awake.fraction_of_mac),
             standard_deviation_fraction_of_mac=MacMultiple(
