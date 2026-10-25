@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, planning
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/, tests/unit/, docs/ARCHITECTURE.md
 added: 2026-10-24
 closed: 2026-10-25

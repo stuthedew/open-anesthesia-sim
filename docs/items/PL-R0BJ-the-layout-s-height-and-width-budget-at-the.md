@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: defect-review-2026-10
+milestone: v0.6.4
 touches: docs/items
 added: 2026-10-25
 closed: 2026-10-25

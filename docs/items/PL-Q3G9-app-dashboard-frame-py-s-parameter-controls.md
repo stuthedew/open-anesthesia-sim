@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/display_units.py, tests/unit/test_dashboard_frame.py, tests/unit/test_display_units.py
 added: 2026-10-24
 closed: 2026-10-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: parse-dont-validate
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/control_timeline.py, tests/unit/test_control_timeline.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04

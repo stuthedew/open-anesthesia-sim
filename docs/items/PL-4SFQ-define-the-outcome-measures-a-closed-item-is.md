@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: model-evidence
+milestone: v0.6.4
 touches: .claude/skills/model-review, docs/ci-runs.tsv, tools/ci_runs.py, tests/unit/test_ci_runs.py, docket.toml, docs/apparatus.md, docs/maintainer.md, docs/model-review.md, tools/rules_paths_check.py
 added: 2026-10-17
 closed: 2026-10-25

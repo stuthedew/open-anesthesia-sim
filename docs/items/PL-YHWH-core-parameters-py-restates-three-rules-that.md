@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_parameters.py, tests/unit/test_patient.py, tests/unit/test_run_definition.py
 added: 2026-10-19
 closed: 2026-10-25

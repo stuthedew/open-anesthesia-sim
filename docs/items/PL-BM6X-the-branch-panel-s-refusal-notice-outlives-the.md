@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-19
 closed: 2026-10-25

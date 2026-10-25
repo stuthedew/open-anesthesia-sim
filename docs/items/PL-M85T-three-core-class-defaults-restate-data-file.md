@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, defect
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tools/literal_home_check.py, tests/, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-10-19
 closed: 2026-10-25
