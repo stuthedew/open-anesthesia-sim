@@ -59,7 +59,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import TESTS, imports_product  # noqa: E402
+from docket.arming import SOURCE, TESTS, imports_product  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
 from docket.vcs import (  # noqa: E402
@@ -80,8 +80,6 @@ MIN_WORDS = 30
 #: How many lines of code to print above and below each unit, so the reviewer
 #: can see what an "it" or a name points at without opening the file.
 CONTEXT_ROWS = 4
-#: The simulator's source tree. A test file is the simulator's by its imports.
-SOURCE = "src/"
 
 
 @dataclass(frozen=True)

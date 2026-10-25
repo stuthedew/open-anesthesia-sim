@@ -49,6 +49,48 @@ def test_a_refusing_guard_logs_its_name_rule_and_session(tmp_path: Path) -> None
     assert "compileall" not in line
 
 
+def test_the_pull_request_email_guard_logs_its_refusal(tmp_path: Path) -> None:
+    """`pr-body-email-guard.sh` refuses through `tools/pr_body_check.py --screen`,
+    which built its own refusal and so logged nothing (`PL-HHKC`)."""
+    log = tmp_path / "blocks.tsv"
+    payload = json.dumps(
+        {
+            "session_id": "cse_abc",
+            "tool_name": "mcp__github__create_pull_request",
+            "tool_input": {"title": "t", "body": "Asked by a.person@example.org."},
+        }
+    )
+    result = subprocess.run(
+        ["bash", str(HOOKS / "pr-body-email-guard.sh")],
+        input=payload.encode(),
+        capture_output=True,
+        timeout=20,
+        check=False,
+        env={**os.environ, "HOOK_BLOCK_LOG": str(log)},
+    )
+    decision = json.loads(result.stdout)["hookSpecificOutput"]
+    assert decision["permissionDecision"] == "deny"
+    (line,) = log.read_text(encoding="utf-8").split("\n")[:-1]
+    _, session, guard, rule = line.split("\t")
+    assert (session, guard, rule) == ("cse_abc", "pr-body-email-guard", "email-address")
+    assert "example.org" not in line
+
+
+def test_every_python_refusal_is_built_by_deny() -> None:
+    """A refusal built anywhere but `hook_input.deny` is a refusal the log never
+    counts, which is how `PL-HHKC` went unseen. The shell guards' fallbacks for
+    a missing python3 cannot reach `deny` and are not read here."""
+    found = [
+        path.relative_to(REPO).as_posix()
+        for tree in (HOOKS, REPO / "tools")
+        for path in sorted(tree.glob("*.py"))
+        if path.name != "hook_input.py"
+        and '"permissionDecision"' in path.read_text(encoding="utf-8")
+    ]
+
+    assert found == []
+
+
 def test_a_log_that_cannot_be_written_still_refuses(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

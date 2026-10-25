@@ -4115,6 +4115,7 @@ def _groom(
     # milestone blocker clears on a scoping round instead, which is no closure
     # and has no pull request of its own to refuse, so it stays advice here.
     resolved = {i.identifier for i in report.items if not i.is_open}
+    named_ready: set[str] = set()
     for item in report.items:
         versions = item.blocking_milestones
         if item.status != "blocked" or not versions:
@@ -4154,11 +4155,32 @@ def _groom(
         # the milestone is scoped, which is the decision the item was waiting
         # on rather than the release it will ship in.
         one = len(versions) == 1
+        named_ready.add(item.identifier)
         report.advisories.append(
             f"{item.identifier}: {', '.join(versions)} "
             f"{'is' if one else 'are'} scoped and every other blocker has closed; "
             "it is ready to promote"
         )
+
+    # A milestone that has shipped holds nothing, so an open item still naming
+    # one in `blocked-by` carries an edge that only misleads. `PL-JS6P`,
+    # `PL-WM5P` and `PL-VWXL` sat at `ready` with `blocked-by: v0.6.0` after it
+    # shipped, nothing named the edge, and Gate 3's freeze read all three as
+    # waiting on work nothing schedules (`PL-YL5R`). An item the advisory above
+    # already names is left to it, since promoting it removes the edge too.
+    if milestones is not None:
+        for item in report.items:
+            if not item.is_open or item.identifier in named_ready:
+                continue
+            shipped = [v for v in item.blocking_milestones if v in milestones.released]
+            if not shipped:
+                continue
+            one = len(shipped) == 1
+            report.advisories.append(
+                f"{item.identifier}: `blocked-by` names {', '.join(shipped)}, which "
+                f"{'has' if one else 'have'} shipped and so {'holds' if one else 'hold'} "
+                f"nothing; drop {'it' if one else 'them'} from the field"
+            )
 
     band, top = top_band(report.items)
     if not top:

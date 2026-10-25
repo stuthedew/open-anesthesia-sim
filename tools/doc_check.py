@@ -351,7 +351,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import PACKAGE_DIR
+from product_paths import MODEL_DOC, PACKAGE_DIR
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -453,7 +453,7 @@ UNREADABLE = (OSError, UnicodeDecodeError)
 ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 APPARATUS_MAP = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
-MODEL = Path("docs/MODEL.md")
+MODEL = Path(MODEL_DOC)
 # The documents whose restated numbers are held to their homes (`PL-JS6P`).
 # `docs/MODEL.md` is the specification, and `README.md` is the page a new
 # reader trusts first.
