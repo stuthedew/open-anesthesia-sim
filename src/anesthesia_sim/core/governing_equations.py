@@ -98,8 +98,8 @@ from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
     PartitionCoefficient,
-    require_compartment_volume,
     require_coefficient,
+    require_compartment_volume,
 )
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
@@ -441,9 +441,7 @@ class UptakeEquationSettings:
         require_fresh_gas_flow(self.fresh_gas_flow_l_min)
         require_alveolar_ventilation(self.alveolar_ventilation_l_min)
         require_cardiac_output(self.cardiac_output_l_min)
-        require_coefficient(
-            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
-        )
+        require_coefficient("blood_gas_partition_coefficient", self.blood_gas_partition_coefficient)
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )

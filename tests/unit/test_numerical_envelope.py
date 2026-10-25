@@ -1,11 +1,12 @@
 """The numerical envelope: each volume and partition coefficient is refused outside it.
 
-`core/numerical_envelope.py` declares where core's arithmetic has been shown to
-give the right answer (`PL-QX2G`). Before that item, a volume or a partition
-coefficient was checked only as positive and finite. A tissue of 1e-300 L with
-a tissue:blood coefficient of 1e-30 then raised a bare `ZeroDivisionError`. A
-tissue of 1e307 L with a tissue:gas coefficient of 1e-307 had an infinite time
-constant and never moved.
+`core/numerical_envelope.py` declares where core's arithmetic has been checked
+against a high-precision evaluation (`PL-QX2G`). Before that item, a volume or a
+partition coefficient was checked only as positive and finite. A tissue of
+1e-300 L with a tissue:blood coefficient of 1e-30 then raised a bare
+`ZeroDivisionError`. A tissue of 1e307 L with a tissue:gas coefficient of
+1e-307 had an infinite time constant, so its own closed-form step never moved
+it.
 
 These tests probe each envelope at both edges and one representable value past
 each. They check the tissue:blood quotient, which two coefficients inside the
@@ -93,8 +94,8 @@ def _refusal(envelope: Envelope, value: float) -> str:
     return (
         f"^{re.escape(envelope.name)} of {re.escape(repr(value))} is outside the numerical "
         f"envelope of "
-        f"{envelope.minimum:g} to {envelope.maximum:g}{envelope.unit}, the range on which "
-        "core's arithmetic has been shown to give the right answer "
+        f"{envelope.minimum:g} to {envelope.maximum:g}{envelope.unit}, the range over which "
+        "core's arithmetic has been checked against a high-precision evaluation "
         r'\(docs/MODEL\.md, "The numerical envelope"\)$'
     )
 
@@ -183,8 +184,9 @@ def test_a_tissue_blood_coefficient_outside_the_envelope_is_refused_with_both_fa
     """Two coefficients inside the envelope can form a quotient outside it.
 
     A tissue:gas coefficient of 1e-3 over a blood:gas coefficient of 1e4 is a
-    tissue:blood coefficient of 1e-7. In a 1e-3 L tissue that made a wash-in
-    rate of 1.6e9 per second, and the step needed the full 32 squarings.
+    tissue:blood coefficient of 1e-7. In a 1e-3 L tissue receiving nearly all of
+    the cardiac output, that made a wash-in rate of 1.6e9 per second, and the
+    step needed the full 32 squarings.
     """
 
     quotient = re.escape(repr(tissue_gas / blood_gas))
@@ -247,7 +249,8 @@ def test_an_agent_whose_tissue_blood_coefficient_leaves_the_envelope_is_refused(
     quotient = re.escape(repr(1e-3 / 10.0))
 
     with pytest.raises(
-        SimulationConfigurationError, match=rf"^fat_tissue_blood_partition_coefficient of {quotient} "
+        SimulationConfigurationError,
+        match=rf"^fat_tissue_blood_partition_coefficient of {quotient} ",
     ):
         replace(
             sevoflurane,
@@ -292,10 +295,11 @@ def test_a_tissue_whose_wash_in_rate_divided_by_zero_is_refused_when_it_is_built
 
 
 def test_a_tissue_whose_time_constant_overflowed_is_refused_when_it_is_built() -> None:
-    """`PL-QX2G`: a 1e307 L tissue with a 1e-307 tissue:gas coefficient never moved.
+    """`PL-QX2G`: 1e307 L at a tissue:gas coefficient of 1e-307 overflowed the time constant.
 
     Its capacity was an ordinary 1 L, but `time_constant_s` evaluated
-    `60 * 1e307` first and overflowed to `inf`.
+    `60 * 1e307` first and overflowed to `inf`. So `TissueGroup.advance`, the
+    tissue's own closed-form step, never moved it.
     """
 
     with pytest.raises(SimulationConfigurationError, match=r"^volume_l of 1e\+307 is outside"):
@@ -332,10 +336,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
             tissue_gas_partition_coefficient=PartitionCoefficient(coefficient),
         )
         settings = TissueGroupEquationSettings(
-            "corner",
-            CompartmentVolume(volume),
-            flow_l_min,
-            PartitionCoefficient(coefficient),
+            "corner", CompartmentVolume(volume), flow_l_min, PartitionCoefficient(coefficient)
         )
 
         for value in (
@@ -353,9 +354,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
 
 
 def _settings(
-    volumes: tuple[float, float, float],
-    blood_gas: float,
-    tissues: tuple[tuple[float, float], ...],
+    volumes: tuple[float, float, float], blood_gas: float, tissues: tuple[tuple[float, float], ...]
 ) -> UptakeEquationSettings:
     """Settings at the widest supported flows, with cardiac output split as the shipped patient's."""
 
@@ -449,7 +448,7 @@ def _shipped_settings() -> UptakeEquationSettings:
 
 
 def test_no_corner_needs_more_squarings_at_the_step_than_a_shipped_run_needs_over_a_day() -> None:
-    """At every corner, the 0.1 s step is computed no less accurately than a shipped 24 h one.
+    """At every corner, the 0.1 s step's error bound is no larger than a shipped 24 h one's.
 
     Each squaring can double the rounding error, so the number of squarings
     sets the accuracy (`core/matrix_exponential.py`, "What it costs"). The
@@ -500,7 +499,9 @@ def _decimal_exponential(matrix: Matrix, interval_s: str) -> list[list[Decimal]]
 
     for order in range(1, 41):
         term = [[value / order for value in row] for row in multiply(term, argument)]
-        total = [[a + b for a, b in zip(r, s, strict=True)] for r, s in zip(total, term, strict=True)]
+        total = [
+            [a + b for a, b in zip(r, s, strict=True)] for r, s in zip(total, term, strict=True)
+        ]
 
     for _ in range(halvings):
         total = multiply(total, total)

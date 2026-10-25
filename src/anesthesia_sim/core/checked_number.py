@@ -83,7 +83,8 @@ before. `Fraction` and `Percent` keep their own rejection of each other. Their
 message says to convert rather than to rebuild, because mixing up that pair is
 a missed conversion and not a swapped argument. The stored-value checks are
 `require_case_instant`, `require_step_count`, `require_simulation_step`, the
-flows' `require_*`, and `require_fraction` and `require_percent`. They read
+flows' `require_*`, `require_fraction` and `require_percent`, and
+`require_compartment_volume` and `require_coefficient`. They read
 the same record and reject in the same words (`PL-848D`, `PL-CX2C`).
 
 **Minus zero is stored as zero** (`PL-LLMN`). `-0.0` equals zero and lies
@@ -106,9 +107,10 @@ supported range against which to reject an `int` too large for a `float`. So
 they reject it by name, as outside the range a `float` can represent. Before,
 `math.isfinite` raised `OverflowError` while converting it
 (`core/validation.py`). Neither guard builds a type, so neither asks whether
-its value was built as another quantity. A checked flow passed in as a circuit
-volume is a swapped argument that no range can tell from a plain number.
-Catching it is outside what this module decides.
+its value was built as another quantity. Until `PL-QX2G`, a checked flow
+passed in as a circuit volume was a swapped argument that nothing caught. Every
+volume is now a `CompartmentVolume`, so the stored-value check names it as the
+flow it was built as.
 """
 
 from __future__ import annotations

@@ -48,8 +48,8 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
     PartitionCoefficient,
-    require_compartment_volume,
     require_coefficient,
+    require_compartment_volume,
     tissue_blood_partition_coefficient,
 )
 from anesthesia_sim.core.validation import require_positive_finite
@@ -345,9 +345,7 @@ class AgentParameters:
     provenance_gap: str | None
 
     def __post_init__(self) -> None:
-        require_coefficient(
-            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
-        )
+        require_coefficient("blood_gas_partition_coefficient", self.blood_gas_partition_coefficient)
         require_coefficient(
             "vessel_rich_tissue_gas_partition_coefficient",
             self.vessel_rich_tissue_gas_partition_coefficient,
@@ -511,6 +509,13 @@ class BreathingCircuitParameters:
     provenance_gap: str | None
 
     def __post_init__(self) -> None:
+        """Require the circuit volume as a `CompartmentVolume`.
+
+        Raises:
+            TypeError: `circuit_volume_l` was not built as a
+                `CompartmentVolume` (`core/numerical_envelope.py`).
+        """
+
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
 
 
@@ -1174,10 +1179,12 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
     Raises:
         SimulationConfigurationError: the payload is not a valid agent file.
             That covers a missing or misspelled key, an unsupported
-            `schema_version`, and a value outside its validated range or the numerical envelope. It also
-            covers a `sources` entry whose `authority_for` disagrees with
-            `adopted` or names something other than one of this file's stored
-            numeric values, and a stored value that two entries both name.
+            `schema_version`, and a value outside its validated range or the
+            numerical envelope. It also covers a `sources` entry whose
+            `authority_for` disagrees with `adopted` or names something other
+            than one of this file's stored numeric values, and a stored value
+            that two entries both name. It also covers coefficients whose
+            tissue:blood quotient is outside the numerical envelope.
     """
 
     try:

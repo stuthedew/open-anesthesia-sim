@@ -2178,7 +2178,8 @@ in `core/parameters.py` build each value as its type when a file is read.
 
 **The envelope is not a supported range.** § "Supported input ranges" states
 where the model is claimed to represent a patient. The envelope states only
-where the arithmetic has been shown to give the right answer. It is set far
+where the arithmetic has been checked against a high-precision evaluation, and
+how accurate it was found to be. It is set far
 outside every shipped value, so no real parameter set comes near it, and a value
 inside it can still describe no patient. A 10 mL lung is inside the envelope
 and is not a lung.
@@ -2190,7 +2191,9 @@ and 1e8 L. Before `PL-QX2G` each value was checked only as positive and finite.
 A tissue of 1e-300 L with a tissue:blood coefficient of 1e-30 then raised a bare
 `ZeroDivisionError` in the tissue's wash-in rate. A tissue of 1e307 L with a
 tissue:gas coefficient of 1e-307 had an ordinary capacity of 1 L and an infinite
-time constant, so it never moved. Both were reproduced on 2026-10-25.
+time constant, so the tissue's own closed-form step, `TissueGroup.advance`,
+never moved it. A run steps through the system matrix instead, where that
+tissue's wash-in rate stayed finite. Both were reproduced on 2026-10-25.
 
 **The tissue:blood coefficient is checked where it is formed.** It is the
 tissue:gas coefficient divided by the blood:gas coefficient. Two coefficients
@@ -2209,11 +2212,15 @@ module). The fastest rate in the system matrix sets the number of squarings.
 The criterion is this: **at every corner of the envelope, the 0.1 s step needs
 no more squarings than the shipped parameters already need over the 24-hour
 horizon.** That number is 19, for sevoflurane at the widest supported flows. So
-no step inside the envelope is computed less accurately than a propagator that a
-shipped run already forms. The corners were measured on 2026-10-25, with every
-flow at zero or at the top of its supported range. Over all 2,560 corners the
-0.1 s step needed at most 19 squarings, and 19 leaves a factor of $`2^{13}`$
-below the cap of 32. `tests/unit/test_numerical_envelope.py` pins both counts.
+no step inside the envelope carries a larger error bound than a propagator that
+a shipped run already forms. The criterion is about the bound. The measured
+errors differ: the shipped run's 24-hour propagator measured 3.3e-11 in its
+worst entry, and the corners' steps measured up to 1.3e-10. The corners were
+measured on 2026-10-25, with every flow at zero or at the top of its supported
+range. Over all 2,560 corners the 0.1 s step needed at most 19 squarings, and 19
+leaves a factor of $`2^{13}`$ below the cap of 32. Two independent sweeps, of
+24,576 and 32,768 corners that also split cardiac output other ways, found the
+same maximum. `tests/unit/test_numerical_envelope.py` pins both counts.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 The table gives the corners that matter, each compared with a 70-digit
@@ -2228,24 +2235,39 @@ error" is the worst relative error of any entry of the 0.1 s propagator. "After
 | Corner | Fastest rate (1/s) | Squarings at 0.1 s | Step error | After 24 h |
 | --- | --- | --- | --- | --- |
 | Shipped sevoflurane | 0.136 | 0 | 6.0e-16 | 9.6e-11 |
-| Alveolar gas 0.01 L, blood:gas 10 000 | 1.67e5 | 19 | 5.8e-11 | 2.5e-5 |
+| Alveolar gas 0.01 L, blood:gas 10 000, every tissue:blood 1 | 1.67e5 | 19 | 7.5e-11 | 2.5e-5 |
+| Alveolar gas 0.01 L, blood:gas 10 000, tissue:blood as shipped | 1.67e5 | 19 | 5.8e-11 | 2.5e-5 |
 | Every volume 0.01 L, blood:gas 10 000, every tissue:blood 0.001 | 1.67e5 | 19 | 1.3e-10 | 2.6e-5 |
 | One tissue 0.01 L, its tissue:blood 0.001 | 1.27e4 | 15 | 7.3e-12 | 3.1e-6 |
 | Circuit 0.01 L | 36.7 | 6 | 1.4e-14 | 3.1e-9 |
 | Venous pool 0.01 L | 16.7 | 5 | 8.0e-15 | 2.9e-9 |
-| Alveolar gas 0.001 L, blood:gas 10 000 (the first floor considered) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
+| Alveolar gas 0.001 L, blood:gas 10 000, tissue:blood as shipped (the first floor considered) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
+Two rows hold the tissue groups at their shipped tissue:blood coefficients
+while the blood:gas coefficient is 10 000. That makes each tissue:gas
+coefficient larger than 10 000, so no parameter file can build those settings,
+though a settings record can. They are kept because they compare the two floors
+on the same reading.
+
 The last row is why the volume floor is 0.01 L and not the 0.001 L first
 considered. At 0.001 L the stiffest corner needed 22 squarings, and its step
 error was 1.7e-9, against 5.8e-11 for the same corner at 0.01 L. Over a
-24-hour run that error grew to 4.9e-4 of the state. The error after 24 h does not depend on the step. A
-shorter step needs fewer squarings, so each step is more accurate, but there
-are proportionally more steps.
+24-hour run that error grew to 4.9e-4 of the state.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+
+The bound on the error after 24 h barely depends on the step. A shorter step
+needs fewer squarings, so each step's bound is smaller, but there are
+proportionally more steps. The measured error does vary with the step. At the
+alveolar corner it was 1.8e-5 at a 0.01 s step and 3.0e-5 at 0.001 s. At the
+corner with every volume at 0.01 L it fell from 2.6e-5 to 7.0e-7 and 3.2e-7. The
+shipped run needs no squarings at any step, so its error grows with the number
+of steps: 9.6e-11, 9.6e-10 and 4.8e-9 (measured 2026-10-25).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 **What a long interval costs at the corners.** The canonical path forms one
 propagator for each stretch of unchanged settings
@@ -6851,9 +6873,9 @@ v0.4.x `SimulationController` exposes no setter for either.
 Neither has a supported range. Since `PL-QX2G` both have a numerical
 envelope, of 0.01 to 10 000 L, and that is a different claim.
 § "The numerical envelope" states it. The envelope says only where the
-arithmetic has been shown to give the right answer, and it says nothing about
-which volumes describe a patient. So it does not contradict the argument below,
-which is about physiology.
+arithmetic has been checked against a high-precision evaluation. It says
+nothing about which volumes describe a patient, so it does not contradict the
+argument below, which is about physiology.
 
 The two volumes do not have the same provenance, and the difference is worth
 stating rather than smoothing over. The alveolar gas volume is a patient
@@ -6931,9 +6953,9 @@ opposite justification, which was that a small alveolar volume inflated the
 operator split's error. That argument was retired with the split.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**The 0.005 L alveolar compartment above, and every volume below 0.01 L in
-the paragraphs that follow, can no longer be built** (`PL-QX2G`). Each is below
-the floor of § "The numerical envelope". The measurements are kept because they
+**The 0.005 L alveolar compartment above, every volume below 0.01 L in the
+paragraphs that follow, and every circuit volume above 10 000 L can no longer be
+built** (`PL-QX2G`). Each is outside § "The numerical envelope". The measurements are kept because they
 show what the propagator's own refusals do when a matrix reaches them by
 another route. `tests/unit/test_matrix_exponential.py` still drives those
 refusals, with a matrix built to match.

@@ -583,10 +583,9 @@ class BreathingCircuit:
                 which checks it against the numerical envelope
                 (`core/numerical_envelope.py`).
             SimulationConfigurationError: the volume is too small to hold the
-                agent already in the circuit. Both checks run, and the
-                fraction that the new volume gives is built, before anything
-                changes. So a rejected volume leaves the circuit exactly as it
-                was.
+                agent already in the circuit. Both refusals, and the fraction
+                that the new volume gives, are checked before anything changes.
+                So a rejected volume leaves the circuit exactly as it was.
         """
 
         require_compartment_volume("circuit_volume_l", circuit_volume_l)

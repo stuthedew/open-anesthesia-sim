@@ -541,8 +541,10 @@ class AgentUptakeSystem:
         """Return every compartment value that the settings record holds, for comparison by value.
 
         Equal keys mean equal `equation_settings()`. Building the key costs
-        about a sixth as much as building the record: 1.8 us against 11.0 us,
-        measured 2026-10-18. That is why the propagator cache compares the key
+        about a quarter as much as building the record: 2.2 us against 9.1 us,
+        measured 2026-10-25. It was 1.8 us against 11.0 us on 2026-10-18; the
+        difference is the checked tissue:blood coefficient, formed on each read
+        (`PL-QX2G`). That is why the propagator cache compares the key
         rather than the record. It is also why `SimulationController` can call
         this method before every step, to check whether the core still holds
         the settings that its run definition recorded (`PL-XRN8`).

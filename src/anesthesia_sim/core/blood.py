@@ -14,8 +14,8 @@ from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
     PartitionCoefficient,
-    require_compartment_volume,
     require_coefficient,
+    require_compartment_volume,
 )
 from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
