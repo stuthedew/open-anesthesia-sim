@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: core-domain-language
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/wash_in.py
 added: 2026-09-14
 closed: 2026-10-24

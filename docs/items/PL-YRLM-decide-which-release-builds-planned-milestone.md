@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: liquid-agent-consumption
+milestone: v0.6.4
 touches: ROADMAP.md, docs/items
 blocked-by: v0.7.0
 deferred-from: v0.6.0 - captured after the freeze to hold whether a release schedules planned-milestone item 28, a question Gate 3 inherits with the four entries waiting on it (PL-18BD), and not safety or science

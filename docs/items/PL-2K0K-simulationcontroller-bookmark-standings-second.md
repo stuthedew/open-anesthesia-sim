@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.4
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-10-19
 closed: 2026-10-24
