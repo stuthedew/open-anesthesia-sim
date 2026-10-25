@@ -3,11 +3,14 @@ id: PL-K7N7
 title: Cut ROADMAP.md's prose for a human reader
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: ROADMAP.md
 added: 2026-09-05
+closed: 2026-10-25
+pr: 1822
+verify: ! grep -qF 'from before the debt gate existed, twenty items deep, while Gate 1 onward hold' ROADMAP.md && ! grep -qF 'accident of what has been built so far. The entry is owed its band the moment' ROADMAP.md && ! grep -qF 'naming-and-placement decision, correct today whichever way it goes.' ROADMAP.md
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. The two that could run are worse than none - a line-count ceiling is met by deleting a rule to reach a number, which is why `check_resident_instructions` refuses one, and `doc_check.py check` passes today
 ---
 
