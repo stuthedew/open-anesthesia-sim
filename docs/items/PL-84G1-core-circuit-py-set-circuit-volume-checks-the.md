@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_circuit.py
 added: 2026-10-19
 closed: 2026-10-25

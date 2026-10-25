@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: one-source-of-truth
+milestone: v0.6.4
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/
 added: 2026-10-24
 closed: 2026-10-25

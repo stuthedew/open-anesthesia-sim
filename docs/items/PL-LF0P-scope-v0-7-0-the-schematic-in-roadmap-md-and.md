@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: schematic
+milestone: v0.6.4
 touches: ROADMAP.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-10-25
 closed: 2026-10-25

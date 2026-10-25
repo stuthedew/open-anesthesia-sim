@@ -373,3 +373,32 @@ the stronger evidence of the two — it fires only where work is underway, and i
 names the file to open. Report the two separately for that reason, and do not
 present a clean observed section as a clean answer: it means no branch has
 touched these files *yet*.
+
+**Builders in one container share its scratch folder, its cores and its
+turn.** A batch handed to builder subagents in one session hit all three on
+2026-10-24 (the `parallel-builders` feature). Write these three rules into
+every builder's brief, since no checked-in brief carries them.
+
+1. **Give each builder its own scratch files.** Name a subfolder of the
+   scratchpad after the builder's item id, such as `<scratchpad>/pl-k7qx/`,
+   and have it write its pull request body, its verify log and every other
+   file there. One builder published a sibling's body on `#1735`, and another
+   overwrote a sibling's `verify.log`, because all of them wrote the same
+   names in one folder (`PL-5PL5`).
+2. **Run every long command in the foreground.** A subagent is not woken when
+   its background command finishes, so a builder that starts `make check` in
+   the background ends its turn with tested work unpushed (`PL-9K28`). Brief
+   it to run `make check`, `bin/docket verify --self` and anything else that
+   takes minutes in the foreground, with the Bash tool's `timeout` at its
+   600,000 ms maximum. A command that can take longer than that is the
+   parent's to run, under the next rule.
+3. **Run one full suite at a time.** One `make check` already runs pytest on
+   twice as many workers as the container has cores. Four builders running it
+   at once drove a 4-core container's load average to about 30, and
+   `verify --self` hit its fixed 1,800 s limit with no verdict on three of the
+   four branches (`PL-GH8L`). So builders iterate on the tests their change
+   reaches and on the fast linters, and never run the full suite. The parent
+   runs `make check` and `bin/docket verify --self` on each finished branch
+   itself, one branch after another. This is a written rule rather than a
+   lock, because a lock held while queued builders wait would count against
+   the same 1,800 s limit it is meant to protect.

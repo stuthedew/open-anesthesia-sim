@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: release-process
+milestone: v0.6.4
 touches: tools/ast_identity.py, tests/unit/test_ast_identity.py, .claude/skills/docket/modes/release.md, docs/apparatus.md, docket.toml
 added: 2026-09-21
 closed: 2026-10-25

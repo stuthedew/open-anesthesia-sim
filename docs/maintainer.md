@@ -741,7 +741,9 @@ change, so a worker cannot see its own failures among them (`PL-TSH9`).
 to the end of `~/.zshrc`, which makes it `make` in a new Terminal window
 (the formula's own caveat, `Formula/m/make.rb` in Homebrew/homebrew-core,
 read 2026-10-19). `bash --version` and `make --version` then print 5.3 and
-4.4.1 or newer.
+4.4.1 or newer. The runner refuses to start, before it spends any credit,
+while the bash or make on its `PATH` is older than bash 5.2 or GNU Make 4
+(`PL-44R1`).
 
 1. Claim the credit: claude.ai, Settings, Billing, API credits, Link
    organization. This links one Console organization, and changing it later

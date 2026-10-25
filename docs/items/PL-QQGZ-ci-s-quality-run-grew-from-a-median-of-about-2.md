@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, infra
 feature: defect-review-2026-10
+milestone: v0.6.4
 touches: tools/main_ci_status.py, .github/workflows/quality.yml, tests/unit/test_main_ci_status.py
 added: 2026-10-19
 closed: 2026-10-25

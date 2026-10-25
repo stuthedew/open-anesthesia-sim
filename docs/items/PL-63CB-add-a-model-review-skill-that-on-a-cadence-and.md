@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: model-evidence
+milestone: v0.6.4
 touches: .claude/skills/model-review, docs/model-review.md, docs/maintainer.md
 added: 2026-10-17
 closed: 2026-10-25

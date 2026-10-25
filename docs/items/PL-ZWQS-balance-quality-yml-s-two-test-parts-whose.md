@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: done
 feature: ci-cost
+milestone: v0.6.4
 touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py, tests/reference/test_late_washout_against_published_fits.py, tests/unit/test_worksteal_dealing.py
 added: 2026-10-17
 closed: 2026-10-25
