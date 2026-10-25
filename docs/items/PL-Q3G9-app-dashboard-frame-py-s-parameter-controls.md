@@ -3,12 +3,13 @@ id: PL-Q3G9
 title: app/dashboard_frame.py's PARAMETER_CONTROLS types the unit L/min for fresh gas flow, alveolar ventilation and cardiac output, which app/control_record.py's CONTROL_INPUT_UNITS already holds, so a change to a control's unit in one leaves the panel label or the recorded unit wrong in the other
 priority: P1
 effort: S
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/control_record.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-24
 payoff: the unit beside a flow control and the unit its value is recorded in come from one place
+verify: ! grep -q '"L/min"' src/anesthesia_sim/app/dashboard_frame.py
 ---
 
 **Problem.** app/dashboard_frame.py's PARAMETER_CONTROLS types the unit L/min for fresh gas flow, alveolar ventilation and cardiac output, which app/control_record.py's CONTROL_INPUT_UNITS already holds, so a change to a control's unit in one leaves the panel label or the recorded unit wrong in the other
@@ -24,3 +25,5 @@ payoff: the unit beside a flow control and the unit its value is recorded in com
 **Done when** (under the recommendation). `PARAMETER_CONTROLS` reads each control's unit from `CONTROL_INPUT_UNITS` through one display function. A test shows that changing a control's recorded unit changes the panel label too.
 
 **Checked 2026-10-24.** `dashboard_frame.py` types `"L/min"` for fresh gas flow, alveolar ventilation and cardiac output, and `control_record.py`'s `CONTROL_INPUT_UNITS` holds the same three.
+
+**Decided 2026-10-25: one fact, held once.** This is the recommendation above. `PL-G84G` decided on the same day to add a unit type that carries its label, in `app/`, so this item is that type's first use and is built in the same pull request. `CONTROL_INPUT_UNITS` maps each control to a member of the type, and `PARAMETER_CONTROLS` reads each control's label from that member. The delivered concentration's member records "percent of 1 atm" and shows "%", which keeps the difference the comment above `CONTROL_INPUT_UNITS` explains.

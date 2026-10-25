@@ -3,12 +3,13 @@ id: PL-M85T
 title: Three core class defaults restate data-file values (alveolar gas volume 2.5 L and ventilation 4.0 L/min in alveolar.py, circuit volume 6.0 L in circuit.py), and a fourth, the 100% maximum delivered concentration, matches no agent's vaporizer: decide whether they become required arguments
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: one-source-of-truth
-touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, tools/literal_home_check.py, tests/unit/test_circuit.py, tests/unit/test_alveolar.py
+touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, tools/literal_home_check.py, tests/
 added: 2026-10-19
 payoff: no core compartment can be built with a clinical parameter nobody stated, including a circuit with no vaporizer limit
+verify: ! grep -qE 'gas_volume_l: float = 2\.5|AlveolarVentilation\(4\.0\)' src/anesthesia_sim/core/alveolar.py && ! grep -qE 'circuit_volume_l: float = 6\.0|Percent\(100\.0\)' src/anesthesia_sim/core/circuit.py
 ---
 
 **Problem.** Three class defaults in `core/` repeat values that the data files own. `AlveolarCompartment` defaults `gas_volume_l` to 2.5 L and `alveolar_ventilation_l_min` to 4.0 L/min, which `data/patients/reference_adult.json` stores as `alveolar_gas_volume_l` and `default_alveolar_ventilation_l_min`. `BreathingCircuit` defaults `circuit_volume_l` to 6.0 L, which `data/machines/reference_circle_system.json` stores. No check ties a default to its data value. Tests pin each side to the same literal separately, so changing the data file leaves the default behind without failing anything.
@@ -28,3 +29,5 @@ Corrected at review on 2026-10-24. The worker's capture called all four "data-fi
 **Checked 2026-10-24.** `alveolar.py` defaults `gas_volume_l: float = 2.5` and `alveolar_ventilation_l_min = AlveolarVentilation(4.0)`. `circuit.py` defaults `circuit_volume_l: float = 6.0` and `max_delivered_concentration_percent = Percent(100.0)`.
 
 **Generator check.** Bookkeeping. It touches `tools/literal_home_check.py` only to remove the four `core/` entries its `BASELINE` recorded when `PL-40SJ`'s check landed. The defaults themselves are the second copies `PL-H8QP` described, not new inflow.
+
+**Decided 2026-10-25: all four become required, with no default.** This is the recommendation above, and the work found no caller that needs a default. The one production caller, `UptakeSystem.from_parameters` in `core/uptake_system.py`, already passes all four from the agent, patient and machine data. Every other construction is a test: 32 in `tests/unit/test_circuit.py`, 13 in `tests/unit/test_alveolar.py`, 7 in `tests/unit/test_concentration.py`, and 9 across five more test files, counted 2026-10-25. The building session may give the tests one helper that reads the reference data files, so that a test states the shipped values without typing them. `fresh_gas_flow_l_min`'s default reads the named `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` and is outside this item. A required field cannot follow a defaulted one in a dataclass, so the fields may need reordering, and every keyword call is unaffected by that.
