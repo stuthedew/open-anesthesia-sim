@@ -9,6 +9,7 @@ feature: prose-quality
 touches: tests
 added: 2026-09-05
 closed: 2026-10-25
+pr: 1805
 verify: ! grep -qF 'One call answers both, so a caption cannot contradict a trace.' tests/unit/test_wash_in.py && ! grep -qF 'The step still has to be checked, for two reasons that survive:' tests/reference/test_coupled_dynamics.py && ! grep -qF 'Derived from the three shipped cadence constants rather than written' tests/benchmarks/frame_cost.py
 not-delegable: readability is judged by a person, and no command separates a trimmed comment from a padded one. A length ceiling would be met by deleting the sentence naming what a test is defending, which is the one thing this item must keep
 ---

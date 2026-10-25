@@ -8,6 +8,7 @@ classes: docs, test
 touches: tests/integration/test_simulation_view.py
 added: 2026-10-17
 closed: 2026-10-25
+pr: 1805
 payoff: the test's docstring no longer claims a build-time guard the circuit does not have, so nobody relies on it
 verify: ! grep -qF 'and the circuit refuses at build' tests/integration/test_simulation_view.py
 ---
