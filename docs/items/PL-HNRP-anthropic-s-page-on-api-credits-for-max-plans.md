@@ -3,10 +3,13 @@ id: PL-HNRP
 title: Anthropic's page on API credits for Max plans lists Claude Code as not covered, yet the headless worker runs claude -p on an API key and the Console's credit fell by the run's cost; find out whether the headless runner's use is covered before relying on it
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra
 touches: tools/headless_worker.py
 added: 2026-10-20
+closed: 2026-10-24
+pr: 1758
+not-delegable: the answer is an external terms question settled by the project owner's word; no command in this tree can check it
 ---
 
 **Problem.** Anthropic's page on API credits for Max plans lists Claude Code as not covered, yet the headless worker runs claude -p on an API key and the Console's credit fell by the run's cost; find out whether the headless runner's use is covered before relying on it
@@ -24,5 +27,7 @@ added: 2026-10-20
 **Decision needed.** Whether the headless runner keeps calling `claude -p` on the Console API key, or moves to the Claude Agent SDK, which the page lists as covered. It turns on support's answer.
 
 **Recommended:** keep `claude -p` until support answers, and start no new runner work that depends on the credit in the meantime. Move to the Agent SDK only if support says the use is not covered.
+
+**Decided 2026-10-24 (project owner, 2026-10-24):** the headless runner's use is covered. The owner answered "yes it is covered" when asked whether the Max plan's monthly API credit pays for `claude -p` on a Console API key from the linked organization. The reply did not say whether the answer came from Anthropic support or from the program terms. So the runner keeps calling `claude -p`, no move to the Agent SDK is needed, and this item closes as its Done-when says.
 
 **Generator check.** One-off. An external terms question, not a misread fact in the tree.
