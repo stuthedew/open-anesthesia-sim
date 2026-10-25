@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_circuit.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1772
 payoff: a refused circuit volume names the volume, the agent held and the room left, as the other three compartments' refusals already do
 verify: grep -q 'require_room_for_the_agent_held' src/anesthesia_sim/core/circuit.py
 ---

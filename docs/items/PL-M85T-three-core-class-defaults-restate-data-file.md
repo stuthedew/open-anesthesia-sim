@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tools/literal_home_check.py, tests/, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1772
 payoff: no core compartment can be built with a clinical parameter nobody stated, including a circuit with no vaporizer limit
 verify: ! grep -qE 'gas_volume_l: float = 2\.5|AlveolarVentilation\(4\.0\)' src/anesthesia_sim/core/alveolar.py && ! grep -qE 'circuit_volume_l: float = 6\.0|Percent\(100\.0\)' src/anesthesia_sim/core/circuit.py
 ---

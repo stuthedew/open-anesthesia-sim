@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: tests/unit/test_field_guards.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1772
 payoff: a field guard in core/ cannot stop running because its field was renamed
 verify: grep -q 'def test_every_name_a_core_field_guard_compares_with_is_a_field' tests/unit/test_field_guards.py
 ---

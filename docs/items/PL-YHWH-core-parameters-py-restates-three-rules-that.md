@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_parameters.py, tests/unit/test_patient.py, tests/unit/test_run_definition.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1772
 payoff: a parameter file and a running patient are held to the same perfusion, vaporizer and spacing rules, from one copy of each
 verify: grep -q 'require_positive_finite' src/anesthesia_sim/core/run_definition.py
 ---
