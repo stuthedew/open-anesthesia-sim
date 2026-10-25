@@ -3,12 +3,14 @@ id: PL-06LS
 title: RunDefinition.evaluate_anchored loops once per sample with only stop_s / spacing_s being finite to bound it, so a spacing of 1e-300 s hangs rather than refusing, and evaluate accepts a columns count with no type check or upper bound
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: floating-point-domain
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit
 deferred-from: v0.7.0 - split from the generator head PL-58D7 on 2026-10-25, which this gate defers for the same reason; the generator tier ranks it, not the gate
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1836
 payoff: a request for more samples than a chart can draw is refused instead of hanging
 verify: grep -rq 'def test_evaluate_anchored_refuses_more_samples_than_its_bound' tests/unit
 ---
