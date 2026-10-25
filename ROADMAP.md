@@ -1058,8 +1058,8 @@ PL-68XK (check that a recorded commit hash resolves) is a different case, and
 this rule does *not* admit it. It predates the freeze, and it was left out of
 the approved list deliberately. It was still entangled with PL-ZQ9C, so its
 brief was refreshed rather than worked. What the refresh had to say changed
-once PL-ZQ9C landed, and then the question closed entirely. At that point
-`pr:` sat beside `commit:` and made `commit:` optional. That narrowed PL-68XK
+once PL-ZQ9C landed, and later the question closed entirely. When PL-ZQ9C
+landed, `pr:` sat beside `commit:` and made `commit:` optional. That narrowed PL-68XK
 from "validate the field that makes a closure traceable" to a smaller job. The
 smaller job was to require that a `commit` value, when present, resolves.
 PL-T63T then settled a question one step upstream, which was what the field
@@ -2053,7 +2053,8 @@ alert colours compare with the medical alarm-colour convention. `PL-2K1R`
 concerns an interpretation disclaimer beside the use disclaimer. That disclaimer
 states that the readouts and traces are modelled rather than measured. It is
 text the dashboard states, not a control a learner operates, so it is a
-decision rather than capability (project owner, 2026-09-14).
+decision rather than capability. The project owner added `PL-2K1R` to this
+list on 2026-09-14.
 
 **`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
 where the line is. It is a show/hide control for the clinical references and
@@ -4159,8 +4160,8 @@ items built:
 **9 predate the freeze and are declined on the refilling-queue ground**, the
 same ground on which the first twenty-nine were declined. The arithmetic is
 the argument here, as it was there. This gate stands at 166 entries with 15
-open. Admitting these nine would take it past 180 just as it is finally
-draining. None of them can give a reader of the simulator a wrong number. Four
+open. Admitting these findings would take it past 180 just as it is
+finally draining. None of them can give a reader of the simulator a wrong number. Four
 document internal structure (`PL-9KP5`, `PL-C4RS`, `PL-D1RT`, `PL-DBGT`). One
 is a type that is not yet wrong (`PL-W3Q5`). Three are numerical-envelope
 findings that no shipped code path triggers (`PL-2MD9`, `PL-73ZN`, `PL-BMY5`).
@@ -5714,7 +5715,7 @@ scoped, there were three gaps:
   panel sits in the sidebar, inside the nested horizontal splitter. Only run
   state, halt reason and agent identity are outside the container. So on the
   day the handles work, a learner could close the values that `docs/MODEL.md`
-  says no Workspace may remove. The violation is already built in, not absent.
+  says no Workspace may remove. The violation is pre-loaded (already built in) rather than absent.
   A session looking at today's code would treat `.claude/rules/ui-areas.md`
   rule 5 as already satisfied, because nothing can be closed yet.
 
@@ -5774,7 +5775,7 @@ It is on the list, and `bin/docket gate` prints its lane.
 **`PL-5291` joined this list on 2026-10-03, after the freeze, under the same
 exception.** The first review of `#1292` filed it that day. It describes a run
 that has reached the 24-hour supported run length but looks like an ordinary
-paused run. Such a run offers Start until a refused step stops it. Three cases
+paused run and offers Start, until a refused step stops it. Three cases
 show it: a branch forked on 86 400.0 s, that branch after a reset, and a trunk
 halted on a mark at 24:00:00. Its triage classed it `defect` and `safety`. The
 triage rested on the precedent of `PL-N3N5` and on `docs/MODEL.md` § "Supported
