@@ -2,7 +2,7 @@
 
 The tests pin what the analysis depends on. The arm is a fixed function of the
 hook's session id, so a resumed session keeps it, and about one session in
-four gets `xhigh`. Nothing is written before the start time or outside a cloud
+two gets `xhigh`. Nothing is written before the start time or outside a cloud
 session. From the start, both `effortLevel` and `maxEffortLevel` are written,
 because `effortLevel` alone loses to the app's picker. Settings the script
 cannot read are left alone. And the printed line names the arm it wrote, or
@@ -35,8 +35,8 @@ BEFORE = effort_trial.TRIAL_START - timedelta(seconds=1)
 AFTER = effort_trial.TRIAL_START
 
 # Two real transcript ids. Their SHA-256 digests, from `printf '%s' ID |
-# sha256sum`, end in 0x4b (75, which leaves 3 when divided by 4) and in 0xb0
-# (176, which 4 divides), so they fall in the `high` and `xhigh` arms.
+# sha256sum`, end in 0x4b (75, which is odd) and in 0xb0 (176, which is
+# even), so they fall in the `high` and `xhigh` arms.
 HIGH_ID = "0ab1bc6b-c99e-5501-9804-99cdd5de3c71"
 XHIGH_ID = "c2bd5b4d-bd26-512d-9475-541af23fdd0e"
 
@@ -52,12 +52,12 @@ def test_the_arm_is_the_sha256_rule_on_the_session_id() -> None:
     assert effort_trial.arm_for(XHIGH_ID) == "xhigh"
 
 
-def test_about_one_session_id_in_four_is_xhigh() -> None:
+def test_about_one_session_id_in_two_is_xhigh() -> None:
     ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"session-{index}")) for index in range(4000)]
     arms = [effort_trial.arm_for(session_id) for session_id in ids]
     # A fixed set of ids, so this cannot flake. The bounds are 4.4 standard
-    # deviations of a binomial(4000, 0.25) count either side of its mean.
-    assert 0.22 < arms.count("xhigh") / len(arms) < 0.28
+    # deviations of a binomial(4000, 0.5) count either side of its mean.
+    assert 0.465 < arms.count("xhigh") / len(arms) < 0.535
     assert set(arms) == set(effort_trial.ARMS)
 
 

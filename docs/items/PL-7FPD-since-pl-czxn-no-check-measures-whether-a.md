@@ -3,10 +3,12 @@ id: PL-7FPD
 title: Since PL-CZXN no check measures whether a branch weakens a test of the apparatus or of app/'s Qt modules, or a simulator test on a branch that changes no function mutmut mutates: verify's mutation check mutates only core/ and four app/ modules, and the assertion check it replaced read every .py file
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml, docs/mutation-testing.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml, docs/mutation-testing.md, .claude/skills/docket/modes/close-out.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1753
 payoff: a branch that loosens a test of a displayed value, its unit or its label is refused before it merges, instead of passing with a note
 verify: grep -q 'def test_a_branch_that_weakens_a_display_test_is_refused' tests/unit/test_diff_mutation.py && grep -qF 'src/anesthesia_sim/app/dashboard_frame.py' pyproject.toml
 reenters: PL-CZXN
@@ -47,3 +49,9 @@ So the route costs about two minutes for each version of a changed display test,
 **Done when.** `docket verify` refuses a branch that changes a simulator unit test so that a mutant of a display module, which the test's base version kills, survives the branch's version. It passes a branch whose changed test still kills every such mutant. `tests/unit/test_diff_mutation.py` has a test of each, and the refusing one is `test_a_branch_that_weakens_a_display_test_is_refused`. `[tool.mutmut] only_mutate` names `dashboard_frame.py`, `chart_frame.py` and `control_timeline.py` beside the four `app/` modules it already names. `docs/mutation-testing.md` says what stays unmeasured: the Qt widget modules and the integration tests, core tests on a branch that changes no core function (`PL-H57W`), and the apparatus tests (`PL-LBNN`). A building session that finds a cheaper route to the same refusal may take it, and says so in the item.
 
 **Generator check.** An instance of `PL-4W2L`'s fact, "whether a branch's diff weakens its tests", reached through `PL-CZXN`, which closed on 2026-10-24. `PL-CZXN`'s replacement check stopped covering three things the removed check covered: tests changed on a branch that changes no mutated function, tests of the `app/` modules mutmut does not mutate, and the apparatus tests. Recorded as `reenters: PL-CZXN`, since that fix should have covered this site. `PL-CZXN` itself re-enters `PL-4W2L`.
+
+**Built 2026-10-24, by the recommended route.** `tools/diff_mutation.py`'s `compare_tests` runs in two copies of the tree under a temporary directory, so the main run's `mutants/` is left alone. In the base copy, every file the branch changed under `tests/` holds its base version. mutmut runs there on every mutant of `anesthesia_sim.app`, against the base tests that the branch changed. A test is selected when a line it holds was removed, or when the branch's test of the same name gained a line. Any other changed line selects the whole file, and a blank line or a comment selects nothing. The branch copy then runs only the mutants that the base run caught, against the branch's version of every changed unit test file, whole. A mutant that the base caught and the branch missed goes into `uncaught`, so `verify` refuses on it unchanged. `pyproject.toml`'s `only_mutate` names `dashboard_frame.py`, `chart_frame.py` and `control_timeline.py`, none of which imports Qt.
+
+**Measured end to end on 2026-10-24, four cores, load average below 2.** Deleting the last two assertions of `tests/unit/test_dashboard_frame.py::test_a_run_statement_carries_the_locks_and_the_banner_it_is_given` was refused. The base version caught 60 display mutants, and exactly one survived the branch's version: `anesthesia_sim.app.dashboard_frame.x_run_statement__mutmut_8`, which passes `banner=None`. That is the fault the deleted banner assertion caught. Both runs took 197 s together. A change to the same test that keeps every assertion, adding a message to the last one, passed: all 60 mutants were still caught, in 193 s.
+
+**One conservative refusal is known.** The branch's run takes only the changed test files, as the route says. So a branch that deletes a test because an unchanged file already catches the same faults is refused. Running every unit test on the branch's side would pass it, for about five more minutes of coverage collection. `docs/mutation-testing.md` records this, and the change is one argument in `compare_tests` if the refusal is ever wrong in practice.

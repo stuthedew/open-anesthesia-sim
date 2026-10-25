@@ -3,11 +3,13 @@ id: PL-H57W
 title: Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 priority: P1
 effort: L
-status: blocked
+status: ready
 classes: defect, safety
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml
 blocked-by: PL-7FPD
 added: 2026-10-24
+payoff: a branch that loosens a core unit test, such as a wider tolerance on a concentration, is refused before it merges, as a loosened display test already is
+verify: grep -q 'def test_a_branch_that_weakens_a_core_test_is_refused' tests/unit/test_diff_mutation.py
 reenters: PL-CZXN
 ---
 

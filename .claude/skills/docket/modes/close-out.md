@@ -182,8 +182,16 @@ page and decides which file a session reads.
    where the branch changes no function mutmut mutates, five to eight minutes
    on a typical branch that does, and 36 minutes for the largest batch measured
    on 2026-10-24, 340 mutants. Iterate with `make mutate`, which prints the
-   same survivors, rather than by re-running the audit. Clear a refusal
-   honestly, in one of two ways:
+   same survivors, rather than by re-running the audit.
+
+   The same check refuses a branch that weakens a changed simulator unit test,
+   where a mutant of the display modules that the test's base version catches
+   survives the branch's version (`PL-7FPD`). That costs about two more
+   minutes for each version of the changed tests. Clear it by restoring what
+   the test checked. `docs/mutation-testing.md` § "What the check of a changed
+   test leaves unmeasured" says what it does not reach.
+
+   Clear a refusal of a mutant of a changed line honestly, in one of two ways:
 
    - **Write the unit test that catches the mutant.** The check prints each
      mutant's line and its diff, and `uv run --group mutation mutmut show NAME`
@@ -254,7 +262,7 @@ page and decides which file a session reads.
 7. **Sort the survivors that step 5's audit printed, where the diff changes a
    function that mutmut mutates.** Those are the modules that the
    `only_mutate` globs in `pyproject.toml`'s `[tool.mutmut]` table name:
-   `core/` and four presentation modules. The audit's mutation check runs
+   `core/` and seven presentation modules. The audit's mutation check runs
    `make mutate`'s tool on the functions that the branch changed, so there is
    no second run to make. A survivor on a changed line has already refused the
    audit, and one on a line the branch did not change is named in its notes.
