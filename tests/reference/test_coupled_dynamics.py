@@ -95,12 +95,14 @@ CIRCUIT_VOLUME_L = 6.0
 # checked against `simulation_view`, because the interface was the only place the
 # domain was declared.
 #
-# The minimums matter as much as the maximums, and the same test checks both. The
-# worst trajectory this gate drives reaches zero cardiac output. Raising the
-# minimum of that control above zero would take the bound's own worst case out of
-# the reachable domain without failing anything. `docs/MODEL.md` § "Supported
-# input ranges" records that zero is supported on all four controls,
-# deliberately (PL-629Z).
+# The minimums matter as much as the maximums, and the same test checks both.
+# Two gate trajectories hold a control at zero. `_ventilator_start` holds
+# alveolar ventilation there, and `_unperfused_load_then_dial_off` holds cardiac
+# output there and then closes the vaporizer. If a minimum were raised above
+# zero, the supported-range types would reject those settings, and the
+# trajectory would raise rather than run. The test's own message then says which
+# measurements to re-derive. `docs/MODEL.md` § "Supported input ranges" records
+# that zero is supported on all four controls, deliberately (PL-629Z).
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
@@ -170,7 +172,7 @@ def _max_dial(agent_id: str) -> float:
 
 
 def _envelope_corner(agent_id: str) -> OperatingPoint:
-    """The corner of the settings envelope, where the shipped step's own error is worst.
+    """The settings envelope's corner: each control where the operator split measured worst.
 
     This corner was found by sweeping all four axes, not assumed. Fresh gas
     flow and alveolar ventilation both increase the disagreement monotonically
@@ -186,11 +188,12 @@ def _envelope_corner(agent_id: str) -> OperatingPoint:
     oracle converged (`ORACLE_STEP_S`), all five gate trajectories report the
     same thing at the shipped step, which is accumulated rounding. Rounding is
     set by the number of steps taken, not by how violently the settings move.
-    All five run 600 s at 0.1 s, so all five land within a factor of 1.8 of
-    each other. Each figure below is the worst state and agent measured at the
-    shipped step, and desflurane is the worst agent throughout: 1.5786e-14 for
-    ordinary use, 1.5377e-14 here, 1.3906e-14 for the ventilator start,
-    1.3427e-14 for held defaults, and 8.7985e-15 for the unperfused load.
+    At 0.1 s, four of the five run 600 s and the unperfused load runs 900 s.
+    All five land within a factor of 1.8 of each other. Each figure below is
+    the worst state and agent measured at the shipped step, and desflurane is
+    the worst agent throughout: 1.5786e-14 for ordinary use, 1.5377e-14 here,
+    1.3906e-14 for the ventilator start, 1.3427e-14 for held defaults, and
+    8.7985e-15 for the unperfused load.
 
     That is a change in what this trajectory is *for*, and it is worth saying
     so explicitly. Under the coarse oracle, the corner and the ventilator
@@ -262,15 +265,17 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     where the compartment sits, so all six transients run at once.
 
     Under the operator split, this was also the trajectory that measured
-    worst, which is why it was added. It is no longer the worst. The exact
-    step's disagreement with the oracle peaks on `_ventilator_start` instead:
-    7.747e-13 against this scenario's 2.693e-13 for desflurane, 2.9 times
-    larger. The reason is that, on a trajectory that turns, the measurement now
-    mostly shows how hard the *oracle* is working through the transient, not
-    how hard the shipped step is. The scenario is kept for two reasons. It
-    still sets up the widest spread of initial states the interface allows.
-    It is also the only gate trajectory that takes any control to its minimum
-    rather than its maximum.
+    worst, which is why it was added. It is no longer the worst. Since the
+    oracle was refined (`ORACLE_STEP_S`), every gate trajectory reports the
+    shipped step's accumulated rounding, and this one reports the least of the
+    five. For desflurane it is 8.7985e-15, against 1.3906e-14 on
+    `_ventilator_start` and 1.5786e-14 on `_ordinary_use`. `_envelope_corner`
+    lists all five. The scenario is kept for two reasons. It still sets up the
+    widest spread of initial states the interface allows. It is also the only
+    gate trajectory that takes cardiac output or the delivered concentration to
+    its minimum. `_ventilator_start` is the only other trajectory that takes a
+    control to its minimum, and the control it takes there is alveolar
+    ventilation.
 
     Zero cardiac output is a supported input. That was decided and recorded,
     not inherited, and `docs/MODEL.md` § "Supported input ranges" gives the
@@ -404,7 +409,7 @@ ALL_GATE_TRAJECTORIES = (
 # `test_the_shipped_step_reaches_the_pinned_reference_horizons` is for.
 ENVELOPE_HORIZON_S = 600.0
 
-# The step the interface runs at (`app.simulation_view.SIMULATION_STEP_S`). It is
+# The step the interface runs at (`app.dashboard_frame.SIMULATION_STEP_S`). It is
 # restated rather than imported so that this reference test stays independent of
 # the application layer.
 #
@@ -1404,11 +1409,12 @@ def test_envelope_limits_match_the_supported_input_ranges() -> None:
     would fail. That is exactly how the bound came to be narrower than the
     reachable settings in the first place.
 
-    The minimums are checked alongside the maximums because the worst
-    trajectory the gate drives reaches zero cardiac output. Raising the
-    minimum of that control above zero would remove the bound's own worst case
-    from the reachable domain, which is the same defect at the other end of
-    the axis.
+    The minimums are checked alongside the maximums because two gate
+    trajectories hold a control at zero: `_ventilator_start` holds alveolar
+    ventilation there, and `_unperfused_load_then_dial_off` holds cardiac
+    output there. If a minimum were raised above zero, the supported-range
+    types would reject those settings and the trajectory would raise. This
+    test fails too, and its message says which measurements to re-derive.
 
     Before PL-0MLQ the comparison was against `simulation_view`'s slider
     limits, because the interface was the only place a supported range was
