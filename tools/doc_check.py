@@ -1232,6 +1232,12 @@ NUMBER_WORDS = {
     "twelve": 12,
 }
 
+#: The oldest GNU make whose behaviour the Makefile readers below follow, as
+#: major and minor version. Their tests compare them with the make on `PATH`.
+#: macOS's GNU Make 3.81 words its messages differently, so every comparison
+#: failed there (`PL-TSH9`), and the headless worker refuses a run on a host
+#: whose make is older than this (`PL-44R1`).
+GNU_MAKE_FLOOR = (4, 0)
 #: A Makefile line that make carries on to the next one (`PL-R417`): it ends in
 #: an odd run of backslashes, since in an even run each escapes the next. Read
 #: from GNU make 4.3's `readline` and run through it on 2026-10-04: `echo a \\`

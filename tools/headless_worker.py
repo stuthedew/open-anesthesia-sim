@@ -99,6 +99,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -112,11 +113,13 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 import docket.cli as docket_cli  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.shell import BASH_FLOOR  # noqa: E402
 from docket.vcs import REMOTE, call_git, default_base, read_git  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools"))
 
 import worker_runs  # noqa: E402
+from doc_check import GNU_MAKE_FLOOR  # noqa: E402
 from open_pull_requests import origin_url  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
@@ -243,16 +246,61 @@ def read_effort_level(settings: Path = PROJECT_SETTINGS) -> str:
     return level
 
 
+#: Where `docs/maintainer.md` says how to install the bash and make a worker needs.
+TOOLS_SECTION = 'docs/maintainer.md § "Spend the monthly API credit on delegable items"'
+
+
+def tool_version(argv: Sequence[str], prefix: str) -> tuple[int, int] | None:
+    """The major and minor version that `argv` prints after `prefix`, or None.
+
+    None means the command could not run or printed no version after `prefix`.
+    """
+    try:
+        done = subprocess.run(list(argv), capture_output=True, text=True, check=False, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    text = done.stdout.strip()
+    if not text.startswith(prefix):
+        return None
+    found = re.match(r"(\d+)\.(\d+)", text[len(prefix) :])
+    return (int(found[1]), int(found[2])) if found else None
+
+
+def _refuse_older(
+    path: str, name: str, version: tuple[int, int] | None, floor: tuple[int, int]
+) -> None:
+    """Refuse a run whose `name` at `path` is older than `floor` or prints no version."""
+    wanted = ".".join(map(str, floor))
+    if version is None:
+        raise Refused(
+            f"{path} printed no {name} version, and make check needs {name} {wanted} "
+            f"or newer. Install it as {TOOLS_SECTION} says."
+        )
+    if version < floor:
+        shown = ".".join(map(str, version))
+        raise Refused(
+            f"{path} is {name} {shown}, older than the {name} {wanted} that make check "
+            f"needs, so every run would report a red gate. Install a newer one as "
+            f"{TOOLS_SECTION} says, and put it first on PATH."
+        )
+
+
 def check_tools(env: Mapping[str, str]) -> None:
     """Refuse before any spend when a run would fail on a missing or old tool.
 
     A worker runs `claude`, `uv` and the bare `python3` that `bin/docket` and
     the hooks start, all from the run's `PATH`. A `python3` older than 3.11
     fails on its first `bin/docket` call, after the run has started paying.
+    A worker also runs `make check`, whose tests compare the readers with the
+    bash and GNU make on `PATH`. An older bash or make fails those tests on
+    every run, so the worker cannot tell its own failures from the host's
+    (`PL-TSH9`, `PL-44R1`).
     """
     path = env.get("PATH", "")
     missing = [
-        name for name in ("claude", "uv", "python3") if shutil.which(name, path=path) is None
+        name
+        for name in ("claude", "uv", "python3", "bash", "make")
+        if shutil.which(name, path=path) is None
     ]
     if missing:
         raise Refused(f"not found on PATH: {', '.join(missing)}. Install them first.")
@@ -268,6 +316,10 @@ def check_tools(env: Mapping[str, str]) -> None:
             "Start the runner with `uv run python tools/headless_worker.py`, which puts "
             "the project's Python first on PATH."
         )
+    bash = str(shutil.which("bash", path=path))
+    _refuse_older(bash, "bash", tool_version([bash, "-c", "echo $BASH_VERSION"], ""), BASH_FLOOR)
+    make = str(shutil.which("make", path=path))
+    _refuse_older(make, "GNU make", tool_version([make, "--version"], "GNU Make "), GNU_MAKE_FLOOR)
 
 
 def choose(offered: Sequence[str], asked: Sequence[str], runs: int) -> list[str]:
