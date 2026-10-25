@@ -11,6 +11,7 @@ blocked-by: v0.7.0
 deferred-from: v0.6.0 - captured after the freeze to hold whether a release schedules planned-milestone item 28, a question Gate 3 inherits with the four entries waiting on it (PL-18BD), and not safety or science
 added: 2026-09-27
 closed: 2026-10-25
+pr: 1761
 reason: v0.7.0's scoping round scheduled planned-milestone item 28 into v0.7.0 (project owner, 2026-10-25, ratified)
 verify: grep -qF 'PL-1P15' ROADMAP.md
 ---
