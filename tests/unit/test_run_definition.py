@@ -1,4 +1,4 @@
-"""Verification of the closed-form run against the stepped run it replaces.
+"""Check the closed-form run against the stepped run that it replaces.
 
 The run definition claims that a run needs no stored samples. The settings that a run was
 computed under determine every state it passed through, so a value can be recomputed
@@ -7,20 +7,22 @@ because the two are meant to describe the same run. So the central tests here dr
 `AgentUptakeSystem` step by step, build a run definition from exactly the same setting
 changes at exactly the same instants, and compare the two.
 
-The tolerances were measured, not chosen. They are stated as absolute differences in a
-fraction of one atmosphere, because that is the quantity displayed. They were measured on
-2026-09-07 over a 600 s sevoflurane run with two setting changes, in which the largest
-fraction reaches 0.0316:
+The tolerances were measured, not chosen. Each is an absolute difference in a fraction of
+one atmosphere, because that is the quantity displayed. They were measured on 2026-09-07
+over a 600 s sevoflurane run with two setting changes, in which the largest fraction
+reaches 0.0316. A value can come from either of two paths: the canonical path, `state_at`,
+or the display path, `evaluate`. Each path was compared with the stepped run:
 
     canonical (`state_at`) against the stepped run    1.8e-14
     display   (`evaluate`) against the stepped run    3.7e-15
 
-Both are about ten orders of magnitude below 1e-4, the smallest change that the two-decimal
-percent readout can show, so neither path can change a displayed digit. The two paths differ
-because they compose the same operations in a different order, not because of method error.
-`docs/MODEL.md` § "The canonical evaluation rule" states which of the two paths a stored value
-may come from. `tests/reference/test_canonical_evaluation.py` tests that rule. The tests
-here check that the display path is refused where the rule says it must be.
+Both are about ten orders of magnitude below 1e-4, the smallest change that the
+two-decimal percent readout can show, so neither path can change a displayed digit. The
+two paths differ because they compose the same operations in a different order, not
+because of method error. `docs/MODEL.md` § "The canonical evaluation rule" states which of
+the two paths a stored value may come from. `tests/reference/test_canonical_evaluation.py`
+tests that rule. The tests here check that the display path is rejected wherever the rule
+forbids it.
 """
 
 from bisect import bisect_right
@@ -1667,13 +1669,15 @@ the design rests on. Without this test, nothing would catch a way of opening a f
 a restart, on the grounds that the difference is too small to matter.
 """
 
-# The largest divergence after a fork at 655.3 s, on the two-change sevoflurane run below.
-# It is measured at each instant in `PROBES_S`, from 700 s to the end of the run at 3600 s.
-# It is pinned as a ceiling rather than as an equality, because it is a floating-point
-# composition difference. A compiler, a platform or an unrelated change in
-# `matrix_exponential` may move it. The claim needs only that the divergence is real and
-# this small. Its order of magnitude agrees with the 5.3e-13 accumulator figure that
-# `docs/MODEL.md` records for the same substitution on a different run. That section is the
+# A ceiling on how far a branch restarted from the canonical state at 655.3 s drifts from
+# the parent run, on the two-change sevoflurane run below. The divergence is the largest
+# difference between the two at the instants in `PROBES_S`, from 700 s to the end of the
+# run at 3600 s. The test pins it as a ceiling rather than as an equality, because it is a
+# floating-point difference in how operations are composed. A compiler, a platform or an
+# unrelated change in `matrix_exponential` may move it. The claim needs only that the
+# divergence is real and this small. Its order of magnitude agrees with the 5.3e-13 that
+# `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart on a
+# different run, in an accumulator (a running total of agent volume). That section is the
 # authority for the size, and this constant is not a second claim about it.
 FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
 
