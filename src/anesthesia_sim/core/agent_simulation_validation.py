@@ -116,6 +116,13 @@ class AgentSimulationValidator:
     brought a correct run's residual close to
     `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`, where the run would have been
     halted. `docs/MODEL.md` § "Mass-balance identity" records the measurement.
+
+    The compensation terms are not constructor arguments, so
+    `dataclasses.replace()` starts its copy with both terms at zero. That copy
+    is still accurate, because each total already holds the accurate sum. But
+    its next step can round differently from the validator it was copied from.
+    `copy.copy()`, `pickle` and `capture_state()` carry both terms, and
+    `restore_state()` is the route that a rollback takes.
     """
 
     initial_agent_l: float = 0.0

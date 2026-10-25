@@ -317,8 +317,10 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
 
 # Desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas delivers
 # 0.18 * 10 L/min * (1 ms / 60,000 ms/min) = 3e-5 L in one step at the 1 ms
-# step floor. That is the largest transfer one step makes anywhere in the
-# supported envelope. It is computed here rather than read from the model.
+# step floor. A longer step transfers more, but the floor gives a 24 h run the
+# most steps, and so the most additions to round. That makes it the worst case
+# for the running totals. The value is computed here rather than read from the
+# model.
 WORST_CASE_TRANSFER_PER_STEP_L = 0.18 * 10.0 / 60_000.0
 
 # A 24 h run of that delivery adds up to 2592 L. These cases start from 2500 L
@@ -334,8 +336,8 @@ STEPS_IN_THE_SAMPLE = 200_000
 # Kahan summation's error bound is 2u + O(n u^2) relative to the sum of the
 # addends, where u = 2**-53 (Higham, *Accuracy and Stability of Numerical
 # Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). The O(n u^2) term is about
-# 1e-27 at a day's 8.64e7 steps, so 2u is the bound at every supported run
-# length. It is about 4.5 million times smaller than a tenth of
+# 1e-24 at a day's 8.64e7 steps, so 2u is the bound at every supported run
+# length. It is about 450,000 times smaller than a tenth of
 # `DOCUMENTED_RELATIVE_TOLERANCE`.
 COMPENSATED_SUM_BOUND = 2 * 2.0**-53
 

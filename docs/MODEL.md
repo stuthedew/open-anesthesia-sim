@@ -1618,7 +1618,7 @@ transfer. The computed sum of n nonnegative terms is then within
 $`2u + O(nu^2)`$ of the exact sum, relative to it, where $`u = 2^{-53}`$
 (Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM,
 2002, §4.3, equation 4.8). At 8.64e7 steps the $`O(nu^2)`$ term is about
-1e-27, so the bound does not grow with the run's length.
+1e-24, so the bound does not grow with the run's length.
 `tests/unit/test_agent_simulation_validation.py` checks both totals against an
 exact sum at the largest totals the envelope reaches. The two compensation
 terms are run state. `capture_state()` and `restore_state()` carry them, and
