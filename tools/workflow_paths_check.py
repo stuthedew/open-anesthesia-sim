@@ -133,7 +133,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import PRODUCT_PACKAGE, imports_product, is_test_file  # noqa: E402
+from docket.arming import PRODUCT_PACKAGE, TESTS, imports_product, is_test_file  # noqa: E402
 from docket.arming import TEST_FILE_PATTERNS as TEST_FILE_PATTERNS  # noqa: E402
 from docket.config import CONFIG_NAME  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
@@ -149,7 +149,7 @@ from docket.vcs import tracked_under as tracked_under  # noqa: E402
 #: Where this check looks. `subprojects/*/tests/` is out of scope: those trees
 #: are already covered whole by the `subprojects` entry, so no file in them can
 #: land on the product side by omission.
-TESTS_DIR = Path("tests")
+TESTS_DIR = Path(TESTS)
 
 #: The store's own settings file, which holds the lists being checked.
 CONFIG = Path(CONFIG_NAME)

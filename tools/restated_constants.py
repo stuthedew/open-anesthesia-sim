@@ -98,18 +98,20 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from product_paths import CORE_DIR, TESTS
+
 ROOT = Path(__file__).resolve().parent.parent
 
 #: The module whose constants are perturbed, by import name and by path.
 RANGES_MODULE = "anesthesia_sim.core.supported_ranges"
-RANGES_SOURCE = ROOT / "src" / "anesthesia_sim" / "core" / "supported_ranges.py"
+RANGES_SOURCE = ROOT / CORE_DIR / "supported_ranges.py"
 
 #: The one environment variable `tests/conftest.py` reads, holding `NAME=VALUE`.
 PERTURBED_CONSTANT_VARIABLE = "ANESTHESIA_SIM_PERTURB_CONSTANT"
 
 #: The test tree that is run. `subprojects/docket/tests` never imports the
 #: simulator, so a constant cannot change its result.
-SUITE = "tests"
+SUITE = TESTS
 
 #: Tests that fail on purpose when a limit moves, keyed by the limit and by
 #: the test function, with the reason. A key names the function, so it covers

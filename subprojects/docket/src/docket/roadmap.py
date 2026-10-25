@@ -188,6 +188,16 @@ def released_versions(rows: Iterable[VersionRow]) -> frozenset[str]:
     return frozenset(row.version for row in rows if row.is_completed)
 
 
+def as_blockers(versions: Iterable[str]) -> frozenset[str]:
+    """Versions as the version table writes them, `0.6.0`, as `blocked-by` writes them, `v0.6.0`.
+
+    One site for the prefix, because both `milestone_states` and `gate_status`
+    compare a `blocked-by` entry with what the table records as shipped
+    (`PL-YL5R`).
+    """
+    return frozenset(f"v{version}" for version in versions)
+
+
 def baseline_heading(text: str) -> tuple[int, str] | None:
     """The version named by the `## Current baseline: vX.Y.Z` heading, if any.
 
@@ -1045,7 +1055,7 @@ def milestone_states(text: str) -> MilestoneStates:
     known.update(_rendered(section.version) for section in sections)
 
     cleared = {_rendered(section.version) for section in sections if section.is_scoped}
-    released = {f"v{version}" for version in released_versions(parse_version_table(text))}
+    released = set(as_blockers(released_versions(parse_version_table(text))))
     known.update(released)
     cleared.update(released)
     claimed = {
@@ -1648,6 +1658,11 @@ class ReleaseTrain:
         return self.steps[self.position + 1]
 
     @property
+    def shipped(self) -> frozenset[str]:
+        """`released`, written as a `blocked-by` entry names a milestone."""
+        return as_blockers(self.released)
+
+    @property
     def total_steps(self) -> int:
         """How many numbered steps the timeline carries, for "step 1 of 9"."""
         return sum(1 for step in self.steps if step.ordinal is not None)
@@ -2116,12 +2131,14 @@ def gate_status(
     subsection alone, which is what the rule names - the union `scope_ids`
     would fold the frozen list back in and make every entry its own excuse.
 
-    `train`, when given, answers one more question about each entry blocked
-    outside: whether the plan schedules the work it waits on *ahead* of this
-    gate's milestone, in which case it clears in the ordinary course and needs
-    nothing from anybody. That is `sequenced_ahead`, and it is a second answer
-    from the walk already happening rather than a new traversal - the frontier
-    the walk stopped on, read against where the train places each id. An entry
+    `train`, when given, also says which milestones have shipped, and a
+    blocker naming one is passed over like a closed item (`PL-YL5R`). It
+    answers one more question about each entry blocked outside: whether the
+    plan schedules the work it waits on *ahead* of this gate's milestone, in
+    which case it clears in the ordinary course and needs nothing from anybody.
+    That is `sequenced_ahead`, and it is a second answer from the walk already
+    happening rather than a new traversal - the frontier the walk stopped on,
+    read against where the train places each id. An entry
     is sequenced only where *every* blocker it stopped on is placed by a row
     before the gate's; one placed later, or by no section, leaves it waiting
     outside. Without a train the split is not attempted (`PL-7CSP`).
@@ -2182,13 +2199,18 @@ def gate_status(
     )
     excused = set(deferred)
     gate_ids = frozenset(identifier for entry in milestone.gate_entries for identifier in entry.ids)
+    # A milestone that has shipped holds nothing back, so the walks pass over
+    # it as they pass over a closed item. Read as open, `blocked-by: v0.6.0`
+    # left three ready entries waiting on work nothing schedules once v0.6.0
+    # had shipped (`PL-YL5R`).
+    resolved = closed_ids | (train.shipped if train is not None else frozenset())
     outside: dict[GateEntry, frozenset[str]] = {}
     for entry in outstanding:
         if entry in excused:
             continue
         frontier = frozenset().union(
             *(
-                _blockers_outside(identifier, blockers, gate_ids, closed_ids, set())
+                _blockers_outside(identifier, blockers, gate_ids, resolved, set())
                 for identifier in entry.ids
                 if identifier not in closed_ids
             )
@@ -2199,7 +2221,7 @@ def gate_status(
     prerequisites = {
         entry: frozenset().union(
             *(
-                _prerequisites_outside(identifier, blockers, gate_ids, closed_ids, set())
+                _prerequisites_outside(identifier, blockers, gate_ids, resolved, set())
                 for identifier in entry.ids
                 if identifier not in closed_ids
             )

@@ -3254,6 +3254,10 @@ is the *decision* the scoping round makes, not the release: `PL-B9PY` could not
 be designed until v0.5.0 settled what a side-by-side comparison renders, and
 could be the moment it did, several releases before v0.5.0 goes out.
 
+A milestone that has shipped holds nothing at all, so a gate's count passes
+over it as it passes over a closed item, and `docket check` advises on any open
+item still naming one: the edge only misleads (`PL-YL5R`).
+
 The milestone need only be *placed* to be named — a row on the timeline is
 enough, and having a section of its own is not required. That is deliberate,
 because the interval a milestone blocker exists to cover is exactly the one
