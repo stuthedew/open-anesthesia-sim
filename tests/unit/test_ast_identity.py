@@ -173,13 +173,21 @@ def test_an_untouched_tree_reads_unchanged(
 
 @pytest.mark.parametrize(
     ("revisions", "paths"),
-    [(["no-such-tag", "HEAD"], ["src"]), (["HEAD", "HEAD"], ["no-such-dir"])],
-    ids=["unreadable-revision", "no-file"],
+    [
+        (["no-such-tag", "HEAD"], ["src"]),
+        (["HEAD", "HEAD"], ["no-such-dir"]),
+        (["HEAD", "HEAD"], ["src", "no-such-dir"]),
+    ],
+    ids=["unreadable-revision", "no-file", "one-path-of-two-holds-no-file"],
 )
 def test_what_it_cannot_compare_exits_2(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], revisions: list[str], paths: list[str]
 ) -> None:
-    """A revision git cannot read, or a path holding no file, is never reported as unchanged."""
+    """A revision git cannot read, or any path holding no file, is never reported as unchanged.
+
+    A misspelt path beside a real one must not leave the real one's verdict
+    standing for both.
+    """
 
     root, _ = _repository(tmp_path, {})
 

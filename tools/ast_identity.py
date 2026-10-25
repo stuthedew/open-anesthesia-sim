@@ -20,7 +20,8 @@ A file that is not Python is compared as text.
 more paths. A path that names a directory stands for every file under it at
 either revision. It prints one line per file and exits 0 when every file's
 code is unchanged, 1 when any changed, was added or was removed, and 2 when a
-revision cannot be read or a Python file does not parse. The simulator's source
+revision cannot be read, a path holds no file at either revision, or a Python
+file does not parse. The simulator's source
 targets the project's own Python release, which may be newer than the system
 `python3`, so run it under `uv run python` when it compares `src/`.
 
@@ -150,9 +151,14 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT) -> int:
     try:
         for revision in (args.old, args.new):
             read_git(["rev-parse", "--verify", f"{revision}^{{commit}}"], root)
+        empty = [
+            path
+            for path in args.paths
+            if not files_at(args.old, [path], root) | files_at(args.new, [path], root)
+        ]
         results = compare(args.old, args.new, args.paths, root)
     except GitUnanswered as silence:
-        print(f"ast_identity: git could not read {args.old} or {args.new}: {silence}")
+        print(f"ast_identity: git did not answer about {args.old} and {args.new}: {silence}")
         return 2
     except SyntaxError as unparsed:
         print(
@@ -161,8 +167,10 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT) -> int:
             " if the project's own interpreter can"
         )
         return 2
-    if not results:
-        print(f"ast_identity: no file under {' '.join(args.paths)} at {args.old} or {args.new}")
+    if empty:
+        # A misspelt or renamed path would otherwise drop out of the comparison
+        # unseen, and the paths that remain would be reported as the whole.
+        print(f"ast_identity: no file under {' '.join(empty)} at {args.old} or {args.new}")
         return 2
 
     moved = [path for path, said in results if said not in UNMOVED]
