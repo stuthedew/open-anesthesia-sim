@@ -5340,6 +5340,58 @@ stepped system now carries the claim, because the stepped solver is the
 independently written solution of the same equations that the closed form is
 checked against.
 
+### Parameter-recovery test
+
+The model must return a stored parameter when it is run through a measurement
+procedure whose result that parameter fixes. Each procedure is derived from a
+physical law, not from the equations in this document. Lerou and Booij used
+this device to check their own system model. They simulated the closed-circuit
+helium dilution measurement of alveolar volume (Lerou JG, Booij LH.
+Model-based administration of inhalation anaesthesia. 1. Developing a system
+model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385,
+retrieved from PubMed and read at the abstract 2026-10-25).
+
+**It catches a class of error that the other verification tests cannot.** The
+§ "Independent-solution test" integrates the equations that this document
+states. If this document states an equation wrongly, the oracle reproduces the
+error and agrees with the code. The § "Mass-balance test" catches an error
+only when agent is lost or created. Suppose this document had written the
+tissue capacity as $`V_i\lambda_{i:b}`$, leaving out the blood:gas factor, and
+formed the tissue's rate to match. Agent would still be conserved, and the
+oracle would agree with the code. A tissue volume measured by the Fick
+principle would come back divided by $`\lambda_{b:g}`$.
+
+`tests/reference/test_parameter_recovery.py` runs two procedures for each of
+the three agents.
+
+- `test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value`
+  is Lerou and Booij's procedure. The circuit fills while ventilation is
+  stopped. The circuit is then closed by setting the fresh gas flow to zero,
+  and the lungs are ventilated from it with the cardiac output at zero. With
+  no blood flow, the agent behaves as an insoluble tracer, which is the role
+  helium plays in the real measurement. Conservation then gives
+  $`V_A = V_C(F_1-F_2)/F_2`$, where $`F_1`$ is the circuit's fraction when it
+  is closed and $`F_2`$ is the fraction that the circuit and lungs share once
+  they have mixed.
+- `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`
+  integrates each tissue group's uptake through the opening wash-in by the
+  Fick principle, $`\dot U_i = Q_i\lambda_{b:g}(F_a-F_i)`$. It divides the
+  total by $`\lambda_{i:g}F_i`$ at the end of the run, which is the agent that
+  one litre of the tissue holds at its own fraction.
+
+Each recovered value must equal the stored one to within a relative tolerance
+at the level of rounding. The test module states each tolerance beside the
+residual it measured.
+
+The zero fresh gas flow is not the closed-circuit technique that § "Breathing
+circuit" says this model does not represent. That technique needs fresh gas
+matched to the patient's uptake. This procedure has no fresh gas and, at zero
+cardiac output, no uptake.
+
+Like the other verification tests, these check that the equations are the ones
+intended. They cannot show that a stored value is right, because each
+procedure recovers whatever value the data files hold.
+
 ### Deterministic replay test
 
 Two runs with identical:
