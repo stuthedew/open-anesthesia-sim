@@ -606,6 +606,7 @@ class RunView(QWidget):
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
         self._restate_new_case_question(snapshot)
+        self._restate_reset_question()
 
         self._accounting_shown = accounting(snapshot)
 
@@ -1127,6 +1128,31 @@ class RunView(QWidget):
         dialog.finished.connect(dialog.deleteLater)
         self._reset_dialog = dialog
         dialog.open()
+
+    def _restate_reset_question(self) -> None:
+        """Rewrite an open Reset question from the runs as they stand now.
+
+        The trunk's Reset question names each branch it discards and the
+        instant that branch has run to. Reset stays enabled while the runs
+        step, and a branch goes on stepping while the question is open. So a
+        question written once, when it opened, understated the branch work
+        the reader was about to discard (`PL-WM5P`). The dashboard's
+        `ask_before_reset` callback reads every branch's controller, which
+        has already stepped when this run is refreshed.
+
+        A question that would now ask nothing leaves the dialog as it is. A
+        branch's work only grows while the question is open, so that case
+        does not arise, and closing the dialog under the reader would be a
+        surprise.
+        """
+
+        if self._reset_dialog is None or self._reset_question is None:
+            return
+
+        question = self._reset_question()
+
+        if question is not None:
+            self._reset_dialog.show_question(question)
 
     def _handle_reset_finished(self, result: int) -> None:
         self._resolve_reset(result == QDialog.DialogCode.Accepted)

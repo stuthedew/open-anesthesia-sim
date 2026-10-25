@@ -7542,11 +7542,13 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     sit outside the runs, and the halt restates them through
     `halt_restatements` (`PL-5JTH`). That test checks that each control is in
     a restated panel, not what the panel then says. This one checks what it
-    says. The run is drawn, then changed in what those panels state while
-    every frame fails: a mark is added, the playback rate changes and the
-    branch panel holds a refusal. The halted screen is compared with the same
-    dashboard once a frame draws it, widget by widget, so a panel that only a
-    frame writes fails here without being listed (`PL-WM5P`).
+    says. The run is drawn, and the branch panel is given a refusal. The
+    refusal comes before the halt because a halted trunk disables the branch
+    controls. Then what the other panels state is changed while every frame
+    fails: a mark is added and the playback rate changes. The halted screen
+    is compared with the same dashboard once a frame draws it, widget by
+    widget, so a panel that only a frame writes fails here without being
+    listed (`PL-WM5P`).
     """
 
     case = _branched_case()
@@ -7554,6 +7556,8 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     view = _case_view(application, case)
     _opened_bookmark_dialog(view)
     view.present(False)
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
@@ -7562,6 +7566,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     view.present(False)
 
     assert case.trunk.has_failed is True
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
     halted = _surface_states(view)
 
@@ -8234,6 +8239,35 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     assert view.case is case
     assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == before
     assert view.runs[TRUNK_RUN_INDEX].snapshot().elapsed_s == pytest.approx(60.0)
+
+
+def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
+    """`PL-WM5P`: the Reset question names the branch work as it stands, not as it was asked.
+
+    Reset stays enabled while the runs step, so a branch goes on running
+    while the trunk's question is open. The warning is a literal: four steps
+    of 0.1 s from the 60 s fork reach 1m0.4s, and four more reach 1m0.8s.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    branch = _branch_holding_work(view, application, "elapsed")
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    branch._start_button.click()
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+    assert dialog is not None
+    assert "run to 1m0.4s" in dialog.body_labels[1].text()
+
+    _steps(branch, 4)
+    view.present(False)
+
+    assert dialog.body_labels[1].text() == (
+        "Run 2 — branched at 1m and run to 1m0.8s, 0 recorded control changes — will be "
+        "discarded along with its chart history. This cannot be undone."
+    )
+    assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
 
 
 def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
