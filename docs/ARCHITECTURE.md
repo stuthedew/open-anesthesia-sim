@@ -309,7 +309,8 @@ different treatment:
 
 - `SimulationConfigurationError` — a value was rejected before it changed
   anything. Raised by the guards in `core/validation.py`, by the checked
-  types' constructors (`Fraction` and `Percent` in `core/concentration.py`,
+  types' constructors (`Fraction`, `Percent` and `MacPercent` in
+  `core/concentration.py`,
   and those in `core/supported_ranges.py` and `core/simulation_step.py`), by
   compartment constructors and setters, by a compartment field written
   directly, whose record checks every write in `__setattr__` (`PL-19Y0`), and

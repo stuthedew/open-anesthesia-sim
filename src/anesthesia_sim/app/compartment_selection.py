@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, RunCount, compared_compartments
-from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS
+from anesthesia_sim.app.dashboard_frame import displayed_run_count
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 
 __all__ = ["INITIAL_COMPARTMENT_SELECTION", "CompartmentSelection"]
@@ -89,7 +89,7 @@ class CompartmentSelection:
 
         # A frozen record can write its own field here, once. So the record
         # holds the checked count rather than the `int` it was given.
-        object.__setattr__(self, "run_count", _drawn_run_count(self.run_count))
+        object.__setattr__(self, "run_count", displayed_run_count(self.run_count))
         _, undrawn = compared_compartments(self.order, self.run_count)
 
         if undrawn:
@@ -168,42 +168,12 @@ class CompartmentSelection:
             ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
         """
 
-        count = _drawn_run_count(run_count)
+        count = displayed_run_count(run_count)
         drawn, _ = compared_compartments(self.order, count)
 
         return CompartmentSelection(
             tuple(quantity for quantity in self.order if quantity in drawn), count
         )
-
-
-def _drawn_run_count(run_count: int) -> RunCount:
-    """Build `run_count` as a `RunCount`, checking that the dashboard can draw that many runs.
-
-    `RunCount` rejects anything that is not a count of at least one run. The
-    upper bound, `MAX_DISPLAYED_RUNS`, is a limit of the dashboard, not of
-    counts in general, so this function checks it. Both error messages give
-    the range of run counts that the dashboard draws, which is what a reader
-    of a selection error needs to know.
-
-    Raises:
-        TypeError: If `run_count` is a `bool` or not an `int` (`RunCount`).
-        ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
-    """
-
-    out_of_range = ValueError(
-        f"a compartment selection is drawn across 1 to {MAX_DISPLAYED_RUNS} runs, the "
-        f"most the dashboard draws, not {run_count}"
-    )
-
-    try:
-        count = RunCount(run_count)
-    except ValueError as error:
-        raise out_of_range from error
-
-    if count > MAX_DISPLAYED_RUNS:
-        raise out_of_range
-
-    return count
 
 
 def _require_compartment(quantity: object) -> RecordedQuantity:

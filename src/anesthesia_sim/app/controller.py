@@ -41,7 +41,13 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    Percent,
+    fraction_from_percent,
+)
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -139,7 +145,7 @@ class RunSettings(RunStatus):
     agent_id: str
     agent_display_name: str
     max_delivered_concentration_percent: Percent
-    agent_mac_percent: Percent
+    agent_mac_percent: MacPercent
     """The running agent's 1 MAC, as a percent of one atmosphere.
 
     Exposed because the interface displays every compartment in multiples

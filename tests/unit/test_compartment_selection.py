@@ -23,7 +23,7 @@ from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
-from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS
+from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS, displayed_run_count
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 
 CIRCUIT = RecordedQuantity.CIRCUIT
@@ -312,6 +312,26 @@ def test_a_run_count_the_dashboard_cannot_draw_is_refused(run_count: int) -> Non
 
     with pytest.raises(ValueError, match=f"1 to {MAX_DISPLAYED_RUNS} runs"):
         INITIAL_COMPARTMENT_SELECTION.with_run_count(run_count)
+
+
+@pytest.mark.parametrize("run_count", [0, MAX_DISPLAYED_RUNS + 1])
+def test_the_selection_and_the_dashboard_refuse_one_range_in_one_sentence(run_count: int) -> None:
+    """The range of runs the dashboard displays is stated once (`PL-F9TC`).
+
+    The selection and the dashboard each checked the range in words of their
+    own until both read `displayed_run_count`.
+    """
+
+    with pytest.raises(ValueError) as from_selection:
+        CompartmentSelection((), run_count)
+
+    with pytest.raises(ValueError) as from_dashboard:
+        displayed_run_count(run_count)
+
+    assert str(from_selection.value) == str(from_dashboard.value)
+    assert (
+        str(from_dashboard.value) == f"the dashboard displays 1 to 2 runs at once, not {run_count}"
+    )
 
 
 def test_importing_the_selection_loads_no_toolkit() -> None:
