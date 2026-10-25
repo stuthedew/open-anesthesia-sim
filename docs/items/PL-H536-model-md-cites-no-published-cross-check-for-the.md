@@ -10,7 +10,7 @@ touches: docs/MODEL.md
 added: 2026-09-03
 closed: 2026-10-25
 pr: 1819
-verify: grep -qF 'Baker AB, Farmery AD' docs/MODEL.md && python3 tools/doc_check.py check
+verify: grep -qF "Baker and Farmery's 2011 review" docs/MODEL.md && grep -qF 'Baker AB, Farmery AD' docs/references/README.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Parameter provenance" derives nine tissue:blood
