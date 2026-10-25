@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: blocked-means-blocked
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-10-24
 payoff: closing an item's last blocker always names or refuses its dependents, whichever blocker cleared first
 verify: grep -q 'def test_an_item_whose_milestone_cleared_first_is_promotable' subprojects/docket/tests/test_plan.py

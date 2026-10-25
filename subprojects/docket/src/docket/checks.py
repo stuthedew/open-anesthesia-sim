@@ -2245,7 +2245,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
     _ready_with_an_open_blocker(report, known_items)
-    _blocked_with_every_blocker_closed(report)
+    _blocked_with_every_blocker_closed(report, milestones)
     _check_prose_dependencies(report)
 
     duplicates = [
@@ -3220,7 +3220,9 @@ def stale_blocked_error(item: Item) -> str:
     )
 
 
-def _blocked_with_every_blocker_closed(report: Report) -> None:
+def _blocked_with_every_blocker_closed(
+    report: Report, milestones: MilestoneStates | None = None
+) -> None:
     """Refuse `blocked` on an item whose every item blocker has closed.
 
     The mirror of `_ready_with_an_open_blocker`, and the half `PL-6T44` left
@@ -3239,13 +3241,15 @@ def _blocked_with_every_blocker_closed(report: Report) -> None:
     `plan.promotable` carries the 7-of-13 count - so the message offers both
     exits, `ready` or the real holding condition, and writes neither.
 
-    Items only, read through `plan.promotable` so that `docket next` and this
-    error name one set. A milestone blocker clears when a scoping round
-    happens, which needs the roadmap and is no closure, so that half stays the
-    advisory `_groom` raises. An id the store cannot place counts as
-    unresolved, so a typo is `_check_references`' error alone.
+    Read through `plan.promotable` so that `docket next` and this error name
+    one set. A milestone blocker alone clears when a scoping round happens,
+    which is no closure, so that case stays the advisory `_groom` raises. An
+    item that waits on an item as well, and whose milestones cleared first, is
+    refused here like any other, since an item's closure released it
+    (`PL-LL9F`). An id the store cannot place counts as unresolved, so a typo
+    is `_check_references`' error alone.
     """
-    report.errors.extend(stale_blocked_error(item) for item in promotable(report.items))
+    report.errors.extend(stale_blocked_error(item) for item in promotable(report.items, milestones))
 
 
 def _check_prose_dependencies(report: Report) -> None:
@@ -4098,6 +4102,11 @@ def _groom(
         if item.status != "blocked" or not versions:
             continue
         if not set(item.blocking_items) <= resolved:
+            continue
+        # An item blocker as well makes it `_blocked_with_every_blocker_closed`'s
+        # error once the milestones have cleared, since a closure released it
+        # (`PL-LL9F`), so this advisory is left to the milestone-only case.
+        if item.blocking_items:
             continue
         # A milestone blocker needs the roadmap to answer, and an unreadable
         # one declines: this advisory says an item may now be started, and
