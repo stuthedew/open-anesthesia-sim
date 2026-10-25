@@ -1,0 +1,4 @@
+time	session	guard	rule
+2026-10-25T19:25:49.366452+00:00	745d181b-415c-5613-beb4-56d5979d551c	gate-status-guard	status-swallowed
+2026-10-25T19:25:49.373521+00:00	745d181b-415c-5613-beb4-56d5979d551c	floor-interpreter-guard	floor-interpreter
+2026-10-25T19:25:52.644989+00:00	745d181b-415c-5613-beb4-56d5979d551c	gate-status-guard	status-swallowed
