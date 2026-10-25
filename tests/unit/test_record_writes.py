@@ -10,20 +10,29 @@ So these tests walk every class in `core/`. A class whose instances cannot be
 written is passed: a frozen dataclass, a frozen Pydantic payload, an
 exception, or a value type such as `Percent` that holds no field. Every other
 class must appear in `WRITES` below, with one entry for each of its fields.
-Each entry says which of four kinds of write the field takes:
+Each entry says which of six kinds of write the field takes:
 
 - `ONCE`: the field is written when the record is built, and a later write is
   refused, even of the value it already holds.
 - `CHECKED`: a later write is checked against the record's rule. The entry
   gives a value that passes the field's own check but breaks the rule, and the
   test writes it and expects a refusal.
-- `OWN`: no rule ties the field to another field of the record, so the field's
-  own check is all that a write needs. The entry says why.
+- `ACCOUNTED`: the field holds agent, or a total of it, and the rule that
+  ties it to the rest is the uptake system's accounting identity. The system
+  checks that identity at every step, which halts the run, and at every read
+  of its accounting. The entry builds a system holding agent, finds the record
+  in it and gives a value that breaks the identity. The test writes it and
+  expects the next accounting read to fail.
+- `OWN`: no rule ties the field to another field, so the field's own check is
+  all that a write needs. The entry says why.
 - `PRIVATE`: the field is private to its module and written only by the
   record's own methods. The entry says why.
+- `GAP`: a rule ties the field to another field and nothing checks it yet. The
+  entry names the open item that will.
 
 A new mutable class, or a new field on one, fails the first test until it is
-given an entry. A guard that stops refusing a write fails the second or third.
+given an entry. A guard that stops refusing a write fails the test for its
+kind.
 """
 
 from __future__ import annotations
@@ -31,6 +40,7 @@ from __future__ import annotations
 import dataclasses
 import importlib
 import inspect
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -48,7 +58,7 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -62,8 +72,10 @@ CORE = Path(core.__file__).resolve().parent
 
 ONCE = "once"
 CHECKED = "checked"
+ACCOUNTED = "accounted"
 OWN = "own"
 PRIVATE = "private"
+GAP = "gap"
 
 
 @dataclass(frozen=True)
@@ -71,19 +83,23 @@ class Write:
     """How one field of a mutable record is kept safe when it is written after the record is built.
 
     Attributes:
-        kind: `ONCE`, `CHECKED`, `OWN` or `PRIVATE`, as the module docstring
-            describes.
+        kind: one of the six kinds the module docstring describes.
         build: for `ONCE` and `CHECKED`, a function that builds the record.
-        breaking: for `CHECKED`, a function that returns, for the built
-            record, a value that passes the field's own check but breaks the
-            record's rule.
-        why: for `OWN` and `PRIVATE`, why a later write needs no check
-            against another field.
+            For `ACCOUNTED`, a function that builds an uptake system holding
+            agent.
+        breaking: for `CHECKED` and `ACCOUNTED`, a function that returns, for
+            the record, a value that passes the field's own check but breaks
+            the rule.
+        locate: for `ACCOUNTED`, a function that returns the record from the
+            system that `build` returns.
+        why: for `ACCOUNTED`, `OWN`, `PRIVATE` and `GAP`, why the write needs
+            no check at the write. A `GAP` entry names its open item.
     """
 
     kind: str
     build: Callable[[], Any] | None = None
     breaking: Callable[[Any], object] | None = None
+    locate: Callable[[AgentUptakeSystem], Any] | None = None
     why: str = ""
 
 
@@ -147,19 +163,39 @@ def _halved_fraction(field: str) -> Callable[[PatientCompartments], TissueGroup]
     return breaking
 
 
+def _system_holding_agent() -> AgentUptakeSystem:
+    """The default sevoflurane system after 20 of its largest steps at its opening settings."""
+
+    system = AgentUptakeSystem.default()
+
+    for _ in range(20):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    return system
+
+
+def _accounted(
+    locate: Callable[[AgentUptakeSystem], Any], breaking: Callable[[Any], object], why: str
+) -> Write:
+    return Write(ACCOUNTED, _system_holding_agent, breaking, locate, why)
+
+
+_ACCOUNTING = (
+    "The identity ties the field to every other store of agent in the system, and the "
+    "system checks it at every step and at every read of its accounting."
+)
+
+
 def _state_part_way() -> SimulationState:
     return SimulationState(step_count=StepCount(3), simulation_step_s=SimulationStep(0.1))
 
 
 WRITES: dict[str, dict[str, Write]] = {
     "agent_simulation_validation.AgentSimulationValidator": {
-        total: Write(
-            OWN,
-            why=(
-                "No total is checked against another. The accounting identity ties the "
-                "three totals to the agent the system's parts store, and the system "
-                "checks it at every step and at every read of its accounting."
-            ),
+        total: _accounted(
+            lambda system: system.agent_simulation_validator,
+            lambda validator, total=total: getattr(validator, total) + 1.0,
+            _ACCOUNTING,
         )
         for total in ("initial_agent_l", "delivered_agent_l", "exhausted_agent_l")
     },
@@ -176,14 +212,12 @@ WRITES: dict[str, dict[str, Write]] = {
         "agent_amount_l": Write(CHECKED, _venous_blood, lambda blood: 2.0),
     },
     "circuit.BreathingCircuit": {
-        "circuit_volume_l": Write(
-            OWN,
-            why=(
-                "The circuit stores its agent as a fraction of its volume, so no rule of "
-                "the circuit ties the two. A volume written directly changes the agent the "
-                "circuit holds, and the system's accounting halts the run on that at the "
-                "next step. `set_circuit_volume` is the write that conserves the agent."
-            ),
+        "circuit_volume_l": _accounted(
+            lambda system: system.circuit,
+            lambda circuit: circuit.circuit_volume_l * 2.0,
+            "The circuit stores its agent as a fraction of its volume, so a volume written "
+            "directly changes the agent the circuit holds. `set_circuit_volume` is the "
+            "write that conserves the agent. " + _ACCOUNTING,
         ),
         "fresh_gas_flow_l_min": Write(CHECKED, _circuit, lambda circuit: FreshGasFlow(9.0)),
         "delivered_concentration_percent": Write(CHECKED, _circuit, lambda circuit: Percent(9.0)),
@@ -207,11 +241,12 @@ WRITES: dict[str, dict[str, Write]] = {
         "muscle": Write(CHECKED, _patient, _halved_fraction("muscle")),
         "fat": Write(CHECKED, _patient, _halved_fraction("fat")),
         "venous_blood": Write(
-            OWN,
+            GAP,
             why=(
-                "No rule the patient checks ties the venous pool to another field. Its "
-                "blood:gas coefficient should equal the tissue groups' own copies, but "
-                "nothing checks that, at a write or when the patient is built (PL-YXGX)."
+                "A replaced pool's agent is held to the accounting identity, which the "
+                "system checks at every step and read. Its blood:gas coefficient should "
+                "equal the tissue groups' own copies, and nothing checks that, at a write "
+                "or when the patient is built (PL-YXGX)."
             ),
         ),
     },
@@ -238,7 +273,7 @@ WRITES: dict[str, dict[str, Write]] = {
         "volume_l": Write(CHECKED, _tissue_group, lambda group: 1.0),
         "perfusion_fraction": Write(ONCE, _tissue_group),
         "blood_gas_partition_coefficient": Write(
-            OWN,
+            GAP,
             why=(
                 "No rule of the group ties it to another of the group's fields. Its "
                 "agreement with the venous pool's copy is not checked anywhere (PL-YXGX)."
@@ -401,12 +436,43 @@ def test_every_cross_field_invariant_holds_after_a_field_write(
     assert getattr(record, field) is held
 
 
-@pytest.mark.parametrize(("key", "field", "write"), _entries(OWN) + _entries(PRIVATE))
-def test_a_field_written_without_a_rule_says_why(key: str, field: str, write: Write) -> None:
+@pytest.mark.parametrize(("key", "field", "write"), _entries(ACCOUNTED))
+def test_a_write_that_breaks_the_accounting_fails_the_next_accounting_read(
+    key: str, field: str, write: Write
+) -> None:
+    assert write.build is not None
+    assert write.locate is not None
+    assert write.breaking is not None
+    system = write.build()
+    record = write.locate(system)
+
+    assert system.agent_simulation_validation.passes_validation
+
+    setattr(record, field, write.breaking(record))
+
+    assert not system.agent_simulation_validation.passes_validation
+
+
+@pytest.mark.parametrize(
+    ("key", "field", "write"),
+    _entries(ACCOUNTED) + _entries(OWN) + _entries(PRIVATE) + _entries(GAP),
+)
+def test_a_field_written_without_a_check_at_the_write_says_why(
+    key: str, field: str, write: Write
+) -> None:
     assert write.why.strip()
 
     if write.kind == PRIVATE:
         assert field.startswith("_") or key.split(".")[-1].startswith("_")
+
+    if write.kind == GAP:
+        assert re.search(r"\bPL-[0-9A-Z]{4}\b", write.why)
+
+
+def test_every_entry_is_of_a_known_kind() -> None:
+    kinds = {write.kind for entries in WRITES.values() for write in entries.values()}
+
+    assert kinds <= {ONCE, CHECKED, ACCOUNTED, OWN, PRIVATE, GAP}
 
 
 def test_a_mutable_class_with_no_entry_is_named() -> None:

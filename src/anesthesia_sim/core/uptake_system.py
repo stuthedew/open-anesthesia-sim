@@ -137,8 +137,10 @@ class AgentUptakeSystem:
         The accounting identity compares the agent the parts store with the
         anchor set here, plus what has been delivered and less what has been
         exhausted since. So the anchor is a statement about these parts.
-        `__setattr__` refuses a part written onto the built system, which keeps
-        the anchor true for the system's whole life (`PL-N7MM`).
+        `__setattr__` refuses a part written onto the built system, so the
+        anchor always describes the parts the system holds (`PL-N7MM`). Agent
+        written straight into a part's own store, past its methods, is not
+        refused here. The accounting check finds it at the next step or read.
         """
 
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
@@ -158,14 +160,25 @@ class AgentUptakeSystem:
 
             The system's parts are its circuit, its alveoli, its patient and
             its accounting validator. Each is written once, when the system is
-            built. A part written later would replace a store of agent that
-            the accounting anchor counted. The anchor would then describe parts
-            the system no longer holds. The next step's accounting check would
-            halt the run and blame the numerics for what was a swapped part
-            (`reset`'s docstring describes the same failure). Nothing in `src/`
-            replaces a part, so the write is refused outright rather than
-            re-anchored. A different part means a different system: build a
-            new one (`PL-N7MM`).
+            built, and the parts are built together for one agent. A part
+            written later can break that in two ways. If it holds agent the
+            anchor did not count, the next step's accounting check halts the
+            run and blames the numerics for what was a swapped part (`reset`'s
+            docstring describes the same failure). If it holds no agent but was
+            built for another agent, no check finds it at all. Nothing in
+            `src/` replaces a part, so the write is refused outright, which
+            names the cause at the write in both cases. A different part means
+            a different system: build a new one with the constructor
+            (`PL-N7MM`).
+
+            A tissue group or the venous pool written onto the patient is one
+            level down. The patient checks a new group against its perfusion
+            fractions, and the agent either one holds is left to the
+            accounting check, as is agent written straight into a part's own
+            store. `dataclasses.replace`
+            is not a way to do that, because the copy it builds shares the
+            parts and the validator it is not given with the original, and
+            its constructor then re-anchors the shared validator.
 
             The constructor, a copy and a pickle write each part onto a system
             that has none yet, so those writes are accepted. The cached
@@ -182,7 +195,7 @@ class AgentUptakeSystem:
                 raise SimulationConfigurationError(
                     f"the system's {name} cannot be replaced once the system is built, "
                     "because its agent accounting is anchored to the agent its parts held "
-                    "when it was built: build a new system from the new part"
+                    "when it was built: build a new AgentUptakeSystem from the new part"
                 )
 
             super().__setattr__(name, value)

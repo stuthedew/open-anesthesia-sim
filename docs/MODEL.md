@@ -1498,6 +1498,22 @@ $$
 Here $`M_{\mathrm{scale}}`$ is a documented small positive reference amount
 that prevents division by zero.
 
+**$`M_{\mathrm{initial}}`$ is counted from the system's own parts, which are
+written once** (`PL-N7MM`). The parts are the circuit, the alveoli, the patient
+and the accounting validator, built together for one agent. A part written
+onto a built system is refused with a `SimulationConfigurationError`. A part
+holding agent the anchor did not count would otherwise halt the next step on
+this identity, which blames the numerics for a swapped part. An empty part
+built for another agent would pass the identity and no check would find it.
+The refusal covers the parts themselves. Agent written straight into a part's
+own store, or held by a tissue group or venous pool written onto the patient,
+is not refused at the write: this identity finds it at the next step or read.
+`tests/unit/test_record_writes.py` walks every class in `core/`. It fails on a
+field of a mutable record that neither refuses a later write nor is checked
+against a rule, at the write or by this identity, unless the field's entry
+says why no rule ties it to another field or names the open item that will
+check it.
+
 Two bounds apply, and each one addresses a different question.
 
 **The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
@@ -6563,6 +6579,9 @@ a bare `float` step is refused with a `TypeError`. A count past zero with no
 step, or a pair past the run length, is refused with a
 `SimulationConfigurationError`. This matches what § "Supported input ranges"
 says of a flow written onto its compartment (`PL-LBQY`).
+The state's uptake system is written once, when the state is built, because
+the count says how far that one system has been advanced. A later write is
+refused with a `SimulationConfigurationError` (`PL-N7MM`).
 `SimulationState.elapsed_s` builds its product as a `CaseInstant`. That
 constructor never refuses the product, because the count being multiplied is
 decided on that same product (`PL-8H2R`). An instant that a run is only
@@ -6574,21 +6593,6 @@ derived instant or count is never treated as checked. The control record's
 instants are `ControlChange.elapsed_s` and an adjustment's start and end. They
 are still annotated `float`, though each is taken from a `CaseInstant`
 (`PL-RCYZ`).
-
-**The system the count belongs to, and the system's parts, are written once**
-(`PL-N7MM`). The count says how far one uptake system has been advanced. So
-the state's `uptake_system` is written when the state is built, and a later
-write is refused with a `SimulationConfigurationError`. The system's four
-parts are written once for the same kind of reason. They are its circuit, its
-alveoli, its patient and its accounting validator. The accounting anchor
-counts the agent those parts held when the system was built. A part written
-in later would leave the anchor counting agent the system no longer holds,
-and the next step's accounting check would halt the run and blame the
-numerics. A different part means a different system, so a new one is built.
-`tests/unit/test_record_writes.py` walks every class in `core/`. It fails on a
-field of a mutable record that neither refuses a later write nor checks the
-write against the record's rule, unless the field's entry says why no rule
-ties it to another field.
 
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting. It is refused when a caller
