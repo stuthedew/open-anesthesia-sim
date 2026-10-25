@@ -500,9 +500,11 @@ def test_moving_any_setting_moves_the_propagator_cache_key(
 def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
     """Check end to end that the key change affects the propagator, not just the tuple.
 
-    Two systems stepped under the same final ventilation must agree, whether
-    that ventilation was set before the first step or after it. If the cache
-    returned the stale propagator they would not.
+    Both systems take one step, have their ventilation changed, and take a
+    second step. They differ only in that `rebuilt` has its propagator cache
+    cleared before the second step, so it must build the matrix afresh. The
+    two must agree. If the cache in `changed` returned the stale propagator,
+    they would not.
     """
 
     changed = AgentUptakeSystem.for_agent("sevoflurane")
