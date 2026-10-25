@@ -2464,11 +2464,11 @@ def test_a_halted_run_shows_the_new_playback_rate(
 ) -> None:
     """`PL-P58M`: a halted run states one playback rate, the one the reader just chose.
 
-    The clock's second line is in the readout row, which a halt does not
-    write, because its readouts are compartment values only a frame can
-    state. Until `PL-P58M` a rate chosen on a halted run reached the dropdown
-    and not the clock, so the screen showed 5x in one place and 1x in the
-    other.
+    The clock's second line sits in the readout row. A halt does not write
+    that row, because its readouts are compartment values that only a frame
+    can state. Until `PL-P58M`, a rate chosen on a halted run reached the
+    dropdown but not the clock, so the screen showed 5x in one place and 1x
+    in the other.
     """
 
     controller = _paused_run_with_history()
@@ -3422,8 +3422,9 @@ def test_an_open_new_case_question_follows_a_running_run(application: QApplicati
     """`PL-WM5P`: the question states what the new case discards as the run stands now.
 
     The run is not paused while the question is open, so a running run goes
-    on stepping. The question was written once, when it opened, so its
-    figure for the run time about to be discarded fell behind the clock.
+    on stepping. Before the fix, the question was written only once, when it
+    opened, so its figure for the run time about to be discarded fell behind
+    the clock.
     """
 
     controller = _paused_run_with_history(60.0)
@@ -7478,9 +7479,11 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     )
 
 
-#: The widgets outside every run that a halted dashboard and the same dashboard
-#: drawn may show differently, each with the reason only a frame can state it.
-#: Held live in both directions, as `FRAME_WIDGETS` is (`PL-WM5P`).
+#: The widget types outside every run that may show differently on a halted
+#: dashboard and on the same dashboard once a frame draws it. Each type maps to
+#: the reason that only a frame can state it. The test below checks this list
+#: in both directions, as it checks `FRAME_WIDGETS`: an unlisted difference
+#: fails, and so does an entry that no longer differs (`PL-WM5P`).
 SURFACE_FRAME_WIDGETS: dict[str, str] = {
     "QScrollBar": (
         "the page's scroll bar follows the height the frame lays the page out at, "
@@ -7519,10 +7522,11 @@ def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
 
 
 def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]:
-    """What a reader sees of every widget outside the runs, read afresh.
+    """Return what a reader sees of every widget outside the runs, read afresh.
 
-    Walked again for each reading, so a row a frame adds, such as a newly
-    listed mark, is a difference too rather than a widget nobody compares.
+    The window is walked again on each call. So a row that a frame adds, such
+    as a newly listed mark, shows up as a difference rather than as a widget
+    that nobody compares.
     """
 
     return {
@@ -7534,21 +7538,22 @@ def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]
 def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt states the run on every panel outside the runs, by default rather than by a list.
+    """A halt states the run on every panel outside the runs, found by a walk rather than a list.
 
     `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
-    holds each `RunView` to one writer of its run state (`PL-X7D5`). The
-    branch panel, the marks panel, the marks editor and every Area's header
-    sit outside the runs, and the halt restates them through
-    `halt_restatements` (`PL-5JTH`). That test checks that each control is in
-    a restated panel, not what the panel then says. This one checks what it
-    says. The run is drawn, and the branch panel is given a refusal. The
-    refusal comes before the halt because a halted trunk disables the branch
-    controls. Then what the other panels state is changed while every frame
-    fails: a mark is added and the playback rate changes. The halted screen
-    is compared with the same dashboard once a frame draws it, widget by
-    widget, so a panel that only a frame writes fails here without being
-    listed (`PL-WM5P`).
+    checks that each `RunView` has one writer of its run state (`PL-X7D5`).
+    The branch panel, the marks panel, the marks editor and every Area's
+    header sit outside the runs, and the halt restates them through
+    `halt_restatements` (`PL-5JTH`). `test_every_dashboard_control_is_restated_on_a_halt`
+    checks that each control is in a restated panel, but not what the panel
+    then says. This test checks what it says. The run is drawn, and the
+    branch panel is given a refusal. The refusal comes before the halt,
+    because a halted trunk disables the branch controls. Then, while every
+    frame fails, the test changes what the other panels state: it adds a
+    mark and changes the playback rate. Finally it compares the halted
+    screen, widget by widget, with the same dashboard once a frame draws it.
+    So a panel that only a frame writes fails this test even though no list
+    names it (`PL-WM5P`).
     """
 
     case = _branched_case()
@@ -7595,7 +7600,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
 def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The guard above sees a panel that the halt leaves as the last frame drew it.
+    """The guard above catches a panel that a halt leaves as the last frame drew it.
 
     The marks panel's restatement is switched off here. The mark added while
     frames fail is then listed on the drawn dashboard and not on the halted
@@ -7970,10 +7975,10 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
 
 
 def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplication) -> None:
-    """`PL-BM6X`: a notice about the case before an agent change goes with that case.
+    """`PL-BM6X`: an agent change clears a branch-panel notice about the case it ended.
 
     An agent change on the trunk starts a new case, as Reset does. Until
-    `PL-BM6X` only Reset told the dashboard so, and the branch panel went on
+    `PL-BM6X`, only Reset told the dashboard so, and the branch panel went on
     saying "Select an instant to branch at" about a case no longer on screen.
     Both ways of changing the agent are checked: a run that has recorded
     something asks first, and one that has recorded nothing switches at once.
@@ -8242,11 +8247,12 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
 
 
 def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
-    """`PL-WM5P`: the Reset question names the branch work as it stands, not as it was asked.
+    """`PL-WM5P`: the Reset question names the branch work as it stands now, not when asked.
 
     Reset stays enabled while the runs step, so a branch goes on running
-    while the trunk's question is open. The warning is a literal: four steps
-    of 0.1 s from the 60 s fork reach 1m0.4s, and four more reach 1m0.8s.
+    while the trunk's question is open. The test compares the warning with a
+    literal string: four steps of 0.1 s from the 60 s fork reach 1m0.4s, and
+    four more reach 1m0.8s.
     """
 
     case = _branched_case()

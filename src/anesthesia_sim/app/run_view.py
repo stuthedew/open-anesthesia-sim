@@ -628,12 +628,13 @@ class RunView(QWidget):
         the run on every widget that a frame would. A widget added to the
         statement is written on both paths or on neither.
 
-        The playback line under the clock is written here as well. It sits in
-        the readout row, which `refresh` writes from the snapshot and a halt
-        does not write, but it states the run's playback rate rather than a
-        compartment value. Before `PL-P58M` only the readout row wrote it, so
-        a rate chosen on a halted run reached the dropdown and not the clock.
-        On `refresh` the row writes the same text first, from the same rate.
+        This method also writes the playback line under the clock. That line
+        sits in the readout row, which `refresh` writes from the snapshot and
+        a halt does not write. But the line states the run's playback rate,
+        not a compartment value. Before `PL-P58M`, only the readout row wrote
+        it, so a rate chosen on a halted run reached the dropdown but not the
+        clock. On `refresh`, the readout row first writes the same text from
+        the same rate.
 
         Both paths write in one order. The agent colour comes first, before
         anything that shows it. The dials come last, because
@@ -1135,15 +1136,16 @@ class RunView(QWidget):
         The trunk's Reset question names each branch it discards and the
         instant that branch has run to. Reset stays enabled while the runs
         step, and a branch goes on stepping while the question is open. So a
-        question written once, when it opened, understated the branch work
-        the reader was about to discard (`PL-WM5P`). The dashboard's
-        `ask_before_reset` callback reads every branch's controller, which
-        has already stepped when this run is refreshed.
+        question written only once, when it opened, understated the branch
+        work that the reader was about to discard (`PL-WM5P`). The
+        dashboard's `ask_before_reset` callback reads every branch's
+        controller, and each controller has already stepped by the time this
+        run is refreshed.
 
-        A question that would now ask nothing leaves the dialog as it is. A
-        branch's work only grows while the question is open, so that case
-        does not arise, and closing the dialog under the reader would be a
-        surprise.
+        If the callback now returns no question, the dialog is left as it
+        is. That case does not arise, because a branch's work only grows
+        while the question is open. Closing the dialog under the reader
+        would also be a surprise.
         """
 
         if self._reset_dialog is None or self._reset_question is None:
@@ -1317,11 +1319,11 @@ class RunView(QWidget):
         the meantime outdates.
 
         **An accepted switch emits `case_restarted`**, as Reset does, because
-        it too starts a new case. The signal goes out inside the setting
-        call, after `set_agent` has returned and before the frame is asked
-        for, so the dashboard drops what answered to the old case before it
-        draws: a branch refusal on the branch panel included (`PL-BM6X`). A
-        refused switch changes nothing and emits nothing.
+        it too starts a new case. The signal is emitted inside the setting
+        call, after `set_agent` returns and before the frame is requested.
+        So the dashboard drops everything that belonged to the old case
+        before it draws, including a refusal on the branch panel
+        (`PL-BM6X`). A refused switch changes nothing and emits nothing.
         """
 
         if self._snapshot_for_a_control() is None:
@@ -1360,11 +1362,12 @@ class RunView(QWidget):
         """Rewrite an open new-case question from the frame's snapshot.
 
         The question states how much run time and how many control changes
-        the new case discards. The run is not paused while it is asked, so a
-        running run goes on stepping, and a question written once when it
-        opened understated what the reader was about to lose (`PL-WM5P`). A
-        halt writes nothing here because a halted run does not step, so the
-        last frame's figure is still the run's.
+        the new case discards. The run is not paused while the question is
+        open, so a running run goes on stepping. A question written only
+        once, when it opened, therefore understated what the reader was
+        about to lose (`PL-WM5P`). A halt does not rewrite the question. A
+        halted run does not step, so the figure from the last frame is still
+        correct.
 
         Args:
             snapshot: The snapshot the frame drew from.
