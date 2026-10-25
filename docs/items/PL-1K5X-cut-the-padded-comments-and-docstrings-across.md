@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.7
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app, src/anesthesia_sim/layout, src/anesthesia_sim/app_metadata.py, docs/items/PL-21KP-present-tense-flet-claims-survive-the-qt-port.md
 added: 2026-09-05
 closed: 2026-10-25

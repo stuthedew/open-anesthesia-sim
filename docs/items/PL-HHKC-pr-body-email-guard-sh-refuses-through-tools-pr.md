@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: defect-review-2026-10
+milestone: v0.6.7
 touches: tools/pr_body_check.py, tests/unit/test_hook_blocks.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25

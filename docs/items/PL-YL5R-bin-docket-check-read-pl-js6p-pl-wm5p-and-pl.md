@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.7
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-10-25
 closed: 2026-10-25
