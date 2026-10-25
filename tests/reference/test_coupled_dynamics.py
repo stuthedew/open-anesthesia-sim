@@ -366,24 +366,27 @@ def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
 
 # The setting-change trajectories the gate drives. They were found by sweeping the
 # corners of both phases' settings, and then each axis separately around the
-# worst corner. What the sweep showed, and why these two trajectories are kept:
+# worst corner. The sweep was run while the operator split was the shipped
+# method, and it measured the split's error. What it showed, and why these two
+# trajectories are kept:
 #
-#   - The worst disagreement always comes at the first transition after the
-#     loading phase saturates. Repeating the cycle three or six times does not
-#     raise the peak at all, and shortening the phases lowers it. So the
-#     disagreement is bounded rather than accumulating over a run. Re-measured
-#     under the exact step, this is still true, and more sharply: on the
-#     ventilator start the running maximum at 60 s, 600 s, 1800 s and 3600 s is
-#     the same number, reached at about 306 s and never approached again.
+#   - The worst disagreement always came at the first transition after the
+#     loading phase saturated. Repeating the cycle three or six times did not
+#     raise the peak at all, and shortening the phases lowered it. So the
+#     split's disagreement was bounded rather than accumulating over a run. The
+#     exact step's residual is rounding, which does accumulate. On the
+#     ventilator start, only sevoflurane still peaks just after the transition,
+#     at 306.4 s. Isoflurane and desflurane peak in the run's last 0.5 s
+#     (measured 2026-10-25, `PL-S86L`).
 #   - Inserting a third phase between the two never beat the pair. The best
 #     middle phases were the ones that simply held the loading corner longer.
-#   - Every axis is monotone toward the corner used, except cardiac output in
-#     the loading phase. That axis is worst at zero, which is the opposite end
-#     from the constant-setting corner, where cardiac output is worst at the
+#   - Every axis was monotone toward the corner used, except cardiac output in
+#     the loading phase. That axis was worst at zero, which is the opposite end
+#     from the constant-setting corner, where cardiac output was worst at the
 #     maximum.
 #
-# The sweep was run while the split was the shipped method, and its ordering of
-# the two scenarios has since reversed (see `_unperfused_load_then_dial_off`).
+# The sweep's ordering of the two scenarios has since reversed (see
+# `_unperfused_load_then_dial_off`).
 # So what the sweep establishes now is that these two bracket what a turning
 # trajectory does, not which of them is the extreme. Monotonicity is measured,
 # not proved. A change to the governing equations could move the maximum off
@@ -403,19 +406,23 @@ ALL_GATE_TRAJECTORIES = (
 )
 
 
-# This horizon is long enough to contain the worst disagreement anywhere in the
-# envelope. At the corner, the worst disagreement occurs early in the wash-in
-# transient: at 5.4 s for isoflurane, 6.6 s for sevoflurane and 7.2 s for
-# desflurane. The running maximum is unchanged to every digit whether the run
-# stops at 60 s, 600 s, 1800 s or 3600 s. The trajectory gates therefore run to
-# 600 s and take the maximum over the whole trajectory rather than sampling
-# endpoints.
+# The trajectory gates run to 600 s and take the maximum over the whole
+# trajectory rather than sampling endpoints. A 600 s run contains the instants at
+# which the operator split's error peaked: inside the wash-in transient at held
+# settings, and shortly after a setting change. That kind of error is what the
+# gate exists to catch.
 #
-# Held *default* settings are the exception, and they are why `HORIZONS_S` still
-# has a 3600 s entry. At held defaults nothing transient is happening. The
-# residual is rounding that accumulates with the step count, and it keeps growing
-# for the whole hour. A maximum taken over 600 s cannot see that growth. Only a
-# longer run can, which is what
+# It does not contain the largest rounding residual. Under the exact step the
+# residual is rounding that accumulates with the step count, so nine of the
+# fifteen pairs of agent and trajectory reach their worst in the run's last
+# 1.5 s. At the corner the peaks are at 599.9 s for isoflurane and 600.0 s for
+# sevoflurane and desflurane (measured 2026-10-25, `PL-S86L`). A run that went on
+# longer could only report the same maximum or a larger one.
+#
+# Held *default* settings are where that growth is followed, and they are why
+# `HORIZONS_S` still has a 3600 s entry. At held defaults nothing transient is
+# happening, and the residual keeps growing for the whole hour. A maximum taken
+# over 600 s cannot see that growth. Only a longer run can, which is what
 # `test_the_shipped_step_reaches_the_pinned_reference_horizons` is for.
 ENVELOPE_HORIZON_S = 600.0
 
@@ -607,8 +614,10 @@ ORACLE_STEP_S = 0.0125
 # oracle, these figures spread over two orders of magnitude, and the violent
 # trajectories carried the large numbers. They now sit within a factor of 1.8 of
 # each other. That is because what is left after the oracle's truncation is
-# removed is rounding. Rounding is set by the number of steps taken, which is
-# 6 000 for each of them, rather than by how far the settings move. A trajectory
+# removed is rounding. Rounding does not grow with how far the settings move. Nor
+# does it follow the step count closely: four of the trajectories take 6 000
+# steps and the unperfused load takes 9 000, yet the unperfused load gives the
+# smallest figure. A trajectory
 # here earns its place by the domain it covers, not by the size of the residual
 # it produces.
 #
@@ -1143,9 +1152,13 @@ def _worst_error_over_phases(
     piecewise schedules.
 
     Sampling endpoints is not enough here, and neither is one held setting.
-    Except at held default settings, the worst disagreement is always inside a
-    transient: either the wash-in transient or one that a setting change
-    starts. Stepping the two solutions in lockstep and taking the maximum costs
+    The worst disagreement does not sit at one predictable instant. Under the
+    exact step it mostly falls in a run's last seconds, where rounding has
+    accumulated longest, but on the unperfused load it falls in the loading
+    phase.
+    Under the operator split it fell inside a transient, either the wash-in
+    transient or one that a setting change starts. Stepping the two solutions
+    in lockstep and taking the maximum costs
     nothing extra, because the RK4 integration is the expensive part and it
     happens either way.
 
@@ -1306,9 +1319,10 @@ def test_exact_step_matches_the_independent_solution_everywhere(
     same states.
 
     The test covers every agent and every gate trajectory. It takes the
-    maximum over the whole run rather than at the endpoint, because outside
-    held default settings the worst disagreement is always inside a transient.
-    This test cannot see a full hour of held settings.
+    maximum over the whole run rather than at the endpoint, because the worst
+    disagreement does not sit at one predictable instant. On the unperfused
+    load it falls in the loading phase, and on most other runs it falls in the
+    run's last seconds. This test cannot see a full hour of held settings.
     `test_the_shipped_step_reaches_the_pinned_reference_horizons` covers that
     case.
     """
