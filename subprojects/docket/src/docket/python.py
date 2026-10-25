@@ -30,6 +30,7 @@ import io
 import tokenize
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TypeVar
 
 #: The token types that hold no code: a comment, and the layout between
 #: lines and blocks. `NEWLINE`, which ends a logical line, is read as that.
@@ -287,6 +288,39 @@ def docstrings(tree: ast.AST) -> list[ast.Constant]:
         and isinstance(node.value, ast.Constant)
         and isinstance(node.value.value, str)
     ]
+
+
+#: The fields of a node that hold a list of statements, where a docstring can stand.
+STATEMENT_LISTS = ("body", "orelse", "finalbody")
+
+#: A syntax tree of any node type, which `without_docstrings` returns as it was given.
+Tree = TypeVar("Tree", bound=ast.AST)
+
+
+def without_docstrings(tree: Tree) -> Tree:
+    """The same tree with every string `docstrings` returns removed, changed in place.
+
+    A body left empty is left empty, so the tree is for reading or comparing,
+    never for compiling. `tools/fixture_id_check.py` drops prose this way
+    before it scans a module's strings (`PL-8W1J`), and `tools/ast_identity.py`
+    before it compares two versions of a module (`PL-6GP9`). The two read one
+    definition of a docstring because they read this one function.
+    """
+    prose = {id(node) for node in docstrings(tree)}
+    for node in list(ast.walk(tree)):
+        for name in STATEMENT_LISTS:
+            statements = getattr(node, name, None)
+            if isinstance(statements, list):
+                setattr(
+                    node,
+                    name,
+                    [
+                        statement
+                        for statement in statements
+                        if not (isinstance(statement, ast.Expr) and id(statement.value) in prose)
+                    ],
+                )
+    return tree
 
 
 #: The call names whose first argument, where it is a literal string, names a
