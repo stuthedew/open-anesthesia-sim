@@ -302,7 +302,8 @@ constants computed at import time, and 1 by a test added after the run. The
 other 18 were not run in the time the audit had. One low gap can be reached
 today: `fit_to_run__mutmut_13` widens the fitted time axis from 24 hours to 48
 hours on the last step of a run that reaches the 86,400 s limit. The caption
-is then misleading, but no value is wrong.
+is then misleading, but no value is wrong. A test added on 2026-10-24 now
+catches it (`PL-9DF9`).
 
 Mutation testing was one of five methods the audit used. The others were
 fault injection, stored-value perturbation, a review of where each test's

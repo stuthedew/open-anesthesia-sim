@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_chart_frame.py, tests/unit/test_supported_range_edges.py
+touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_chart_frame.py, tests/unit/test_supported_range_edges.py, tests/unit/test_dashboard_frame.py, docs/mutation-testing.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-12 triage pass
 added: 2026-10-11
 closed: 2026-10-24
