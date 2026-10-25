@@ -356,7 +356,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
 def _settings(
     volumes: tuple[float, float, float], blood_gas: float, tissues: tuple[tuple[float, float], ...]
 ) -> UptakeEquationSettings:
-    """Settings at the widest supported flows, with cardiac output split as the shipped patient's."""
+    """Settings at the widest supported flows, with cardiac output split as the patient file's."""
 
     circuit_l, alveolar_l, venous_l = volumes
     patient = load_reference_adult_parameters()

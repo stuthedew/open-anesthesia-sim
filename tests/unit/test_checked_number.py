@@ -2,8 +2,9 @@
 
 `core/checked_number.py` sets the rule for every checked type: `Fraction`,
 `Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant`,
-`StepCount`, `CompartmentVolume` and `PartitionCoefficient`. The rule says what may be built into one, that none is built from
-another, and how a zero is stored. Each type's own tests check that the type
+`StepCount`, `CompartmentVolume` and `PartitionCoefficient`. The rule says what
+may be built into one, that none is built from another, and how a zero is
+stored. Each type's own tests check that the type
 follows the rule. These tests check the rule itself, so that a change to it
 fails here before any type's tests fail (`PL-LLMN`, `PL-979Z`).
 """

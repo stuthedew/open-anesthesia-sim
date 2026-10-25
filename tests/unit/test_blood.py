@@ -423,3 +423,30 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
     venous.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
 
     assert venous.agent_amount_l > held_l
+
+
+@pytest.mark.parametrize("invalid_value", [0.0, -1.0, inf, nan])
+def test_rejects_invalid_venous_volume(invalid_value: float) -> None:
+    """`PL-X8F6`: a zero, negative or non-finite venous volume is refused at construction.
+
+    Since `PL-QX2G`, the refusal of the value comes from `CompartmentVolume`, built
+    before the pool. The pool itself refuses the bare value, because it was never
+    checked against the envelope.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^venous volume_l of .* is outside the numerical envelope of 0\.01 to 10000 L",
+    ):
+        VenousBloodCompartment(
+            volume_l=CompartmentVolume(invalid_value, name="venous volume_l"),
+            blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        )
+
+    with pytest.raises(
+        TypeError, match=r"^venous volume_l of .* was not built as CompartmentVolume"
+    ):
+        VenousBloodCompartment(
+            volume_l=invalid_value,  # type: ignore[arg-type]
+            blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        )
