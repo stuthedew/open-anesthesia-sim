@@ -605,6 +605,7 @@ class RunView(QWidget):
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
+        self._restate_new_case_question(snapshot)
 
         self._accounting_shown = accounting(snapshot)
 
@@ -1328,6 +1329,31 @@ class RunView(QWidget):
         dialog.finished.connect(dialog.deleteLater)
         self._new_case_dialog = dialog
         dialog.open()
+
+    def _restate_new_case_question(self, snapshot: SimulationSnapshot) -> None:
+        """Rewrite an open new-case question from the frame's snapshot.
+
+        The question states how much run time and how many control changes
+        the new case discards. The run is not paused while it is asked, so a
+        running run goes on stepping, and a question written once when it
+        opened understated what the reader was about to lose (`PL-WM5P`). A
+        halt writes nothing here because a halted run does not step, so the
+        last frame's figure is still the run's.
+
+        Args:
+            snapshot: The snapshot the frame drew from.
+        """
+
+        if self._new_case_dialog is None or self._pending_agent_id is None:
+            return
+
+        self._new_case_dialog.show_question(
+            new_case_question(
+                snapshot,
+                AGENT_DISPLAY_NAMES[self._pending_agent_id],
+                len(self.adjustments(snapshot)),
+            )
+        )
 
     def _handle_new_case_finished(self, result: int) -> None:
         self._resolve_new_case(result == QDialog.DialogCode.Accepted)

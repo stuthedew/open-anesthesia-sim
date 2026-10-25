@@ -114,6 +114,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     fork_offer,
     halt_notice,
+    new_case_question,
     notice,
     run_label,
     slider_position,
@@ -3415,6 +3416,34 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered(
     # The selector reads the agent that is actually running, not the one
     # being offered, for as long as the question is open.
     assert run._agent_dropdown.currentData() == before.agent_id
+
+
+def test_an_open_new_case_question_follows_a_running_run(application: QApplication) -> None:
+    """`PL-WM5P`: the question states what the new case discards as the run stands now.
+
+    The run is not paused while the question is open, so a running run goes
+    on stepping. The question was written once, when it opened, so its
+    figure for the run time about to be discarded fell behind the clock.
+    """
+
+    controller = _paused_run_with_history(60.0)
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    opened_warning = dialog.body_labels[1].text()
+
+    _advance_to(controller, 120.0)
+    view.present(False)
+    snapshot = controller.snapshot()
+    question = new_case_question(snapshot, "Desflurane", len(run.adjustments(snapshot)))
+
+    assert dialog.body_labels[1].text() == question.body[1] != opened_warning
+    assert format_elapsed(snapshot.elapsed_s) in dialog.body_labels[1].text()
+    assert [label.text() for label in dialog.body_labels] == list(question.body)
 
 
 def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched(
@@ -7447,6 +7476,147 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     assert sorted(set(NOT_RESTATED_ON_A_HALT) - exemptions_used) == [], (
         "these exemptions match no control on the dashboard now - remove the entry"
     )
+
+
+#: The widgets outside every run that a halted dashboard and the same dashboard
+#: drawn may show differently, each with the reason only a frame can state it.
+#: Held live in both directions, as `FRAME_WIDGETS` is (`PL-WM5P`).
+SURFACE_FRAME_WIDGETS: dict[str, str] = {
+    "QScrollBar": (
+        "the page's scroll bar follows the height the frame lays the page out at, "
+        "which is layout and states nothing about a run."
+    )
+}
+
+
+def _run_widget_ids(view: SimulationView) -> set[int]:
+    """Every widget a run holds, wherever its copies are placed, and every widget under each."""
+
+    held: set[int] = set()
+
+    for run in view.runs:
+        for widget in (run, *_widget_attributes(run).values()):
+            held.add(id(widget))
+            held.update(id(child) for child in widget.findChildren(QWidget))
+
+    return held
+
+
+def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
+    """Every widget in the window that no run holds, grouped by its type and the five above it."""
+
+    held = _run_widget_ids(view)
+    surfaces: dict[str, list[QWidget]] = {}
+
+    for widget in view.window().findChildren(QWidget):
+        if id(widget) in held:
+            continue
+
+        chain = " < ".join(type(w).__name__ for w in _ancestry(widget)[:6])
+        surfaces.setdefault(chain, []).append(widget)
+
+    return surfaces
+
+
+def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]:
+    """What a reader sees of every widget outside the runs, read afresh.
+
+    Walked again for each reading, so a row a frame adds, such as a newly
+    listed mark, is a difference too rather than a widget nobody compares.
+    """
+
+    return {
+        chain: [_widget_state(widget) for widget in widgets]
+        for chain, widgets in _surface_widgets(view).items()
+    }
+
+
+def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt states the run on every panel outside the runs, by default rather than by a list.
+
+    `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
+    holds each `RunView` to one writer of its run state (`PL-X7D5`). The
+    branch panel, the marks panel, the marks editor and every Area's header
+    sit outside the runs, and the halt restates them through
+    `halt_restatements` (`PL-5JTH`). That test checks that each control is in
+    a restated panel, not what the panel then says. This one checks what it
+    says. The run is drawn, then changed in what those panels state while
+    every frame fails: a mark is added, the playback rate changes and the
+    branch panel holds a refusal. The halted screen is compared with the same
+    dashboard once a frame draws it, widget by widget, so a panel that only a
+    frame writes fails here without being listed (`PL-WM5P`).
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    _opened_bookmark_dialog(view)
+    view.present(False)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    trunk = view.runs[0]
+    trunk._playback_rate_dropdown.setCurrentIndex(trunk._playback_rate_dropdown.findData(5))
+    view.present(False)
+
+    assert case.trunk.has_failed is True
+
+    halted = _surface_states(view)
+
+    monkeypatch.undo()
+    view.present(False)
+
+    drawn = _surface_states(view)
+    differing = {
+        chain.partition(" < ")[0]
+        for chain in set(halted) | set(drawn)
+        if halted.get(chain) != drawn.get(chain)
+    }
+
+    assert len(halted) > 20, "the walk found too few widgets to be reading the window"
+    assert sorted(differing - set(SURFACE_FRAME_WIDGETS)) == [], (
+        "these widgets outside every run read differently on a halted dashboard and on the "
+        "same dashboard drawn: restate them from SimulationView.halt_restatements, or name "
+        "their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them"
+    )
+    assert sorted(set(SURFACE_FRAME_WIDGETS) - differing) == [], (
+        "these widgets read alike on a halted dashboard and a drawn one now, so their "
+        "exemption is stale - remove the entry"
+    )
+
+
+def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard above sees a panel that the halt leaves as the last frame drew it.
+
+    The marks panel's restatement is switched off here. The mark added while
+    frames fail is then listed on the drawn dashboard and not on the halted
+    one, which is the stale state the guard exists to catch.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    view.present(False)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(view, "_restate_bookmark_panel", lambda: None)
+
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    view.present(False)
+    halted = _surface_states(view)
+
+    monkeypatch.undo()
+    view.present(False)
+
+    drawn = _surface_states(view)
+    differing = {
+        chain for chain in set(halted) | set(drawn) if halted.get(chain) != drawn.get(chain)
+    }
+
+    assert any("MarkListingLabel" in chain for chain in differing)
 
 
 def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(

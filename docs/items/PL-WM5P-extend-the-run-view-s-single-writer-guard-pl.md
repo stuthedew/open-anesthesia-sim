@@ -21,3 +21,11 @@ verify: grep -q 'def test_every_run_state_surface_outside_the_run_view_reads_ali
 **Done when.** Every surface that states run state has one writer, a guard test fails on a second one, and the inventory (`PL-K88Z`) lists no remaining surface.
 
 **Generator check.** Not a re-entry: it is a step of `PL-2LB5` (the one-source-of-truth design round), which widens the closed `PL-4S6C` at the project owner's ask, and no open generator head names this shape.
+
+**What the inventory left, and what each became (2026-10-25).** `PL-K88Z`'s inventory named five surfaces outside the run view's guard. Each one is now settled:
+
+- The open new-case question had a second writer. `NewCaseDialog` wrote its title, body and buttons once, when it opened, so a running run left them stating the moment it was asked. The run view now rewrites the question on every refresh through `NewCaseDialog.show_question`, from the same snapshot that writes the readouts. `test_an_open_new_case_question_follows_a_running_run` fails without the fix.
+- The comparison panels outside the run view are now checked by `test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one`. It reads every widget on those surfaces by default, so a new one is checked without being listed. `test_the_surface_guard_fails_on_a_panel_only_a_frame_writes` shows that the guard fails on a panel that only a drawn frame writes.
+- The readout row's playback rate was the second writer that `PL-P58M` removed in this branch.
+- The bookmark editor's notice states the reader's last edit, not run state, so it has no run state to go stale and is left as it is.
+- The area chart's pin is written from one stored pin state, and a halt does not change that state, so it already had one writer.
