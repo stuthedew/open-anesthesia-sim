@@ -82,7 +82,6 @@ it bare: `python3 tools/fact_home_check.py` in `make check` and in
 
 from __future__ import annotations
 
-import argparse
 import ast
 import re
 from collections import Counter, defaultdict
@@ -90,6 +89,15 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from check_support import (
+    Overflow,
+    ScopedVisitor,
+    Stale,
+    overflows,
+    run_report,
+    stale_entries,
+    stale_lines,
+)
 from workflow_paths_check import tracked_files
 
 #: The trees held to every rule, as the repository-relative prefixes of their files.
@@ -322,12 +330,12 @@ class Module:
     definitions: tuple[Definition, ...]
 
 
-class _Readers(ast.NodeVisitor):
+class _Readers(ScopedVisitor):
     """Collects rule 1's and rule 3's sites with the dotted scope that encloses each."""
 
     def __init__(self, path: str) -> None:
+        super().__init__()
         self.path = path
-        self.scope: list[str] = []
         self.found: list[Site] = []
         self.docstrings: set[int] = set()
         #: Names bound by `from subprocess import run` and its kin, to their module.
@@ -337,15 +345,8 @@ class _Readers(ast.NodeVisitor):
         self._note_docstring(node)
         self.generic_visit(node)
 
-    def _scoped(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> None:
+    def enter(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> None:
         self._note_docstring(node)
-        self.scope.append(node.name)
-        self.generic_visit(node)
-        self.scope.pop()
-
-    visit_FunctionDef = _scoped
-    visit_AsyncFunctionDef = _scoped
-    visit_ClassDef = _scoped
 
     def _note_docstring(self, node: ast.AST) -> None:
         body = getattr(node, "body", None)
@@ -549,34 +550,13 @@ def read_module(source: str, path: str) -> Module:
 
 
 @dataclass(frozen=True)
-class Overflow:
-    """A file, rule and scope found more often than the baseline allows."""
-
-    path: str
-    key: tuple[str, str]
-    allowed: int
-    found: tuple[Site, ...]
-
-
-@dataclass(frozen=True)
-class Stale:
-    """A baseline entry the tree no longer fills."""
-
-    path: str
-    key: tuple[str, str]
-    allowed: int
-    found: int
-    missing: bool
-
-
-@dataclass(frozen=True)
 class Report:
     """Everything one run decided."""
 
     scanned: int
     readers: int
     allowed: int
-    overflows: tuple[Overflow, ...]
+    overflows: tuple[Overflow[Site], ...]
     stale: tuple[Stale, ...]
     unparsed: tuple[tuple[str, str], ...]
     #: Every file that defines each shared name, for the finding's list.
@@ -656,28 +636,14 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
             found[entry.path][site.key] += 1
             sites[(entry.path, site.key)].append(site)
 
-    overflows: list[Overflow] = []
-    for (path, key), listed in sorted(sites.items()):
-        allowed = baseline.get(path, {}).get(key, 0)
-        if len(listed) > allowed:
-            overflows.append(Overflow(path, key, allowed, tuple(listed)))
-
-    unread = {path for path, _ in unparsed}
-    stale: list[Stale] = []
-    for path, expected in baseline.items():
-        if path in unread:
-            continue
-        missing = not (root / path).is_file()
-        for key, allowed in expected.items():
-            count = 0 if missing else found[path][key]
-            if count < allowed:
-                stale.append(Stale(path, key, allowed, count, missing))
+    over = overflows(sorted(sites.items()), baseline)
+    stale = stale_entries(root, baseline, found, {path for path, _ in unparsed})
 
     return Report(
         scanned=scanned,
         readers=sum(sum(counts.values()) for counts in found.values()),
         allowed=sum(sum(entries.values()) for entries in baseline.values()),
-        overflows=tuple(overflows),
+        overflows=tuple(over),
         stale=tuple(stale),
         unparsed=tuple(unparsed),
         defined=defined,
@@ -705,7 +671,7 @@ def format_report(report: Report) -> str:
         for path, error in report.unparsed:
             lines.append(f"  {path}: {error}")
 
-    by_rule: dict[str, list[Overflow]] = defaultdict(list)
+    by_rule: dict[str, list[Overflow[Site]]] = defaultdict(list)
     for overflow in report.overflows:
         by_rule[overflow.key[0]].append(overflow)
 
@@ -755,36 +721,13 @@ def format_report(report: Report) -> str:
             "not grow."
         )
 
-    if report.stale:
-        lines.append("")
-        lines.append(
-            "Baselined but no longer there - lower the entry, so the count stays a ratchet:"
-        )
-        for entry in report.stale:
-            rule, scope = entry.key
-            if entry.missing:
-                remedy = "the file no longer exists; delete its entries"
-            elif entry.found:
-                remedy = f"set it to {entry.found}"
-            else:
-                remedy = "delete it"
-            lines.append(
-                f"  {entry.path}, {rule} in {scope}: baseline {entry.allowed}, "
-                f"found {entry.found} - {remedy}"
-            )
+    lines.extend(stale_lines(report.stale, lambda key: f"{key[0]} in {key[1]}"))
 
     return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
-    parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    args = parser.parse_args(argv)
-
-    root = (args.root or Path(__file__).resolve().parent.parent).resolve()
-    report = analyze(root)
-    print(format_report(report))
-    return 1 if report.errors else 0
+    return run_report(argv, __doc__, analyze, format_report)
 
 
 if __name__ == "__main__":

@@ -129,6 +129,10 @@ check: sync
 # rather than whenever somebody next notices (`PL-PBP5`). It is placed beside
 # this line because this is the first `tools/` script the target runs.
 	uv run python tools/ignore_check.py
+# Under `uv run` for the same kind of reason: it runs pylint, a `dev`
+# dependency, for its duplicate-code check alone. A block copied between two
+# modules fails here unless its baseline allows it (`PL-VWXL`).
+	uv run python tools/duplicate_code_check.py
 # `--cov=` takes the dotted module, never a path, and the run is the whole
 # suite: coverage of `core/` is the union of everything that exercises it, so
 # the threshold is only reachable from a whole-suite run. Deliberately not in
@@ -283,6 +287,10 @@ check: sync
 # module that owns it, and a name defined in two files, against a baseline
 # that only shrinks (`PL-4S6C`).
 	python3 tools/fact_home_check.py
+# Bare too: it reads configuration files as text. It refuses a configuration
+# fact - a version, a path list, a command, a timeout - whose copy in one file
+# differs from its home in another (`PL-SH0W`).
+	python3 tools/config_home_check.py
 # Under `uv run`, unlike the bare lines above, because it reads project source:
 # the docstrings of every module, for the citations in them, and that source
 # targets 3.14. The 3.11 floor parser cannot read all of it, and this names each

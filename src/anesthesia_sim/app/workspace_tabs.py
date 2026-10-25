@@ -86,29 +86,24 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMenu,
-    QPushButton,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from anesthesia_sim.app.dashboard_frame import run_label
-from anesthesia_sim.app.qt_widgets import declare_interface_colours, style_label, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    declare_interface_colours,
+    lay_out_question,
+    style_label,
+    styled_label,
+)
 from anesthesia_sim.app.stylesheets import (
-    filled_button_stylesheet,
     menu_stylesheet,
-    outlined_button_stylesheet,
     workspace_separator_stylesheet,
     workspace_tab_stylesheet,
 )
-from anesthesia_sim.app.theme import (
-    INK,
-    METRIC_NAME_SIZE,
-    METRIC_QUALIFIER_SIZE,
-    NEW_CASE_DIALOG_SPACING,
-    NEW_CASE_DIALOG_WIDTH,
-    WARNING,
-)
+from anesthesia_sim.app.theme import INK, METRIC_NAME_SIZE, METRIC_QUALIFIER_SIZE, WARNING
 from anesthesia_sim.layout.exceptions import (
     InvalidLayout,
     LastWorkspace,
@@ -550,31 +545,10 @@ class WorkspaceQuestionDialog(QDialog):
 
     def __init__(self, question: WorkspaceQuestion, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setModal(True)
-        self.setWindowTitle(question.title)
-        declare_interface_colours(self)
-        title = styled_label(question.title, color=INK, bold=True, wrap=True)
         text = styled_label(question.text, color=INK, wrap=True)
-        text.setFixedWidth(NEW_CASE_DIALOG_WIDTH)
-        self.proceed_button = QPushButton(question.proceed_label)
-        self.proceed_button.setAutoDefault(False)
-        self.proceed_button.setStyleSheet(outlined_button_stylesheet())
-        self.keep_button = QPushButton(question.keep_label)
-        self.keep_button.setDefault(True)
-        self.keep_button.setStyleSheet(filled_button_stylesheet())
-
-        column = QVBoxLayout(self)
-        column.setSpacing(NEW_CASE_DIALOG_SPACING)
-        column.addWidget(title)
-        column.addWidget(text)
-        actions = QHBoxLayout()
-        actions.addStretch(1)
-        actions.addWidget(self.proceed_button)
-        actions.addWidget(self.keep_button)
-        column.addLayout(actions)
-
-        self.proceed_button.clicked.connect(self.accept)
-        self.keep_button.clicked.connect(self.reject)
+        _, self.proceed_button, self.keep_button = lay_out_question(
+            self, question.title, (text,), question.proceed_label, question.keep_label
+        )
 
 
 class LayoutMenu(QMenu):
