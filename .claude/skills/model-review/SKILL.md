@@ -115,12 +115,28 @@ include `planning`, or whose brief records a decision the owner took, written
 
 | Measure | Read from | Counted |
 | --- | --- | --- |
-| Rework citing it | `read_items`: later items whose brief names the item's id and whose `classes` include `defect` or `refactor` | Items added within the window, with the sum of their efforts (S = 1, M = 3, L = 8) and, where the ledger joins them, their sessions' `cost_usd` |
-| Recurrence and re-entry | The `recurrences:` and `reenters:` fields of every item | Items whose field names this one, within the window |
+| A fix that did not hold | `read_items`: later items whose `reenters:` names the item, and the item's own `recurrences:` entries that are not withdrawn | Filings dated within the window, with the sum of the re-entering items' efforts (S = 1, M = 3, L = 8) and, where the ledger joins them, their sessions' `cost_usd`. This is the primary outcome |
 | A decision reopened | Later items and `docs/dead-ends.md` entries that name the item's id within a paragraph containing "reopen" or "refuted" | Matches within the window. This is a text match, so list each one in the report for a reader to confirm |
 | Churn on its files | `git log --numstat` over the files its pull request added or changed, from its merge to the window's end | Lines added and deleted by later commits, divided by the lines the pull request itself added (relative churn: Nagappan N, Ball T. Use of relative code churn measures to predict system defect density. ICSE 2005) |
 | Red CI runs on its pull request | `docs/ci-runs.tsv`: rows whose `pull_requests` holds its number | Runs with `conclusion` `failure`, and the distinct `head_sha` values created after the first failure (pushes after the first red run) |
 | Review findings | The `Blind-review:` trailer on its squash commit, and the review threads on its pull request | The trailer's `findings` count, and the number of review threads opened by a reviewer other than the author |
+
+**A citation is not rework.** An earlier version of this table counted every
+later `defect` or `refactor` item whose brief named the item's id. On
+2026-10-25 that marked 415 of 605 closed implementation items (68.6%), because
+briefs here cite ids as context, as precedent and as examples. Counting a
+citation only in the citing item's `**Problem.**` paragraph still marked 101
+(16.7%). In a random sample of 25 of those matches, 8 said the cited work had
+failed, 6 were arguable and 11 did not. A text match cannot separate those
+cases, so the measure is triage's own judgment, written in `reenters:` and
+`recurrences:` (`PL-J7YG`). Do not rank settings on a citation count.
+
+**`reenters:` was first written on 2026-10-11**, and only part of the earlier
+store was filled in afterwards. Seven of the eight sampled failures above were
+filed before then, and none carries a `reenters:` naming the item it cites. So
+an item whose window opened before 2026-10-11 is under-counted. Compare
+settings only on items closed on or after that date, or stratify by the week
+the item closed, and say which.
 
 **Normalize by size.** Report each measure per item and per 100 lines the pull
 request added. Compare items only within one effort size (S, M or L) and one
@@ -129,7 +145,7 @@ lane. A count with no denominator is not reported.
 ## Score design items by their fallout
 
 A design or decision item is scored mostly by what happened downstream: the
-rework that cited it, its decisions later reopened or refuted, and the churn
+later filings that re-enter it, its decisions later reopened or refuted, and the churn
 on the files its pull request introduced. Its 90-day window means its verdict
 arrives late by construction, so each run re-scores it until the window
 closes, and the report says which verdicts are still provisional.
