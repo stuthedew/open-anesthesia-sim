@@ -248,8 +248,9 @@ def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_numbe
 
     with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
         AlveolarCompartment(
-            alveolar_ventilation_l_min=AlveolarVentilation(4.0), gas_volume_l=not_a_number
-        )  # type: ignore[arg-type]
+            alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+            gas_volume_l=not_a_number,  # type: ignore[arg-type]
+        )
 
 
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
@@ -345,11 +346,12 @@ def test_rejects_construction_with_ventilation_above_the_supported_range() -> No
 def test_an_alveolar_compartment_cannot_be_built_without_its_volume_or_ventilation(
     missing: str,
 ) -> None:
-    """`PL-M85T`: neither value has a default, so every caller states the one it means.
+    """Neither value has a default, so every caller must state the one it means (`PL-M85T`).
 
-    Each defaulted to a second copy of `data/patients/reference_adult.json`,
-    2.5 L and 4.0 L/min, which only a test held equal to the file
-    (`PL-DJYF`). `AgentUptakeSystem.for_agent()` passes both from the file.
+    Before `PL-M85T`, each value defaulted to a second copy of the value in
+    `data/patients/reference_adult.json`: 2.5 L and 4.0 L/min. Only a test kept
+    those copies equal to the file (`PL-DJYF`). `AgentUptakeSystem.for_agent()`
+    passes both from the file.
     """
 
     given: dict[str, object] = {
@@ -365,15 +367,15 @@ def test_an_alveolar_compartment_cannot_be_built_without_its_volume_or_ventilati
 def test_for_agent_builds_the_alveoli_at_the_patient_file_s_values() -> None:
     """A run from the shipped patient file carries its values, and the 37.5 s they give.
 
-    Asserting the ventilation time constant as well as the two inputs is the
-    same reasoning `PL-4YY1` applied to the circuit's 90 s: 37.5 s is the
-    alveolar washout the early rise is read against, and it is what a silent
-    change to either value would move.
+    This test asserts the ventilation time constant as well as the two inputs,
+    for the same reason that `PL-4YY1` asserted the circuit's 90 s. 37.5 s is
+    the alveolar washout time constant against which the early rise is read,
+    and a silent change to either value would move it.
 
-    It cannot show that the file was read, because the shipped values are the
-    ones a test would type;
+    This test cannot show that the file was read, because the shipped values
+    are the ones a test would type anyway.
     `test_for_agent_builds_the_alveoli_at_changed_patient_file_values` below
-    does (`PL-H8QP`).
+    shows it (`PL-H8QP`).
     """
 
     patient = load_reference_adult_parameters()
@@ -389,16 +391,17 @@ def test_for_agent_builds_the_alveoli_at_changed_patient_file_values(
 ) -> None:
     """The shipped path reads the file rather than falling through to a default.
 
-    Until `PL-M85T` the defaults equalled the shipped file's values, so
+    Until `PL-M85T`, the defaults equalled the shipped file's values. So
     dropping the keyword arguments in `for_agent()` would have changed no
-    number in a run built from that file: the run would simply have stopped
-    reading its own parameter file, and every provenance row pointing at
-    `data/patients/reference_adult.json` would quietly become a claim about a
-    file the model no longer consults. So this run is built from the shipped
-    file with both values moved off the shipped ones, parsed as the loader
-    parses it and handed to `for_agent()` by
-    replacing the loader it calls, the way `tests/unit/test_circuit.py` hands it
-    a machine profile (`PL-H8QP`). 3.0 L at 5.0 L/min is 36 s.
+    number in a run built from that file. The run would simply have stopped
+    reading its own parameter file. Every provenance row pointing at
+    `data/patients/reference_adult.json` would then quietly become a claim
+    about a file the model no longer consults. So this test builds the run
+    from the shipped file with both values changed from the shipped ones. The
+    test parses the file as the loader does, and hands the result to
+    `for_agent()` by replacing the loader that `for_agent()` calls.
+    `tests/unit/test_circuit.py` hands `for_agent()` a machine profile the same
+    way (`PL-H8QP`). 3.0 L at 5.0 L/min gives a time constant of 36 s.
     """
 
     payload: dict[str, object] = json.loads(

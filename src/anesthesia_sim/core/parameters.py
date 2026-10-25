@@ -37,7 +37,7 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import MacMultiple, Percent, require_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.validation import require_positive_finite, require_within_vaporizer_maximum
+from anesthesia_sim.core.validation import require_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,17 +105,18 @@ MACHINE_SCHEMA_VERSIONS = SupportedSchemaVersions(
     data_files="machine profiles (data/machines/)", minimum=3, current=3
 )
 
-#: How far the tissue perfusion fractions may sum from 1 before the sum is
-#: called wrong. Two places enforce that rule and both should keep doing so.
-#: This module checks the data file, `PatientCompartments` checks direct
-#: construction and each write of a fraction, and defence in depth is the
-#: point. Both call `require_perfusion_fractions_sum_to_one` below, so the
-#: number and the refusal are each written once. The number is a policy value
-#: that could reasonably be retuned, unlike `SECONDS_PER_MINUTE`, and two
-#: copies would let the two checks disagree about what "sums to 1" means with
-#: nothing to say so (`PL-TCW5`, `PL-YHWH`). `core/patient.py` imports both
-#: from here. It already imports `AgentParameters` from here, so the single
-#: definition costs no new edge between the two modules.
+#: How far the sum of the tissue perfusion fractions may be from 1 before the
+#: sum is rejected. Two places enforce that rule, and both should keep doing
+#: so, because defence in depth is the point. This module checks the data
+#: file. `PatientCompartments` checks direct construction and each write of a
+#: fraction. Both call `require_perfusion_fractions_sum_to_one` below, so the
+#: number and the error it raises are each written once. Unlike
+#: `SECONDS_PER_MINUTE`, the number is a policy value that could reasonably be
+#: retuned. Two copies could let the two checks disagree about what "sums to
+#: 1" means, and nothing would report it (`PL-TCW5`, `PL-YHWH`).
+#: `core/patient.py` imports both the number and the function from here. It
+#: already imports `AgentParameters` from here, so the single definition adds
+#: no new import between the two modules.
 FLOW_FRACTION_TOLERANCE = 1e-12
 
 
@@ -134,38 +135,38 @@ def require_perfusion_fractions_sum_to_one(total_perfusion_fraction: float) -> N
 def require_one_mac_deliverable(
     mac_percent: Percent, max_delivered_concentration_percent: Percent
 ) -> None:
-    """Refuse an agent whose own vaporizer cannot deliver 1 MAC, where a run opens.
+    """Refuse an agent whose own vaporizer cannot deliver 1 MAC, the dial a run opens at.
 
-    The comparison is `require_within_vaporizer_maximum`'s, the rule every
-    dial is held to. This function adds the reason the rule applies to MAC:
-    `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC.
-    `AgentParameters` and the agent file's schema both call it (`PL-YHWH`).
+    `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC,
+    so an agent's MAC must be at or below its vaporizer's maximum.
+    `AgentParameters` and the agent file's schema both call this function, so
+    the record and the file are held to one rule (`PL-YHWH`). The message
+    names the MAC as the agent's own value. It does not use
+    `require_within_vaporizer_maximum`'s wording, which is written for a dial
+    setting that someone asked for (found at review).
 
     Raises:
         SimulationConfigurationError: `mac_percent` is above
             `max_delivered_concentration_percent`.
     """
 
-    try:
-        require_within_vaporizer_maximum(
-            "mac_percent", mac_percent, max_delivered_concentration_percent
-        )
-    except SimulationConfigurationError as error:
+    if mac_percent > max_delivered_concentration_percent:
         raise SimulationConfigurationError(
-            f"{error}: the agent's own vaporizer could not deliver 1 MAC, which is where a "
-            "run opens"
-        ) from error
+            f"mac_percent of {mac_percent:g}% is above the vaporizer maximum of "
+            f"{max_delivered_concentration_percent:g}%: the agent's own vaporizer could not "
+            "deliver 1 MAC, which is where a run opens"
+        )
 
 
 @contextmanager
 def _collected_by_pydantic() -> Iterator[None]:
-    """Raise a guard's refusal as the `ValueError` that Pydantic collects.
+    """Re-raise a guard's error as the `ValueError` that Pydantic collects.
 
-    A validator below calls the same guard that the record it loads into
-    calls, so the file and the record are held to one rule. The guard raises
+    A validator below calls the same guard as the record that the file loads
+    into, so the file and the record must meet one rule. The guard raises
     `SimulationConfigurationError`, which Pydantic would not collect into its
-    `ValidationError`, as the module docstring says. So the validator raises
-    the guard's message as a `ValueError` instead.
+    `ValidationError`, as the module docstring explains. So the validator
+    raises the guard's message as a `ValueError` instead.
     """
 
     try:

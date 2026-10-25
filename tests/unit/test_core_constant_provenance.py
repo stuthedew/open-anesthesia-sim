@@ -1,26 +1,28 @@
-"""Every number a `core/` dataclass defaults a field to is one the provenance
-table selects, unless it is empty state or the whole (`PL-65HT`).
+"""Every number a `core/` dataclass field defaults to must be one the provenance
+table selects, unless it stands for an empty state or the whole (`PL-65HT`).
 
-`tools/doc_check.py`'s `check_provenance` holds `docs/MODEL.md`'s provenance
-table to the data files in both directions, so a scientific constant that
-never entered a data file is invisible to it. `PL-4YY1` found two that way, as
-`BreathingCircuit` field defaults, and moved them into the machine file; this
-is the screen for the next one. Each default is read through
-`dataclasses.fields()`, so one spelled as a named constant is read as surely
-as a literal, and it must appear in the table's Selected-value column.
+`tools/doc_check.py`'s `check_provenance` checks `docs/MODEL.md`'s provenance
+table against the data files in both directions. So it cannot see a scientific
+constant that never entered a data file. `PL-4YY1` found two such constants,
+both `BreathingCircuit` field defaults, and moved them into the machine file.
+This test is the screen for the next one. It reads each default through
+`dataclasses.fields()`, so it finds a default written as a named constant as
+reliably as a literal. Each default must appear in the table's Selected-value
+column.
 
-**A screen, not a proof.** It matches values rather than names, since pairing
-a field with its row would need a mapping kept by hand (`gas_volume_l` is
-documented as `alveolar_gas_volume_l`). So a new constant equal to any value
-the table already selects passes: 6.0 L is the vessel-rich tissue volume as
-well as the circuit volume, which had a default until `PL-M85T`. The fresh gas
-flow default is pinned to its file's value by
-`test_the_flow_default_matches_the_shipped_machine_file`.
+**This is a screen, not a proof.** It matches values rather than names, because
+pairing a field with its row would need a mapping kept by hand. For example,
+`gas_volume_l` is documented as `alveolar_gas_volume_l`. So a new constant
+passes if it equals any value the table already selects. 6.0 L, for instance,
+is the vessel-rich tissue volume as well as the circuit volume, which had a
+default until `PL-M85T`. `test_the_flow_default_matches_the_shipped_machine_file`
+pins the fresh gas flow default to its file's value.
 
-Empty state and the whole carry no science and are not screened: 0 and 1, or
-0 and 100 for a `Percent`, the same two bounds on the dial's own scale.
-Only a field's own scalar default is read, a factory's included; a tuple of
-numbers, a `ClassVar`, or a module constant no field defaults to is not.
+Values for an empty state and for the whole carry no science, so they are not
+screened. They are 0 and 1, or 0 and 100 for a `Percent`, which are the same
+two bounds on the dial's own scale. The test reads only a field's own scalar
+default, including one that a factory makes. It does not read a tuple of
+numbers, a `ClassVar`, or a module constant that no field defaults to.
 """
 
 from __future__ import annotations

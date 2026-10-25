@@ -3,7 +3,11 @@ import pytest
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
+    load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
+)
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
@@ -67,7 +71,7 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=load_reference_circle_system_parameters().circuit_volume_l,
             delivered_concentration_percent=DELIVERED_CONCENTRATION_PERCENT,
             max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),

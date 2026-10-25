@@ -8,6 +8,7 @@ from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.parameters import (
     AgentParameters,
     load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
     parse_agent_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
@@ -154,7 +155,7 @@ def _build_system_with_blood_gas_coefficient(
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=load_reference_circle_system_parameters().circuit_volume_l,
             delivered_concentration_percent=agent.mac_percent,
             max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),

@@ -44,12 +44,12 @@ class AlveolarCompartment:
     fields, and this class is not.** Every shipped path builds the compartment
     through `AgentUptakeSystem.for_agent()`, which reads
     `alveolar_gas_volume_l` and `default_alveolar_ventilation_l_min` from that
-    file and passes both. Neither field has a default, so every caller states
-    the values it means (`PL-M85T`). Until then each defaulted to a second copy
-    of the file's value, 2.5 L and 4.0 L/min, which only a test held equal to
-    it (`PL-DJYF`). The patient file also carries what is known about where
-    each figure came from, which is that no primary measurement is adopted for
-    either.
+    file and passes both. Neither field has a default, so every caller must
+    state the value it means (`PL-M85T`). Before `PL-M85T`, each field
+    defaulted to a second copy of the file's value, 2.5 L and 4.0 L/min. Only
+    a test kept each copy equal to the file (`PL-DJYF`). The patient file also
+    records what is known about where each figure came from: no primary
+    measurement is adopted for either.
     """
 
     gas_volume_l: float

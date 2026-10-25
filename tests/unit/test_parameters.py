@@ -448,8 +448,8 @@ def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() 
     with pytest.raises(
         SimulationConfigurationError,
         match=(
-            r"^mac_percent exceeds the vaporizer maximum \(9% requested, 8% maximum\): the "
-            r"agent's own vaporizer could not deliver 1 MAC, which is where a run opens$"
+            r"^mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"vaporizer could not deliver 1 MAC, which is where a run opens$"
         ),
     ):
         replace(
@@ -471,8 +471,8 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
     with pytest.raises(
         SimulationConfigurationError,
         match=(
-            r"mac_percent exceeds the vaporizer maximum \(9% requested, 8% maximum\): the "
-            r"agent's own vaporizer could not deliver 1 MAC, which is where a run opens"
+            r"mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"vaporizer could not deliver 1 MAC, which is where a run opens"
         ),
     ):
         parse_agent_parameters(payload)
@@ -1351,15 +1351,16 @@ def test_the_reference_patient_loader_shares_that_boundary(
 
 
 def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
-    """`PL-TCW5`, `PL-YHWH`: the check is made in two places, from one rule.
+    """Two guards check the perfusion rule from one definition (`PL-TCW5`, `PL-YHWH`).
 
-    Two places enforce "tissue perfusion fractions sum to 1". This module
-    checks the data file, and `PatientCompartments` checks direct
-    construction. Both should stay. What must not be duplicated is the rule
-    or its tolerance, which is a policy value that could reasonably be
-    retuned. Two copies would let the two checks disagree about what the rule
-    means with nothing to say so. This asserts the shape rather than the
-    value, so retuning it stays a one-line change.
+    Two places enforce "tissue perfusion fractions sum to 1".
+    `core/parameters.py` checks the data file, and `PatientCompartments`
+    checks direct construction. Both checks should stay. What must not be
+    duplicated is the rule or its tolerance, which is a policy value that could
+    reasonably be retuned. Two copies would let the two checks disagree about
+    what the rule means, and nothing would report it. This test asserts that
+    the rule is defined once, not what the tolerance is, so retuning the
+    tolerance stays a one-line change.
     """
 
     assert (
@@ -1378,18 +1379,22 @@ def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
 
 
 def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() -> None:
-    """`PL-4YY1`: both were `BreathingCircuit` field defaults, and unciteable.
+    """The shipped run takes its circuit volume and flow from the data file (`PL-4YY1`).
 
-    `tools/doc_check.py`'s `check_provenance` walks data files in both
-    directions, so a scientific constant that never entered one is invisible
-    to the only tool built to catch a missing citation. This is the load side
-    of moving them into one. Since `PL-M85T` `core/circuit.py` holds no
-    volume of its own, and `test_the_flow_default_matches_the_shipped_machine_file`
-    in `tests/unit/test_circuit.py` holds its flow default to what this loads.
+    Both values were `BreathingCircuit` field defaults, which no data file
+    could cite. `tools/doc_check.py`'s `check_provenance` checks the provenance
+    table against the data files in both directions. So it cannot see a
+    scientific constant that never entered a data file, although it is the only
+    tool built to catch a missing citation. This test checks the loading side
+    of moving the two values into a data file. Since `PL-M85T`,
+    `core/circuit.py` has no volume default of its own.
+    `test_the_flow_default_matches_the_shipped_machine_file` in
+    `tests/unit/test_circuit.py` keeps its flow default equal to the value this
+    test loads.
 
-    The values are asserted rather than only their provenance: this item was
-    required not to change a modelled number, and 6.0 L with 4.0 L/min is what
-    the model ran on before the file existed.
+    The test asserts the values, not only their provenance. `PL-4YY1` was
+    required not to change any modelled number, and 6.0 L with 4.0 L/min is
+    what the model ran on before the file existed.
     """
 
     machine = load_reference_circle_system_parameters()

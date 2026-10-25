@@ -8,8 +8,8 @@ string is not, the guard's branch never matches again. The field then accepts
 any value, a negative volume included, and nothing raises (`PL-6YKY`).
 
 So these tests read each guard's source and check that every name it compares
-with is a field of its class. A comparison the reader cannot resolve to
-strings fails the test too, so a new shape of guard cannot pass unread.
+with is a field of its class. A comparison that the tests cannot resolve to
+strings also fails, so a new shape of guard cannot pass without being checked.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ GUARDED_CLASSES = {
 
 
 def _strings(node: ast.expr, constants: dict[str, ast.expr]) -> list[str] | None:
-    """Return the strings `node` stands for, or `None` where it is not only strings.
+    """Return the strings that `node` stands for, or `None` if it holds anything else.
 
     `node` is a string, a tuple, list or set of strings, a `frozenset` of
     one of those, or the name of a module-level constant holding one of them.
@@ -88,12 +88,12 @@ def _methods(node: ast.ClassDef) -> list[ast.FunctionDef]:
 
 
 def guarded_names(source: str) -> dict[str, list[str]]:
-    """Return, for each class whose `__setattr__` compares the name written, the names it compares.
+    """Map each class whose `__setattr__` checks the name written to the names it compares.
 
     Raises:
         ValueError: a guard compares the name written with something that is
-            not a string or a constant holding strings, so this cannot say
-            which field it guards.
+            not a string or a constant holding strings, so this function
+            cannot say which field the guard protects.
     """
 
     tree = ast.parse(source)

@@ -216,23 +216,25 @@ def require_room_for_the_agent_held(
 ) -> None:
     """Refuse a volume or partition coefficient too small for the agent its compartment holds.
 
-    A compartment's partial pressure is the agent it holds divided by its
-    capacity, the agent it would hold at a partial pressure of one atmosphere:
-    its volume, times its partition coefficient where it is blood or tissue
-    (`docs/MODEL.md` § "Tissue compartments" gives the tissue's). Shrinking
-    either factor under a fixed amount raises the partial pressure, and below
-    the amount held it puts it above one atmosphere. Each compartment refuses
-    an amount written above its capacity, and until `PL-19Y0` nothing refused
-    the converse: an alveolar volume of 1e-6 L written under 0.098 L of
-    sevoflurane was accepted, and the next step began from an alveolar partial
-    pressure near 98,000 atmospheres and ended with every fraction plausible
-    and wrong - inspired 6.71% where an ordinary step reads 5.81% - and the
-    accounting passing (`PL-544D`, found at review; measured 2026-10-17). So
-    the alveolar compartment, the venous pool and each tissue group call this
-    as either factor is written, with the capacity that writing `value` would
-    leave, which only the caller knows how to form. The breathing circuit
-    calls it when `BreathingCircuit.set_circuit_volume` changes the volume
-    (`PL-84G1`).
+    A compartment's partial pressure is the amount of agent it holds divided by
+    its capacity. Its capacity is the amount of agent it would hold at a
+    partial pressure of one atmosphere. The capacity is the compartment's
+    volume, multiplied by its partition coefficient when the compartment is
+    blood or tissue (`docs/MODEL.md` § "Tissue compartments" gives the
+    tissue's). With the amount fixed, shrinking either factor raises the
+    partial pressure. Once the capacity is less than the amount held, the
+    partial pressure is above one atmosphere. Each compartment rejects an
+    amount written above its capacity. Until `PL-19Y0`, nothing rejected the
+    converse. An alveolar volume of 1e-6 L, written while the compartment held
+    0.098 L of sevoflurane, was accepted. The next step began from an alveolar
+    partial pressure near 98,000 atmospheres. It ended with every fraction
+    plausible and wrong, and with the accounting passing: inspired read 6.71%
+    where an ordinary step reads 5.81% (`PL-544D`, found at review; measured
+    2026-10-17). So the alveolar compartment, the venous pool and each tissue
+    group call this function whenever either factor is written. They pass the
+    capacity that writing `value` would leave, which only the caller knows how
+    to compute. The breathing circuit calls it when
+    `BreathingCircuit.set_circuit_volume` changes the volume (`PL-84G1`).
 
     Raises:
         SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
@@ -324,15 +326,15 @@ def require_a_capacity_with_room_for_the_agent(
     """Refuse a volume or partition coefficient that leaves a blood or tissue capacity unusable.
 
     A blood or tissue compartment makes the same two checks whenever its
-    volume or its partition coefficient is written. `require_a_capacity`
-    refuses a product that is zero or not finite, and
-    `require_room_for_the_agent_held` refuses one too small for the agent
-    already held. The venous pool and each tissue group call this function,
-    so the pair is written once (`PL-VWXL`). `value` is the factor being
-    written, and `name` is its name.
+    volume or its partition coefficient is written. Its capacity is the product
+    of the two. `require_a_capacity` rejects a capacity that is zero or not
+    finite. `require_room_for_the_agent_held` rejects one too small for the
+    agent already held. The venous pool and each tissue group call this
+    function, so the pair of checks is written once (`PL-VWXL`). `value` is the
+    factor being written, and `name` is its name.
 
     `agent_amount_l` is `None` while the compartment holds no amount yet. The
-    constructor, a copy and a pickle write the amount last, so the first
+    constructor, a copy and a pickle all write the amount last. So the first
     writes of the volume and the coefficient have no agent to make room for.
 
     Raises:

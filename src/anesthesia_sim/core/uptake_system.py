@@ -136,45 +136,46 @@ class AgentUptakeSystem:
     def for_agent(cls, agent_id: str) -> AgentUptakeSystem:
         """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`).
 
-        The circuit carries that agent's own vaporizer maximum, and starts
-        at that agent's own 1 MAC rather than with the vaporizer off, which
-        is all `BreathingCircuit` can default to without knowing which agent
+        The circuit carries that agent's own vaporizer maximum. It starts at
+        that agent's own 1 MAC, not with the vaporizer off. Off is the only
+        setting `BreathingCircuit` can default to without knowing which agent
         is in use. So a system built here can never begin at a dial position
-        the corresponding real device does not have. The MAC start is
-        guaranteed to be within the maximum by the cross-field check in
-        `core/parameters.py`.
+        that the corresponding real device does not have. The cross-field check
+        in `core/parameters.py` guarantees that the 1 MAC start is within the
+        maximum.
 
-        Its volume and fresh gas flow are passed from
+        The circuit's volume and fresh gas flow are passed from
         `data/machines/reference_circle_system.json`, so that every scientific
         constant a run uses comes from a cited data file (`PL-4YY1`). The
-        alveolar compartment's two are passed the same way and for the same
-        reason. Neither class has a default for its volume, so neither can be
-        built without one (`PL-M85T`).
+        alveolar compartment's volume and ventilation are passed the same way,
+        for the same reason. Neither class has a default for its volume, so
+        neither can be built without one (`PL-M85T`).
 
-        The flow is the one of them a profile may leave out, because no
-        surveyed machine publishes a startup fresh gas flow (`PL-QW19`). A run
-        built from such a profile opens at
-        `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`: a code constant rather than a
-        file value, named here rather than reached by leaving the argument
-        out, so that this path still says where its number came from. Its
-        docstring gives its authority, and a test holds it equal to the
-        shipped profile's own value.
+        Of these values, the flow is the only one that a profile may leave out,
+        because no surveyed machine publishes a startup fresh gas flow
+        (`PL-QW19`). A run built from such a profile opens at
+        `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`. That is a code constant, not a
+        file value. This method names it instead of leaving the argument out,
+        so that this path still says where its number came from. The
+        constant's docstring gives its authority, and a test keeps it equal to
+        the shipped profile's own value.
 
-        That file's deliverable fresh gas flow range travels the same route,
-        and today it is `None`: the shipped profile declares no range, because
-        none was reachable for any surveyed machine, so the model's envelope
-        in `core/supported_ranges.py` remains the only bound on the flow. What
-        the route buys is that a profile which *does* declare one narrows the
-        flow this system will accept without touching that envelope
-        (`PL-8PS6`).
+        The machine file's deliverable fresh gas flow range is passed the same
+        way. Today it is `None`. The shipped profile declares no range, because
+        no range was reachable for any surveyed machine. So the model's
+        envelope in `core/supported_ranges.py` remains the only bound on the
+        flow. Passing the range means that a profile which *does* declare one
+        narrows the flow this system will accept, without changing that
+        envelope (`PL-8PS6`).
 
-        The two flows the files state are parsed into their checked types
-        here, where the compartments are built from them, and the patient's
-        cardiac output in `PatientCompartments.from_parameters` (`PL-0YYV`).
-        `core/parameters.py` checks each for sign and finiteness alone and
-        holds no copy of the ranges, so a file naming a flow outside its
-        supported range is refused here, in the words a refused control uses,
-        before any compartment holds it.
+        This method parses the two flows that the files state into their
+        checked types here, where the compartments are built from them. The
+        patient's cardiac output is parsed in
+        `PatientCompartments.from_parameters` (`PL-0YYV`). `core/parameters.py`
+        checks each flow only for sign and finiteness, and holds no copy of the
+        ranges. So a file that names a flow outside its supported range is
+        rejected here, before any compartment holds it. The error uses the same
+        words as the error for a rejected control.
 
         Raises:
             SimulationConfigurationError: a file's flow is outside its

@@ -620,13 +620,14 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
 def test_a_circuit_cannot_be_built_without_its_volume_or_its_vaporizer_maximum(
     missing: str,
 ) -> None:
-    """`PL-M85T`: neither value has a default, so every caller states the one it means.
+    """Neither value has a default, so every caller must state the one it means (`PL-M85T`).
 
-    The volume defaulted to 6.0 L, a second copy of
-    `data/machines/reference_circle_system.json` that only a test held equal
-    to the file (`PL-4YY1`). The vaporizer maximum defaulted to 100%, which no
-    agent's vaporizer delivers, so a circuit built without it accepted any
-    dial. `AgentUptakeSystem.for_agent()` passes both from the data files.
+    The volume used to default to 6.0 L, a second copy of the value in
+    `data/machines/reference_circle_system.json`. Only a test kept that copy
+    equal to the file (`PL-4YY1`). The vaporizer maximum used to default to
+    100%, which no agent's vaporizer delivers, so a circuit built without it
+    accepted any dial setting. `AgentUptakeSystem.for_agent()` passes both from
+    the data files.
     """
 
     given = {"circuit_volume_l": 6.0, "max_delivered_concentration_percent": Percent(8.0)}
@@ -637,14 +638,14 @@ def test_a_circuit_cannot_be_built_without_its_volume_or_its_vaporizer_maximum(
 
 
 def test_the_flow_default_matches_the_shipped_machine_file() -> None:
-    """`PL-QW19`: the flow a run opens at when its machine profile states none.
+    """The flow default, its constant and the shipped machine file agree (`PL-QW19`).
 
-    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` is the one default `PL-M85T` kept,
-    because it is more than a restatement: it is the flow a run opens at when
-    its machine profile states none, and its only authority is the rationale
-    the shipped file records for storing the same value. So the file has to
-    keep stating it, and the constant, the field default and the file have to
-    agree.
+    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` is the one default that `PL-M85T`
+    kept, because it is more than a copy of a file value. It is the flow a run
+    opens at when its machine profile states none. Its only authority is the
+    rationale that the shipped file records for storing the same value. So the
+    file has to keep stating the value, and the constant, the field default and
+    the file have to agree.
     """
 
     machine = load_reference_circle_system_parameters()
@@ -659,18 +660,19 @@ def test_the_flow_default_matches_the_shipped_machine_file() -> None:
 def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     """A run from the shipped profile carries its values, and the 90 s they give.
 
-    Before `PL-4YY1` `for_agent()` named neither, so a run took its circuit
-    volume and fresh gas flow from `core/circuit.py`'s field defaults and no
-    provenance row could name where they came from. Asserting the wash-in time
-    constant as well as the two inputs is the point of the pair: the 90 s
-    machine lag is the quantity a learner reads off the early rise, and it is
-    what a silent change to either value would move.
+    Before `PL-4YY1`, `for_agent()` passed neither value. So a run took its
+    circuit volume and fresh gas flow from the field defaults in
+    `core/circuit.py`, and no provenance row could name where they came from.
+    This test asserts the wash-in time constant as well as the two inputs. The
+    90 s machine lag is the quantity a learner reads off the early rise, and a
+    silent change to either value would move it.
 
-    It cannot show that the file was read for the flow, because the shipped
-    flow equals the field default. A profile stating other values shows it:
-    `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` for
-    the volume and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
-    for the flow, both below (`PL-H8QP`).
+    This test cannot show that the file was read for the flow, because the
+    shipped flow equals the field default. A profile that states other values
+    shows it. `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume`
+    covers the volume, and
+    `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow` covers
+    the flow. Both tests are below (`PL-H8QP`).
     """
 
     machine = load_reference_circle_system_parameters()
@@ -780,10 +782,11 @@ def test_a_silent_profile_whose_range_excludes_the_teaching_default_is_refused(
 
 # --- A profile stating another volume (PL-H8QP) -------------------------------
 
-# The shipped profile's volume was `BreathingCircuit`'s field default until
-# `PL-M85T`, so no run built from it showed whether `for_agent()` read the
-# volume at all. A run built from a profile stating another one does, handed
-# over as the profiles above are.
+# Until `PL-M85T`, the shipped profile's volume was also `BreathingCircuit`'s
+# field default. So no run built from that profile showed whether
+# `for_agent()` read the volume at all. A run built from a profile that states
+# a different volume does show it. That profile is handed over in the same way
+# as the profiles above.
 
 
 def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
@@ -791,10 +794,11 @@ def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
 ) -> None:
     """A `for_agent()` that stopped passing the profile's volume fails here.
 
-    It would build the run at another volume, or fail to build it, and every
-    provenance row pointing at `data/machines/reference_circle_system.json`
-    would quietly become a claim about a file the model no longer consults.
-    3.3 L at the shipped 4.0 L/min is 49.5 s.
+    Such a `for_agent()` would build the run at another volume, or fail to
+    build it. Every provenance row pointing at
+    `data/machines/reference_circle_system.json` would then quietly become a
+    claim about a file the model no longer consults. 3.3 L at the shipped
+    4.0 L/min gives a time constant of 49.5 s.
     """
 
     payload = _shipped_machine_payload()

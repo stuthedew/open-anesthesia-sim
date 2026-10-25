@@ -66,21 +66,22 @@ from anesthesia_sim.core.validation import (
 TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.0)
 """The fresh gas flow a run opens at when its machine profile states none.
 
-A teaching default, not a clinical recommendation, and not a property of any
-machine. No surveyed workstation publishes a startup fresh gas flow
-(`docs/machine-survey.md` § "(a2) Default fresh gas flow"), so
-`default_fresh_gas_flow_l_min` is optional in a `data/machines/` profile and
+This value is a teaching default. It is not a clinical recommendation, and it is
+not a property of any machine. No surveyed workstation publishes a startup
+fresh gas flow (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). So
+`default_fresh_gas_flow_l_min` is optional in a `data/machines/` profile.
 `docs/machine-abstraction.md` § "Three homes, and why the shipped constants
-move" makes the opening flow a condition of the run rather than of the machine
-(`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run here when the profile
-is silent.
+move" decides that the opening flow is a condition of the run rather than of
+the machine (`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run at this
+flow when the profile is silent.
 
-Its authority is the rationale `data/machines/reference_circle_system.json`
-records in its `provenance_gap` for storing the same value - chosen so that a
-learner sees the machine lag as a distinct phase of the early rise - and not
-any source. `docs/MODEL.md` carries that row, and
-`test_the_flow_default_matches_the_shipped_machine_file` in
-`tests/unit/test_circuit.py` fails if this value and the file's ever differ.
+No source is this value's authority. Its authority is the rationale that
+`data/machines/reference_circle_system.json` records in its `provenance_gap`
+for storing the same value: the value was chosen so that a learner sees the
+machine lag as a distinct phase of the early rise. `docs/MODEL.md` carries the
+provenance row for this value. `test_the_flow_default_matches_the_shipped_machine_file`
+in `tests/unit/test_circuit.py` fails if this value and the file's value ever
+differ.
 """
 
 
@@ -293,93 +294,96 @@ class BreathingCircuit:
     """Ideal, well-mixed breathing circuit with constant volume.
 
     The circuit's volume and its vaporizer maximum have no default, so every
-    caller states the values it means (`PL-M85T`). The other defaults are
-    agent-independent, which is the only thing a class holding no agent
-    parameters can honestly claim to know. A circuit is built empty, at
-    4 L/min, with the vaporizer off. Zero is the one dial position every
-    vaporizer of every agent has, and therefore the only delivered
-    concentration this class can supply without borrowing some particular
-    agent's number (PL-019).
+    caller must state the values it means (`PL-M85T`). The other defaults do
+    not depend on the agent. Agent-independent values are the only ones that a
+    class holding no agent parameters can honestly claim to know. A circuit is
+    built empty, at 4 L/min, with the vaporizer off. Zero is the one dial
+    position that every vaporizer of every agent has. So it is the only
+    delivered concentration this class can supply without borrowing some
+    particular agent's number (PL-019).
 
     **`data/machines/reference_circle_system.json` is the authority for the
     volume and the flow, and this class is not.** Every shipped path builds the
-    circuit through `AgentUptakeSystem.for_agent()`, which passes the volume
-    from the machine profile, and the flow from the profile where it states
-    one. Until `PL-M85T` the volume defaulted to 6.0 L, a second copy of the
-    file's value that only a test held equal to it (`PL-4YY1`). The flow
-    default is `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, which is also what
-    `for_agent()` opens a run at when the profile states no startup flow
-    (`PL-QW19`). `test_the_flow_default_matches_the_shipped_machine_file` in
-    `tests/unit/test_circuit.py` fails if that default and the file ever
-    disagree. The file also carries why 6.0 L is kept where the published Gas
-    Man convention is 8 L, and that the 4 L/min has no published counterpart
-    at all.
+    circuit through `AgentUptakeSystem.for_agent()`. That method passes the
+    volume from the machine profile, and passes the flow from the profile when
+    the profile states one. Until `PL-M85T`, the volume defaulted to 6.0 L. That
+    default was a second copy of the file's value, and only a test kept the two
+    equal (`PL-4YY1`). The flow default is `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`.
+    `for_agent()` also opens a run at that flow when the profile states no
+    startup flow (`PL-QW19`). `test_the_flow_default_matches_the_shipped_machine_file`
+    in `tests/unit/test_circuit.py` fails if that default and the file ever
+    disagree. The file also records why it keeps 6.0 L where the published Gas
+    Man convention is 8 L. It also records that the 4 L/min has no published
+    counterpart at all.
 
-    `fresh_gas_flow_l_min` is the flow at the common gas outlet - carrier
-    gas plus the vapour the vaporizer added - and not the flowmeter
-    setting a user reads it as. The two differ by a factor of
+    `fresh_gas_flow_l_min` is the flow at the common gas outlet: the carrier
+    gas plus the vapour that the vaporizer added. It is not the flowmeter
+    setting, although a user may read it as one. The two differ by a factor of
     1/(1 - `delivered_partial_pressure_fraction`), which is 22% at
-    desflurane's 18% dial maximum. `advance_fresh_gas()` reads this one
-    field as both the rate agent arrives at and the rate mixed circuit gas
-    leaves at, so only the post-vaporizer total balances; see
-    `docs/MODEL.md`, "Breathing circuit".
+    desflurane's 18% dial maximum. `advance_fresh_gas()` uses this one field
+    both as the rate at which agent arrives and as the rate at which mixed
+    circuit gas leaves. Only the post-vaporizer total balances those two
+    rates, so the field must hold that total. See `docs/MODEL.md`, "Breathing
+    circuit".
 
-    **The dial is held as the percent it was set to, and the fraction is
+    **The dial is stored as the percent it was set to, and the fraction is
     derived from it** (`PL-NJPB`). `delivered_concentration_percent` is the
-    record, and `delivered_partial_pressure_fraction`, which the governing
-    equations read, is `fraction_from_percent` of it on every read. Stored the
-    other way round, the setting could not be recovered as dialled: a
-    fraction times a hundred misses the percent it came from, in binary
-    floating point, for 126 of the 801 settings a 0 to 8% dial makes at 0.01%
-    steps, 0.9% reading back as 0.9000000000000001. The equations lose
-    nothing, because the one division the interface used to make is made
-    here instead. `PL-SM5V` chose the same rule for the flows, which are held
-    in L/min and read by the equations in L/s.
+    stored record. `delivered_partial_pressure_fraction`, which the governing
+    equations use, is computed as `fraction_from_percent` of it on every read.
+    If the fraction were stored instead, the setting could not be recovered as
+    dialled. In binary floating point, a fraction times a hundred does not
+    return the percent it came from for 126 of the 801 settings that a 0 to 8%
+    dial makes in 0.01% steps. For example, 0.9% reads back as
+    0.9000000000000001. The equations lose nothing, because the one division
+    that the interface used to make is now made here. `PL-SM5V` chose the same
+    rule for the flows, which are stored in L/min and used by the equations in
+    L/s.
 
     `max_delivered_concentration_percent` is the vaporizer's calibrated
     dial maximum for the agent in use, in the unit of the dial it bounds. It
-    has no default (`PL-M85T`). Until then it defaulted to 100%, which no
-    agent's vaporizer delivers, so a circuit built without it accepted any
+    has no default (`PL-M85T`). Before `PL-M85T`, it defaulted to 100%, which
+    no agent's vaporizer delivers, so a circuit built without it accepted any
     dial setting. Every agent-aware path builds the circuit through
-    `AgentUptakeSystem.for_agent()`, which sets both the real limit and that
-    agent's own starting dial from the agent data file. A test of circuit
-    physics that wants no device limit passes 100% itself. A dial set to 100%
-    under that maximum can carry a computed fraction a rounding past 1, which
-    `Fraction` refuses where it is built; `core/concentration.py` records that
-    as the type's limit (`PL-4R3W`).
+    `AgentUptakeSystem.for_agent()`. That method sets both the real limit and
+    that agent's own starting dial from the agent data file. A test of circuit
+    physics that wants no device limit passes 100% itself. With that maximum,
+    a dial set to 100% can give a computed fraction one rounding error above 1.
+    `Fraction` rejects that value when it is built, and `core/concentration.py`
+    records this as the type's limit (`PL-4R3W`).
 
-    Every field is checked at every write to it, in `__setattr__`, the
-    constructor's writes included, so an assignment made past the constructor
-    and the setters is refused as they refuse it (`PL-LBQY`, `PL-19Y0`). A
-    percent, a fraction or a flow is checked for its type and not for its
-    range: a `Percent`, a `Fraction` or a `FreshGasFlow` was checked against
-    its range when it was built, so holding one is the proof (`PL-4R3W`,
-    `PL-0YYV`).
+    `__setattr__` checks every field each time it is written, including the
+    writes the constructor makes. So an assignment that bypasses the
+    constructor and the setters is rejected, just as they would reject it
+    (`PL-LBQY`, `PL-19Y0`). A percent, a fraction or a flow is checked for its
+    type and not for its range. A `Percent`, a `Fraction` or a `FreshGasFlow`
+    was checked against its range when it was built, so a value of that type
+    already proves that it is in range (`PL-4R3W`, `PL-0YYV`).
 
     `deliverable_fresh_gas_flow_range` is the machine's counterpart of that
-    dial maximum, and carries its `None` the same way: "no machine range
-    declared", under which the model's envelope in
+    dial maximum, but it may be `None`. `None` means "no machine range
+    declared", and then the model's envelope in
     `core/supported_ranges.py` is the only bound on the flow. The shipped
-    `reference_circle_system` profile declares none — no operator's manual or
-    manufacturer specification giving a deliverable range was reachable for
+    `reference_circle_system` profile declares no range. No operator's manual
+    or manufacturer specification giving a deliverable range was reachable for
     any surveyed machine (`docs/machine-survey.md` § "(b8) Flow bounds,
-    minimum oxygen flow, and the hypoxic guard") — so `None` here is a
-    recorded absence of claim rather than a machine known to be unlimited.
-    It is instance state for the reason the vaporizer maximum is: it belongs
-    to the device in front of the patient and differs between devices, where
-    a module constant would be one number for every machine there will ever
-    be (`PL-8PS6`). `accepted_fresh_gas_flow_range_l_min` is the two claims
-    read together, the one statement of their intersection.
+    minimum oxygen flow, and the hypoxic guard"). So `None` here records that
+    no claim is made. It does not mean the machine is known to be unlimited.
+    The range is instance state for the same reason the vaporizer maximum is.
+    It belongs to the device in front of the patient and differs between
+    devices, whereas a module constant would be one number for every machine
+    there will ever be (`PL-8PS6`). `accepted_fresh_gas_flow_range_l_min`
+    combines the two bounds, the machine's range and the model's envelope. It
+    is the one place that states their intersection.
     """
 
     circuit_volume_l: float
     fresh_gas_flow_l_min: FreshGasFlow = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
     delivered_concentration_percent: Percent = Percent(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
-    # Keyword-only, because a field with no default cannot follow one with a
-    # default. The constructor still writes the fields in the order listed, so
-    # the maximum is written after the dial, which its check in `__setattr__`
-    # reads.
+    # This field is keyword-only, because a field with no default cannot follow
+    # one with a default. The constructor still writes the fields in the order
+    # listed, so the maximum is written after the dial. The maximum's check in
+    # `__setattr__` reads the dial, so the dial must already be set.
     max_delivered_concentration_percent: Percent = field(kw_only=True)
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None = None
 
