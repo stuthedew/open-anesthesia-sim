@@ -3,12 +3,14 @@ id: PL-736G
 title: Decide whether a pull request that changes only apparatus files should also skip the simulator tests that import no apparatus module, which would shorten its CI run by about 85 s more than PL-STM6's skip of the 35 costly tests (found working PL-STM6)
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: perf, infra
 feature: ci-cost
 touches: .github/workflows/quality.yml, tests/conftest.py, subprojects/docket/src/docket/cli.py, docs/apparatus.md, docs/items/PL-STM6-skip-the-46-tests-that-read-a-costly.md
 deferred-from: v0.7.0 - filed after the gate froze; a P3 CI cost waiting on the owner's answer
 added: 2026-10-25
+closed: 2026-10-25
+reason: The owner chose to keep the current skip (2026-10-25, ratified). Skipping every simulator test was unsafe, because two simulator tests import tools/doc_check.py. The safe wider skip would save about 85 s per apparatus run, which was not worth a new selection mechanism.
 payoff: a pull request that changes only apparatus files finishes CI about a minute and a half sooner, if the owner chooses the wider skip
 ---
 
@@ -74,6 +76,8 @@ In the same window, 24 pull-request runs finished with a known answer: 5 apparat
 **Recommendation:** keep the current skip and drop this item. The saving is about a minute and a half per run. On 2026-10-17 the owner judged a saving of about that size not worth "a new headache to trouble shoot", and `PL-STM6`'s first version caused exactly that kind of headache on its first day. The choice is still the owner's for two reasons. It changes what a pull request proves before it merges. And the owner has since taken the CI items up again, which may mean CI time is worth more to them now.
 
 The recommendation would be wrong if the saving is worth more than its seconds per run. That would happen if armed pull requests often wait for one another. `main` accepts only an up-to-date branch, so each merge makes every armed pull request behind it bring `main` in and run CI again. A shorter run would then shorten each wait in that line. It was measured on the 43 pull-request runs of `quality.yml` from `#1774`'s merge to 14:25 UTC on 2026-10-25. Three of them were started by bringing `main` into a branch, and 40 by a work push. Of the 15 runs cancelled before they finished, 14 were replaced by a work push and 1 by a `main` merge. So in that window the line of waiting pull requests was short, and the recommendation stands.
+
+**Answer** (project owner, 2026-10-25, ratified, over building the safe wider skip): keep the current skip, and drop this item. Apparatus pull requests keep running every simulator test except the 35 costly ones that `PL-STM6` skips. `PL-STM6`'s own retune of `PART_SHARES` is the route left for shortening those runs, and it waits on that item's 20-run measurement. Reopen this on a measurement the round did not have: a long line of armed pull requests waiting on one another, or an apparatus run that takes far longer than the 357 s median measured here.
 
 **Done when.** The owner's answer is recorded here. If it is to keep the current skip, the item is dropped, with this round as the reason. If it is to build the safe wider skip, all of the following hold:
 
