@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, docs/references/README.md
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1819
 payoff: The published check on the tissue:blood division rests on a reading anyone can repeat, and the text says how far a second published set of coefficients differs.
 verify: grep -qF 'Fiserova-Bergerova and Diaz' docs/MODEL.md && ! grep -qF "Baker's figures have not been re-read" docs/MODEL.md
 ---
