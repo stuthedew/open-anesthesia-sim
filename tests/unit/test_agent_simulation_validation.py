@@ -367,8 +367,7 @@ def test_the_running_totals_do_not_drift_as_steps_add_up() -> None:
 
     for _ in range(STEPS_IN_THE_SAMPLE):
         validator.record_external_agent_transfer(
-            delivered_agent_l=WORST_CASE_TRANSFER_PER_STEP_L,
-            exhausted_agent_l=exhausted_per_step_l,
+            delivered_agent_l=WORST_CASE_TRANSFER_PER_STEP_L, exhausted_agent_l=exhausted_per_step_l
         )
         plain_delivered_l += WORST_CASE_TRANSFER_PER_STEP_L
 
@@ -405,9 +404,7 @@ def test_a_transfer_whose_second_total_is_refused_writes_neither_total() -> None
         SimulationConfigurationError,
         match="^exhausted_agent_l must be nonnegative and finite" + REFUSAL_REASON,
     ):
-        validator.record_external_agent_transfer(
-            delivered_agent_l=0.11, exhausted_agent_l=1.7e308
-        )
+        validator.record_external_agent_transfer(delivered_agent_l=0.11, exhausted_agent_l=1.7e308)
 
     assert astuple(validator) == held
 
