@@ -3512,13 +3512,17 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
 
 
 WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
-"""Bound on |trunk drawn - branch drawn| at a column the two runs share.
+"""Bound the difference between the trunk's and the branch's drawn values at a shared column.
 
-The divergence was measured at or below 2.8e-15 on the case below. The bound
-is set an order of magnitude above that, so an ordinary floating-point wobble
-does not fail the suite. It is also eleven orders of magnitude below the 1e-4
-that `docs/MODEL.md` § "Displayed precision" resolves, which is the point the
-measurement makes.
+The trunk is the parent run, and the branch is the run forked from one of its bookmarks. A
+column is one of the sampled points that the plot draws.
+
+The divergence was measured at or below 2.8e-15 on the case below. The bound is about 36 times
+that, roughly one and a half orders of magnitude. That margin keeps an ordinary floating-point
+wobble from failing the suite. The bound is also nine orders of magnitude below 1e-4, the
+smallest difference that the display resolves according to `docs/MODEL.md` § "Displayed
+precision". That gap is the point of the measurement: the two runs differ by far less than the
+display can show.
 """
 
 
