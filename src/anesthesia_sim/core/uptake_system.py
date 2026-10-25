@@ -19,6 +19,7 @@ lungs, and would be wrong by a large factor on an accounting quantity (PL-006).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
@@ -58,6 +59,9 @@ from anesthesia_sim.core.patient import PatientCompartments, PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.validation import require_nonnegative_finite
+
+_PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
+"""The fields of `AgentUptakeSystem` that hold its parts, each written once, when it is built."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,7 +132,93 @@ class AgentUptakeSystem:
     """
 
     def __post_init__(self) -> None:
+        """Anchor the agent accounting to what the parts hold when the system is built.
+
+        The accounting identity compares the agent stored in the parts with
+        the anchor set here, plus the agent delivered since and minus the agent
+        exhausted since. So the anchor describes these particular parts.
+        `__setattr__` refuses a part written onto the built system, so the
+        anchor always describes the parts the system holds (`PL-N7MM`). The
+        system does not refuse agent written straight into a part's own store,
+        bypassing the part's methods. The accounting check finds such agent at
+        the next step or the next read of the accounting.
+        """
+
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
+
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # This guard is hidden from `mypy` on purpose, as
+        # `AlveolarCompartment.__setattr__` is. When a class defines `__setattr__`,
+        # `mypy` lets code assign to any attribute name, and checks the value only
+        # against the type of the method's `value` parameter. So with this guard
+        # visible, a misspelt field written in `src/` would pass `--strict` and fail
+        # only at run time, against the slots. With the guard hidden, `mypy` checks
+        # the dataclass's fields and their types as before. The guard's own lines
+        # are checked by their tests rather than by `mypy` (`PL-LBQY`).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a part written onto a system that already has one.
+
+            The system's parts are its circuit, its alveoli, its patient and
+            its accounting validator. Each is written once, when the system is
+            built, and the parts are built together for one agent. A part
+            written later can break that match in two ways. If the new part
+            holds agent that the anchor did not count, the next step's
+            accounting check halts the run. The check then reports a numerical
+            failure when the real cause was a swapped part (`reset`'s docstring
+            describes the same failure). If the new part holds no agent but was
+            built for another agent, no check finds it at all. Nothing in
+            `src/` replaces a part, so the write is refused outright. In both
+            cases the refusal names the cause at the moment of the write. A
+            different part means a different system, so build a new one with
+            the constructor (`PL-N7MM`). `dataclasses.replace` is not a way to
+            do that. The copy it builds shares every part it is not given with
+            the original, including the validator. The copy's constructor then
+            re-anchors that shared validator.
+
+            A tissue group or the venous pool written onto the patient is one
+            level down, inside the patient, so this method does not check it.
+            The patient checks a new group against its perfusion fractions.
+            The accounting check covers the agent that a new group or pool
+            holds. It also covers agent written straight into a part's own
+            store.
+
+            The constructor, a copy and a pickle write each part onto a system
+            that has none yet, so those writes are accepted. The cached
+            propagator and its key are not parts. `_propagator_for` writes them
+            at any step, and they are keyed by the settings they were built
+            from.
+
+            Raises:
+                SimulationConfigurationError: `name` names a part, and the
+                    system already has that part. Nothing is written.
+            """
+
+            if name in _PART_FIELDS and hasattr(self, name):
+                raise SimulationConfigurationError(
+                    f"the system's {name} cannot be replaced once the system is built, "
+                    "because its agent accounting is anchored to the agent its parts held "
+                    "when it was built: build a new AgentUptakeSystem from the new part"
+                )
+
+            super().__setattr__(name, value)
+
+        def __delattr__(self, name: str) -> None:
+            """Refuse to delete any field.
+
+            The check in `__setattr__` applies only to a system that already
+            has the part. So a part that was deleted and then written again
+            would bypass it. No field of a built system is ever meant to be
+            absent, so every deletion is refused.
+
+            Raises:
+                SimulationConfigurationError: always.
+            """
+
+            raise SimulationConfigurationError(
+                f"the system's {name} cannot be deleted, because a value written after it "
+                "would bypass the checks made when the system is built: build a new system"
+            )
 
     @classmethod
     def default(cls) -> AgentUptakeSystem:

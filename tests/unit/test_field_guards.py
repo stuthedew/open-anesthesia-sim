@@ -1,6 +1,6 @@
 """Every name a field guard in `core/` compares with must be a field of its class.
 
-Seven classes in `core/` check a field when it is written, in a `__setattr__`
+Eight classes in `core/` check a field when it is written, in a `__setattr__`
 that compares the name being written with a string, such as
 `if name == "circuit_volume_l":`. The string is a second copy of the field's
 name, which the dataclass already declares. If the field is renamed and the
@@ -36,6 +36,7 @@ GUARDED_CLASSES = {
     "patient.PatientCompartments",
     "simulation.SimulationState",
     "tissue.TissueGroup",
+    "uptake_system.AgentUptakeSystem",
 }
 
 
