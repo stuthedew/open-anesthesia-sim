@@ -3853,8 +3853,8 @@ move. The unperfused load gives the smallest figure although it runs longest,
 900 s against the others' 600 s. Its worst falls in the loading phase, while
 the blood and tissue states are still exactly zero and only the circuit and
 alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
-That gives the worst figure measured: **5.89e-14**, for desflurane on a
-*ventilator start* at the finest step. The next largest is 5.46e-14, for
+That gives the worst figure measured on any trajectory: **5.89e-14**, for
+desflurane on a *ventilator start* at the finest step. The next largest is 5.46e-14, for
 desflurane on the held *envelope corner* at the same step (measured
 2026-10-25, `PL-F67Q`). The operator split's worst over the
 same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the

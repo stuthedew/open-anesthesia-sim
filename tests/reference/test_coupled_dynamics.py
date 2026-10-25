@@ -643,13 +643,14 @@ ORACLE_STEP_S = 0.0125
 # domain it covers, not by the size of the residual it produces.
 #
 # `test_the_disagreement_does_not_shrink_with_the_step` also runs all five of
-# these trajectories at 0.05 s and 0.025 s. The largest residual in this module
-# occurs in those runs, exactly as rounding predicts, because a smaller step means
-# more steps. The worst measured is **5.8870e-14**, for desflurane on the
-# ventilator start at the 0.025 s step, in the circuit fraction. That is the
+# these trajectories at 0.05 s and 0.025 s. The largest residual on any gate
+# trajectory occurs in those runs, exactly as rounding predicts, because a smaller
+# step means more steps. The worst measured is **5.8870e-14**, for desflurane on
+# the ventilator start at the 0.025 s step, in the circuit fraction. That is the
 # figure this bound is set against. The next largest is 5.4623e-14, for
 # desflurane on the held envelope corner at the same step (measured 2026-10-25,
-# `PL-F67Q`).
+# `PL-F67Q`). The held hour that `HELD_RUN_ROUNDING_BOUND` covers reaches more,
+# 7.1637e-14, because it takes 36 000 steps against 24 000.
 #
 # **The margin is set by platform variation, not by that figure.** This bound
 # constrains accumulated rounding, which is not reproducible between machines. A
@@ -1395,11 +1396,11 @@ def test_the_disagreement_does_not_shrink_with_the_step(
     **The setting-change trajectories are here because the retired test ran
     them and this one did not (`PL-X9KD`).** That was the one property of the
     retired test that did not transfer, and it is not decorative. This gate
-    drives the largest residual in the module, and it does so at the finest
-    step rather than the coarsest. It drives all five gate trajectories, the
-    same set as `test_exact_step_matches_the_independent_solution_everywhere`
-    (`PL-F67Q`). So the largest residual this module reports is a maximum over
-    every trajectory the gates run, not over a subset of them.
+    drives the largest residual of any gate trajectory, and it does so at the
+    finest step rather than the coarsest. It drives all five gate trajectories,
+    the same set as `test_exact_step_matches_the_independent_solution_everywhere`
+    (`PL-F67Q`). So that largest residual is a maximum over all five, not over
+    a subset of them.
 
     **What refining the oracle changed here (`PL-B1WW`).** This docstring used
     to say that held settings were worst at the finest step and turning
@@ -1418,7 +1419,7 @@ def test_the_disagreement_does_not_shrink_with_the_step(
         They grow by a factor of 3.6 to 21 from 0.1 s to 0.025 s. Examples are
         2.8935e-15, 1.3385e-14, 3.8337e-14 for sevoflurane at held settings,
         and 1.3906e-14, 5.0099e-14, 5.8870e-14 for desflurane's ventilator
-        start, which is the largest residual anywhere in this module.
+        start, which is the largest on any gate trajectory.
       - Desflurane at held settings and on ordinary use run the other way:
         1.3427e-14, 1.1213e-14, 7.8756e-15, and 1.5786e-14, 1.3677e-14,
         9.2287e-15. Each falls by a factor of 1.7 over the two halvings. A
