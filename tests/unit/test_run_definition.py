@@ -31,6 +31,7 @@ from math import inf, nan, nextafter
 
 import pytest
 
+from anesthesia_sim.app.chart_frame import chart_columns
 from anesthesia_sim.core import run_definition
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -98,7 +99,7 @@ divergence still fails it.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 DOCUMENTED_MAXIMUM_WINDOW_COLUMNS = 100_000
-"""The bound on one window's columns, as `PL-06LS` states it, written out here.
+"""The bound on one window's columns, written here as the number that `PL-06LS` states.
 
 The tests below drive the code to this value and one past it. They take the number from
 the item rather than from `MAXIMUM_WINDOW_COLUMNS`, so a changed constant fails a test
@@ -1062,18 +1063,23 @@ def test_a_window_refuses_to_reach_past_the_run() -> None:
 
 
 def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plot() -> None:
-    """The bound is the number the item states, and a full-width 8K plot is far inside it."""
+    """The bound is the number the item states, and a full-width 8K plot is far inside it.
+
+    The chart's own column count is read from `chart_columns`, so a change there that asked
+    for more columns per pixel would fail here rather than at run time on a wide screen.
+    """
 
     assert MAXIMUM_WINDOW_COLUMNS == DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
+    assert chart_columns(7680.0) == EIGHT_K_PLOT_COLUMNS
     assert EIGHT_K_PLOT_COLUMNS * 10 < DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
 
 
 @pytest.mark.parametrize("columns", [5.0, True, "5", None])
 def test_a_window_refuses_a_column_count_that_is_not_an_int(columns: object) -> None:
-    """A count must be a whole `int`, so a float or `True` is refused by name (`PL-06LS`).
+    """A float or `True` as the column count is refused with an error naming `columns` (`PL-06LS`).
 
-    Before the fix, a float reached `range()` and failed there with a message that did not
-    name `columns`, and `True` was taken as one column.
+    The count must be a whole `int`. Before the fix, a float reached `range()` and failed there
+    with a message that did not name `columns`. `True` was taken as one column.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1430,11 +1436,12 @@ def test_an_anchored_window_refuses_a_spacing_too_fine_to_count(spacing_s: float
 
 
 def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
-    """A grid of one column past the bound is refused, and the bound itself is drawn (`PL-06LS`).
+    """A grid one multiple past the bound is refused, and a grid at the bound is drawn (`PL-06LS`).
 
-    The window opens at zero and closes on a grid multiple, so its columns are the multiples
-    1 to `count`, with the opening bound as one more column and the closing bound on the last
-    multiple. Before the fix, the call looped once per column with no limit.
+    The window opens at zero and closes on grid multiple `count`, so the bound counts the
+    multiples 1 to `count`. The drawn columns are the opening bound, the multiples 1 to
+    `count - 1`, and the closing bound on multiple `count`. Before the fix, the call looped
+    once per multiple with no limit.
     """
 
     _, definition, _ = _stepped_run(steps=200)
@@ -1445,7 +1452,7 @@ def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
             0.0, (count + 1) * GRID_SPACING_POWER_OF_TWO_S, GRID_SPACING_POWER_OF_TWO_S
         )
 
-    assert f"{count + 1} grid columns" in str(raised.value)
+    assert f"{count + 1} grid multiples" in str(raised.value)
 
     window = definition.evaluate_anchored(
         0.0, count * GRID_SPACING_POWER_OF_TWO_S, GRID_SPACING_POWER_OF_TWO_S
@@ -1457,14 +1464,18 @@ def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
 def test_an_anchored_window_refuses_a_spacing_that_would_never_finish() -> None:
     """A spacing of 1e-300 s over one second is about 1e300 columns, and is refused at once.
 
-    The quotient `stop_s / spacing_s` is finite, so the `PL-YZ17` refusal does not apply.
-    Before `PL-06LS`, this call looped once per column and never returned.
+    The quotient `stop_s / spacing_s` is finite, so the refusal of a spacing too fine for its
+    multiples to be counted (`PL-YZ17`) does not apply. Before `PL-06LS`, this call looped once
+    per column and never returned. The refusal gives the count to six significant figures,
+    because its later digits would be rounding error.
     """
 
     _, definition, _ = _stepped_run(steps=100)
 
-    with pytest.raises(SimulationConfigurationError, match="one call may ask for$"):
+    with pytest.raises(SimulationConfigurationError, match="one call may ask for$") as raised:
         definition.evaluate_anchored(6.0, 7.0, 1e-300)
+
+    assert "puts 1e+300 grid multiples" in str(raised.value)
 
 
 def test_an_anchored_window_draws_a_spacing_finer_than_the_smallest_step_exactly() -> None:

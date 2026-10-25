@@ -95,20 +95,24 @@ _PropagatorKey = tuple[UptakeEquationSettings, float]
 """A stretch's settings and an interval, which are everything a propagator is formed from."""
 
 MAXIMUM_WINDOW_COLUMNS: Final = 100_000
-"""The most evenly spaced columns that one call to `evaluate` or `evaluate_anchored` may ask for.
+"""The largest number of columns that one call to `evaluate` or `evaluate_anchored` may ask for.
 
 A window costs one matrix-vector product per column, about 6.2 us each
 (`PL-2FM6`), so this many columns take about 0.6 s. The chart asks for one
 column per logical pixel of its plot (`app/chart_frame.py`, `chart_columns`).
 An 8K display is 7 680 pixels wide at a device-pixel ratio of one, so a plot
 across all of it asks for less than a tenth of the bound. The bound therefore
-refuses nothing a chart draws. It exists so
-that a request no screen could show fails at once with a named error. Without
-it, `evaluate_anchored` at a spacing of 1e-300 s over one second would loop
-about 1e300 times and never return (`PL-06LS`). For `evaluate_anchored` the
-bound counts grid columns. The two bounds and the events inside the window add
-to that count. They are limited by the run's own record rather than by the
-request.
+rejects no window that a chart draws. It exists so that a request too large for
+any screen to show fails at once with a named error. Without it,
+`evaluate_anchored` at a spacing of 1e-300 s over one second would loop about
+1e300 times and never return (`PL-06LS`).
+
+For `evaluate_anchored`, the bound counts the grid multiples after `start_s`
+and up to `stop_s`, which is how many times `_anchored_columns` loops. A
+multiple that falls on `stop_s` is drawn as the window's stop rather than as a
+grid column, so the count can be one more than the grid columns drawn. The
+window's start and the events inside it add columns beyond the count. The
+run's own record limits the events, not the request.
 """
 
 
@@ -711,8 +715,9 @@ class RunDefinition:
                 the grid's multiples up to `stop_s` cannot be counted. Before
                 `PL-YZ17`, that last case raised a bare `OverflowError`. It is
                 also raised when the window holds more than
-                `MAXIMUM_WINDOW_COLUMNS` grid columns. Before `PL-06LS`, such
-                a window looped once per column and could fail to return. A
+                `MAXIMUM_WINDOW_COLUMNS` grid multiples, counted as that
+                constant's docstring says. Before `PL-06LS`, such a window
+                looped once per multiple and could fail to return. A
                 fine spacing is otherwise accepted. Unlike a run's step, it is
                 chained at most once per column, so its rounding error does
                 not accumulate beyond what the columns asked for.
@@ -734,16 +739,20 @@ class RunDefinition:
                 "than can be counted"
             )
 
-        # `_anchored_columns` takes one grid column for each multiple in this
-        # range. The count is exact, because each quotient is a finite float
-        # and `int()` converts it without rounding.
-        grid_columns = int(stop_s // spacing_s) - int(start_s // spacing_s)
+        # `_anchored_columns` loops once for each multiple in this range, so
+        # this is exactly how many times it loops. Each quotient is a finite
+        # float, and `int()` converts it without rounding. At a very fine
+        # spacing the quotients are themselves rounded, so the message gives
+        # the count to six significant figures rather than as a long integer
+        # whose later digits are rounding error.
+        grid_multiples = int(stop_s // spacing_s) - int(start_s // spacing_s)
 
-        if grid_columns > MAXIMUM_WINDOW_COLUMNS:
+        if grid_multiples > MAXIMUM_WINDOW_COLUMNS:
             raise SimulationConfigurationError(
-                f"a column spacing of {spacing_s} s puts {grid_columns} grid columns between "
-                f"{start_s} s and {stop_s} s, more than the {MAXIMUM_WINDOW_COLUMNS} that one "
-                "call may ask for"
+                f"a column spacing of {spacing_s} s puts {float(grid_multiples):.6g} grid "
+                "multiples after "
+                f"{start_s} s and up to {stop_s} s, more than the {MAXIMUM_WINDOW_COLUMNS} that "
+                "one call may ask for"
             )
 
         times_s, grid_index = self._anchored_columns(start_s, stop_s, spacing_s)
