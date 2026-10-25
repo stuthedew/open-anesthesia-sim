@@ -544,9 +544,11 @@ class BreathingCircuit:
     def time_constant_s(self) -> float:
         """Return the fresh gas wash-in time constant, in seconds.
 
-        The time constant is `circuit_volume_l / fresh_gas_flow_l_min`. So it
-        is based on the flow at the common gas outlet, not on a flowmeter
-        setting. `advance_fresh_gas()` does not read it. That method computes
+        The time constant is `circuit_volume_l / fresh_gas_flow_l_min`, which
+        is in minutes, and this method converts it to seconds. At zero flow it
+        returns `inf`. The time constant is based on the flow at the common gas
+        outlet, not on a flowmeter setting. `advance_fresh_gas()` does not read
+        it. That method computes
         the step's length in time constants from the volume of gas the step
         admits, which does not overflow at any flow.
         """
