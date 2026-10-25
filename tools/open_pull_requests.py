@@ -75,6 +75,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.model import pr_number  # noqa: E402
 from docket.vcs import (  # noqa: E402
     PULL_CLOSED,
     PULL_MERGED,
@@ -321,12 +322,15 @@ def newest(slug: str, branch: str, base: str) -> NewestPullRequest | None:
     entry = payload[0]
     if not isinstance(entry, dict):
         raise ListingFailed(UNREADABLE_ANSWER, "GitHub's listing held an entry that is not one")
-    number, state = entry.get("number"), entry.get("state")
+    raw, state = entry.get("number"), entry.get("state")
+    # Read through `pr_number`, the one builder of a pull request number, so a
+    # JSON `true`, which Python counts as an int, or a zero is refused too.
+    number = pr_number(str(raw)) if isinstance(raw, int) else None
     merged_at = entry.get("merged_at", False)
     head = entry.get("head")
     sha = head.get("sha") if isinstance(head, dict) else None
     if (
-        not isinstance(number, int)
+        number is None
         or state not in (PULL_OPEN, PULL_CLOSED)
         or not (merged_at is None or isinstance(merged_at, str))
         or not isinstance(sha, str)
