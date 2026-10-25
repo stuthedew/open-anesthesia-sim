@@ -137,8 +137,9 @@ __all__ = [
 # for one not yet laid out. The number of points is not set directly but
 # follows from the columns. It is the grid columns inside the drawn range, plus
 # the two ends of that range, plus one column per control event in the window.
-# That last term is bounded in turn by the marks the chart already draws
-# (`MAX_CHART_CONTROL_MARKS`).
+# That last term has no cap. `MAX_CHART_CONTROL_MARKS` limits the marks drawn,
+# not the event columns. `RunDefinition._anchored_columns` adds an event column
+# for every setting change inside the window.
 #
 # This constant has changed meaning over time. It was a bucket count while the
 # chart selected recorded samples, and a point ceiling before that, when the
