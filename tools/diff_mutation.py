@@ -18,6 +18,15 @@ waived about 15 times in 17 (project owner, 2026-10-19, ratified, over making
 that check an advisory and over keeping it, `PL-CZXN`). `verdict` states the
 rule.
 
+**`--verdict` also compares each changed simulator unit test with its base
+version.** A mutant of the code cannot show that a branch weakened a test,
+because the test is what changed. So `compare_tests` runs the mutants of the
+display modules under `app/` against the base version of each changed test
+and against the branch's version. A mutant that only the base version catches
+goes into the same `uncaught` list (project owner, 2026-10-24, ratified, over
+leaving those tests unmeasured, `PL-7FPD`). `compare_tests` says what it
+leaves out.
+
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
 says how to read a survivor. mutmut is in the `mutation` dependency group, so
@@ -73,6 +82,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -148,6 +158,15 @@ NO_MUTANTS = (
 )
 #: How many names a note lists before it counts the rest.
 NOTE_NAMES = 5
+#: The package whose mutants measure a changed test. A test of what the
+#: interface displays exists to catch a fault in the display code, so only
+#: these mutants run against the two versions of a changed test, which keeps
+#: both runs to minutes (`PL-7FPD`). A test of `core/` on a branch that changes
+#: no `core/` function stays unmeasured (`PL-H57W`).
+DISPLAY_PACKAGE = "anesthesia_sim.app"
+#: How long a run of a changed test's base version, with no mutant applied,
+#: may take before the file is reported as not compared.
+CLEAN_TIMEOUT_S = 900
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
 SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
@@ -206,6 +225,14 @@ def selection_file(table: Mapping[str, object]) -> str:
             f"which this tool writes; it names {len(files)}"
         )
     return files[0]
+
+
+def deselected(table: Mapping[str, object]) -> frozenset[str]:
+    """The test ids that the table's `--deselect` arguments leave out of every mutmut run."""
+    args = _strings(table, "pytest_add_cli_args_test_selection")
+    return frozenset(
+        value for flag, value in zip(args, args[1:], strict=False) if flag == "--deselect"
+    )
 
 
 def is_mutated(path: str, table: Mapping[str, object]) -> bool:
@@ -288,9 +315,11 @@ class Change:
     #: whole file is new. `verdict` counts a mutant only on one of these.
     rows: dict[str, set[int] | None] = field(default_factory=dict)
     #: The changed test files that import the simulator, deleted ones included.
-    #: A mutant measures the code, so nothing here measures whether one of
-    #: these still catches what it caught before, and `verdict` says so.
+    #: A mutant of the code cannot say whether one of these still catches what
+    #: it caught before, so `compare_tests` runs both versions of each.
     tests: list[str] = field(default_factory=list)
+    #: The commit the diff starts from, where the branch forked.
+    fork: str = ""
 
 
 def _imports_simulator(root: Path, fork: str, path: str) -> bool:
@@ -330,7 +359,7 @@ def branch_change(root: Path, base: str, table: Mapping[str, object]) -> Change:
         left = sorted(row for row in rows if not any(u.first <= row <= u.last for u in found))
         if left:
             outside[path] = left
-    return Change(against, changed, outside, changed_by_file, tests)
+    return Change(against, changed, outside, changed_by_file, tests, fork)
 
 
 def working_files(root: Path, tree: str) -> list[str]:
@@ -375,18 +404,31 @@ def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.Compl
         )
 
 
-def run(root: Path, patterns: Sequence[str], table: Mapping[str, object]) -> tuple[int, Path]:
-    """Empty `mutants/`, write the test selection into it, and run mutmut on `patterns`."""
+def run(
+    root: Path,
+    patterns: Sequence[str],
+    table: Mapping[str, object],
+    tests: Sequence[str] | None = None,
+) -> tuple[int, Path]:
+    """Empty `mutants/`, write the test selection into it, and run mutmut on `patterns`.
+
+    The selection is `tests`, as files or test ids, and every simulator unit
+    test file where it is `None`. An empty selection would make pytest run all
+    of `testpaths`, so the caller never passes one.
+    """
     mutants = root / MUTANTS
     shutil.rmtree(mutants, ignore_errors=True)
     mutants.mkdir()
-    tests = simulator_unit_tests(root)
+    if tests is None:
+        tests = simulator_unit_tests(root)
+        what = f"the {len(tests)} simulator test files under {UNIT_TESTS}/"
+    else:
+        what = f"{len(tests)} selected tests or test files"
     (mutants / selection_file(table)).write_text("".join(f"{t}\n" for t in tests), "utf-8")
     log = mutants / RUN_LOG
     # To stderr, so that stdout holds only the report, or under `--verdict` the JSON.
     print(
-        f"Running mutmut against the {len(tests)} simulator test files under {UNIT_TESTS}/. "
-        f"Its progress goes to {log.relative_to(root)}.",
+        f"Running mutmut in {root} against {what}. Its progress goes to {log}.",
         file=sys.stderr,
         flush=True,
     )
@@ -577,7 +619,9 @@ def _listed(names: Sequence[str]) -> str:
     return shown + (f", and {len(names) - NOTE_NAMES} more" if len(names) > NOTE_NAMES else "")
 
 
-def verdict(root: Path, change: Change, found: Mapping[str, str]) -> dict[str, object]:
+def verdict(
+    root: Path, change: Change, found: Mapping[str, str], compared: Compared | None = None
+) -> dict[str, object]:
     """What `docket verify` reads: the mutants of changed lines that the tests did not catch.
 
     A mutant counts only where a line it changes is one the branch changed.
@@ -591,10 +635,9 @@ def verdict(root: Path, change: Change, found: Mapping[str, str]) -> dict[str, o
     placing.
 
     `notes` says what the run did not measure: a changed line outside any
-    function, a changed function with no mutants, a changed line that carries
-    `# pragma: no mutate`, and each changed test file that imports the
-    simulator. A mutant measures the code, so it cannot say whether a changed
-    test still catches what it caught before.
+    function, a changed function with no mutants, and a changed line that
+    carries `# pragma: no mutate`. `compared` is what `compare_tests` found
+    for the changed tests, and its lists are added to these.
     """
     caught = 0
     uncaught: list[str] = []
@@ -647,15 +690,255 @@ def verdict(root: Path, change: Change, found: Mapping[str, str]) -> dict[str, o
             f"Not counted: {len(elsewhere)} mutants that the tests did not catch, on lines of the "
             f"changed functions that this branch did not change: {_listed(elsewhere)}."
         )
-    if change.tests:
-        notes.append(
-            f"Not measured: whether {len(change.tests)} changed test files that import the "
-            "simulator still catch what they caught before, since a mutant changes the code "
-            f"and not a test: {_listed(change.tests)}."
-        )
+    if compared is not None:
+        uncaught += compared.uncaught
+        undecided += compared.undecided
+        notes += compared.notes
     if change.units:
         notes.append(TIERS_NOT_RUN)
     return {"caught": caught, "uncaught": uncaught, "undecided": undecided, "notes": notes}
+
+
+@dataclass
+class Compared:
+    """What `compare_tests` found, in the lists `verdict` prints."""
+
+    uncaught: list[str] = field(default_factory=list)
+    undecided: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+def is_test_unit(unit: Unit) -> bool:
+    """Whether pytest collects `unit` as a test, by its default `test*` and `Test*` names."""
+    return unit.name.startswith("test") and (unit.cls is None or unit.cls.startswith("Test"))
+
+
+def test_id(unit: Unit) -> str:
+    """The pytest id of a test that `units` found."""
+    return "::".join(part for part in (unit.path, unit.cls, unit.name) if part)
+
+
+def edited_rows(
+    patch: str, before: Sequence[str], after: Sequence[str]
+) -> tuple[set[int], set[int]]:
+    """The base lines that a `-U0` patch removes, and the working-tree lines that it adds.
+
+    A blank line or a comment is left out of both, because neither can change
+    what a test does.
+    """
+    removed: set[int] = set()
+    added: set[int] = set()
+    for hunk in doc_check.HUNK_RE.finditer(patch):
+        for rows, start, count, lines in (
+            (removed, hunk.group(1), hunk.group(2), before),
+            (added, hunk.group(3), hunk.group(4), after),
+        ):
+            first = int(start)
+            rows.update(
+                row
+                for row in range(first, first + (1 if count is None else int(count)))
+                if lines[row - 1].strip()[:1] not in ("", "#")
+            )
+    return removed, added
+
+
+def base_selection(path: str, base: str, branch: str | None, patch: str) -> tuple[str, ...]:
+    """The tests of a changed test file's base version that the branch changed, by pytest id.
+
+    A test changed when a line it holds was removed, or when the branch's test
+    of the same name gained a line. The whole file is the answer where any
+    other line changed, such as a fixture, a helper or an import, because that
+    line can change every test in the file. It is also the answer where the
+    branch deleted the file. A file that only gained tests has nothing in its
+    base version to compare, so the answer is empty.
+    """
+    if branch is None:
+        return (path,)
+    removed, added = edited_rows(patch, split_lines(base), split_lines(branch))
+    before = units(path, base)
+    names: set[tuple[str | None, str]] = set()
+    for rows, found in ((removed, before), (added, units(path, branch))):
+        for row in rows:
+            unit = next((u for u in found if u.first <= row <= u.last), None)
+            if unit is None or not is_test_unit(unit):
+                return (path,)
+            names.add((unit.cls, unit.name))
+    return tuple(test_id(unit) for unit in before if (unit.cls, unit.name) in names)
+
+
+def copy_tree(root: Path, tree: Path, table: Mapping[str, object]) -> None:
+    """Copy into `tree` what mutmut copies from `root`, so that mutmut can run there."""
+    names = {*_strings(table, "source_paths"), *_strings(table, "also_copy"), TESTS}
+    for name in sorted(names):
+        source = root / name
+        if source.is_dir():
+            ignore = shutil.ignore_patterns("__pycache__", MUTANTS)
+            shutil.copytree(source, tree / name, ignore=ignore, dirs_exist_ok=True)
+        elif source.is_file():
+            (tree / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, tree / name)
+    shutil.copy2(root / "pyproject.toml", tree / "pyproject.toml")
+
+
+def _clean_run(tree: Path, tests: Sequence[str]) -> int | None:
+    """pytest's exit status for `tests` in `tree`, with no mutant applied; `None` on a timeout."""
+    environment = {**os.environ, "PYTHONPATH": "src"}
+    command = [sys.executable, "-m", "pytest", "--rootdir=.", "-x", "-q", "-p", "no:cacheprovider"]
+    try:
+        done = subprocess.run(
+            [*command, *tests],
+            cwd=tree,
+            env=environment,
+            capture_output=True,
+            timeout=CLEAN_TIMEOUT_S,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    return done.returncode
+
+
+def _display_statuses(
+    tree: Path,
+    patterns: Sequence[str],
+    tests: Sequence[str],
+    table: Mapping[str, object],
+    files: Sequence[str],
+) -> dict[str, str]:
+    """Run mutmut in `tree` on `patterns` against `tests`, and settle its display mutants.
+
+    `files` are the display modules, read from the checkout, since a copied
+    tree holds the same source and is not a checkout.
+    """
+    code, log = run(tree, patterns, table, tests)
+    if code:
+        raise Refusal(f"mutmut exited {code} in {tree}. The end of {log}:\n{_tail(log)}")
+    prefix = f"{DISPLAY_PACKAGE}."
+    found = {name: status for name, status in statuses(tree).items() if name.startswith(prefix)}
+    return settle(tree, found, recorded_exit_codes(tree, files))
+
+
+def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Compared:
+    """The display mutants that a changed test's base version kills and the branch's version misses.
+
+    A mutant of the code cannot show that a branch weakened a test, because
+    the test is what changed. So the two versions of each changed simulator
+    unit test run against the same mutants of `DISPLAY_PACKAGE`, both on the
+    branch's source, and a mutant has the same name in both runs.
+
+    Each run happens in a copy of the tree, so the main run's `mutants/` is
+    left alone. In the base copy, every file the branch changed under `tests/`
+    has its base version. mutmut runs there on the base tests that the branch
+    changed, by `base_selection`. The branch copy then runs only the mutants
+    that the base run caught, against the branch's version of every changed
+    unit test file, whole. A mutant the base caught and the branch missed goes
+    into `uncaught`. One whose status decides nothing goes into `undecided`.
+
+    A file whose base tests fail on the branch's source with no mutant applied
+    is named in a note and not compared, because the branch changed what the
+    test checks. A test outside `tests/unit/` is named in a note too. The
+    project owner chose this check on 2026-10-24 (ratified, over leaving these
+    tests unmeasured, `PL-7FPD`).
+    """
+    compared = Compared()
+    unit_tests = [path for path in change.tests if path.startswith(f"{UNIT_TESTS}/")]
+    others = [path for path in change.tests if path not in unit_tests]
+    if others:
+        compared.notes.append(
+            f"Not measured: whether {len(others)} changed test files outside {UNIT_TESTS}/ "
+            f"still catch what they caught before: {_listed(others)}."
+        )
+    if not unit_tests:
+        return compared
+    changed = [
+        path for path in doc_check._changed_paths(root, change.fork) if path.startswith(TESTS)
+    ]
+    listing = read_git(["ls-tree", "-r", "--name-only", "-z", change.fork, "--", *changed], root)
+    base = {
+        path: read_git(["show", f"{change.fork}:{path}"], root) for path in listed_paths(listing)
+    }
+    selections: list[tuple[str, tuple[str, ...]]] = []
+    for path in unit_tests:
+        if path not in base:
+            continue
+        here = root / path
+        branch = here.read_text(encoding="utf-8") if here.is_file() else None
+        patch = "" if branch is None else read_git(["diff", "-U0", change.fork, "--", path], root)
+        # A test the table deselects never runs under mutmut, and a selection
+        # of nothing but such tests would collect none.
+        selection = base_selection(path, base[path], branch, patch)
+        selections.append((path, tuple(t for t in selection if t not in deselected(table))))
+    on_branch = [path for path in unit_tests if (root / path).is_file()]
+    displays = [
+        name
+        for source in _strings(table, "source_paths")
+        for name in working_files(root, source)
+        if is_mutated(name, table) and module_name(name).startswith(f"{DISPLAY_PACKAGE}.")
+    ]
+    with tempfile.TemporaryDirectory(prefix="diff_mutation_") as scratch:
+        base_tree, branch_tree = Path(scratch, "base"), Path(scratch, "branch")
+        copy_tree(root, base_tree, table)
+        for path in changed:
+            if path in base:
+                (base_tree / path).parent.mkdir(parents=True, exist_ok=True)
+                (base_tree / path).write_text(base[path], encoding="utf-8")
+            else:
+                (base_tree / path).unlink(missing_ok=True)
+        tests: list[str] = []
+        files: list[str] = []
+        for path, selection in selections:
+            if not selection:
+                continue
+            if _clean_run(base_tree, selection) != 0:
+                compared.notes.append(
+                    f"Not compared: {path}, because the tests of its base version that this "
+                    "branch changed fail on this branch's source with no mutant applied, so "
+                    "the branch changed what they check."
+                )
+                continue
+            tests.extend(selection)
+            files.append(path)
+        if not tests:
+            return compared
+        caught = sorted(
+            name
+            for name, status in _display_statuses(
+                base_tree, [f"{DISPLAY_PACKAGE}.*"], tests, table, displays
+            ).items()
+            if status in CAUGHT
+        )
+        if not caught:
+            compared.notes.append(
+                f"Compared: the base version of {_listed(files)} catches no mutant of "
+                f"{DISPLAY_PACKAGE}, so the branch's version has nothing to keep catching."
+            )
+            return compared
+        if on_branch:
+            copy_tree(root, branch_tree, table)
+            after = _display_statuses(branch_tree, caught, on_branch, table, displays)
+        else:
+            after = {}
+        shown_in = branch_tree if on_branch else base_tree
+        for name in caught:
+            status = after.get(name, "no tests")
+            if status in CAUGHT:
+                continue
+            shown = _mutmut(shown_in, "show", name)
+            entry = "\n".join(
+                [
+                    f"{_listed(files)}: {name} - caught by the base version, {status} on this "
+                    "branch's version",
+                    *_edited_lines(shown.stdout),
+                ]
+            )
+            (compared.uncaught if status in MISSED else compared.undecided).append(entry)
+    compared.notes.append(
+        f"Compared: {len(caught)} mutants of {DISPLAY_PACKAGE} that the base version of "
+        f"{_listed(files)} catches, run against this branch's version of "
+        f"{_listed(on_branch) or 'no file, since it deleted them'}. Whether a changed test "
+        "still catches a fault elsewhere, such as in anesthesia_sim.core, is not measured."
+    )
+    return compared
 
 
 def report_all(found: Mapping[str, str]) -> str:
@@ -692,7 +975,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     def answer(change: Change, found: Mapping[str, str]) -> str:
         if args.verdict:
             # ASCII, so the reader decodes it the same under any locale.
-            return json.dumps(verdict(root, change, found), indent=1)
+            compared = compare_tests(root, change, table)
+            return json.dumps(verdict(root, change, found, compared), indent=1)
         return report_branch(root, change, found)
 
     try:

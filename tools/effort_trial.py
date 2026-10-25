@@ -1,10 +1,12 @@
 """Assign this cloud session's effort level for the owner's effort trial.
 
 The project owner chose a randomized trial of Claude's effort level on
-2026-10-19. About one cloud session in four runs at `xhigh` and the rest at
-`high`, from Friday 2026-10-23 at 11 pm CDT (2026-10-24 04:00 UTC).
-`PL-HYRM` holds the measurements behind the design, and `PL-63CB`
-§ "Effort monitoring" analyzes the result.
+2026-10-19. It starts on Friday 2026-10-23 at 11 pm CDT (2026-10-24 04:00
+UTC). Half of the cloud sessions run at `xhigh` and half at `high`. The split
+was one session in four at `xhigh` until the owner moved it to 50/50 on
+2026-10-24, because an equal split needs about a quarter fewer sessions for
+the same statistical power (`PL-TN18`). `PL-HYRM` holds the measurements
+behind the design, and `PL-63CB` § "Effort monitoring" analyzes the result.
 
 **The session-start hook draws the arm and reports it, in one step.**
 `.claude/hooks/docket-digest.sh` runs `python3 tools/effort_trial.py
@@ -24,7 +26,9 @@ request (`PL-8MZ9` § "Probe result").
 
 **The arm is a hash of the hook's `session_id`, not a random draw.** The
 session is in the `xhigh` arm when the SHA-256 digest of its `session_id`,
-read as a whole number, is divisible by 4. That is about one session in four.
+read as a whole number, is even. That is about one session in two. Every
+digest divisible by 4, the old rule, is also even, so a session already in
+the `xhigh` arm stays there.
 The hook runs again when a session resumes or compacts, and a hash gives the
 same session the same arm each time. The draw used to run in the cloud
 environment's setup script. That script runs only when the environment's
@@ -64,9 +68,9 @@ SETTINGS_PATH = Path(__file__).resolve().parent.parent / ".claude" / "settings.l
 
 
 def arm_for(session_id: str) -> str:
-    """Return `xhigh` when SHA-256 of `session_id` is divisible by 4, and `high` otherwise."""
+    """Return `xhigh` when SHA-256 of `session_id` is even, and `high` otherwise."""
     digest = hashlib.sha256(session_id.encode("utf-8")).digest()
-    return ARMS[1] if int.from_bytes(digest, "big") % 4 == 0 else ARMS[0]
+    return ARMS[1] if int.from_bytes(digest, "big") % 2 == 0 else ARMS[0]
 
 
 def hook_session_id(hook_input: str) -> str | None:
