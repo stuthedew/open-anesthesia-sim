@@ -1747,6 +1747,26 @@ def test_blocked_by_may_name_a_milestone() -> None:
     assert not _has(report.advisories, "ready to promote")
 
 
+def test_an_open_item_still_naming_a_shipped_milestone_is_advised() -> None:
+    """`PL-YL5R`: `PL-JS6P`, `PL-WM5P` and `PL-VWXL` sat at `ready` with
+    `blocked-by: v0.6.0` after v0.6.0 shipped, and nothing named the edge. A
+    blocked item the "ready to promote" advisory names is left to it."""
+    ready = _item("PL-R3R3", blocked_by=("v0.4.0",))
+    waiting = _item("PL-W4W4", blocked_by=("v0.6.0",))
+    blocked = _blocked_on("v0.4.0")
+
+    report = analyze([ready, waiting, blocked], TODAY, milestones=_milestones())
+
+    assert report.errors == []
+    assert _has(
+        report.advisories,
+        "PL-R3R3: `blocked-by` names v0.4.0, which has shipped and so holds nothing",
+    )
+    assert not _has(report.advisories, "PL-W4W4: `blocked-by` names")
+    assert not _has(report.advisories, "PL-C2C2: `blocked-by` names")
+    assert _has(report.advisories, "PL-C2C2: v0.4.0 is scoped and every other blocker")
+
+
 def test_a_scoped_milestone_clears_its_blocker() -> None:
     report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=_milestones())
 

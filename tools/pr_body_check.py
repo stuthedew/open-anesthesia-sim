@@ -203,6 +203,7 @@ from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+sys.path.insert(0, str(ROOT / ".claude" / "hooks"))
 
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.frontmatter import DELIMITER  # noqa: E402
@@ -218,6 +219,7 @@ from docket.vcs import (  # noqa: E402
     resolved,
     subject_pull_request,
 )
+from hook_input import deny  # noqa: E402
 
 from open_pull_requests import GITHUB_API, api_request, repo_slug  # noqa: E402
 
@@ -743,6 +745,11 @@ ALLOWED_EMAILS = frozenset({"noreply@anthropic.com"})
 #: The GitHub tools whose `title` and `body` GitHub publishes at once.
 SCREENED_TOOLS = ("__create_pull_request", "__update_pull_request")
 
+#: The hook `screen` refuses for, as the guards' refusal log names it. The
+#: refusal is built by `hook_input.deny`, so it is logged like every other
+#: guard's and `PL-SG93`'s counts can see it (`PL-HHKC`).
+GUARD = "pr-body-email-guard"
+
 
 def screen(payload: str) -> str | None:
     """The PreToolUse refusal for a pull request call that would publish an email address.
@@ -753,7 +760,8 @@ def screen(payload: str) -> str | None:
     point at which an address can be kept out is before the call (`PL-7K31`,
     found when `#1480` opened with the owner's address). The result is the
     JSON for the hook to print, which names each address found, or `None` to
-    let the call through. A payload that cannot be read, or one for another
+    let the call through. A refusal is logged to the guards' refusal log, as
+    every guard's is. A payload that cannot be read, or one for another
     tool, is let through: the matcher in `.claude/settings.json` has already
     chosen these calls, and a false refusal blocks correct work.
     """
@@ -786,12 +794,7 @@ def screen(payload: str) -> str | None:
         "history. Remove the address, or name the person by their GitHub login, and "
         "send the call again (`PL-7K31`)."
     )
-    decision = {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": reason,
-    }
-    return json.dumps({"hookSpecificOutput": decision})
+    return deny(GUARD, "email-address", reason, payload)
 
 
 def main(argv: list[str]) -> int:

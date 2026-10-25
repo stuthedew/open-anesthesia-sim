@@ -135,18 +135,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from check_support import run_report
-from product_paths import APP_DIR, CORE_DIR, LAYOUT_DIR, PACKAGE, PACKAGE_DIR
+from product_paths import APP_DIR, CORE_DIR, LAYOUT_DIR, PACKAGE, PACKAGE_DIR, SOURCE_DIR
 from workflow_paths_check import tracked_under
 
 # isort: split
 # After `workflow_paths_check`, whose import puts docket on the path.
 from docket.python import Imported
 from docket.python import imports as read_imports
-
-#: The directory a module's dotted name is read from: `src/anesthesia_sim/core/x.py`
-#: is `anesthesia_sim.core.x`, whose relative imports resolve against
-#: `anesthesia_sim.core`.
-SOURCE_ROOT = "src"
 
 
 @dataclass(frozen=True)
@@ -445,7 +440,7 @@ def module_imports(
 def _package_of(root: Path, path: Path) -> str | None:
     """The package a module's relative imports resolve against, read from its path."""
     try:
-        parts = path.relative_to(root / SOURCE_ROOT).parts
+        parts = path.relative_to(root / SOURCE_DIR).parts
     except ValueError:
         return None
     return ".".join(parts[:-1]) or None

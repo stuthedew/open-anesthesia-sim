@@ -34,7 +34,12 @@ Three rules over every tracked Python file under `tools/`,
    `re.compile(ID_PATTERN)`, and a match on the name passed them (`PL-MM3Q`).
    A plain constant and a call with no arguments are not compared, because
    two names for `"unplaced"` can be two facts and each `object()` is a new
-   sentinel.
+   sentinel. The exception is a value that names a path in the tree, as a
+   string or as the one argument of a constructor such as `Path`, ignoring a
+   trailing slash: `doc_check.MODEL = Path("docs/MODEL.md")` sat beside
+   `product_paths.MODEL_DOC` under another name, and so did two spellings
+   each of `tests` and `src` (`PL-S08Z`). A path inside a tuple or an
+   f-string is not read.
 3. **A predicate one module answers is not written again by hand.**
    `PREDICATES` names each one with its home, one entry per predicate, and
    the visitor decides its hand form. A membership test (`in` or `not in`)
@@ -85,7 +90,7 @@ from __future__ import annotations
 import ast
 import re
 from collections import Counter, defaultdict
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -263,6 +268,8 @@ TRIMS = frozenset({"strip", "lstrip", "rstrip", "removeprefix", "removesuffix"})
 DEFINITION = "definition"
 #: Rule 2's name for one call bound under two names, in a finding and a baseline key.
 SAME_CALL = "same call"
+#: Rule 2's name for one repository path bound under two names, in a finding and a baseline key.
+SAME_PATH = "same path"
 
 #: Names rule 2 does not count, each with its reason.
 EXEMPT_NAMES: dict[str, str] = {
@@ -316,6 +323,10 @@ class Definition:
     line: int
     name: str
     call: str = ""
+    #: The path the value spells, without a trailing slash, where it is a
+    #: string or a constructor's one string argument; empty otherwise. Whether
+    #: it names a path in the tree is decided against the tree (`PL-S08Z`).
+    spelled: str = ""
 
     @property
     def shared(self) -> str:
@@ -521,6 +532,31 @@ def _shared_call(value: ast.expr) -> str:
     return ""
 
 
+def _spelled_path(value: ast.expr) -> str:
+    """The string a module-level value spells as a path, or "" where it spells none.
+
+    A string constant, or the one argument of a call of a bare name such as
+    `Path("docs/MODEL.md")`, with any trailing slash removed so that `"tests/"`
+    and `Path("tests")` read as one. A method call such as `x.rstrip("/")` is
+    not a constructor, so its argument is not read.
+    """
+    if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+        if len(value.args) == 1 and not value.keywords:
+            value = value.args[0]
+    if isinstance(value, ast.Constant) and isinstance(value.value, str):
+        return value.value.rstrip("/")
+    return ""
+
+
+def _tree_paths(root: Path) -> frozenset[str]:
+    """Every tracked file, and every directory above one, repository-relative."""
+    found: set[str] = set()
+    for relative in tracked_files(root):
+        parts = relative.split("/")
+        found.update("/".join(parts[:end]) for end in range(1, len(parts) + 1))
+    return frozenset(found)
+
+
 def read_module(source: str, path: str) -> Module:
     """Every rule's view of one file.
 
@@ -541,11 +577,12 @@ def read_module(source: str, path: str) -> Module:
         if isinstance(statement.value, (ast.Name, ast.Attribute)):
             continue  # an alias of a name defined elsewhere is an import, not a definition
         call = _shared_call(statement.value)
+        spelled = _spelled_path(statement.value)
         targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
         for target in targets:
             if isinstance(target, ast.Name) and NAME_RE.match(target.id):
                 if target.id.lstrip("_") not in EXEMPT_NAMES:
-                    definitions.append(Definition(path, statement.lineno, target.id, call))
+                    definitions.append(Definition(path, statement.lineno, target.id, call, spelled))
     return Module(tuple(visitor.found), tuple(definitions))
 
 
@@ -564,6 +601,9 @@ class Report:
     #: Every binding of each call that two files make under different names,
     #: keyed by those names joined with " = ".
     same_call: Mapping[str, tuple[Definition, ...]] = field(default_factory=dict)
+    #: Every binding of each repository path that two files make under
+    #: different names, keyed the same way (`PL-S08Z`).
+    same_path: Mapping[str, tuple[Definition, ...]] = field(default_factory=dict)
 
     @property
     def errors(self) -> int:
@@ -618,23 +658,32 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
             found[entry.path][site.key] += 1
             sites[(entry.path, site.key)].append(site)
 
-    by_call: dict[str, list[Definition]] = defaultdict(list)
-    for definition in definitions:
-        if definition.call:
-            by_call[definition.call].append(definition)
-    same_call: dict[str, tuple[Definition, ...]] = {}
-    for bindings in by_call.values():
-        if len({binding.path for binding in bindings}) < 2:
-            continue
-        if len({binding.shared for binding in bindings}) < 2:
-            continue  # one name in every file, which the name match already reports
-        ordered = tuple(sorted(bindings, key=lambda binding: (binding.path, binding.line)))
-        names = " = ".join(sorted({binding.shared for binding in ordered}))
-        same_call[names] = ordered
-        for entry in ordered:
-            site = Site(entry.path, entry.line, SAME_CALL, names, f"{entry.name} = ...")
-            found[entry.path][site.key] += 1
-            sites[(entry.path, site.key)].append(site)
+    def one_value(rule: str, key: Callable[[Definition], str]) -> dict[str, tuple[Definition, ...]]:
+        """Each value two files bind under different names, recorded as `rule`'s sites."""
+        by_value: dict[str, list[Definition]] = defaultdict(list)
+        for definition in definitions:
+            if value := key(definition):
+                by_value[value].append(definition)
+        shared: dict[str, tuple[Definition, ...]] = {}
+        for bindings in by_value.values():
+            if len({binding.path for binding in bindings}) < 2:
+                continue
+            if len({binding.shared for binding in bindings}) < 2:
+                continue  # one name in every file, which the name match already reports
+            ordered = tuple(sorted(bindings, key=lambda binding: (binding.path, binding.line)))
+            names = " = ".join(sorted({binding.shared for binding in ordered}))
+            shared[names] = ordered
+            for entry in ordered:
+                site = Site(entry.path, entry.line, rule, names, f"{entry.name} = ...")
+                found[entry.path][site.key] += 1
+                sites[(entry.path, site.key)].append(site)
+        return shared
+
+    same_call = one_value(SAME_CALL, lambda definition: definition.call)
+    in_tree = _tree_paths(root)
+    same_path = one_value(
+        SAME_PATH, lambda definition: definition.spelled if definition.spelled in in_tree else ""
+    )
 
     over = overflows(sorted(sites.items()), baseline)
     stale = stale_entries(root, baseline, found, {path for path, _ in unparsed})
@@ -648,6 +697,7 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
         unparsed=tuple(unparsed),
         defined=defined,
         same_call=same_call,
+        same_path=same_path,
     )
 
 
@@ -719,6 +769,18 @@ def format_report(report: Report) -> str:
             "  The names differ, so the name match does not see them, but the value is "
             "one fact. Keep one binding and import it everywhere else; the baseline does "
             "not grow."
+        )
+
+    if by_rule.get(SAME_PATH):
+        lines.append("")
+        lines.append("One repository path bound under different names in more than one module:")
+        for name, entries in report.same_path.items():
+            where = ", ".join(f"{d.path}:{d.line} {d.name}" for d in entries)
+            lines.append(f"  {name}: {where}")
+        lines.append(
+            "  Where a file or a tree lives is one fact. Keep one binding, in "
+            "`docket.arming` or `tools/product_paths.py`, and import it everywhere else; "
+            "the baseline does not grow."
         )
 
     lines.extend(stale_lines(report.stale, lambda key: f"{key[0]} in {key[1]}"))

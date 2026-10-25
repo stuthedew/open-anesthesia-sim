@@ -263,6 +263,49 @@ def test_two_facts_that_share_a_value_or_a_sentinel_call_are_not_reported(tmp_pa
     assert analyze(tmp_path, baseline={}).errors == 0
 
 
+def test_one_repository_path_under_two_names_is_reported(tmp_path: Path) -> None:
+    """`doc_check.MODEL = Path("docs/MODEL.md")` sat beside `product_paths.MODEL_DOC`,
+    and `"tests/"` and `Path("tests")` spelled one tree twice, which neither the
+    name match nor the call match saw (`PL-S08Z`)."""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "MODEL.md").write_text("# Model\n", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text("", encoding="utf-8")
+    _tree(
+        tmp_path,
+        tools__paths='MODEL_DOC = "docs/MODEL.md"\n',
+        tools__doc='from pathlib import Path\n\nMODEL = Path("docs/MODEL.md")\nSUITE = "tests"\n',
+        docket__arming='TESTS = "tests/"\n',
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 4
+    assert "One repository path bound under different names in more than one module:" in printed
+    assert "MODEL = MODEL_DOC: tools/doc.py:3 MODEL, tools/paths.py:1 MODEL_DOC" in printed
+    assert (
+        "SUITE = TESTS: subprojects/docket/src/docket/arming.py:1 TESTS, tools/doc.py:4 SUITE"
+    ) in printed
+
+
+def test_a_string_that_names_no_path_or_a_method_argument_is_not_a_path(tmp_path: Path) -> None:
+    """`"claude/"` is a branch prefix and names nothing in the tree, and the `"/"`
+    in `SOURCE.rstrip("/")` is a method's argument rather than a path, so
+    neither is read as one path spelled twice (`PL-S08Z`)."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "m.py").write_text("", encoding="utf-8")
+    _tree(
+        tmp_path,
+        docket__claims='AGENT_BRANCH_PREFIX = "claude/"\nSOURCE = "src/"\n',
+        tools__worker='BRANCH_PREFIX = "claude/"\n',
+        tools__paths='from docket.claims import SOURCE\n\nSOURCE_DIR = SOURCE.rstrip("/")\n',
+        tools__other='TESTS_DIR = TESTS.rstrip("/")\n',
+    )
+
+    assert analyze(tmp_path, baseline={}).errors == 0
+
+
 def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) -> None:
     """`PL-TSXD`: about 48 sites asked whether an item is open by hand, two ways.
 
