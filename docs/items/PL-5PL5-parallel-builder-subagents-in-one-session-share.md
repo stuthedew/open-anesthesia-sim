@@ -9,6 +9,7 @@ feature: parallel-builders
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1789
 payoff: builders running side by side in one session can no longer publish each other's pull request bodies or overwrite each other's verify logs
 verify: grep -qiF 'scratchpad' .claude/skills/docket/modes/picking.md
 ---

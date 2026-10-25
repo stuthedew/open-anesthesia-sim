@@ -9,6 +9,7 @@ feature: parallel-builders
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1789
 payoff: a builder's tested work is pushed when its checks finish, instead of waiting unpushed until the parent session notices and resumes it
 verify: grep -qiF 'foreground' .claude/skills/docket/modes/picking.md
 ---

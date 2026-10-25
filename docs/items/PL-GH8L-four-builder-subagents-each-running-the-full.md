@@ -9,6 +9,7 @@ feature: parallel-builders
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1789
 payoff: a batch of builders in one container gets an accept or reject from verify --self on every branch, instead of a timeout that sends the check round again
 verify: grep -qiE 'cores|load average' .claude/skills/docket/modes/picking.md
 ---
