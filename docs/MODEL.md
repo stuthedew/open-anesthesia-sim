@@ -5890,7 +5890,7 @@ floating-point operations are composed. This was measured on 2026-09-07 against
 a stepped 600 s sevoflurane run with two setting changes, reaching a fraction
 of 0.0316. The single-instant path stays within 1.8e-14 of the stepped run, and
 the window path within 3.7e-15. Both figures are absolute differences in a
-fraction of one atmosphere. Both are eleven orders of magnitude below 1e-4,
+fraction of one atmosphere. Both are about ten orders of magnitude below 1e-4,
 the smallest difference that the two-decimal percent readout under
 § "Displayed precision" can show. So neither path can change a displayed digit.
 § "The canonical evaluation rule" below states, as a guarantee, which of the
