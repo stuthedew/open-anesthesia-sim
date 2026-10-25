@@ -622,7 +622,7 @@ passed through `parse_*` from one that has not.
 
 
 class _StrictPayload(BaseModel):
-    """Base for every parameter-file schema: the load-time half of the pair.
+    """Base class for every parameter-file schema, which is used only while a file loads.
 
     **Why a `_...Payload` exists beside a public dataclass.** Each payload
     model below is paired with a public, frozen type that does not depend on
@@ -633,12 +633,12 @@ class _StrictPayload(BaseModel):
     both:
 
     - *The rest of `core/` never imports Pydantic.* A payload exists only
-      while a file loads. It validates one JSON document and is then
-      discarded by `parse_agent_parameters()` /
-      `parse_reference_adult_parameters()`, which convert it into the public
-      type. Every other module holds the plain dataclass. If the validators
-      were put on the public type instead, the validation library would
-      become a dependency of the compartments, the controller and the tests.
+      while a file loads. It validates one JSON document.
+      `parse_agent_parameters()` or `parse_reference_adult_parameters()` then
+      converts it into the public type and discards it. Every other module
+      holds the plain dataclass. If the validators were put on the public type
+      instead, the validation library would become a dependency of the
+      compartments, the controller and the tests.
     - *The two types do not have the same shape.* A payload mirrors the file,
       and the public type has the form the model wants. `_AgentPayload` nests
       three coefficients under `tissue_gas_partition_coefficients`, where
@@ -678,10 +678,10 @@ class _StrictPayload(BaseModel):
     `tools/import_boundary_check.py`, which runs in `make check`, fails the
     build on a `pydantic` import anywhere under `src/anesthesia_sim/` other
     than this module, and names this module as the only exception. Before
-    that check existed, the claim was prose that nothing tested again. A
-    Pydantic import in a compartment module would have left this paragraph
-    looking verified while it was false, which is worse than the coupling it
-    describes (PL-Y0RZ).
+    that check existed, the claim was prose that nothing checked after it was
+    written. A Pydantic import in a compartment module would have made this
+    paragraph false while it still looked verified. A false claim that looks
+    verified is worse than the coupling it describes (PL-Y0RZ).
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)

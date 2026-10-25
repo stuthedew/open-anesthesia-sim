@@ -934,8 +934,9 @@ def test_reset_anchors_accounting_to_what_the_compartments_actually_hold() -> No
     )
     retained.set_partial_pressure_fraction(Fraction(0.02))
     # A built system refuses a new part (`PL-N7MM`), so the stand-in goes into a new
-    # system. Its constructor anchors the accounting at 0.05 L already. The test is of
-    # what `reset()` anchors it at afterwards, which before PL-VYXP was 0.0.
+    # system. The new system's constructor already anchors the accounting at 0.05 L.
+    # The test checks what `reset()` anchors it at afterwards. Before PL-VYXP,
+    # `reset()` anchored it at 0.0.
     system = AgentUptakeSystem(circuit=system.circuit, alveoli=retained, patient=system.patient)
 
     system.reset()

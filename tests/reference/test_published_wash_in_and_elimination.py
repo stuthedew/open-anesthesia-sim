@@ -903,16 +903,17 @@ class StoredParameterChange:
     label: str
 
     def apply(self, agent_id: str, system: AgentUptakeSystem) -> AgentUptakeSystem:
-        """Return `system` with the part that this change affects rebuilt.
+        """Rebuild the part that this change affects, and return the system that holds it.
 
         The change must be applied before the first step, while every
         compartment holds no agent and no propagator has been built for the
         old value. Each rebuilt part goes through the constructor or setter
         that checks a shipped value. So a changed value that this code would
         not accept is refused rather than run. A built system refuses a new
-        patient (`PL-N7MM`), so a changed patient goes into a new system,
-        built around the unstepped system's other parts. Every other change is
-        written onto `system`, which is returned.
+        patient (`PL-N7MM`). So a change to the patient builds a new system,
+        which holds the new patient and the other parts of the unstepped
+        `system`. Every other change is written onto `system`, which is
+        returned.
 
         Raises:
             ValueError: `parameter` names no field this class knows.

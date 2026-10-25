@@ -1,16 +1,17 @@
-"""Every record in `core/` that can be written once built says how each field's write is kept safe.
+"""Each mutable record in `core/` says how a later write to each of its fields is kept safe.
 
-A record that checks a rule across its fields only when it is built can be
-left breaking that rule by a later write. Four defects had that shape
-(`PL-N7MM`): a copied patient that rewrote its original's flows, a run clock
-assigned past its check, a tissue perfusion fraction changed on a built
-patient, and a core setting changed past the run's recorded definition.
+Some records check a rule across their fields only when they are built. A later
+write can then leave such a record breaking the rule. Four defects had that
+shape (`PL-N7MM`). A copied patient rewrote its original's flows. A run clock
+was assigned in a way that bypassed its check. A tissue perfusion fraction was
+changed on a built patient. A core setting was changed past the run's recorded
+definition.
 
 So these tests walk every class in `core/`. A class whose instances cannot be
-written is passed: a frozen dataclass, a frozen Pydantic payload, an
-exception, or a value type such as `Percent` that holds no field. Every other
-class must appear in `WRITES` below, with one entry for each of its fields.
-Each entry says which of six kinds of write the field takes:
+written passes without an entry. Such classes are frozen dataclasses, frozen
+Pydantic payloads, exceptions, and value types such as `Percent` that hold no
+field. Every other class must appear in `WRITES` below, with one entry for each
+of its fields. Each entry says which of six kinds of write the field takes:
 
 - `ONCE`: the field is written when the record is built, and a later write is
   refused, even of the value it already holds.
@@ -18,11 +19,11 @@ Each entry says which of six kinds of write the field takes:
   gives a value that passes the field's own check but breaks the rule, and the
   test writes it and expects a refusal.
 - `ACCOUNTED`: the field holds agent, or a total of it, and the rule that
-  ties it to the rest is the uptake system's accounting identity. The system
-  checks that identity at every step, which halts the run, and at every read
-  of its accounting. The entry builds a system holding agent, finds the record
-  in it and gives a value that breaks the identity. The test writes it and
-  expects the next accounting read to fail.
+  ties it to the other fields is the uptake system's accounting identity. The
+  system checks that identity at every step and at every read of its
+  accounting. A failure at a step halts the run. The entry builds a system
+  holding agent, finds the record in it and gives a value that breaks the
+  identity. The test writes it and expects the next accounting read to fail.
 - `OWN`: no rule ties the field to another field, so the field's own check is
   all that a write needs. The entry says why.
 - `PRIVATE`: the field is private to its module and written only by the
@@ -89,11 +90,12 @@ class Write:
             agent.
         breaking: for `CHECKED` and `ACCOUNTED`, a function that returns, for
             the record, a value that passes the field's own check but breaks
-            the rule.
+            the record's rule.
         locate: for `ACCOUNTED`, a function that returns the record from the
             system that `build` returns.
-        why: for `ACCOUNTED`, `OWN`, `PRIVATE` and `GAP`, why the write needs
-            no check at the write. A `GAP` entry names its open item.
+        why: for `ACCOUNTED`, `OWN`, `PRIVATE` and `GAP`, why a write to the
+            field needs no check at the moment it is made. A `GAP` entry names
+            its open item.
     """
 
     kind: str
