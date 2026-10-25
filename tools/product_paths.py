@@ -9,7 +9,11 @@ typing the path again.
 
 The package's import name already has a home, `docket.arming.PRODUCT_PACKAGE`,
 which the merge gate reads to tell a simulator test from a tooling test. This
-module reads it from there rather than typing it a second time. `docket`
+module reads it from there rather than typing it a second time. The same holds
+for the source tree, the test tree and `docs/MODEL.md`, whose paths the gate's
+read lists spell: `doc_check`, `import_boundary_check`, `new_prose`,
+`restated_constants` and `workflow_paths_check` each typed one of them again
+under a name of their own, which `fact_home_check` now refuses (`PL-S08Z`). `docket`
 cannot import `tools/`, so the gate's own path tuples spell the data tree in
 `docket.arming`.
 
@@ -24,12 +28,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
 
-from docket.arming import PRODUCT_PACKAGE
+from docket.arming import MODEL_DOC as MODEL_DOC
+from docket.arming import PRODUCT_PACKAGE, SOURCE
+from docket.arming import TESTS as TESTS
 
 #: The simulator package's import name.
 PACKAGE = PRODUCT_PACKAGE
+#: The simulator's source tree, relative to the repository root, without the
+#: trailing slash `docket.arming.SOURCE` carries.
+SOURCE_DIR = SOURCE.rstrip("/")
 #: The package's directory, relative to the repository root.
-PACKAGE_DIR = f"src/{PACKAGE}"
+PACKAGE_DIR = f"{SOURCE_DIR}/{PACKAGE}"
 #: The scientific core, which computes every clinical value.
 CORE_DIR = f"{PACKAGE_DIR}/core"
 #: The interface, which draws what the core computes.
@@ -38,5 +47,3 @@ APP_DIR = f"{PACKAGE_DIR}/app"
 DATA_DIR = f"{PACKAGE_DIR}/data"
 #: The Workspace, Area and View layout model.
 LAYOUT_DIR = f"{PACKAGE_DIR}/layout"
-#: The specification of the implemented model, relative to the repository root.
-MODEL_DOC = "docs/MODEL.md"

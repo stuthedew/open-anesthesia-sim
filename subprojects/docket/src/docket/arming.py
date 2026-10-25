@@ -515,6 +515,14 @@ PIN_NAMES = frozenset({"_arm", "arming"})
 #: `subprojects/`, so the prefix leaves it to the tooling.
 TESTS = "tests/"
 
+#: The simulator's source tree, at the root. The tools read it through
+#: `tools/product_paths.py`, since `docket` cannot import `tools/` (`PL-S08Z`).
+SOURCE = "src/"
+
+#: The specification of the implemented model. Spelt once here for the gate's
+#: path lists and for every tool, which reads it through `product_paths`.
+MODEL_DOC = "docs/MODEL.md"
+
 #: Importing this is what makes a test file the simulator's. It is the rule
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
@@ -543,11 +551,11 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: the owner's answers of 2026-10-03 and 2026-10-10, left it on his rule of
 #: 2026-10-12 that workflow items need no merge confirmation (`PL-KPM2`): what
 #: is left is the simulator's.
-READ_PATHS = ("src/", TESTS, "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
+READ_PATHS = (SOURCE, TESTS, MODEL_DOC, "src/anesthesia_sim/data/", "README.md")
 
 #: The simulator's paths as the answers name them.
 READ_LIST = (
-    f"src/, {TESTS} but a test importing no {PRODUCT_PACKAGE}, docs/MODEL.md, "
+    f"{SOURCE}, {TESTS} but a test importing no {PRODUCT_PACKAGE}, {MODEL_DOC}, "
     "src/anesthesia_sim/data/ and README.md"
 )
 

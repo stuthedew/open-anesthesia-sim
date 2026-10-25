@@ -408,6 +408,28 @@ def test_a_blocker_that_has_already_closed_holds_nothing() -> None:
     assert plan.gate is not None and not plan.gate.blocked_outside
 
 
+def test_a_milestone_that_has_shipped_holds_nothing() -> None:
+    """`PL-YL5R`: three ready entries of Gate 3 still named `blocked-by: v0.6.0`
+    after v0.6.0 shipped, and the walk read the version as open work outside
+    the gate, so the freeze called them waiting on work nothing schedules."""
+    roadmap = ROADMAP.replace(
+        "## The plan\n",
+        "## Versioning decision\n\n| Version | Status | Milestone |\n| --- | --- | --- |\n"
+        "| v0.2.0 | Completed | Two agents |\n\n## The plan\n",
+        1,
+    )
+    shipped = _wave(
+        "0.2.5", frozenset({"PL-001"}), roadmap=roadmap, blockers={"PL-KLMN": ("v0.2.0",)}
+    )
+    unshipped = _wave(
+        "0.2.5", frozenset({"PL-001"}), roadmap=roadmap, blockers={"PL-KLMN": ("v0.4.0",)}
+    )
+
+    assert shipped.gate is not None and not shipped.gate.blocked_outside
+    assert unshipped.gate is not None
+    assert [entry.ids for entry in unshipped.gate.blocked_outside] == [("PL-KLMN",)]
+
+
 def test_two_entries_waiting_on_each_other_stay_inside_the_gate() -> None:
     """A cycle is stuck, but it is stuck on the list - and the count that has
     to show that is the one the gate is being asked for."""
