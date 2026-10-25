@@ -903,14 +903,18 @@ class StoredParameterChange:
     factor: float
     label: str
 
-    def apply(self, agent_id: str, system: AgentUptakeSystem) -> None:
-        """Rebuild the part of an unstepped `system` that this change affects.
+    def apply(self, agent_id: str, system: AgentUptakeSystem) -> AgentUptakeSystem:
+        """Rebuild the part that this change affects, and return the system that holds it.
 
         The change must be applied before the first step, while every
         compartment holds no agent and no propagator has been built for the
         old value. Each rebuilt part goes through the constructor or setter
         that checks a shipped value. So a changed value that this code would
-        not accept is refused rather than run.
+        not accept is refused rather than run. A built system refuses a new
+        patient (`PL-N7MM`). So a change to the patient builds a new system,
+        which holds the new patient and the other parts of the unstepped
+        `system`. Every other change is written onto `system`, which is
+        returned.
 
         Raises:
             ValueError: `parameter` names no field this class knows.
@@ -924,18 +928,26 @@ class StoredParameterChange:
                 getattr(agent, self.parameter) * self.factor, name=self.parameter
             )
             changed_agent = replace(agent, **{self.parameter: changed_coefficient})
-            system.patient = PatientCompartments.from_parameters(
-                agent=changed_agent, patient=patient
+
+            return AgentUptakeSystem(
+                circuit=system.circuit,
+                alveoli=system.alveoli,
+                patient=PatientCompartments.from_parameters(agent=changed_agent, patient=patient),
             )
-        elif self.parameter in PATIENT_COMPARTMENT_FIELDS:
+
+        if self.parameter in PATIENT_COMPARTMENT_FIELDS:
             changed_volume = CompartmentVolume(
                 getattr(patient, self.parameter) * self.factor, name=self.parameter
             )
             changed_patient = replace(patient, **{self.parameter: changed_volume})
-            system.patient = PatientCompartments.from_parameters(
-                agent=agent, patient=changed_patient
+
+            return AgentUptakeSystem(
+                circuit=system.circuit,
+                alveoli=system.alveoli,
+                patient=PatientCompartments.from_parameters(agent=agent, patient=changed_patient),
             )
-        elif self.parameter == ALVEOLAR_GAS_VOLUME_FIELD:
+
+        if self.parameter == ALVEOLAR_GAS_VOLUME_FIELD:
             system.alveoli.gas_volume_l = CompartmentVolume(
                 patient.alveolar_gas_volume_l * self.factor, name=self.parameter
             )
@@ -948,6 +960,8 @@ class StoredParameterChange:
             )
         else:
             raise ValueError(f"no stored parameter is named {self.parameter!r}")
+
+        return system
 
 
 def _configured_system(
@@ -1000,7 +1014,7 @@ def _configured_system(
         )
 
     if change is not None:
-        change.apply(agent_id, system)
+        system = change.apply(agent_id, system)
 
     system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
     system.set_delivered_concentration_percent(Percent(delivered_percent))
