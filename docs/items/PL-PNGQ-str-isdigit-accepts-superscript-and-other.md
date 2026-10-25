@@ -6,9 +6,10 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/, subprojects/docket/tests/, tests/unit/, .claude/rules/apparatus-standard.md
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/, subprojects/docket/tests/, tests/unit/, .claude/rules/apparatus-standard.md, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1763
 payoff: a count read from git or GitHub is parsed by one function that refuses a non-ASCII digit, instead of fifteen hand copies that crash on one
 verify: grep -rqE 'def test_[a-z_]*superscript' subprojects/docket/tests tests/unit
 reenters: PL-N4FP
