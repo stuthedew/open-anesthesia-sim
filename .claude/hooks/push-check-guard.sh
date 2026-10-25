@@ -283,14 +283,6 @@ reason += (
     "out unchecked, with `git push --no-verify`."
 )
 sys.stdout.write(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        }
-    )
+    hook_input.deny("push-check-guard", "checks-failed", reason, os.environ.get("PAYLOAD", ""))
 )
 ' 2>/dev/null || exit 0

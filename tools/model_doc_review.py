@@ -36,8 +36,8 @@ It runs on the owner's machine, because the key and the credit are there, as
 
 **Which model reads it.** The model, its effort and its list price come from
 `docket.toml`'s `[models]` table, as the role `review` (`PL-0XDM`). A tool
-that named its own model went stale: this one named Fable 5.1 after the
-project owner had stopped using it. A model with no price in
+that named its own model went stale: this one named Fable 5.1 when nothing
+else here used Fable any more. A model with no price in
 `[models.prices]` is refused before anything is built, because the cost bound
 could not be stated.
 

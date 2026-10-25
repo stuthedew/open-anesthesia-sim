@@ -3599,6 +3599,14 @@ pull request closed unmerged and reopened is the one way a closure
 legitimately changes number. A landed closure's number is never replaced by
 either form of the command.
 
+**A project can copy its own records at the same moment.** Once the branch
+form has written the number, it runs `record_command` from `docket.toml`, if
+one is set, from the repository root, and prints what it prints. Whatever the
+command writes rides the same commit as the number. A command that fails is
+reported, and the number stays written. This repository uses it to copy the
+local log of guard refusals into `docs/hook-blocks/` (`PL-SG93`). The merge
+form does not run it, because it repairs a closure that has already landed.
+
 **Which pull request closed an item is therefore a recorded fact, and nothing
 infers it** (`PL-HMZZ`, project owner, 2026-09-25, ratified, over commit-side
 recovery and over keeping the inference and closing the head spent). It used
@@ -4052,7 +4060,6 @@ copy that goes stale, which is the problem the table exists to fix.
 ```toml
 [models]
 default = { model = "model-a", effort = "high" }
-excluded = ["model-x"]     # nothing uses these unless a rule names one
 
 [models.prices]            # list prices in US dollars per million tokens
 "model-a" = { input = 4.0, output = 20.0 }
@@ -4092,9 +4099,7 @@ file has none. A malformed table is refused, as a malformed `docket.toml` is.
 That covers an unknown key, a default that is not exactly a model and an
 effort, an effort outside `low`, `medium`, `high`, `xhigh` and `max`, a rule
 that sets neither a model nor an effort, a rule naming an area the table does
-not define, a price that is not a positive number, and a default the
-`excluded` list names. A rule may name an excluded model, because a rule in
-the table is the owner choosing it.
+not define, and a price that is not a positive number.
 
 The model evidence table above is different. It records a measurement and is
 printed beside the choice rather than instead of it. When a measurement

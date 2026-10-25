@@ -505,15 +505,17 @@ reason = "\n\n".join(
     )
     if refused
 )
-sys.stdout.write(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        }
+rule = "+".join(
+    name
+    for refused, name in (
+        (pushes, "delete-push"),
+        (prunes, "prune"),
+        (deletes, "delete-ref"),
+        (removes, "remove"),
     )
+    if refused
+)
+sys.stdout.write(
+    hook_input.deny("no-prune-guard", rule, reason, os.environ.get("PAYLOAD", ""))
 )
 ' 2>/dev/null || exit 0

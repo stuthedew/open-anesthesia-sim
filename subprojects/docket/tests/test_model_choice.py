@@ -104,13 +104,12 @@ def test_next_prints_the_table_s_choice_beside_the_flag() -> None:
     assert choose_model(_item(), None, (), (), ()) is None
 
 
-def test_the_project_table_loads_and_excludes_fable() -> None:
-    """The owner's rule: nothing uses Fable unless he names it (project owner, 2026-10-25)."""
+def test_the_project_table_loads_and_prices_its_default() -> None:
+    """The project's own table parses, and its default model has a list price."""
     root = Path(__file__).resolve().parents[3]
     table = load(root).models
     assert table is not None
-    assert "claude-fable-5-1" in table.excluded
-    assert table.choose({}).model != "claude-fable-5-1"
+    assert table.price(table.choose({}).model) is not None
 
 
 @pytest.mark.parametrize(
@@ -120,8 +119,8 @@ def test_the_project_table_loads_and_excludes_fable() -> None:
         ({"default": {"model": "model-a"}}, "default must name exactly"),
         ({"default": {"model": "model-a", "effort": "extreme"}}, "not one of low"),
         (
-            {"default": {"model": "model-x", "effort": "high"}, "excluded": ["model-x"]},
-            "only a rule may name an excluded model",
+            {"default": {"model": "model-a", "effort": "high"}, "excluded": ["model-x"]},
+            "no key named excluded",
         ),
         ({"default": {"model": "model-a", "effort": "high"}, "colour": 1}, "no key named colour"),
         (
@@ -153,9 +152,8 @@ def test_a_malformed_table_is_refused(data: dict[str, object], message: str) -> 
         parse(data, "docket.toml")
 
 
-def test_a_rule_may_name_an_excluded_model_and_prices_are_read() -> None:
+def test_a_rule_may_name_any_model_and_prices_are_read() -> None:
     table = _table(
-        excluded=["model-x"],
         rule=[{"match": {"feature": "speed"}, "model": "model-x"}],
         prices={"model-x": {"input": 10, "output": 50}},
     )

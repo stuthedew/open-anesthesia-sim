@@ -137,6 +137,7 @@ LANE_ONLY = (
     "docs/model-review.md",
     "model-evidence.toml",
     "docs/worker-runs",
+    "docs/hook-blocks",
     # Configuration, which carries no prose a standard could apply to.
     ".gitattributes",
     ".gitignore",
