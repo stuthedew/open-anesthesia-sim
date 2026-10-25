@@ -184,7 +184,7 @@ remains a question for a reviewer.
 | --- | --- | --- |
 | reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier. The agent name is always visible: the invariant tier that every top-level window shows carries it, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's"). `tools/agent_identity_check.py` audits the ISO 5360 colours and their accessible foregrounds in `src/anesthesia_sim/app/theme.py` as one unit | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are also distinguished from each other. The status word, the transport and the banner are stated from the run's status alone. None of these three facts is built from a compartment value. So a run whose own snapshot refuses a value still shows as stopped, not as running with Pause offered. A banner written before any frame of the stopped run has been drawn says so, instead of claiming that a step was rolled back (`PL-7DJK`) | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
-| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record that the fresh run definition opens on before it clears anything. So a refusal leaves the run exactly as it was, not half cleared. The refusal is a set of tissue flows that no longer sum to the cardiac output. Since `PL-HQF5` and `PL-Z0HN`, only a perfusion fraction set by bypassing its guard can cause it. The interface then halts the run through the failed-step path. The refusal is recorded as the failure. On a run that had already failed for something else, that earlier failure stays the reason, and the banner's way out states the refusal. The status word, the transport and the banner state the refusal. The banner's way out says that no setting can repair the refusal, and that closing and reopening the application starts a new run. It does not name the Reset that was just refused, or a dial that cannot repair it (`PL-01GY`). The refusal names the two flows in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
+| reading a run whose Reset the core refused as one still running, or as one that was reset | `SimulationController.reset()` builds the settings record that the fresh run definition opens on before it clears anything. So a refusal leaves the run exactly as it was, not half cleared. The refusal is a set of tissue flows that no longer sum to the cardiac output. Since `PL-HQF5` and `PL-Z0HN`, only a perfusion fraction set by bypassing its guard can cause it. The interface then halts the run through the failed-step path. The refusal is recorded as the failure. On a run that had already failed for something else, that earlier failure stays the reason, and the banner's way out states the refusal. The status word, the transport and the banner state the halt. The banner's way out says that no setting can repair the refusal, and that closing and reopening the application starts a new run. It does not name the Reset that was just refused, or a dial that cannot repair it (`PL-01GY`). The refusal names the two flows in L/min, the unit every readout shows, as they were set (`PL-M4M0`) | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
 | comparing readouts with a chart that was drawn from different settings | the readouts come from the steps and the chart comes from the run definition. So before each step, `SimulationController.advance()` compares `AgentUptakeSystem.settings_key()` with the key it noted when the definition last recorded settings. A setting written onto the core without going through the controller halts the run on the last step on which both agree, with a banner saying why. Nothing in `app/` writes a setting that way. Reset then starts a new run from the settings the core holds at that point. A setting changed through the controller afterwards records the whole settings record. So that change brings the definition back into line rather than halting the run (`PL-XRN8`) | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
 | reading the agent selector or a slider, used on a run whose snapshot refuses, as a control that took effect | the selector and the sliders read the snapshot through `RunView._snapshot_for_a_control`. On a refusal, that method halts the run and states the halt from the run's status, rather than letting the raised exception escape the slot unseen. It puts the selector back to the agent that the controller names, because the snapshot that would name it is what refused. Reset remains the way out that the banner names, unless a refused Reset has left its own way out in place. The controls stay live on a halted run rather than locked (project owner, 2026-10-12, ratified, over locking them, which would render the agent selector disabled) (`PL-V2HC`) | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
 | reading the value printed beside a dial dragged into a halt as the value the run holds | after writing its banner, the halt writes every dial from `SimulationController.record()`. That record gives the agent and the four settings in force. It is read from the settings the compartments hold and from no compartment value. So the label beside a dial dragged into the halt shows the value that the dial and the run hold, not the value before the drag. Only a frame would have rewritten the label, and a run whose snapshot refuses draws no frame (`PL-85LJ`) | `test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial`, `test_a_halt_is_stated_before_its_dials_are_written` |
@@ -3246,8 +3246,8 @@ not be described as reproducing all of it. `docs/machine-abstraction.md` is
 where that consequence was decided (`PL-FG9D`). Internal topology is not
 represented. Folding it into an effective volume is refused, because that
 would attribute to volume a difference that volume did not cause.
-`ROADMAP.md`'s planned-milestone item 39 states the condition under which this
-refusal is revisited.
+`ROADMAP.md`'s planned-milestone item 39 states the condition under which the
+decision not to represent internal topology is revisited.
 
 **The flow row's gap has since been searched, and what came back is a
 recommendation rather than a convention** (`PL-NM7X`). `docs/machine-survey.md`
@@ -5829,8 +5829,8 @@ what that reproduces, and what it does not:
   rounding the typed value. In the first hour, 12 767 of the 36 001 one-decimal
   instants are not a whole number of steps in binary. Rounding would put a mark
   that lies inside a step onto the step before it. The branch treats its mark
-  as passed, not as still ahead, because it opens standing on the step that
-  crossed the mark.
+  as passed, not as "before this branch opened", even when the fork is one step
+  past the mark, because it opens standing on the step that crossed the mark.
 - **It does not replay what the trunk did afterwards.** The branch continues
   under the settings in force at the mark, with a control record of its own
   that starts empty, until the learner changes something. The trunk's later
@@ -6111,10 +6111,10 @@ a hundred times the supported maximum, opened a run. The run returned finite,
 plausible fractions (`PL-HSFV`, measured 2026-10-04). Each flow is now a
 `float` subclass in `core/supported_ranges.py`: `FreshGasFlow`,
 `AlveolarVentilation` and `CardiacOutput`. The constructor of each is the only
-thing that runs its guard. Every field and signature that holds a flow takes
-the type. That covers the compartments, the settings record, the
-application's snapshot and the setters that feed them. The control timeline is
-annotated `float`, and a setting reopened from it is built back into its type.
+thing that runs its guard. In the compartments, the settings record, the application's snapshot and the
+setters that feed them, every field and signature that holds a flow takes the
+type. The control timeline is annotated `float`, and a setting reopened from it
+is built back into its type.
 The check is made once, where the value is built, and no way in has to
 remember it. A bare `float` handed to any of the five ways in is refused with
 a `TypeError` that names the type to build, whatever its value. Arithmetic on
@@ -6626,9 +6626,9 @@ what that subsection measured, and nothing more.
 <!-- not-restated: 2.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-Sevoflurane is the agent that sets this bound. For sevoflurane, 2% to 5% of
-the absorbed dose is metabolized, against far less for isoflurane and
-desflurane.
+Sevoflurane is the agent for which the missing metabolism matters most, so it
+is the agent that limits this bound. For sevoflurane, 2% to 5% of the absorbed
+dose is metabolized, against far less for isoflurane and desflurane.
 Its metabolism also begins immediately rather than late. Fluoride and HFIP
 appear in plasma within minutes of the start of administration. The same
 review finds that metabolism "does not contribute to the termination of
@@ -10138,7 +10138,8 @@ muscle against fat.
 **There is no aim to respect at that separation**, which is why the reasoning
 above did not survive its own measurement. At a flip, the two winning points
 are a median 0.9 px apart, and 100% of them are within 2 px. The box hangs from
-the aimed-at point, so it does not move. Only the compartment's name and the
+the aimed-at point, and the two points are this close, so the box does not
+move. Only the compartment's name and the
 numbers change, and the reader has already read past the name. `PL-QYBW` states
 this second consequence in its own terms: at 0.2–1.4 px, no targeting rule can
 let a reader aim at one trace rather than another. A rule that picked one would
