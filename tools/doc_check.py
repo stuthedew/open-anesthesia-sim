@@ -2327,7 +2327,13 @@ def check_prose_provenance(root: Path, report: Report) -> None:
                 )
 
         if kind == "derived":
-            wanted = [float(number) for number in NUMBER_RE.findall(figure)]
+            # A grouped figure such as "86 400 000 steps" is one number, so it is
+            # read whole before `NUMBER_RE` would split it at its first space.
+            grouped = GROUPED_NUMBER_RE.match(figure.lstrip())
+            if grouped:
+                wanted = [float(grouped.group().replace(" ", ""))]
+            else:
+                wanted = [float(number) for number in NUMBER_RE.findall(figure)]
             if wanted and wanted[0] not in in_prose:
                 report.errors.append(
                     f"{where}: names the derived figure {figure!r}, which is not in the prose "

@@ -58,17 +58,23 @@ test that reads the constant only through a subprocess it starts sees the
 unperturbed module. A test that copies the value only as a value just inside
 the limit still passes, because the limit moved outwards.
 
-A test listed in `TRIPWIRES` is reported as failing on purpose and does not
-fail the run. Each one holds a literal measured at the current limit and
-checks it against the limit that the simulator computes, so its failure asks
-for a re-measurement rather than showing a copy.
+A test listed in `TRIPWIRES` for the constant being moved is reported as
+failing on purpose and does not fail the run. Each one holds a literal
+measured at the current limit and checks it against the limit that the
+simulator computes, so its failure asks for a re-measurement rather than
+showing a copy.
 
-**How the file test works.** A test's file counts as importing the constant
-when it holds `from anesthesia_sim.core.supported_ranges import NAME`, or
-imports the module and reads `NAME` from it as an attribute. A test that gets
-the value through a helper module is judged by its own file, so it is
-reported. The judgment of whether a reported test should change is left to
-the session that reads the report.
+**How a test is judged.** A failing test counts as reading the constant when
+its file imports it, by `from anesthesia_sim.core.supported_ranges import
+NAME` or by importing the module and reading `NAME` as an attribute, and the
+test itself uses it. The test uses it when its body, its decorators or its
+class's decorators name it, or name a function, class, fixture or constant
+defined in the same file that uses it. So a test that copies the value is
+named even when other tests in its file import the name. A test that gets
+the value through a helper module or a `conftest.py` fixture is also named.
+The cases of one parametrized test are judged together, so a case that
+copies the value beside a case that names the constant is not seen. Whether
+a reported test should change is left to the session that reads the report.
 
 The suite takes several minutes for each constant, so this runs in the
 `restated-constants` job of `.github/workflows/drift.yml` and not in
@@ -109,9 +115,12 @@ SUITE = "tests"
 #: the length of a published-fit washout, and checks it against the limit read
 #: from the simulator. Its failure is the prompt to re-measure, not a copy of
 #: the limit, so the report lists it and does not fail the run.
-TRIPWIRES: Mapping[str, str] = {
-    "tests/reference/test_late_washout_against_published_fits.py"
-    "::test_the_run_ends_at_the_supported_run_length": (
+TRIPWIRES: Mapping[tuple[str, str], str] = {
+    (
+        "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
+        "tests/reference/test_late_washout_against_published_fits.py"
+        "::test_the_run_ends_at_the_supported_run_length",
+    ): (
         "its tables were measured over ELIMINATION_DURATION_MIN, which it checks against "
         "maximum_step_count, so a new run length means re-measuring them"
     )
@@ -316,14 +325,93 @@ def failures_in(junit_xml: str) -> list[Failure]:
     return list(found.values())
 
 
-def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:
-    """The failures whose file does not import `name`, read through `read(file)`."""
+def _references(node: ast.AST) -> set[str]:
+    """Every name `node` reads, as a bare name, an attribute or a parameter."""
 
-    imports: dict[str, bool] = {}
-    for failure in failures:
-        if failure.file not in imports:
-            imports[failure.file] = imports_name(read(failure.file), name)
-    return [failure for failure in failures if not imports[failure.file]]
+    found: set[str] = set()
+    for inner in ast.walk(node):
+        if isinstance(inner, ast.Name):
+            found.add(inner.id)
+        elif isinstance(inner, ast.Attribute):
+            found.add(inner.attr)
+        elif isinstance(inner, ast.arg):
+            found.add(inner.arg)
+    return found
+
+
+def _module_readers(tree: ast.Module, name: str) -> set[str]:
+    """The module-level functions, classes and assignments that read `name`, directly or not.
+
+    A test's parameter counts as a reference, so a fixture defined in the same
+    file that reads `name` makes the test that asks for it a reader too.
+    """
+
+    defined: dict[str, set[str]] = {}
+    for statement in tree.body:
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            defined.setdefault(statement.name, set()).update(_references(statement))
+        elif isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
+            for target in targets:
+                for bound in ast.walk(target):
+                    if isinstance(bound, ast.Name):
+                        defined.setdefault(bound.id, set()).update(_references(statement))
+    readers = {key for key, refs in defined.items() if name in refs}
+    while True:
+        more = {key for key, refs in defined.items() if key not in readers and refs & readers}
+        if not more:
+            return readers
+        readers |= more
+
+
+def uses_name(source: str, nodeid: str, name: str) -> bool:
+    """Whether the test `nodeid` in `source` reads `name` from the ranges module.
+
+    The file must import `name`, and the test itself must read it: in its own
+    body, its decorators, its class's decorators, or through a function,
+    class, fixture or constant defined in the same file that reads it. A test
+    whose file imports the name for other tests and that copies the value is
+    so still named. A test that is not found in its file is judged not to read
+    it, so it is named and a person looks at it.
+    """
+
+    if not imports_name(source, name):
+        return False
+    tree = ast.parse(source)
+    path = [part.partition("[")[0] for part in nodeid.split("::")[1:]]
+    scope: Sequence[ast.stmt] = tree.body
+    references: set[str] = set()
+    found = False
+    for depth, part in enumerate(path):
+        match = next(
+            (
+                node
+                for node in scope
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and node.name == part
+            ),
+            None,
+        )
+        if match is None:
+            return False
+        if depth == len(path) - 1:
+            references |= _references(match)
+            found = True
+        else:
+            for decorator in match.decorator_list:
+                references |= _references(decorator)
+            scope = match.body
+    if not found:
+        return False
+    return name in references or bool(references & _module_readers(tree, name))
+
+
+def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]) -> list[Failure]:
+    """The failures that do not read `name` themselves, their files read through `read(file)`."""
+
+    return [
+        failure for failure in failures if not uses_name(read(failure.file), failure.nodeid, name)
+    ]
 
 
 def starts_a_subprocess(source: str) -> bool:
@@ -434,8 +522,9 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         return finding
     still = {failure.nodeid for failure in rerun.failures}
     restated = [f.nodeid for f in candidates if f.nodeid not in still]
-    finding.restating = tuple(nodeid for nodeid in restated if nodeid not in TRIPWIRES)
-    finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in TRIPWIRES)
+    on_purpose = {nodeid for nodeid in restated if (constant.name, nodeid) in TRIPWIRES}
+    finding.restating = tuple(nodeid for nodeid in restated if nodeid not in on_purpose)
+    finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in on_purpose)
     finding.unjudged = tuple(f.nodeid for f in candidates if f.nodeid in still)
     return finding
 
@@ -464,7 +553,7 @@ def report(
         )
         lines.extend(f"  restates it: {nodeid}" for nodeid in finding.restating)
         lines.extend(
-            f"  fails on purpose, because {TRIPWIRES[nodeid]}: {nodeid}"
+            f"  fails on purpose, because {TRIPWIRES[constant.name, nodeid]}: {nodeid}"
             for nodeid in finding.tripwires
         )
         lines.extend(
@@ -485,7 +574,8 @@ def report(
     )
     lines.append(
         "Not seen by this run: a test that reads a constant only through a subprocess, "
-        "and a test that copies only a value just inside a limit."
+        "a test that copies only a value just inside a limit, and a parametrized case "
+        "that copies a value while another case of the same test names the constant."
     )
     return "\n".join(lines), failing
 

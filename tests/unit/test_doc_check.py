@@ -740,6 +740,25 @@ def test_a_prose_figure_is_held_to_the_constant_its_marker_names(tmp_path: Path)
     assert any("does not hold as a number" in error for error in unread), unread
 
 
+def test_a_grouped_derived_figure_is_found_whole(tmp_path: Path) -> None:
+    """A derived figure grouped with spaces is looked for as the whole number.
+
+    Read in pieces, "86 400 000 steps" was looked for as 86, which any
+    paragraph stating "86 400 s" contains, so a misplaced marker passed.
+    """
+    marker = f"<!-- derived: 86 400 000 steps from {RUN_LENGTH} -->"
+
+    placed = _run_length_errors(
+        tmp_path / "placed", "86_400.0", "A run at 1 ms takes 86 400 000 steps.", marker
+    )
+    assert placed == []
+
+    misplaced = _run_length_errors(
+        tmp_path / "misplaced", "86_400.0", "A run is supported for 86 400 s.", marker
+    )
+    assert any("which is not in the prose" in error for error in misplaced), misplaced
+
+
 def test_a_correct_derived_figure_is_left_alone(tmp_path: Path) -> None:
     root = _repo(
         tmp_path,

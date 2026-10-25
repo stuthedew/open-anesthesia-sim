@@ -37,8 +37,11 @@ verify: grep -q '^  restated-constants:' .github/workflows/drift.yml && grep -q 
 **Closed 2026-10-25.** `tools/restated_constants.py` rebuilds
 `core/supported_ranges.py` with one limit moved, before anything imports it,
 through an import hook in `tests/conftest.py`. It then runs the suite and
-names each failing test whose file does not import the limit's name and that
-passes without the move. The `restated-constants` job in
+names each failing test that does not itself use the limit's name and that
+passes without the move. A test uses the name when its body or decorators
+name it, or name a helper, fixture or constant in its own file that does. A
+first version judged by file, so a test that copied the value in a file that
+imported the name for other tests went unnamed; both blind reviews found it. The `restated-constants` job in
 `.github/workflows/drift.yml` runs it monthly; a limit moves rarely and on
 purpose, so a weekly run would mostly repeat itself.
 
@@ -47,8 +50,8 @@ The first full run named one test,
 `tests/reference/test_late_washout_against_published_fits.py`. It is not a
 copy. It holds the washout length its published-fit tables were measured over
 and checks it against `maximum_step_count`, so its failure is the prompt to
-re-measure those tables. The tool lists such tests in `TRIPWIRES`, each with
-its reason, and reports them without failing. A test checks that each entry
+re-measure those tables. The tool lists such tests in `TRIPWIRES`, keyed by the limit they
+guard and each with its reason, and reports them without failing. A test checks that each entry
 still names a test that exists. Changing the test to import the limit was
 rejected, because the literal is the measured duration and has to stay one.
 

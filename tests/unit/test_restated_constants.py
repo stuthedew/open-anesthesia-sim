@@ -51,6 +51,20 @@ from anesthesia_sim.core.supported_ranges import {NAME}
 
 def test_the_limit_is_one_day() -> None:
     assert {NAME} == 86_400.0
+
+
+def test_the_last_step_is_one_day() -> None:
+    assert 86_400.0 == 86_400.0
+
+
+def _limit() -> float:
+    return {NAME}
+
+
+class TestThroughAHelper:
+    @pytest.mark.parametrize("hours", [24])
+    def test_the_helper_gives_one_day(self, hours: int) -> None:
+        assert _limit() == hours * 3600.0
 """
 
 
@@ -58,15 +72,23 @@ def test_a_test_restating_a_constant_is_named_and_one_importing_it_is_not(tmp_pa
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "test_copies.py").write_text(COPIES_THE_VALUE, encoding="utf-8")
     (tmp_path / "tests" / "test_imports.py").write_text(IMPORTS_THE_NAME, encoding="utf-8")
-    both_failed = [
+    imports = "tests/test_imports.py"
+    all_failed = [
         Failure("tests/test_copies.py::test_the_run_stops_at_one_day", "tests/test_copies.py"),
-        Failure("tests/test_imports.py::test_the_limit_is_one_day", "tests/test_imports.py"),
+        Failure(f"{imports}::test_the_limit_is_one_day", imports),
+        Failure(f"{imports}::test_the_last_step_is_one_day", imports),
+        Failure(f"{imports}::TestThroughAHelper::test_the_helper_gives_one_day[24]", imports),
+        Failure(f"{imports}::test_not_in_the_file", imports),
     ]
 
-    named = restating(both_failed, NAME, lambda file: (tmp_path / file).read_text("utf-8"))
+    named = restating(all_failed, NAME, lambda file: (tmp_path / file).read_text("utf-8"))
 
+    # A test that copies the value is named even when its file imports the
+    # name for another test, and one this file does not define is named too.
     assert [failure.nodeid for failure in named] == [
-        "tests/test_copies.py::test_the_run_stops_at_one_day"
+        "tests/test_copies.py::test_the_run_stops_at_one_day",
+        f"{imports}::test_the_last_step_is_one_day",
+        f"{imports}::test_not_in_the_file",
     ]
 
 
@@ -192,19 +214,21 @@ def test_a_run_without_an_answer_fails_the_report() -> None:
 
 
 def test_a_tripwire_is_listed_without_failing_the_report() -> None:
-    nodeid = next(iter(TRIPWIRES))
-    tripped = Finding(Constant(NAME, 1.0), 2.0, failed=1, tripwires=(nodeid,))
-    restated = Finding(Constant(NAME, 1.0), 2.0, failed=1, restating=(nodeid,))
+    name, nodeid = next(iter(TRIPWIRES))
+    tripped = Finding(Constant(name, 1.0), 2.0, failed=1, tripwires=(nodeid,))
+    restated = Finding(Constant(name, 1.0), 2.0, failed=1, restating=(nodeid,))
 
     text, failing = report([tripped], [])
     assert failing is False
-    assert f"fails on purpose, because {TRIPWIRES[nodeid]}: {nodeid}" in text
+    assert f"fails on purpose, because {TRIPWIRES[name, nodeid]}: {nodeid}" in text
     assert report([restated], [])[1] is True
 
 
 def test_each_tripwire_names_a_test_that_exists() -> None:
     root = Path(__file__).resolve().parents[2]
-    for nodeid in TRIPWIRES:
+    constants = {constant.name for constant in numeric_constants(RANGES_SOURCE.read_text("utf-8"))}
+    for name, nodeid in TRIPWIRES:
+        assert name in constants, name
         file, _, function = nodeid.partition("::")
         tree = ast.parse((root / file).read_text(encoding="utf-8"))
         defined = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}

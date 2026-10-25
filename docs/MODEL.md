@@ -436,6 +436,8 @@ control mark stamped `5400.0 s` on an axis reading `1h30m` was converting
 between two displayed forms of one quantity by hand, and at the supported
 24-hour run length the clock's top reading was `86400.0 s`, which is false
 precision on a boundary this document states in hours (`PL-Q4M4`, `PL-CZFY`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 24-hour from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The width the chart is drawing is the one thing still spelled out in words —
 `15 minutes` above an axis whose last tick reads `15m`. That is register
@@ -5147,6 +5149,7 @@ The wider span is the worse case, because its columns are further apart and
 each chained propagation covers more ground; 24 h is the longest supported run
 under § "Supported run length", so the second row is the worst a supported run
 reaches at this column count.
+<!-- derived: 24 h from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The headroom differs by four orders between those two columns, which is why
 the rule is enforced rather than trusted.** A fraction is displayed as a
@@ -5877,10 +5880,13 @@ computed steps rounds a whole step either way - to a last step a float past 24
 hours, or one short of a step landing on it - so a count is accepted exactly
 where the instant it stands at is, and a branch is built or refused alike
 whether it is taken from its parent's count or its parent's instant (`PL-8H2R`).
+<!-- derived: 24 hours from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
 | Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`: `CaseInstant`, which every instant a run opens, moves, keyframes, marks or branches at is built as, and `SimulationState`, which holds a `StepCount` to its step |
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 24 h from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
