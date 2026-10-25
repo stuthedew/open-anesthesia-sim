@@ -97,19 +97,27 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
     left out, because a command can carry a token. `tools/hook_blocks.py`
     copies the lines into the repository when a pull request is recorded.
 
+    The time is to the microsecond, so two refusals in one second stay two
+    lines. A payload with no session id is not logged. Claude Code sends one
+    with every call, so a payload without one is a guard run by hand, such as
+    a session probing a guard's defect, and counting it would make that guard
+    look as if it refused more.
+
     A log that cannot be written is skipped, because a refusal must still
     refuse when the disk is full or the directory cannot be made.
     """
-    line = "\t".join(
-        (datetime.now(UTC).isoformat(timespec="seconds"), session_of(payload), guard, rule)
-    )
-    try:
-        log = block_log()
-        log.parent.mkdir(parents=True, exist_ok=True)
-        with log.open("a", encoding="utf-8") as stream:
-            stream.write(line + "\n")
-    except OSError:
-        pass
+    session = session_of(payload)
+    if session:
+        line = "\t".join(
+            (datetime.now(UTC).isoformat(timespec="microseconds"), session, guard, rule)
+        )
+        try:
+            log = block_log()
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with log.open("a", encoding="utf-8") as stream:
+                stream.write(line + "\n")
+        except OSError:
+            pass
     decision = {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",

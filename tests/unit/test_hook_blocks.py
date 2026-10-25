@@ -62,35 +62,65 @@ def test_a_log_that_cannot_be_written_still_refuses(
     assert out["hookSpecificOutput"]["permissionDecisionReason"] == "Refused."
 
 
-def test_copy_writes_each_session_its_own_file_and_keeps_what_it_held(tmp_path: Path) -> None:
+def test_copy_writes_only_what_the_repository_lacks_into_the_branch_s_file(tmp_path: Path) -> None:
     log = _log(
         tmp_path / "log.tsv",
-        "2026-10-25T10:00:00+00:00\tcse_a\tno-prune-guard\tprune",
-        "2026-10-25T10:01:00+00:00\tcse_b\tpush-check-guard\tchecks-failed",
-        "2026-10-25T10:02:00+00:00\t\towner_ask_guard\tbare-read-ask",
+        "2026-10-24T09:00:00.000001+00:00\tcse_a\tno-prune-guard\tremove",
+        "2026-10-25T10:00:00.000001+00:00\tcse_a\tno-prune-guard\tprune",
+        "2026-10-25T10:01:00.000001+00:00\tcse_b\tpush-check-guard\tchecks-failed",
+        "2026-10-25T10:02:00.000001+00:00\t\towner_ask_guard\tbare-read-ask",
         "a line with too few fields",
     )
-    held = tmp_path / BLOCKS_DIR / "cse_a.tsv"
-    held.parent.mkdir(parents=True)
-    held.write_text(f"{BLOCKS_HEADER}\n2026-10-24T09:00:00+00:00\tcse_a\tno-prune-guard\tremove\n")
-    report = copy(log, tmp_path)
-    assert len(report) == 3
-    assert held.read_text(encoding="utf-8").split("\n") == [
+    # Another branch's file, already merged, holds the first line.
+    other = tmp_path / BLOCKS_DIR / "claude-other.tsv"
+    other.parent.mkdir(parents=True)
+    other.write_text(
+        f"{BLOCKS_HEADER}\n2026-10-24T09:00:00.000001+00:00\tcse_a\tno-prune-guard\tremove\n"
+    )
+    (line,) = copy(log, tmp_path, "claude/pl-b7k2-x")
+    assert line == f"hook blocks: copied 2 refusals into {BLOCKS_DIR}/claude-pl-b7k2-x.tsv"
+    mine = tmp_path / BLOCKS_DIR / "claude-pl-b7k2-x.tsv"
+    assert mine.read_text(encoding="utf-8").split("\n") == [
         BLOCKS_HEADER,
-        "2026-10-24T09:00:00+00:00\tcse_a\tno-prune-guard\tremove",
-        "2026-10-25T10:00:00+00:00\tcse_a\tno-prune-guard\tprune",
+        "2026-10-25T10:00:00.000001+00:00\tcse_a\tno-prune-guard\tprune",
+        "2026-10-25T10:01:00.000001+00:00\tcse_b\tpush-check-guard\tchecks-failed",
         "",
     ]
-    assert (tmp_path / BLOCKS_DIR / "no-session.tsv").is_file()
-    # A second copy finds nothing new, and changes nothing.
-    assert copy(log, tmp_path) == []
+    # The other branch's file is left as it was, and a second copy finds nothing new.
+    assert len(other.read_text(encoding="utf-8").split("\n")) == 3
+    assert copy(log, tmp_path, "claude/pl-b7k2-x") == []
 
 
-def test_a_session_id_that_is_not_a_file_name_is_reported_and_skipped(tmp_path: Path) -> None:
-    log = _log(tmp_path / "log.tsv", "2026-10-25T10:00:00+00:00\t../x\tg\tr")
-    (line,) = copy(log, tmp_path)
-    assert "is not a file name" in line
+def test_a_detached_head_copies_nothing_and_says_so(tmp_path: Path) -> None:
+    log = _log(tmp_path / "log.tsv", "2026-10-25T10:00:00.000001+00:00\tcse_a\tg\tr")
+    (line,) = copy(log, tmp_path, "")
+    assert "on no branch" in line
     assert not (tmp_path / BLOCKS_DIR).exists()
+
+
+def test_a_guard_run_by_hand_is_not_logged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A payload with no session id is a probe, and counting it would inflate the guard."""
+    import hook_input
+
+    log = tmp_path / "blocks.tsv"
+    monkeypatch.setenv("HOOK_BLOCK_LOG", str(log))
+    out = json.loads(hook_input.deny("g", "r", "Refused.", '{"tool_name": "Bash"}'))
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert not log.exists()
+
+
+def test_two_refusals_in_one_second_stay_two_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hook_input
+
+    log = tmp_path / "blocks.tsv"
+    monkeypatch.setenv("HOOK_BLOCK_LOG", str(log))
+    for _ in range(2):
+        hook_input.deny("g", "r", "Refused.", '{"session_id": "cse_a"}')
+    assert len(set(log.read_text(encoding="utf-8").split("\n")[:-1])) == 2
+    copy(log, tmp_path, "b")
+    assert count(tmp_path) == ["g\tr\t2 refusals\t1 sessions"]
 
 
 def test_count_gives_refusals_and_sessions_per_guard_and_rule(tmp_path: Path) -> None:
@@ -101,12 +131,16 @@ def test_count_gives_refusals_and_sessions_per_guard_and_rule(tmp_path: Path) ->
         "2026-10-25T10:06:00+00:00\tcse_b\tno-prune-guard\tprune",
     )
     assert count(tmp_path) == [f"hook blocks: {BLOCKS_DIR} holds no refusals yet"]
-    copy(log, tmp_path)
+    copy(log, tmp_path, "b")
+    # A line another branch's file also holds is the same refusal, counted once.
+    (tmp_path / BLOCKS_DIR / "c.tsv").write_text(
+        f"{BLOCKS_HEADER}\n2026-10-25T10:00:00+00:00\tcse_a\tno-prune-guard\tprune\n"
+    )
     assert count(tmp_path) == ["no-prune-guard\tprune\t3 refusals\t2 sessions"]
 
 
 def test_the_missing_log_copies_nothing(tmp_path: Path) -> None:
-    assert copy(tmp_path / "absent.tsv", tmp_path) == []
+    assert copy(tmp_path / "absent.tsv", tmp_path, "b") == []
 
 
 def test_record_runs_the_copy() -> None:
