@@ -3360,14 +3360,19 @@ give the coefficients as the literature publishes them. That confirms the
 operation and its arithmetic. It is not a second measurement. Baker attributes
 the bracketed set to Eger and Shafer's 2005 tutorial, which ran its
 simulations in Gas Man, according to its abstract. The stored tissue:gas
-values are Yasuda, Targ and Eger's measurements as Gas Man rounded them, and
-the stored blood:gas values are De Wolf et al.'s. Eger is an author in both
-lines, so the two are not independent in origin. If Eger and Shafer took their
-coefficients from Gas Man, the match is one parameter set divided twice. Their
-paper is not held here, so where its coefficients came from has not been read.
+values are Gas Man's figures for Yasuda, Targ and Eger's measurements, and the
+stored blood:gas values are De Wolf et al.'s. In all seven cells where Gas
+Man's figure differs from Yasuda's mean, Baker's bracketed figure follows Gas
+Man's.
+Isoflurane fat is the clearest: 53.8 is 70.0 divided by 1.3, where Yasuda's
+64.2 would give 49.4. So the match is one parameter set divided twice, not two
+sources agreeing. Eger and Shafer's paper is not held here, so which of the two
+took its figures from the other has not been read.
 A reader should take the table as evidence that the division is the right
 operation, and not as evidence that the coefficients are right. § "Known
 limitations" says how far other laboratories' coefficients differ from these.
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
 
 **Baker's other set is not a check on the division.** Its plain figures are
 "Data from Fiserova-Bergerova and Diaz (26)", a 1986 paper. They come with
@@ -10784,10 +10789,11 @@ This model does not model:
   into fat lying against it. This is a route between two tissues, not the
   blood-to-tissue limitation above. The note below this list measures what it
   leaves out of the fat compartment;
-- uncertainty in the tissue:gas partition coefficients. Each is one
-  laboratory's mean, carried as an exact value. Other laboratories report
-  values for the same tissue that differ by up to 150%, and the note below this
-  list says which tissues that reaches;
+- uncertainty in the tissue:gas partition coefficients. Each is carried as
+  an exact value. The stored values are Gas Man's, which differ from the one
+  laboratory's means behind them by up to 9%. Other laboratories report values
+  for the same tissue that differ by up to 150%, and the note below this list
+  says which tissues that reaches;
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -11355,20 +11361,24 @@ value:
   pp. 165-66 were read again on 2026-09-27. Both are tier 3, and
   `docs/references/README.md` carries their entries.
 
-**The tissue:gas coefficients are one laboratory's means, and other
+**The tissue:gas coefficients rest on one laboratory's means, and other
 laboratories disagree with them by up to 150% in some tissues** (`PL-H536`).
+The stored values are Gas Man's. They differ from Yasuda, Targ and Eger's
+means in seven of the nine cells, by up to 9% in isoflurane's fat coefficient,
+70.0 against 64.2 (§ "Parameter provenance" has the table).
 Hendrickx and De Wolf state the general case: "Tissue solubilities vary up to
 150% between authors (Yasuda et al. 1989), and the tissue homogenates used to
 determine these coefficients may not represent in vivo conditions" (p. 165).
 The 150% is not spread evenly across the tissues this model uses. Yasuda, Targ
-and Eger, whose measurements the agent files store, compare their own values
-with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
+and Eger, whose measurements the agent files' values rest on, compare their
+own values with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
 sevoflurane, isoflurane and halothane were similar to theirs for brain and for
 fat, except halothane's fat coefficient, which was 65% greater. They were 115%
 to 150% greater for kidney and 10% to 30% less for muscle. Those values are
 Fiserova-Bergerova, Tichy and Di Carlo 1984, Yasuda's ref 8. Lowe's isoflurane
 values were 50% to 75% greater. The authors could not explain the
 differences.
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 
 A third published set agrees less well (`PL-VPF8`). Baker and Farmery's 2011
 review prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986
@@ -11376,23 +11386,32 @@ beside the set that matches this model (Table 2, p. 572). On the tissue:blood
 scale, that set puts sevoflurane's fat coefficient at 71.7, 37% above this
 model's 52.3. It puts isoflurane's muscle coefficient at 1.71, 51% below this
 model's 3.46. Its vessel-rich figures are 28% above this model's for both
-agents. Part of each gap is the set's own blood:gas values, 0.6 for
-sevoflurane and 1.4 for isoflurane. The set may not be a measurement.
+agents. The set's own blood:gas values, 0.6 for sevoflurane and 1.4 for
+isoflurane, move these gaps in opposite directions for the two agents. So the
+tissue:gas scale, which is what the agent files store, gives a fairer
+comparison. On that scale the set's sevoflurane fat coefficient is 26% above
+this model's and its isoflurane muscle coefficient 47% below. Its vessel-rich
+coefficient is 18% above for sevoflurane and 38% above for isoflurane. The set
+may not be a measurement.
 According to its PubMed abstract, the 1986 paper measured coefficients only
 for water-soluble solvents such as acetone and the alcohols. It then fitted
 equations that predict any substance's tissue coefficients from its blood:gas
 and fat:gas values. Baker does not say which of the anesthetic figures were
 measured and which predicted. The set has no desflurane values.
+<!-- not-restated: 18 % -->
 
-So for sevoflurane and isoflurane, the brain and fat values that this model's
-vessel-rich and fat groups use were reproduced by one other laboratory, in
-1984. The 1986 set does not reproduce them, and it may be a prediction rather
-than a measurement. Yasuda, Targ and Eger make no such comparison for
+So for sevoflurane and isoflurane, Yasuda's brain and fat values, which this
+model's vessel-rich and fat groups store as Gas Man's figures, were reproduced
+by one other laboratory, in 1984. The 1986 set does not reproduce them, and it
+may be a prediction rather than a measurement. Yasuda, Targ and Eger make no such comparison for
 desflurane. The 150% is the kidney, which this
 model does not parameterise on its own (§ "Parameter provenance" records that
 the vessel-rich group is Yasuda's brain value). Muscle is where the model's
-coefficient is least certain, on two counts. Both other sets put muscle
-lower, and Yasuda's own muscle measurements spread the most. Their
+coefficient is least certain, on two counts. The other laboratories disagree
+with it in both directions. Fiserova-Bergerova's two sets put muscle lower.
+Lowe's isoflurane values were 50% to 75% greater than Yasuda's, and Yasuda
+does not break that difference down by tissue. Yasuda's own muscle
+measurements also spread the most. Their
 standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03), 45% for
 isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35), against 17% to
 19% for fat. Eger and Saidman's Table 1 makes the same point from the
@@ -11407,10 +11426,11 @@ and washout curve this simulator draws.
 <!-- derived: 29% from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
 <!-- not-restated: 1.1 -->
 
-This is a limit on what the model can claim rather than a defect to fix. No
-coefficient here is wrong against its cited measurement. A learner should read
-the muscle and fat traces as one well-measured parameter set, and not as the
-only set the literature supports. Yasuda, Targ and Eger's p. 373, Eger and
+This is a limit on what the model can claim rather than a defect to fix.
+Every stored coefficient lies within one standard deviation of its cited
+measurement. A learner should read the muscle and fat traces as one
+well-measured parameter set, and not as the only set the literature
+supports. Yasuda, Targ and Eger's p. 373, Eger and
 Saidman's Table 1 and Baker and Farmery's Table 2 were read in full text from
 the private reference corpus on 2026-10-25, and Hendrickx and De Wolf's p. 165
 on the same day. Fiserova-Bergerova and Diaz 1986 was read as its PubMed
