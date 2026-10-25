@@ -134,7 +134,7 @@ def wash_in_ratio(
 
     This function does the arithmetic alone and applies rule 1 of the module
     docstring and nothing else. So the result may exceed one. A caller that
-    plots it as a wash-in fraction wants `plotted_wash_in_ratio` instead.
+    plots the result as a wash-in fraction should call `read_wash_in` instead.
 
     Args:
         alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one

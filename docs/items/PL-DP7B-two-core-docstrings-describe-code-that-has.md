@@ -3,11 +3,13 @@ id: PL-DP7B
 title: Two core/ docstrings describe code that has changed: AgentUptakeSystem.advance in core/uptake_system.py still describes five sub-exchanges in sequence where _advance_step makes one exact propagation, and RunDefinition._require_within_run says _segment_index_at handles a span before the opening silently where it raises (found rewriting src/ prose for PL-1K5X)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1817
 payoff: a reviewer checking the core's numerical method against docs/MODEL.md reads a docstring that describes the method the code runs
 verify: ! grep -qF 'applies five' src/anesthesia_sim/core/uptake_system.py && ! grep -qF 'would handle that span silently' src/anesthesia_sim/core/run_definition.py
 ---

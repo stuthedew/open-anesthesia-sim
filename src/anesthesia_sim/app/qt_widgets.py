@@ -300,9 +300,11 @@ def declare_interface_colours(widget: QWidget) -> None:
     the widget's own palette. So nothing in this interface chooses a disabled
     colour that no contrast requirement measures. `test_dark_appearance.py`
     tests this. Nothing this function is applied to is disabled today. The
-    only controls that are ever disabled are the agent selector, which is
-    hidden by the same expression that disables it, and the three transport
-    buttons.
+    controls that are disabled elsewhere are the agent selector, the three
+    transport buttons, some menu entries, and the fork panel's point
+    selector, take button and here button. The agent selector and the fork
+    panel's three controls are each hidden by the same expression that
+    disables them.
 
     The colours come from `app/theme.py`, and the contrast of every pair they
     make is already measured. `tools/contrast_check.py` checks INK on PANEL
