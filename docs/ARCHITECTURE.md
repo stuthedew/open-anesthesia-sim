@@ -372,10 +372,11 @@ different treatment:
   an omission local to that compartment. `docs/MODEL.md`, "Step atomicity",
   is the contract.
 
-Both timer slots are guarded. `RunView.step_tick` steps the run and
-`SimulationView.render_tick` presents it, and both halt the run on any
-exception. They do so because a `TypeError` from a refactor is exactly as
-silent inside a Qt slot as a modelling failure is.
+Both timer slots pass the halt gate, as every other slot does (`PL-HJKN`).
+`RunView.step_tick` steps the run and `SimulationView.render_tick` presents
+it, and both halt on any exception: the first halts its run, and the second
+halts every run. They do so because a `TypeError` from a refactor is exactly
+as silent inside a Qt slot as a modelling failure is.
 `dashboard_frame.halt_disposition` decides which halt applies, and
 `RunView.halt` routes by its decision. A failure goes through
 `SimulationController.fail()`. A `SimulationDomainLimitError` raised on a path
