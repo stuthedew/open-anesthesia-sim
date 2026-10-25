@@ -581,6 +581,63 @@ def test_new_infers_candidate_paths_from_the_working_tree(
     assert "a path this branch is changing" in printed, "the key's source is named"
 
 
+def _changing_verify_py(root: Path, *, claimed: bool) -> Path:
+    """A repository on a branch changing the file `SUPPRESSION` declares, and its store.
+
+    With `claimed`, the branch's one commit claims `PL-C1C1`, as `bin/docket
+    claim` writes it.
+    """
+    store = root / "items"
+    store.mkdir(parents=True)
+    (store / "existing.md").write_text(SUPPRESSION, encoding="utf-8")
+    target = root / "subprojects" / "docket" / "src" / "docket"
+    target.mkdir(parents=True)
+    (target / "verify.py").write_text("# the module this session is changing\n", encoding="utf-8")
+    git = ["git", "-C", str(root)]
+    commands = [
+        ["git", "init", "-q", "-b", "main", str(root)],
+        [*git, "config", "user.email", "t@example.com"],
+        [*git, "config", "user.name", "T"],
+        [*git, "add", "-A"],
+        [*git, "commit", "-qm", "base"],
+        [*git, "switch", "-qc", "claude/work"],
+    ]
+    if claimed:
+        claim = "PL-C1C1: start\n\nClaim: PL-C1C1 claude/work cse_test"
+        commands.append([*git, "commit", "-q", "--allow-empty", "-m", claim])
+    for command in commands:
+        subprocess.run(command, check=True, capture_output=True)
+    (target / "verify.py").write_text("# now being changed\n", encoding="utf-8")
+    return store
+
+
+def test_new_records_nothing_on_an_item_this_branch_claims(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture made while working an item is not a second filing of it (`PL-PNSV`).
+
+    `PL-F67Q` was filed on the branch that was working `PL-S86L`. It declared
+    no `touches`, so the search keyed on the files that branch was changing,
+    which were `PL-S86L`'s own, and recorded the capture as a recurrence of the
+    item in hand. A recurrence is a filing by a session that did not know the
+    item existed, and this session was working it. The same capture on a
+    branch that claims nothing is still matched and recorded, so the claim is
+    the only thing that decides it.
+    """
+    title = "verify's suppression check reads every added line as code"
+    unclaimed = _changing_verify_py(tmp_path / "unclaimed", claimed=False)
+    claimed = _changing_verify_py(tmp_path / "claimed", claimed=True)
+
+    assert _run_with_git("new", title, "--items", str(unclaimed)) == 0
+    assert "Recorded on PL-C1C1" in capsys.readouterr().out
+    assert "recurrences:" in (unclaimed / "existing.md").read_text(encoding="utf-8")
+
+    assert _run_with_git("new", title, "--items", str(claimed)) == 0
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" not in printed, "the item in hand is not offered as an earlier filing"
+    assert "recurrences:" not in (claimed / "existing.md").read_text(encoding="utf-8")
+
+
 def test_a_capture_with_no_git_to_read_is_written_exactly_as_before(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
