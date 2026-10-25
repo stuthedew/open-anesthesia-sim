@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 
 from . import model_choice
-from .model import SAFETY_CLASSES, ModelEvidence, parse_model_evidence
+from .model import SAFETY_CLASSES, SELECTABLE_LANES, ModelEvidence, parse_model_evidence
 from .model_choice import ModelTable
 
 CONFIG_NAME = "docket.toml"
@@ -332,6 +332,13 @@ class Config:
     #: the failure the split exists to prevent, wearing the flag that was
     #: supposed to prevent it.
     workflow_paths: tuple[str, ...] = ()
+    #: The lane that a session given no particular work takes, where the
+    #: project has declared one: `product` or `workflow`. The digest's `Top:`
+    #: line then ranks that lane alone. Without it, the first pick a session
+    #: reads at launch is the top of the whole queue, which can be work the
+    #: focus tells it not to take (`PL-2CPD`). Empty by default, and the line
+    #: then ranks every lane.
+    focus: str = ""
     #: Paths holding the machinery that identifies and ranks *generators* -
     #: the `root-cause-of:` field, the predicate that decides a claim is
     #: sound, the rank term that lifts one above every band but `P0`, and
@@ -465,6 +472,18 @@ def _str(value: object, fallback: str, name: str) -> str:
     if isinstance(value, str):
         return value
     raise ValueError(f"{name}: {value!r} is not a string")
+
+
+def _lane(value: object, fallback: str, name: str) -> str:
+    """Read a lane name, or the empty string for none.
+
+    A misspelt lane is refused rather than read as no focus, because the
+    digest would then rank every lane while the file read as focused.
+    """
+    text = _str(value, fallback, name)
+    if text and text not in SELECTABLE_LANES:
+        raise ValueError(f"{name}: {text!r} is not a lane; name {' or '.join(SELECTABLE_LANES)}")
+    return text
 
 
 def _store_dir(value: object, fallback: str, name: str) -> str:
@@ -616,6 +635,7 @@ def load(root: Path) -> Config:
         workflow_paths=_tuple(
             section.get("workflow_paths"), defaults.workflow_paths, "workflow_paths"
         ),
+        focus=_lane(section.get("focus"), defaults.focus, "focus"),
         generator_paths=_tuple(
             section.get("generator_paths"), defaults.generator_paths, "generator_paths"
         ),

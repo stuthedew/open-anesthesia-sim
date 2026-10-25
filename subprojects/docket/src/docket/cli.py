@@ -1326,6 +1326,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         now=_now(args),
         read=_holdings(args),
         interrupted=_interrupted(root, items, current),
+        focus=config.focus,
     )
     if rendered:
         print(rendered)

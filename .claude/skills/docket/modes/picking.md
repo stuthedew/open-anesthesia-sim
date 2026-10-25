@@ -177,7 +177,8 @@ queue, and narrowing it for a session that is the only one running is how the
 next piece of work is worse than the one the whole queue would have offered.
 The exception is product focus. While it holds, a session given no particular
 work runs `docket next product` (`CLAUDE.md` § "What this project is",
-`PL-2866`).
+`PL-2866`). The digest's `Top, product focus:` line names that same pick, read
+from `docket.toml`'s `focus` key (`PL-2CPD`).
 
 Two lanes and no more, because two sessions can hold a repository between them
 and four cannot. `product` is what `CLAUDE.md` holds to the specialist standard

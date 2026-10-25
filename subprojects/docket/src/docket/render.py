@@ -497,6 +497,7 @@ def format_digest(
     now: datetime | None = None,
     read: Holdings | None = None,
     interrupted: str = "",
+    focus: str = "",
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -563,6 +564,13 @@ def format_digest(
 
     `interrupted` names a release whose cut stopped before its notes, and
     replaces the release sentence with `_interrupted_cut`'s (`PL-1BS2`).
+
+    `focus` is the lane `docket.toml` declares for a session given no
+    particular work. The `Top:` line then ranks that lane alone and says so,
+    because a session reads that line first and takes it as its pick: under
+    product focus the unlaned top was once a workflow item (`PL-2CPD`). Where
+    the lane has nothing startable, the line says that rather than naming the
+    other lane's work.
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -583,9 +591,16 @@ def format_digest(
         flight.ids,
         limit=1,
         scope=plan.scope if plan is not None else None,
+        lane=focus or None,
+        workflow_paths=workflow_paths,
         generator_paths=generator_paths,
     )
     top = picks[0] if picks else None
+    label = f"Top, {focus} focus" if focus else "Top"
+    if focus and top is None:
+        lines.append(
+            f"  {label}: nothing in the {focus} lane can start; `docket next` ranks every lane."
+        )
     if top is not None and top.item.priority != "P0":
         marks = _marks(top.item, flight.ids, protected_paths, gate_paths)
         # The one line every session reads before it has run anything. A
@@ -607,7 +622,7 @@ def format_digest(
             )
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
-        lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")
+        lines.append(f"  {label}: {top.item.identifier} {top.item.title} ({marks})")
         # The one item every session is shown before it has run anything, so
         # it is the highest-value place in the store for this line and the
         # only one worth a second line of resident context. Printed only
