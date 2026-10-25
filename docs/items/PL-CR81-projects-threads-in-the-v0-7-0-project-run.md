@@ -47,6 +47,20 @@ the spare process resolves its settings before the checkout is attached, so
 no `disableAllHooks` or managed-hooks-only key. One `docket-branch-guard.sh`
 process was seen running at 04:20Z, and its origin is unknown.
 
+**Re-checked 2026-10-25, about 17:00Z, in the same thread.** The documented
+cause is ruled out. `get_session` on this session lists one source,
+`https://github.com/stuthedew/open-anesthesia-sim`, so the project gives the
+thread one repository. The environment documentation's permissions page says
+only that cloud threads apply a repository's `permissions.allow` rules "only in
+a project with one repository", and says nothing about hooks. The probe still
+printed the pytest version, so the hooks were still not running. The session
+records `CLAUDE_CODE_ENTRYPOINT=remote_projects` and the tag
+`config:hearth-thread-own-tools`. Reading the Claude process's command line
+from `/proc` to see whether it was started with a restricted setting source was
+refused by this thread's permission classifier, so that question stays open for
+a session that may read it. No change inside the repository can fix this: the
+cause is in how the harness starts a Projects thread.
+
 **Why it matters.** Every thread in this project may be working without the
 guards: no refusal of a piped gate, of a ref prune or of a bare interpreter on
 the 3.14 trees, no push check, and no session-start digest, which carries the

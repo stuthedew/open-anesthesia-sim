@@ -1627,6 +1627,13 @@ where no boundary is declared or neither lane has anything startable. The
 spanning count rides the same line: two picks read as the whole queue without
 it.
 
+A project that has declared which lane a session given no particular work
+takes sets `focus` in `docket.toml` to `product` or `workflow`. The `Top:`
+line then ranks that lane alone and reads `Top, product focus:`, since it is
+the first pick a session reads and the one it takes. Where that lane has
+nothing startable, the line says so rather than naming the other lane's work.
+A value that names no lane is refused when the config loads (`PL-2CPD`).
+
 Each pick carries its band and its relation to the gate, and deliberately not
 its title. An id alone cannot tell a `P1` sitting on the debt gate from a `P3`
 the roadmap places nowhere, so an offer worth waving through and one worth

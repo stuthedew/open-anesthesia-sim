@@ -3,12 +3,14 @@ id: PL-2CPD
 title: During product focus the session-start digest still leads with the bare next pick, a workflow generator item, so a product session that follows its Top line is handed apparatus work; only the docket skill's text routes it to the By lane product entry
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: workflow-stress-2026-09
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, docket.toml, CLAUDE.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 blocked-by: PL-NZC0, PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
+closed: 2026-10-25
+pr: 1801
 payoff: a product session that follows the digest's first pick line is handed product work, not an apparatus item
 verify: grep -q 'def test_the_digest_leads_with_the_product_pick_under_product_focus' subprojects/docket/tests/test_cli.py
 ---
@@ -31,5 +33,20 @@ Reproduced 2026-09-25 against 46954a81: `bin/docket digest` prints `Top: PL-HMZZ
 **Checked 2026-10-25:** unblocked. `PL-NZC0` closed with the trial passing both bars, so this is the standing work and `PL-2866`'s fallback does not follow. Every other blocker has closed. `bin/docket generators` marks three heads still generating, `PL-58D7`, `PL-HJKN` and `PL-N7MM`, and all three are product-lane heads, so the workflow-lane pause does not hold this item. The brief's reproduction is 30 days old, so the session that takes it re-runs `bin/docket digest` first.
 
 **Done when.** Under a declared product focus, the digest's first pick line names the product lane's top item, with a test in `subprojects/docket/tests/test_cli.py`. Or this item is dropped into `PL-NZC0`'s fallback, naming it.
+
+**Done 2026-10-25.** Re-run first, as the check above asked: `bin/docket
+digest` printed `Top: PL-HJKN`, a product item, so the reproduction did not
+hold that day. The defect still did, because the line was the unlaned top and
+named a product item only by chance. The focus now has one record that code
+reads: `docket.toml`'s `focus` key, set to `product`. `docket.config` refuses a
+value that names no lane. `format_digest` ranks the `Top:` line in that lane
+alone and labels it `Top, product focus:`. Where the lane has nothing
+startable, the line says so rather than naming the other lane's work. The `By
+lane` line is unchanged. `CLAUDE.md`'s product-focus paragraph now says that
+ending the focus removes the key too, and `docs/resident-instructions.md`
+records that edit. The skill's Implementation paragraph and `picking.md` no
+longer send a product session to the `By lane` line. A key was chosen over
+reading the `CLAUDE.md` paragraph, because parsing prose for a mode would be
+the "sharper heuristic" the one-source rule refuses.
 
 **Generator check.** One-off. The fact is which lane a session given no particular work takes: a mode declared on 2026-09-25 in `CLAUDE.md` prose that no code reads yet, and the digest predates it. No head's `misread:` states it.
