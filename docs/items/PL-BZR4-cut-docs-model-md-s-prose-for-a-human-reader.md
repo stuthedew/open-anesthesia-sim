@@ -3,11 +3,13 @@ id: PL-BZR4
 title: Cut docs/MODEL.md's prose for a human reader, without losing an equation, unit, assumption, limitation or provenance note
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: prose-quality
 touches: docs/MODEL.md
 added: 2026-09-05
+closed: 2026-10-25
+verify: ! grep -qF 'residual, so what they certified moved with the dial they happened to use and' docs/MODEL.md && ! grep -qF 'carries no respiratory rate, so the decrement is run across the conventional' docs/MODEL.md && ! grep -qF 'is re-read from the clock every time the row is drawn and survives that; a' docs/MODEL.md
 not-delegable: `docs/MODEL.md` is a `protected_paths` entry, so no delegated diff may touch it whatever a check proves. Readability is judged by a person besides - no command separates trimmed prose from padded prose, and a length ceiling would be met by deleting the provenance note this item exists to keep
 ---
 
