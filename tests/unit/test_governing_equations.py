@@ -82,6 +82,11 @@ and unlike every other constant here, so a transposed index cannot pass.
 """
 
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
+
 def _settings(**overrides: object) -> UptakeEquationSettings:
     fields: dict[str, object] = {
         "circuit_volume_l": CIRCUIT_VOLUME_L,
@@ -274,7 +279,7 @@ def test_rejects_a_vaporizer_maximum_no_vaporizer_has(maximum: float) -> None:
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^max_delivered_concentration_percent must be positive and finite$",
+        match="^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
     ):
         _settings(
             delivered_concentration_percent=Percent(0.0),
@@ -543,13 +548,21 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite$"),
-        ("alveolar_volume_l", -1.0, "^alveolar_volume_l must be positive and finite$"),
-        ("venous_volume_l", float("inf"), "^venous_volume_l must be positive and finite$"),
+        ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite" + REFUSAL_REASON),
+        (
+            "alveolar_volume_l",
+            -1.0,
+            "^alveolar_volume_l must be positive and finite" + REFUSAL_REASON,
+        ),
+        (
+            "venous_volume_l",
+            float("inf"),
+            "^venous_volume_l must be positive and finite" + REFUSAL_REASON,
+        ),
         (
             "blood_gas_partition_coefficient",
             0.0,
-            "^blood_gas_partition_coefficient must be positive and finite$",
+            "^blood_gas_partition_coefficient must be positive and finite" + REFUSAL_REASON,
         ),
         # A dial past 100% stood here until `PL-4R3W`. It can no longer be
         # built as the `Percent` the record takes, so it never reaches the
@@ -652,12 +665,17 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("volume_l", 0.0, "^muscle volume_l must be positive and finite$"),
-        ("blood_flow_l_min", -0.1, "^muscle blood_flow_l_min must be nonnegative and finite$"),
+        ("volume_l", 0.0, "^muscle volume_l must be positive and finite" + REFUSAL_REASON),
+        (
+            "blood_flow_l_min",
+            -0.1,
+            "^muscle blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
+        ),
         (
             "tissue_blood_partition_coefficient",
             0.0,
-            "^muscle tissue_blood_partition_coefficient must be positive and finite$",
+            "^muscle tissue_blood_partition_coefficient must be positive and finite"
+            + REFUSAL_REASON,
         ),
     ],
 )

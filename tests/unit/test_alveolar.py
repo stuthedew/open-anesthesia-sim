@@ -22,6 +22,10 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
 
 def test_rejects_agent_amount_above_alveolar_capacity() -> None:
     with pytest.raises(
@@ -31,7 +35,11 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
             r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
         ),
     ):
-        AlveolarCompartment(agent_amount_l=2.6)
+        AlveolarCompartment(
+            gas_volume_l=2.5,
+            alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+            agent_amount_l=2.6,
+        )
 
 
 def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
@@ -49,7 +57,9 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     a fraction of exactly one is the top of the range, not past it.
     """
 
-    alveoli = AlveolarCompartment()
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     held = alveoli.agent_amount_l
     past_capacity = alveoli.gas_volume_l * 1.0000001
@@ -91,28 +101,28 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
             "gas_volume_l",
             0.0,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="zero-volume",
         ),
         pytest.param(
             "gas_volume_l",
             -1.0,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="negative-volume",
         ),
         pytest.param(
             "gas_volume_l",
             inf,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="infinite-volume",
         ),
         pytest.param(
             "gas_volume_l",
             nan,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="nan-volume",
         ),
         pytest.param(
@@ -158,7 +168,9 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
     while appearing to succeed. Nothing is written when a value is refused.
     """
 
-    alveoli = AlveolarCompartment()
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
     held = astuple(alveoli)
 
@@ -181,7 +193,9 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     (`PL-19Y0`).
     """
 
-    alveoli = AlveolarCompartment()
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
     refused = (
         r"^alveolar agent_amount_l of 0.625 L is more than the 0.5 L the alveolar compartment "
@@ -218,7 +232,9 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
     """
 
     with pytest.raises(SimulationConfigurationError, match="gas_volume_l"):
-        AlveolarCompartment(gas_volume_l=invalid_value)
+        AlveolarCompartment(
+            alveolar_ventilation_l_min=AlveolarVentilation(4.0), gas_volume_l=invalid_value
+        )
 
 
 @pytest.mark.parametrize("not_a_number", ["2.5", None])
@@ -235,7 +251,10 @@ def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_numbe
     """
 
     with pytest.raises(TypeError, match=f"^gas_volume_l of {not_a_number!r} has type "):
-        AlveolarCompartment(gas_volume_l=not_a_number)  # type: ignore[arg-type]
+        AlveolarCompartment(
+            alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+            gas_volume_l=not_a_number,  # type: ignore[arg-type]
+        )
 
 
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
@@ -251,7 +270,9 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
     was, for the snapshot's `Fraction` to refuse.
     """
 
-    alveoli = AlveolarCompartment()
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     captured = alveoli.capture_state()
     alveoli.set_partial_pressure_fraction(Fraction(0.06))
@@ -264,7 +285,9 @@ def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> No
 
 
 def test_changing_ventilation_preserves_alveolar_agent() -> None:
-    alveoli = AlveolarCompartment()
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
     alveoli.set_partial_pressure_fraction(Fraction(0.05))
     amount_before = alveoli.agent_amount_l
 
@@ -294,7 +317,8 @@ def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
 
     for alveolar_ventilation_l_min in (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN):
         alveoli = AlveolarCompartment(
-            alveolar_ventilation_l_min=AlveolarVentilation(alveolar_ventilation_l_min)
+            gas_volume_l=2.5,
+            alveolar_ventilation_l_min=AlveolarVentilation(alveolar_ventilation_l_min),
         )
 
         assert alveoli.alveolar_ventilation_l_min == alveolar_ventilation_l_min
@@ -307,7 +331,9 @@ def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
 def test_rejects_ventilation_above_the_supported_range() -> None:
     """Regression (PL-0MLQ): 200 L/min was accepted and simulated."""
 
-    alveoli = AlveolarCompartment(alveolar_ventilation_l_min=AlveolarVentilation(4.0))
+    alveoli = AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0)
+    )
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
         alveoli.set_alveolar_ventilation(AlveolarVentilation(200.0))
@@ -317,45 +343,43 @@ def test_rejects_ventilation_above_the_supported_range() -> None:
 
 def test_rejects_construction_with_ventilation_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        AlveolarCompartment(alveolar_ventilation_l_min=AlveolarVentilation(200.0))
+        AlveolarCompartment(gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(200.0))
 
 
-def test_the_bare_alveolar_defaults_match_the_shipped_patient_file() -> None:
-    """`PL-DJYF`: the literals in `core/alveolar.py` are a checked restatement.
+@pytest.mark.parametrize("missing", ["gas_volume_l", "alveolar_ventilation_l_min"])
+def test_an_alveolar_compartment_cannot_be_built_without_its_volume_or_ventilation(
+    missing: str,
+) -> None:
+    """Neither value has a default, so every caller must state the one it means (`PL-M85T`).
 
-    `data/patients/reference_adult.json` is the authority, and
-    `AgentUptakeSystem.for_agent()` passes both values from it explicitly, so
-    the field defaults are reached only by a bare unit-test construction. They
-    are kept so that a test of alveolar physics need not load package data —
-    but a reader meeting `gas_volume_l: float = 2.5` in `core/alveolar.py`
-    will take it for the model's alveolar volume whatever the docstring says,
-    so the two are not allowed to drift apart silently.
-
-    This is `PL-4YY1`'s
-    `test_the_bare_circuit_defaults_match_the_shipped_machine_file` applied to
-    the compartment it left behind: the same restatement, in the same shape,
-    one file over.
+    Before `PL-M85T`, each value defaulted to a second copy of the value in
+    `data/patients/reference_adult.json`: 2.5 L and 4.0 L/min. Only a test kept
+    those copies equal to the file (`PL-DJYF`). `AgentUptakeSystem.for_agent()`
+    passes both from the file.
     """
 
-    patient = load_reference_adult_parameters()
-    alveoli = AlveolarCompartment()
+    given: dict[str, object] = {
+        "gas_volume_l": 2.5,
+        "alveolar_ventilation_l_min": AlveolarVentilation(4.0),
+    }
+    del given[missing]
 
-    assert alveoli.gas_volume_l == patient.alveolar_gas_volume_l
-    assert alveoli.alveolar_ventilation_l_min == patient.default_alveolar_ventilation_l_min
+    with pytest.raises(TypeError, match=f"missing 1 required positional argument: '{missing}'"):
+        AlveolarCompartment(**given)  # type: ignore[arg-type]
 
 
 def test_for_agent_builds_the_alveoli_at_the_patient_file_s_values() -> None:
     """A run from the shipped patient file carries its values, and the 37.5 s they give.
 
-    Asserting the ventilation time constant as well as the two inputs is the
-    same reasoning `PL-4YY1` applied to the circuit's 90 s: 37.5 s is the
-    alveolar washout the early rise is read against, and it is what a silent
-    change to either value would move.
+    This test asserts the ventilation time constant as well as the two inputs,
+    for the same reason that `PL-4YY1` asserted the circuit's 90 s. 37.5 s is
+    the alveolar washout time constant against which the early rise is read,
+    and a silent change to either value would move it.
 
-    It cannot show that the file was read, because the shipped values equal
-    `AlveolarCompartment`'s field defaults;
+    This test cannot show that the file was read, because the shipped values
+    are the ones a test would type anyway.
     `test_for_agent_builds_the_alveoli_at_changed_patient_file_values` below
-    does (`PL-H8QP`).
+    shows it (`PL-H8QP`).
     """
 
     patient = load_reference_adult_parameters()
@@ -371,15 +395,17 @@ def test_for_agent_builds_the_alveoli_at_changed_patient_file_values(
 ) -> None:
     """The shipped path reads the file rather than falling through to a default.
 
-    Because the defaults equal the shipped file's values, dropping the explicit
-    keyword arguments in `for_agent()` would change no number in a run built
-    from that file: the run would simply stop reading its own parameter file,
-    and every provenance row pointing at `data/patients/reference_adult.json`
-    would quietly become a claim about a file the model no longer consults. So
-    this run is built from the shipped file with both values moved off the
-    defaults, parsed as the loader parses it and handed to `for_agent()` by
-    replacing the loader it calls, the way `tests/unit/test_circuit.py` hands it
-    a machine profile (`PL-H8QP`). 3.0 L at 5.0 L/min is 36 s.
+    Until `PL-M85T`, the defaults equalled the shipped file's values. So
+    dropping the keyword arguments in `for_agent()` would have changed no
+    number in a run built from that file. The run would simply have stopped
+    reading its own parameter file. Every provenance row pointing at
+    `data/patients/reference_adult.json` would then quietly become a claim
+    about a file the model no longer consults. So this test builds the run
+    from the shipped file with both values changed from the shipped ones. The
+    test parses the file as the loader does, and hands the result to
+    `for_agent()` by replacing the loader that `for_agent()` calls.
+    `tests/unit/test_circuit.py` hands `for_agent()` a machine profile the same
+    way (`PL-H8QP`). 3.0 L at 5.0 L/min gives a time constant of 36 s.
     """
 
     payload: dict[str, object] = json.loads(

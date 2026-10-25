@@ -115,6 +115,10 @@ class PlaybackRate:
             is real time; nothing slower than real time is offered, because
             the model resolves nothing below the 0.1 s step and a slower
             playback would only redraw the same values for longer.
+
+    Raises:
+        SimulationConfigurationError: If `multiplier` is not a whole number,
+            is a `bool`, or is less than 1.
     """
 
     multiplier: int

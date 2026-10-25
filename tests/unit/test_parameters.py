@@ -1,5 +1,6 @@
 import importlib.resources
 import json
+import math
 import re
 from collections.abc import Callable
 from copy import deepcopy
@@ -30,6 +31,10 @@ from anesthesia_sim.core.parameters import (
     parse_breathing_circuit_parameters,
     parse_reference_adult_parameters,
 )
+
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
 def _valid_agent_payload() -> dict[str, object]:
@@ -441,7 +446,7 @@ def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() 
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^max_delivered_concentration_percent must be positive and finite$",
+        match="^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
     ):
         replace(sevoflurane, max_delivered_concentration_percent=Percent(0.0))
 
@@ -468,8 +473,24 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
     payload["max_delivered_concentration_percent"] = 8.0
     payload["mac_percent"] = 9.0
 
-    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"vaporizer could not deliver 1 MAC, which is where a run opens"
+        ),
+    ):
         parse_agent_parameters(payload)
+
+
+def test_an_agent_file_with_its_mac_at_the_vaporizer_maximum_loads() -> None:
+    """The file is held to the record's rule, so a MAC equal to the maximum is accepted."""
+
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 8.0
+    payload["mac_percent"] = 8.0
+
+    assert parse_agent_parameters(payload).mac_percent == 8.0
 
 
 def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
@@ -1334,19 +1355,23 @@ def test_the_reference_patient_loader_shares_that_boundary(
     assert isinstance(raised.value.__cause__, OSError)
 
 
-def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
-    """`PL-TCW5`: the duplicated *check* is wanted, the duplicated number is not.
+def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
+    """Two guards check the perfusion rule from one definition (`PL-TCW5`, `PL-YHWH`).
 
-    Two guards enforce "tissue perfusion fractions sum to 1" - this module
-    guards the data file and `PatientCompartments.__post_init__` guards
-    direct construction - and both should stay. What must not be duplicated
-    is the tolerance itself, which is a policy value that could reasonably be
-    retuned; two copies would let the guards disagree about what the rule
-    means with nothing to say so. This asserts the shape rather than the
-    value, so retuning it stays a one-line change.
+    Two places enforce "tissue perfusion fractions sum to 1".
+    `core/parameters.py` checks the data file, and `PatientCompartments`
+    checks direct construction. Both checks should stay. What must not be
+    duplicated is the rule or its tolerance, which is a policy value that could
+    reasonably be retuned. Two copies would let the two checks disagree about
+    what the rule means, and nothing would report it. This test asserts that
+    the rule is defined once, not what the tolerance is, so retuning the
+    tolerance stays a one-line change.
     """
 
-    assert patient_module.FLOW_FRACTION_TOLERANCE is parameters_module.FLOW_FRACTION_TOLERANCE
+    assert (
+        patient_module.require_perfusion_fractions_sum_to_one
+        is parameters_module.require_perfusion_fractions_sum_to_one
+    )
 
     definitions = sorted(
         str(path.relative_to(REPO_ROOT))
@@ -1358,19 +1383,43 @@ def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
     assert definitions == ["src/anesthesia_sim/core/parameters.py"]
 
 
+def test_a_perfusion_sum_exactly_at_the_tolerance_is_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The tolerance is the largest difference from 1 that is still accepted.
+
+    No float sum near 1 lands exactly 1e-12 from it, so the tolerance is
+    widened to 0.25 here, where 1.25 and 0.75 are exact. The patched module
+    attribute is the one the rule reads when it is called.
+    """
+
+    monkeypatch.setattr(parameters_module, "FLOW_FRACTION_TOLERANCE", 0.25)
+
+    parameters_module.require_perfusion_fractions_sum_to_one(1.25)
+    parameters_module.require_perfusion_fractions_sum_to_one(0.75)
+
+    for outside in (math.nextafter(1.25, 2.0), math.nextafter(0.75, 0.0)):
+        with pytest.raises(SimulationConfigurationError, match="must sum to 1"):
+            parameters_module.require_perfusion_fractions_sum_to_one(outside)
+
+
 def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() -> None:
-    """`PL-4YY1`: both were `BreathingCircuit` field defaults, and unciteable.
+    """The shipped run takes its circuit volume and flow from the data file (`PL-4YY1`).
 
-    `tools/doc_check.py`'s `check_provenance` walks data files in both
-    directions, so a scientific constant that never entered one is invisible
-    to the only tool built to catch a missing citation. This is the load side
-    of moving them into one; `test_the_bare_circuit_defaults_match_the_shipped_machine_file`
-    in `tests/unit/test_circuit.py` is the other side, and asserts that the
-    literals still in `core/circuit.py` agree with what this loads.
+    Both values were `BreathingCircuit` field defaults, which no data file
+    could cite. `tools/doc_check.py`'s `check_provenance` checks the provenance
+    table against the data files in both directions. So it cannot see a
+    scientific constant that never entered a data file, although it is the only
+    tool built to catch a missing citation. This test checks the loading side
+    of moving the two values into a data file. Since `PL-M85T`,
+    `core/circuit.py` has no volume default of its own.
+    `test_the_flow_default_matches_the_shipped_machine_file` in
+    `tests/unit/test_circuit.py` keeps its flow default equal to the value this
+    test loads.
 
-    The values are asserted rather than only their provenance: this item was
-    required not to change a modelled number, and 6.0 L with 4.0 L/min is what
-    the model ran on before the file existed.
+    The test asserts the values, not only their provenance. `PL-4YY1` was
+    required not to change any modelled number, and 6.0 L with 4.0 L/min is
+    what the model ran on before the file existed.
     """
 
     machine = load_reference_circle_system_parameters()

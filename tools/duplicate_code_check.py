@@ -63,13 +63,10 @@ PYLINT_ARGS = (
 #: a fatal message and 2 for an error.
 _UNREAD_STATUS = 1 | 2
 
-#: Blocks pylint reports for each pair of modules, as the tree stood when the
-#: check landed. The one entry is `PL-VWXL`'s last: the venous pool and a
-#: tissue group make the same capacity check when a partition coefficient is
-#: written, and clearing it means editing `core/`.
-ALLOWED_BLOCKS: Mapping[tuple[str, str], int] = {
-    ("anesthesia_sim.core.blood", "anesthesia_sim.core.tissue"): 1
-}
+#: Blocks pylint reports for each pair of modules. It is empty: `PL-VWXL`
+#: removed the 14 blocks the tree held when the check landed, and a new copy
+#: fails the check rather than joining this table.
+ALLOWED_BLOCKS: Mapping[tuple[str, str], int] = {}
 
 #: A module and line span in an `R0801` message, such as `==tissue:[179:187]`.
 _SPAN_RE = re.compile(r"^==(?P<module>[\w.]+):\[(?P<start>\d+):(?P<end>\d+)\]$", re.MULTILINE)

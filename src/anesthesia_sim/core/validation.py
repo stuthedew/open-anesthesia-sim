@@ -69,55 +69,73 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 def require_positive_finite(name: str, value: float) -> None:
     """Require a finite numeric value greater than zero.
 
-    The value is required to be a number first, by `require_a_number`
-    (`core/checked_number.py`), as every checked type requires of what it is
-    built from: until `PL-3800` `True` passed as the 1 it is to Python, so
-    `BreathingCircuit(circuit_volume_l=True)` held a 1 L circuit, a `Decimal`
-    was held as given and entered the arithmetic as one, and a `str` was
-    refused in `math.isfinite`'s words, naming neither the field nor its
-    constraint. Then an `int` outside the range a `float` holds is refused by
-    name (`_require_within_the_float_range`), where `isfinite` raised
-    `OverflowError` converting it. What is left is the test this guard has
-    always made, on a value it can now read.
+    The guard makes three checks in order. First, `require_a_number`
+    (`core/checked_number.py`) requires the value to be a number, as every
+    checked type requires of the value it is built from. Before `PL-3800`,
+    Python treated `True` as 1, so `BreathingCircuit(circuit_volume_l=True)`
+    held a 1 L circuit. A `Decimal` entered the arithmetic unconverted, and a
+    `str` was refused in `math.isfinite`'s words, which named neither the
+    field nor its constraint. Second, `_require_within_the_float_range`
+    refuses by name an `int` too large for a `float`, where `isfinite` used
+    to raise `OverflowError` while converting it. Third, the guard checks
+    that the value is finite and greater than zero.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`. A
             programming error in the caller rather than a refused setting, as
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
-            `float` holds, named with the value, or is zero, negative, a NaN
-            or an infinity, named by the property it failed; naming the value
-            in that sentence too is `PL-T137`'s.
+            `float` holds, or is zero, negative, a NaN or an infinity. The
+            message names the value. It also says whether the value is not
+            finite or not greater than zero, because the two need different
+            fixes (`PL-T137`).
     """
 
     require_a_number(name, value)
     _require_within_the_float_range(name, value)
 
-    if not isfinite(value) or value <= 0.0:
-        raise SimulationConfigurationError(f"{name} must be positive and finite")
+    if not isfinite(value):
+        raise SimulationConfigurationError(
+            f"{name} must be positive and finite, and {shown(value)} is not finite"
+        )
+
+    if value <= 0.0:
+        raise SimulationConfigurationError(
+            f"{name} must be positive and finite, and {shown(value)} is not greater than zero"
+        )
 
 
 def require_nonnegative_finite(name: str, value: float) -> None:
     """Require a finite numeric value greater than or equal to zero.
 
-    Built as `require_positive_finite` is, and for the same reasons: a number
-    first, an `int` outside the float range refused by name, then the test on
-    the value itself. Zero is admitted, as the supported zero it is - the
-    fresh gas turned off, an unperfused tissue, no agent yet - and so is minus
-    zero, which equals it.
+    This guard makes the same three checks as `require_positive_finite`, for
+    the same reasons. It requires a number, refuses by name an `int` too
+    large for a `float`, and then checks the value itself. It accepts zero,
+    because zero is a supported value here: the fresh gas turned off, an
+    unperfused tissue, or no agent yet. It accepts minus zero too, which
+    equals zero.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`, as
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
-            `float` holds, or is negative, a NaN or an infinity.
+            `float` holds, or is negative, a NaN or an infinity. The message
+            names the value. It also says whether the value is not finite or
+            negative (`PL-T137`).
     """
 
     require_a_number(name, value)
     _require_within_the_float_range(name, value)
 
-    if not isfinite(value) or value < 0.0:
-        raise SimulationConfigurationError(f"{name} must be nonnegative and finite")
+    if not isfinite(value):
+        raise SimulationConfigurationError(
+            f"{name} must be nonnegative and finite, and {shown(value)} is not finite"
+        )
+
+    if value < 0.0:
+        raise SimulationConfigurationError(
+            f"{name} must be nonnegative and finite, and {shown(value)} is negative"
+        )
 
 
 def _require_within_the_float_range(name: str, value: float) -> None:
@@ -216,21 +234,25 @@ def require_room_for_the_agent_held(
 ) -> None:
     """Refuse a volume or partition coefficient too small for the agent its compartment holds.
 
-    A compartment's partial pressure is the agent it holds divided by its
-    capacity, the agent it would hold at a partial pressure of one atmosphere:
-    its volume, times its partition coefficient where it is blood or tissue
-    (`docs/MODEL.md` § "Tissue compartments" gives the tissue's). Shrinking
-    either factor under a fixed amount raises the partial pressure, and below
-    the amount held it puts it above one atmosphere. Each compartment refuses
-    an amount written above its capacity, and until `PL-19Y0` nothing refused
-    the converse: an alveolar volume of 1e-6 L written under 0.098 L of
-    sevoflurane was accepted, and the next step began from an alveolar partial
-    pressure near 98,000 atmospheres and ended with every fraction plausible
-    and wrong - inspired 6.71% where an ordinary step reads 5.81% - and the
-    accounting passing (`PL-544D`, found at review; measured 2026-10-17). So
-    the alveolar compartment, the venous pool and each tissue group call this
-    as either factor is written, with the capacity that writing `value` would
-    leave, which only the caller knows how to form.
+    A compartment's partial pressure is the amount of agent it holds divided by
+    its capacity. Its capacity is the amount of agent it would hold at a
+    partial pressure of one atmosphere. The capacity is the compartment's
+    volume, multiplied by its partition coefficient when the compartment is
+    blood or tissue (`docs/MODEL.md` § "Tissue compartments" gives the
+    tissue's). With the amount fixed, shrinking either factor raises the
+    partial pressure. Once the capacity is less than the amount held, the
+    partial pressure is above one atmosphere. Each compartment rejects an
+    amount written above its capacity. Until `PL-19Y0`, nothing rejected the
+    converse. An alveolar volume of 1e-6 L, written while the compartment held
+    0.098 L of sevoflurane, was accepted. The next step began from an alveolar
+    partial pressure near 98,000 atmospheres. It ended with every fraction
+    plausible and wrong, and with the accounting passing: inspired read 6.71%
+    where an ordinary step reads 5.81% (`PL-544D`, found at review; measured
+    2026-10-17). So the alveolar compartment, the venous pool and each tissue
+    group call this function whenever either factor is written. They pass the
+    capacity that writing `value` would leave, which only the caller knows how
+    to compute. The breathing circuit calls it when
+    `BreathingCircuit.set_circuit_volume` changes the volume (`PL-84G1`).
 
     Raises:
         SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
@@ -307,4 +329,40 @@ def require_a_capacity(
             f"{capacity_l!r} L, its volume of {volume_l!r} L times its partition coefficient "
             f"of {capacity_per_litre!r}. A capacity must be positive and finite, because "
             f'every partial pressure is read by dividing by it (docs/MODEL.md, "{section}")'
+        )
+
+
+def require_a_capacity_with_room_for_the_agent(
+    name: str,
+    value: float,
+    volume_l: float,
+    capacity_per_litre: float,
+    agent_amount_l: float | None,
+    compartment: str,
+    section: str,
+) -> None:
+    """Refuse a volume or partition coefficient that leaves a blood or tissue capacity unusable.
+
+    A blood or tissue compartment makes the same two checks whenever its
+    volume or its partition coefficient is written. Its capacity is the product
+    of the two. `require_a_capacity` rejects a capacity that is zero or not
+    finite. `require_room_for_the_agent_held` rejects one too small for the
+    agent already held. The venous pool and each tissue group call this
+    function, so the pair of checks is written once (`PL-VWXL`). `value` is the
+    factor being written, and `name` is its name.
+
+    `agent_amount_l` is `None` while the compartment holds no amount yet. The
+    constructor, a copy and a pickle all write the amount last. So the first
+    writes of the volume and the coefficient have no agent to make room for.
+
+    Raises:
+        SimulationConfigurationError: the capacity is zero or not finite, or
+            is less than `agent_amount_l`.
+    """
+
+    require_a_capacity(name, value, volume_l, capacity_per_litre, compartment, section)
+
+    if agent_amount_l is not None:
+        require_room_for_the_agent_held(
+            name, value, volume_l * capacity_per_litre, agent_amount_l, compartment, section
         )

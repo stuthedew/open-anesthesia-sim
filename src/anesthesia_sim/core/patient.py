@@ -19,27 +19,15 @@ from typing import TYPE_CHECKING
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
-    FLOW_FRACTION_TOLERANCE,
     AgentParameters,
     ReferenceAdultParameters,
+    require_perfusion_fractions_sum_to_one,
 )
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.tissue import TissueGroup, TissueGroupState
 
 _TISSUE_GROUP_FIELDS = ("vessel_rich", "muscle", "fat")
 """The patient's tissue group fields, in the order `PatientCompartments.tissues` gives them."""
-
-
-def _require_fractions_sum_to_one(total_perfusion_fraction: float) -> None:
-    """Refuse tissue perfusion fractions whose sum is not 1.
-
-    Raises:
-        SimulationConfigurationError: the sum differs from 1 by more than
-            `FLOW_FRACTION_TOLERANCE`.
-    """
-
-    if abs(total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
-        raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +76,7 @@ class PatientCompartments:
 
         # The cardiac output's type was required as the constructor wrote the
         # field, by `__setattr__` below.
-        _require_fractions_sum_to_one(self.total_perfusion_fraction)
+        require_perfusion_fractions_sum_to_one(self.total_perfusion_fraction)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
@@ -156,7 +144,7 @@ class PatientCompartments:
                         f"{name} of {value!r} has type {type(value).__name__}, not TissueGroup"
                     )
 
-                _require_fractions_sum_to_one(
+                require_perfusion_fractions_sum_to_one(
                     sum(
                         (value if field == name else getattr(self, field)).perfusion_fraction
                         for field in _TISSUE_GROUP_FIELDS
