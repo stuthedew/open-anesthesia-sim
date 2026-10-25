@@ -28,7 +28,7 @@ LEDGER_HEADER = (
 #: bare double quote, which a CSV reader would take for the start of a field.
 ROW_A = (
     'session_01AAAA\tPL-0001 "fix" it\t2026-10-01T00:00:00Z\t2026-10-01T01:00:00Z\tarchived\t'
-    "web_claude_ai\t\tclaude-opus-5-5[1m]\tclaude-opus-5-5\tclaude-opus-5-5\t\thigh\t"
+    "web_claude_ai\t\tclaude-fable-5-1[1m]\tclaude-fable-5-1[1m]\tclaude-opus-5-5\t\thigh\t"
     "10\t20\t30\t40\t12.3456\t\t2026-10-19"
 )
 
@@ -111,9 +111,34 @@ def test_show_prints_each_joined_session_and_names_one_the_ledger_lacks(
     assert section[0].endswith("; rows from docs/session-ledger.tsv):")
     assert section[1] == "  session_01BBBB · no row in docs/session-ledger.tsv"
     assert section[2] == (
-        "  session_01AAAA · claude-opus-5-5 (configured claude-opus-5-5[1m]) · effort high · $12.35"
+        "  session_01AAAA · claude-opus-5-5 (configured claude-fable-5-1[1m])"
+        " · effort high · $12.35"
     )
     assert "session_01CCCC" not in out
+
+
+def test_a_context_window_suffix_alone_is_not_a_model_switch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-YF16`: `[1m]` names the context window, so it alone is no fallback.
+
+    292 of the ledger's 327 rows whose configured and served models differed
+    differed only by it, so the note flagged sessions that never switched.
+    """
+    row = ROW_C.replace("session_01CCCC", "session_01DDDD").replace(
+        "claude-sonnet-5-5\tclaude-sonnet-5-5\tclaude-sonnet-5-5",
+        "claude-opus-5-5[1m]\tclaude-opus-5-5[1m]\tclaude-opus-5-5",
+    )
+    root = _repo(tmp_path, _item("PL-0001"), ledger=f"{LEDGER_HEADER}\n{row}\n")
+    _squash(
+        root,
+        "PL-0001: do the work (#12)\n\nClaude-Session: https://claude.ai/code/session_01DDDD\n",
+    )
+
+    out = _show(root, "PL-0001", capsys)
+
+    assert "  session_01DDDD · claude-opus-5-5 · effort medium · $0.50" in out
+    assert "configured" not in out
 
 
 def test_show_reads_the_body_record_when_the_squash_commit_names_no_session(

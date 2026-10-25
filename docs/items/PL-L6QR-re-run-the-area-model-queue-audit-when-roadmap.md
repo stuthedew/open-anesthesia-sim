@@ -7,7 +7,7 @@ status: blocked
 classes: planning
 feature: interface-areas
 touches: docs/items
-blocked-by: v0.7.0
+blocked-by: v0.8.0
 added: 2026-09-16
 ---
 
@@ -59,3 +59,9 @@ so. The trigger is unchanged: item 36 being scoped.
 
 **Disposition: `missing-prereq`.** This item is the audit's own conclusion
 rather than one of its findings.
+
+**Re-pointed at v0.8.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 without item
+36: its § "Explicitly out of scope for v0.7.0" leaves the View catalogue out,
+because the milestone adds two Views and decides nothing about which of today's
+surfaces become Views. The trigger is unchanged, item 36 being scoped, and
+v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
