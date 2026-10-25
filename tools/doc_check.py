@@ -2484,36 +2484,51 @@ PROSE_UNITS = "|".join(
 
 #: A number in prose and the unit written after it, if any. A digit, letter, dot
 #: or comma on either side means the numeral is part of something else, such as
-#: a version, an identifier or a longer number. A slash on either side means it
-#: is one of a list, which `LISTED_FIGURES_RE` reads. A space or a no-break
-#: space may stand between the number and its unit, and `×MAC` is read as
-#: `MAC`. A unit written as a word, such as "seconds", is one of `UNIT_WORDS`,
-#: and one written in lower case, such as "l/min", is one of `UNIT_CASES`.
+#: a version, an identifier or a longer number. A slash between it and another
+#: number, with or without spaces, means it is one of a list, which
+#: `LISTED_FIGURES_RE` reads. A slash before a word, as in "0.42/min", leaves it
+#: a bare number. A space or a no-break space may stand between the number and
+#: its unit, and `×MAC` is read as `MAC`. A unit written as a word, such as
+#: "seconds", is one of `UNIT_WORDS`, and one written in lower case, such as
+#: "l/min", is one of `UNIT_CASES`.
 PROSE_FIGURE_RE = re.compile(
-    r"(?<![\w.,/])(?P<number>\d+(?:\.\d+)?)"
+    r"(?<![\w.,])(?<!\d/)(?<!\d[ ]/)(?<!\d/[ ])(?<!\d[ ]/[ ])(?P<number>\d+(?:\.\d+)?)"
     r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
-    r"(?![\w/]|[.,]\d)"
+    r"(?!\w|[ ]?/[ ]?\d|[.,]\d)"
 )
 
-#: Numbers joined by slashes, such as "6/33/14.5 L" or "0.76/0.18/0.06", and
-#: the unit written after the last of them, which each one carries
-#: (`PL-2T6S`). The edges are `PROSE_FIGURE_RE`'s.
+#: Numbers joined by slashes, such as "6/33/14.5 L", "6 / 33 / 14.5 L" or
+#: "0.76/0.18/0.06", and the unit written after the last of them, which each
+#: one carries (`PL-2T6S`). The edges are `PROSE_FIGURE_RE`'s.
 LISTED_FIGURES_RE = re.compile(
-    r"(?<![\w.,/])(?P<numbers>\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)+)"
+    r"(?<![\w.,/])(?P<numbers>\d+(?:\.\d+)?(?:[ ]?/[ ]?\d+(?:\.\d+)?)+)"
     r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
-    r"(?![\w/]|[.,]\d)"
+    r"(?!\w|[ ]?/[ ]?\d|[.,]\d)"
 )
 
-#: A math span that ends by giving a symbol a number, such as $`V_A = 2.5`$,
-#: and the unit written after the span or inside it as `\mathrm{...}`. Only
-#: that shape is read. Most numbers in a math span are exponents, indices and
-#: coefficients of an equation, such as $`10^{-12}`$ or $`M^{3/4}`$, and
-#: reading them would ask about every one that happens to equal a stored value
-#: (`PL-2T6S`).
+#: A unit that a math span writes in TeX and prose writes otherwise.
+MATH_UNITS: dict[str, str] = {r"L\,min^{-1}": "L/min", r"L\,s^{-1}": "L/s"}
+
+#: One math span, and a unit written after it.
+MATH_SPAN_RE = re.compile(
+    r"\$`(?P<body>[^`]*)`\$(?:[ \u00a0]?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
+)
+
+#: A symbol given a number inside a math span, such as `V_A = 2.5` or
+#: `V_A \approx 2.5\,\text{L}`. The unit may follow inside the span, as `\%`
+#: or inside `\mathrm{...}` or `\text{...}`, after `\,`, `\;`, `\ ` or `~`.
+#: The assignment must end the span or be followed by a comma, a semicolon or
+#: `\quad`, so that a span may give several symbols their numbers. Any other
+#: number in a math span is not read. Most are exponents, indices and
+#: coefficients of an equation, such as $`10^{-12}`$, $`M^{3/4}`$ or
+#: $`= 2 \cdot x`$, and reading them would ask about every one that happens to
+#: equal a stored value (`PL-2T6S`).
 MATH_FIGURE_RE = re.compile(
-    r"\$`[^`]*?=[ ]*(?P<number>\d+(?:\.\d+)?)"
-    r"(?:\\[ ,;][ ]*\\mathrm\{(?P<inner>" + PROSE_UNITS + r")\})?[ ]*`\$"
-    r"(?:[ \u00a0]?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
+    r"(?:=|\\approx)[ ]*(?P<number>\d+(?:\.\d+)?)"
+    r"(?:[ ]*(?:\\[ ,;:]|~)?[ ]*(?:(?P<percent>\\%)|\\(?:mathrm|text)\{(?P<inner>"
+    + "|".join([*(re.escape(unit) for unit in MATH_UNITS), PROSE_UNITS])
+    + r")\}))?"
+    r"[ ]*(?=\Z|,|;|\\q?quad)"
 )
 
 
@@ -2542,9 +2557,19 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
         yield found.group("number"), found.group("unit")
     for found in LISTED_FIGURES_RE.finditer(prose):
         for number in found.group("numbers").split("/"):
-            yield number, found.group("unit")
-    for found in MATH_FIGURE_RE.finditer(raw):
-        yield found.group("number"), found.group("inner") or found.group("unit")
+            yield number.strip(), found.group("unit")
+    for span in MATH_SPAN_RE.finditer(raw):
+        body = span.group("body")
+        for found in MATH_FIGURE_RE.finditer(body):
+            inner = found.group("inner")
+            if found.group("percent"):
+                unit: str | None = "%"
+            elif inner:
+                unit = MATH_UNITS.get(inner, inner)
+            else:
+                # A unit after the span belongs to the number that ends it.
+                unit = span.group("unit") if found.end() == len(body.rstrip()) else None
+            yield found.group("number"), unit
 
 
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
@@ -2807,10 +2832,11 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     It reads a figure as `_untied_figures` reads one: a number, then one of
     the unit symbols or words `PROSE_UNITS` lists, in upper or lower case
     where a source writes "l/min"; each number of a list joined by slashes,
-    such as "6/33/14.5 L"; and a math span that gives a symbol a number, such
-    as $`V_A = 2.5`$ L (`PL-2T6S`). It does not read any other number in a
-    math span, or a figure in a code span. A restatement written in either of
-    those forms is not checked.
+    such as "6/33/14.5 L"; and a symbol given a number in a math span, such
+    as $`V_A = 2.5`$ L, by `MATH_FIGURE_RE` (`PL-2T6S`). It does not read any
+    other number in a math span, a span split across two lines, or a figure
+    in a code span. A restatement written in one of those forms is not
+    checked.
     """
     homes = stored_values(root)
     for document in PROVENANCE_DOCUMENTS:

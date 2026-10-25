@@ -2513,7 +2513,7 @@ reproduces the stored value under no grouping. Alveolar ventilation 4 l/min
 stays a coincidence: Mapleson gives a formula, not a figure.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
-<!-- not-restated: 4 l/min -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Three of this file's stored values also appear in those tables**, and where
 each came from is settled in the paragraph after next rather than left as a
@@ -2522,7 +2522,7 @@ in reference 20's table only, and a skeletal muscle tissue volume of 33 litres.
 **No stored value moves on any of it.**
 <!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
-<!-- not-restated: 4 l/min -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 That Mapleson 1963 turns out to be one of the four is not a rehabilitation of
 that lineage. The removed claim was that Mapleson's papers were the *Workbook's*
@@ -2873,9 +2873,12 @@ that value's unit, so a marker for the 6 L circuit does not clear desflurane's
 "seconds", and a time in milliseconds, minutes or hours, which it converts to
 seconds. It reads a unit in lower case, such as "l/min", and each number of a
 list joined by slashes, such as "6/33/14.5 L", with the list's unit. In math it
-reads only a span that gives a symbol a number, such as $`V_A = 2.5`$ L,
-because most numbers in an equation are exponents and coefficients that only
-coincide with a stored value. A marker under a list covers the
+reads a symbol given a number with `=` or `\approx`, such as $`V_A = 2.5`$ L
+or $`V_A = 2.5\,\mathrm{L}`$, where the number ends the span or comes before a
+comma, a semicolon or `\quad`. It reads no other number in math, because most
+numbers in an equation are exponents and coefficients that only coincide with a
+stored value, and it does not read a span split across two lines. A marker
+under a list covers the
 whole list, because a marker cannot stand inside a list item. A `not-restated:`
 marker that lists a figure its paragraph no longer holds fails, so the
 declaration cannot outlive its sentence. A number that equals no stored value,
