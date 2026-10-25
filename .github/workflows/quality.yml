@@ -600,16 +600,19 @@ jobs:
         # either skips them on its pull request, and `main`'s push run, which
         # runs them, is what catches a break there. They are the
         # 35 tests that took 479 s of the suite's 1,646 s of test time on
-        # 2026-10-25. `PYTEST_ADDOPTS` carries the option, so the step's
+        # 2026-10-25. `SKIP_COSTLY_TESTS` asks for the option, so the step's
         # command, which `tools/main_ci_status.py` times by its name, does not
-        # change. A push to `main` never asks `ci-scope`, so it runs them all.
+        # change. It is not `PYTEST_ADDOPTS`, which every pytest a test starts
+        # in a subprocess inherits: the docket tests' own pytest, in a scratch
+        # repository with no such option, stopped at exit 4 on `#1774`. A push
+        # to `main` never asks `ci-scope`, so it runs them all.
         #
         # Coverage still runs, but `checks` does not hold it to 100% on this
         # answer, for the reason its `COSTLY_SKIPPED` comment gives. Without
         # the costly tests, `core/` was still covered in full on 2026-10-25.
         env:
           PYTHONUNBUFFERED: "1"
-          PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}
+          SKIP_COSTLY_TESTS: ${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}
       # The fast path's part of the suite, in place of both parts on a pull
       # request that changes only item files. It runs here rather than in the
       # first part, which already runs the tools that read the store, so the

@@ -343,7 +343,9 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
     """On `apparatus`, only the costly tests and the 100% threshold differ from `full` (`PL-STM6`).
 
     The parts run the steps they run on `full`. The second part's pytest step
-    passes `--skip-costly` through `PYTEST_ADDOPTS`, and only on that answer.
+    asks for `--skip-costly` through `SKIP_COSTLY_TESTS`, and only on that
+    answer. No step sets `PYTEST_ADDOPTS`, which the docket tests' own pytest
+    inherits in a scratch repository that has no such option (`#1774`).
     The first part holds no costly test, so its step passes nothing. `checks`
     still combines coverage, and prints it without the threshold, because a
     gap it showed would come from an earlier product change.
@@ -366,9 +368,7 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
         name for name, runs in _run(text, "push", "")[_GATE] if runs
     ]
 
-    skip = (
-        "PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}"
-    )
+    skip = "SKIP_COSTLY_TESTS: ${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}"
     suites = {
         part: [step for step in _steps(text, part) if _name(step).startswith("Run uv run pytest")]
         for part in _PARTS
@@ -378,6 +378,7 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
     assert all(
         "--skip-costly" not in step.splitlines()[0] for steps in suites.values() for step in steps
     )
+    assert not re.search(r"^\s*PYTEST_ADDOPTS:", text, re.MULTILINE)
 
 
 @pytest.mark.parametrize(
