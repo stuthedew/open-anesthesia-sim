@@ -70,9 +70,9 @@ __all__ = [
 # a reader selected is still very nearly the width they are reading.
 CHART_LIVE_HEADROOM_FRACTION: Final = 0.02
 
-# What the selector's "Fit run" entry is keyed by. A sentinel rather than a
-# width, because fitting is a *rule* for choosing the width each frame and not
-# one of the widths it chooses among.
+# The key of the selector's "Fit run" entry. It is a sentinel rather than a
+# width, because fitting is a *rule* for choosing the width each frame, not one
+# of the widths it chooses among.
 FIT_RUN_KEY: Final = "fit"
 
 # The narrowest width the selector offers. Below this the ladder exists only
@@ -84,13 +84,13 @@ SELECTABLE_TIME_BASE_FLOOR_S: Final = 900.0
 class ChartTimeBase:
     """One rung of the ladder: a window width and the interval it is ruled at.
 
-    The two travel together deliberately. `PL-012` required the gridline
-    interval to be derived from the width rather than fixed, because the
-    fixed 60 s interval it replaced would rule a twelve-hour axis into 720
-    lines and a solid grey block. Pairing them in one record is what makes
-    the derivation a fact about the rung rather than a calculation each
-    caller repeats: every width on the ladder is ruled into four to six
-    intervals, which is the range that reads as a grid rather than as either
+    The width and the interval are kept together deliberately. `PL-012`
+    required the gridline interval to be derived from the width rather than
+    fixed. The fixed 60 s interval that it replaced would rule a twelve-hour
+    axis into 720 lines, which would look like a solid grey block. Pairing the
+    two in one record makes the derivation a fact about the rung, rather than
+    a calculation that each caller repeats. Every width on the ladder is ruled
+    into four to six intervals. That range looks like a grid, rather than like
     a bare axis or a hatch.
     """
 
@@ -114,11 +114,12 @@ class ChartTimeBase:
         return self.span_s * CHART_LIVE_HEADROOM_FRACTION
 
 
-# Every width the chart can take, narrowest first. Widths and their intervals
-# are declared rather than computed because both are readability judgments -
-# how much of a case a reader wants in one view, and how many lines rule it
-# legibly - and neither follows from arithmetic. The three rungs below
-# `SELECTABLE_TIME_BASE_FLOOR_S` are reachable only by fitting.
+# Every width the chart can take, narrowest first. The widths and their
+# intervals are declared rather than computed, because both are judgments
+# about readability. One is how much of a case a reader wants in one view. The
+# other is how many lines rule that view legibly. Neither follows from
+# arithmetic. The three rungs below `SELECTABLE_TIME_BASE_FLOOR_S` can be
+# reached only by fitting.
 TIME_BASE_LADDER: Final = (
     ChartTimeBase(span_s=60.0, tick_interval_s=15.0),
     ChartTimeBase(span_s=120.0, tick_interval_s=30.0),
@@ -132,7 +133,7 @@ TIME_BASE_LADDER: Final = (
     ChartTimeBase(span_s=43200.0, tick_interval_s=7200.0),
 )
 
-# What the selector lists, alongside "Fit run": fifteen minutes to twelve
+# The widths the selector lists beside "Fit run": fifteen minutes to twelve
 # hours, as the project owner settled on 2026-09-04.
 SELECTABLE_TIME_BASES: Final = tuple(
     time_base for time_base in TIME_BASE_LADDER if time_base.span_s >= SELECTABLE_TIME_BASE_FLOOR_S
@@ -196,13 +197,14 @@ def fit_to_run(newest_instant_s: CaseInstant) -> ChartTimeBase:
 
 
 def time_base_for_span(span_s: float) -> ChartTimeBase:
-    """The declared rung of this width.
+    """Return the declared rung of this width.
 
-    What a selection arriving from the interface is resolved through. It
-    raises on a width the ladder does not carry rather than falling back to
-    a nearby one: a value that is not on the ladder means the control and
-    `TIME_BASE_LADDER` have diverged, which is a defect to surface rather
-    than a user error to absorb - the options *are* the ladder.
+    A selection arriving from the interface is resolved through this
+    function. It raises on a width that the ladder does not carry, rather
+    than falling back to a nearby one. A value that is not on the ladder
+    means that the control and `TIME_BASE_LADDER` have diverged. That is a
+    defect to surface, not a user error to absorb, because the options *are*
+    the ladder.
 
     Args:
         span_s: The width to look up, in simulated seconds.
@@ -262,12 +264,13 @@ def saved_time_base_value(time_base: ChartTimeBase | None) -> str | float:
 
 
 def fitted_window(time_base: ChartTimeBase) -> tuple[float, float]:
-    """The axis bounds of the "Fit run" mode: the whole case, pinned at induction.
+    """Return the axis bounds of the "Fit run" mode: the whole case, pinned at induction.
 
-    The other half of `fit_to_run`, and trivial by design. It is a named
-    rule rather than an expression at the call site because *which* end is
-    pinned is the whole difference between the two modes, and a mode
-    difference that lives in an inline `max()` is one nobody can find.
+    This function is the other half of `fit_to_run`, and it is trivial by
+    design. It is a named rule rather than an expression at the call site,
+    because *which* end is pinned is the whole difference between the two
+    modes. A mode difference that lives in an inline `max()` is one that
+    nobody can find.
 
     Args:
         time_base: The rung `fit_to_run` chose for this run.
@@ -316,16 +319,16 @@ def following_window(
 
 
 def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float, ...]:
-    """Where the gridlines and axis labels fall inside one window.
+    """Return where the gridlines and axis labels fall inside one window.
 
-    Multiples of the interval measured from the case's zero, never from
-    the window's left edge - and from the case's zero rather than from any one
-    run's opening, so a trunk and a branch drawn on one axis are ruled by the
-    same gridlines. `docs/MODEL.md` § "Minimum displayed outputs" states the
-    same rule. That is what keeps a gridline standing at the
-    same simulated time as the window slides underneath it: ticks derived
-    from the edge would drift with it, so the grid would crawl and every
-    label would be rewritten on every frame.
+    The ticks are multiples of the interval measured from the case's zero,
+    never from the window's left edge. They are measured from the case's
+    zero rather than from any one run's opening, so a trunk and a branch
+    drawn on one axis are ruled by the same gridlines. `docs/MODEL.md`
+    § "Minimum displayed outputs" states the same rule. Measuring from zero
+    keeps each gridline at the same simulated time as the window slides
+    underneath it. Ticks derived from the edge would drift with the edge, so
+    the grid would crawl and every label would be rewritten on every frame.
 
     Args:
         start_s: Left edge of the window, in simulated seconds.

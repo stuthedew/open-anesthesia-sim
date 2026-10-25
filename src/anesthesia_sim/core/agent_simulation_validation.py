@@ -1,6 +1,7 @@
-"""Mass-balance accounting: verify that a simulation run neither creates nor
-loses agent, by checking delivered/exhausted/stored agent against the
-accounting identity documented on `AgentSimulationValidator`.
+"""Check that a simulation run neither creates nor loses anesthetic agent.
+
+This is mass-balance accounting. It checks the delivered, exhausted and stored
+agent against the accounting identity documented on `AgentSimulationValidator`.
 """
 
 from dataclasses import dataclass
@@ -13,8 +14,8 @@ AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 MINIMUM_RELATIVE_SCALE_L = 1e-15
 
-#: The three totals `AgentSimulationValidator.__setattr__` holds to
-#: nonnegative and finite, which are all of its fields.
+#: The three totals that `AgentSimulationValidator.__setattr__` requires to be
+#: nonnegative and finite. They are all of the validator's fields.
 _ACCOUNTING_TOTALS = frozenset({"initial_agent_l", "delivered_agent_l", "exhausted_agent_l"})
 
 
@@ -34,14 +35,15 @@ class AgentSimulationValidationResult:
 
 @dataclass(frozen=True, slots=True)
 class AgentSimulationValidatorState:
-    """The validator's run state: one accounting period's three totals.
+    """The validator's run state, which is the three totals of one accounting period.
 
-    All three are captured, `initial_agent_l` included. It is the anchor of
-    the current accounting period rather than a setting — `reset()` is what
-    writes it, and `reset()` is what clears run state everywhere else in
-    `core/` too — and the identity below only means anything with all three
-    read from the same instant. Restoring two of them onto a third that had
-    moved would leave a validator describing no real period.
+    All three totals are captured, including `initial_agent_l`. That total is
+    the anchor of the current accounting period, not a setting. `reset()`
+    writes it, and `reset()` is also what clears run state everywhere else in
+    `core/`. The accounting identity on `AgentSimulationValidator` only means
+    something when all three totals are read at the same instant. Restoring two
+    of them alongside a third that had changed would leave a validator
+    describing no real period.
     """
 
     initial_agent_l: float
@@ -65,26 +67,30 @@ class AgentSimulationValidator:
     exhausted_agent_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
-        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
-        # is: a class that defines `__setattr__` is one `mypy` lets assign any
-        # attribute name, typed by the method's `value`, so with the guard in
-        # view a misspelt field written in `src/` would pass `--strict` and
-        # fail at run time against the slots. Hidden, `mypy` reads the
-        # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its lines are checked
-        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # The `__setattr__` below is hidden from `mypy` on purpose, as
+        # `AlveolarCompartment.__setattr__` is. For a class that defines
+        # `__setattr__`, `mypy` allows assignment to any attribute name, typed
+        # by the method's `value` parameter. With the method visible, a
+        # misspelt field name written in `src/` would pass `--strict` and then
+        # fail at run time against the slots. With the method hidden, `mypy`
+        # checks the dataclass's fields and their types as before. The method
+        # is the run-time check for the callers that `mypy` does not check.
+        # Its lines are checked by their tests rather than by `mypy`
+        # (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a total, refusing one the validator's constructor would refuse.
+            """Write a total, refusing a value that the constructor would refuse.
 
             Each total is stored in one place, its slot, so its check is made
-            here, for the constructor, `record_external_agent_transfer`,
-            `reset`, `restore_state` and an assignment made past them alike, as
+            here. The one check therefore covers the constructor,
+            `record_external_agent_transfer`, `reset`, `restore_state`, and a
+            direct assignment that bypasses all of them, as
             `BreathingCircuit.__setattr__` explains (`PL-LBQY`, `PL-19Y0`).
             Nothing is written when a value is refused, and the constructor
-            makes no check of its own. A total is held to no other, so no write
-            order matters, and a sum that overflows to an infinity is refused
-            where it is written rather than carried into the identity above.
+            makes no check of its own. No total is checked against another, so
+            the order of the writes does not matter. A sum that overflows to an
+            infinity is refused where it is written, rather than carried into
+            the accounting identity.
 
             Raises:
                 TypeError: `value` is not an `int` or a `float`
@@ -150,18 +156,19 @@ class AgentSimulationValidator:
     ) -> AgentSimulationValidationResult:
         """Halt the run if this validator's own accounting no longer balances.
 
-        Raises `AgentSimulationValidationError` when the identity above misses
-        by more than both tolerances, and `SimulationConfigurationError` when
-        `currently_stored_agent_l` is negative or not finite. Returns the
-        passing check, which `AgentUptakeSystem.advance()` reports in
-        `UptakeStepResult`; `check_agent_accounting()` is the same arithmetic
-        without the halt, for the display path.
+        Raises `AgentSimulationValidationError` when the accounting identity
+        is off by more than both tolerances. Raises
+        `SimulationConfigurationError` when `currently_stored_agent_l` is
+        negative or not finite. Otherwise returns the passing check, which
+        `AgentUptakeSystem.advance()` reports in `UptakeStepResult`.
+        `check_agent_accounting()` does the same arithmetic without the halt,
+        for the display path.
 
-        It takes the store rather than a completed
-        `AgentSimulationValidationResult` so that the period it rules on is
-        necessarily this validator's own: the earlier signature accepted
-        another validator's result, passed on it silently, and would have
-        named that period's totals in the halt message (`PL-X204`).
+        The method takes the currently stored amount rather than a completed
+        `AgentSimulationValidationResult`. That way, the period it judges is
+        always this validator's own. The earlier signature accepted another
+        validator's result and silently let it pass. It would also have named
+        that other period's totals in the halt message (`PL-X204`).
         """
 
         check = self.check_agent_accounting(currently_stored_agent_l)
@@ -193,11 +200,11 @@ class AgentSimulationValidator:
     def restore_state(self, state: AgentSimulationValidatorState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Assigns the fields through `__setattr__`, which cannot refuse a state
-        `capture_state()` produced: each total passed the same check when it
-        was written, and a total is held to nothing else that could have moved
-        since. So rolling back cannot itself raise; see
-        `BreathingCircuit.restore_state()`.
+        The fields are assigned through `__setattr__`, which cannot refuse a
+        state that `capture_state()` produced. Each total passed the same check
+        when it was written, and no total is checked against anything else that
+        could have changed since. So rolling back cannot itself raise an error.
+        See `BreathingCircuit.restore_state()`.
         """
 
         self.initial_agent_l = state.initial_agent_l
@@ -210,9 +217,9 @@ class AgentSimulationValidator:
         Raises:
             TypeError: `initial_agent_l` is not an `int` or a `float`.
             SimulationConfigurationError: `initial_agent_l` is negative or not
-                finite. Both are the write's own, in `__setattr__`, made
-                before either other total is cleared, so nothing changes when
-                it is refused.
+                finite. The write makes both checks itself, in
+                `__setattr__`, before either other total is cleared. So
+                nothing changes when the value is refused.
         """
 
         self.initial_agent_l = initial_agent_l

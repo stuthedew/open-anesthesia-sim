@@ -1,0 +1,7 @@
+time	session	guard	rule
+2026-10-25T16:58:47.929454+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	floor-interpreter-guard	floor-interpreter
+2026-10-25T16:59:18.243995+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	gate-status-guard	status-swallowed
+2026-10-25T17:03:15.496645+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	gate-status-guard	status-swallowed
+2026-10-25T17:04:49.871340+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	gate-status-guard	status-swallowed
+2026-10-25T17:06:05.917828+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	push-check-guard	checks-failed
+2026-10-25T17:06:13.813454+00:00	b6d24da6-931f-5062-a8da-61aa7f0efd9c	gate-status-guard	status-swallowed

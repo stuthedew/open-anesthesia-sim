@@ -1,29 +1,27 @@
-"""The vocabulary a run's drawn values are addressed by, and the window one
-frame reads them from.
+"""The names of the values a run draws, and the window from which one frame reads them.
 
-What a chart trace *is* - one substance's values for one quantity - as
-against how any toolkit draws it. `app/chart_frame.py` settles what a frame
-claims and `app/qt_chart.py` paints it; `app/dashboard_frame.py` addresses
-its readouts in the same terms. Nothing here reads simulation state, holds a
-widget, or formats a value.
+This module says what a chart trace *is*: one substance's values for one
+quantity. It does not say how any toolkit draws the trace.
+`app/chart_frame.py` decides what a frame claims, and `app/qt_chart.py`
+paints it. `app/dashboard_frame.py` names its readouts in the same terms.
+Nothing here reads simulation state, holds a widget, or formats a value.
 
 **Why it is a module of its own.** `app/controller.py` is the boundary
-between the UI and the scientific core, and none of this is that: a
-`RecordedSeries` names a trace whether or not a run exists, and a
-`DrawnWindow` is the answer to one `SimulationController.drawn_window` call
-rather than any part of the controller's own state. The seam was a fact about
-the imports before it was a module - the frames read these names and nothing
-else of the controller's - and `PL-RD3B` is where it became one. The
-controller imports `DrawnWindow` from here to declare what it returns, and
-nothing here imports the controller, which is what keeps that direction
-one-way.
+between the UI and the scientific core, and nothing here belongs to that
+boundary. A `RecordedSeries` names a trace whether or not a run exists. A
+`DrawnWindow` is the result of one `SimulationController.drawn_window` call,
+not part of the controller's own state. The imports showed this split before
+it was a module: the frames used these names and nothing else from the
+controller. `PL-RD3B` made the split a module. The controller imports
+`DrawnWindow` from here to declare what it returns. Nothing here imports the
+controller, and that keeps the dependency pointing one way.
 
-**The identifiers are stable, and deliberately not the accessors' names.**
-`RecordedQuantity` and `control_record.ControlInput` are the two vocabularies
-a run is addressed by, and both are named for the domain rather than for
-whichever field currently spells them, so that a rename in `core/` cannot
-silently re-point a trace. Each enum's own docstring carries what that has
-already been worth.
+**The identifiers are stable, and deliberately differ from the accessors' names.**
+`RecordedQuantity` and `control_record.ControlInput` are the two sets of
+names by which a run's values are addressed. Both are named for the domain,
+not for whichever field currently spells them, so that a rename in `core/`
+cannot silently point a trace at a different value. Each enum's own
+docstring records the renames that this naming has already protected against.
 """
 
 from collections.abc import Mapping
@@ -55,20 +53,20 @@ __all__ = [
 class RecordedQuantity(StrEnum):
     """One quantity the interface draws, under a stable identifier.
 
-    What a chart trace is bound to, and the key a drawn window is read by.
-    Members are named for the compartment or the quantity rather than for
-    whichever field or accessor currently spells it, for the reason
-    `control_record.ControlInput`'s are: `PL-3TLK` and `PL-9SH6` renamed two of the fields
-    these read from, and a key that had followed the code would have had to
-    be renamed with them while meaning the same thing throughout. `CIRCUIT`
-    is the one to look at - the field behind it is now
-    `inspired_partial_pressure_fraction`, and this key did not move.
+    A chart trace is bound to a member, and a drawn window is read with a
+    member as the key. Members are named for the compartment or the quantity,
+    not for whichever field or accessor currently spells it. The reason is the
+    same as for the members of `control_record.ControlInput`. `PL-3TLK` and
+    `PL-9SH6` renamed two of the fields these members read from. A key that
+    had followed the code would have had to be renamed with them, although its
+    meaning never changed. `CIRCUIT` is the example: the field behind it is
+    now `inspired_partial_pressure_fraction`, and this key did not change.
 
     `WASH_IN_RATIO` is the one derived member. It is not a compartment state
-    but the quotient `app/wash_in.py` specifies, named here so that the plot
-    drawing it is addressed the same way every other trace is - and it is
-    deliberately absent from `COMPARTMENT_STATE_INDEX`, which is what keeps
-    it from being read as a state the equations carry.
+    but the quotient that `app/wash_in.py` specifies. It is named here so that
+    the plot drawing it is addressed in the same way as every other trace. It
+    is deliberately absent from `COMPARTMENT_STATE_INDEX`, and that absence
+    keeps it from being treated as a state the equations carry.
     """
 
     CIRCUIT = "circuit"
@@ -83,11 +81,12 @@ class RecordedQuantity(StrEnum):
 #: The compartment quantities the interface draws for each substance, in the
 #: order it lists them.
 #:
-#: Every `RecordedQuantity` except `WASH_IN_RATIO`, which is not a compartment
-#: state: it is the quotient `app/wash_in.py` forms from two of these, so
-#: including it here would present a derived value as one the equations carry.
-#: Written out rather than filtered from the enum, so that adding a member
-#: forces a decision here instead of silently joining the compartments.
+#: It contains every `RecordedQuantity` except `WASH_IN_RATIO`. That member is not
+#: a compartment state but the quotient that `app/wash_in.py` forms from two of
+#: these. Including it here would present a derived value as one the equations
+#: carry. The tuple is written out rather than filtered from the enum, so that
+#: adding a member forces a decision here instead of the member silently joining
+#: the compartments.
 COMPARTMENT_QUANTITIES: Final = (
     RecordedQuantity.CIRCUIT,
     RecordedQuantity.ALVEOLAR,
@@ -99,23 +98,24 @@ COMPARTMENT_QUANTITIES: Final = (
 
 #: Which core state each drawn quantity reads, by position in the state vector.
 #:
-#: **The whole of the run's pairing is here**, one entry per compartment, and
-#: it is the one place a trace could come to carry another compartment's
-#: values. It replaces the same pairing `_build_history_sample` held while the
-#: chart was drawn from recorded samples (`PL-2FM6`): the chart now evaluates
-#: the run definition instead, so what a trace needs is a position in
-#: `governing_equations`' state order rather than a compartment accessor.
+#: **This table is the whole of the run's pairing of quantities to states**,
+#: with one entry per compartment. It is the one place where a trace could come
+#: to carry another compartment's values. It replaces the same pairing that
+#: `_build_history_sample` made while the chart was drawn from recorded samples
+#: (`PL-2FM6`). The chart now evaluates the run definition instead, so a trace
+#: needs a position in `governing_equations`' state order, not a compartment
+#: accessor.
 #:
-#: The three tissue groups are consecutive from `FIRST_TISSUE_FRACTION` in
-#: `PatientCompartmentsState.tissues`' own order, which
-#: `AgentUptakeSystem.state_vector` writes them in. That order is an
-#: assumption this table makes about another module, so
+#: The three tissue groups are consecutive, starting at `FIRST_TISSUE_FRACTION`.
+#: They follow the order of `PatientCompartmentsState.tissues`, which is the
+#: order that `AgentUptakeSystem.state_vector` writes them in. This table
+#: assumes that order from another module. So
 #: `tests/integration/test_controller.py`'s
-#: `test_each_recorded_quantity_carries_the_compartment_it_names` holds it
-#: against the core's own attributes rather than restating it.
+#: `test_each_recorded_quantity_carries_the_compartment_it_names` checks the
+#: order against the core's own attributes rather than restating it.
 #:
-#: `WASH_IN_RATIO` is absent deliberately: it is not a state but the quotient
-#: `app/wash_in.py` forms from two of these, so giving it a position here
+#: `WASH_IN_RATIO` is deliberately absent. It is not a state but the quotient
+#: that `app/wash_in.py` forms from two of these. Giving it a position here
 #: would present a derived value as one the equations carry.
 COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyType(
     {
@@ -128,16 +128,17 @@ COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyTyp
     }
 )
 
-#: What a refusal calls each compartment's fraction where the interface builds
-#: one (`PL-7DJK`).
+#: The name that an error message gives each compartment's fraction, where the
+#: interface builds the fraction itself (`PL-7DJK`).
 #:
-#: The names `AgentUptakeSystem._write_state_vector` gives the same six
-#: quantities as a step writes them (`PL-SPN6`), so a value refused where the
-#: interface types it - the snapshot's quotients, the MAC multiples, a drawn
-#: column - is named as the step that computed it would have named it, and a
-#: reader of the halted-run notice learns which compartment from either.
-#: `WASH_IN_RATIO` is absent for the reason it is absent above: it is a
-#: quotient of two of these, and the interface builds no `Fraction` of it.
+#: These are the names that `AgentUptakeSystem._write_state_vector` gives the
+#: same six quantities when a step writes them (`PL-SPN6`). The interface builds
+#: a checked `Fraction` for the snapshot's quotients, the MAC multiples and a
+#: drawn column. A value rejected there is named as the step that computed it
+#: would have named it. So a reader of the halted-run notice learns which
+#: compartment failed, whichever of the two rejected it. `WASH_IN_RATIO` is
+#: absent for the reason given above: it is a quotient of two of these, and the
+#: interface builds no `Fraction` of it.
 COMPARTMENT_FRACTION_NAMES: Final[Mapping[RecordedQuantity, str]] = MappingProxyType(
     {
         RecordedQuantity.CIRCUIT: "inspired_partial_pressure_fraction",
@@ -154,22 +155,24 @@ COMPARTMENT_FRACTION_NAMES: Final[Mapping[RecordedQuantity, str]] = MappingProxy
 class RecordedSeries:
     """One recorded trace: one substance's values for one quantity.
 
-    The address of one trace in a drawn window, and what a chart trace is
-    bound to. One value rather than two loose arguments, because the binding
-    is a presentation-correctness property rather than a lookup convenience:
-    a trace drawn from another substance's values misstates the run exactly
-    as one drawn from another compartment's does, and a pair that travels
-    together cannot be half-rebound. `app/chart_frame.py`'s `_run_frame`
-    builds one per drawn trace for that reason.
+    It is the address of one trace in a drawn window, and what a chart trace
+    is bound to. It is one value rather than two loose arguments, because the
+    binding is a matter of presentation correctness, not a lookup convenience.
+    A trace drawn from another substance's values misstates the run exactly as
+    one drawn from another compartment's values does. A pair that travels
+    together cannot have one half rebound without the other.
+    `app/chart_frame.py`'s `_run_frame` builds one per drawn trace for that
+    reason.
     """
 
     substance_id: str
     """Which substance's values, under the identifier the run records it by.
 
-    A run records one substance today - the agent `SimulationController` is
-    running - because `set_agent` starts a new run rather than adding to
-    this one. Nitrous oxide is what makes a run's mapping wider than one
-    entry; until then the shape is what carries the generality, not the data.
+    A run records one substance today, the agent that `SimulationController`
+    is running, because `set_agent` starts a new run rather than adding to
+    this one. Nitrous oxide is what will make a run's mapping wider than one
+    entry. Until then, the shape of the type carries the generality, not the
+    data.
     """
 
     quantity: RecordedQuantity
@@ -180,31 +183,33 @@ class RecordedSeries:
 class DrawnWindow:
     """The states one frame draws, evaluated from the run's definition.
 
-    What `SimulationController.drawn_window` answers with, and the whole of
-    what the chart is drawn from. It replaces `HistoryWindow`, and the
-    difference is what `PL-2FM6` is: a window over *recorded samples* asked
-    which of them to draw and cost what the window spanned, where this one
-    is the answer itself - the states at the instants the chart plots, and
-    nothing else exists behind them.
+    `SimulationController.drawn_window` returns this window, and the chart is
+    drawn from nothing else. It replaces `HistoryWindow`, and the difference
+    between the two is what `PL-2FM6` changed. The old window covered
+    *recorded samples*. A caller asked it which samples to draw, and it cost
+    as much as the span it covered. This window is the result itself: the states at the
+    instants the chart plots, with nothing else behind them.
 
     **A drawn value is not a recorded one, and the type says so.** Every
-    state here is a `DisplayState`, which `core/run_definition.py` makes
-    structurally not a state vector precisely so that a drawn value cannot
-    become a keyframe, an export or a fork's opening state by having the
-    right shape. `docs/MODEL.md` § "The canonical evaluation rule" is the
-    guarantee; this class is one of the places it has to hold.
+    state here is a `DisplayState`. `core/run_definition.py` makes that type
+    structurally different from a state vector. It does so precisely so that
+    a drawn value cannot become a keyframe, an export or a fork's opening
+    state just by having the right shape. `docs/MODEL.md` § "The canonical
+    evaluation rule" states the guarantee, and this class is one of the
+    places that must enforce it.
 
     Attributes:
-        substance_id: Which substance every state here describes. Carried so
-            a trace cannot be drawn from another substance's values: the
-            frame that asks for the window names the agent its readouts were
-            formatted from, and `compartment_fractions` refuses any other.
+        substance_id: Which substance every state here describes. It is
+            carried so that a trace cannot be drawn from another substance's
+            values. The frame that asks for the window names the agent its
+            readouts were formatted from, and `compartment_fractions` rejects
+            any other.
         times_s: The instants drawn, ascending, in simulated seconds.
         states: One state per instant.
 
     Raises:
-        SimulationConfigurationError: If the two sequences differ in length,
-            which would draw one trace against another's time axis.
+        SimulationConfigurationError: If the two sequences differ in length.
+            A trace would then be drawn against another trace's time axis.
     """
 
     substance_id: str
@@ -223,16 +228,17 @@ class DrawnWindow:
 
         Args:
             series: Which substance's quantity to read.
-                `COMPARTMENT_STATE_INDEX` is the pairing, and it holds no
-                entry for `RecordedQuantity.WASH_IN_RATIO`, which is a
-                quotient rather than a state - use `wash_in_readings`.
+                `COMPARTMENT_STATE_INDEX` pairs each quantity with its state.
+                It has no entry for `RecordedQuantity.WASH_IN_RATIO`, which is
+                a quotient rather than a state. Use `wash_in_readings` for
+                that one.
 
         Returns:
             One fraction per entry of `times_s`, in the same order.
 
         Raises:
             SimulationConfigurationError: If `series` names a substance this
-                window does not describe, or the derived wash-in ratio.
+                window does not describe, or names the derived wash-in ratio.
         """
 
         self._require_substance(series.substance_id)
@@ -250,29 +256,30 @@ class DrawnWindow:
     def wash_in_quotients(self, substance_id: str) -> list[float | None]:
         """F_A/F_I at every drawn instant, or `None` where there is no quotient.
 
-        `app/wash_in.py`'s rules ran once per *recorded sample* while the run
-        kept a history, and the stretches they produced were maintained
-        incrementally. With no history to maintain they become a property of
-        the drawn column instead: the quotient is pure arithmetic over the two
-        fractions this window already carries, so it is formed for what is
-        being plotted rather than for samples behind it.
+        While the run kept a history, `app/wash_in.py`'s rules ran once per
+        *recorded sample*, and the stretches they produced were updated
+        incrementally. With no history to maintain, the stretches become a
+        property of the drawn column instead. The quotient is plain arithmetic
+        on the two fractions this window already carries, so it is formed for
+        what is being plotted rather than for samples behind it.
 
-        That is a strengthening rather than a like-for-like move. A stretch
-        boundary can now fall only on a drawn instant, so the point where the
-        curve stops is a point the chart actually plots - where before it was
-        a recorded sample the decimation might not have selected.
+        This change is an improvement, not just a move. A stretch boundary can
+        now fall only on a drawn instant, so the point where the curve stops
+        is a point the chart actually plots. Before, it was a recorded sample
+        that the decimation might not have selected.
 
-        The quotient rather than a `WashInReading` because the chart needs the
-        number *outside* the domain too: a stretch is drawn one column past
-        equilibrium so that it meets the reference line rather than stopping
-        short of it, and choosing that column means comparing its ratio
-        against the axis ceiling. `None` is `wash_in.wash_in_ratio`'s own
-        answer for a denominator below the display floor, and it is the case
-        with nothing to draw at all.
+        The method returns the quotient rather than a `WashInReading`, because
+        the chart needs the number *outside* the domain too. A stretch is
+        drawn one column past equilibrium, so that it meets the reference line
+        rather than stopping short of it. Choosing that column means comparing
+        its ratio against the axis ceiling. `None` is what
+        `wash_in.wash_in_ratio` itself returns when the denominator is less
+        than the smallest concentration the display resolves. In that case there
+        is nothing to draw at all.
 
         Args:
-            substance_id: Whose ratio. The quotient is formed from one
-                substance's own two fractions.
+            substance_id: The substance whose ratio to form. The quotient is
+                formed from that substance's own two fractions.
 
         Returns:
             One entry per entry of `times_s`, in the same order.
@@ -291,12 +298,13 @@ class DrawnWindow:
         ]
 
     def _require_substance(self, substance_id: str) -> None:
-        """Refuse a read for a substance this window does not describe.
+        """Reject a read for a substance this window does not describe.
 
-        The same guard the run's own store made before it was deleted, kept for the
-        same reason: a trace drawn from another substance's values misstates
-        the run exactly as one drawn from another compartment's does, and
-        every value in it would be one the model really produced.
+        The run's own store made the same check before the store was deleted,
+        and the check is kept for the same reason. A trace drawn from another
+        substance's values misstates the run exactly as one drawn from another
+        compartment's values does. Every value in such a trace would still be
+        one the model really produced.
         """
 
         if substance_id != self.substance_id:

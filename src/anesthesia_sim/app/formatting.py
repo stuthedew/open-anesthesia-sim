@@ -1,41 +1,42 @@
 """Render modeled values as the strings the interface displays.
 
-Pure formatting, independent of Flet and of the scientific core: every
-function here takes a number the model produced and returns the text a
-reader sees. Nothing in this module builds a control, reads simulation
-state, or performs a physiological calculation.
+This module is pure formatting, independent of Flet and of the scientific
+core. Every function here takes a number that the model produced and returns
+the text that a reader sees. Nothing in this module builds a control, reads
+simulation state, or performs a physiological calculation.
 
-Why it is its own module. `docs/MODEL.md` § "Displayed precision" is a
-derivation - from what the model's parameters can support, to how many digits
-of a concentration are worth showing - and this is where that derivation
-terminates. `CLAUDE.md` treats presentation correctness as part of the safety
-standard and requires a displayed value to be traceable to the transformations
-that produced it, so the last transformation in that chain has to be readable,
-citable and testable on its own rather than reachable only by loading the whole
-dashboard. `tests/unit/test_formatting.py` is what pins it.
+This is a module of its own for the following reason. `docs/MODEL.md`
+§ "Displayed precision" is a derivation. It starts from what the model's
+parameters can support and ends at how many digits of a concentration are
+worth showing. This module is where that derivation ends. `CLAUDE.md` treats
+presentation correctness as part of the safety standard. It also requires a
+displayed value to be traceable to the transformations that produced it. So
+the last transformation in that chain has to be readable, citable and testable
+on its own, not reachable only by loading the whole dashboard.
+`tests/unit/test_formatting.py` tests it.
 
-Nothing here restates that derivation's figures, deliberately. They were
-restated at four sites in this package and every one of them went stale
-together when the solver changed (`PL-X9KD`); the section is cited instead, so
-the next re-derivation reaches one place.
+This module deliberately does not restate that derivation's figures. They were
+once restated at four places in this package, and all four went stale together
+when the solver changed (`PL-X9KD`). The section is cited instead, so the next
+re-derivation has only one place to update.
 
 The displayed resolution is a property of the display alone. Everything
-upstream carries full binary64 - the compartment states, every integration
-step, every state of the `DrawnWindow` the chart is drawn from - and the
-rounding happens exactly once, here.
+upstream carries full binary64 precision: the compartment states, every
+integration step, and every state of the `DrawnWindow` that the chart is drawn
+from. The rounding happens exactly once, here.
 
-Two display units, one resolution. A compartment is shown as a percent of
-one atmosphere and as a multiple of the running agent's 1 MAC, which is the
-unit clinicians reason in and the only one that means the same thing when
-the agent changes. The second is the first divided by a per-agent constant,
-so `MAC_DISPLAY_DECIMALS` is *derived* from
-`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen beside it -
-one stated resolution governs both, and re-deriving the percent resolution
-propagates to the MAC readout without a second derivation. What that
-division does and does not assert is `docs/MODEL.md` § "MAC multiples as a
-display unit"; it is a statement about a partial pressure, never about a
-depth of anesthesia, and the divisor is a tier-3 parameter whose provenance
-the interface displays.
+The module has two display units and one resolution. A compartment is shown as
+a percent of one atmosphere and as a multiple of the running agent's 1 MAC. The
+MAC multiple is the unit that clinicians reason in, and the only one that means
+the same thing when the agent changes. The MAC multiple is the percent divided
+by a per-agent constant. So `MAC_DISPLAY_DECIMALS` is *derived* from
+`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen separately. One
+stated resolution governs both units, and a re-derived percent resolution
+carries through to the MAC readout without a second derivation.
+`docs/MODEL.md` § "MAC multiples as a display unit" states what that division
+does and does not assert. A MAC multiple is a statement about a partial
+pressure, never about a depth of anesthesia. The divisor is a tier-3
+parameter, and the interface displays its provenance.
 """
 
 from decimal import Decimal
@@ -103,80 +104,83 @@ DECIMAL_BASE: Final = 10.0
 # pressure, and for the delivered-agent setting shown beside its slider.
 #
 # **A choice, inside a band the model imposes.** `docs/MODEL.md` § "Displayed
-# precision" derives the band as one to two decimals: bounded above by what the
-# partition coefficients' measured spread supports, and below by the fat and
-# muscle compartments reading a flat `0.0%` for minutes to an hour at one
-# decimal, which erases the wash-in the simulator exists to teach. Two is the
-# project owner's pick inside that band (PL-040, re-affirmed 2026-09-03 under
-# `PL-88GQ`), and the reason one is not taken is a teaching judgment rather
-# than a numerical limit.
+# precision" derives the band as one to two decimals. The upper end of the band
+# is set by what the measured spread of the partition coefficients supports.
+# The lower end is set by the fat and muscle compartments, which read a flat
+# `0.0%` for minutes to an hour at one decimal. That flat reading erases the
+# wash-in that the simulator exists to teach. Two decimals is the project
+# owner's choice inside that band (PL-040, re-affirmed 2026-09-03 under
+# `PL-88GQ`). One decimal is not used because of a teaching judgment, not
+# because of a numerical limit.
 #
-# So moving this to one decimal is the owner's to make and re-derives nothing
-# in `core/`: no model-side bound is computed from it. Moving it to three would
-# leave the band and is a safety-critical change, because it would assert a
-# resolution the parameters do not support - revise the documented derivation
-# with it. The figures behind both halves live in that section and are
-# deliberately not restated here.
+# So moving this to one decimal is the owner's decision, and it re-derives
+# nothing in `core/`, because no model-side bound is computed from it. Moving it
+# to three decimals would leave the band. That is a safety-critical change,
+# because it would assert a resolution that the parameters do not support, so
+# revise the documented derivation along with it. The figures behind both ends
+# of the band are in that section and are deliberately not restated here.
 CONCENTRATION_DISPLAY_DECIMALS: Final = 2
 # Smallest percentage-point difference the concentration readouts resolve.
 CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = DECIMAL_BASE**-CONCENTRATION_DISPLAY_DECIMALS
 
 # Decimals shown on the flow sliders' drag labels, matching the ".1f L/min"
 # readouts beside them. Flet's default is 0, which would make a slider's own
-# label disagree with the text next to it mid-drag.
+# label disagree with the text next to it during a drag.
 #
-# **A choice, and revisable** (`PL-88GQ`). No model bound sets it: a flow is a
-# setting the reader dialled rather than a modelled output being rounded, and
-# the sliders carry no `divisions`, so a value reaches `core/` unquantized and a
-# second decimal would display something real rather than noise. One decimal is
-# taken because it is the resolution flowmeters are read at, so the number on
+# **A choice, and revisable** (`PL-88GQ`). No model bound sets it. A flow is a
+# setting that the reader dialled, not a modelled output being rounded. The
+# sliders also carry no `divisions`, so a value reaches `core/` unquantized, and
+# a second decimal would display something real rather than noise. One decimal
+# is used because flowmeters are read at that resolution, so the number on
 # screen matches what the same setting looks like on a machine. Changing it
 # re-derives nothing.
 FLOW_DISPLAY_DECIMALS: Final = 1
 
-# Decimals shown on the three agent amounts of the accounting panel -
-# delivered, exhausted and stored - in litres of equivalent pure agent gas.
+# Decimals shown on the accounting panel's three agent amounts (delivered,
+# exhausted and stored), in litres of equivalent pure agent gas.
 #
 # **Derived from the same band as the concentration readouts** (`PL-TG60`,
 # `docs/MODEL.md` § "Displayed precision"). The exhaust total is the exact
-# propagator's own state (`PL-GS5X`), so its numerical residual - 1e-12 to
-# 1e-11 L over an hour - bounds nothing a reader can see; what does bound it
-# is the parameters. One published standard deviation of a partition
-# coefficient, blood:gas dominant, moves the exhaust total by 0.016-0.042 L at
-# 3600 s and by 0.18-0.23 L at the 24 h supported limit (sevoflurane 0.024 and
-# 0.19 L, isoflurane 0.016 and 0.18 L, desflurane 0.042 and 0.23 L). One count
-# of 0.1 L therefore sits between a quarter of an SD and six SDs across the
-# whole supported span - the band the concentration readouts' two decimals
-# were chosen inside - while 0.01 L falls to a fiftieth of an SD by 24 h, a
+# propagator's own state (`PL-GS5X`). Its numerical residual, 1e-12 to
+# 1e-11 L over an hour, limits no digit that a reader can see. The parameters
+# are what limit the displayed resolution. One published standard deviation of
+# a partition coefficient moves the exhaust total by 0.016-0.042 L at 3600 s
+# and by 0.18-0.23 L at the 24 h supported limit (sevoflurane 0.024 and
+# 0.19 L, isoflurane 0.016 and 0.18 L, desflurane 0.042 and 0.23 L). The
+# blood:gas coefficient dominates that effect. So one count of 0.1 L lies
+# between a quarter of an SD and six SDs across the whole supported span. That
+# is the band inside which the concentration readouts' two decimals were
+# chosen. A count of 0.01 L falls to a fiftieth of an SD by 24 h, which is a
 # digit the parameters do not support. Delivered agent has no parameter
-# uncertainty (dial x flow x time) and takes the same resolution so the three
-# amounts can be read against each other at one scale. The six decimals the
-# Flet panel printed asserted a resolution nine orders finer than this.
+# uncertainty (dial x flow x time). It takes the same resolution so that the
+# three amounts can be read against each other on one scale. The Flet panel
+# printed six decimals, which asserted a resolution nine orders of magnitude
+# finer than this.
 AGENT_VOLUME_DISPLAY_DECIMALS: Final = 1
 #: Smallest difference in litres of agent gas the accounting panel resolves.
 AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = DECIMAL_BASE**-AGENT_VOLUME_DISPLAY_DECIMALS
 
-# Decimals shown on a MAC multiple, and the resolution that follows. This is
-# *derived*, not chosen: a MAC multiple is a percent divided by the agent's
-# own `mac_percent`, so the percent resolution above already fixes how finely
-# the quotient is known, and stating a second independent resolution would
-# mean re-deriving two numbers whenever the first is re-derived (the reason is
-# in `docs/MODEL.md` § "Displayed precision"). The rule is one line: the
-# finest power of ten that is nowhere finer than the percent resolution
-# converted into MAC. That conversion is agent-specific — 0.01 percentage
-# points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane and 0.0017 for
-# desflurane — so the binding agent is the one with the largest quotient,
-# isoflurane at 0.0083 MAC, and 0.01 is the finest power of ten at or above
-# it. `test_the_mac_resolution_is_derived_from_the_percent_resolution` in
-# `tests/unit/test_formatting.py` re-runs that arithmetic against every
-# shipped agent, so adding an agent or changing the percent resolution fails
-# there rather than silently over-claiming here.
+# Decimals shown on a MAC multiple, and the resolution that follows from them.
+# This value is *derived*, not chosen. A MAC multiple is a percent divided by
+# the agent's own `mac_percent`, so the percent resolution above already fixes
+# how finely the quotient is known. Stating a second, independent resolution
+# would mean re-deriving two numbers whenever the first is re-derived
+# (`docs/MODEL.md` § "Displayed precision" gives the reason). The rule fits in
+# one line: use the finest power of ten that is nowhere finer than the percent
+# resolution converted into MAC. That conversion depends on the agent. A step
+# of 0.01 percentage points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane
+# and 0.0017 for desflurane. So the binding agent is the one with the largest
+# quotient, isoflurane at 0.0083 MAC, and 0.01 is the finest power of ten at or
+# above it. `test_the_mac_resolution_is_derived_from_the_percent_resolution` in
+# `tests/unit/test_formatting.py` repeats that arithmetic for every shipped
+# agent. So adding an agent or changing the percent resolution makes that test
+# fail, rather than letting this value silently over-claim.
 MAC_DISPLAY_DECIMALS: Final = 2
 #: Smallest difference in MAC multiples the readouts resolve.
 MAC_DISPLAY_RESOLUTION_MAC: Final = DECIMAL_BASE**-MAC_DISPLAY_DECIMALS
 
-# The unit written after a MAC multiple, read from its `DisplayUnit` member,
-# which says why the multiplication sign matters.
+# The unit written after a MAC multiple. It is read from the unit's
+# `DisplayUnit` member, which explains why the multiplication sign matters.
 MAC_UNIT_SUFFIX: Final = f" {DisplayUnit.MAC_MULTIPLE.label}"
 
 # The label written after a concentration in percent, read from its
@@ -184,95 +188,101 @@ MAC_UNIT_SUFFIX: Final = f" {DisplayUnit.MAC_MULTIPLE.label}"
 _PERCENT: Final = DisplayUnit.CONCENTRATION.label
 
 # Candidate spacings for the chart's MAC axis, coarsest last. `mac_axis_ticks`
-# takes the first that keeps the axis within `MAX_MAC_AXIS_INTERVALS`, so the
-# spacing is a function of the plotted range rather than of the agent. Since
-# PL-CC23 that range is `CHART_AXIS_TOP_MAC` for every agent, so the ladder
-# selects 0.5 MAC for all of them by construction rather than by coincidence -
-# which is what lets a reader carry one mental scale from one agent to the
-# next. It remains a ladder rather than a constant because the range is the
-# input: a chart drawn over a different span picks its own spacing.
+# takes the first spacing that keeps the axis within `MAX_MAC_AXIS_INTERVALS`
+# intervals, so the spacing depends on the plotted range, not on the agent.
+# Since PL-CC23 that range is `CHART_AXIS_TOP_MAC` for every agent. So the
+# ladder selects 0.5 MAC for all of them by construction, not by coincidence.
+# That lets a reader carry one mental scale from one agent to the next. It is
+# still a ladder rather than a constant, because the range is the input: a
+# chart drawn over a different span picks its own spacing.
 MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
-#: Most gaps the MAC axis may be divided into before the next coarser spacing.
+#: The most intervals the MAC axis may have before the next coarser spacing is used.
 MAX_MAC_AXIS_INTERVALS: Final = 10
 
 # Top of the compartment chart, as a multiple of the running agent's 1 MAC.
 #
-# The axis is denominated in MAC and is therefore the *same ruler for every
-# agent*, which is the whole point of it: until PL-CC23 the top was the
-# agent's vaporizer dial maximum, which is 3.00 MAC of desflurane, 4.00 of
-# sevoflurane and 4.17 of isoflurane, so the same case plotted under two
-# agents was drawn at two scales differing by 1.39x. A learner comparing
-# desflurane's wash-in to sevoflurane's was comparing shapes that had been
-# silently rescaled, which is a misreading no label prevents.
+# The axis is denominated in MAC, so it is the *same ruler for every agent*,
+# and that is its whole purpose. Until PL-CC23 the top was the agent's
+# vaporizer dial maximum: 3.00 MAC of desflurane, 4.00 of sevoflurane and 4.17
+# of isoflurane. So the same case plotted under two agents was drawn at two
+# scales differing by 1.39x. A learner comparing desflurane's wash-in with
+# sevoflurane's was comparing shapes that had been silently rescaled. No label
+# prevents that misreading.
 #
 # Three is not a round number chosen for tidiness. It is exactly
-# desflurane's dial maximum (18 % / 6 % = 3.00), so the shared ceiling is
+# desflurane's dial maximum (18 % / 6 % = 3.00). So the shared ceiling is
 # anchored to a real device limit rather than to a preference, and the agent
-# whose vaporizer is most limited gets no dead band at the top of its plot.
-# It also puts 1 MAC at one third of the plot height - comfortably inside it
-# rather than on the frame, which a 2 MAC ceiling could not do - and leaves
-# the 2-3x MAC range that overpressure induction works in on the plot.
+# whose vaporizer is most limited has no empty band at the top of its plot.
+# A ceiling of three also puts 1 MAC at one third of the plot height,
+# comfortably inside the plot rather than on its frame, which a 2 MAC ceiling
+# could not do. And it keeps on the plot the 2-3x MAC range in which
+# overpressure induction works.
 #
 # **Fixed, and fixed for the whole session rather than only within a run.**
 # An axis that grew to fit an excursion would redraw a rising curve at a
-# smaller height partway through a lesson, and a reader would attribute that
-# shape change to the model rather than to the axis. `docs/MODEL.md`'s "Why
-# the axis is fixed rather than fitted" settled the same question for the
-# wash-in plot; the reasoning transfers, and being fixed across the session
-# as well means two consecutive runs are comparable too.
+# smaller height partway through a lesson. A reader would then attribute that
+# change of shape to the model rather than to the axis. The section "Why the
+# axis is fixed rather than fitted" in `docs/MODEL.md` settled the same
+# question for the wash-in plot, and its reasoning applies here too. Because
+# the axis is also fixed across the session, two consecutive runs can be
+# compared as well.
 #
-# Sevoflurane and isoflurane can be dialled above this ceiling - 8 % is
-# 4.00 MAC and is a common inhalational-induction setting - so a trace
-# can leave the top of the plot. That is reported rather than left to look
-# like a plateau; see `dashboard_frame.OFF_SCALE_NOTICE_TEMPLATE`.
+# Sevoflurane and isoflurane can be dialled above this ceiling. For example,
+# 8 % is 4.00 MAC and is a common inhalational-induction setting. So a trace
+# can leave the top of the plot. The interface reports that, rather than
+# letting the trace look like a plateau (see
+# `dashboard_frame.OFF_SCALE_NOTICE_TEMPLATE`).
 CHART_AXIS_TOP_MAC: Final = 3.0
 
-# Spacing of the compartment chart's horizontal rules, in MAC. Denominated in
-# MAC for the same reason the ceiling is: until PL-CC23 the interval was a
-# fixed 2 *percent*, which rules sevoflurane every 0.5 MAC, isoflurane every
-# 1.67 MAC and desflurane every 0.33 MAC - nine lines on one plot and three
-# on another, none of them at a value a reader is looking for. At half a MAC
-# the rules land on the same values `mac_axis_ticks` labels, so every gridline
-# on the plot is one the axis names.
+# Spacing of the compartment chart's horizontal rules, in MAC. It is
+# denominated in MAC for the same reason as the ceiling. Until PL-CC23 the
+# interval was a fixed 2 *percent*. That drew a rule every 0.5 MAC for
+# sevoflurane, every 1.67 MAC for isoflurane and every 0.33 MAC for desflurane.
+# One plot had nine lines and another had three, and none of them sat at a
+# value a reader looks for. At half a MAC the rules land on the same values
+# that `mac_axis_ticks` labels, so the axis names every gridline on the plot.
 CHART_GRID_INTERVAL_MAC: Final = 0.5
 
-# Decimals shown on an F_A/F_I ratio, on the chart's axis and in the reading
-# beside it. Not derived from the concentration resolution above, and
-# deliberately not presented as though it were: the ratio's own resolution
-# depends on its denominator, so a run early in wash-in knows the quotient far
-# less finely than one at equilibrium, and a single derived figure would
-# over-claim at one end or waste a digit at the other. It is instead set by
-# what the quantity is compared against - Yasuda et al. report F_A/F_I at
-# 30 minutes as 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027
-# and 0.01 (`docs/MODEL.md` § "Published wash-in and elimination validation test"), so a third
-# decimal would be finer than the published spread this trace exists to be read
-# beside.
+# Decimals shown on an F_A/F_I ratio, both on the chart's axis and in the
+# reading beside it. This value is not derived from the concentration
+# resolution above, and it is deliberately not presented as though it were.
+# The ratio's own resolution depends on its denominator. So early in wash-in, a
+# run knows the quotient far less finely than it does at equilibrium, and a
+# single derived figure would over-claim at one end or waste a digit at the
+# other. Instead, the value is set by what the ratio is compared against.
+# Yasuda et al. report F_A/F_I at 30 minutes as 0.850, 0.733 and 0.90, with
+# standard deviations of 0.018, 0.027 and 0.01
+# (`docs/MODEL.md` § "Published wash-in and elimination validation test").
+# A third decimal would be finer than the published spread that this trace
+# exists to be read beside.
 WASH_IN_DISPLAY_DECIMALS: Final = 2
 
 
 def format_percent(partial_pressure_fraction: Fraction) -> str:
     """Convert a partial-pressure-equivalent fraction to display percent.
 
-    Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the resolution
-    `docs/MODEL.md` § "Displayed precision" derives.
+    The value is rendered at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the
+    resolution that `docs/MODEL.md` § "Displayed precision" derives.
 
     A value that is positive but rounds to zero is rendered as below the
-    resolution rather than as zero. The distinction is the point: muscle
-    and fat sit under 0.01% for the first minutes of a run — fat for
-    thirteen of them at 1 MAC sevoflurane — and `0.00%` there would
-    assert a compartment is empty when the model says it is filling.
-    `<0.01%` says only what is known, and leaves `0.00%` meaning what it
-    should, that nothing has arrived yet.
+    resolution, not as zero. That distinction matters. Muscle and fat stay
+    below 0.01% for the first minutes of a run, and fat stays there for
+    thirteen minutes at 1 MAC sevoflurane. Showing `0.00%` there would
+    assert that a compartment is empty when the model says it is filling.
+    `<0.01%` says only what is known, and leaves `0.00%` with its proper
+    meaning, that nothing has arrived yet.
 
-    A negative fraction is never given the below-resolution form, which
-    would absorb it into a plausible-looking reading. No `Fraction` can
-    hold one, minus zero included since `PL-LLMN`, so a negative reaching
-    here came from a caller `mypy` does not read, as a bare `float`, and
-    `percent_from_fraction` refuses it before anything is rendered: since
-    `PL-1DP1` for never having been built as a `Fraction`, whatever its
-    value, where `PL-4R3W` refused it by its range. Until `PL-4R3W` it was
-    rendered with its sign instead, as the anomaly it is; refusing it is
-    the stronger form of the same rule.
+    A negative fraction is never given the below-resolution form, because
+    that form would absorb it into a plausible-looking reading. No
+    `Fraction` can hold a negative value, and since `PL-LLMN` that includes
+    minus zero. So a negative value that reaches this function came as a
+    bare `float` from a caller that `mypy` does not check.
+    `percent_from_fraction` refuses it before anything is rendered. Since
+    `PL-1DP1` it refuses the value because it was never built as a
+    `Fraction`, whatever the value is. Before that, `PL-4R3W` refused it
+    because it was out of range. Until `PL-4R3W`, a negative value was
+    rendered with its sign, as the anomaly it is. Refusing it is the
+    stronger form of the same rule.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
@@ -283,10 +293,10 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
         below-resolution form for a positive value that rounds to zero.
 
     Raises:
-        TypeError: the value was not built as a `Fraction` - a bare `float`
-            included, whatever its value - which `percent_from_fraction`
-            refuses before anything is rendered, naming the constructor to
-            build (`core/concentration.py`, `PL-1DP1`).
+        TypeError: The value was not built as a `Fraction`. This includes a
+            bare `float`, whatever its value. `percent_from_fraction` refuses
+            such a value before anything is rendered, and its error names the
+            constructor to use (`core/concentration.py`, `PL-1DP1`).
     """
 
     percent = percent_from_fraction(partial_pressure_fraction)
@@ -384,15 +394,15 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPer
 
 
 def render_mac_multiple(multiple: MacMultiple) -> str:
-    """Render a MAC multiple that is already one, with its unit.
+    """Render a value that is already a MAC multiple, with its unit.
 
-    The rendering half of `format_mac_multiple`, split out for the values that
-    arrive as a multiple rather than as a fraction and a divisor — a
-    `bookmarks.MacTarget`'s height is the one that does. One function rather
-    than two spellings of the same three rules, because a target listed at
-    `0.8 ×MAC` beside a readout showing `0.80 ×MAC` would read as two
-    quantities where there is one, and the reader would have to work out
-    whether the target had been met.
+    This is the rendering half of `format_mac_multiple`. It is split out for
+    values that arrive as a multiple rather than as a fraction and a divisor.
+    The only such value is the height of a `bookmarks.MacTarget`. It is one
+    function rather than two copies of the same three rules, because a
+    target listed at `0.8 ×MAC` beside a readout showing `0.80 ×MAC` would
+    look like two quantities where there is one, and the reader would have
+    to work out whether the target had been met.
 
     Args:
         multiple: The value, as a multiple of the running agent's 1 MAC.
@@ -424,7 +434,7 @@ def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> st
 
     The value is deliberately shown to one decimal, which is the
     precision the three stored values actually carry. `docs/MODEL.md`
-    § "Delivery-limit and MAC parameters" holds their provenance and the
+    § "Delivery-limit and MAC parameters" gives their provenance and the
     limitation that follows from it.
 
     Args:
@@ -669,16 +679,16 @@ def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[f
         (step for step in MAC_AXIS_STEP_LADDER_MAC if span_mac / step <= MAX_MAC_AXIS_INTERVALS),
         MAC_AXIS_STEP_LADDER_MAC[-1],
     )
-    # One decimal for a half-MAC step, two for a quarter-MAC one, none for
-    # the whole-MAC steps: derived from the spacing rather than fixed, so a
-    # label never shows a digit the spacing cannot move.
+    # Use one decimal for a half-MAC step, two for a quarter-MAC step and none
+    # for whole-MAC steps. The count is derived from the spacing rather than
+    # fixed, so a label never shows a digit that the spacing cannot change.
     decimals = max(0, len(f"{step_mac:.2f}".rstrip("0").partition(".")[2]))
 
     return tuple(
         (index * step_mac * mac_percent, f"{index * step_mac:.{decimals}f}")
         # `int()` truncates toward zero, so the last tick is the last one
-        # at or below the top of the axis; `+ 1` makes the range inclusive
-        # of it. A tick above `max_percent` would be drawn outside the
+        # at or below the top of the axis. The `+ 1` makes the range include
+        # that tick. A tick above `max_percent` would be drawn outside the
         # plotted area.
         for index in range(int(span_mac / step_mac) + 1)
     )
@@ -687,11 +697,12 @@ def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[f
 def format_wash_in_ratio(wash_in_ratio: float) -> str:
     """Render an F_A/F_I ratio as the dimensionless number it is.
 
-    No unit suffix and no percent sign, because the quantity has neither:
-    it is one fraction of an atmosphere divided by another, and writing it
-    as a percentage would invite reading it against the concentration axis
-    beside it. `app/wash_in.py` states what the quotient asserts and where
-    it is defined at all; this only writes it down.
+    The result has no unit suffix and no percent sign, because the quantity
+    has neither. It is one fraction of an atmosphere divided by another.
+    Writing it as a percentage would invite a reader to compare it with the
+    concentration axis beside it. `app/wash_in.py` states what the quotient
+    asserts and where it is defined at all. This function only writes it
+    down.
 
     Args:
         wash_in_ratio: The dimensionless quotient F_A/F_I.
@@ -706,13 +717,13 @@ def format_wash_in_ratio(wash_in_ratio: float) -> str:
 def format_flow(flow_l_min: float) -> str:
     """Render a flow setting in litres per minute, at the slider's own resolution.
 
-    One definition for the three flow settings rather than one per display
-    site. The readout beside a slider, the slider's own drag label and the
-    control-input timeline are three renderings of one number, and two of
-    them disagreeing by half a litre a minute is the same class of failure
-    as a concentration shown at two resolutions - which is why
-    `FLOW_DISPLAY_DECIMALS` exists and why nothing should be spelling
-    `:.1f` out beside it.
+    There is one definition for the three flow settings rather than one per
+    display site. The readout beside a slider, the slider's own drag label
+    and the control-input timeline are three renderings of one number. If two
+    of them disagreed by half a litre a minute, that would be the same class
+    of failure as a concentration shown at two resolutions. That is why
+    `FLOW_DISPLAY_DECIMALS` exists, and why no other code should write
+    `:.1f` beside it.
     """
 
     return f"{flow_l_min:.{FLOW_DISPLAY_DECIMALS}f} {DisplayUnit.FLOW.label}"
@@ -721,36 +732,39 @@ def format_flow(flow_l_min: float) -> str:
 def format_elapsed(elapsed_s: float) -> str:
     """Render simulated time as the interface states it everywhere.
 
-    The compound, self-describing form - `45s`, `1m30s`, `1h23m45.6s`,
-    `24h` - so that the clock, every recorded control change stamped
-    against it, and the chart's own axis state one quantity one way.
+    It uses the compound, self-describing form, such as `45s`, `1m30s`,
+    `1h23m45.6s` or `24h`. So the clock, every recorded control change
+    stamped against it, and the chart's own axis state one quantity in one
+    way.
 
     **This function used to render `5400.0 s` and the reasoning for it was
     wrong in a checkable way** (`PL-Q4M4`, `PL-CZFY`). It said the two forms
     could not be one function because "a compound duration form would round
-    the stamp away", and that is not true of the compound form that shipped:
-    `_duration_components` returns the seconds as a float and the label
-    formats them with `:g`, so the tenth the simulation steps at survives -
-    `1h23m45.6s`. With the stamp's requirement met by both, the argument for
-    two forms was only that one of them had been written first.
+    the stamp away". That is not true of the compound form that shipped.
+    `_duration_components` returns the seconds as a float, and the label
+    formats them with `:g`, so the tenth of a second that the simulation
+    steps at survives, as in `1h23m45.6s`. Both forms met the stamp's
+    requirement, so the only argument left for two forms was that one of
+    them had been written first.
 
-    What was left was a reader converting between them. `PL-SSBP` gave the
-    chart a time base spanning a case, so locating a control mark stamped
-    `5400.0 s` on an axis reading `1h30m` meant dividing by 3600 by hand,
-    on a screen showing both at once; and `PL-Y5WR` declared a 24-hour
-    envelope, so the clock's top reading became `86400.0 s` - seven
-    characters of tenths on a quantity a reader thinks about in hours, which
-    `format_supported_run_length` below had already refused to reuse for
-    exactly that reason.
+    Two forms left a reader converting between them. `PL-SSBP` gave the
+    chart a time base that spans a case. Finding a control mark stamped
+    `5400.0 s` on an axis reading `1h30m` then meant dividing by 3600 by
+    hand, on a screen that showed both at once. `PL-Y5WR` declared a
+    24-hour envelope, so the clock's top reading became `86400.0 s`. That
+    is seven characters, down to tenths, for a quantity a reader thinks
+    about in hours. `format_supported_run_length` below had already refused
+    to reuse the old form for exactly that reason.
 
-    **Raises rather than rendering a negative or non-finite time**, through
-    `_duration_components`. The previous form would have printed `-1.0 s`
-    quite happily. Simulated time cannot run backwards, so a value that does
-    is a fault upstream, and `CLAUDE.md` prefers an obvious failure to a
-    plausible-looking displayed number.
+    **Raises an error rather than rendering a negative or non-finite
+    time**, through `_duration_components`. The previous form would have
+    printed `-1.0 s` without complaint. Simulated time cannot run
+    backwards, so a negative value is a fault upstream, and `CLAUDE.md`
+    prefers an obvious failure to a plausible-looking displayed number.
 
-    `format_chart_time_label` is the same form with one deliberate
-    difference, stated there: the axis origin is a bare `0`.
+    `format_chart_time_label` uses the same form with one deliberate
+    difference, which its docstring explains: the axis origin is a bare
+    `0`.
 
     Args:
         elapsed_s: Simulated time since the run began, in seconds.
@@ -768,19 +782,21 @@ def format_elapsed(elapsed_s: float) -> str:
 def format_supported_run_length() -> str:
     """State the supported run length the way a reader thinks about a case.
 
-    Hours, from `core.supported_ranges.MAXIMUM_ELAPSED_SIMULATION_TIME_S`
-    rather than from a number written here, so the interface cannot state a
-    limit the model does not enforce.
+    The length is given in hours and computed from
+    `core.supported_ranges.MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than
+    from a number written here. So the interface cannot state a limit that
+    the model does not enforce.
 
-    Still not `format_elapsed`, but no longer for the reason first recorded
-    here. That reason was false precision - `format_elapsed` rendered
-    "86400.0 s" and this had to say "24 hours" instead - and it stopped
-    applying when `PL-CZFY` moved the clock onto the compound form, where
-    the same instant reads "24h". What remains is register: this string
-    goes into a sentence a reader reads ("runs are supported to 24 hours"),
-    where the spelled-out unit belongs, exactly as `format_time_base` spells
-    out "15 minutes" for a selector entry whose axis tick reads "15m". The
-    two now agree about the quantity and differ only in how they are read.
+    This function still does not use `format_elapsed`, but no longer for
+    the reason first recorded here. That reason was false precision:
+    `format_elapsed` rendered "86400.0 s", so this function had to say
+    "24 hours" instead. The reason stopped applying when `PL-CZFY` moved
+    the clock onto the compound form, where the same instant reads "24h".
+    The remaining reason is register. This string goes into a sentence that
+    a reader reads ("runs are supported to 24 hours"), where the spelled-out
+    unit belongs. `format_time_base` does the same when it spells out
+    "15 minutes" for a selector entry whose axis tick reads "15m". The two
+    forms now agree about the quantity and differ only in how they are read.
     """
 
     return f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} hours"
@@ -789,32 +805,35 @@ def format_supported_run_length() -> str:
 def format_playback_rate(multiplier: int) -> str:
     """State how fast simulated time is being played against real time.
 
-    The rate is a mode, and a mode nobody can see is the failure this
-    project's interface rules exist to prevent: a clock advancing at 60x
-    beside numbers that look like a live case is misreadable at a glance.
-    So this renders at every rate including real time - "1x real time"
-    rather than nothing - because an absent label at 1x would make the
-    label's *presence* the signal, and a reader who has not learned that
-    convention reads a missing label as a missing mode rather than as the
-    default one.
+    The rate is a mode, and a mode that nobody can see is the failure this
+    project's interface rules exist to prevent. A clock advancing at 60x
+    beside numbers that look like a live case is easy to misread at a
+    glance. So this function renders a label at every rate, including real
+    time, where it gives "1x real time" rather than nothing. With no label
+    at 1x, the label's *presence* would become the signal. A reader who has
+    not learned that convention would read a missing label as a missing
+    mode, not as the default one.
 
-    One function for both places the rate appears - the control that sets
-    it and the line under the clock that reports it - so the two cannot
-    state the same mode differently. `docs/MODEL.md` § "Interface boundary"
-    requires the rate wherever simulated time is shown, and the interface
-    satisfies that by rendering this string, never by spelling one out.
+    One function serves both places where the rate appears: the control
+    that sets it, and the line under the clock that reports it. So the two
+    cannot state the same mode differently. `docs/MODEL.md` § "Interface
+    boundary" requires the rate to be shown wherever simulated time is
+    shown. The interface meets that requirement by rendering this string,
+    never by writing its own.
 
-    "Real time" rather than "wall clock": the comparison a reader makes is
-    against the pace of a case they have stood through, and the multiple is
-    of that pace. Simulated time itself is `format_elapsed`, in simulated
-    seconds, and stays the only clock on the display - this names the pace
-    the clock is advancing at and is never a second reading of the time.
+    The label says "Real time" rather than "wall clock" because a reader
+    compares the rate with the pace of a case they have stood through, and
+    the multiple is of that pace. Simulated time itself is rendered by
+    `format_elapsed`, in simulated seconds, and remains the only clock on
+    the display. This string names the pace at which the clock advances,
+    and is never a second reading of the time.
 
     Args:
         multiplier: Simulated seconds advanced per second of real time, as
-            `app/playback.py` defines it. A whole number by construction:
-            a rate that did not land on a whole number of simulation steps
-            per tick is refused there rather than displayed here.
+            `app/playback.py` defines it. It is a whole number by
+            construction. `app/playback.py` refuses a rate that does not
+            land on a whole number of simulation steps per tick, so such a
+            rate is never displayed here.
 
     Returns:
         The rate as the interface states it, using the multiplication sign
@@ -849,24 +868,24 @@ def _duration_components(duration_s: float) -> tuple[int, int, float]:
 def _format_duration_compound(duration_s: float, *, zero: str) -> str:
     """Render a duration as `1h23m45.6s`, dropping components that are zero.
 
-    The one place the compound form is built, so the clock, the recorded
-    control-change stamps and the chart's axis ticks cannot drift into
-    stating one quantity two ways (`PL-Q4M4`). Every component carries its
-    own unit: the axis under a time base spans anything from a minute to
-    half a day, so a bare number would mean seconds on one scale and hours
-    on another while looking identical on both.
+    This is the one place where the compound form is built. So the clock,
+    the recorded control-change stamps and the chart's axis ticks cannot
+    drift into stating one quantity in two ways (`PL-Q4M4`). Every component
+    carries its own unit. The axis under a time base can span anything from
+    a minute to half a day. A bare number would then mean seconds on one
+    scale and hours on another, while looking identical on both.
 
     Seconds are formatted with `:g`, which keeps a tenth where there is one
-    and drops a trailing `.0` where there is not - so a stamp resolves the
-    `0.1 s` step the simulation advances by, and a tick sitting on a whole
+    and drops a trailing `.0` where there is not. So a stamp resolves the
+    `0.1 s` step that the simulation advances by, and a tick on a whole
     number of seconds is not padded with a digit that says nothing.
 
     Args:
         duration_s: A duration in seconds.
         zero: What to return when the duration is exactly zero. The two
-            callers want different things here and it is the only way they
-            differ, which is why it is a parameter rather than a branch at
-            each site.
+            callers want different text here, and this is the only way they
+            differ. That is why it is a parameter rather than a branch at
+            each call site.
 
     Returns:
         The duration in compound form.
@@ -897,26 +916,28 @@ def _format_duration_compound(duration_s: float, *, zero: str) -> str:
 def format_chart_time_label(elapsed_s: float) -> str:
     """Render one tick on the chart's simulated-time axis.
 
-    Compact and self-describing: `0`, `45s`, `3m`, `1m30s`, `2h`, `1h30m`.
-    Every component carries its own unit, which is the point. The axis under
-    a time base spans anything from a minute to half a day, so a bare number
-    would mean seconds on one scale and hours on another while looking
-    identical on both — the worst available failure, since a reader who
-    misses the caption has nothing in the label to correct them. The unit
-    letters make the tick readable without the caption and without knowing
-    which time base is selected.
+    The label is compact and self-describing: `0`, `45s`, `3m`, `1m30s`,
+    `2h`, `1h30m`. Every component carries its own unit, and that is the
+    purpose of the form. The axis under a time base can span anything from
+    a minute to half a day. A bare number would then mean seconds on one
+    scale and hours on another, while looking identical on both. That is
+    the worst failure available, because a reader who misses the caption
+    has nothing in the label to correct them. The unit letters make the
+    tick readable without the caption, and without knowing which time base
+    is selected.
 
-    Bare `0` for the run's start, deliberately. `0s` invites reading the
-    whole axis as seconds, and the origin needs no unit to be understood.
+    The run's start is deliberately a bare `0`. A `0s` label invites
+    reading the whole axis as seconds, and the origin needs no unit to be
+    understood.
 
-    The same form as `format_elapsed`, which is the point: a reader
-    locating a control mark stamped `1h30m` on this axis reads the stamp and
-    the tick in one register rather than converting between two
-    (`PL-Q4M4`). Both show a tenth only where one is present - right here
-    because the ladder in `app/chart_time_base.py` places every tick on a
-    whole number of seconds and a trailing `.0` on every label is noise, and
-    right there because a stamp has to resolve the `0.1 s` step the
-    simulation advances by.
+    The form is the same as `format_elapsed`'s, on purpose. A reader looking
+    for a control mark stamped `1h30m` on this axis reads the stamp and the
+    tick in one register, rather than converting between two (`PL-Q4M4`).
+    Both show a tenth of a second only where one is present. That is right
+    for the axis because the ladder in `app/chart_time_base.py` places every
+    tick on a whole number of seconds, so a trailing `.0` on every label
+    would be noise. It is right for `format_elapsed` because a stamp has to
+    resolve the `0.1 s` step that the simulation advances by.
 
     Args:
         elapsed_s: Simulated time of the tick, in seconds since the run
@@ -927,9 +948,9 @@ def format_chart_time_label(elapsed_s: float) -> str:
 
     Raises:
         ValueError: If `elapsed_s` is negative or not finite. An axis label
-            is a clinically meaningful displayed value; a plausible-looking
-            one produced from an impossible time is what `CLAUDE.md`'s
-            standard prefers a failure to.
+            is a clinically meaningful displayed value. `CLAUDE.md`'s
+            standard prefers a failure to a plausible-looking label produced
+            from an impossible time.
     """
 
     return _format_duration_compound(elapsed_s, zero="0")
@@ -938,13 +959,13 @@ def format_chart_time_label(elapsed_s: float) -> str:
 def format_time_base(span_s: float) -> str:
     """Name a chart time base's width, as prose.
 
-    What the selector's entries read and what the axis caption states the
-    chart is showing. Spelled out — `15 minutes`, `1 hour`, `12 hours` —
-    rather than in `format_chart_time_label`'s compact form, because this is
-    a sentence a reader chooses from and reads back, not a tick competing
-    for width. The two are consistent about the quantity and differ only in
-    register; the caption naming `15 minutes` sits above an axis whose last
-    tick reads `15m`.
+    This text is what the selector's entries show, and what the axis caption
+    says the chart is showing. It is spelled out, as in `15 minutes`,
+    `1 hour` or `12 hours`, rather than in `format_chart_time_label`'s
+    compact form. A reader chooses from this text and reads it back, so it
+    is not a tick competing for width. The two forms agree about the
+    quantity and differ only in register. For example, the caption naming
+    `15 minutes` sits above an axis whose last tick reads `15m`.
 
     Args:
         span_s: The width of the visible window, in seconds.
@@ -966,9 +987,9 @@ def format_time_base(span_s: float) -> str:
         parts.append(f"{minutes} {_plural('minute', minutes)}")
 
     # Every rung of `TIME_BASE_LADDER` is a whole number of minutes, so the
-    # seconds term is unreachable from the selector. It is spelled out rather
-    # than rounded away because the alternative — folding a remainder into
-    # the minutes above it — would name a width the chart is not drawing.
+    # selector can never produce a seconds term. The term is still spelled out
+    # rather than rounded away. Folding a remainder into the minutes above it
+    # would name a width that the chart is not drawing.
     if seconds or not parts:
         parts.append(f"{seconds:g} {_plural('second', seconds)}")
 
@@ -976,12 +997,12 @@ def format_time_base(span_s: float) -> str:
 
 
 def _plural(noun: str, count: float) -> str:
-    """The noun, pluralized for the count that precedes it."""
+    """Return the noun, pluralized for the count that precedes it."""
 
     return noun if count == 1 else f"{noun}s"
 
 
-#: What both discard warnings end on: the loss, and that it is final.
+#: The ending of both discard warnings: what is lost, and that the loss is final.
 _DISCARD_CONSEQUENCE: Final = (
     "will be discarded along with its chart history. This cannot be undone."
 )
@@ -992,24 +1013,26 @@ def format_case_discard_warning(
 ) -> str:
     """State what starting a new case is about to throw away.
 
-    Names the two recorded things a reader can see on screen and that a new
-    case destroys with nothing able to restore them: the simulated time the
-    run reached, and the control changes it recorded. Both are quoted in the
-    terms of the display they will disappear from — `format_elapsed` for the
-    clock, and the grouped adjustments the "Control changes" panel lists
-    rather than the raw `ControlChange` entries behind them, so a reader
-    comparing the warning against the panel finds the same number.
+    The warning names the two recorded things that a reader can see on
+    screen and that a new case destroys beyond recovery: the simulated time
+    the run reached, and the control changes it recorded. Both are stated in
+    the terms of the display they will disappear from. The time uses
+    `format_elapsed`, as the clock does. The count is of the grouped
+    adjustments that the "Control changes" panel lists, not of the raw
+    `ControlChange` entries behind them. So a reader comparing the warning
+    with the panel finds the same number.
 
-    Here rather than in the view for the reason every other display string
-    in this module is: what a reader is told is a presentation-correctness
-    question, and this one can be read and tested without loading Flet.
+    This function lives here rather than in the view for the same reason as
+    every other display string in this module. What a reader is told is a
+    question of presentation correctness, and this string can be read and
+    tested without loading Flet.
 
     Args:
         agent_display_name: The agent the current run is using.
         elapsed_s: Simulated time the current run has reached, in seconds.
         control_change_count: How many recorded control changes the run
-            holds, counted as `control_timeline.group_adjustments` groups
-            them and as the panel beside the chart lists them.
+            has, counted the way `control_timeline.group_adjustments` groups
+            them and the panel beside the chart lists them.
 
     Returns:
         One sentence naming the run and what discarding it costs.
@@ -1025,19 +1048,20 @@ def format_case_discard_warning(
 def format_branch_discard_warning(
     run_name: str, began_at_s: float, elapsed_s: float | None, control_change_count: int
 ) -> str:
-    """State what a trunk's Reset is about to throw away of one branch it ends.
+    """State what a trunk's Reset is about to throw away from one branch that it ends.
 
-    The branch's counterpart of `format_case_discard_warning`, in the same
-    words, because it costs the same two things and nothing restores either
-    (`PL-W5WX`). A branch's clock is the case's, so its simulated time is
-    stated as the two instants the clock shows rather than as a duration: the
-    instant it branched at, and the instant it has run to. A reader checks
-    both against the branch's own clock and the branch control's label.
+    This is the branch's counterpart of `format_case_discard_warning`, in the
+    same words, because discarding a branch costs the same two things and
+    nothing restores either (`PL-W5WX`). A branch uses the case's clock, so
+    its simulated time is stated as two instants that the clock shows, not as
+    a duration: the instant at which it branched, and the instant it has run
+    to. A reader can check both against the branch's own clock and the label
+    of the branch control.
 
-    The second instant is left out where it says nothing: where the branch
-    has not run past its fork, and where its time could not be read because
-    its snapshot refuses a value. The warning then states only what is
-    known, and never a number nothing produced.
+    The second instant is left out when it would say nothing: when the
+    branch has not run past its fork, or when its time could not be read
+    because its snapshot refuses a value. The warning then states only what
+    is known, and never a number that nothing produced.
 
     Args:
         run_name: What the branch is called on screen (`run_label`).
@@ -1045,7 +1069,7 @@ def format_branch_discard_warning(
         elapsed_s: The case instant the branch has run to, or None where it
             could not be read.
         control_change_count: How many recorded control changes the branch
-            holds, counted as the "Control changes" panel lists them.
+            has, counted the way the "Control changes" panel lists them.
 
     Returns:
         One sentence naming the branch and what discarding it costs.
@@ -1067,7 +1091,7 @@ def format_branch_discard_warning(
 
 
 def _recorded_control_changes(count: int) -> str:
-    """How many recorded control changes are about to be lost, as the warnings state it."""
+    """Return how many recorded control changes are about to be lost, in the warnings' words."""
 
     return "1 recorded control change" if count == 1 else f"{count} recorded control changes"
 
@@ -1075,27 +1099,28 @@ def _recorded_control_changes(count: int) -> str:
 def format_subtitle(agent_display_name: str) -> str:
     """Build the header subtitle naming the current app build and agent.
 
-    The build rather than the version, because between two releases every
-    build carries the same version string - which is what made a merged fix
-    indistinguishable from the code it replaced when the project owner went
-    to confirm it by eye (`PL-QC38`, `PL-YKF8`). `app_metadata.py`'s
-    `APP_BUILD_VERSION` adds the commit on anything that is not a clean
-    checkout of the released tag, and adds nothing on a release.
+    The subtitle names the build rather than the version, because every
+    build between two releases carries the same version string. That made a
+    merged fix indistinguishable from the code it replaced when the project
+    owner went to confirm it by eye (`PL-QC38`, `PL-YKF8`).
+    `app_metadata.py`'s `APP_BUILD_VERSION` adds the commit for anything
+    that is not a clean checkout of the released tag, and adds nothing for a
+    release.
 
-    **Where the version could not be read at all, the line says so rather
-    than naming it.** `app_metadata.py` falls back to `UNKNOWN_VERSION` when
-    installed-package metadata is missing - a frozen or bundled build, or a
-    corrupted install - and that fallback policy is right: failing visibly
-    beats crashing on launch. What was wrong was where the visible failure
-    landed. Substituted into the sentence below it produced "Version
-    unknown", and this subtitle is the interface's only link between a
-    displayed number and the model that produced it, so a reader had a
-    provenance field stating a version-shaped answer where there was no
-    answer (`PL-KCWD`). `CLAUDE.md` requires a displayed value to be
-    traceable to the exact model and version behind it; a build that cannot
-    offer that has to say it cannot, because an unidentified build is
-    precisely the one whose numbers must not be quoted back later as having
-    come from a known version.
+    **When the version could not be read at all, the line says so rather
+    than naming a version.** `app_metadata.py` falls back to
+    `UNKNOWN_VERSION` when installed-package metadata is missing, as in a
+    frozen or bundled build or a corrupted install. That fallback policy is
+    right, because failing visibly is better than crashing on launch. What
+    was wrong was where the visible failure appeared. Substituted into the
+    sentence below, the fallback produced "Version unknown". This subtitle
+    is the interface's only link between a displayed number and the model
+    that produced it. So a reader saw a provenance field that seemed to give
+    a version when there was none (`PL-KCWD`). `CLAUDE.md` requires a
+    displayed value to be traceable to the exact model and version behind
+    it. A build that cannot offer that has to say so. An unidentified build
+    is precisely the one whose numbers must not be quoted later as if they
+    came from a known version.
 
     Args:
         agent_display_name: The running agent, as it is named to a reader.
@@ -1122,18 +1147,19 @@ def format_delivered_label(agent_display_name: str) -> str:
 def format_agent_volume(litres: float) -> str:
     """Render an agent amount of the accounting panel, in litres of agent gas.
 
-    At `AGENT_VOLUME_DISPLAY_RESOLUTION_L`, the resolution
-    `AGENT_VOLUME_DISPLAY_DECIMALS` records the derivation of (`PL-TG60`).
-    The same three rules `format_percent` follows, for the same reasons:
-    round rather than truncate; mark a positive value that rounds to zero as
-    below the resolution rather than showing it as `0.0 L`, because in the
-    first minute of a run the exhaust and the stored amounts are real and
-    small, and `0.0 L` there would assert that nothing has left the circuit
-    when the model says it has; and never absorb an impossible negative into
-    a plausible reading. An amount has no checked type to refuse one, as a
-    `Fraction` refuses a negative for `format_percent`, so this leaves it
-    visible as the anomaly it is. Exactly zero reads as zero, which is what
-    it is before a run starts.
+    The amount is rendered at `AGENT_VOLUME_DISPLAY_RESOLUTION_L`. The
+    comment on `AGENT_VOLUME_DISPLAY_DECIMALS` records how that resolution
+    was derived (`PL-TG60`). This function follows the same three rules as
+    `format_percent`, for the same reasons. It rounds rather than truncates.
+    It marks a positive value that rounds to zero as below the resolution,
+    rather than showing it as `0.0 L`. In the first minute of a run the
+    exhausted and stored amounts are real and small, and `0.0 L` there would
+    assert that nothing has left the circuit when the model says it has. And
+    it never absorbs an impossible negative into a plausible reading. An
+    amount has no checked type that refuses a negative, as a `Fraction` does
+    for `format_percent`. So this function leaves a negative amount visible,
+    as the anomaly it is. Exactly zero is shown as zero, which is the amount
+    before a run starts.
 
     Args:
         litres: The amount, in litres of equivalent pure agent gas.
@@ -1156,31 +1182,34 @@ def format_agent_volume(litres: float) -> str:
 def format_agent_residual(litres: float) -> str:
     """Render a residual of the accounting panel as the power of ten it lies below.
 
-    For the unaccounted amount and the absolute error, which exist to show how
-    far below the amounts' resolution the conservation check sits: at 1e-12 L
-    `format_agent_volume`'s fixed form would read `0.0 L` and say nothing
-    (`PL-TG60`). Each prints the smallest power of ten its magnitude lies
-    strictly below, so `5.601e-14` reads `<1e-13 L`, the `<` meaning what it
-    means on the amounts above.
+    This function renders the unaccounted amount and the absolute error. Those
+    two lines exist to show how far below the amounts' resolution the
+    conservation check sits. At 1e-12 L, the fixed form of
+    `format_agent_volume` would show `0.0 L` and say nothing (`PL-TG60`). Each
+    line instead prints the smallest power of ten that its magnitude is
+    strictly less than. So `5.601e-14` is shown as `<1e-13 L`, where the `<`
+    means the same as it does on the amounts above.
 
-    **The decade is the only digit the value has** (`PL-3PJZ`). A passing
-    residual is the rounding left over from summing four amounts, so its
-    mantissa and its sign are set by the order the arithmetic ran in, not by
-    anything modelled, and a correct last-bit change to the propagator redraws
-    them; `docs/MODEL.md` § "Displayed precision" has the measurement. Any
-    finer form prints a digit that is noise. Both lines therefore read alike.
-    The signed values are not lost where they mean something: a check that
-    fails halts the run, and the failure notice prints them to six figures.
+    **The decade is the only meaningful digit in the value** (`PL-3PJZ`). A
+    passing residual is the rounding error left over from summing four
+    amounts. Its mantissa and its sign are set by the order in which the
+    arithmetic ran, not by anything modelled, and a correct last-bit change
+    to the propagator changes them. `docs/MODEL.md` § "Displayed precision"
+    has the measurement. Any finer form would print a digit that is noise.
+    So both lines use the same form. The signed values are still shown when
+    they mean something: a failing check halts the run, and the failure
+    notice prints them to six figures.
 
-    Exactly zero reads `0 L`. A value that is not finite cannot come out of
-    the accounting check, and is printed as itself rather than bounded, so the
-    anomaly is visible instead of absorbed into a plausible reading.
+    Exactly zero is shown as `0 L`. A value that is not finite cannot come
+    out of the accounting check. If one arrives, it is printed as itself
+    rather than as a bound, so the anomaly is visible instead of absorbed
+    into a plausible reading.
 
     Args:
         litres: The residual, in litres of equivalent pure agent gas.
 
     Returns:
-        The bound with its unit, such as `<1e-13 L`; `0 L` for exactly zero.
+        The bound with its unit, such as `<1e-13 L`, or `0 L` for exactly zero.
     """
 
     if not isfinite(litres):
@@ -1189,10 +1218,10 @@ def format_agent_residual(litres: float) -> str:
     if litres == 0.0:
         return "0 L"
 
-    # `Decimal` holds the float's exact binary value, so `adjusted()` is the
-    # exact floor of its base-10 logarithm. `math.log10` rounds: the float
-    # written `1e-16` is 9.99...e-17 exactly, and it returns -16.0 for it, which
-    # would print the decade above the one the value is in.
+    # `Decimal` stores the float's exact binary value, so `adjusted()` is the
+    # exact floor of its base-10 logarithm. `math.log10` rounds instead. The
+    # float written `1e-16` is exactly 9.99...e-17, yet `math.log10` returns
+    # -16.0 for it, which would print the decade above the one the value is in.
     exponent = Decimal(abs(litres)).adjusted() + 1
 
     return f"<1e{exponent:+03d} L"

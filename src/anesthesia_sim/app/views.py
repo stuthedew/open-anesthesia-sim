@@ -165,7 +165,7 @@ class _RunCopies[W: QWidget]:
         self._copies = kept
 
     def _built_for(self, run: RunSurfaces) -> W:
-        """A new copy for `run`, deleted with the run and forgotten once Qt destroys it."""
+        """Build a new copy for `run`, deleted with the run and forgotten once Qt destroys it."""
 
         copy = self._build(run)
 
@@ -224,7 +224,7 @@ class _RunLines:
 
 
 def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
-    """The window a chart's saved state holds, and the notice to show if it could not be read.
+    """Return the window that a chart's saved state holds, and a notice if it could not be read.
 
     When nothing was saved, or the state is version 1, which held no setting,
     the result is the default window, "Fit run". A version 2 state holds its
@@ -282,7 +282,7 @@ class _TimeWindow:
         self.selector.time_base_requested.connect(self._choose)
 
     def request(self, width_px: float) -> FrameRequest:
-        """The frame the chart asks for: this window, sampled for `width_px`."""
+        """Return the frame that the chart asks for: this window, sampled for `width_px`."""
 
         return FrameRequest(self.time_base, width_px)
 
@@ -318,15 +318,16 @@ class _TimeWindow:
 
 
 def _state_notice_for(context: ViewContext) -> QLabel:
-    """`_state_notice` for a View whose saved state holds its version and nothing else."""
+    """Return `_state_notice` for a View whose saved state holds only its version."""
 
     return _state_notice(unreadable_state_text(context.saved_state, _STATE_VERSION))
 
 
 def _state_notice(text: str | None) -> QLabel:
-    """The line a View shows while it is drawn with defaults because its saved state was unreadable.
+    """Return the line a View shows while drawn with defaults because its saved state is unreadable.
 
-    Conditional text: hidden unless the saved state could not be read (Q4).
+    The line is conditional text. It is hidden unless the saved state could
+    not be read (Q4).
     """
 
     notice = styled_label(
@@ -355,7 +356,7 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
 
 
 def _bare_column(view: QWidget) -> QVBoxLayout:
-    """A column with no margins, for a View whose rows are panels of their own."""
+    """Return a column with no margins, for a View whose rows are panels of their own."""
 
     column = QVBoxLayout(view)
     column.setContentsMargins(0, 0, 0, 0)
@@ -453,8 +454,9 @@ class ConcentrationView(QWidget):
         self.chart.draw(frame)
         self._drawn = True
         self._window.drew(frame)
-        # The names before the selection, so a legend told of a second run's
-        # curves already knows what that run is called (`PL-7Z84`).
+        # Show the run names before the selection. Then, when the legend is told
+        # about a second run's curves, it already knows what that run is called
+        # (`PL-7Z84`).
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.legend.show_selection(tick.selection)
         self.time_axis_caption.setText(time_axis_caption(frame))

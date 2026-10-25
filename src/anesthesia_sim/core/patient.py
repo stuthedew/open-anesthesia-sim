@@ -1,14 +1,16 @@
-"""Patient-side compartments: the vessel-rich, muscle, and fat tissue groups
-(`tissue.py`) plus mixed-venous blood (`blood.py`), coupled through cardiac
-output and each tissue's perfusion fraction of it.
+"""The patient-side compartments, coupled through cardiac output and each tissue's share of it.
 
-`PatientCompartments` holds those compartments and the flow allocation
-between them, and holds no method that steps them. It had one - `advance()`,
+The compartments are the vessel-rich, muscle, and fat tissue groups
+(`tissue.py`) and mixed-venous blood (`blood.py`). Each tissue group receives
+its perfusion fraction of the cardiac output.
+
+`PatientCompartments` holds those compartments and the flow allocation between
+them, and it has no method that steps them. It once had one, `advance()`,
 which stepped the three tissue groups and then mixed their end-of-step return
-into the venous pool - and that was an operator split rather than a closed
-form: `core/__init__.py` carries the measurement and `PL-74R0` the decision.
+into the venous pool. That was an operator split rather than a closed form.
+`core/__init__.py` has the measurement, and `PL-74R0` has the decision.
 Nothing outside the governing equations may move agent between two modelled
-compartments, which is the rule `alveolar.py` states for the same reason.
+compartments. `alveolar.py` states the same rule, for the same reason.
 """
 
 from __future__ import annotations
@@ -34,9 +36,10 @@ _TISSUE_GROUP_FIELDS = ("vessel_rich", "muscle", "fat")
 class PatientCompartmentsState:
     """The patient side's run state, one entry per compartment.
 
-    Named per compartment rather than held as a tuple, so that restoring
-    cannot silently pair a snapshot with the wrong tissue group; cardiac
-    output is absent because it is a setting, not trajectory.
+    Each compartment has a named field rather than a place in a tuple, so that
+    restoring cannot silently pair a snapshot with the wrong tissue group.
+    Cardiac output is absent because it is a setting, not part of the
+    trajectory.
     """
 
     vessel_rich: TissueGroupState
@@ -47,7 +50,7 @@ class PatientCompartmentsState:
 
 @dataclass(slots=True)
 class PatientCompartments:
-    """VRG, muscle, fat, and mixed-venous blood."""
+    """The vessel-rich group (VRG), muscle, fat, and mixed-venous blood of one patient."""
 
     cardiac_output_l_min: CardiacOutput
     vessel_rich: TissueGroup
@@ -59,34 +62,35 @@ class PatientCompartments:
         """Refuse tissue perfusion fractions that do not sum to 1.
 
         Each tissue group's blood flow is its perfusion fraction of the
-        cardiac output, and the venous pool's is the whole of it
-        (`docs/MODEL.md` § "Tissue groups"). No compartment stores a flow:
-        each is formed from this patient's own output wherever it is read
-        (`TissueGroup.blood_flow_l_min_at`, `PL-HQF5`). So the cardiac output
-        is the one stored copy, and the fractions summing to 1 is the only
-        relation left to check. A tissue group refuses a second write of its
-        fraction (`PL-Z0HN`), and `__setattr__` makes the same check when a
-        tissue group of a built patient is replaced, so the relation checked
-        here holds for the patient's whole life.
+        cardiac output, and the venous pool's flow is the whole cardiac output
+        (`docs/MODEL.md` § "Tissue groups"). No compartment stores a flow.
+        Each flow is formed from this patient's own cardiac output wherever it
+        is read (`TissueGroup.blood_flow_l_min_at`, `PL-HQF5`). So the cardiac
+        output is the one stored copy, and the only relation left to check is
+        that the fractions sum to 1. A tissue group rejects a second write of
+        its fraction (`PL-Z0HN`). `__setattr__` makes the same sum check when a
+        tissue group of a built patient is replaced. So the relation checked
+        here still applies for the patient's whole life.
 
         Raises:
             SimulationConfigurationError: the tissue perfusion fractions do not
                 sum to 1.
         """
 
-        # The cardiac output's type was required as the constructor wrote the
-        # field, by `__setattr__` below.
+        # `__setattr__` below already checked the cardiac output's type when
+        # the constructor wrote the field.
         require_perfusion_fractions_sum_to_one(self.total_perfusion_fraction)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
-        # Hidden from `mypy` on purpose. A class that defines `__setattr__` is
-        # one `mypy` lets assign any attribute name, typed by the method's
-        # `value`, so with the guard in view a misspelt field written in `src/`
-        # would pass `--strict` and fail at run time against the slots - on
-        # the classes that define one alone. Hidden, `mypy` reads the
-        # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read. Tests check these
-        # lines, because `mypy` does not (`PL-LBQY`, found at review).
+        # Hidden from `mypy` on purpose. When a class defines `__setattr__`,
+        # `mypy` lets code assign any attribute name, typed by the method's
+        # `value` parameter. So with this guard visible, a misspelt field
+        # written in `src/` would pass `--strict` and fail at run time against
+        # the slots. That happens only on the classes that define
+        # `__setattr__`. With the guard hidden, `mypy` checks the dataclass's
+        # fields and their types as before. This guard is the runtime check for
+        # the callers that `mypy` does not check. Tests check these lines,
+        # because `mypy` does not (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a cardiac output or a tissue group the patient cannot take.
@@ -177,10 +181,11 @@ class PatientCompartments:
         """Construct the v0.1.0 reference patient.
 
         The data file's default cardiac output is parsed into its checked type
-        here, where the patient is built from it, so a file naming one outside
-        the supported range is refused in the words a refused control uses
-        (`core/supported_ranges.py`); `core/parameters.py` checks the value
-        for sign and finiteness alone and holds no copy of the range.
+        here, where the patient is built from it. So a file that names a value
+        outside the supported range is rejected in the same words used for a
+        rejected control (`core/supported_ranges.py`). `core/parameters.py`
+        checks the value only for sign and finiteness, and keeps no copy of the
+        range.
 
         Raises:
             SimulationConfigurationError: the file's default cardiac output is
@@ -226,7 +231,7 @@ class PatientCompartments:
 
     @property
     def total_perfusion_fraction(self) -> float:
-        """Sum tissue-group perfusion fractions; must equal 1 within tolerance."""
+        """Return the sum of the tissue perfusion fractions, which must be 1 within tolerance."""
 
         return sum(tissue.perfusion_fraction for tissue in self.tissues)
 
@@ -235,8 +240,8 @@ class PatientCompartments:
         """The flow-weighted partial-pressure fraction returning to the venous pool.
 
         Each group contributes its venous outflow in proportion to its share
-        of cardiac output; `TissueGroup.venous_outflow_partial_pressure_fraction`
-        is why that outflow equals the group's own fraction.
+        of cardiac output. `TissueGroup.venous_outflow_partial_pressure_fraction`
+        explains why that outflow equals the group's own fraction.
         """
 
         return sum(
@@ -248,9 +253,10 @@ class PatientCompartments:
     def mixed_venous_partial_pressure_fraction(self) -> float:
         """The mixed-venous partial-pressure-equivalent fraction $`F_v`$.
 
-        Not the venous *concentration*, which is this times
-        $`\\lambda_{b:g}`$; `docs/MODEL.md` § "Concentrations" is why every
-        compartment here is stated as a partial-pressure-equivalent fraction.
+        This is not the venous *concentration*, which is this fraction times
+        $`\\lambda_{b:g}`$. `docs/MODEL.md` § "Concentrations" explains why
+        every compartment here is stated as a partial-pressure-equivalent
+        fraction.
         """
 
         return self.venous_blood.partial_pressure_fraction
@@ -264,13 +270,13 @@ class PatientCompartments:
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         """Change cardiac output without changing stored agent.
 
-        The output arrives checked against the supported range, which its
-        type was built through and nothing here checks again
-        (`core/supported_ranges.py`). Every compartment's blood flow is formed
-        from the output when it is read, so writing the field moves them all
-        (`PL-HQF5`). It is the one way to change the output of a built
-        patient, since `__setattr__` refuses a new output written to the
-        field directly (`PL-KFNP`).
+        The output arrives already checked against the supported range,
+        because its type can only be built through that check. Nothing here
+        checks it again (`core/supported_ranges.py`). Every compartment's blood
+        flow is formed from the output when it is read, so writing the field
+        changes them all (`PL-HQF5`). This method is the one way to change the
+        output of a built patient, since `__setattr__` rejects a new output
+        written to the field directly (`PL-KFNP`).
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
@@ -278,8 +284,8 @@ class PatientCompartments:
         """
 
         require_cardiac_output(cardiac_output_l_min)
-        # Past `__setattr__`, which refuses a new output written to the field
-        # directly so that this method stays the one way to change it.
+        # Bypass `__setattr__`, which rejects a new output written to the field
+        # directly, so that this method stays the one way to change it.
         object.__setattr__(self, "cardiac_output_l_min", cardiac_output_l_min)
 
     def capture_state(self) -> PatientCompartmentsState:

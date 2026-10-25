@@ -1,90 +1,102 @@
-"""The file a reader's Workspaces are saved to, and what a launch does with what it finds.
+"""The file that a reader's Workspaces are saved to, and what a launch does with what it finds.
 
 Everything here was decided in `PL-SSQW` (project owner, 2026-09-27, ratified,
-over the alternative each answer names), and this is the first state the
-application writes outside its own tree.
+over the alternative that each answer names). `workspaces.json` is the first
+state that the application writes outside its own tree.
 
-**Where the file lives** (Q1). The store takes a directory and resolves none:
-the application's entry point asks Qt for `QStandardPaths.AppDataLocation`
-once it has set the organization and application names - macOS
-`~/Library/Application Support/<App>`, Windows `%APPDATA%\\<Org>\\<App>`,
-Linux `~/.local/share/<App>`, from Qt's own table in
-`src/corelib/io/qstandardpaths.cpp` (qt/qtbase, read 2026-09-27) - and hands
-the answer to `user_data_directory`, which applies the one override,
-`USER_DIRECTORY_VARIABLE`, for a headless or portable run. A test passes
-`tmp_path`. Roaming rather than Local on Windows because the file is
-machine-independent by design: sizes are fractions and it holds no window
-geometry (`PL-HJPY`). Blender's version-numbered configuration directory is
-not adopted; its preferences are not forward compatible, and this file carries
-a `schema_version` for exactly that job. Nothing in this package imports Qt,
-which `tools/import_boundary_check.py` enforces.
+**Where the file lives** (Q1). The store takes a directory and does not
+resolve one itself. The application's entry point asks Qt for
+`QStandardPaths.AppDataLocation` once it has set the organization and
+application names. Qt's own table in `src/corelib/io/qstandardpaths.cpp`
+(qt/qtbase, read 2026-09-27) gives macOS `~/Library/Application Support/<App>`,
+Windows `%APPDATA%\\<Org>\\<App>` and Linux `~/.local/share/<App>`. The entry
+point hands that location to `user_data_directory`, which applies the one
+override, `USER_DIRECTORY_VARIABLE`, for a headless or portable run. A test
+passes `tmp_path`. On Windows the file goes in Roaming rather than Local,
+because it is machine-independent by design: sizes are fractions, and it holds
+no window geometry (`PL-HJPY`). Blender's version-numbered configuration
+directory is not adopted. Blender's preferences are not forward compatible,
+and this file carries a `schema_version` for exactly that job. Nothing in this
+package imports Qt, which `tools/import_boundary_check.py` enforces.
 
-**One file, `workspaces.json`, holding the whole set** (Q2), because the
-set's invariants - never empty, one active, names unique - are the set's and a
-directory of files cannot state them.
+**One file, `workspaces.json`, holds the whole set** (Q2). The set has
+invariants of its own: it is never empty, exactly one Workspace is active,
+and the names are unique. A directory of separate files could not state them.
 
-**Written only on the reader's word, and atomically** (Q3, Q4; `PL-WV9K` Q4,
-project owner, 2026-09-27, specified: an explicit "Save as default", like
-Blender's startup file, never an automatic save). `save` writes the document
-to `workspaces.json.tmp` beside the file, flushes it and `fsync`s it, copies
-the current file to `workspaces.json.previous` - through a temporary of its
-own and a replace, so the previous generation is whole or the one before -
-so one prior generation survives a bad write of the new one, then replaces
-the target with `os.replace` - atomic on POSIX and, unlike `os.rename`,
-allowed to replace an existing file on Windows (CPython `Doc/library/os.rst`,
-read 2026-09-27) - and last `fsync`s the directory where the platform lets one
-be opened, a best effort that cannot fail a save the file already holds. The
-previous generation is a copy rather than Blender's rename, so there is no
-instant at which the directory holds no current file. A torn current file
-therefore arrives only through a crash mid-replace, which the operating system
-guarantees leaves either file whole. Each step that fails names its own path
-and what it was doing in `WorkspaceFileError`, and the temporary files are
-removed. A first run leaves no trace: nothing is written until the first
-"Save as default", when the directory is created.
+**The file is written only when the reader asks, and atomically** (Q3, Q4;
+`PL-WV9K` Q4, project owner, 2026-09-27, specified: an explicit "Save as
+default", like Blender's startup file, never an automatic save). `save` takes
+these steps in order:
 
-**What a launch finds, and what it does** (Q5, Q6), all of it returned in
-`Loaded` and none of it silent:
+1. It writes the document to `workspaces.json.tmp` beside the file, flushes it
+   and `fsync`s it.
+2. It copies the current file to `workspaces.json.previous`, so that one prior
+   generation survives a bad write of the new one. The copy goes through a
+   temporary file of its own and a replace, so the previous generation is
+   either whole or still the one before.
+3. It replaces the target with `os.replace`. That call is atomic on POSIX and,
+   unlike `os.rename`, it is allowed to replace an existing file on Windows
+   (CPython `Doc/library/os.rst`, read 2026-09-27).
+4. Last, it `fsync`s the directory, where the platform lets a directory be
+   opened. This is a best effort, and it cannot fail a save once the file is
+   written.
 
-- *No file.* The shipped set, nothing said, saving on.
-- *A file this build reads.* The set, as written; one written by an older
-  build is migrated in memory by `layout/migrations.py`, the reader is told
-  only where a step was lossy, and the pre-migration file is kept once as
-  `workspaces.v<N>.json` at the next save.
-- *A file a newer build wrote.* Refused, touched by nothing: the shipped set
-  is shown, saving is off for the session, and the notice names the file, its
-  version and this build's. The file is the reader's work, and a roll-back
-  that overwrote it would be the deletion this policy exists to refuse. An
-  alternative, setting it aside under a dated name and starting fresh, was
-  refused because it moves the reader's file unasked for the benefit of a
-  session that can equally run read-only.
-- *A file that cannot be read* - permissions, an I/O error - is answered as a
-  newer one is, since nothing can be known about it. A file that is not UTF-8
-  text is invalid rather than unreadable: it was read, and it is not a document.
-- *A file this build refuses as invalid* - truncated, not JSON, or breaking an
-  invariant `layout/serialization.py` names - is set aside unchanged as
-  `workspaces.invalid-<UTC time>.json`, the previous generation is loaded
-  where it validates and the shipped set otherwise, the notice says which,
-  and saving continues: the set-aside file is untouched evidence and the next
-  save cannot damage it. Where it cannot be set aside, saving is off instead,
-  since a save would overwrite it. A previous generation that itself refuses
-  to read is left where it is and named in the notice, and one a newer build
-  wrote turns saving off whatever the current file holds, as a newer current
-  file does, since the second save would overwrite it.
-- *No current file, but a previous generation that reads.* The previous
-  generation, with a notice: a current file set aside at an earlier launch and
-  not saved since would otherwise load the shipped set silently, with the
-  reader's work beside it.
-- *An unwritable directory* is met at `save`, which raises
-  `WorkspaceFileError` naming the path and the reason, so the action that
-  asked reports it where it was invoked; the session continues.
+The previous generation is a copy rather than Blender's rename, so there is no
+moment at which the directory has no current file. A torn current file can
+therefore arise only from a crash during the replace, and the operating system
+guarantees that such a crash leaves one of the two files whole. Each step that
+fails names its own path, and what it was doing, in `WorkspaceFileError`, and
+the temporary files are removed. A first run leaves no trace. Nothing is
+written until the first "Save as default", which creates the directory.
 
-An unknown View kind in a file that reads is not a file error: the Workspace
-loads and that Area shows `PL-R1WQ`'s failure state (`LayoutModel.unknown_kinds`).
+**What a launch finds, and what it does** (Q5, Q6). All of it is returned in
+`Loaded`, and none of it is silent:
 
-The shipped set is `PL-KXTL`'s: `layout/shipped.py` reads it from
-`data/workspaces/` with the same reader as a learner's file, and the store is
-handed it and does not know where it came from. `app/main.py` resolves the
-directory and loads the set at launch, and the Layout menu in
+- *No file.* The shipped set is shown, with no notice, and saving is on.
+- *A file this build reads.* The set is shown as written. A file written by an
+  older build is migrated in memory by `layout/migrations.py`. The reader is
+  told only when a step was lossy, and at the next save the pre-migration file
+  is kept once as `workspaces.v<N>.json`.
+- *A file a newer build wrote.* The file is refused, and nothing touches it.
+  The shipped set is shown, saving is off for the session, and the notice
+  names the file, its version and this build's version. The file is the
+  reader's work, and a roll-back that overwrote it would be the deletion that
+  this policy exists to prevent. One alternative was to set the file aside
+  under a dated name and start fresh. It was refused because it moves the
+  reader's file without asking, to benefit a session that can just as well run
+  read-only.
+- *A file that cannot be read*, because of a permissions error or an I/O
+  error, is handled as a newer file is, since nothing can be known about it. A
+  file that is not UTF-8 text is invalid rather than unreadable: it was read,
+  and it is not a document.
+- *A file this build rejects as invalid* is set aside unchanged as
+  `workspaces.invalid-<UTC time>.json`. Such a file is truncated, is not JSON,
+  or breaks an invariant that `layout/serialization.py` names. The previous
+  generation is loaded if it is valid, and the shipped set otherwise, and the
+  notice says which. Saving continues, because the set-aside file is untouched
+  evidence that the next save cannot damage. If the file cannot be set aside,
+  saving is off instead, since a save would overwrite it. A previous
+  generation that itself cannot be read, or is invalid, is left where it is
+  and named in the notice. A previous generation that a newer build wrote turns saving off,
+  whatever the current file contains, just as a newer current file does,
+  because the second save would overwrite it.
+- *No current file, but a previous generation that this build reads.* The
+  previous generation is shown, with a notice. Without this case, a launch
+  after a current file was set aside, with nothing saved since, would load the
+  shipped set silently, while the reader's work sat beside it.
+- *An unwritable directory* is found at `save`, which raises
+  `WorkspaceFileError` naming the path and the reason. The action that asked
+  for the save then reports the error where it was invoked, and the session
+  continues.
+
+An unknown View kind in a file that this build reads is not a file error. The
+Workspace loads, and that Area shows the failure state from `PL-R1WQ`
+(`LayoutModel.unknown_kinds`).
+
+The shipped set comes from `PL-KXTL`. `layout/shipped.py` reads it from
+`data/workspaces/` with the same reader as a learner's file. The store is
+handed the set and does not know where it came from. `app/main.py` resolves
+the directory and loads the set at launch, and the Layout menu in
 `app/workspace_tabs.py` saves it (`PL-DWHG`).
 """
 
@@ -130,15 +142,15 @@ __all__ = [
 # read by the entry point for a headless or portable run (`PL-SSQW` Q1).
 USER_DIRECTORY_VARIABLE: Final = "ANESTHESIA_SIM_USER_DIR"
 
-# The file, the generation before it, and the file a save is written to
-# before it replaces the current one, all in the store's directory.
+# The current file, the previous generation, and the file that a save writes
+# before it replaces the current file, all in the store's directory.
 WORKSPACES_FILE_NAME: Final = "workspaces.json"
 PREVIOUS_FILE_NAME: Final = f"{WORKSPACES_FILE_NAME}.previous"
 PENDING_FILE_NAME: Final = f"{WORKSPACES_FILE_NAME}.tmp"
 _PREVIOUS_PENDING_FILE_NAME: Final = f"{PREVIOUS_FILE_NAME}.tmp"
 
 # How the moment a file was set aside is written into its name: UTC, to the
-# second, in the compact form of ISO 8601, which sorts as it reads.
+# second, in the compact form of ISO 8601, so that the names sort in time order.
 _SET_ASIDE_TIME_FORMAT: Final = "%Y%m%dT%H%M%SZ"
 
 
@@ -173,28 +185,30 @@ def kept_file_name(written_at: SchemaVersion) -> str:
     Raises:
         TypeError: `written_at` is not an `int`, or is a `bool`, which would
             name the file `workspaces.vTrue.json`.
-        InvalidLayout: `written_at` is below 1, a version no build wrote.
+        InvalidLayout: `written_at` is less than 1, a version no build wrote.
     """
 
-    # Built through the type even from a `SchemaVersion`, so a caller the
-    # type checker does not reach cannot name a version that does not exist.
+    # The name is built through the type even from a `SchemaVersion`, so that a
+    # caller the type checker does not cover cannot name a version that does
+    # not exist.
     return f"workspaces.v{SchemaVersion(written_at)}.json"
 
 
 def user_data_directory(
     standard_location: str | os.PathLike[str], environment: Mapping[str, str]
 ) -> Path:
-    """The directory the reader's state is kept in.
+    """Return the directory that the reader's state is kept in.
 
-    `USER_DIRECTORY_VARIABLE` where `environment` sets it to a non-empty
-    value, and otherwise `standard_location`, the directory Qt reports for
-    `QStandardPaths.AppDataLocation` once the entry point has set the
-    organization and application names (`PL-SSQW` Q1).
+    The result is the value of `USER_DIRECTORY_VARIABLE` when `environment`
+    sets it to a non-empty value. Otherwise it is `standard_location`, the directory that Qt
+    reports for `QStandardPaths.AppDataLocation` once the entry point has set
+    the organization and application names (`PL-SSQW` Q1).
 
     Raises:
-        LayoutRefused: neither names a directory - the override is unset or
-            empty and the platform reported no location, which Qt signals
-            with an empty string - so the session has nowhere to save.
+        LayoutRefused: neither names a directory, so the session has nowhere
+            to save. That happens when the override is unset or empty and the
+            platform reported no location, which Qt signals with an empty
+            string.
     """
 
     override = environment.get(USER_DIRECTORY_VARIABLE, "")
@@ -215,10 +229,10 @@ class Source(Enum):
     """Which set a launch is showing."""
 
     FILE = "file"
-    """`workspaces.json`, as written, or migrated where an older build wrote it."""
+    """`workspaces.json`, as written, or migrated if an older build wrote it."""
 
     PREVIOUS = "previous"
-    """`workspaces.json.previous`: the generation before, rescued."""
+    """`workspaces.json.previous`, the previous generation, recovered in place of the file."""
 
     SHIPPED = "shipped"
     """The shipped set: no file, or none that could be used."""
@@ -228,13 +242,13 @@ class Source(Enum):
 class Loaded:
     """What `WorkspaceStore.load` found and decided, for the interface to show and act on.
 
-    `notice` is `None` where nothing happened that the reader should know,
-    which is a first run and a file read as written; otherwise it is the
-    sentence the interface shows, naming the file and what was done.
-    `writable` is `False` where saving is off for the session, and `save`
-    refuses while it is. `set_aside` is where an invalid file went.
-    `written_at` is the version the loaded file was written at, or `None`
-    where the shipped set is shown.
+    `notice` is `None` when nothing happened that the reader needs to know
+    about, which is the case on a first run and for a file read as written.
+    Otherwise it is the sentence that the interface shows, naming the file and
+    what was done. `writable` is `False` when saving is off for the session,
+    and `save` refuses while it is. `set_aside` is the path that an invalid
+    file was moved to. `written_at` is the version that the loaded file was
+    written at, or `None` when the shipped set is shown.
     """
 
     workspaces: WorkspaceSet
@@ -246,14 +260,16 @@ class Loaded:
 
 
 class WorkspaceStore:
-    """The reader's `workspaces.json` in one directory: `load` at launch, `save` on their word.
+    """The reader's `workspaces.json` in one directory: `load` at launch, `save` when asked.
 
     A store `load`s before it `save`s, since whether saving is allowed is a
     fact about the file that was found.
     """
 
     def __init__(self, directory: Path, clock: Callable[[], datetime] | None = None) -> None:
-        """A store over `directory`, which need not exist yet; `clock` names set-aside files.
+        """Create a store for `directory`, which need not exist yet.
+
+        `clock` gives the time that set-aside files are named for.
 
         Raises:
             TypeError: `directory` is not a `Path`.
@@ -289,7 +305,9 @@ class WorkspaceStore:
         return self._loaded
 
     def load(self, shipped: WorkspaceSet) -> Loaded:
-        """What this launch shows, by the policy above; `shipped` is shown where no file can be.
+        """Decide and return what this launch shows, by the policy in the module docstring.
+
+        `shipped` is the set that is shown when no file can be used.
 
         Raises:
             TypeError: `shipped` is not a `WorkspaceSet`.
@@ -308,13 +326,13 @@ class WorkspaceStore:
 
         Raises:
             TypeError: `workspaces` is not a `WorkspaceSet`.
-            LayoutRefused: nothing has been loaded, or the load found a file a
-                newer build wrote or one that could not be read, so saving is
-                off for the session; the message says which.
+            LayoutRefused: nothing has been loaded, or the load found a file
+                that a newer build wrote or that could not be read, so saving
+                is off for the session. The message says which.
             WorkspaceFileError: the directory could not be created, or a file
-                could not be written, copied or replaced; the message names
-                the path the step was working on and the operating system's
-                reason, and the current file is as it was.
+                could not be written, copied or replaced. The message names
+                the path that the step was working on and the operating
+                system's reason, and the current file is left as it was.
         """
 
         if not isinstance(workspaces, WorkspaceSet):
@@ -426,7 +444,7 @@ class WorkspaceStore:
         )
 
     def _without_current_file(self, shipped: WorkspaceSet) -> Loaded:
-        """No `workspaces.json`: a first run, unless a previous generation reads."""
+        """Handle a missing `workspaces.json`: a first run, unless a previous generation exists."""
 
         previous = self._directory / PREVIOUS_FILE_NAME
         rescued = self._read_previous()
@@ -468,9 +486,9 @@ class WorkspaceStore:
         )
 
     def _set_aside(self, shipped: WorkspaceSet, reason: str) -> Loaded:
-        """An invalid current file: set it aside, then the previous generation or the shipped set.
+        """Set an invalid current file aside, then load the previous generation or the shipped set.
 
-        `reason` is the format error's message, carried into the notice.
+        `reason` is the format error's message, which is carried into the notice.
         """
 
         try:
@@ -538,8 +556,12 @@ class WorkspaceStore:
         )
 
     def _read_previous(self) -> ReadWorkspaceSet | UnsupportedSchemaVersion | str | None:
-        """The previous generation, as read; the refusal where a newer build wrote it; why it could
-        not be used; or `None` where there is none."""
+        """Read the previous generation, and return it or the reason it cannot be used.
+
+        The result is the previous generation as read, or the refusal when a
+        newer build wrote it, or a string saying why it could not be used, or
+        `None` when there is no previous generation.
+        """
 
         try:
             text = (self._directory / PREVIOUS_FILE_NAME).read_text(encoding="utf-8")
@@ -558,7 +580,7 @@ class WorkspaceStore:
             return str(error)
 
     def _set_aside_path(self) -> Path:
-        """A path in the directory that nothing holds, named for this moment."""
+        """Return a path in the directory where no file exists yet, named for this moment."""
 
         now = self._clock()
         attempt = 0
@@ -569,7 +591,10 @@ class WorkspaceStore:
         return candidate
 
     def _pre_migration_keep(self) -> tuple[Path, Path] | None:
-        """The file an older build wrote and where to keep it once, or `None` where none is owed."""
+        """Return the file an older build wrote and where to keep it, or `None` if no copy is due.
+
+        The pre-migration file is kept only once.
+        """
 
         if self._loaded is None or self._loaded.written_at is None:
             return None
@@ -591,7 +616,7 @@ class WorkspaceStore:
 
 
 def _attempt(doing: str, path: Path, action: Callable[[], object]) -> None:
-    """Run one step of a save, naming `path` and `doing` where the operating system refuses it.
+    """Run one step of a save, naming `path` and `doing` if the operating system refuses it.
 
     Raises:
         WorkspaceFileError: `action` raised an `OSError`.
@@ -613,7 +638,7 @@ def _write_synced(path: Path, text: str) -> None:
 
 
 def _copy_replacing(source: Path, pending: Path, target: Path) -> None:
-    """Copy `source` over `target` by way of `pending`, so `target` is whole or the one before."""
+    """Copy `source` over `target` via `pending`, so `target` is whole or still the one before."""
 
     shutil.copyfile(source, pending)
     os.replace(pending, target)
@@ -642,9 +667,9 @@ def _utc_now() -> datetime:
 def _sync_directory_quietly(directory: Path) -> None:
     """Flush the directory's own entries where the platform lets a directory be opened.
 
-    A best effort: the file is already on the disk and the directory already
-    names it, and a filesystem that refuses to `fsync` a directory has not
-    failed the save.
+    This is a best effort. The file is already on the disk and the directory
+    already names it, so a filesystem that refuses to `fsync` a directory has
+    not failed the save.
     """
 
     flag = getattr(os, "O_DIRECTORY", None)

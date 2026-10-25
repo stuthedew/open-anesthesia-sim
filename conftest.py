@@ -76,7 +76,10 @@ during the run, so the hazard above, a cache written in the middle of a
 mutation and a restore, cannot arise. The option refuses to run without
 `--collect-only`, so a run that executes tests can never write bytecode.
 `make check` does not use it, because a cache written there stays in the
-working tree, where later edits and mutation runs meet it.
+working tree, where later edits and mutation runs meet it. A share can hold no
+test module, and pytest reports that as exit 5. The option turns that one status
+into success, because a share with nothing to cache has done its job
+(`PL-VMMB`).
 
 **A test that reads the item store says so** (`PL-DXD4`). On a pull request
 that changes only item files, `quality.yml` skips the full suite and runs only
@@ -269,6 +272,23 @@ def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool 
     index, shares = share
     key = collection_path.relative_to(config.rootpath).as_posix().encode()
     return True if zlib.crc32(key) % shares != index - 1 else None
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int | pytest.ExitCode) -> None:
+    """Pass a cache share that collected no test module, which pytest reports as exit 5.
+
+    The CRC-32 split can leave a share empty. With one share per core, that
+    becomes likely on a runner with dozens of cores: at 40 shares of 183
+    modules the chance is about 0.4. An empty share has nothing to cache, and
+    the pytest step after it would only run slower without a cache, so the
+    share has done its job. Only "no tests collected" is turned into success,
+    and every other status is left as it is (`PL-VMMB`).
+    """
+    if (
+        _assertion_cache_share(session.config) is not None
+        and exitstatus == pytest.ExitCode.NO_TESTS_COLLECTED
+    ):
+        session.exitstatus = pytest.ExitCode.OK
 
 
 def _unmarked(what: str, reads: list[str]) -> str:

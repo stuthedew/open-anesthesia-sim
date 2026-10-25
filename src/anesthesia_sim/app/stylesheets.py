@@ -2,23 +2,25 @@
 
 A visual decision is made once, here: how a panel's surface is drawn, what a
 selector's popup looks like, which theme colour each state of a control takes.
-Each function returns the text a `setStyleSheet` call is passed, and every such
-call under `app/` passes one of them, which `tests/unit/test_stylesheets.py`
-holds. Where a widget's role decides its colour, the widget still names it - a
-caption's `foreground_stylesheet(MUTED)` - so the method
-`tools/contrast_check.py` cites for a pair is still where the pair is chosen.
+Each function returns the text that is passed to a `setStyleSheet` call.
+Every such call under `app/` passes the result of one of these functions, and
+`tests/unit/test_stylesheets.py` enforces that. Where a widget's role decides
+its colour, the widget still names the colour, as a caption does with
+`foreground_stylesheet(MUTED)`. So the method that `tools/contrast_check.py`
+cites for a colour pair is still the place where that pair is chosen.
 
 **Nothing here imports a toolkit, and nothing needs one** (`PL-Y4YX`; project
 owner, 2026-10-03, ratified, over composing these in `app/theme.py`, and over
-that file importing the toolkit to become the styling layer). A composer takes
-the theme's values and returns a string, so it imports and tests without a
-display, as the values do. It sits beside `theme.py` rather than in it because
-the string is written in Qt's selector vocabulary - `QComboBox
-QAbstractItemView`, `QSlider::handle:horizontal` - which is the toolkit's
-styling even where nothing imports it, while `theme.py` is read as values
-alone. The few bare pixel spacings inside the strings are the interim decision
-D9 accepts; the interface pass, planned-milestone item 33 in `ROADMAP.md`,
-decides the spacing rhythm that replaces them.
+that file importing the toolkit to become the styling layer). Each composer
+takes the theme's values and returns a string, so it can be imported and
+tested without a display, as the values can. This module sits beside
+`theme.py` rather than inside it because the strings are written in Qt's
+selector vocabulary, such as `QComboBox QAbstractItemView` and
+`QSlider::handle:horizontal`. That vocabulary is the toolkit's styling
+language even where nothing imports the toolkit, while `theme.py` is meant to
+hold values alone. The few bare pixel spacings inside the strings are the
+interim decision that D9 accepts. The interface pass, planned-milestone item
+33 in `ROADMAP.md`, will decide the spacing rhythm that replaces them.
 """
 
 from anesthesia_sim.app.theme import (
@@ -40,8 +42,8 @@ def foreground_stylesheet(color: str) -> str:
     """A widget's foreground in one theme colour: a label's text, a check box's, a rule's line.
 
     Args:
-        color: A `theme.py` colour name's value; it reaches the widget through
-            this string, never as a literal.
+        color: The value of a `theme.py` colour name. The colour reaches the
+            widget through this string, never as a literal.
 
     Returns:
         The stylesheet.
@@ -73,11 +75,12 @@ def panel_stylesheet(object_name: str) -> str:
 def slider_stylesheet() -> str:
     """The slider's track and thumb in the theme's colours.
 
-    The active track is `ACCENT`, the colour `PL-W8DQ` measures for it. Qt
-    paints a styled sub-page only inside a groove that is itself styled,
-    and a styled groove draws no thumb of its own, so all three parts are
-    given here: the unfilled track in `GRIDLINE`, the ruling colour, and
-    the thumb as a `PANEL` disc edged in `MUTED`.
+    The filled part of the track is `ACCENT`, the colour that `PL-W8DQ`
+    measures for it. Qt paints a styled sub-page only inside a groove that
+    is itself styled, and a styled groove draws no thumb of its own. So
+    this stylesheet styles all three parts: the unfilled track in
+    `GRIDLINE`, the colour of the chart's grid lines, and the thumb as a
+    `PANEL` disc edged in `MUTED`.
     """
 
     return (
@@ -92,27 +95,27 @@ def slider_stylesheet() -> str:
 def popup_stylesheet() -> str:
     """The list a selector opens: PANEL fill, INK rows, a PRIMARY selection.
 
-    A combo box declares its *closed* surface in a stylesheet -
-    `selector_stylesheet` for the two view controls, the running agent's
-    ISO 5360 pair, `agent_selector_stylesheet`, for the agent selector - and
-    a stylesheet on a widget makes everything inside it resolve from the
+    A combo box declares its *closed* surface in a stylesheet. The two view
+    controls use `selector_stylesheet`, and the agent selector uses the
+    running agent's ISO 5360 pair, `agent_selector_stylesheet`. A stylesheet
+    on a widget makes everything inside the widget take its colours from the
     application palette rather than from the widget. The popup is a child
     item view, so it drew the host appearance's surface however the selector
-    itself was styled, which is `PL-0NVN`.
+    itself was styled. That was the defect in `PL-0NVN`.
 
-    **A rule rather than a palette on the view, because a palette there does
-    not survive the widget being laid out.** Setting one on
-    `QComboBox.view()` where the selector is built reads back correctly
-    until the selector is added to a layout, at which point the popup is
-    reparented, its palette re-resolves from the application's, and the
-    declaration is silently gone - measured, having first shipped that way.
-    A rule cannot be undone by reparenting, and this is Qt's own documented
-    idiom for the popup.
+    **This is a stylesheet rule rather than a palette on the view, because a
+    palette there does not survive the widget being laid out.** A palette set
+    on `QComboBox.view()` where the selector is built reads back correctly
+    until the selector is added to a layout. At that point the popup is
+    reparented, its palette re-resolves from the application's palette, and
+    the declaration silently disappears. This was measured, after first
+    shipping that way. Reparenting cannot undo a rule, and a rule is Qt's own
+    documented idiom for the popup.
 
-    Per-item colour is untouched by it: the three agent rows carry their
-    ISO 5360 fill and foreground as `BackgroundRole` and `ForegroundRole`,
-    which the item delegate paints from the model over whatever the view's
-    own background is.
+    The rule does not change the colour of each item. The three agent rows
+    carry their ISO 5360 fill and foreground as `BackgroundRole` and
+    `ForegroundRole`. The item delegate paints those colours from the model
+    over whatever the view's own background is.
     """
 
     return (
@@ -124,13 +127,13 @@ def popup_stylesheet() -> str:
 def selector_stylesheet() -> str:
     """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
 
-    The playback-rate and time-base selectors name the rate the clock is
-    advancing at and how much of the run is on screen, which
-    `docs/MODEL.md` requires displayed (`PL-SN2C`), so their surface is set
-    here rather than left to the platform style: `tools/contrast_check.py`
-    measures INK on PANEL for the text and MUTED against each selector's own
-    surroundings for the border, and both claims hold only because the
-    colours are these.
+    The playback-rate and time-base selectors name the rate at which the
+    clock is advancing and how much of the run is on screen. `docs/MODEL.md`
+    requires both to be displayed (`PL-SN2C`), so their surface is set here
+    rather than left to the platform style. `tools/contrast_check.py`
+    measures INK on PANEL for the text, and MUTED against each selector's own
+    surroundings for the border. Both measurements are valid only because
+    the colours are these.
     """
 
     return (
@@ -143,7 +146,7 @@ def view_chooser_stylesheet() -> str:
     """Return the style sheet for the View chooser, a flat menu button in an Area's header.
 
     `PL-RBXL` Q1 decided its look. At rest it has no frame and no fill, so the
-    title reads as the header's own text, INK on the header's PANEL. Under the
+    title looks like the header's own text, INK on the header's PANEL. Under the
     pointer, and while its menu is open, it is filled in BACKGROUND, the
     page's colour, with the title still in INK. While it has the keyboard
     focus, it has a 1px INK border. At rest the border is 1px and transparent,
@@ -211,7 +214,7 @@ def menu_stylesheet() -> str:
     """A menu a button opens: PANEL fill, INK entries, a PRIMARY selection, as a popup draws.
 
     An entry that is unavailable, such as a join the layout cannot make, is
-    drawn in MUTED, so it reads as unavailable rather than as an entry that
+    drawn in MUTED, so it looks unavailable rather than like an entry that
     does nothing (`PL-2KXB`). `tools/contrast_check.py` measures MUTED on
     PANEL at the full text minimum.
     """
@@ -226,46 +229,50 @@ def menu_stylesheet() -> str:
 def transport_button_stylesheet() -> str:
     """Start, Pause and Reset in both states: PANEL fill, MUTED edge, INK or MUTED label.
 
-    Declared rather than left to the platform style, which is what `PL-DHBX`
-    was: a button that sets no foreground takes one from Qt's palette
-    `ButtonText` role, and that role is the *host appearance's* value rather
-    than this interface's. Under macOS Dark it is near-white, while every
-    surface this interface draws around it stays the light theme's - so the
-    labels went to white-on-white and the run controls could not be read.
+    These colours are declared rather than left to the platform style,
+    because leaving them to it caused `PL-DHBX`. A button that sets no
+    foreground takes one from the `ButtonText` role of Qt's palette, and that
+    role holds the *host appearance's* value rather than this interface's.
+    Under macOS Dark it is near-white, while every surface this interface
+    draws around the button stays in the light theme. So the labels became
+    white on white, and the run controls could not be read.
 
-    **Both states, because the project owner's screenshots showed the second
-    half failing the same way.** The first fix declared `:enabled` only and
-    left the disabled button whole to the platform, on `PL-NGF7`'s decision of
-    2026-09-16 and on WCAG 2.2 SC 1.4.3's exemption for text in an inactive
-    component. On `0.4.26+g22bc6d82` the disabled button was then the invisible
-    one - Start while running, Pause while paused - which is the cost that
-    decision's case did not carry: the platform's disabled grey is not merely
-    low-contrast under a dark host appearance, it is absent. An exemption from
-    a contrast *minimum* is not a licence for a control to disappear.
+    **Both states are declared, because the project owner's screenshots
+    showed the second state failing the same way.** The first fix declared
+    `:enabled` only. It left the disabled button entirely to the platform, on
+    `PL-NGF7`'s decision of 2026-09-16 and on the exemption in WCAG 2.2 SC
+    1.4.3 for text in an inactive component. On `0.4.26+g22bc6d82` the
+    disabled button was then the invisible one: Start while running, and
+    Pause while paused. That decision's case did not account for this cost.
+    Under a dark host appearance, the platform's disabled grey is not merely
+    low in contrast. It is absent. An exemption from a contrast *minimum*
+    does not permit a control to disappear.
 
-    So the disabled label is `MUTED`, which is **5.00:1 on PANEL** and clears
-    SC 1.4.3's 4.5:1 for normal text outright. No exemption is claimed for it,
-    which matters here: SC 1.4.11's own inactive-component wording has never
-    been read at the source from this container (`PL-JX0Z`; `w3.org` was still
-    refused at the CONNECT on 2026-10-06), so nothing in this interface may rest
-    on it.
+    So the disabled label is `MUTED`, which is **5.00:1 on PANEL**. That
+    fully meets the 4.5:1 that SC 1.4.3 requires for normal text, so no
+    exemption is claimed for it. This matters, because the wording of SC
+    1.4.11 on inactive components has never been read at its source from
+    this container (`PL-JX0Z`; `w3.org` was still refused at the CONNECT on
+    2026-10-06). So nothing in this interface may depend on that wording.
 
-    **The two states are not separated by colour alone.** `.claude/rules/ui-color.md`
-    judgment 2 asks for a second channel, and the row already carries one in
-    text: `_status_text` beside these three says "Running" or "Paused", which
-    is what decides which button is unavailable - `dashboard_frame.transport`
-    derives both from the same flag. A reader who cannot resolve INK from MUTED
-    reads the state from the word, not from the buttons.
+    **The two states are not told apart by colour alone.** Judgment 2 in
+    `.claude/rules/ui-color.md` asks for a second channel, and the row
+    already carries one in text. `_status_text`, beside these three buttons,
+    says "Running" or "Paused", and that state is what decides which button
+    is unavailable. `dashboard_frame.transport` derives both the word and the
+    unavailable button from the same flag. A reader who cannot tell INK from
+    MUTED can read the state from the word instead of from the buttons.
 
-    The edge stays `MUTED` in both states. It is what identifies the control's
-    boundary - `PANEL` on `BACKGROUND` is 1.07:1, so the fill does not - and a
-    user-interface component needs SC 1.4.11's 3:1, which `MUTED` meets at
-    4.65:1 against the row behind it. Softening it for the disabled state would
-    have bought a second visual channel at the price of the boundary.
+    The edge stays `MUTED` in both states, because the edge is what shows the
+    control's boundary. The fill cannot show it, since `PANEL` on
+    `BACKGROUND` is 1.07:1. A user-interface component needs the 3:1 that SC
+    1.4.11 sets, and `MUTED` meets it at 4.65:1 against the row behind it.
+    Softening the edge for the disabled state would have added a second
+    visual channel but lost the boundary.
 
     `tools/contrast_check.py` measures all three pairs, and
-    `check_disabled_states_are_the_style_s` is what requires that: a
-    `:disabled` rule is admitted only from a function a requirement cites.
+    `check_disabled_states_are_the_style_s` enforces that. It accepts a
+    `:disabled` rule only from a function that a requirement cites.
     """
 
     return (
@@ -279,9 +286,9 @@ def transport_button_stylesheet() -> str:
 def outlined_button_stylesheet() -> str:
     """The secondary action: INK on PANEL inside an INK border.
 
-    `NewCaseDialog`'s discard button is drawn in it, which
-    `tools/contrast_check.py` measures, so the buttons drawn the same way
-    declare no colour of their own.
+    `NewCaseDialog`'s discard button is drawn in this style, and
+    `tools/contrast_check.py` measures the style's colours on that button. So
+    the other buttons drawn the same way declare no colour of their own.
     """
 
     return (
@@ -302,9 +309,9 @@ def filled_button_stylesheet() -> str:
 def agent_surface_stylesheet(object_name: str, scheme: AgentColorScheme) -> str:
     """A frame filled in the agent's colour and edged in its foreground.
 
-    The edge is the channel that keeps a sevoflurane badge visible at all:
-    its fill is 1.27:1 against the page, so without a border the coloured
-    region a reader is meant to recognise loses its shape (`PL-GNN1`).
+    The edge is what keeps a sevoflurane badge visible at all. The badge's
+    fill is 1.27:1 against the page, so without a border the coloured region
+    that a reader is meant to recognise loses its shape (`PL-GNN1`).
     """
 
     return (
@@ -322,12 +329,12 @@ def agent_text_stylesheet(scheme: AgentColorScheme) -> str:
 def agent_selector_stylesheet(scheme: AgentColorScheme) -> str:
     """The agent selector in the running agent's pair, edged in its foreground.
 
-    The popup it opens is not in the agent's colours and does not vary with
-    the agent: it lists all three, each row carrying its own ISO 5360 fill
-    as item data, so the list's own surface is the interface's
-    (`popup_stylesheet`). Appending it here rather than setting it once at
-    construction is what makes it survive the selector being laid out
-    (`PL-0NVN`).
+    The popup that the selector opens is not in the agent's colours and does
+    not change with the agent. It lists all three agents, and each row
+    carries its own ISO 5360 fill as item data. So the list's own surface
+    uses the interface's colours (`popup_stylesheet`). The popup rule is
+    appended here, rather than set once at construction, so that it
+    survives the selector being laid out (`PL-0NVN`).
     """
 
     return (

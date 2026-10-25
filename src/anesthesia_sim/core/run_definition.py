@@ -1,68 +1,76 @@
 """A run held as the settings it was computed under, rather than as samples of itself.
 
-`docs/MODEL.md`'s governing equations are linear and time-invariant while every
-setting is held constant, so `matrix_exponential` solves each such stretch
-exactly over any horizon. A run is therefore described completely by the
-settings in force at each moment - its *definition* - and every state it passed
-through is a closed-form function of that definition and the time asked for.
-Nothing has to be recorded for a value to be recoverable.
+The governing equations in `docs/MODEL.md` are linear and time-invariant while
+every setting stays constant. So `matrix_exponential` solves each such stretch
+exactly, over any horizon. A run is therefore described completely by the
+settings in force at each moment, which this module calls the run's
+*definition*. Every state the run passed through is a closed-form function of
+that definition and of the time asked for. No state has to be recorded for it
+to be recovered later.
 
-**What the name has to carry, and the term it replaced.** What is *held* is the
-ordered list of settings and when each took effect; what a caller asks for is
-*derived* by playing that list to a given instant. The names to reject are the
-ones suggesting a stored trajectory - a run's `history`, `samples` or `record` -
-because the whole point is that no such thing exists here.
+**What the name has to convey, and the term it replaced.** What is *stored* is
+the ordered list of settings and the time at which each took effect. What a
+caller asks for is *derived* by playing that list forward to a given instant.
+Reject names that suggest a stored trajectory, such as a run's `history`,
+`samples` or `record`. The whole point is that no stored trajectory exists
+here.
 
-Through v0.4.x this quantity was a run's *score*, in the musical sense: the
-written instruction set a performance is produced from rather than a recording
-of one, the same borrowing that makes a `Keyframe` an animation term. The
-metaphor was exact but it had to be taught, and `.claude/rules/core-domain.md`
-holds this package to reading like the domain without a translation step - so
-the word was retired for the plain one (`PL-ZX12`, project owner, 2026-09-08).
-It is recorded here because `docs/releases/` and `ROADMAP.md`'s completed rows
-still speak of the score architecture, and a reader arriving from those needs
-the two words joined up.
+Through v0.4.x this quantity was called a run's *score*, in the musical sense.
+A score is the written set of instructions that a performance is produced
+from, not a recording of one. It is the same kind of borrowing that makes
+`Keyframe` an animation term. The metaphor was exact, but it had to be taught.
+`.claude/rules/core-domain.md` requires this package to read like the domain
+without a translation step, so the word was retired for the plain one
+(`PL-ZX12`, project owner, 2026-09-08). The old word is recorded here because
+`docs/releases/` and the completed rows of `ROADMAP.md` still speak of the
+score architecture. A reader arriving from those documents needs to know that
+the two words name one thing.
 
-Two consequences carry this module, and both are what `PL-T691` exists for:
+This design has two consequences, and `PL-T691` exists for both of them:
 
-- **Memory stops growing with the run.** A recorded run costs one sample per
-  solver step; a run definition costs one segment per setting change. Measured
-  2026-09-05, a 30-day case at 50 changes a day is about 70 KiB of definition and
-  keyframes against the 3.16 GB of samples the same run records today.
-- **The cost of answering a window stops depending on the run's length.** A
-  window is answered from the keyframe bracketing it rather than by scanning
-  what came before, so 600 columns cost the same over 30 days as over an hour.
+- **Memory stops growing with the length of the run.** A recorded run costs
+  one sample per solver step. A run definition costs one segment per setting
+  change. As measured on 2026-09-05, a 30-day case with 50 changes a day needs
+  about 70 KiB for its definition and keyframes. The same run recorded as
+  samples today needs 3.16 GB.
+- **The cost of computing a window stops depending on the run's length.** A
+  window is computed from the keyframes that bracket it, not by scanning
+  everything that came before it. So 600 columns cost the same over 30 days as
+  over an hour.
 
-**Two evaluation paths, and they are not interchangeable.** `state_at` is
-canonical: one matrix exponential per inter-event interval, composed in
-recording order from the run's opening, so two evaluations of the same definition at the same
-instant perform the identical sequence of operations and agree bit for bit.
-`evaluate` is the display path: inside one segment it reuses a single
-propagator across uniformly spaced columns, which is what makes a frame cheap
-and which composes those operations in a different order. The two therefore
-agree to floating-point composition rather than exactly.
+**There are two evaluation paths, and they are not interchangeable.**
+`state_at` is the canonical path. It forms one matrix exponential per interval
+between events, and composes them in recording order from the run's opening.
+So two evaluations of the same definition at the same instant perform the
+identical sequence of operations and agree bit for bit. `evaluate` is the
+display path. Inside one segment it reuses a single propagator across
+uniformly spaced columns. That reuse is what makes a frame cheap, and it also
+composes the operations in a different order. So the two paths agree only to
+within floating-point composition error, not exactly.
 
-**The chart's path keeps the propagators it used from one call to the
-next**, because a frame asks `evaluate_anchored` for nearly the same ones the
-frame before did. A propagator is a function of a stretch's settings and an
-interval and of nothing else, so one kept under those two is the matrix
-forming it again would give, bit for bit. Which ones are held depends on the
-window drawn last, but nothing drawn can, and only that window's are held, so
-the store is no record of the run (`.claude/rules/run-is-its-definition.md`
-says why that is the line), and `state_at` reads none of it.
+**The chart's path keeps the propagators it used from one call to the next.**
+Each frame asks `evaluate_anchored` for nearly the same propagators as the
+frame before it. A propagator is a function of a stretch's settings and an
+interval, and of nothing else. So a propagator kept under those two keys is,
+bit for bit, the matrix that forming it again would give. Which propagators
+are kept depends on the window drawn last, but no drawn value can depend on
+which propagators are kept. Only the last window's propagators are kept, so the store is not a
+record of the run (`.claude/rules/run-is-its-definition.md` says why that is
+where the line falls). `state_at` reads none of the store.
 
 `docs/MODEL.md` § "The canonical evaluation rule" states that separation as a
-guarantee: every stored, exported, replayed or forked value is taken
-canonically, and a display value may be drawn and nothing else. **This module
-enforces the rule rather than describing it.** `evaluate` returns its states
-wrapped in `DisplayState`, which is not a state vector and which the canonical
-entry points refuse by name, so a display value cannot reach a keyframe, an
-export or a fork's opening state by being the same shape as one.
+guarantee. Every stored, exported, replayed or forked value is taken
+canonically. A display value may be drawn and used for nothing else. **This
+module enforces the rule rather than describing it.** `evaluate` returns its
+states wrapped in `DisplayState`. A `DisplayState` is not a state vector, and
+the canonical entry points refuse it by name. So a display value cannot become
+a keyframe, an export or a fork's opening state just because it has the same
+shape as one.
 
-This module carries no compartment names, no units and no interface concepts:
-it composes the propagators `matrix_exponential` produces from the matrices
-`governing_equations` assembles, and a state here is that module's own state
-vector in that module's own order.
+This module carries no compartment names, no units and no interface concepts.
+It composes the propagators that `matrix_exponential` produces from the
+matrices that `governing_equations` assembles. A state here is the state
+vector of `governing_equations`, in that module's own order.
 """
 
 from __future__ import annotations
@@ -82,39 +90,41 @@ from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_insta
 from anesthesia_sim.core.validation import require_positive_finite
 
 _PropagatorKey = tuple[UptakeEquationSettings, float]
-"""A stretch's settings and an interval: the whole of what a propagator is formed from."""
+"""A stretch's settings and an interval, which are everything a propagator is formed from."""
 
 
 @dataclass(frozen=True, slots=True)
 class Keyframe:
     """The exact state at one segment boundary, computed canonically.
 
-    One of these per setting change, and one at the run's opening, is every
-    state a run stores. Everything between two of them is
-    recovered by propagating the earlier one forward, which is why a keyframe
-    is computed canonically even though the values drawn from it are not:
-    an error here is inherited by every value derived from it, while an error
-    on the display path affects one column of one frame.
+    A run stores one keyframe at its opening and one at each setting change,
+    and no other state. Every state between two keyframes is recovered by
+    propagating the earlier one forward. That is why a keyframe is computed
+    canonically even though the values drawn from it are not. An error in a
+    keyframe is inherited by every value derived from it, while an error on
+    the display path affects one column of one frame.
 
     Attributes:
-        instant_s: The instant this state was reached at, in seconds, on the
-            case's own axis - simulated time since induction. It is not time
-            elapsed since the run holding it began, which are the same number
-            for a run opening at induction and are not for a branch: a branch
-            forked at 900 s opens with a keyframe stamped 900.0 having lasted
-            nothing.
-        state: The trajectory in `governing_equations`' own state order,
+        instant_s: The instant at which this state was reached, in seconds,
+            on the case's own axis. That axis is simulated time since
+            induction. It is not the time elapsed since the run holding the
+            keyframe began. The two are the same number for a run that opens
+            at induction, but not for a branch. A branch forked at 900 s opens
+            with a keyframe stamped 900.0, although the branch has lasted no
+            time at all.
+        state: The state, in `governing_equations`' own state order,
             `STATE_SIZE` entries long. The two accumulator states are
-            cumulative from the start of the *case* rather than per segment,
-            because their rows have no diagonal entry: a propagator maps each
-            of them to itself with coefficient one, so carrying a running
-            total through is the same arithmetic as starting from zero and
-            adding. The case rather than the run holding the keyframe: a
-            branch opens carrying its parent's totals, so its first keyframe's
-            accumulators count litres delivered before the branch existed.
-            That is the point - the agent a patient has received is the
-            case's, and a branch restarting the count at zero would report a
-            mass balance for a patient nobody has.
+            cumulative from the start of the *case*, not reset for each
+            segment. Their rows in the system matrix have no diagonal entry,
+            so a propagator maps each of them to itself with coefficient one.
+            Carrying a running total through is therefore the same arithmetic
+            as starting from zero and adding. The totals count from the start
+            of the case, not from the start of the run that holds the
+            keyframe. A branch opens carrying its parent's totals, so the
+            accumulators in its first keyframe count litres delivered before
+            the branch existed. That is intended. The agent a patient has
+            received belongs to the case. A branch that restarted the count at
+            zero would report a mass balance for a patient who does not exist.
 
     Raises:
         TypeError: `instant_s` is not a `CaseInstant`, so nothing has checked
@@ -134,20 +144,21 @@ class Keyframe:
 class RunSegment:
     """One stretch of a run during which every setting the equations read is constant.
 
-    The settings and the state they start from travel together rather than in
-    parallel lists, so a segment cannot come to be paired with another
-    segment's opening state - which would compute a stretch of the run from
-    settings it was never under, and produce a plausible trajectory that never
-    happened.
+    The settings and the state they start from travel together, not in
+    parallel lists. So a segment's settings cannot end up paired with another
+    segment's opening state. That pairing would compute a stretch of the run
+    from settings it was never under, and produce a plausible trajectory that
+    never happened.
 
     Attributes:
-        settings: What `build_system_matrix` assembles $`A`$ from, in force
-            from `opening.instant_s` until the next segment begins. Its flows
-            are the litres per minute that were set and its delivered
-            concentration the percent that was dialled, so a system
-            configured from them rebuilds these settings exactly (`PL-SM5V`,
-            `PL-NJPB`); the vaporizer maximum that dial was set under travels
-            with it, and the record refuses a dial above it (`PL-BBMG`).
+        settings: The record that `build_system_matrix` assembles $`A`$ from.
+            It is in force from `opening.instant_s` until the next segment
+            begins. Its flows are the litres per minute that were set, and its
+            delivered concentration is the percent that was dialled. So a
+            system configured from them rebuilds these settings exactly
+            (`PL-SM5V`, `PL-NJPB`). The vaporizer maximum that the dial was
+            set under travels with the settings, and the record refuses a dial
+            above that maximum (`PL-BBMG`).
         opening: The state at the segment's first instant.
     """
 
@@ -157,24 +168,25 @@ class RunSegment:
 
 @dataclass(frozen=True, slots=True)
 class DisplayState:
-    """A state the display path produced, which the canonical path will not take back.
+    """A state produced by the display path, which the canonical path refuses to accept.
 
-    A wrapper rather than a bare tuple, and deliberately not a tuple subclass:
-    the separation `docs/MODEL.md` § "The canonical evaluation rule" states has
-    to hold at sinks that have never heard of this class - an exporter, a save
-    format, a fork - and only a value that is structurally not a state vector
-    is refused by all of them. A subclass would pass every one of those
-    silently and be caught by exactly the checks somebody remembered to write.
+    It is a wrapper rather than a bare tuple, and deliberately not a tuple
+    subclass. The separation that `docs/MODEL.md` § "The canonical evaluation
+    rule" states has to hold at sinks that have never heard of this class,
+    such as an exporter, a save format or a fork. Only a value that is
+    structurally not a state vector is refused by all of them. A subclass
+    would pass through every one of those sinks silently. It would be caught
+    only by the checks that somebody remembered to write.
 
-    Unwrapping is therefore explicit, and that is the point: `values` is the
-    line where a reader can see a drawing value being taken out of the one
-    container that says what it is.
+    Unwrapping is therefore explicit, and that is intended. Each read of
+    `values` is a line where a reader can see a value meant for drawing being
+    taken out of the one container that says what it is.
 
     Attributes:
-        values: The trajectory in `governing_equations`' own state order,
-            `STATE_SIZE` entries long. Equal to the canonical state at the
-            same instant to floating-point composition, not exactly; the
-            measured separation is in `docs/MODEL.md`.
+        values: The state, in `governing_equations`' own state order,
+            `STATE_SIZE` entries long. It equals the canonical state at the
+            same instant only to within floating-point composition error, not
+            exactly. The measured difference is in `docs/MODEL.md`.
     """
 
     values: tuple[float, ...]
@@ -184,12 +196,13 @@ class DisplayState:
 class SampledWindow:
     """The states at a run of uniformly spaced instants, for drawing.
 
-    The display path's answer. Times and states travel together and are
-    checked to be the same length at construction, for the reason
-    `RunSegment` pairs its two fields: a trace drawn from one array against
-    the other's time axis misstates the run from values that are individually
-    correct, which `CLAUDE.md`'s safety-critical standard counts as a
-    presentation failure rather than a lesser kind.
+    This is what the display path returns. Times and states travel together
+    and are checked to be the same length at construction. They travel
+    together for the same reason that `RunSegment` pairs its two fields. A
+    trace drawn from one
+    array against the other's time axis misstates the run from values that are
+    each correct. `CLAUDE.md`'s safety-critical standard counts that as a
+    presentation failure, not as a lesser kind of error.
 
     Attributes:
         times_s: The instants sampled, ascending, in seconds.
@@ -197,7 +210,8 @@ class SampledWindow:
             `STATE_SIZE` values in `governing_equations`' state order.
 
     Raises:
-        SimulationConfigurationError: If the two are not the same length.
+        SimulationConfigurationError: If the times and the states are not the
+            same length.
     """
 
     times_s: tuple[float, ...]
@@ -214,25 +228,26 @@ class SampledWindow:
 class RunDefinition:
     """A run, as the settings it was computed under and the states they imply.
 
-    Built with the settings a run starts under and the state it starts from,
-    then told what happened: `advance_to` moves the time the run has reached,
-    and `record_change` closes the open segment at that time and opens a new
-    one under new settings. Those two calls are the whole of what a run *is*.
+    It is built with the settings a run starts under and the state it starts
+    from, and is then told what happened. `advance_to` moves the time the run
+    has reached. `record_change` closes the open segment at that time and
+    opens a new one under new settings. Those two calls are the whole of what
+    a run *is*.
 
-    **A change is recorded at the run's own reach and nowhere else.** There is
-    no instant argument on `record_change`, deliberately: a setting change
-    takes effect when it is made, and a caller free to name a different time
-    could place one inside a stretch already computed under other settings.
-    That would not fail - it would return a trajectory the run never took, at
-    full precision and with nothing to distinguish it. Removing the argument
-    removes the failure, which `.claude/rules/expert-review.md` prefers to
-    validating it.
+    **A change is recorded at the time the run has reached, and nowhere
+    else.** `record_change` deliberately has no instant argument. A setting
+    change takes effect when it is made. A caller free to name a different
+    time could place a change inside a stretch already computed under other
+    settings. That would not fail. It would return a trajectory the run never
+    took, at full precision and with nothing to mark it as wrong. Removing the
+    argument removes the failure, and `.claude/rules/expert-review.md` prefers
+    that to validating the argument.
 
-    **It answers only within the run.** `state_at` and `evaluate` refuse a
-    time past `reached_s`, because the run definition can be evaluated arbitrarily far
-    ahead and what comes back would be a prediction of a run that has not
-    happened. Drawn on the same axis as the run itself it would be
-    indistinguishable from it.
+    **It returns states only within the run.** `state_at` and `evaluate`
+    refuse a time past `reached_s`. The run definition could be evaluated
+    arbitrarily far ahead, but what came back would be a prediction of a run
+    that has not happened. Drawn on the same axis as the run itself, that
+    prediction would be indistinguishable from the run.
     """
 
     __slots__ = ("_last_window_propagators", "_reached_s", "_segments")
@@ -247,42 +262,44 @@ class RunDefinition:
         """Open a run at `opened_at_s` under `settings`, from `initial_state`.
 
         **The opening instant is on the case's axis, and it is required.** A
-        run that begins at induction opens at zero and a branch opens at the
-        instant it was forked from, and those are the same axis: simulated
-        time is measured from induction for both, because uptake is a function
-        of time since induction and a branch is one patient's case continuing.
-        The parameter has no default deliberately - a default of zero would be
-        wrong exactly once, at the branch, and wrong there means a whole
-        trajectory drawn under a patient context the case never had, with
-        every value in it individually correct. `CLAUDE.md`'s safety-critical
-        standard refuses a silently substituted default for that reason, so a
-        caller says which instant it means and a caller that forgets is a
-        `TypeError` rather than a plausible run.
+        run that begins at induction opens at zero. A branch opens at the
+        instant it was forked from. Both instants are on the same axis.
+        Simulated time is measured from induction for both, because uptake is
+        a function of time since induction and a branch is one patient's case
+        continuing. The parameter deliberately has no default. A default of
+        zero would be wrong in exactly one case, a branch. Being wrong there
+        means a whole trajectory drawn under a patient context the case never
+        had, with every value in it individually correct. `CLAUDE.md`'s
+        safety-critical standard refuses a silently substituted default for
+        that reason. So a caller must say which instant it means, and a caller
+        that forgets gets a `TypeError` rather than a plausible run.
 
         Args:
-            settings: The settings the run begins under. Inside the supported
-                flow ranges by construction: each of its flows is a checked
-                type that cannot hold a value outside its range, so neither
-                this nor `record_change` checks one again (`PL-HSFV`). Its
-                dial is deliverable by the same construction: the record
-                carries the vaporizer maximum beside it and refuses a dial
-                above it, so a record a run can be handed is one the circuit
-                would have accepted (`PL-BBMG`).
+            settings: The settings the run begins under. Their flows are
+                inside the supported flow ranges by construction. Each flow is
+                a checked type that cannot hold a value outside its range, so
+                neither this method nor `record_change` checks a flow again
+                (`PL-HSFV`). The dial can be delivered, by the same kind of
+                construction. The record carries the vaporizer maximum beside
+                the dial and refuses a dial above that maximum. So any record a
+                run can be handed is one the circuit would have accepted
+                (`PL-BBMG`).
             initial_state: The state at `opened_at_s`, in
-                `governing_equations`' state order. Its accumulators are the
-                run's starting totals, which is zero for a run that has
-                delivered nothing and the parent's running totals for a fork.
-            opened_at_s: The case instant this run opens at, in seconds. Zero
-                for a run beginning at induction; for a branch, the instant of
-                the parent keyframe it carries as its `initial_state`, which
-                is the fork for a branch taken at a control event and the
-                keyframe before it for one taken at a bookmark
-                (`app/controller.py`, `SimulationController._open_at`).
-                A `CaseInstant`, so it is at or after induction and inside the
-                supported run length, which is the case's and not this run's:
-                a branch inherits this instant as the origin of everything it
-                reports, so it is checked where it is built rather than at the
-                first step past it (`PL-73ZN`).
+                `governing_equations`' state order. Its accumulators hold the
+                run's starting totals. They are zero for a run that has
+                delivered nothing, and the parent's running totals for a fork.
+            opened_at_s: The case instant at which this run opens, in seconds.
+                It is zero for a run beginning at induction. For a branch, it
+                is the instant of the parent keyframe that the branch carries
+                as its `initial_state`. That keyframe is the fork itself for a
+                branch taken at a control event, and the keyframe before the
+                fork for a branch taken at a bookmark (`app/controller.py`,
+                `SimulationController._open_at`). It is a `CaseInstant`, so it
+                is at or after induction and inside the supported run length.
+                That length belongs to the case, not to this run. A branch
+                inherits this instant as the origin of everything it reports,
+                so the instant is checked where the branch is built, not at
+                the first step past it (`PL-73ZN`).
 
         Raises:
             TypeError: `opened_at_s` is not a `CaseInstant`, so nothing has
@@ -291,12 +308,13 @@ class RunDefinition:
             SimulationConfigurationError: `initial_state` came from the
                 display path, is not `STATE_SIZE` long, holds a non-finite
                 value, or does not carry exactly one in `UNIT_STATE`. The
-                display-path case is a fork opening from a drawing value,
-                which `docs/MODEL.md` § "The canonical evaluation rule"
-                refuses; the last is what makes every forcing term in
-                `build_system_matrix` mean what it says; a state that carried
-                anything else there would scale the whole of the delivery term
-                without changing any setting a reader can see.
+                display-path case is a fork opening from a value meant for
+                drawing, which `docs/MODEL.md` § "The canonical evaluation
+                rule" refuses. Requiring exactly one in `UNIT_STATE` is what
+                makes every forcing term in `build_system_matrix` mean what it says.
+                A state that carried any other value there would scale the
+                whole delivery term without changing any setting a reader can
+                see.
         """
 
         _require_state(initial_state)
@@ -312,17 +330,18 @@ class RunDefinition:
     def opened_at_s(self) -> CaseInstant:
         """The case instant this run opens at: zero at induction, a parent keyframe for a branch.
 
-        Read off the first segment rather than stored beside it, so there is
-        one place the run's opening is recorded and no second copy to fall out
-        of step with it. `_require_within_run` reads the same field, which is
-        what makes this the instant a caller may clip an axis to and be sure
-        of not being refused.
+        It is read from the first segment rather than stored beside it. So the
+        run's opening is recorded in one place, with no second copy to fall
+        out of step with it. `_require_within_run` reads the same field. That
+        is why a caller may clip an axis to this instant and be sure that the
+        call will not be refused.
 
-        **It is where this definition may be evaluated from, which on a branch
-        is at or before where the branch itself began.** A branch taken at a
-        bookmark opens here at the keyframe before its fork, so that it
-        propagates from the same keyframe its parent does; the stretch between
-        is the parent's and the branch never lived it, which is why the app
+        **It is the earliest instant from which this definition may be
+        evaluated. On a branch, that instant is at or before the one where the
+        branch itself began.** A branch taken at a bookmark opens here, at the
+        keyframe before its fork, so that it propagates from the same keyframe
+        as its parent. The stretch between that keyframe and the fork belongs
+        to the parent, and the branch never lived it. That is why the app
         layer clips a drawn axis at the fork rather than here
         (`SimulationController.began_at_s`).
         """
@@ -344,38 +363,41 @@ class RunDefinition:
     def advance_to(self, instant_s: CaseInstant) -> None:
         """Move the time the run has reached to `instant_s`.
 
-        Records no state: the states are already implied by the settings and
-        recovered on demand. What this changes is how far the run definition may be
-        evaluated, which is what stops a prediction being drawn as the run.
+        It records no state, because the states are already implied by the
+        settings and are recovered on demand. What it changes is how far the
+        run definition may be evaluated. That limit is what stops a prediction
+        from being drawn as if it were the run.
 
-        The reach has no lower bound of its own because it cannot need one:
-        `__init__` seeds it from `opened_at_s` and this is the only writer,
-        which never lowers it. That invariant is what lets `_require_within_run`
-        treat the opening and the reach as a closed span, so a second writer of
-        `_reached_s` - a reset in place, a deserializer restoring a saved run -
-        would have to re-establish it rather than assume it.
+        The time reached needs no lower bound of its own. `__init__` sets it
+        from `opened_at_s`, and this method is its only other writer and never
+        lowers it. That invariant is what lets `_require_within_run` treat the
+        span from the opening to the time reached as a closed interval. So a
+        second writer of `_reached_s`, such as a reset in place or a
+        deserializer restoring a saved run, would have to re-establish the
+        invariant rather than assume it.
 
-        Its upper bound is the opening's, the end of the supported run length,
-        and it is the type's: a reach past it cannot be built as a
-        `CaseInstant` to hand in, so the run definition is never evaluated
-        over a stretch the model is not claimed for. The application moves it
-        only to the instant a step count stands at - each step's, or a
-        branch's fork (`app/controller.py`) - and `SimulationState.advance`
-        refuses the step that would carry that count past the span, so no step
-        already taken lands on an instant that cannot be built:
-        `maximum_step_count` decides the last step on the time it lands at,
-        which is the instant passed here (`PL-8H2R`).
+        Its upper bound is the same as the opening's: the end of the supported
+        run length. The `CaseInstant` type enforces that bound. A time past it
+        cannot be built as a `CaseInstant` to pass in, so the run definition
+        is never evaluated over a stretch the model is not claimed to cover.
+        The application moves the time reached only to an instant that a step
+        count lands on: the instant of each step, or of a branch's fork
+        (`app/controller.py`). `SimulationState.advance` refuses the step that
+        would carry that count past the span. So no step already taken lands
+        on an instant that cannot be built. `maximum_step_count` decides which
+        step is the last from the time at which that step lands, and that time
+        is the instant passed here (`PL-8H2R`).
 
         Raises:
             TypeError: `instant_s` is not a `CaseInstant`, so nothing has
                 checked it against the supported run length
                 (`core/supported_ranges.py`).
             SimulationConfigurationError: `instant_s` is earlier than the time
-                already reached. A run cannot un-happen, and rewinding the
-                reach would leave the segments recorded after it describing a
-                stretch the run definition would then refuse to evaluate.
-                Checked before the reach moves, so a refused call leaves it
-                where it was.
+                already reached. A run cannot un-happen. Moving the time
+                reached backwards would leave the segments recorded after it
+                describing a stretch that the run definition would then refuse
+                to evaluate. The check runs before the time reached moves, so
+                a refused call leaves it where it was.
         """
 
         require_case_instant("instant_s", instant_s)
@@ -390,24 +412,26 @@ class RunDefinition:
     def record_change(self, settings: UptakeEquationSettings) -> None:
         """Note that the run continues under `settings` from now on.
 
-        "Now" is `reached_s`, the time the run has reached; see the class
-        docstring for why that is not an argument.
+        "Now" is `reached_s`, the time the run has reached. The class
+        docstring says why "now" is not an argument.
 
-        Three calls change nothing and are dropped rather than recorded, each
-        for a reason about the run rather than about tidiness. Settings equal
-        to the ones in force describe no change the model would integrate
-        differently. A second change at an instant already opened - two
-        controls moved between one step and the next - belongs to the same
-        stretch, so it replaces that stretch's settings instead of opening a
-        zero-length one: the run was computed under whatever stood when the
-        step ran, which is the last value written. And where that replacement
-        lands back on the settings the previous stretch already had - a dial
-        moved and moved back before a step ran - the stretch goes entirely,
-        because nothing about the run differs.
+        Three kinds of call change nothing and open no new stretch. Each is
+        handled that way for a reason about the run, not for tidiness. First,
+        settings equal to the ones in force describe no change that the model
+        would integrate differently, so the call is dropped. Second, a change
+        at an instant where a stretch has already opened belongs to that same
+        stretch. This happens when two controls are moved between one step and
+        the next. The change replaces that stretch's settings instead of
+        opening a zero-length one, because the run was computed under the
+        settings in force when the step ran, which are the last ones written.
+        Third, if that replacement lands back on the settings the previous
+        stretch already had, the open stretch is removed entirely, because
+        nothing about the run differs. This happens when a dial is moved and
+        moved back before a step runs.
 
-        The third is what keeps a run definition a record of the run rather than of the
-        mouse, and it is the same rule the interface's own control timeline
-        applies to the entries a reader sees.
+        The third case is what keeps a run definition a record of the run
+        rather than of the mouse. The interface's own control timeline applies
+        the same rule to the entries a reader sees.
         """
 
         open_segment = self._segments[-1]
@@ -433,19 +457,20 @@ class RunDefinition:
     def state_at(self, instant_s: float) -> tuple[float, ...]:
         """The canonical state at `instant_s`, in `governing_equations`' state order.
 
-        One matrix exponential from the keyframe that opens the segment
-        `instant_s` falls in, over the interval between them. Two calls with
-        the same argument on the same definition perform the identical sequence of
-        operations, so they return bit-identical values; this is the path a
-        keyframe, an export or a fork's starting state is taken from, and
-        `docs/MODEL.md` § "The canonical evaluation rule" is the guarantee it
-        carries.
+        It forms one matrix exponential over the interval from the keyframe
+        that opens the segment containing `instant_s` to `instant_s` itself.
+        Two calls with the same argument on the same definition perform the
+        identical sequence of operations, so they return bit-identical values.
+        A keyframe, an export or a fork's starting state is taken from this
+        path. `docs/MODEL.md` § "The canonical evaluation rule" states the
+        guarantee that the path provides.
 
-        It is a function of the run definition and of nothing else - no cache, no
-        memory of what was asked before - so a run queried at arbitrary
-        instants as it goes answers identically to the same run never queried
-        at all. `tests/reference/test_canonical_evaluation.py` gates that. The
-        propagators `evaluate_anchored` keeps between frames are not read here.
+        Its result is a function of the run definition and of nothing else. It
+        uses no cache and no memory of earlier queries. So a run queried at
+        arbitrary instants as it goes returns the same values as the same run
+        never queried at all. `tests/reference/test_canonical_evaluation.py`
+        tests that. The propagators that `evaluate_anchored` keeps between
+        frames are not read here.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, precedes
@@ -459,16 +484,16 @@ class RunDefinition:
     def segment_at(self, instant_s: float) -> RunSegment:
         """The stretch of constant settings this run was under at `instant_s`.
 
-        The settings the equations were assembled from there, travelling with
-        the keyframe they start from - which is the keyframe a state at
-        `instant_s` is one propagation from, and so the one a branch taken
-        there opens its own definition at (`app/controller.py`,
-        `SimulationController._resume_point_here`).
+        The segment holds the settings that the equations were assembled from
+        at that instant, together with the keyframe they start from. A state
+        at `instant_s` is one propagation from that keyframe. So a branch
+        taken at `instant_s` opens its own definition at that keyframe
+        (`app/controller.py`, `SimulationController._resume_point_here`).
 
-        Handing out the segment rather than its index, because an index is
-        only meaningful beside the tuple it came from and a caller holding one
-        across a `record_change` would be reading a different stretch than it
-        asked for.
+        This method returns the segment rather than its index. An index is
+        meaningful only beside the tuple it came from. A caller that held an
+        index across a `record_change` would read a different stretch from the
+        one it asked for.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, precedes
@@ -482,33 +507,34 @@ class RunDefinition:
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
         """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
 
-        The display path. Inside one segment the columns are uniformly spaced,
-        so a single propagator over the column spacing serves all of them and
-        each column costs one matrix-vector product; the work is therefore
-        proportional to the columns asked for plus the setting changes the
-        window contains, and not to the run's length. Two matrix exponentials
-        are formed per segment in view - one for the offset from its keyframe
-        to its first column, one for the spacing - against `columns` of them
-        if each column were taken canonically.
+        This is the display path. Inside one segment the columns are uniformly
+        spaced, so a single propagator over the column spacing serves all of
+        them. Each column then costs one matrix-vector product. The work is
+        therefore proportional to the number of columns asked for plus the
+        number of setting changes inside the window, and not to the run's
+        length. Two matrix exponentials are formed for each segment in view.
+        One covers the offset from the segment's keyframe to its first column,
+        and one covers the spacing. Taking each column canonically would
+        instead form `columns` of them.
 
-        What that buys costs bit-identity: chaining composes the same
-        operations in a different order from `state_at`. Values from here are
-        for drawing, and come back as `DisplayState` so that they cannot be
-        stored, exported or forked from by being the same shape as a canonical
-        state; see the module docstring.
+        That saving costs bit-identity. Chaining composes the same operations
+        in a different order from `state_at`. Values from this method are for
+        drawing. They come back as `DisplayState`, so that they cannot be
+        stored, exported or forked from just because they have the same shape
+        as a canonical state. The module docstring explains why.
 
         Args:
             start_s: The window's first instant, in seconds.
             stop_s: The window's last instant, in seconds. Equal to `start_s`
                 for a window of one instant.
-            columns: How many instants to sample, at least one. One returns
-                `start_s` alone.
+            columns: How many instants to sample, at least one. With one
+                column, only `start_s` is sampled.
 
         Raises:
-            SimulationConfigurationError: `columns` is below one; either bound
-                is not finite; either bound precedes `opened_at_s`; `stop_s`
-                precedes `start_s`; or `stop_s` is past the time the run has
-                reached.
+            SimulationConfigurationError: `columns` is less than one, either
+                bound is not finite, either bound precedes `opened_at_s`,
+                `stop_s` precedes `start_s`, or `stop_s` is past the time the
+                run has reached.
         """
 
         if columns < 1:
@@ -552,85 +578,93 @@ class RunDefinition:
     def evaluate_anchored(self, start_s: float, stop_s: float, spacing_s: float) -> SampledWindow:
         """Columns on an absolute grid across `[start_s, stop_s]`, plus every event in it.
 
-        The chart's own display path, and it differs from `evaluate` in the
-        two ways a drawn trace needs and a bare window does not.
+        This is the chart's own display path. It differs from `evaluate` in
+        two ways that a drawn trace needs and a bare window does not.
 
         **The grid is anchored to the case's zero, not to the window and not
         to `opened_at_s`.** Columns land on absolute multiples of `spacing_s`
-        on the case's own axis, so a window that follows the run reuses every
-        column time it had last frame and gains at most one. `evaluate` spaces
-        its columns across whichever bounds it is given, which makes every
-        column a new instant on every frame: the drawn points then all move,
-        and `PL-Q197` measured that as what saturated the Flutter client -
-        2 700 discrete control mutations a frame - before decimation was
-        anchored for exactly this reason. Anchoring the *evaluation* times is
-        that same fix one level over.
+        on the case's own axis. So a window that follows the run reuses every
+        column time it had in the last frame, and gains at most one new column
+        time. `evaluate` spaces its columns across whatever bounds it is given,
+        which makes every column a new instant on every frame. The drawn
+        points then all move. `PL-Q197` measured that movement as what
+        saturated the Flutter client, at 2 700 discrete control mutations a
+        frame, before decimation was anchored for exactly this reason.
+        Anchoring the *evaluation* times applies the same fix at the next
+        level.
 
-        **Do not re-anchor this to the run's own opening.** For a run opening
-        at induction the two are the same number, so the distinction looks
-        like pedantry; for a branch they are not, and anchoring per-run is
-        precisely the defect `PL-2R2C` recorded. Measured there: a branch
-        forked at 55.3 s and drawn on a 13-column 120 s axis shared 2 of its
-        8 columns with its trunk when anchored to its own opening, and 8 of 8
-        anchored here. Two traces on one axis can only be read against each
-        other at matched instants, so a difference trace or a shared tooltip
-        built over per-run grids would be wrong rather than merely coarse.
-        `docs/MODEL.md` § "What the chart draws" states the same rule.
+        **Do not re-anchor this grid to the run's own opening.** For a run
+        opening at induction the two are the same number, so the distinction
+        looks like pedantry. For a branch they differ, and anchoring each run
+        separately is precisely the defect that `PL-2R2C` recorded. That item
+        measured a branch forked at 55.3 s and drawn on a 13-column 120 s
+        axis. The branch shared 2 of its 8 columns with its trunk when
+        anchored to its own opening, and 8 of 8 when anchored here. Two traces
+        on one axis can be read against each other only at matched instants.
+        So a difference trace or a shared tooltip built over per-run grids
+        would be wrong, not merely coarse. `docs/MODEL.md` § "What the chart
+        draws" states the same rule.
 
-        **Every control event inside the window gets its own column, and it
-        costs nothing.** Between events the trajectory is a sum of
-        exponentials with bounded curvature and no hidden transients, so
-        every sharp feature in a run is at an event boundary; a grid that
-        steps over one draws a straight line through a kink. Each event is a
-        segment opening, and a segment's opening state is already held as its
-        keyframe, so these columns are read rather than computed - exactly,
-        and with no propagator formed. `docs/MODEL.md` § "What the chart
-        draws" states the guarantee this buys.
+        **Every control event inside the window gets its own column, at no
+        cost.** Between events the trajectory is a sum of exponentials with
+        bounded curvature and no hidden transients. So every sharp feature in
+        a run is at an event boundary, and a grid that steps over an event
+        draws a straight line through a kink. Each event is a segment opening,
+        and a segment's opening state is already stored as its keyframe. So
+        these columns are read rather than computed. They are exact, and no
+        propagator is formed for them. `docs/MODEL.md` § "What the chart
+        draws" states the guarantee that these event columns provide.
 
-        Both bounds are always columns. `stop_s` in particular is what the
-        numeric readouts are showing, so drawing it is what stops the trace's
-        right-hand end and the readout beside it from disagreeing.
+        Both bounds are always columns. In particular, the numeric readouts
+        show the state at `stop_s`. Drawing `stop_s` keeps the right-hand end
+        of the trace from disagreeing with the readout beside it.
 
-        Cost is `evaluate`'s plus one propagator per bound: two matrix
-        exponentials per segment in view - one from the segment's keyframe to
-        its first grid column, one for the spacing that carries the rest -
-        and the event columns are free. A propagator is about 1.29 ms against
-        6.2 us for a chained product (measured 2026-09-08, `PL-2FM6`), which
-        is why the grid stays uniform within a segment rather than each
+        The cost is that of `evaluate`, plus one propagator for each bound.
+        Like `evaluate`, this method forms two matrix exponentials for each
+        segment in view. One runs from the segment's keyframe to its first
+        grid column, and one covers the spacing that carries the rest. The
+        event columns are free. Forming a propagator takes about 1.29 ms,
+        against 6.2 us for a chained product (measured 2026-09-08, `PL-2FM6`).
+        That is why the grid stays uniform within a segment, rather than each
         column being taken from its keyframe.
 
-        **Those are formed once rather than once a frame.** All but three are
-        over an interval the grid fixes - the spacing, which the time base
-        holds, and a segment's offset to its first grid column, which the
-        anchoring holds - so a window drawn a frame later asks for the same
-        ones again, and each call keeps what it used for the next. The three
-        that move are the two bounds', and the offset in the segment the
-        window opens in, whose first grid column is the first past `start_s`
-        and so moves each time the left edge passes one. A frame following
-        the run forms its two bounds', that third only on a frame whose left
-        edge has passed a column, and those of a segment newly in view; a new
-        spacing, from a new time base or plot width, forms them all once
-        more. `docs/MODEL.md` § "The run is that record, and every state is
-        derived from it" has how often, and what that costs (`PL-CNCF`).
+        **Those propagators are formed once, not once a frame.** All but three
+        of them are over an interval that the grid fixes, and there are two
+        kinds of such interval. One is the spacing, which the time base fixes.
+        The other is a segment's offset to its first grid column, which the
+        anchoring fixes. So a window drawn a frame later asks for the same
+        propagators again, and each call keeps the ones it used for the next
+        call. The three that change are the two bounds' propagators and the
+        propagator for the offset in the segment where the window opens. That
+        segment's first grid column is the first one past `start_s`, so it
+        moves each time the left edge passes a column. A frame that follows
+        the run forms the propagators for its two bounds. It forms the third
+        only on a frame whose left edge has passed a column, and it forms
+        those of any segment newly in view. A new spacing, from a new time
+        base or plot width, forms them all once more. `docs/MODEL.md` § "The
+        run is that record, and every state is derived from it" says how often
+        that happens and what it costs (`PL-CNCF`).
 
-        Reuse cannot move a drawn value by so much as a bit. A propagator is a
-        function of a segment's settings and an interval alone, it is kept
-        under both, and the settings record is frozen and compared by value
-        for exactly this use (`UptakeEquationSettings`), so a kept propagator
-        is the matrix forming it again would give. Only the last call's are
-        kept, so what is held is bounded by one window - two a segment in
-        view and one a bound, and never more than one a column even at a
-        spacing too fine for its multiples to be distinct instants - and is
-        replaced rather than added to: it does not grow with the run, or with
-        how often or where it was drawn.
+        Reuse cannot change a drawn value by even one bit. A propagator is a
+        function of a segment's settings and an interval alone, and it is kept
+        under both. The settings record is frozen and compared by value for
+        exactly this use (`UptakeEquationSettings`). So a kept propagator is
+        exactly the matrix that forming it again would give. Only the last
+        call's propagators are kept, so the store is bounded by one window. It
+        holds two for each segment in view and one for each bound. It never
+        holds more than one for each column, even at a spacing too fine for
+        its multiples to be distinct instants. The store is replaced on each
+        call rather than added to. So it does not grow with the run, or with
+        how often or where the run was drawn.
 
         Args:
             start_s: The window's first instant, in seconds. Always a column.
             stop_s: The window's last instant, in seconds. Always a column,
                 and equal to `start_s` for a window of one instant.
-            spacing_s: Distance between grid columns, in seconds. Positive.
-                The caller sets it from the width it is drawing and the
-                columns it can afford; this class does not know either.
+            spacing_s: The distance between grid columns, in seconds. It must
+                be positive. The caller sets it from the width it is drawing
+                and the number of columns it can afford. This class knows
+                neither.
 
         Returns:
             Ascending, duplicate-free instants and the state at each.
@@ -639,14 +673,14 @@ class RunDefinition:
             TypeError: `spacing_s` is not an `int` or a `float`, or is a
                 `bool` (`require_positive_finite`).
             SimulationConfigurationError: `spacing_s` is not positive or not
-                finite; either bound is not finite; either bound precedes
-                `opened_at_s`; `stop_s` precedes `start_s`; `stop_s` is past
-                the time the run has reached; or `spacing_s` is so fine that
-                the grid's multiples up to `stop_s` cannot be counted, which
-                raised a bare `OverflowError` before `PL-YZ17`. A fine spacing
-                is otherwise accepted: unlike a run's step it is chained at
-                most once per column, so its rounding does not accumulate past
-                what the columns asked for.
+                finite, either bound is not finite, either bound precedes
+                `opened_at_s`, `stop_s` precedes `start_s`, `stop_s` is past
+                the time the run has reached, or `spacing_s` is so fine that
+                the grid's multiples up to `stop_s` cannot be counted. Before
+                `PL-YZ17`, that last case raised a bare `OverflowError`. A
+                fine spacing is otherwise accepted. Unlike a run's step, it is
+                chained at most once per column, so its rounding error does
+                not accumulate beyond what the columns asked for.
         """
 
         require_positive_finite("spacing_s", spacing_s)
@@ -680,9 +714,10 @@ class RunDefinition:
             chained: Matrix | None = None
 
             # Consecutive grid columns are consecutive multiples of the
-            # spacing, so one propagator over it carries the whole run of
-            # them inside this segment. A bound or an event column breaks
-            # the run, because its own gap is not the spacing.
+            # spacing. So one propagator over the spacing carries the whole
+            # sequence of them inside this segment. A bound or an event
+            # column ends the sequence, because its gap to its neighbour is
+            # not the spacing.
             while column + 1 < len(times_s) and times_s[column + 1] < opening_after_s:
                 here, next_ = grid_index[column], grid_index[column + 1]
 
@@ -705,18 +740,19 @@ class RunDefinition:
     def _anchored_columns(
         self, start_s: float, stop_s: float, spacing_s: float
     ) -> tuple[tuple[float, ...], list[int | None]]:
-        """The column times, and which grid multiple each is where it is one.
+        """The column times, and the grid multiple of each time that lies on the grid.
 
-        The grid index travels with the time because it is what lets the walk
-        above tell a run of consecutive grid columns - which one propagator
-        carries - from a bound or an event column, whose gap to its neighbour
-        is not the spacing. Deriving it back from the time would mean testing
-        a float for divisibility.
+        The grid index travels with the time because the walk above uses it to
+        tell two kinds of column apart. One propagator can carry a sequence of
+        consecutive grid columns. It cannot carry a bound or an event column,
+        because the gap from such a column to its neighbour is not the
+        spacing. Deriving the index back from the time would mean testing a
+        float for divisibility.
 
         Returns:
-            Ascending, duplicate-free times, and one entry per time holding
-            its multiple of `spacing_s` or `None` where it is a bound or an
-            event.
+            Ascending, duplicate-free times, and one entry per time. Each
+            entry holds the time's multiple of `spacing_s`, or `None` where
+            the time is a bound or an event.
         """
 
         indexed: dict[float, int | None] = {start_s: None, stop_s: None}
@@ -732,8 +768,9 @@ class RunDefinition:
 
             if start_s < event_s < stop_s:
                 # An event column overrides a grid column at the same
-                # instant: both draw the same state, and marking it `None`
-                # keeps the walk from chaining across a segment boundary.
+                # instant. Both draw the same state, and marking the instant
+                # `None` keeps the walk from chaining across a segment
+                # boundary.
                 indexed[event_s] = None
 
         times_s = tuple(sorted(indexed))
@@ -745,16 +782,18 @@ class RunDefinition:
     ) -> tuple[float, ...]:
         """The state at `instant_s`, propagated from `segment`'s own keyframe.
 
-        A column landing exactly on the keyframe is the event-column case,
-        and it is answered by reading the keyframe rather than by forming a
-        propagator over a zero interval. Any other is propagated by the
-        window's own `propagators`, so one the last window used is reused.
+        A column that lands exactly on the keyframe is the event-column case.
+        Its state is read from the keyframe, rather than computed by forming a
+        propagator over a zero interval. Any other column is propagated with
+        the window's own `propagators`, so a propagator that the last window
+        used is reused.
 
         Raises:
             SimulationConfigurationError: `instant_s` precedes the keyframe,
                 which `matrix_exponential` refuses as a non-positive interval
-                rather than answering with the keyframe. No call here makes
-                one: each column is read from the segment it falls in.
+                rather than returning the keyframe. No call here passes such
+                an instant, because each column is read from the segment it
+                falls in.
         """
 
         if instant_s == segment.opening.instant_s:
@@ -769,7 +808,8 @@ class RunDefinition:
         """`state_at` without the bounds check, for the keyframe path.
 
         `record_change` evaluates at `reached_s`, which is inside the run by
-        construction, so it would otherwise re-check what it just established.
+        construction. Going through `state_at` would re-check what is already
+        established.
         """
 
         segment = self._segments[self._segment_index_at(instant_s)]
@@ -781,24 +821,25 @@ class RunDefinition:
     def _segment_index_at(self, instant_s: float) -> int:
         """Index of the segment the run was under at `instant_s`.
 
-        By binary search, which is what keeps the cost of answering a window a
-        property of the window rather than of the run: a linear walk would put
-        the run's whole length back into every frame, in the one method the
-        closed form exists to take it out of. The openings ascend because
-        `record_change` only ever appends at `reached_s`, which never
-        decreases.
+        It uses a binary search, which keeps the cost of computing a window a
+        property of the window rather than of the run. A linear walk would put
+        the run's whole length back into the cost of every frame, in the one
+        method that the closed form exists to remove it from. The segment
+        openings ascend because `record_change` only ever appends at
+        `reached_s`, which never decreases.
 
-        **An instant before the first opening is refused rather than wrapped.**
-        `bisect_right` answers zero there, so the index is `-1`, which Python
-        reads as the *last* segment - the one furthest from any right answer.
-        Nothing then fails: `_propagator` returns `None` for the non-positive
-        interval that follows, so the caller is handed that segment's keyframe
-        as though it were the state at an instant the run did not exist for.
-        `_require_within_run` already refuses such an instant on every public
-        path, which makes this the second of two guards rather than the first;
-        it is here because what it prevents is silent and what it costs is one
-        comparison. `_canonical_state_at` is the caller that reaches this walk
-        without the bound, by design.
+        **An instant before the first opening is refused rather than wrapped
+        round.** `bisect_right` returns zero there, so the index is `-1`.
+        Python treats that index as the *last* segment, the one furthest from
+        any right answer. Nothing then fails. `_propagator` returns `None` for
+        the non-positive interval that follows, so the caller is handed that
+        segment's keyframe as though it were the state at an instant when the
+        run did not exist. `_require_within_run` already refuses such an
+        instant on every public path, so this check is the second of two
+        guards rather than the first. It is here because the failure it
+        prevents is silent and the check costs one comparison.
+        `_canonical_state_at` is the one caller that uses this search without
+        the bounds check, by design.
 
         Raises:
             SimulationConfigurationError: `instant_s` precedes the instant the
@@ -818,11 +859,11 @@ class RunDefinition:
     def _advance_index_to(self, instant_s: float, from_index: int) -> int:
         """Index of the segment holding `instant_s`, searching forward from `from_index`.
 
-        The window walk's own lookup. It hands back the index it last used, so
-        the whole walk costs one pass over the segments the window covers
-        rather than a fresh search per column - and it skips the segments too
-        short to hold one, which is the case a walk assuming one segment per
-        column would get wrong.
+        This is the lookup that the window walk uses. The walk passes back the
+        index it last used, so the whole walk costs one pass over the segments
+        the window covers, not a fresh search per column. The lookup also
+        skips segments too short to contain a column. A walk that assumed one
+        segment per column would get that case wrong.
         """
 
         index = from_index
@@ -838,9 +879,9 @@ class RunDefinition:
     def _opening_after(self, index: int) -> float:
         """When the segment after `index` opens, or infinity where it is the last.
 
-        Infinity rather than the run's duration: what the caller wants is the
-        first instant this segment's settings no longer apply, and for the
-        last segment there is no such instant.
+        It returns infinity rather than the run's duration. The caller wants
+        the first instant at which this segment's settings no longer apply,
+        and for the last segment there is no such instant.
         """
 
         if index + 1 < len(self._segments):
@@ -851,13 +892,14 @@ class RunDefinition:
     def _require_within_run(self, instant_s: float) -> None:
         """Refuse an instant the run has not reached, or one before it began.
 
-        **The lower bound is the run's own opening rather than the literal
-        zero.** They are the same number for a run opening at induction and
-        they are not for one opening anywhere else, so reading the bound off
-        the segments keeps the refusal true of both without a caller naming
-        which kind it holds - and a bound left at zero would admit the whole
-        span before such a run existed, which `_segment_index_at` answers
-        silently rather than by failing.
+        **The lower bound is the run's own opening, not the literal zero.**
+        The two are the same number for a run that opens at induction, and
+        different for a run that opens anywhere else. Reading the bound from
+        the segments keeps the refusal correct for both kinds of run, without
+        the caller saying which kind it holds. A bound left at zero would
+        admit the whole span before such a run existed, and
+        `_segment_index_at` would handle that span silently rather than by
+        failing.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, precedes
@@ -882,7 +924,7 @@ class RunDefinition:
 
 
 def _opening_of(segment: RunSegment) -> float:
-    """When `segment` opens - the key the segment search is ordered on."""
+    """When `segment` opens, which is the key that the segment search is ordered on."""
 
     return segment.opening.instant_s
 
@@ -890,7 +932,7 @@ def _opening_of(segment: RunSegment) -> float:
 def _last_column_before(limit_s: float, times_s: tuple[float, ...], first_column: int) -> int:
     """Index of the last of `times_s`, from `first_column` on, that precedes `limit_s`.
 
-    The columns from `first_column` to here share one segment, so one
+    The columns from `first_column` to the returned index share one segment, so one
     propagator over the column spacing serves all of them.
     """
 
@@ -905,12 +947,12 @@ def _last_column_before(limit_s: float, times_s: tuple[float, ...], first_column
 def _propagator(segment: RunSegment, interval_s: float) -> Matrix | None:
     """`exp(A * interval_s)` for `segment`'s settings, or `None` for no interval.
 
-    `matrix_exponential` refuses a non-positive interval, and rightly: an
-    interval is a horizon to propagate over and zero is not one. Asking for
-    the state exactly at a keyframe is nonetheless an ordinary request - the
-    first column of a window often lands on one - and the answer to it is the
-    keyframe itself, so the identity is expressed by having nothing to apply
-    rather than by building a matrix that does nothing.
+    `matrix_exponential` refuses a non-positive interval, and rightly so. An
+    interval is a horizon to propagate over, and zero is not one. Asking for
+    the state exactly at a keyframe is nonetheless an ordinary request,
+    because the first column of a window often lands on one. The correct
+    result is the keyframe itself. So the identity is expressed by returning nothing to
+    apply, rather than by building a matrix that does nothing.
     """
 
     if interval_s <= 0.0:
@@ -922,11 +964,12 @@ def _propagator(segment: RunSegment, interval_s: float) -> Matrix | None:
 class _WindowPropagators:
     """The propagators one drawn window applies, reusing those the window before it used.
 
-    `RunDefinition.evaluate_anchored` builds one per call from what the last
-    call `used`, and keeps this call's `used` for the next. `used` holds every
-    propagator this window applied, whether it formed it or found it kept, so
-    one the last window used and this one never asks for is not carried on,
-    which is what bounds the store to one window.
+    `RunDefinition.evaluate_anchored` builds one of these per call, from what
+    the last call `used`, and keeps this call's `used` for the next call.
+    `used` holds every propagator this window applied, whether it formed the
+    propagator or found it kept. So a propagator that the last window used and
+    this window never asks for is not carried on. That is what bounds the
+    store to one window.
     """
 
     __slots__ = ("_kept", "used")
@@ -936,13 +979,13 @@ class _WindowPropagators:
         self.used: dict[_PropagatorKey, Matrix] = {}
 
     def over(self, settings: UptakeEquationSettings, interval_s: float) -> Matrix:
-        """`exp(A * interval_s)` for `settings`, formed only where neither window already has.
+        """`exp(A * interval_s)` for `settings`, formed only when neither window already has it.
 
-        Keyed by the settings and the interval together, which are the whole
-        of what `build_system_matrix` and `matrix_exponential` read: no
-        `record_change` can then leave a kept propagator answering for a
-        stretch it was not formed under, because a propagator is found only
-        by the settings it was formed from.
+        The store is keyed by the settings and the interval together, which
+        are everything that `build_system_matrix` and `matrix_exponential`
+        read. So no `record_change` can leave a kept propagator in use for a
+        stretch it was not formed under, because a propagator is found only by
+        the settings it was formed from.
 
         Raises:
             SimulationConfigurationError: `interval_s` is not positive and
@@ -967,14 +1010,15 @@ class _WindowPropagators:
 def _advanced(propagator: Matrix | None, state: tuple[float, ...]) -> tuple[float, ...]:
     """Apply `propagator` to `state`, or return `state` when there is no interval.
 
-    The unit state comes back exactly one, as it went in, with nothing written
-    back. `matrix_exponential` returns its row as the identity's to the last
-    bit, and that row applied to a state carrying one there is one term of one
-    times one and the rest times zero. Until `PL-2MD9` the entry was a product
-    of two rounded factors and was overwritten here, which held the unit state
-    but not the forcing column the squarings had multiplied the same drift
-    into; the fix belonged in the propagator, and the tests that read one back
-    out of `state_at` now check it there.
+    The unit state comes back exactly one, as it went in, and nothing is
+    written over it. `matrix_exponential` returns the unit state's row equal
+    to the identity's row, to the last bit. That row, applied to a state
+    carrying one in the unit state, is one term of one times one plus the rest
+    times zero. Until `PL-2MD9` the entry was a product of two rounded
+    factors, and this function overwrote it. That kept the unit state exact,
+    but not the forcing column, into which the squarings had multiplied the
+    same drift. The fix belonged in the propagator. The tests now check the
+    unit state's one where they read it back out of `state_at`.
     """
 
     if propagator is None:
@@ -986,13 +1030,13 @@ def _advanced(propagator: Matrix | None, state: tuple[float, ...]) -> tuple[floa
 def _require_state(state: tuple[float, ...] | DisplayState) -> None:
     """Refuse a state vector the equations could not be read against.
 
-    The display value is refused first and by name. It would otherwise fail on
-    `require_canonical_state`'s structural test with a message naming its type,
-    which is true and tells the reader nothing about *why* a wrapper exists -
-    and the error a safety-critical path raises is part of what makes it
-    auditable. Everything after that refusal is a statement about the state
-    vector rather than about this module, so it is
-    `governing_equations.require_canonical_state`'s, and the live system a
+    A display value is refused first, and by name. Otherwise it would fail the
+    structural test in `require_canonical_state` with a message naming its
+    type. That message is true but tells the reader nothing about *why* a
+    wrapper exists, and the error a safety-critical path raises is part of
+    what makes the path auditable. Every check after that refusal is about the
+    state vector rather than about this module. So those checks belong to
+    `governing_equations.require_canonical_state`, and the live system that a
     branch resumes into applies the identical guard by calling it too.
 
     Raises:

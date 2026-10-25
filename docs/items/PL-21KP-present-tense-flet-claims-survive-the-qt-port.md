@@ -54,3 +54,9 @@ The five test citations point at a file that moved.
 interface or is removed, the five citations name
 `tests/integration/test_simulation_view.py`, and the historical mentions are
 unchanged.
+
+**Two more present-tense claims, found 2026-10-25 rewriting `src/` prose for
+`PL-1K5X`.** `core/__init__.py`'s docstring says the package "does not depend
+on Flet", and a comment in `app/control_timeline.py` above the ASCII arrow
+names "The Flutter client this interface renders in". The rewrite kept both
+as they were, because changing a fact was outside that item.

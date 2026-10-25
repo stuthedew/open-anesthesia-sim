@@ -1,12 +1,12 @@
 """This module draws the Workspace tab strip in PySide6, with one tab for each Workspace.
 
-`PL-QW1Z` decided its place and its look, and `PL-2KXB` builds it. The strip
-sits directly above the Areas, under the unconditional region, which is the part
-of the window that is always shown. It spans the layout container's width. It
-sits there because a tab switches the Areas and
-nothing above them (Q1). It holds the tabs and a "+" at its end, and nothing
-else (Q2). The shipped Workspaces' tabs come first, then a separator line,
-then the reader's own (Q4).
+`PL-QW1Z` decided the strip's place and its look, and `PL-2KXB` builds it. The
+strip sits directly above the Areas, under the unconditional region, which is
+the part of the window that is always shown. It spans the layout container's
+width. It sits there because a tab switches the Areas and nothing above them
+(Q1). It holds the tabs and a "+" at its end, and nothing else (Q2). The
+shipped Workspaces' tabs come first, then a separator line, then the reader's
+own tabs (Q4).
 
 **The strip owns no Workspace.** It is drawn from the `WorkspaceSet` that the
 dashboard holds. Every change a reader makes produces a new set, which the
@@ -43,9 +43,9 @@ Ctrl+PageUp and Ctrl+PageDown, which Blender uses for the same thing (Blender
 Manual, "Workspaces", "Controls", read 2026-10-19). As in Blender's
 `SCREEN_OT_workspace_cycle`, they wrap around at either end. Then comes a
 "This Workspace" submenu, which holds the current tab's own entries. Which
-part of the strip opens the menu, and the menu's wording, are placeholders. The
-project owner's rule of 2026-10-18 treats look and placement as placeholders
-while the structure is built.
+part of the strip opens the menu, and the menu's wording, are placeholders.
+The project owner's rule of 2026-10-18 treats look and placement as
+placeholders while the structure is built.
 
 **Both menus end with the three entries that keep or undo a session's
 changes** (`PL-DWHG`). A separator sets them apart. `PL-WV9K` § "Answers
@@ -232,14 +232,14 @@ class WorkspaceQuestion:
 
 @dataclass(frozen=True, slots=True)
 class TabOperation:
-    """One entry in a tab's menu, with its label and the set it makes or why it cannot.
+    """One entry in a tab's menu: its label, and the set it makes or why it is unavailable.
 
     Attributes:
         label: The entry's text.
-        result: The set the entry makes, or `None` where it is unavailable.
-        refusal: Why it is unavailable, shown as its tooltip, or `None`.
+        result: The set the entry makes, or `None` if the entry is unavailable.
+        refusal: Why the entry is unavailable, shown as its tooltip, or `None`.
         question: What the reader is asked before `result` is applied, or
-            `None` where the entry applies at once.
+            `None` if the entry applies at once.
     """
 
     label: str
@@ -255,9 +255,9 @@ class TabOperation:
 
 
 def display_order(workspaces: WorkspaceSet) -> tuple[int, ...]:
-    """The set's positions in the order their tabs stand: shipped first, then the reader's own.
+    """Return the set's positions in tab order: shipped tabs first, then the reader's own.
 
-    Within each group the set's own order holds (`PL-QW1Z` Q4).
+    Within each group, the tabs keep the set's own order (`PL-QW1Z` Q4).
     """
 
     shipped = [i for i, ws in enumerate(workspaces.workspaces) if ws.origin.is_shipped]
@@ -283,8 +283,8 @@ def tab_operations(
             tab resets to that Workspace. A test passes its own.
 
     Raises:
-        TypeError: `index` is not an `int`.
-        NotInWorkspaceSet: `index` is not a position in the set.
+        TypeError: If `index` is not an `int`.
+        NotInWorkspaceSet: If `index` is not a position in the set.
     """
 
     workspace = workspaces.activate(index).current
@@ -328,7 +328,7 @@ def _moves(workspaces: WorkspaceSet, index: int) -> tuple[TabOperation, TabOpera
 def _pins(
     workspaces: WorkspaceSet, index: int, workspace: Workspace, open_runs: tuple[RunId, ...]
 ) -> tuple[TabOperation, ...]:
-    """Unpin the pinned run, or one entry to pin each open run."""
+    """Return an entry to unpin the pinned run, or one entry to pin each open run."""
 
     if workspace.pinned_run is not None:
         label = _UNPIN_TEMPLATE.format(run=run_label(workspace.pinned_run))
@@ -350,7 +350,7 @@ def _pins(
 def _reset(
     workspaces: WorkspaceSet, index: int, workspace: Workspace, read: Callable[[], Workspace]
 ) -> TabOperation:
-    """Reset this Workspace from its shipped file, or why it cannot be."""
+    """Return the entry that resets this Workspace from its shipped file, or why it cannot."""
 
     try:
         restored = read()
@@ -366,7 +366,7 @@ def _reset(
 
 
 def _delete(workspaces: WorkspaceSet, index: int, workspace: Workspace) -> TabOperation:
-    """Delete, which asks first, or why the last Workspace cannot be deleted."""
+    """Return the Delete entry, which asks first, or why the last Workspace cannot be deleted."""
 
     try:
         result = workspaces.remove(index)
@@ -383,7 +383,7 @@ def _delete(workspaces: WorkspaceSet, index: int, workspace: Workspace) -> TabOp
 class SaveEntry:
     """The "Save as default" entry: the question asked before saving, or why it is unavailable.
 
-    Exactly one of the two is set.
+    Exactly one of the two fields is set.
     """
 
     question: WorkspaceQuestion | None
@@ -401,17 +401,17 @@ def save_entry(
 ) -> SaveEntry:
     """Return the "Save as default" entry for saving `workspaces` to `store`.
 
-    The entry is unavailable where there is no store, where the store has
-    loaded nothing yet, and where its load turned saving off for the session.
-    In the last case the reason is the store's own notice, which names the
+    The entry is unavailable when there is no store, when the store has
+    loaded nothing yet, and when its load turned saving off for the session.
+    In the last case, the reason is the store's own notice, which names the
     file.
 
     Args:
-        store: The store the session loaded from, or `None` where there is
+        store: The store the session loaded from, or `None` if there is
             none.
         workspaces: The set the entry would save.
-        missing_store: Why there is no store, shown as the reason where
-            `store` is `None`. Where both are `None`, a generic reason is
+        missing_store: Why there is no store, shown as the reason when
+            `store` is `None`. When both are `None`, a generic reason is
             shown instead.
     """
 
@@ -441,23 +441,23 @@ def save_entry(
 
 
 def restore_shipped(workspaces: WorkspaceSet, shipped: WorkspaceSet) -> WorkspaceSet:
-    """Return `workspaces` with each shipped Workspace it no longer holds put back.
+    """Return `workspaces` with each shipped Workspace that is missing from it put back.
 
     A shipped Workspace counts as still in the set while some Workspace in
     the set has it as its origin, whatever that Workspace has been renamed to
     or changed into. So only a deleted one comes back, and it comes back as
-    its shipped file holds it. Each one goes back after the nearest Workspace
-    that comes before it in the shipped order and is still in the set. Where
-    no such Workspace exists, it goes back before the first shipped Workspace
-    in the set. The current Workspace stays current, so the Areas do not
-    change.
+    its shipped file defines it. Each one goes back after the nearest
+    Workspace that comes before it in the shipped order and is still in the
+    set. If no such Workspace exists, it goes back before the first shipped
+    Workspace in the set. The current Workspace stays current, so the Areas
+    do not change.
 
     Args:
         workspaces: The reader's set.
         shipped: The shipped set, in its shipped order.
 
     Raises:
-        LayoutRefused: A Workspace in `workspaces` already has the name of
+        LayoutRefused: If a Workspace in `workspaces` already has the name of
             a shipped Workspace that would be put back. The message names
             that Workspace.
     """
@@ -493,8 +493,8 @@ def default_operations(
 ) -> tuple[TabOperation, TabOperation]:
     """Return the Restore shipped Workspaces and Reset all layouts entries for `workspaces`.
 
-    Where the shipped set cannot be read, both entries are unavailable, and
-    the reason names the file.
+    If the shipped set cannot be read, both entries are unavailable, and the
+    reason names the file.
 
     Args:
         workspaces: The set the strip is drawn from.
@@ -528,7 +528,7 @@ def default_operations(
 
 
 class WorkspaceQuestionDialog(QDialog):
-    """The question asked before a Workspace is deleted or reset, or the set saved or reset.
+    """The question asked before a Workspace is deleted or reset, or the set is saved or reset.
 
     The dialog is laid out like `NewCaseDialog`, with the destructive button
     first and the safe one last. The entry's own button is outlined. The keep
@@ -554,11 +554,11 @@ class WorkspaceQuestionDialog(QDialog):
 class LayoutMenu(QMenu):
     """The Layout menu, which lists the Workspaces and their operations.
 
-    A right-click on the strip outside a tab opens it (`PL-R5G4`). The strip
-    carries no button for it, as Blender's top bar carries none beside its
-    Workspace tabs. The menu builds its entries again each time it opens. It works
-    them out from the same set that the strip uses for its own entries. The
-    module docstring lists the menu's entries.
+    A right-click on the strip outside a tab opens the menu (`PL-R5G4`). The
+    strip has no button for it, just as Blender's top bar has none beside its
+    Workspace tabs. The menu builds its entries again each time it opens, from
+    the same set that the strip uses for its own entries. The module docstring
+    lists the menu's entries.
 
     Args:
         strip: The strip that carries out each entry.
@@ -574,7 +574,7 @@ class LayoutMenu(QMenu):
         self.aboutToShow.connect(self.fill)
 
     def fill(self) -> None:
-        """Write the menu's entries from the set the strip works its entries out from."""
+        """Rebuild the menu's entries from the same set that the strip builds its entries from."""
 
         strip = self._strip
         now = strip.current_set()
@@ -661,7 +661,7 @@ class WorkspaceTab(QToolButton):
 
 
 class _NameEditor(QLineEdit):
-    """The in-place editor a tab is replaced by while it is renamed. Escape cancels."""
+    """The in-place editor that replaces a tab while it is renamed. Escape cancels the rename."""
 
     def __init__(self, strip: WorkspaceTabs, index: int, name: str) -> None:
         super().__init__(name, strip)
@@ -694,19 +694,19 @@ class WorkspaceTabs(QWidget):
 
     Args:
         workspaces: The set to draw first.
-        change: Called with each set a reader's action makes. The owner
-            applies it and calls `show_set` with it.
+        change: Called with each new set that a reader's action makes. The
+            owner applies the set and calls `show_set` with it.
         open_runs: Returns the runs open now, for the pin entries.
-        live: Returns the set as it stands now. The owner's current Workspace
+        live: Returns the set as it is now. The owner's current Workspace
             can change after the strip draws it, through a dragged border or
             a View's own settings. Every entry is worked out from this set, so
             a duplicate copies what the reader sees, and "Save as default"
-            saves it. By default, the set that was drawn.
+            saves what the reader sees. The default is the set that was drawn.
         store: The store that "Save as default" writes to, or `None`. With
             `None`, that entry is shown as unavailable.
         notice: What the reader is told about the load, shown under the tabs
-            from the start, or `None`. Where `store` is `None` it is also the
-            reason "Save as default" is unavailable.
+            from the start, or `None`. When `store` is `None`, it is also the
+            reason that "Save as default" is unavailable.
         shipped: Returns the shipped set, for Restore shipped Workspaces and
             Reset all layouts. A test passes its own.
 
@@ -799,30 +799,30 @@ class WorkspaceTabs(QWidget):
         return self._workspaces
 
     def _now(self) -> WorkspaceSet:
-        """The set every entry is worked out from: the owner's live one, or the one drawn."""
+        """Return the set every entry is worked out from: the owner's live set, or the one drawn."""
 
         return self._workspaces if self._live is None else self._live()
 
     def current_set(self) -> WorkspaceSet:
-        """The set every menu entry is worked out from, as the Layout menu reads it."""
+        """Return the set that every menu entry is worked out from, for the Layout menu to use."""
 
         return self._now()
 
     @property
     def row(self) -> QHBoxLayout:
-        """The row holding the tabs, "+" and the rename refusal."""
+        """The row that holds the tabs, "+" and the message that explains a refused rename."""
 
         return self._row
 
     @property
     def tabs(self) -> tuple[WorkspaceTab, ...]:
-        """The tabs, in the order they stand."""
+        """The tabs, in the order they appear."""
 
         return tuple(self._tabs)
 
     @property
     def separator(self) -> QFrame:
-        """The rule after the shipped tabs, shown only where both groups have a tab."""
+        """The separator line after the shipped tabs, shown only when both groups have a tab."""
 
         return self._separator
 
@@ -899,10 +899,10 @@ class WorkspaceTabs(QWidget):
 
         The tabs are counted in their display order, with the shipped tabs
         first. After the last tab comes the first, as in Blender's
-        `SCREEN_OT_workspace_cycle`. If a tab is being renamed, the name typed so
-        far is accepted first, just as it is when the focus moves away. This is
-        needed because the shortcut keys reach the window even while the name
-        editor has the focus.
+        `SCREEN_OT_workspace_cycle`. If a tab is being renamed, the name typed
+        so far is accepted first, just as it is when the focus moves away. This
+        is needed because the shortcut keys reach the window even while the
+        name editor has the focus.
         """
 
         self.finish_rename(keep_open=False)
@@ -920,7 +920,7 @@ class WorkspaceTabs(QWidget):
         self.rename(made.active)
 
     def operations(self, index: int) -> tuple[TabOperation, ...]:
-        """The menu entries after Rename for the tab at `index`, from the set drawn now."""
+        """The menu entries after Rename for the tab at `index`, from the set as it is now."""
 
         return tab_operations(self._now(), index, self._open_runs())
 
@@ -950,7 +950,7 @@ class WorkspaceTabs(QWidget):
         return menu
 
     def fill_tab_menu(self, menu: QMenu, index: int) -> None:
-        """Add the entries of the tab at `index`'s menu to `menu`: Rename, then `operations`."""
+        """Add the menu entries of the tab at `index` to `menu`: Rename, then `operations`."""
 
         menu.addAction(RENAME_LABEL).triggered.connect(partial(self.rename, index))
 
@@ -981,7 +981,7 @@ class WorkspaceTabs(QWidget):
         self.menu_for(index).popup(at)
 
     def choose(self, operation: TabOperation) -> None:
-        """Apply an entry, asking first where it asks."""
+        """Apply an entry, first asking the entry's question if it has one."""
 
         if operation.result is None:
             return
@@ -993,17 +993,17 @@ class WorkspaceTabs(QWidget):
         self._ask(operation.question, partial(self._change, operation.result))
 
     def save_entry(self) -> SaveEntry:
-        """The "Save as default" entry for the set as it stands now."""
+        """The "Save as default" entry for the set as it is now."""
 
         return save_entry(self._store, self._now(), self._missing_store)
 
     def default_operations(self) -> tuple[TabOperation, TabOperation]:
-        """The Restore shipped Workspaces and Reset all layouts entries for the set now."""
+        """The Restore shipped Workspaces and Reset all layouts entries for the current set."""
 
         return default_operations(self._now(), self._shipped)
 
     def save_as_default(self, entry: SaveEntry) -> None:
-        """Ask the entry's question, and save the set as it then stands if the reader agrees."""
+        """Ask the entry's question, and if the reader agrees, save the set as it is then."""
 
         if entry.question is None:
             return
@@ -1011,7 +1011,7 @@ class WorkspaceTabs(QWidget):
         self._ask(entry.question, self._save)
 
     def _save(self) -> None:
-        """Save the set as it stands now, and say what happened under the tabs.
+        """Save the set as it is now, and report the result on the line under the tabs.
 
         When the store refuses a save, or the operating system makes it fail,
         the failure is reported here, at the action the reader chose, and the
@@ -1036,7 +1036,7 @@ class WorkspaceTabs(QWidget):
         )
 
     def show_notice(self, text: str, *, warning: bool) -> None:
-        """Show `text` on the line under the tabs, in the warning colour where `warning`."""
+        """Show `text` on the line under the tabs, in the warning colour if `warning` is true."""
 
         style_label(
             self.notice_label,
@@ -1071,7 +1071,7 @@ class WorkspaceTabs(QWidget):
         dialog.deleteLater()
 
     def rename(self, index: int) -> None:
-        """Replace the tab at `index` with an editor holding its name."""
+        """Replace the tab at `index` with an editor that contains the tab's name."""
 
         self._close_editor()
         tab = self.tab_at(index)

@@ -2,7 +2,7 @@
 
 A saved layout names each Area's View by a kind tag (`layout.tree.ViewKind`).
 The layout package treats that tag as opaque. It checks the tag's syntax and
-keeps it unchanged, but holds no list of View kinds (`PL-R1WQ` Q1, project
+keeps it unchanged, but has no list of View kinds (`PL-R1WQ` Q1, project
 owner, 2026-09-27, ratified). This module is the one list. The adapter,
 `app/area_layout.py`, looks up each Area's tag here when it builds the widget
 tree. When this build does not register an Area's tag, that Area shows only
@@ -44,13 +44,14 @@ its own factory. So this module imports the GUI toolkit through
 
 **Each entry declares the least size its View is drawn at** (`PL-K285` Q1,
 project owner, 2026-09-27, ratified). The size is in logical pixels, and it
-is a constraint: the layout holds an Area at it where it can, and an Area it
-cannot give that size states the size it needs instead of drawing the View
-(`layout/sizing.py`). What a View needs is the larger, on each axis, of this
-declared size and the View widget's own minimum size hint. The hint grows
-with what the View holds, such as one row per displayed run, so the declared
-size is the floor under it, and it is what holds a View that holds nothing
-yet to a size a reader can see. The shipped sizes are placeholders.
+is a constraint. The layout keeps an Area at least that size where it can.
+An Area that the layout cannot give that size shows the size it needs
+instead of drawing the View (`layout/sizing.py`). What a View needs is the
+larger, on each axis, of this declared size and the View widget's own
+minimum size hint. The hint grows with what the View contains, such as one
+row per displayed run. The declared size sets a lower limit on that need,
+and it keeps a View that contains nothing yet at a size a reader can see.
+The shipped sizes are placeholders.
 """
 
 from __future__ import annotations
@@ -97,8 +98,8 @@ __all__ = [
     "unbuilt_view_text",
 ]
 
-# The tags. Each is written here once and never changed; see the module
-# docstring for what renaming one takes.
+# The tags. Each is written here once and never changed. The module
+# docstring says what renaming one involves.
 CONCENTRATION_CHART: Final = ViewKind("concentration_chart")
 WASH_IN: Final = ViewKind("wash_in")
 PARAMETER_CONTROLS: Final = ViewKind("parameter_controls")
@@ -116,8 +117,8 @@ UNBUILT_VIEW_TITLE: Final = "This Area's View could not be built."
 #: first control of the Area's header, above the notice (`PL-DB5G` Q2).
 CHOOSE_A_VIEW: Final = "Choose a View from the menu above."
 
-#: The minimum of an entry that declares none: its View's need is then its
-#: widget's own minimum size hint alone.
+#: The minimum size of an entry that declares none. Its View then needs only
+#: its widget's own minimum size hint.
 NO_DECLARED_MINIMUM: Final = PixelSize(0, 0)
 
 # A release number as `pyproject.toml` writes it.
@@ -137,8 +138,8 @@ class RegisteredView:
             reachable in every layout. `required_kinds` checks this field
             against `REQUIRED_REACHABLE`.
         minimum: The least size the View is drawn at, in logical pixels,
-            below the Area's header. The adapter holds the View at the
-            larger of this and the least size Qt would hold its widget to
+            below the Area's header. The adapter gives the View the larger
+            of this size and the minimum size Qt allows its widget
             (`PL-K285`).
 
     Raises:
@@ -227,7 +228,7 @@ class RetiredTag:
 
 
 def registry(*views: RegisteredView) -> Mapping[str, RegisteredView]:
-    """A read-only registry of `views`, keyed by each one's tag.
+    """Return a read-only registry of `views`, keyed by each one's tag.
 
     Raises:
         TypeError: an entry is not a `RegisteredView`.
@@ -251,7 +252,7 @@ def registry(*views: RegisteredView) -> Mapping[str, RegisteredView]:
 def retirements(
     registered: Mapping[str, RegisteredView], *retired: RetiredTag
 ) -> Mapping[str, RetiredTag]:
-    """A read-only table of `retired`, keyed by tag, checked against `registered`.
+    """Return a read-only table of `retired`, keyed by tag and checked against `registered`.
 
     Raises:
         TypeError: an entry is not a `RetiredTag`.
@@ -292,7 +293,7 @@ def retirements(
 def required_kinds(
     registered: Mapping[str, RegisteredView], *required: ViewKind
 ) -> tuple[ViewKind, ...]:
-    """The kinds in `required`, once `registered` registers each as required to stay reachable.
+    """Return the kinds in `required`, once `registered` marks each as required to stay reachable.
 
     `docs/MODEL.md` requires some Views to stay reachable in every layout and
     not to be removable from the application. The chooser lists every
@@ -395,7 +396,7 @@ def pinned_run_absent_title(run_name: str) -> str:
 
 
 def pinned_run_absent_text(run_name: str) -> str:
-    """The body of that notice: why no run is shown, and how to show the open runs.
+    """The body of the pinned-run notice: why no run is shown, and how to show the open runs.
 
     No other run is shown in the pinned run's place (`PL-WV9K` Q6).
     """
@@ -409,7 +410,7 @@ def pinned_run_absent_text(run_name: str) -> str:
 def too_small_title(title: str) -> str:
     """The title of the notice an Area shows while it is too small for the View `title`.
 
-    The wording is `PL-DB5G` Q3's.
+    The wording was decided in `PL-DB5G` Q3.
     """
 
     return f"Too small for {title}."
@@ -419,9 +420,9 @@ def too_small_text(needed: PixelSize, available: PixelSize) -> str:
     """The body of the notice an Area shows while it is too small for its View.
 
     `needed` is the least size the View is drawn at, and `available` is the
-    size the Area has under its header. Both are sizes on screen, in whole
-    logical pixels, and neither is a value from a run. The wording is
-    `PL-DB5G` Q3's.
+    size the Area has below its header. Both are sizes on screen, in whole
+    logical pixels, and neither is a value from a run. The wording was
+    decided in `PL-DB5G` Q3.
 
     Raises:
         TypeError: `needed` or `available` is not a `PixelSize`.
@@ -447,7 +448,7 @@ def missing_view_text(
 
     The body names the saved tag, says what became of it, tells the reader
     to choose a View from the chooser above, and says that the tag is kept
-    until they do. The wording is `PL-DB5G` Q2's.
+    until they do. The wording was decided in `PL-DB5G` Q2.
 
     Raises:
         TypeError: `kind` is not a `ViewKind`.

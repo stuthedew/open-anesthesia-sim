@@ -1,58 +1,71 @@
 """A Workspace, and the ordered set of them a reader works in.
 
-`docs/interface-provenance.md` adopts Blender's two levels: a **Workspace** is
-a task-level object a reader switches between as a tab, and a layout is the
-geometry of Areas in its windows (`PL-C842`, `PL-WV9K`). The layout is
-`layout/model.py`'s; this module is what a Workspace carries beside it and how
-the set of them behaves, as `PL-WV9K` decided (project owner, 2026-09-27,
-ratified, over the alternative each answer names).
+`docs/interface-provenance.md` adopts Blender's two levels. A **Workspace** is
+a task-level object that a reader switches to by its tab. A layout is the
+geometry of the Areas in a Workspace's windows (`PL-C842`, `PL-WV9K`).
+`layout/model.py` defines the layout. This module defines what a Workspace
+carries beside its layout, and how a set of Workspaces behaves. `PL-WV9K`
+decided both (project owner, 2026-09-27, ratified, over the alternative that
+each of its answers names).
 
-**What a Workspace carries, and so what its saved form holds** (`PL-WV9K`
-Q1): a `name`, unique in its set; an `origin`, shipped under an id or the
-reader's own; its `LayoutModel`; `view_state`, each View's own saved state,
-held per Area id and per View kind as a JSON object this module never reads
-(`PL-TH35`); and `pinned_run`, the identity of the run its Views show, or
-`None` (`PL-7Z84`). Nothing else: no reader preferences, which `ROADMAP.md`
-v0.6.0 entry 11 routes to a tier of their own, no run data, and no window
-geometry. Runs belong to the session rather than to a Workspace, so switching
-Workspaces changes which run a View shows and never the run itself.
+**What a Workspace carries, and so what its saved form contains** (`PL-WV9K`
+Q1). A Workspace has these fields:
 
-**A pin names a run, and an absent run is stated rather than replaced**
-(`PL-WV9K` Q6, `PL-7Z84`). Unpinned, a Workspace's Views show the runs the
-session has open. Pinned, they show the pinned run alone. Where the pinned run
-is not open, `shown_runs` returns `PinnedRunAbsent` and no run at all, so a
-caller cannot draw another run in its place. That is the usual case for a pin
-read back from the saved file, because nothing persists a run across
-sessions, and an identity from another session never matches one minted in
-this one (`layout/run_identity.py`).
+- a `name`, unique within its set;
+- an `origin`, which says whether it was shipped under an id or is the
+  reader's own;
+- its layout, a `LayoutModel`;
+- `view_state`, each View's own saved state, stored per Area id and per View
+  kind as a JSON object that this module never inspects (`PL-TH35`);
+- `pinned_run`, the identity of the run its Views show, or `None`
+  (`PL-7Z84`).
 
-**One retained entry per View kind per Area.** When an Area's View changes
-and changes back, the outgoing View's state is kept under its kind rather than
-destroyed, so the Area shows what it showed before: Blender's per-Area list of
-`SpaceLink`s, bounded by construction at one entry per editor type, which
-`docs/interface-provenance.md` records under "What survives a resize, a split,
-a join, and a swap". State for an Area the layout no longer holds is dropped
-when the layout changes: an Area id is never reused (`PL-HJPY` Q3), so that
-state could never be shown again.
+A Workspace carries nothing else. It carries no reader preferences, which
+`ROADMAP.md` v0.6.0 entry 11 assigns to a tier of their own. It carries no run
+data and no window geometry. Runs belong to the session rather than to a
+Workspace. So switching Workspaces changes which run a View shows, and never
+changes the run itself.
+
+**A pin names a run. When the pinned run is absent, the Workspace says so
+rather than showing another run** (`PL-WV9K` Q6, `PL-7Z84`). When a Workspace
+is unpinned, its Views show the runs the session has open. When it is pinned,
+they show the pinned run alone. When the pinned run is not open, `shown_runs`
+returns `PinnedRunAbsent` and no run at all, so a caller cannot draw another
+run in its place. An absent pinned run is the usual case for a pin read back
+from the saved file. Nothing saves a run from one session to the next, and an
+identity from another session never matches one created in this session
+(`layout/run_identity.py`).
+
+**Each Area keeps one state entry per View kind.** When an Area's View changes
+to another kind, the outgoing View's state is kept under its kind rather than
+destroyed. So when the Area changes back, it shows what it showed before. This
+follows Blender's per-Area list of `SpaceLink`s, which by construction holds
+at most one entry per editor type. `docs/interface-provenance.md` records it
+under "What survives a resize, a split, a join, and a swap". When the layout
+changes, the state of any Area that the layout no longer contains is dropped.
+An Area id is never reused (`PL-HJPY` Q3), so that state could never be shown
+again.
 
 **The set is ordered, has one active Workspace, and is never empty**
-(`PL-WV9K` Q2). `remove` raises `LastWorkspace` where it would empty the set:
-`ROADMAP.md` item 34 takes Blender's refusal to delete the last workspace as
-"a floor it enforces structurally rather than by warning", and a property of
-the type is what structural means. Blender's `ED_workspace_delete` returns
-false when the list `is_single()`
+(`PL-WV9K` Q2). `remove` raises `LastWorkspace` when removing would empty the
+set. `ROADMAP.md` item 34 takes Blender's refusal to delete the last workspace
+as "a floor it enforces structurally rather than by warning". Here,
+"structurally" means that the rule is a property of the type. Blender's
+`ED_workspace_delete` returns false when the list `is_single()`
 (`source/blender/editors/screen/workspace_edit.cc`, read 2026-09-27). Names
-are unique, so a tab names one Workspace.
+are unique, so each tab names exactly one Workspace.
 
-**Shipped against the reader's own** (`PL-WV9K` Q3): `Origin` says which, and
-a shipped Workspace is edited in place, since a copy-on-write fork was refused
-as a hidden mode. "Reset this Workspace" replaces it from its shipped JSON
-through `WorkspaceSet.replace`, "Restore shipped Workspaces" is `add`, and a
-duplicate of any Workspace is the reader's own.
+**Shipped Workspaces and the reader's own** (`PL-WV9K` Q3). `Origin` says
+which kind a Workspace is. A shipped Workspace is edited in place. A
+copy-on-write fork was rejected, because it would be a hidden mode. "Reset
+this Workspace" replaces a shipped Workspace from its shipped JSON through
+`WorkspaceSet.replace`. "Restore shipped Workspaces" uses `add`. A duplicate
+of any Workspace is the reader's own.
 
-**Values, as the layout is.** Every operation returns a new set and leaves the
-one it was called on as it was; a refused one raises and changes nothing. The
-file the set is saved to is `layout/store.py`'s.
+**Workspaces and sets are values, as the layout is.** Every operation returns
+a new Workspace or set and leaves the one it was called on unchanged. A
+refused operation raises an exception and changes nothing. `layout/store.py`
+owns the file that the set is saved to.
 """
 
 from __future__ import annotations
@@ -86,24 +99,25 @@ __all__ = [
     "WorkspaceSet",
 ]
 
-# The written forms of an origin, which `Origin.written` writes and
-# `Origin.from_written` reads: the reader's own, or shipped under an id.
+# The two written forms of an origin, which `Origin.written` writes and
+# `Origin.from_written` reads. The first marks the reader's own Workspace, and
+# the second comes before a shipped Workspace's id.
 MINE: Final = "mine"
 SHIPPED_PREFIX: Final = "shipped:"
 
-# The word a duplicate's name carries after its source's: "<name> (copy)",
-# then "<name> (copy 2)" and on where that is taken too.
+# The word added to a duplicate's name, after its source's name: "<name> (copy)".
+# Where that name is taken, the next is "<name> (copy 2)", and so on.
 _COPY_WORD: Final = "copy"
 
 
 class WorkspaceName(str):
-    """A Workspace's name as its tab shows it, built only through its check.
+    """A Workspace's name as its tab shows it, which can be built only through its check.
 
     Raises:
         TypeError: the name is not a `str`.
         InvalidLayout: the name is empty, begins or ends with whitespace, or
-            holds a character that does not print - a newline or a control
-            character, which a tab could not show.
+            contains a character that does not print, such as a newline or a
+            control character, which a tab could not show.
     """
 
     __slots__ = ()
@@ -131,11 +145,11 @@ class WorkspaceName(str):
 class ShippedWorkspaceId(str):
     """The id a shipped Workspace is known by: the stem of its file under `data/workspaces/`.
 
-    A tag, as `layout/tree.py`'s `is_tag` defines one, of any length: the
-    shipped ones are bounded by the file names they are the stems of, and a
-    reader's file naming a longer one names nothing shipped, which the
-    interface reports as a Workspace of unknown origin rather than as a
-    malformed file.
+    The id is a tag, as `is_tag` in `layout/tree.py` defines one, of any
+    length. The shipped ids are limited in length by the file names whose
+    stems they are. A reader's file that names a longer id names nothing
+    shipped. The interface reports such a Workspace as one of unknown origin,
+    rather than treating the file as malformed.
 
     Raises:
         TypeError: the id is not a `str`.
@@ -162,8 +176,9 @@ class ShippedWorkspaceId(str):
 class Origin:
     """Where a Workspace came from: shipped under `shipped_id`, or the reader's own when `None`.
 
-    Written as `"mine"` or `"shipped:<id>"` by `written`, and read back by
-    `from_written`; the grammar lives here and nowhere else.
+    `written` writes an origin as `"mine"` or `"shipped:<id>"`, and
+    `from_written` reads it back. This class is the only place that defines
+    that grammar.
 
     Raises:
         TypeError: `shipped_id` is neither `None` nor a `ShippedWorkspaceId`.
@@ -180,13 +195,13 @@ class Origin:
 
     @classmethod
     def mine(cls) -> Origin:
-        """The reader's own: made, duplicated or saved by them."""
+        """Return the origin of the reader's own Workspace: one they made, duplicated or saved."""
 
         return cls(None)
 
     @classmethod
     def shipped(cls, shipped_id: ShippedWorkspaceId) -> Origin:
-        """Shipped with the application under `shipped_id`, whether or not since edited."""
+        """Return the origin of a Workspace shipped under `shipped_id`, edited since or not."""
 
         return cls(shipped_id)
 
@@ -195,7 +210,7 @@ class Origin:
         return self.shipped_id is not None
 
     def written(self) -> str:
-        """The origin as a file holds it: `"mine"`, or `"shipped:"` and the id."""
+        """Return the origin as a file stores it: `"mine"`, or `"shipped:"` followed by the id."""
 
         if self.shipped_id is None:
             return MINE
@@ -204,7 +219,7 @@ class Origin:
 
     @classmethod
     def from_written(cls, written: str) -> Origin:
-        """The origin `written` names, as `written()` wrote it.
+        """Return the origin that `written` names, in the form that `written()` writes.
 
         Raises:
             TypeError: `written` is not a `str`.
@@ -228,17 +243,20 @@ class Origin:
 
 
 type ViewState = Mapping[AreaId, Mapping[ViewKind, Mapping[str, object]]]
-"""Each View's saved state: per Area id, per View kind, a JSON object the Workspace never reads."""
+"""Each View's saved state, stored per Area id and per View kind.
+
+Each state is a JSON object that the Workspace never reads.
+"""
 
 
 @dataclass(frozen=True, slots=True)
 class PinnedRunAbsent:
     """A Workspace's pinned run is not open, so its Views show no run.
 
-    Returned by `Workspace.shown_runs` in place of the runs to show, so the
-    absence is a value a caller has to handle rather than an empty tuple it
-    could pass on. A View bound to the pin states the absence in its Area and
-    draws no value.
+    `Workspace.shown_runs` returns a `PinnedRunAbsent` in place of the runs
+    to show. The absence is then a value that a caller has to handle, rather
+    than an empty tuple that it could pass on. A View bound to the pin says in
+    its Area that the run is absent, and draws no value.
 
     Raises:
         TypeError: `pinned` is not a `RunId`.
@@ -253,27 +271,28 @@ class PinnedRunAbsent:
 
 @dataclass(frozen=True, slots=True)
 class Workspace:
-    """A named layout with each View's own saved state: one tab of the set.
+    """A named layout with each View's own saved state, shown as one tab of the set.
 
-    `view_state` is held as the JSON it will be written as - a private copy,
-    read-only at its two outer levels and at the top of each state, read back
-    through `state_of`, which hands out a copy - and every Area id in it is an
-    Area the layout holds. A View's state is a record of named fields, so each
-    entry is a JSON object whose keys are strings at every depth; what the
-    fields mean is the View's.
+    `view_state` is stored as the JSON it will be written as. It is a private
+    copy, read-only at its two outer levels and at the top level of each
+    state. `state_of` reads a state back and returns a copy of it. Every Area
+    id in `view_state` names an Area that the layout contains. A View's state
+    is a record of named fields, so each entry is a JSON object whose keys are
+    strings at every depth. The View decides what the fields mean.
 
-    `pinned_run` is the run its Views show, or `None` for the runs the
-    session has open; `shown_runs` resolves it.
+    `pinned_run` is the run that the Workspace's Views show. `None` means that
+    they show the runs the session has open. `shown_runs` works out which runs
+    to show.
 
     Raises:
-        TypeError: a field is not of its declared type; a `view_state` key is
-            not an `AreaId` or a `ViewKind`; or a state is not a mapping, or
-            holds a mapping at any depth, whose keys are not all strings,
-            which `json` would otherwise rewrite as strings and could run
-            together.
-        InvalidLayout: `view_state` names an Area the layout does not hold, or
-            holds a state that is not JSON - a value `json` cannot write, or
-            `NaN` or infinity, which the file refuses.
+        TypeError: a field is not of its declared type. Or a `view_state` key
+            is not an `AreaId` or a `ViewKind`. Or a state is not a mapping.
+            Or a state, or a mapping nested in it at any depth, has a key that
+            is not a string. `json` would otherwise rewrite such keys as
+            strings, and two keys could then become one.
+        InvalidLayout: `view_state` names an Area that the layout does not
+            contain. Or it contains a state that is not JSON: a value that
+            `json` cannot write, or `NaN` or infinity, which the file rejects.
     """
 
     name: WorkspaceName
@@ -331,9 +350,10 @@ class Workspace:
         object.__setattr__(self, "view_state", MappingProxyType(copied))
 
     def state_of(self, area_id: AreaId, view: ViewKind) -> dict[str, object] | None:
-        """A copy of the state kept for the View of kind `view` in Area `area_id`, or `None`.
+        """Return a copy of the state kept for the View of kind `view` in Area `area_id`.
 
-        The copy is the caller's to change; the Workspace holds its own.
+        Return `None` when no state is kept for it. The caller may change the
+        copy, and the Workspace keeps its own.
         """
 
         state = self.view_state.get(area_id, {}).get(view)
@@ -343,15 +363,16 @@ class Workspace:
     def with_view_state(
         self, area_id: AreaId, view: ViewKind, state: Mapping[str, object]
     ) -> Workspace:
-        """This Workspace with `state` kept for the View of kind `view` in Area `area_id`.
+        """Return this Workspace with `state` kept for the View of kind `view` in Area `area_id`.
 
-        One entry is kept per kind per Area, so a state already kept for that
-        kind is replaced and every other kind's is left.
+        One entry is kept per kind per Area. So a state already kept for that
+        kind is replaced, and the states kept for other kinds are left as they
+        were.
 
         Raises:
-            NotInLayout: `area_id` names no Area the layout holds.
-            TypeError, InvalidLayout: as the constructor raises them for the
-                state.
+            NotInLayout: `area_id` names no Area in the layout.
+            TypeError, InvalidLayout: for the same reasons that the constructor
+                raises them for a state.
         """
 
         self.layout.area(area_id)
@@ -362,10 +383,10 @@ class Workspace:
         return replace(self, view_state={**self.view_state, area_id: kinds})
 
     def with_layout(self, layout: LayoutModel) -> Workspace:
-        """This Workspace showing `layout`, keeping the state of every Area the new layout holds.
+        """Return this Workspace showing `layout`, keeping the state of each Area in `layout`.
 
-        State kept for an Area the new layout does not hold is dropped: its id
-        is never reused, so nothing could show it again.
+        The state kept for an Area that is not in the new layout is dropped.
+        That Area's id is never reused, so nothing could show the state again.
 
         Raises:
             TypeError: `layout` is not a `LayoutModel`.
@@ -380,7 +401,7 @@ class Workspace:
         return replace(self, layout=layout, view_state=kept)
 
     def pinned_to(self, run: RunId | None) -> Workspace:
-        """This Workspace pinned to `run`, or unpinned where `run` is `None`.
+        """Return this Workspace pinned to `run`, or unpinned when `run` is `None`.
 
         Raises:
             TypeError: `run` is neither `None` nor a `RunId`.
@@ -389,11 +410,12 @@ class Workspace:
         return replace(self, pinned_run=run)
 
     def shown_runs(self, open_runs: tuple[RunId, ...]) -> tuple[RunId, ...] | PinnedRunAbsent:
-        """The runs this Workspace's Views show, out of the runs the session has open.
+        """Return the runs that this Workspace's Views show, out of the runs the session has open.
 
-        Unpinned, every open run, in the order given. Pinned, the pinned run
-        alone where it is open, and `PinnedRunAbsent` where it is not. No
-        other run is ever returned in a pinned run's place.
+        When the Workspace is unpinned, this returns every open run, in the
+        order given. When it is pinned, this returns the pinned run alone if
+        that run is open, and `PinnedRunAbsent` if it is not. No other run is
+        ever returned in place of a pinned run.
 
         Raises:
             TypeError: `open_runs` is not a tuple of `RunId`s.
@@ -415,7 +437,7 @@ class Workspace:
         return PinnedRunAbsent(self.pinned_run)
 
     def renamed(self, name: WorkspaceName) -> Workspace:
-        """This Workspace under `name`. Whether the name is free is the set's question.
+        """Return this Workspace under `name`. The set checks whether the name is free.
 
         Raises:
             TypeError: `name` is not a `WorkspaceName`.
@@ -424,7 +446,7 @@ class Workspace:
         return replace(self, name=name)
 
     def as_mine(self) -> Workspace:
-        """This Workspace as the reader's own, whatever it was."""
+        """Return this Workspace as the reader's own, whatever its origin was."""
 
         return replace(self, origin=Origin.mine())
 
@@ -434,8 +456,8 @@ class WorkspaceSet:
     """The reader's Workspaces, in tab order, with the one they are working in.
 
     `active` is a position in `workspaces`. The set is never empty and no two
-    Workspaces share a name. Every operation returns a new set and refuses by
-    raising, leaving this one as it was.
+    Workspaces share a name. Every operation returns a new set. A refused
+    operation raises an exception and leaves this set as it was.
 
     Raises:
         TypeError: a field is not of its declared type.
@@ -484,7 +506,7 @@ class WorkspaceSet:
         return self.workspaces[self.active]
 
     def position_of(self, name: WorkspaceName) -> int:
-        """Where the Workspace named `name` sits.
+        """Return the position of the Workspace named `name`.
 
         Raises:
             TypeError: `name` is not a `WorkspaceName`.
@@ -501,12 +523,14 @@ class WorkspaceSet:
         raise NotInWorkspaceSet(f"no Workspace in the set is named {name!r}")
 
     def add(self, workspace: Workspace, at: int | None = None) -> WorkspaceSet:
-        """The set with `workspace` inserted at `at` - the end, by default - and active.
+        """Return the set with `workspace` inserted at `at`, and made active.
+
+        By default, `at` is the end of the set.
 
         Raises:
             TypeError: `workspace` is not a `Workspace`, or `at` is not an `int`.
-            NotInWorkspaceSet: `at` is not a position in the set or the one
-                after its last.
+            NotInWorkspaceSet: `at` is neither a position in the set nor the
+                position after its last.
             LayoutRefused: a Workspace of that name is already in the set.
         """
 
@@ -521,10 +545,11 @@ class WorkspaceSet:
         return WorkspaceSet(workspaces, position)
 
     def duplicate(self, index: int) -> WorkspaceSet:
-        """The set with a copy of the Workspace at `index` after it, the reader's own and active.
+        """Return the set with a copy of the Workspace at `index` inserted after it.
 
-        The copy is named after its source with " (copy)", or " (copy 2)" and
-        on where that name is taken, so the two tabs read apart.
+        The copy is the reader's own, and it becomes active. It is named after
+        its source with " (copy)" added. Where that name is taken, it gets
+        " (copy 2)", and so on. So the two tabs can be told apart.
 
         Raises:
             TypeError: `index` is not an `int`.
@@ -539,10 +564,10 @@ class WorkspaceSet:
         return self.add(copy, at=position + 1)
 
     def rename(self, index: int, name: WorkspaceName) -> WorkspaceSet:
-        """The set with the Workspace at `index` named `name`.
+        """Return the set with the Workspace at `index` renamed to `name`.
 
         Raises:
-            TypeError: `index` is not an `int`, or `name` not a `WorkspaceName`.
+            TypeError: `index` is not an `int`, or `name` is not a `WorkspaceName`.
             NotInWorkspaceSet: `index` is not a position in the set.
             LayoutRefused: another Workspace already has that name.
         """
@@ -558,7 +583,9 @@ class WorkspaceSet:
         return self._with(position, self.workspaces[position].renamed(name))
 
     def move(self, index: int, to: int) -> WorkspaceSet:
-        """The set with the Workspace at `index` moved to `to`; the active Workspace stays active.
+        """Return the set with the Workspace at `index` moved to `to`.
+
+        The Workspace that was active stays active.
 
         Raises:
             TypeError: `index` or `to` is not an `int`.
@@ -574,10 +601,11 @@ class WorkspaceSet:
         return WorkspaceSet(tuple(moved), moved.index(self.current))
 
     def remove(self, index: int) -> WorkspaceSet:
-        """The set without the Workspace at `index`.
+        """Return the set without the Workspace at `index`.
 
-        Where the removed Workspace was active, the one that takes its
-        position is, or the new last one where it was last.
+        If the removed Workspace was active, the Workspace that moves into its
+        position becomes active. If the removed Workspace was also the last
+        one, the new last Workspace becomes active instead.
 
         Raises:
             TypeError: `index` is not an `int`.
@@ -605,7 +633,7 @@ class WorkspaceSet:
         return WorkspaceSet(remaining, active)
 
     def activate(self, index: int) -> WorkspaceSet:
-        """The set with the Workspace at `index` active.
+        """Return the set with the Workspace at `index` made active.
 
         Raises:
             TypeError: `index` is not an `int`.
@@ -615,13 +643,14 @@ class WorkspaceSet:
         return WorkspaceSet(self.workspaces, self._position(index))
 
     def replace(self, index: int, workspace: Workspace) -> WorkspaceSet:
-        """The set with `workspace` in place of the one at `index`.
+        """Return the set with `workspace` in place of the one at `index`.
 
-        How a layout operation, a View's saved state or a reset from shipped
-        JSON reaches the set: the Workspace is rebuilt and put back.
+        A layout operation, a change to a View's saved state, and a reset from
+        shipped JSON all reach the set this way. The caller rebuilds the
+        Workspace and puts it back with this method.
 
         Raises:
-            TypeError: `index` is not an `int`, or `workspace` not a `Workspace`.
+            TypeError: `index` is not an `int`, or `workspace` is not a `Workspace`.
             NotInWorkspaceSet: `index` is not a position in the set.
             LayoutRefused: another Workspace already has the new one's name.
         """
@@ -637,7 +666,7 @@ class WorkspaceSet:
         return self._with(position, workspace)
 
     def _position(self, index: int, *, inclusive: bool = False) -> int:
-        """`index` as a position in the set, or one past its end where `inclusive`."""
+        """Return `index` as a position in the set, or one past its end when `inclusive`."""
 
         if isinstance(index, bool) or not isinstance(index, int):
             raise TypeError(f"a position in the set is an int, not {type(index).__name__}")
@@ -665,7 +694,10 @@ class WorkspaceSet:
 
 
 def _json_copy(area_id: AreaId, kind: object, state: object) -> Mapping[str, object]:
-    """`state` as the JSON object it will be written as, read-only; refuses what is not one."""
+    """Return `state` as the read-only JSON object it will be written as.
+
+    Reject a `state` that is not a JSON object.
+    """
 
     if not isinstance(kind, ViewKind):
         raise TypeError(
@@ -703,11 +735,11 @@ def _json_copy(area_id: AreaId, kind: object, state: object) -> Mapping[str, obj
 
 
 def _json_round_trip(state: Mapping[str, object]) -> dict[str, object]:
-    """A fresh copy of `state` as JSON reads it back: plain dicts and lists, sharing nothing.
+    """Return a fresh copy of `state` as JSON reads it back: plain dicts and lists, sharing nothing.
 
     Raises:
-        TypeError, ValueError: `json` cannot write `state` - a value of a type
-            it has no form for, or `NaN` or infinity.
+        TypeError, ValueError: `json` cannot write `state`, because it contains
+            a value of a type that `json` has no form for, or `NaN` or infinity.
     """
 
     loaded: dict[str, object] = json.loads(json.dumps(dict(state), allow_nan=False))
@@ -716,7 +748,10 @@ def _json_round_trip(state: Mapping[str, object]) -> dict[str, object]:
 
 
 def _copy_name(name: WorkspaceName, taken: set[WorkspaceName]) -> WorkspaceName:
-    """The first of "<name> (copy)", "<name> (copy 2)", "<name> (copy 3)" ... not in `taken`."""
+    """Return the first candidate name for a copy of `name` that is not in `taken`.
+
+    The candidates, in order, are "<name> (copy)", "<name> (copy 2)", "<name> (copy 3)" ...
+    """
 
     candidate = WorkspaceName(f"{name} ({_COPY_WORD})")
     count = 1

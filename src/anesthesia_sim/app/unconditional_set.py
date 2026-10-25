@@ -2,9 +2,9 @@
 
 `docs/MODEL.md` § "Minimum displayed outputs" -> "What this list requires
 once the layout is the reader's" divides the required display in three. The
-unconditional part is the set a reader could misread the run's other
-displayed numbers without. It sits outside the area system, so no split,
-join, close or Workspace switch can take it off the screen. This module
+unconditional part is the set of values without which a reader could misread
+the run's other displayed numbers. It sits outside the area system, so no
+split, join, close or Workspace switch can take it off the screen. This module
 states that set in code, so the region that holds it and the tests that
 check the region are built from one declaration rather than from a list
 written out twice (`PL-NWTM`).
@@ -16,7 +16,7 @@ The set has two tiers, plus the control-input record:
   what is being administered.
 - **The per-substance tier** is chosen by the substance the run models. For
   the inhaled-agent model it is the delivered concentration, the six
-  compartment concentrations in both units, and the agent's 1 MAC stated.
+  compartment concentrations in both units, and the agent's 1 MAC value.
   A run with no volatile agent owes none of those, so the tier is passed in
   as a `SubstanceInstance` rather than written into the set.
 - **The control-input record** is unconditional on its own terms: the list
@@ -35,8 +35,8 @@ is open, every window also names the run it shows. The per-substance tier and
 the control-input record are statements about the whole run, so they live
 once, in the main window. `window_region` returns what one window owes.
 
-Nothing here imports a toolkit, so the declaration is tested without a
-`QApplication` and read by the widgets that draw it.
+Nothing here imports a toolkit, so the declaration can be tested without a
+`QApplication`. The widgets that draw the set read it from here.
 """
 
 from collections.abc import Mapping
@@ -70,7 +70,7 @@ class Tier(StrEnum):
     """True of every run, whatever substance it models."""
 
     PER_SUBSTANCE = "per-substance"
-    """Chosen by the substance the run models; never true of every run."""
+    """Chosen by the substance the run models. It is never true of every run."""
 
     CONTROL_RECORD = "control-input record"
     """The settings changed during the run, stated apart from both tiers."""
@@ -125,9 +125,10 @@ _TIERS: Final[Mapping[UnconditionalValue, Tier]] = MappingProxyType(
     }
 )
 
-#: The readout each compartment concentration is drawn on, by the quantity
-#: that readout reads. `RecordedQuantity.WASH_IN_RATIO` is absent: F_A/F_I is
-#: a chart surface, and `docs/MODEL.md` makes it conditional.
+#: The unconditional value that each compartment concentration's readout
+#: carries, keyed by the recorded quantity that the readout draws.
+#: `RecordedQuantity.WASH_IN_RATIO` is absent, because F_A/F_I is shown on a
+#: chart, and `docs/MODEL.md` makes it conditional.
 _COMPARTMENT_VALUES: Final[Mapping[RecordedQuantity, UnconditionalValue]] = MappingProxyType(
     {
         RecordedQuantity.CIRCUIT: UnconditionalValue.CIRCUIT_CONCENTRATION,
@@ -171,8 +172,8 @@ class SubstanceInstance:
 
     `docs/MODEL.md` states the tier as a test, not as a list: a value belongs
     to it when a reader could misread the run's other numbers without it.
-    Each substance model answers that test once, where its own model is
-    specified, and this value is that answer.
+    Each substance model applies that test once, where its own model is
+    specified, and this value is the result.
 
     Attributes:
         substance_model: What the run models, in words a reader would use.
@@ -181,9 +182,9 @@ class SubstanceInstance:
 
     Raises:
         ValueError: A value is not in the per-substance tier, or appears
-            twice. An invariant value here would be required twice, and a
-            per-substance value of one model must not reach the invariant
-            tier, where every run would owe it.
+            twice. An invariant value here would be required twice. A
+            per-substance value of one model must not end up in the
+            invariant tier, where every run would have to show it.
     """
 
     substance_model: str
@@ -211,9 +212,9 @@ class SubstanceInstance:
 
 #: The tier for the inhaled-agent model `docs/MODEL.md` specifies: the
 #: delivered concentration and the six compartment concentrations, each in
-#: percent and as a multiple of 1 MAC, and that agent's 1 MAC stated in
-#: percent so the multiples carry their divisor. Every agent this build loads
-#: is an inhaled agent, so every run selects it.
+#: percent and as a multiple of 1 MAC, and the agent's 1 MAC in percent, so
+#: that the multiples show what they were divided by. Every agent this build
+#: loads is an inhaled agent, so every run selects this tier.
 INHALED_AGENT: Final = SubstanceInstance(
     "an inhaled agent from a vaporizer",
     (
@@ -254,8 +255,8 @@ def unconditional_set(substance: SubstanceInstance) -> UnconditionalSet:
     """The unconditional set for a run modelling `substance`.
 
     Args:
-        substance: The per-substance tier the run's substance model selects;
-            `INHALED_AGENT` for every run this build makes.
+        substance: The per-substance tier that the run's substance model
+            selects. It is `INHALED_AGENT` for every run this build makes.
 
     Returns:
         The invariant tier, that substance's tier and the control-input

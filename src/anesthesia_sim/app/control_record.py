@@ -35,35 +35,35 @@ __all__ = ["CONTROL_INPUT_DISPLAY_UNITS", "CONTROL_INPUT_UNITS", "ControlChange"
 class ControlInput(StrEnum):
     """A setting the user can change during a run, under a stable identifier.
 
-    The *value* of each member is what a recorded run stores, so it is
-    chosen from the domain rather than from whatever the accessor happens
-    to be called this release. That separation has now been paid for:
-    `PL-3TLK` and `PL-9SH6` renamed both of the forwarding setters these
-    members stand for - `set_delivered_concentration` became
+    The *value* of each member is what a recorded run stores, so it is chosen
+    from the domain, not from whatever the accessor happens to be called in
+    this release. That separation has already paid off. `PL-3TLK` and
+    `PL-9SH6` renamed both of the forwarding setters these members stand for.
+    `set_delivered_concentration` became
     `set_delivered_partial_pressure_fraction`, and the circuit fraction
-    became `inspired_partial_pressure_fraction` - and `PL-NJPB` renamed the
-    first again, to `set_delivered_concentration_percent`, so a timeline
-    that had stored accessor names would now carry three retired ones in the
+    became `inspired_partial_pressure_fraction`. `PL-NJPB` then renamed the
+    first setter again, to `set_delivered_concentration_percent`. A timeline
+    that had stored accessor names would now carry three retired names in the
     history of every run recorded before the renames. The member names
-    followed the code; the strings did not move.
+    followed the code, but the stored strings did not change.
 
-    `DELIVERED` is the vaporizer dial: the concentration delivered into the
-    circuit, which is not the same quantity as the inspired concentration
-    the circuit reaches. Naming it for the dial would have tied it to one
+    `DELIVERED` is the vaporizer dial. It is the concentration delivered into
+    the circuit, which is not the same quantity as the inspired concentration
+    that the circuit reaches. Naming it for the dial would have tied it to one
     machine's control rather than to the quantity the model applies. Its
-    recorded value is the percent the dial was set to, which is what the
-    circuit holds (`PL-NJPB`), so every control's value is in the unit it
-    was set in.
+    recorded value is the percent the dial was set to, which is the value the
+    circuit stores (`PL-NJPB`). So every control's value is recorded in the
+    unit it was set in.
 
-    These are the four live controls and there is no fifth. A
-    `CIRCUIT_VOLUME` member was recorded here until `PL-GYH2` established
-    the circuit volume as a fixed model parameter rather than a control:
-    it was written only by `SimulationController.set_circuit_volume`, an
-    app-layer setter no interface control ever reached, and retiring the
-    setter left an identifier for a change a run can no longer undergo.
-    Removing the member costs no recorded history, because a timeline is
-    held in memory and cleared with the run that recorded it; it is never
-    persisted, so no stored run carries the string.
+    There are four live controls, and there is no fifth. A `CIRCUIT_VOLUME`
+    member was defined here until `PL-GYH2` established the circuit volume as
+    a fixed model parameter rather than a control. The member was written
+    only by `SimulationController.set_circuit_volume`, an app-layer setter
+    that no interface control ever called. Retiring the setter left an
+    identifier for a change that a run can no longer undergo. Removing the
+    member costs no recorded history. A timeline is kept in memory and cleared
+    with the run that recorded it. It is never persisted, so no stored run
+    carries the string.
     """
 
     FRESH_GAS_FLOW = "fresh_gas_flow"
@@ -129,8 +129,11 @@ class ControlChange:
     """
 
     elapsed_s: CaseInstant
-    """Simulated time the change took effect, in seconds. The instant the
-    running state was at, so a `CaseInstant` like every other holder of one."""
+    """The simulated time at which the change took effect, in seconds.
+
+    It is the instant that the running state had reached. So it is a
+    `CaseInstant`, like every other value that records such an instant.
+    """
     adjustment: int
     """Which user adjustment this change belongs to. See the class docstring."""
     control: ControlInput
