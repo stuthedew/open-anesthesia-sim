@@ -213,6 +213,25 @@ def test_part_1_unskipped_and_part_2_skipped_still_run_every_other_test_once() -
     assert sorted(runs) == [test for test in tests if test not in costly]
 
 
+@pytest.mark.parametrize(
+    ("environ", "asked"),
+    [({"SKIP_COSTLY_TESTS": "1"}, True), ({"SKIP_COSTLY_TESTS": ""}, False), ({}, False)],
+    ids=["one", "empty", "unset"],
+)
+def test_only_skip_costly_tests_set_to_1_asks_for_the_skip(
+    environ: dict[str, str], asked: bool
+) -> None:
+    """CI asks for `--skip-costly` through a variable only this conftest reads.
+
+    `quality.yml` sets it to "1" on an apparatus pull request and to "" on
+    every other, so the empty value must not ask. It is not `PYTEST_ADDOPTS`,
+    which a pytest started in another repository would inherit (`#1774`).
+    """
+
+    assert DEALING.SKIP_COSTLY_VARIABLE == "SKIP_COSTLY_TESTS"
+    assert DEALING.skip_costly_asked(environ) is asked
+
+
 def test_without_skipping_a_part_is_the_one_part_deals() -> None:
     tests = list(range(12))
     shares = DEALING.PART_SHARES[2]
