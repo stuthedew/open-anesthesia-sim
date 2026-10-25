@@ -359,7 +359,7 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
 @pytest.mark.parametrize("factor", [1e200, 1e-200])
 def test_a_capacity_that_overflows_is_refused_at_build(factor: float) -> None:
-    """`PL-FNH3`, `PL-8LQZ`: a volume and a coefficient that multiply out of range are refused.
+    """A volume and a coefficient that multiply out of range are refused (`PL-FNH3`, `PL-8LQZ`).
 
     A volume and a blood:gas coefficient of 1e200 once built a pool whose capacity was `inf`,
     and a pair of 1e-200 built one whose capacity was 0.0. The numerical envelope now refuses
@@ -427,11 +427,11 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
 
 @pytest.mark.parametrize("invalid_value", [0.0, -1.0, inf, nan])
 def test_rejects_invalid_venous_volume(invalid_value: float) -> None:
-    """`PL-X8F6`: a zero, negative or non-finite venous volume is refused at construction.
+    """A zero, negative or non-finite venous volume is refused at construction (`PL-X8F6`).
 
-    Since `PL-QX2G`, the refusal of the value comes from `CompartmentVolume`, built
-    before the pool. The pool itself refuses the bare value, because it was never
-    checked against the envelope.
+    Since `PL-QX2G`, the value is refused when its `CompartmentVolume` is built, before the
+    pool exists. The pool itself refuses the value as a bare `float`, because a bare `float`
+    was never checked against the envelope.
     """
 
     with pytest.raises(

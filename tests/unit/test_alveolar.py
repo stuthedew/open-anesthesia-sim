@@ -234,11 +234,12 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
     The constructor writes `gas_volume_l` before `agent_amount_l`, and each
     write checks its own field (`PL-19Y0`). So the volume is refused before
     the amount's capacity check reads it. Before that change, `__post_init__`
-    refused the volume after that read. The capacity check therefore kept a
-    leniency for a capacity that was not positive. That leniency accepted
-    every amount once a bad volume had been written in a way that bypassed
-    the constructor (`PL-544D`, found at review). Since `PL-QX2G`, such a volume
-    is refused when its `CompartmentVolume` is built, before any write.
+    refused the volume only after that read. So the capacity check had to
+    tolerate a capacity that was not positive. Because of that tolerance, the
+    check accepted every amount once a bad volume had been written in a way
+    that bypassed the constructor (`PL-544D`, found at review). Since
+    `PL-QX2G`, such a volume is refused when its `CompartmentVolume` is built,
+    before any write.
     """
 
     with pytest.raises(
@@ -255,7 +256,7 @@ def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
 def test_a_volume_that_is_not_a_number_is_refused_under_its_own_name(not_a_number: object) -> None:
     """The volume's own write refuses a non-number by the volume's name, before anything reads it.
 
-    The capacity check that `PL-544D` put in the amount's write read
+    `PL-544D` put a capacity check in the write of the amount. That check read
     `gas_volume_l` before `__post_init__` had required it to be a number. So
     a `require_a_number` in that check stood in for the volume's own check.
     Without it, the comparison's own `TypeError` came back: "'<' not

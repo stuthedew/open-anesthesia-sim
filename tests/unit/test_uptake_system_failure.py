@@ -622,28 +622,31 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     `PL-544D` limits the alveolar and tissue amounts to the compartment's capacity at each
     write, and a rollback is a write. Since `PL-19Y0`, only a write that bypasses the
     volume's own guard can move a capacity below an amount already held. When the rollback
-    went through the capacity guard, such a capacity made `restore_state` refuse at fat. By
-    then the circuit, the alveoli and two tissue groups had been restored. The venous pool,
-    which is restored after fat, was left holding the failed step, under a configuration
-    error that had replaced the step's own error. This was found at review on 2026-10-12, on
-    a run at 8% for 300 s whose fat volume was halved below the held amount. In that run the
-    step itself then refuses at fat.
+    went through the capacity guard, such a capacity made `restore_state` refuse at the fat
+    group. By then the circuit, the alveoli and two tissue groups had been restored. The
+    venous pool, which is restored after fat, was left holding the failed step. The error
+    raised was a configuration error, which had replaced the step's own error. This was
+    found at review on 2026-10-12, on a run at 8% for 300 s whose fat volume was halved
+    below the amount held. In that run the step itself then refuses at fat.
 
-    The refusal here is the armed one that the file injects throughout. Whether a shrunk fat
-    volume makes the *step* refuse depends on the parameter set. At ordinary loads it gives
-    fat a time constant shorter than the step, and the fraction written is back in range.
-    The rollback's requirement does not depend on the parameter set. The volume and the
-    tissue:gas coefficient are written directly, bypassing their own guards, because what is
-    under test is the rollback and not the route. The state left is the one the step began
-    from, with fat over capacity as it already was, for the snapshot's `Fraction` to refuse.
+    The refusal here is the armed, injected refusal that the file uses throughout. Whether
+    a shrunk fat volume makes the *step* refuse depends on the parameter set. At ordinary
+    loads the shrunk volume gives fat a time constant shorter than the step, so the
+    fraction written is back in range. The rollback's requirement does not depend on the
+    parameter set. The volume and the tissue:gas coefficient are written directly,
+    bypassing their own guards, because what is under test is the rollback and not how the
+    capacity became too small. The state left behind is the one that the step began from.
+    In it, fat is over capacity, as it already was, so that the snapshot's `Fraction`
+    refuses it.
     """
 
     system = _a_run_whose_next_step_a_compartment_refuses()
     fat = system.patient.fat
-    # Making the capacity half the amount held through the volume alone needs about 4e-6 L,
-    # which is below the numerical envelope (`PL-QX2G`). So the volume goes to the envelope's
-    # smallest, 0.01 L, and the coefficient makes the capacity half the amount held. The
-    # capacity, and so fat's row of the system matrix, is the same as before.
+    # Making the capacity half the amount held by changing the volume alone would need about
+    # 4e-6 L, which is below the numerical envelope (`PL-QX2G`). So the volume is set to the
+    # envelope's smallest value, 0.01 L, and the coefficient is set to make the capacity half
+    # the amount held. The capacity, and so fat's row of the system matrix, is the same as
+    # before.
     object.__setattr__(fat, "volume_l", CompartmentVolume(0.01))
     object.__setattr__(
         fat,

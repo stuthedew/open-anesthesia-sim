@@ -586,13 +586,13 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
     """A volume write checks what the constructor checks, and only the setter conserves the agent.
 
     The circuit stores its agent as a fraction of its volume, so a volume
-    written straight onto the field changes the amount of agent with it.
-    Halving the volume on a run stepped 60 s left half the agent that the
-    circuit held. No constructor refuses a volume inside the numerical envelope,
-    so the field's write does not refuse one either (`PL-19Y0`). Instead, the next step halts
-    on the accounting identity and is rolled back, rather than carrying the
-    lost agent forward. `set_circuit_volume` is the write that conserves the
-    agent, and the same step passes after it.
+    written straight onto the field changes the amount of agent with it. On a
+    run stepped for 60 s, halving the volume left half the agent that the
+    circuit held. No constructor refuses a volume inside the numerical
+    envelope, so the field's write does not refuse one either (`PL-19Y0`).
+    Instead, the next step halts on the accounting identity and is rolled back,
+    rather than carrying the lost agent forward. `set_circuit_volume` is the
+    write that conserves the agent, and the same step passes after it.
     """
 
     written_past = _a_sevoflurane_run_stepped_60_s()

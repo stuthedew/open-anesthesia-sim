@@ -10,44 +10,48 @@ that takes one does not check it again (`.claude/rules/core-domain.md`
 `core/supported_ranges.py` states where the model is claimed to represent a
 patient. The envelope states only where the arithmetic has been checked
 against a high-precision evaluation, and how accurate it was found to be. It is
-set far outside every shipped value, so no real
-parameter set meets it. A value inside it can still describe no patient: a
-10 mL lung is not a lung. `docs/MODEL.md` § "The numerical envelope" states the
-two claims side by side.
+set far outside every shipped value, so no real parameter set comes near its
+edges. A value inside it can still describe no patient: a 10 mL lung is not a
+lung. `docs/MODEL.md` § "The numerical envelope" states the two claims side by
+side.
 
 **What the envelope guarantees.** The intervals are closed, and every value in
-them is positive and finite. So every product and quotient of two of them is
-positive and finite too, and many decades inside the range of a `float`. The
-extremes of a product or a quotient of positive inputs over a box lie at the
-box's corners. A volume times a coefficient lies between 1e-5 and 1e8 L, and a
-volume over a coefficient between 1e-6 and 1e7 L. Before `PL-QX2G` the inputs
-were bounded only as positive and finite. A tissue of 1e-300 L with a
-tissue:blood coefficient of 1e-30 then raised a bare `ZeroDivisionError` in
-`TissueGroupEquationSettings.washin_rate_s`. A tissue of 1e307 L with a
-tissue:gas coefficient of 1e-307 had an ordinary capacity of 1 L and an infinite
-time constant, so its own closed-form step, `TissueGroup.advance`, never moved
-it.
+them is positive and finite. So every product or quotient of two such values is
+positive and finite too, and many decades inside the range of a `float`. Think
+of the intervals as the sides of a box. A product or quotient of positive
+inputs takes its extreme values at the box's corners, where each input is at
+one end of its interval. A volume times a coefficient lies between 1e-5 and
+1e8 L, and a volume divided by a coefficient lies between 1e-6 and 1e7 L.
+Before `PL-QX2G` the inputs were bounded only as positive and finite. A tissue
+of 1e-300 L with a tissue:blood coefficient of 1e-30 then raised a bare
+`ZeroDivisionError` in `TissueGroupEquationSettings.washin_rate_s`. A tissue of
+1e307 L with a tissue:gas coefficient of 1e-307 had an ordinary capacity of
+1 L and an infinite time constant. So its own closed-form step,
+`TissueGroup.advance`, never moved it.
 
-**What decided the bounds: the squarings that the step's propagator needs.**
-`core/matrix_exponential.py` scales each interval down by repeated halving,
-then squares the result back up. Each squaring can double the rounding error,
-so the number of squarings sets the accuracy. The fastest rate in the system
-matrix sets the number of squarings. That rate is largest when a small volume
-meets a large flow, and in the alveolar balance a large blood:gas coefficient
-multiplies the cardiac output. At every corner of the envelope, with every flow
-at zero or at the top of its supported range, the 0.1 s step needs at most 19
-squarings. That was measured on 2026-10-25 over 2,560 corners. Nineteen is the
-number that the shipped parameters already need over the 24-hour horizon
-(`MAXIMUM_SQUARINGS` in `core/matrix_exponential.py`). So no step inside the
-envelope carries a larger error bound than a propagator that a shipped run
-already forms. The step is never refused either: 19 leaves a factor of 2**13
-below the cap of 32. A long interval can be. At the stiffest corner, one stretch
-of unchanged settings longer than about 1,610 s needs more than 32 squarings, so
-`matrix_exponential` refuses it rather than return it. A stepped run at the
-stiffest corners is halted sooner, by the mass-balance check: there each step's
-rounding passes the check's tolerance of one part in 10**9 within seconds to
-minutes. `docs/MODEL.md` § "The numerical envelope" gives the measurement
-against a 70-digit evaluation and the measured halt times.
+**The bounds were set by the number of squarings that the step's propagator
+needs.** `core/matrix_exponential.py` scales each interval down by repeated
+halving, then squares the result back up. Each squaring can double the
+rounding error, so the number of squarings sets the accuracy. The fastest rate
+in the system matrix sets the number of squarings. That rate is largest when a
+small volume meets a large flow. In the alveolar balance, a large blood:gas
+coefficient also multiplies the cardiac output. At every corner of the
+envelope, with every flow at zero or at the top of its supported range, the
+0.1 s step needs at most 19 squarings. That was measured on 2026-10-25 over
+2,560 corners. Nineteen is the number that the shipped parameters already need
+over the 24-hour horizon (`MAXIMUM_SQUARINGS` in `core/matrix_exponential.py`).
+So no step inside the envelope carries a larger error bound than a propagator
+that a shipped run already forms. The step is never refused either. Its 19
+squarings are 13 fewer than the cap of 32. So the fastest rate, or the step,
+could grow by a factor of 2**13 before the step needed more. A long interval
+can be refused. At the stiffest corner, one stretch of unchanged settings
+longer than about 1,610 s needs more than 32 squarings. So
+`matrix_exponential` refuses that stretch rather than return a propagator for
+it. A run stepped at the stiffest corners is halted sooner, by the mass-balance
+check. There, the rounding from step after step passes the check's tolerance
+of one part in 10**9 within seconds to minutes. `docs/MODEL.md`
+§ "The numerical envelope" gives the measurement against a 70-digit evaluation
+and the measured halt times.
 
 **The tissue:blood coefficient is a partition coefficient too, and is checked
 where it is formed.** It is the quotient of the tissue:gas and blood:gas
@@ -56,11 +60,10 @@ it. A tissue:gas coefficient of 1e-3 over a blood:gas coefficient of 1e4 makes a
 tissue:blood coefficient of 1e-7. In a 1e-3 L tissue receiving nearly all of the
 cardiac output, the wash-in rate was then 1.6e9 per second, and the 0.1 s step
 needed the full 32 squarings (measured 2026-10-25).
-`tissue_blood_partition_coefficient` below
-is the one place that forms the quotient, and it builds the result as a
-`PartitionCoefficient`. Each record that holds both factors calls it when
-either factor is written, because the quotient is a relation between two
-fields.
+`tissue_blood_partition_coefficient` below is the one place that forms the
+quotient, and it builds the result as a `PartitionCoefficient`. Each record
+that holds both factors calls it when either factor is written, because the
+quotient is a relation between two fields.
 """
 
 from __future__ import annotations
@@ -75,16 +78,15 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 # The smallest compartment volume, in litres, that core accepts.
 #
-# This floor is the bound that the measurement in the module docstring sets.
-# At the alveolar volume, with a blood:gas coefficient of
-# `MAXIMUM_PARTITION_COEFFICIENT` and a cardiac output of 10 L/min, the fastest
-# rate is 1.67e5 per second, and the 0.1 s step needs 19 squarings. The first
-# floor considered, 1e-3 L, needed 22 squarings there, so its error bound was
-# eight times larger. The floor is 122 times below the smallest shipped volume,
-# the reference adult's venous pool of 1.222 L. A patient profile with smaller
-# volumes would bring smaller flows with it, which this measurement does not
-# include. A profile within a decade of this floor would need the measurement
-# taken again at its own flows.
+# The measurement in the module docstring sets this lower bound. With the alveolar
+# volume at this bound, a blood:gas coefficient of `MAXIMUM_PARTITION_COEFFICIENT` and
+# a cardiac output of 10 L/min, the fastest rate is 1.67e5 per second. The 0.1 s step
+# then needs 19 squarings. The first bound considered, 1e-3 L, needed 22 squarings
+# there, so its error bound was eight times larger. The bound is 122 times smaller
+# than the smallest shipped volume, the reference adult's venous pool of 1.222 L. A
+# patient profile with smaller volumes would bring smaller flows with it, which this
+# measurement does not include. A profile within a decade of this bound would need
+# the measurement taken again at its own flows.
 MINIMUM_VOLUME_L = 1e-2
 
 # The largest compartment volume, in litres, that core accepts.
@@ -123,8 +125,8 @@ def _require_within_envelope(
     `require_a_number` runs first, so a `bool`, a `Decimal` or a `str` is
     refused in the simulator's own words. Then a single closed-interval
     comparison refuses NaN, both infinities, zero, a negative value and a value
-    outside the interval, all with one message. That is the shape of
-    `_require_supported` in `core/supported_ranges.py`, whose docstring says why.
+    outside the interval, all with one message. `_require_supported` in
+    `core/supported_ranges.py` works the same way, and its docstring says why.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`.
@@ -157,14 +159,14 @@ class CompartmentVolume(float, CheckedQuantity):
     `float`, which carries no proof of any range.
 
     `name` is what an error message calls the value. Several compartments each
-    hold a volume, so the caller that builds one supplies the name, as
-    `Fraction` takes one (`core/concentration.py`). A pickle rebuilds the value
-    under the default name, as `CheckedQuantity.__reduce__` says.
+    hold a volume, so the caller that builds one supplies the name. `Fraction`
+    takes a name in the same way (`core/concentration.py`). A pickle rebuilds
+    the value under the default name, as `CheckedQuantity.__reduce__` explains.
 
     Raises:
         TypeError: the volume was built as another checked quantity, such as a
-            partition coefficient or a flow. That is a swapped argument. Or the
-            volume is not an `int` or a `float`, or is a `bool`
+            partition coefficient or a flow. That is a swapped argument. Also
+            raised when the volume is not an `int` or a `float`, or is a `bool`
             (`core/checked_number.py`).
         SimulationConfigurationError: the volume is outside `MINIMUM_VOLUME_L`
             to `MAXIMUM_VOLUME_L`, or is not finite.
@@ -216,11 +218,11 @@ def tissue_blood_partition_coefficient(
     """Return $`\\lambda_{i:b} = \\lambda_{i:g}/\\lambda_{b:g}`$, built as a `PartitionCoefficient`.
 
     This is the one place in `core/` that forms the quotient. `TissueGroup`
-    and `AgentParameters` both read it from here, so the two cannot form it
-    differently. The quotient of two coefficients inside the envelope can lie
-    outside it, and the module docstring says why that matters. So the result
-    is built as the type, and a quotient outside the envelope is refused with
-    both factors named.
+    and `AgentParameters` both call this function, so the two cannot form the
+    quotient differently. The quotient of two coefficients inside the envelope
+    can lie outside it, and the module docstring says why that matters. So the
+    result is built as a `PartitionCoefficient`, and a quotient outside the
+    envelope is refused with both factors named.
 
     Raises:
         TypeError: either factor was not built as a `PartitionCoefficient`.
@@ -247,19 +249,20 @@ def tissue_blood_partition_coefficient(
             f"blood:gas coefficient of {blood_gas!r}"
         )
 
-    # The range above is the only check the constructor could fail here. A quotient of
-    # two floats is a plain float, so it is a number and was built as no other quantity.
-    # Skipping those two checks makes this read about five times cheaper (measured
-    # 2026-10-25), which matters because a run reads it three times a step.
+    # The range check above is the only check that the `PartitionCoefficient`
+    # constructor could fail here. A quotient of two floats is a plain float, so it is
+    # a number and was not built as another checked quantity. Skipping those two checks
+    # makes each read about five times cheaper (measured 2026-10-25). That matters
+    # because a run reads the quotient three times a step.
     return float.__new__(PartitionCoefficient, quotient)
 
 
 def _require_built(name: str, value: object, envelope_type: type[CheckedQuantity]) -> None:
     """Refuse a value that was not built as `envelope_type`, naming what to do instead.
 
-    This is `_require_built` in `core/supported_ranges.py`, for the two types
-    here. A value built as another checked quantity is named as that quantity,
-    and the caller is not told to rebuild it.
+    This does what `_require_built` in `core/supported_ranges.py` does, for the
+    two types in this module. A value built as another checked quantity is
+    named as that quantity, and the caller is not told to rebuild it.
     """
 
     if isinstance(value, envelope_type):
@@ -277,17 +280,19 @@ def _require_built(name: str, value: object, envelope_type: type[CheckedQuantity
 def require_compartment_volume(name: str, volume_l: object) -> None:
     """Require a volume that was built as a `CompartmentVolume`, and so checked.
 
-    This is the run-time half of the type, for the callers that `mypy` does not
-    check: a test, a notebook, or a value typed `Any`. It checks the type and
-    not the range, which the constructor has already checked. It runs where a
-    volume is stored: in each compartment's `__setattr__` and in
-    `BreathingCircuit.set_circuit_volume`, in the two equation-settings records
-    in `core/governing_equations.py`, and in `ReferenceAdultParameters` and
-    `BreathingCircuitParameters` in `core/parameters.py`, each as it is built.
+    `mypy` checks the type before the code runs. This function checks it at run
+    time, for the callers that `mypy` does not check: a test, a notebook, or a
+    value typed `Any`. It checks the type and not the range, which the
+    constructor has already checked. It runs wherever a volume is stored. That
+    is in each compartment's `__setattr__` and in
+    `BreathingCircuit.set_circuit_volume`. It also runs as each of these is
+    built: the two equation-settings records in `core/governing_equations.py`,
+    and `ReferenceAdultParameters` and `BreathingCircuitParameters` in
+    `core/parameters.py`.
 
     Raises:
-        TypeError: `volume_l` is not a `CompartmentVolume`, a bare `float`
-            included, whatever its value.
+        TypeError: `volume_l` is not a `CompartmentVolume`. A bare `float` is
+            refused too, whatever its value.
     """
 
     _require_built(name, volume_l, CompartmentVolume)
@@ -296,12 +301,12 @@ def require_compartment_volume(name: str, volume_l: object) -> None:
 def require_coefficient(name: str, coefficient: object) -> None:
     """Require a coefficient that was built as a `PartitionCoefficient`, and so checked.
 
-    It is the run-time half of the type, and runs where a coefficient is
-    stored, as `require_compartment_volume` says for a volume.
+    It is the run-time check of the type, and it runs wherever a coefficient
+    is stored. `require_compartment_volume` explains both points for a volume.
 
     Raises:
-        TypeError: `coefficient` is not a `PartitionCoefficient`, a bare
-            `float` included, whatever its value.
+        TypeError: `coefficient` is not a `PartitionCoefficient`. A bare
+            `float` is refused too, whatever its value.
     """
 
     _require_built(name, coefficient, PartitionCoefficient)

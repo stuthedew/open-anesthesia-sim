@@ -315,18 +315,19 @@ class AgentParameters:
             is zero. A `Percent` refuses a negative value when it is built, so
             zero is the only non-positive value it can hold. A vaporizer that
             delivers nothing has no dial to set. A zero MAC cannot reach this
-            record, because a `MacPercent` refuses zero when it is built. The
-            MAC divides every MAC multiple shown, and it is the number in the
-            `1 MAC = x%` reference beside the chart (`PL-0FJ8`, `PL-F9TC`).
-            For a shipped file, the loader's `PositivePercent` refuses a zero
-            MAC first. Also raised when `mac_percent` is above the vaporizer
-            maximum. The loader's `_mac_percent_must_not_exceed_vaporizer_max`
-            refuses a MAC above the maximum for a file, and this check refuses
-            it for every other record. A run opens at 1 MAC
-            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above
-            the vaporizer maximum. So such a run would open at a dial setting
-            that the vaporizer cannot deliver (`PL-HPKK`). Also raised when a
-            tissue:blood coefficient is outside the numerical envelope.
+            record, because a `MacPercent` refuses zero when it is built. Every
+            MAC multiple shown is a concentration divided by the MAC, and the
+            MAC is the number in the `1 MAC = x%` reference beside the chart
+            (`PL-0FJ8`, `PL-F9TC`). For a shipped file, the loader's
+            `PositivePercent` refuses a zero MAC first. Also raised when
+            `mac_percent` is above the vaporizer maximum. The loader's
+            `_mac_percent_must_not_exceed_vaporizer_max` refuses such a MAC in
+            a file, and this check refuses it in a record built any other way.
+            A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a dial
+            cannot be set above the vaporizer maximum. So such a run would open
+            at a dial setting that the vaporizer cannot deliver (`PL-HPKK`).
+            Also raised when a tissue:blood coefficient is outside the
+            numerical envelope.
     """
 
     schema_version: int
@@ -651,7 +652,7 @@ PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
-"""**Which set of types a new field in this file uses** (`PL-KL2Q`).
+"""**This note says which set of types a new field in this file uses** (`PL-KL2Q`).
 
 Two overlapping sets of types meet here, and they do different halves of one
 job. The `Positive*` aliases above are Pydantic `BeforeValidator`s. They check
@@ -667,11 +668,11 @@ the quantity:
   refuse a bad file, and the payload is discarded immediately afterwards. A
   type that marks a boundary therefore gains nothing on a value that is about
   to be thrown away.
-- **A public dataclass field takes the `concentration` type**, or, for a
-  volume or a partition coefficient, the numerical envelope's type
-  (`core/numerical_envelope.py`, `PL-QX2G`). The public
-  types are what the rest of the application holds. They are therefore where
-  a conversion can be missed, and where a marked boundary is worth having.
+- **A public dataclass field takes a type from `core/concentration.py`.** A
+  volume or a partition coefficient takes the numerical envelope's type
+  instead (`core/numerical_envelope.py`, `PL-QX2G`). The public types are what
+  the rest of the application holds. They are therefore where a conversion can
+  be missed, and where a marked boundary is worth having.
   `parse_agent_parameters` and `parse_reference_adult_parameters` are the only
   places where a value crosses from one layer to the other. They wrap each
   value explicitly, as in `Percent(model.mac_percent)` and
@@ -1187,9 +1188,9 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
             That covers a missing or misspelled key, an unsupported
             `schema_version`, and a value outside its validated range or the
             numerical envelope. It also covers a `sources` entry whose
-            `authority_for` disagrees with `adopted` or names something other
-            than one of this file's stored numeric values, and a stored value
-            that two entries both name. It also covers coefficients whose
+            `authority_for` disagrees with `adopted`, or names something other
+            than one of this file's stored numeric values. It also covers a
+            stored value that two entries both name, and coefficients whose
             tissue:blood quotient is outside the numerical envelope.
     """
 
@@ -1236,11 +1237,12 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
     Raises:
         SimulationConfigurationError: the payload is not a valid patient file.
             That covers a missing or misspelled key, an unsupported
-            `schema_version`, a value outside its validated range or the numerical envelope, and
-            perfusion fractions that do not sum to 1. It also covers a `sources`
-            entry whose `authority_for` disagrees with `adopted` or names
-            something other than one of this file's stored numeric values, and
-            a stored value that two entries both name.
+            `schema_version`, a value outside its validated range or the
+            numerical envelope, and perfusion fractions that do not sum to 1.
+            It also covers a `sources` entry whose `authority_for` disagrees
+            with `adopted`, or names something other than one of this file's
+            stored numeric values. It also covers a stored value that two
+            entries both name.
     """
 
     try:
@@ -1286,12 +1288,12 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
     Raises:
         SimulationConfigurationError: the payload is not a valid machine
             profile. That covers a missing or misspelled key, an unsupported
-            `schema_version`, a value outside its validated range or the numerical envelope, and a
-            `deliverable_fresh_gas_flow_range` whose minimum is above its
-            maximum. It also covers a `sources` entry whose `authority_for`
-            disagrees with `adopted` or names something other than one of this
-            file's stored numeric values, and a stored value that two entries
-            both name.
+            `schema_version`, a value outside its validated range or the
+            numerical envelope, and a `deliverable_fresh_gas_flow_range` whose
+            minimum is above its maximum. It also covers a `sources` entry
+            whose `authority_for` disagrees with `adopted`, or names something
+            other than one of this file's stored numeric values. It also
+            covers a stored value that two entries both name.
     """
 
     try:

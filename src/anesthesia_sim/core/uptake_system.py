@@ -632,35 +632,37 @@ class AgentUptakeSystem:
 
         Equal keys mean equal `equation_settings()`. Building the key costs
         about a quarter as much as building the record: 2.2 us against 9.1 us,
-        measured 2026-10-25. It was 1.8 us against 11.0 us on 2026-10-18; the
-        difference is the checked tissue:blood coefficient, formed on each read
-        (`PL-QX2G`). That is why the propagator cache compares the key
-        rather than the record. It is also why `SimulationController` can call
-        this method before every step, to check whether the core still holds
-        the settings that its run definition recorded (`PL-XRN8`).
+        measured 2026-10-25. On 2026-10-18 it was 1.8 us against 11.0 us. The
+        difference comes from the checked tissue:blood coefficient, which is now
+        formed on each read (`PL-QX2G`). The key's lower cost is why the
+        propagator cache compares the key rather than the record. It is also why
+        `SimulationController` can call this method before every step, to check
+        whether the core still holds the settings that its run definition
+        recorded (`PL-XRN8`).
 
         The key has one entry per field of `UptakeEquationSettings`, in the
         same order. Each entry is read directly from the compartments and is
         not converted. `test_the_propagator_cache_key_covers_every_equation_setting`
         keeps the key and the settings matched by checking against
-        `dataclasses.fields()`. So if a field is added to the settings without
-        an entry here, that test fails. So the field cannot silently bring back
-        the stale propagator that this key exists to make impossible. The vaporizer maximum is
-        the one entry that the matrix never reads. It is included because it is
-        in the record, which keeps the key a bijection of the settings. It costs
-        at most one rebuild per run, when a run's maximum differs from the
-        previous run's (`PL-BBMG`).
+        `dataclasses.fields()`. If a field is added to the settings without an
+        entry here, that test fails. So a new field cannot silently bring back
+        the stale propagator that this key exists to make impossible. The
+        vaporizer maximum is the one entry that the matrix never reads. It is
+        included because it is in the record, so that the key and the settings
+        still match one to one. Including it costs at most one rebuild of the
+        propagator per run, when a run's maximum differs from the previous
+        run's (`PL-BBMG`).
 
-        Flows are in litres per minute. The settings have also held flows in
-        litres per minute since `PL-SM5V`. The tissue flows are computed by the
-        same `TissueGroup.blood_flow_l_min_at` call as the settings' tissue
-        flows (`PL-HQF5`). The delivered concentration is the percent that the
-        circuit holds, which the settings have also used since `PL-NJPB`. So
-        equal settings and an equal key compare the same numbers.
+        The key's flows are in litres per minute. The settings have also held
+        flows in litres per minute since `PL-SM5V`. The tissue flows are
+        computed by the same `TissueGroup.blood_flow_l_min_at` call as the
+        settings' tissue flows (`PL-HQF5`). The delivered concentration is the
+        percent that the circuit holds, which the settings have also used since
+        `PL-NJPB`. So equal settings and an equal key compare the same numbers.
 
         `TissueGroupEquationSettings.name` is the one settings field with no
         entry, because `build_system_matrix()` never reads it. The group's
-        position in the tuple is what places its rows.
+        position in the tuple decides which rows of the matrix are its rows.
         `test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name` keeps
         that true.
         """

@@ -557,12 +557,12 @@ def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
     as worse than every other failure, and every guard in the path was
     satisfied when it was produced.
 
-    The fix is upstream, in `core/matrix_exponential.py`, which refused a zero
-    propagator because `exp(A*dt)` is nonsingular. Since `PL-2MD9`, the run at
-    this volume stopped earlier, at `MAXIMUM_SQUARINGS`. Since `PL-QX2G`, the
-    numerical envelope refuses the volume itself, so it can no longer reach a
-    step. `tests/unit/test_matrix_exponential.py` still tests both refusals of
-    the propagator.
+    The first fix was upstream, in `core/matrix_exponential.py`. It refused a
+    zero propagator, because `exp(A*dt)` is nonsingular. Since `PL-2MD9`, the
+    run at this volume stopped earlier, at `MAXIMUM_SQUARINGS`. Since
+    `PL-QX2G`, the numerical envelope refuses the volume itself, so it can no
+    longer reach a step. `tests/unit/test_matrix_exponential.py` still tests
+    both refusals of the propagator.
     """
 
     with pytest.raises(
@@ -586,14 +586,15 @@ def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -
     """Regression test for `PL-2MD9`, at an alveolar volume of 1e-18 L.
 
     At that volume the propagator needs 58 squarings, and each squaring can
-    double the error that the scaled propagator carries. Before the cap, every
-    entry came back wrong by about 100%, and the run advanced three steps with
-    its accounting check passing. It recorded 6.4e-32 L delivered where the
-    vaporizer had delivered 0.0004 L, and the stored and exhausted totals were
-    destroyed to match. That is the same failure as `PL-3PRZ`: a residual
-    formed from quantities that one failure corrupted together. Since
-    `PL-QX2G`, the numerical envelope refuses the volume itself, before any
-    step. `tests/unit/test_matrix_exponential.py` still tests the propagator's
+    double the error that the scaled propagator carries. Before the cap on
+    squarings, every entry came back wrong by about 100%, and the run advanced
+    three steps with its accounting check passing. It recorded 6.4e-32 L
+    delivered where the vaporizer had delivered 0.0004 L, and the stored and
+    exhausted totals were destroyed to match. That is the same failure as
+    `PL-3PRZ`. The accounting residual was formed from quantities that one
+    failure had corrupted together. Since `PL-QX2G`, the numerical envelope
+    refuses the volume itself, before any step.
+    `tests/unit/test_matrix_exponential.py` still tests the propagator's
     refusal past `MAXIMUM_SQUARINGS`.
     """
 

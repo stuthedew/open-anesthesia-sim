@@ -1,4 +1,4 @@
-"""The numerical envelope: each volume and partition coefficient is refused outside it.
+"""Each volume and partition coefficient is refused outside the numerical envelope.
 
 `core/numerical_envelope.py` declares where core's arithmetic has been checked
 against a high-precision evaluation (`PL-QX2G`). Before that item, a volume or a
@@ -9,10 +9,10 @@ partition coefficient was checked only as positive and finite. A tissue of
 it.
 
 These tests probe each envelope at both edges and one representable value past
-each. They check the tissue:blood quotient, which two coefficients inside the
-envelope can carry outside it. They also pin the measurement that set the
-bounds: at every corner of the envelope, the 0.1 s step needs no more
-squarings than a shipped run needs over 24 hours.
+each. They check the tissue:blood quotient, which can fall outside the envelope
+even when both of its coefficients are inside it. They also pin the measurement
+that set the bounds: at every corner of the envelope, the 0.1 s step needs no
+more squarings than a shipped run needs over 24 hours.
 """
 
 import re
@@ -66,7 +66,7 @@ LONGEST_STEP_S = 0.1
 """The 0.1 s step that the interface takes, the longest that a run supports."""
 
 MOST_SQUARINGS = 19
-"""The most squarings at the 0.1 s step over every corner, measured on 2026-10-25.
+"""The most squarings that the 0.1 s step needs at any envelope corner, measured on 2026-10-25.
 
 It is also the most that the shipped parameters need over the 24-hour
 horizon. `docs/MODEL.md` § "The numerical envelope" states both counts.
@@ -239,8 +239,10 @@ def test_a_tissue_group_refuses_coefficients_whose_quotient_leaves_the_envelope(
 def test_a_later_write_of_either_coefficient_is_checked_against_the_other() -> None:
     """The quotient is a relation between two fields, so the second write checks it.
 
-    1.10 over a blood:gas coefficient of 1e4 is 1.1e-4, and 1e4 over 0.65 is
-    1.5e4. Each is refused, and neither coefficient changes.
+    Writing a blood:gas coefficient of 1e4 against the tissue:gas coefficient of 1.10
+    gives a quotient of 1.1e-4. Writing a tissue:gas coefficient of 1e4 against the
+    blood:gas coefficient of 0.65 gives 1.5e4. Each write is refused, and neither
+    coefficient changes.
     """
 
     group = _fat(blood_gas=0.65, tissue_gas=1.10)
@@ -289,7 +291,7 @@ def test_the_tissue_blood_coefficient_a_run_reads_is_the_checked_quotient() -> N
 
 
 def test_a_tissue_whose_wash_in_rate_divided_by_zero_is_refused_when_it_is_built() -> None:
-    """`PL-QX2G`: 1e-300 L times 1e-30 underflowed to zero, and `washin_rate_s` raised.
+    """A volume of 1e-300 L times a coefficient of 1e-30 underflowed to zero (`PL-QX2G`).
 
     Before the fix, `TissueGroupEquationSettings("fat", 1e-300, 1.0,
     1e-30).washin_rate_s` raised a bare `ZeroDivisionError`. Neither input can
@@ -309,11 +311,11 @@ def test_a_tissue_whose_wash_in_rate_divided_by_zero_is_refused_when_it_is_built
 
 
 def test_a_tissue_whose_time_constant_overflowed_is_refused_when_it_is_built() -> None:
-    """`PL-QX2G`: 1e307 L at a tissue:gas coefficient of 1e-307 overflowed the time constant.
+    """A 1e307 L tissue at a tissue:gas coefficient of 1e-307 overflowed its time constant.
 
     Its capacity was an ordinary 1 L, but `time_constant_s` evaluated
-    `60 * 1e307` first and overflowed to `inf`. So `TissueGroup.advance`, the
-    tissue's own closed-form step, never moved it.
+    `60 * 1e307` first and overflowed to `inf` (`PL-QX2G`). So
+    `TissueGroup.advance`, the tissue's own closed-form step, never moved it.
     """
 
     with pytest.raises(SimulationConfigurationError, match=r"^volume_l of 1e\+307 is outside"):
@@ -326,11 +328,12 @@ def test_a_tissue_whose_time_constant_overflowed_is_refused_when_it_is_built() -
 
 
 def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_positive() -> None:
-    """The extremes of a product or quotient of positive inputs over a box lie at its corners.
+    """A product or quotient of positive inputs takes its extremes at the corners of their ranges.
 
-    So a tissue group and a venous pool built at each corner, perfused at the
-    largest supported cardiac output, bound every capacity, time constant and
-    wash-in rate that the envelope admits.
+    Each corner puts every input at one end of its interval. So a tissue group
+    and a venous pool built at each corner, and perfused at the largest
+    supported cardiac output, bound every capacity, time constant and wash-in
+    rate that the envelope admits.
     """
 
     volumes = (MINIMUM_VOLUME_L, MAXIMUM_VOLUME_L)
@@ -404,12 +407,12 @@ def _settings(
 
 
 def _squarings(matrix: Matrix, interval_s: float) -> int:
-    """The squarings that scale the shifted matrix to the series bound, worked out here.
+    """Return how many squarings scale the shifted matrix to the series bound, computed here.
 
-    `core/matrix_exponential.py` documents the rule: shift the diagonal by the
-    fastest rate, take the largest row sum, and halve until it is at most
-    `MAXIMUM_SERIES_ARGUMENT_NORM`. This is the same rule, computed
-    independently of the module's own code.
+    `core/matrix_exponential.py` documents the rule. Shift the diagonal by the
+    fastest rate, take the largest row sum times the interval, and halve it
+    until it is at most `MAXIMUM_SERIES_ARGUMENT_NORM`. This is the same rule,
+    computed independently of the module's own code.
     """
 
     shift = max(-matrix[index][index] for index in range(STATE_SIZE))
@@ -462,14 +465,14 @@ def _shipped_settings() -> UptakeEquationSettings:
 
 
 def test_no_corner_needs_more_squarings_at_the_step_than_a_shipped_run_needs_over_a_day() -> None:
-    """At every corner, the 0.1 s step's error bound is no larger than a shipped 24 h one's.
+    """At every corner, the 0.1 s step's error bound is no larger than a shipped run's over 24 h.
 
     Each squaring can double the rounding error, so the number of squarings
     sets the accuracy (`core/matrix_exponential.py`, "What it costs"). The
-    shipped sevoflurane system at the widest supported flows needs 19 over the
-    24-hour horizon. The stiffest corner, a 1e-2 L alveolar volume with a
-    blood:gas coefficient of 1e4, needs 19 at the 0.1 s step. A floor of
-    1e-3 L needed 22 there (measured 2026-10-25).
+    shipped sevoflurane system at the widest supported flows needs 19
+    squarings over the 24-hour horizon. The stiffest corner, a 1e-2 L alveolar
+    volume with a blood:gas coefficient of 1e4, needs 19 at the 0.1 s step. A
+    lower volume bound of 1e-3 L needed 22 there (measured 2026-10-25).
     """
 
     corners = _corner_settings()
@@ -524,13 +527,13 @@ def _decimal_exponential(matrix: Matrix, interval_s: str) -> list[list[Decimal]]
 
 
 def test_the_step_at_the_stiffest_corner_agrees_with_a_high_precision_evaluation() -> None:
-    """The stiffest corner's 0.1 s propagator is accepted, and is right to its stated bound.
+    """The stiffest corner's 0.1 s propagator is accepted, and is accurate to its stated bound.
 
     After `s` squarings the module bounds the error at about `2**s` times
     double precision's 2**-52. At 19 squarings that is 1.2e-10, and on
     2026-10-25 the worst entry measured 7.5e-11. The test allows three times
-    the bound, the margin that the module's own measurement found (0.6 to 2.7
-    times the bound, `MAXIMUM_SQUARINGS`).
+    the bound, because the module's own measurement found errors of 0.6 to 2.7
+    times the bound (`MAXIMUM_SQUARINGS`).
     """
 
     # The shipped circuit, venous pool and tissue volumes, with a tissue:blood

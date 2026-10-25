@@ -724,8 +724,8 @@ def test_rejects_a_tissue_group_that_could_not_describe_a_tissue(
     """A tissue group refuses a value that could not describe a tissue.
 
     Since `PL-QX2G` the volume and the coefficient are checked types, so the record refuses
-    them as bare floats. `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)` are refused
-    when they are built, which the test below checks.
+    either one passed as a bare float. `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)`
+    are refused when they are built, which the test below checks.
     """
 
     fields: dict[str, object] = {

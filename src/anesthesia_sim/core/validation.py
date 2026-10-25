@@ -41,24 +41,26 @@ caller rather than a refused value, so the error is not an
 `AnesthesiaSimulationError`. `require_within_vaporizer_maximum` takes two
 `Percent`s, and `require_a_number` already checked each of them when it was built.
 
-**What `name` has to carry.** Each guard raises a message of the form
-`f"{name} ..."`, and nothing else in it identifies the value. So `name` is all that
-a reader is told about *which* value was refused. That reader usually sees a banner
-rather than a traceback. `app/dashboard_frame.py` shows a refused setting's message
-verbatim, and `AgentUptakeSystem.advance()` wraps a refused step into the
-halted-run notice. A bare parameter name identifies the value only where just one
-object can raise it. Where several objects can, the caller puts the owner's name in
-front. It uses the instance's own `name` where the instance has one, as in
-`f"{self.name} volume_l"`. `governing_equations.py`'s `TissueGroupEquationSettings`
-does this for its volume and flow. Where the instance has no `name`, the caller uses
-the compartment's domain word, as in `"alveolar ..."` and `"venous ..."`. `PL-SPN6`
-records what the bare name cost. After `PL-9SH6`, the alveolar compartment, the
-venous pool and all three tissue groups raised the same message for a refused
-fraction. So when a resumed run was refused, the message could not say which of the
-five had refused it. The caller builds the prefix at the call site, rather than
-passing it to a parameter here. Then the sentence a reader will see can be read in
-the line that raises it. `Fraction`'s `name` follows the same convention where a
-fraction is built (`core/concentration.py`).
+**The `name` argument must say which value was refused.** Each guard raises a
+message of the form `f"{name} ..."`, and nothing else in it identifies the
+value. So `name` is all that a reader is told about *which* value was refused.
+That reader usually sees a banner rather than a traceback.
+`app/dashboard_frame.py` shows a refused setting's message verbatim, and
+`AgentUptakeSystem.advance()` wraps a refused step into the halted-run notice.
+A bare parameter name identifies the value only where just one object can
+raise that message. Where several objects can, the caller puts the owner's
+name in front. It uses the instance's own `name` where the instance has one,
+as in `f"{self.name} volume_l"`. `governing_equations.py`'s
+`TissueGroupEquationSettings` does this for its volume and flow. Where the
+instance has no `name`, the caller uses the compartment's domain word, as in
+`"alveolar ..."` and `"venous ..."`. `PL-SPN6` records what the bare name
+cost. After `PL-9SH6`, the alveolar compartment, the venous pool and all three
+tissue groups raised the same message for a refused fraction. So when a
+resumed run was refused, the message could not say which of the five had
+refused it. The caller builds the prefix at the call site, rather than passing
+it to a separate parameter here. Then the line that raises the error shows the
+whole sentence that a reader will see. `Fraction`'s `name` follows the same
+convention where a fraction is built (`core/concentration.py`).
 """
 
 import sys
@@ -315,10 +317,10 @@ def require_a_capacity_with_room_for_the_agent(
 
     A blood or tissue compartment's capacity is its volume times its partition
     coefficient. The venous pool and each tissue group call this function
-    whenever either factor is written, so the product and the check are written
-    once (`PL-VWXL`). `value` is the factor being written, and `name` is its
-    name. Until `PL-QX2G` this function also refused a capacity that was zero
-    or not finite. Both factors are now built only inside the numerical
+    whenever either factor is written, so the product and the check are coded
+    in one place (`PL-VWXL`). `value` is the factor being written, and `name`
+    is its name. Until `PL-QX2G` this function also refused a capacity that was
+    zero or not finite. Both factors are now built only inside the numerical
     envelope (`core/numerical_envelope.py`), so the product is always positive
     and finite.
 

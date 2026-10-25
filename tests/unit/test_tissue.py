@@ -592,7 +592,7 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
 @pytest.mark.parametrize("factor", [1e200, 1e-200])
 def test_a_capacity_that_overflows_is_refused_at_build(factor: float) -> None:
-    """`PL-FNH3`, `PL-8LQZ`: a volume and a coefficient that multiply out of range are refused.
+    """A volume and a coefficient that multiply out of range are refused (`PL-FNH3`, `PL-8LQZ`).
 
     A volume and a tissue:gas coefficient of 1e200 once built a group whose capacity was `inf`,
     and a pair of 1e-200 built one whose capacity was 0.0. The numerical envelope now refuses

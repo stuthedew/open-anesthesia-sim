@@ -71,48 +71,46 @@ class AlveolarCompartment:
         # their tests rather than by `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a value the compartment's constructor would refuse.
+            """Write a field, refusing a value that the compartment's constructor would refuse.
 
-            Each field is stored in one place, its slot. So the field's check
-            is made here, and it applies alike to the constructor, the setters
-            and a direct assignment that bypasses them, as
-            `BreathingCircuit.__setattr__` explains (`PL-LBQY`, `PL-19Y0`).
-            Nothing is written when a value is rejected, and the constructor
-            makes no check of its own. `restore_state` is the one write of the
-            amount that bypasses this method, and its docstring says why.
+            Each field is stored in one place, its slot. So the field's check is made
+            here, and it applies alike to the constructor, the setters and a direct
+            assignment that bypasses them. `BreathingCircuit.__setattr__` explains this
+            (`PL-LBQY`, `PL-19Y0`). Nothing is written when a value is rejected, and the
+            constructor makes no check of its own. `restore_state` is the one write of
+            the amount that bypasses this method, and its docstring says why.
 
-            The alveolar partial pressure is the agent amount divided by the
-            gas volume. So the two are checked together, by whichever is
-            written second. An amount above the volume is rejected, and so is a
-            volume too small for the amount already held. That relation is the
-            compartment's to check rather than either quantity's
-            (`.claude/rules/core-domain.md`). Until `PL-544D`, the constructor
-            and `set_partial_pressure_fraction` each checked it, but a direct
-            assignment that bypassed both did not. So an amount larger than the
-            volume, which is a partial pressure above one atmosphere, was
-            stored. It was rejected only when `SimulationController.snapshot()`
-            built the fraction two layers later (`PL-7DJK`). Until `PL-19Y0`, a
-            volume too small for the amount held was written the same way. A
-            volume of 1e-6 L, written while the compartment held 0.098 L of
-            sevoflurane, began the next step at a partial pressure near 98,000
-            atmospheres. It ended that step with every fraction plausible and
-            wrong, and with the accounting passing (`PL-544D`, found at review;
-            `require_room_for_the_agent_held` has the figures). The
-            constructor writes the volume first, so the volume is checked
-            against the amount only once an amount exists.
+            The alveolar partial pressure is the agent amount divided by the gas
+            volume. So the two are checked together, by whichever is written second. An
+            amount above the volume is rejected, and so is a volume too small for the
+            amount already held. The compartment checks this relation, because it
+            belongs to neither quantity alone (`.claude/rules/core-domain.md`). Until
+            `PL-544D`, the constructor and `set_partial_pressure_fraction` each checked
+            the relation, but a direct assignment that bypassed both did not. So an
+            amount larger than the volume was stored, although it means a partial
+            pressure above one atmosphere. It was rejected only two layers later, when
+            `SimulationController.snapshot()` built the fraction (`PL-7DJK`). Until
+            `PL-19Y0`, a volume too small for the amount held was stored the same way.
+            In one case, a volume of 1e-6 L was written while the compartment held
+            0.098 L of sevoflurane. The next step began at a partial pressure near
+            98,000 atmospheres. At the end of that step every fraction looked plausible
+            but was wrong, and the accounting check still passed (`PL-544D`, found at
+            review). `require_room_for_the_agent_held` has the figures. The constructor
+            writes the volume first, so the volume is checked against the amount only
+            once an amount exists.
 
             Raises:
-                TypeError: `name` is `alveolar_ventilation_l_min` and `value`
-                    was not built as an `AlveolarVentilation`
-                    (`require_alveolar_ventilation`); or the volume was not
-                    built as a `CompartmentVolume`, which checks it against the
-                    numerical envelope (`core/numerical_envelope.py`); or the
+                TypeError: `name` is `alveolar_ventilation_l_min` and `value` was
+                    not built as an `AlveolarVentilation`
+                    (`require_alveolar_ventilation`). Also raised when the volume was
+                    not built as a `CompartmentVolume`, which checks it against the
+                    numerical envelope (`core/numerical_envelope.py`), or when the
                     amount is not an `int` or a `float` (`require_a_number`).
-                SimulationConfigurationError: the amount is negative or not
-                    finite, or the amount would be more than `gas_volume_l`, which is what
-                    the compartment holds at a partial pressure of one
-                    atmosphere. The last check applies whichever of the two is
-                    written.
+                SimulationConfigurationError: the amount is negative or not finite.
+                    Also raised when the amount would be more than `gas_volume_l`,
+                    which is what the compartment holds at a partial pressure of one
+                    atmosphere. This last check runs whichever of the amount and the
+                    volume is written.
             """
 
             if name == "gas_volume_l":

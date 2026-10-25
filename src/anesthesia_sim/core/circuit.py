@@ -413,20 +413,21 @@ class BreathingCircuit:
 
             Each field is stored in one place, its slot, so its check is made
             here, once for every writer. The writers are the constructor, the
-            setters, and any assignment that bypasses both, made by a caller
-            that `mypy` does not read (a test, a notebook, or a value typed
-            `Any`). Until `PL-LBQY`, such an assignment met no check. Until
-            `PL-19Y0`, it met only a check of the fresh gas flow's type. So each
-            of these was stored, for a snapshot to copy and for the readout
-            beside the control to show: a sevoflurane dial of `Percent(50.0)`,
-            above its 8% maximum; a zero circuit volume; and an inspired
-            fraction of `1.5`. A copy, a pickle and `dataclasses.replace` also
-            write through this method. This is a `slots=True` dataclass, and a
-            copy or a pickle restores its state one field at a time through
-            `__setattr__`. If the class had a `__dict__`, a copy would update
-            that dictionary directly and bypass the check. When a value is
-            rejected, nothing is written and the field keeps its old value. The
-            constructor makes no check of its own.
+            setters, and any direct assignment that bypasses both. Such an
+            assignment comes from a caller that `mypy` does not check, such as
+            a test, a notebook or a value typed `Any`. Until `PL-LBQY`, such an
+            assignment met no check. Until `PL-19Y0`, it met only a check of
+            the fresh gas flow's type. So three invalid values were stored, for
+            a snapshot to copy and for the readout beside the control to show.
+            They were a sevoflurane dial of `Percent(50.0)` (above its 8%
+            maximum), a zero circuit volume, and an inspired fraction of `1.5`.
+            A copy, a pickle and `dataclasses.replace` also write through this
+            method. This is a `slots=True` dataclass, and a copy or a pickle
+            restores its state one field at a time through `__setattr__`. If
+            the class had a `__dict__`, a copy would update that dictionary
+            directly and bypass the check. When a value is rejected, nothing is
+            written and the field keeps its old value. The constructor makes no
+            check of its own.
 
             A rule that relates two fields belongs to the circuit, which holds
             both (`PL-BBMG`). The rule is first checked when the second of the
@@ -440,23 +441,24 @@ class BreathingCircuit:
             own write checks the pair.
 
             The circuit stores its agent as a fraction of its volume. So a
-            volume written here changes the amount of agent with it, gaining or
-            losing agent that no flow carried, and the next step's mass-balance
-            check halts on the difference. `set_circuit_volume` is the write
-            that conserves the agent.
+            volume written here changes the amount of agent too. The circuit
+            gains or loses agent that no flow carried, and the next step's
+            mass-balance check halts on the difference. `set_circuit_volume` is
+            the write that conserves the agent.
 
             Raises:
-                TypeError: `value` was not built as the field's type (a
+                TypeError: `value` was not built as the field's type, which is a
                     `FreshGasFlow`, a `Percent`, a `Fraction`, or a
-                    `DeliverableFreshGasFlowRange` or `None`), or the volume was
-                    not built as a `CompartmentVolume`, which checks it against
-                    the numerical envelope (`core/numerical_envelope.py`).
+                    `DeliverableFreshGasFlowRange` or `None`. Also raised when
+                    the volume was not built as a `CompartmentVolume`, which
+                    checks it against the numerical envelope
+                    (`core/numerical_envelope.py`).
                 SimulationConfigurationError: the vaporizer maximum is not
-                    positive and finite. Or the dial is above
-                    the maximum, whichever of the two is being written. Or the
-                    flow is outside the machine's range, whichever of the two
-                    is being written. Or the machine's range does not overlap
-                    the model's envelope at all.
+                    positive and finite. Also raised when the dial is above the
+                    maximum, or the flow is outside the machine's range,
+                    whichever field of the pair is being written. Also raised
+                    when the machine's range does not overlap the model's
+                    envelope at all.
             """
 
             if name == "circuit_volume_l":
@@ -571,21 +573,22 @@ class BreathingCircuit:
         gas. The next `advance(0.1)` raised `AgentSimulationValidationError`,
         which blamed the numerics for the setter's defect.
 
-        The point is to conserve the agent here rather than in the caller
-        (PL-006). Then `docs/MODEL.md`'s required invariants, "no compartment
-        creates agent spontaneously" and "changing a setting does not reset
-        stored state", still apply for every caller of this public method.
-        Otherwise they would apply only for a caller that knew to read the
-        amount out and put it back.
+        This method conserves the agent itself, rather than leaving that to the
+        caller (PL-006). So two of `docs/MODEL.md`'s required invariants still
+        apply for every caller of this public method: "no compartment creates
+        agent spontaneously" and "changing a setting does not reset stored
+        state". Otherwise they would apply only for a caller that knew to read
+        the amount out and put it back.
 
         Raises:
             TypeError: the volume was not built as a `CompartmentVolume`,
                 which checks it against the numerical envelope
                 (`core/numerical_envelope.py`).
             SimulationConfigurationError: the volume is too small to hold the
-                agent already in the circuit. Both refusals, and the fraction
-                that the new volume gives, are checked before anything changes.
-                So a rejected volume leaves the circuit exactly as it was.
+                agent already in the circuit. Both checks, and the check of the
+                fraction that the new volume gives, run before anything
+                changes. So a rejected volume leaves the circuit exactly as it
+                was.
         """
 
         require_compartment_volume("circuit_volume_l", circuit_volume_l)

@@ -820,18 +820,19 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
     2.0 * EXACT_STEP_ORACLE_TOLERANCE * 100.0 * 10.0**CONCENTRATION_DISPLAY_DECIMALS
 )
 
-# Names this module is allowed to import from `anesthesia_sim`. They are the
-# parameter loaders the oracle needs, the system under test, the module that
-# declares the input domain this gate measures over, and the view module whose
-# displayed resolution and shipped step every figure here is quoted at.
+# The names that this module may import from `anesthesia_sim`. They are the
+# parameter loaders that the oracle needs and the system under test. They also
+# include the module that declares the input domain over which this gate
+# measures, and the view module. Every figure here is quoted at that view
+# module's displayed resolution and shipped step.
 #
 # `supported_ranges` and `dashboard_frame` are on this list for two assertions.
 # One checks that the limits restated above are still the model's. The other
-# checks that the resolution and step they are quoted at are still the
-# interface's. Neither import changes the rule that the list enforces: what must
-# never be imported is a solver, because comparing the implementation against
-# itself proves nothing. A module of constants is not a solver. The oracle itself
-# (`_build_derivative`) still uses only the parameter loaders.
+# checks that the resolution and step at which they are quoted are still the
+# interface's. Neither import changes the rule that the list enforces. The rule
+# is that a solver must never be imported, because comparing the implementation
+# against itself proves nothing. A module of constants is not a solver. The
+# oracle itself (`_build_derivative`) still uses only the parameter loaders.
 #
 # `load_reference_circle_system_parameters` is the third loader. It was added with
 # the machine parameter file (`PL-4YY1`) and is used by one assertion, which
@@ -851,7 +852,7 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 #
 # `Percent` is the type that the system under test accepts for its vaporizer dial.
 # Since `PL-4R3W` it checks a number against 0 to 100 and solves nothing, so it
-# has the property as well. It is built in the same one place.
+# has the property as well. It is built only in that same place.
 #
 # `Fraction` is the type that `format_percent` takes, and since `PL-0M7K` the
 # displayed ordering is read through `format_percent`. It checks a number

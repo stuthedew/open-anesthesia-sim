@@ -70,7 +70,7 @@ class TissueGroup:
         # review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a value the tissue's constructor would refuse.
+            """Write a field, refusing a value that the tissue's constructor would refuse.
 
             Each field is stored in one place, its slot. So the field's check runs here,
             and it applies alike to the constructor, the setters, `advance` and any
@@ -84,18 +84,20 @@ class TissueGroup:
             three values are checked together. An amount above the capacity is refused.
             So is a volume or a coefficient too small for the amount the tissue already
             holds. Such a value would put the partial pressure above one atmosphere
-            without the amount's own check ever running (`PL-544D`, found at review;
-            `require_room_for_the_agent_held`). The constructor writes the amount last,
-            after the volume and the coefficient have passed their own checks. So a factor
-            is checked against the amount only once an amount exists.
+            without the amount's own check ever running (`PL-544D`, found at review).
+            `require_room_for_the_agent_held` makes this check. The constructor writes
+            the amount last, after the volume and the coefficient have passed their own
+            checks. So the volume and the coefficient are checked against the amount only
+            once an amount exists.
 
             The volume and both coefficients are checked types, built only inside the
-            numerical envelope (`core/numerical_envelope.py`). So their capacity is
-            positive and finite by construction, which two factors checked only as positive
-            and finite did not guarantee (`PL-8LQZ`, `PL-FNH3`). The two coefficients are
-            also checked against each other. Whichever is written second must leave a
-            tissue:blood coefficient inside the envelope too, because the quotient of two
-            coefficients inside it can lie far outside it (`PL-QX2G`).
+            numerical envelope (`core/numerical_envelope.py`). So the capacity is
+            positive and finite by construction. Before, each factor was checked only as
+            positive and finite, and that did not guarantee a positive and finite
+            product (`PL-8LQZ`, `PL-FNH3`). The two coefficients are also checked against
+            each other. Whichever is written second must leave a tissue:blood coefficient
+            inside the envelope too, because the quotient of two coefficients inside it
+            can lie far outside it (`PL-QX2G`).
 
             Each refusal names the group as well as the field, as in `"muscle volume_l"`,
             because all three groups hold every field (`PL-2TZT`).
@@ -105,10 +107,10 @@ class TissueGroup:
             to 1 only when the patient is built, and a tissue group does not know which
             patient it belongs to. A fraction changed afterwards would change the group's
             blood flow, which is its fraction of the cardiac output. Nothing would then
-            check that the flows still add up to the cardiac output. The new value is
-            checked first, so a value the constructor would refuse is refused in the
-            constructor's words. A copy and a pickle write the fraction onto a new group,
-            which has none yet, so both still work.
+            check that the flows still add up to the cardiac output. A later write checks
+            the new value first, so a value that the constructor would refuse is refused
+            in the constructor's words. A copy and a pickle write the fraction onto a new
+            group, which has none yet, so both still work.
 
             Raises:
                 TypeError: the field written is `name` and `value` is not a `str`.
@@ -244,8 +246,8 @@ class TissueGroup:
         """Return the tissue:blood partition coefficient, $`\\lambda_{i:g}/\\lambda_{b:g}`$.
 
         `core/numerical_envelope.py` forms the quotient and builds it as a checked
-        type. Every write of either factor has already checked that it lies inside
-        the envelope, so reading it here never raises.
+        type. Every write of either factor has already checked that the quotient
+        lies inside the envelope, so reading it here never raises.
         """
 
         return tissue_blood_partition_coefficient(

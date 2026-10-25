@@ -327,7 +327,7 @@ class TissueGroupEquationSettings:
 @dataclass(frozen=True, slots=True)
 class UptakeEquationSettings:
     """Everything that the governing equations need and a step does not change,
-    plus the one bound that a run owes its reader.
+    plus the vaporizer maximum that bounds the dial.
 
     The record is frozen and compared by value, because `uptake_system.py` uses
     it as the key under which its propagator is cached. Two steps taken under
@@ -335,21 +335,22 @@ class UptakeEquationSettings:
     different setting must not. The key is the same object from which the
     matrix is built. That makes a stale propagator impossible to represent,
     rather than merely unlikely. A run also stores one of these records for
-    each stretch (`core/run_definition.py`). A stretch that cannot show that
-    its dial setting was deliverable is incomplete. That is why the record
-    carries one field that the matrix never reads, described below.
+    each stretch of unchanged settings (`core/run_definition.py`). A stretch
+    that cannot show that its dial setting was deliverable is incomplete. That
+    is why the record carries one field that the matrix never reads, described
+    below.
 
     **Flows are stored in the litres per minute to which they were set, and
     read in litres per second.** `docs/MODEL.md` § "Governing equations" writes
     every flow term per second. So each flow has a per-second property, and
-    `build_system_matrix` reads only those properties, which keeps the
-    conversion out of every equation. The value as set is what is stored,
-    because this object is also what a run records for each stretch
+    `build_system_matrix` reads only those properties. That keeps the
+    conversion out of every equation. The value as set is what is stored, for
+    two reasons. A run also records this object for each stretch
     (`core/run_definition.py`), and the conversion does not reverse exactly. A
     cardiac output of 1.9 L/min, divided by sixty and multiplied back, is
     1.8999999999999997, and settings rebuilt from that value differ in all
     three tissue flows (`PL-SM5V`). `docs/MODEL.md` § "Time" states which of
-    the two values is the record.
+    the two values is the one recorded.
 
     **The delivered concentration is stored as the percent that was dialled,
     and read as a fraction**, for the same reason (`PL-NJPB`). The equations
@@ -362,9 +363,9 @@ class UptakeEquationSettings:
     **Each flow is a checked type, so no record can store a flow outside its
     supported range** (`PL-HSFV`, `PL-0YYV`). A run is built from this record.
     A record built anywhere other than `AgentUptakeSystem.equation_settings`
-    passes through no compartment. So while the flows were bare floats that
-    each compartment range-checked, a `RunDefinition` opened under a cardiac
-    output of 1000 L/min and simulated it. The three flow fields take
+    passes through no compartment. The flows used to be bare floats, and only
+    the compartments checked their ranges. So a `RunDefinition` opened under a
+    cardiac output of 1000 L/min and simulated it. The three flow fields take
     `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, which cannot be
     built outside their ranges (`core/supported_ranges.py`). So nothing here
     checks a range again, and a bare `float` is rejected as the programming
@@ -376,25 +377,26 @@ class UptakeEquationSettings:
     (`PL-BBMG`). The limit on the delivered concentration is the maximum of
     the agent's vaporizer, not a constant of the model, so no type can enforce
     it. A dial setting is deliverable only relative to a maximum, so the check
-    belongs to a record that stores both. That is where
+    belongs to a record that stores both. This is the point at which
     `.claude/rules/core-domain.md` stops the checked-type pattern. Until
-    `PL-BBMG`, this record stored the dial alone and bounded it at the 100 to
-    which every percent is held. So a record rebuilt with `dataclasses.replace`
-    to 20% sevoflurane, against an 8% maximum, opened a run and returned a
-    precise-looking trace. The record now carries
-    `max_delivered_concentration_percent`, which is required and has no
-    default. It rejects a dial above that maximum through
+    `PL-BBMG`, this record stored the dial alone and bounded it only at 100,
+    the upper limit of every percent. So `dataclasses.replace` could rebuild a
+    record at 20% sevoflurane, although the vaporizer maximum was 8%. That
+    record opened a run, which returned a precise-looking trace. The record
+    now carries `max_delivered_concentration_percent`, which is required and
+    has no default. It rejects a dial above that maximum through
     `require_within_vaporizer_maximum`, the guard that `BreathingCircuit`
     calls, so the two reject it with the same message. The field has no
     default because `BreathingCircuit` sets its maximum to 100% by default for
     a circuit built without an agent. A record with the same default would
     reopen, under a new field, the gap that this field closes. The matrix
     never reads the maximum. `AgentUptakeSystem` copies it from the circuit
-    into every record it builds, and so into the propagator cache key with the
-    rest of the record. Both values are `Percent`s, checked against 0 to 100
-    when they were built (`core/concentration.py`). So this record checks
-    their type, and does not check that range again (`PL-4R3W`). What it still
-    checks is the relation between them, and that the maximum is above zero.
+    into every record it builds. So the maximum also enters the propagator
+    cache key, with the rest of the record. Both values are `Percent`s,
+    checked against 0 to 100 when they were built (`core/concentration.py`).
+    So this record checks their type, and does not check that range again
+    (`PL-4R3W`). What it still checks is the relation between them, and that
+    the maximum is above zero.
 
     **Each volume and the blood:gas coefficient is a checked type too**
     (`PL-QX2G`). `CompartmentVolume` and `PartitionCoefficient` are built only
@@ -402,8 +404,8 @@ class UptakeEquationSettings:
     every rate in `build_system_matrix` is finite, and the step's propagator
     needs at most 19 squarings. Before `PL-QX2G` the volumes were checked only
     as positive and finite. So a record could hold an alveolar volume that no
-    step accepts, refused only when the propagator was computed (`PL-2MD9`,
-    `PL-3PRZ`).
+    step accepts, and the volume was refused only when the propagator was
+    computed (`PL-2MD9`, `PL-3PRZ`).
 
     Raises:
         SimulationConfigurationError: the vaporizer maximum is zero, the
@@ -433,7 +435,7 @@ class UptakeEquationSettings:
     def __post_init__(self) -> None:
         # Store `tissues` as a tuple, whatever sequence the record was built from, so that
         # every record can be a cache key (`PL-5BD7`). Every other field holds a checked
-        # type, so no field can be stored in two ways.
+        # type, so equal values in a field always have the same type.
         object.__setattr__(self, "tissues", tuple(self.tissues))
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
         require_compartment_volume("alveolar_volume_l", self.alveolar_volume_l)
