@@ -9,6 +9,7 @@ feature: worker-runs
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, tools/headless_worker.py, tests/unit/test_headless_worker.py, docs/worker.md, docs/items
 added: 2026-10-20
 closed: 2026-10-25
+pr: 1800
 payoff: a worker that finishes its item correctly can report make check green, so a red gate on a worker branch means a real failure
 verify: grep -q 'def test_a_worked_item_on_a_worker_branch_passes_the_replay' subprojects/docket/tests/test_checks.py
 reenters: PL-6TP8

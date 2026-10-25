@@ -9,6 +9,7 @@ feature: worker-runs
 touches: tools/branch_sweep.py, tools/worker_runs.py, tests/unit/test_branch_sweep.py, tests/unit/test_worker_runs.py, docs/apparatus.md, docs/maintainer.md, docs/items
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1800
 payoff: a sent-back worker branch is named for deletion, so its item returns to bin/docket next instead of hiding as in flight
 verify: grep -q 'def test_a_sent_back_worker_branch_is_listed_for_deletion' tests/unit/test_branch_sweep.py
 reenters: PL-BHVM
