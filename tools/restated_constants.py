@@ -59,10 +59,11 @@ unperturbed module. A test that copies the value only as a value just inside
 the limit still passes, because the limit moved outwards.
 
 A test listed in `TRIPWIRES` for the constant being moved is reported as
-failing on purpose and does not fail the run. Each one holds a literal
+failing on purpose and does not fail the run. Each one either holds a literal
 measured at the current limit and checks it against the limit that the
-simulator computes, so its failure asks for a re-measurement rather than
-showing a copy.
+simulator computes, or pins a refusal message whole as a test's expected
+value. Its failure asks for a re-measurement or a rewrite rather than showing
+a copy.
 
 **How a test is judged.** A failing test counts as reading the constant when
 its file imports it, by `from anesthesia_sim.core.supported_ranges import
@@ -110,11 +111,19 @@ PERTURBED_CONSTANT_VARIABLE = "ANESTHESIA_SIM_PERTURB_CONSTANT"
 #: simulator, so a constant cannot change its result.
 SUITE = "tests"
 
-#: Tests that fail on purpose when a limit moves, each with the reason.
-#: Such a test holds a literal that was measured at the current limit, such as
-#: the length of a published-fit washout, and checks it against the limit read
-#: from the simulator. Its failure is the prompt to re-measure, not a copy of
-#: the limit, so the report lists it and does not fail the run.
+#: Tests that fail on purpose when a limit moves, keyed by the limit and by
+#: the test function, with the reason. A key names the function, so it covers
+#: every parametrized case of it. Two kinds are listed. One holds a literal
+#: measured at the current limit, such as the length of a published-fit
+#: washout, and checks it against the limit read from the simulator. The other
+#: pins a refusal message whole, as `.claude/rules/test-oracles.md` asks of a
+#: message a learner sees, so its expected text is written out rather than
+#: built from the limit. Either failure is the prompt to re-measure or rewrite,
+#: not a copy of the limit, so the report lists it and does not fail the run.
+_PINNED_MESSAGE = (
+    "it pins the refusal message whole, as .claude/rules/test-oracles.md asks, so a "
+    "moved limit means rewriting the message it expects"
+)
 TRIPWIRES: Mapping[tuple[str, str], str] = {
     (
         "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
@@ -123,8 +132,48 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
     ): (
         "its tables were measured over ELIMINATION_DURATION_MIN, which it checks against "
         "maximum_step_count, so a new run length means re-measuring them"
-    )
+    ),
+    (
+        "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
+        "tests/integration/test_controller.py"
+        "::test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole",
+    ): _PINNED_MESSAGE,
+    **{
+        (
+            name,
+            "tests/unit/test_supported_ranges.py::test_a_setting_s_range_refusal_is_pinned_whole",
+        ): (_PINNED_MESSAGE)
+        for name in (
+            "MAXIMUM_FRESH_GAS_FLOW_L_MIN",
+            "MAXIMUM_ALVEOLAR_VENTILATION_L_MIN",
+            "MAXIMUM_CARDIAC_OUTPUT_L_MIN",
+        )
+    },
+    (
+        "MAXIMUM_FRESH_GAS_FLOW_L_MIN",
+        "tests/unit/test_dashboard_frame.py"
+        "::test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused",
+    ): _PINNED_MESSAGE,
+    **{
+        (
+            name,
+            "tests/unit/test_dashboard_frame.py"
+            "::test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused",
+        ): _PINNED_MESSAGE
+        for name in ("MAXIMUM_ALVEOLAR_VENTILATION_L_MIN", "MAXIMUM_CARDIAC_OUTPUT_L_MIN")
+    },
 }
+
+
+def tripwire_reason(name: str, nodeid: str) -> str | None:
+    """Why the test `nodeid` fails on purpose when `name` moves, or `None` if it is not listed.
+
+    The parameters in brackets after the function's name are dropped, so a
+    listed function covers each of its cases.
+    """
+
+    return TRIPWIRES.get((name, nodeid.partition("[")[0]))
+
 
 MINIMUM_PREFIX = "MINIMUM_"
 MAXIMUM_PREFIX = "MAXIMUM_"
@@ -522,7 +571,7 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         return finding
     still = {failure.nodeid for failure in rerun.failures}
     restated = [f.nodeid for f in candidates if f.nodeid not in still]
-    on_purpose = {nodeid for nodeid in restated if (constant.name, nodeid) in TRIPWIRES}
+    on_purpose = {nodeid for nodeid in restated if tripwire_reason(constant.name, nodeid)}
     finding.restating = tuple(nodeid for nodeid in restated if nodeid not in on_purpose)
     finding.tripwires = tuple(nodeid for nodeid in restated if nodeid in on_purpose)
     finding.unjudged = tuple(f.nodeid for f in candidates if f.nodeid in still)
@@ -553,7 +602,7 @@ def report(
         )
         lines.extend(f"  restates it: {nodeid}" for nodeid in finding.restating)
         lines.extend(
-            f"  fails on purpose, because {TRIPWIRES[constant.name, nodeid]}: {nodeid}"
+            f"  fails on purpose, because {tripwire_reason(constant.name, nodeid)}: {nodeid}"
             for nodeid in finding.tripwires
         )
         lines.extend(

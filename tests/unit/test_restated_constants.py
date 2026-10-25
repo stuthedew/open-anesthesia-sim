@@ -28,6 +28,7 @@ from restated_constants import (
     report,
     restating,
     starts_a_subprocess,
+    tripwire_reason,
     widened,
 )
 
@@ -233,3 +234,15 @@ def test_each_tripwire_names_a_test_that_exists() -> None:
         tree = ast.parse((root / file).read_text(encoding="utf-8"))
         defined = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
         assert function in defined, nodeid
+
+
+def test_a_tripwire_covers_each_case_of_its_function_and_only_its_limit() -> None:
+    name, function = next(iter(TRIPWIRES))
+    other = next(
+        c.name for c in numeric_constants(RANGES_SOURCE.read_text("utf-8")) if c.name != name
+    )
+
+    assert tripwire_reason(name, function) == TRIPWIRES[name, function]
+    assert tripwire_reason(name, f"{function}[a-case]") == TRIPWIRES[name, function]
+    assert tripwire_reason(other, function) is None
+    assert tripwire_reason(name, f"{function}_and_more") is None

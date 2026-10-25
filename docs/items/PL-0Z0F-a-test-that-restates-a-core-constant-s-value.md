@@ -55,6 +55,14 @@ guard and each with its reason, and reports them without failing. A test checks 
 still names a test that exists. Changing the test to import the limit was
 rejected, because the literal is the measured duration and has to stay one.
 
+The run with each test judged by its own use of the name named nine more.
+Seven pin a refusal message whole, as `.claude/rules/test-oracles.md` asks of
+a message a learner sees, so they are tripwires too and are listed by
+function and limit. Two were real copies and now read the limit by name: the
+off-axis instant in `tests/unit/test_chart_time_base.py` (86 400.1 s) and the
+deliverable range outside the envelope in `tests/unit/test_circuit.py` (20 to
+30 L/min).
+
 Three choices the brief left open. Each maximum moves outwards by its
 interval's width, because moving inwards would also fail any test that uses an
 ordinary setting near the limit. The three floors at zero are not moved, since
