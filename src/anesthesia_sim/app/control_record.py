@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+
 __all__ = ["CONTROL_INPUT_UNITS", "ControlChange", "ControlInput"]
 
 
@@ -98,22 +100,28 @@ CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
 class ControlChange:
     """One setting change the running model actually saw.
 
-    Recorded per change rather than per user gesture, because the model
-    integrates whatever value is in place at each step: a dial swept from
-    2% to 4% across eight steps is eight different settings the run was
-    computed under, and a record that kept only the endpoint would not
+    A change is recorded per change rather than per user gesture, because the
+    model integrates whatever value is in place at each step. A dial swept
+    from 2% to 4% across eight steps gives eight different settings that the
+    run was computed under. A record that kept only the endpoint would not
     reproduce the run it claims to describe.
 
-    `adjustment` is what makes that faithful record readable. It groups the
-    changes a user made as one act - one drag of one slider - so a reader
+    `adjustment` makes that faithful record readable. It groups the changes
+    that a user made as one act, such as one drag of one slider, so a reader
     sees one adjustment where the model saw eight settings. It is assigned
-    from the input boundary the interface reports rather than guessed from
-    the timing of the entries, so two separate turns of the same dial are
-    two adjustments however close together they fall.
+    from the input boundary that the interface reports, not guessed from the
+    timing of the entries. So two separate turns of the same dial are two
+    adjustments, however close together they fall.
+
+    Raises:
+        TypeError: If `elapsed_s` was not built as a `CaseInstant`, because
+            then nothing has checked it against the supported run length
+            (`core/supported_ranges.py`, `PL-RCYZ`).
     """
 
-    elapsed_s: float
-    """Simulated time the change took effect, in seconds."""
+    elapsed_s: CaseInstant
+    """Simulated time the change took effect, in seconds. The instant the
+    running state was at, so a `CaseInstant` like every other holder of one."""
     adjustment: int
     """Which user adjustment this change belongs to. See the class docstring."""
     control: ControlInput
@@ -121,3 +129,6 @@ class ControlChange:
     new_value: float
     unit: str
     """The unit both values are in, from `CONTROL_INPUT_UNITS`."""
+
+    def __post_init__(self) -> None:
+        require_case_instant("elapsed_s", self.elapsed_s)

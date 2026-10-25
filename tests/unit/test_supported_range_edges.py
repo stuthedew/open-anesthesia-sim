@@ -87,6 +87,9 @@ from hypothesis import strategies as st
 
 import anesthesia_sim
 from anesthesia_sim.app.bookmarks import BookmarkCrossing, BookmarkSet, TimeBookmark
+from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
+from anesthesia_sim.app.control_record import ControlChange, ControlInput
+from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_TICK_INTERVAL_S
 from anesthesia_sim.app.playback import PlaybackRate
@@ -154,6 +157,12 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     BookmarkSet: lambda: BookmarkSet(time_bookmarks=(MARK,)),
     BranchedCase: lambda: BranchedCase(SimulationController()),
     BreathingCircuit: lambda: AgentUptakeSystem.default().circuit,
+    ControlAdjustment: lambda: ControlAdjustment(
+        ControlInput.FRESH_GAS_FLOW, CaseInstant(0.0), CaseInstant(0.0), 6.0, 2.0, "L/min", 1
+    ),
+    ControlChange: lambda: ControlChange(
+        CaseInstant(0.0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
+    ),
     Keyframe: lambda: _run_definition().segments[0].opening,
     PatientCompartments: lambda: AgentUptakeSystem.default().patient,
     PlaybackRate: lambda: PlaybackRate(multiplier=1),
@@ -176,7 +185,8 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # function behind it takes one without a default: the shipped tick, the count
 # of a run that has not stepped and the state it opens at, and a bookmark
 # set's view of a run that has reached no mark, has crossed no height and is
-# neither at its cap nor failed.
+# neither at its cap nor failed, and the narrowest width the chart's selector
+# offers.
 TYPICAL: Mapping[str, object] = {
     "after": {},
     "before": {},
@@ -187,6 +197,7 @@ TYPICAL: Mapping[str, object] = {
     "step_count": StepCount(0),
     "stopped_at_cap": False,
     "tick_interval_s": SIMULATION_TICK_INTERVAL_S,
+    "time_base": SELECTABLE_TIME_BASES[0],
 }
 
 # The properties that may compute `inf`: a time constant where nothing flows,
