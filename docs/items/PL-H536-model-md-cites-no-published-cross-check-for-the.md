@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-03
 closed: 2026-10-25
+pr: 1819
 verify: grep -qF 'Baker AB, Farmery AD' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
