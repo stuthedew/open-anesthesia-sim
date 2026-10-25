@@ -2846,8 +2846,9 @@ def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
 #
 # These tests cover what the two listings claim, and what each row says about
 # a mark's standing. A run detects when it reaches a mark (`PL-CTD7`). So a
-# row says "reached" for a target the run halted on, and other words for a
-# mark the clock has passed, one the run can no longer reach, and one on a run
+# row says "reached" for a target the run halted on, or one inside the step
+# the run stands on or opened on (`MarkStanding.REACHED`). Other words describe
+# a mark the clock has passed, one the run can no longer reach, and one on a run
 # that failed. A mark the run can still reach adds no words to its row.
 
 

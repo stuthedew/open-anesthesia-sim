@@ -332,10 +332,12 @@ MUSCLE_COLOR = "#D17206"
 
 FAT_COLOR = "#64748B"
 
-# The colour swatch that every legend entry draws. It is one size across all
-# four legend rows, so that a reader scanning down them compares marks rather
-# than shapes. `_BandSwatch` is the one deliberate exception,
-# because a band's extent is exactly what distinguishes it from a line.
+# The colour swatch that every line's legend entry draws. Every such swatch has
+# this width, in any of the four legend rows, so that a reader scanning down
+# them compares marks rather than shapes. Its height is this minimum or the
+# line's own stroke width rounded up, whichever is greater. The control mark, the fork
+# mark and the MAC-awake band are the exceptions, with the sizes below,
+# because a tick and a band are not lines.
 LEGEND_SWATCH_WIDTH = 24
 
 LEGEND_SWATCH_HEIGHT = 4
