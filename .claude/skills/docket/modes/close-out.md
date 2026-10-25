@@ -348,3 +348,12 @@ page and decides which file a session reads.
    and small. List every finding in the pull request body with what happened
    to it: fixed in a named commit, filed as an item, or rejected with the
    reason. A fix made for a finding needs no further pass.
+
+   Record the passes as a trailer in the last paragraph of the commit that
+   applies the last fix, or of the next commit where there was none:
+   `Blind-review: passes N, findings F, fixed X, filed Y, rejected Z`. Count
+   an `optional` finding left as it is among the rejected. `bin/docket arm`
+   holds a simulator branch until its newest such trailer records at least as
+   many passes as `uv run python tools/blind_review.py --count` says it owes
+   (`PL-HDRN`). A later change does not undo the record, but a change that
+   raises the number owed does, such as a first change to the model's code.
