@@ -16,3 +16,4 @@ end-to-end tests are in `tests/integration/test_simulation_view.py`.
 `tests/unit/test_dashboard_frame.py` line 8 names the same missing file as the
 Flet suite. A reader checking the end-to-end coverage of a displayed value is
 sent to a file that is not there, and may conclude the coverage is missing.
+<!-- absent: tests/unit/test_simulation_view.py -->
