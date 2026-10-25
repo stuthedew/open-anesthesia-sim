@@ -3515,10 +3515,10 @@ WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
 """Bound on |trunk drawn - branch drawn| at a column the two runs share.
 
 The divergence was measured at or below 2.8e-15 on the case below. The bound
-is set an order of magnitude above that, so an ordinary floating-point wobble
-does not fail the suite. It is also eleven orders of magnitude below the 1e-4
-that `docs/MODEL.md` § "Displayed precision" resolves, which is the point the
-measurement makes.
+is about 36 times that, roughly one and a half orders of magnitude, so an
+ordinary floating-point wobble does not fail the suite. It is also nine orders
+of magnitude below the 1e-4 that `docs/MODEL.md` § "Displayed precision"
+resolves, which is the point the measurement makes.
 """
 
 
