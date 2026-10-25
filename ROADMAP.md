@@ -6561,7 +6561,8 @@ removed, and this file's history before that change holds their text.
   refused by the session egress proxy when that document was written, on
   2026-09-15. That no longer holds: every `blender.org` host answered a probe on 2026-09-26
   (`PL-M701`), so the pages can be read now. It is independent of this
-  milestone.
+  milestone. The re-reading was done on 2026-10-25 and corrected three
+  claims (`PL-PV5Q`).
 
 ## v0.7.0 - the schematic
 
