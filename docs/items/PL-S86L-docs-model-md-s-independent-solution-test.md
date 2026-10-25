@@ -47,3 +47,16 @@ The desflurane column matches `PL-FJMW`'s figures to every digit. Nine of the fi
 **Why it matters.** `docs/MODEL.md` is the authoritative specification, and this section says what the coupled model's verification gate covers and why. The gate's failure message prints the instant and the state of the worst disagreement. A reader who believes the worst is always inside a transient will treat an end-of-run failure as anomalous. A reader who believes the unperfused load is the worst case will look in the wrong place. A reader who believes every trajectory takes the same number of steps has the wrong explanation of why the five figures sit close together.
 
 **Done when.** Every statement listed above is true under the exact step and the converged oracle, or is marked as describing the operator split or the 0.05 s oracle. The section's list of trajectories names all five, *ordinary use* included. The section gives the measured peak times, or their pattern, and its explanation of why the five figures sit close together does not rest on equal step counts. The test file's comments and docstrings agree with `docs/MODEL.md` and with the table above. No test changes behaviour.
+
+**Measured 2026-10-25, while checking the blind review's findings.** The same function at the two finer steps that `test_the_disagreement_does_not_shrink_with_the_step` drives, over the three trajectories it drives:
+
+| Step | Trajectory | Sevoflurane | Isoflurane | Desflurane |
+| --- | --- | --- | --- | --- |
+| 0.05 s | reference point, held | 1.3385e-14 at 593.75 s, circuit | 9.6589e-15 at 437.05 s, circuit | 1.1213e-14 at 599.40 s, vessel rich |
+| 0.05 s | ventilator start | 1.7777e-14 at 282.45 s, circuit | 1.2618e-14 at 599.95 s, vessel rich | 5.0099e-14 at 262.45 s, circuit |
+| 0.05 s | unperfused load then dial off | 9.9087e-15 at 500.40 s, alveolar | 6.2103e-15 at 468.85 s, alveolar | 2.2038e-14 at 547.95 s, alveolar |
+| 0.025 s | reference point, held | 3.8337e-14 at 600.00 s, vessel rich | 3.2876e-14 at 599.85 s, vessel rich | 7.8756e-15 at 579.85 s, circuit |
+| 0.025 s | ventilator start | 2.5646e-14 at 273.03 s, circuit | 1.6133e-14 at 255.20 s, circuit | 5.8870e-14 at 236.08 s, circuit |
+| 0.025 s | unperfused load then dial off | 1.5418e-14 at 586.23 s, alveolar | 9.8185e-15 at 599.98 s, alveolar | 3.6915e-14 at 565.80 s, alveolar |
+
+So the end-of-run pattern holds at the shipped step only: two of the nine pairs at each finer step peak in the last 1.5 s. The ventilator start at 0.025 s peaks in the circuit while ventilation is still off, and desflurane's 5.8870e-14 there is the figure the tolerance is set against. At every step the unperfused load peaks in its loading phase. At 416.5 s of that phase, desflurane's mixed-venous, vessel-rich, muscle and fat fractions are exactly 0.0. Three ventilator starts in a row at 0.1 s give 2.4619e-14 for desflurane (at 903.2 s) and 7.4368e-15 for sevoflurane (at 1800.0 s, in muscle). The held corner at 0.025 s, which the step test does not drive, gives 5.4623e-14 for desflurane at 599.0 s. That last figure is the subject of `PL-F67Q`.

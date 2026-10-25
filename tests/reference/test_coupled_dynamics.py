@@ -68,9 +68,11 @@ AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 # (2.5e-16 to 5.7e-16). A ratio taken against them therefore shows how few bits
 # had accumulated by 60 s, not anything about the step. For that reason alone,
 # the three agents' ratios spread over an order of magnitude. The absolute table
-# is the measurement, and the ratio is not. What does carry information is that
-# the worst state moves from the fast circuit compartment to the slow muscle
-# compartment, which no trajectory shorter than an hour ever reaches.
+# is the measurement, and the ratio is not. What does carry information is that,
+# at held default settings, the worst state moves from the fast circuit
+# compartment to the slow muscle compartment by 3600 s. Of the five 600 s gate
+# trajectories, only sevoflurane's held envelope corner peaks in muscle, at its
+# last step (measured 2026-10-25, `PL-S86L`).
 # `test_the_shipped_step_reaches_the_pinned_reference_horizons` is the gate that
 # covers this. Sampling only the endpoint is right in that gate for the same
 # reason: at 3600 s the maximum is at the endpoint, not inside a transient.
@@ -374,10 +376,12 @@ def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
 #     loading phase saturated. Repeating the cycle three or six times did not
 #     raise the peak at all, and shortening the phases lowered it. So the
 #     split's disagreement was bounded rather than accumulating over a run. The
-#     exact step's residual is rounding, which does accumulate. On the
-#     ventilator start, only sevoflurane still peaks just after the transition,
-#     at 306.4 s. Isoflurane and desflurane peak in the run's last 0.5 s
-#     (measured 2026-10-25, `PL-S86L`).
+#     exact step's residual is rounding, which does accumulate, and where it
+#     peaks moves with the step. On the ventilator start at the shipped 0.1 s
+#     step, only sevoflurane still peaks just after the transition, at 306.4 s,
+#     and isoflurane and desflurane peak in the run's last 0.5 s. At 0.025 s all
+#     three agents peak before the transition, in the circuit while ventilation
+#     is still off (measured 2026-10-25, `PL-S86L`).
 #   - Inserting a third phase between the two never beat the pair. The best
 #     middle phases were the ones that simply held the loading corner longer.
 #   - Every axis was monotone toward the corner used, except cardiac output in
@@ -386,11 +390,14 @@ def _held_default_settings(agent_id: str) -> tuple[Phase, ...]:
 #     maximum.
 #
 # The sweep's ordering of the two scenarios has since reversed (see
-# `_unperfused_load_then_dial_off`).
-# So what the sweep establishes now is that these two bracket what a turning
-# trajectory does, not which of them is the extreme. Monotonicity is measured,
-# not proved. A change to the governing equations could move the maximum off
-# these trajectories, so the sweep should be re-run rather than trusted.
+# `_unperfused_load_then_dial_off`). So what the sweep still shows is where a
+# method that is not exact has its largest error, which is the error this gate
+# exists to catch. It does not bound the exact step's rounding residual, which a
+# longer run raises. Three ventilator starts in a row give desflurane
+# 2.4619e-14, against 1.3906e-14 for one (measured 2026-10-25, `PL-S86L`).
+# Monotonicity is measured, not proved. A change to the governing equations
+# could move the maximum off these trajectories, so the sweep should be re-run
+# rather than trusted.
 SETTING_CHANGE_SCENARIOS = (
     ("ventilator start", _ventilator_start),
     ("unperfused load then dial off", _unperfused_load_then_dial_off),
@@ -413,11 +420,11 @@ ALL_GATE_TRAJECTORIES = (
 # gate exists to catch.
 #
 # It does not contain the largest rounding residual. Under the exact step the
-# residual is rounding that accumulates with the step count, so nine of the
-# fifteen pairs of agent and trajectory reach their worst in the run's last
-# 1.5 s. At the corner the peaks are at 599.9 s for isoflurane and 600.0 s for
-# sevoflurane and desflurane (measured 2026-10-25, `PL-S86L`). A run that went on
-# longer could only report the same maximum or a larger one.
+# residual is rounding that accumulates with the step count, so at the shipped
+# 0.1 s step nine of the fifteen pairs of agent and trajectory reach their worst
+# in the run's last 1.5 s. At the corner the peaks are at 599.9 s for isoflurane
+# and 600.0 s for sevoflurane and desflurane (measured 2026-10-25, `PL-S86L`). A
+# run that went on longer could only report the same maximum or a larger one.
 #
 # Held *default* settings are where that growth is followed, and they are why
 # `HORIZONS_S` still has a 3600 s entry. At held defaults nothing transient is
@@ -573,10 +580,12 @@ ORACLE_STEP_S = 0.0125
 #     is where that property went.
 #   - `test_shipped_split_matches_independent_solution` was the only test in the
 #     repository that drove the shipped solver past 900 s. That test could not be
-#     dropped as cleanup. At 3600 s the residual is two to sixteen times its 600 s
-#     value, it sits at the endpoint rather than in a transient, and it is in
-#     muscle. Muscle is never the worst state on any of the five surviving
-#     trajectories. Retiring the test as written would also have orphaned the
+#     dropped as cleanup. At 3600 s the residual was two to sixteen times its
+#     600 s value, it sat at the endpoint rather than in a transient, and it was
+#     in muscle. Muscle is the worst state on only one of the five surviving
+#     trajectories, sevoflurane's held envelope corner, and only at its last
+#     step (measured 2026-10-25, `PL-S86L`). Retiring the test as written would
+#     also have orphaned the
 #     3600 s entries of `PINNED_REFERENCE_STATES`, leaving them constraining only
 #     the oracle. It survives as
 #     `test_the_shipped_step_reaches_the_pinned_reference_horizons`, under
@@ -614,18 +623,20 @@ ORACLE_STEP_S = 0.0125
 # oracle, these figures spread over two orders of magnitude, and the violent
 # trajectories carried the large numbers. They now sit within a factor of 1.8 of
 # each other. That is because what is left after the oracle's truncation is
-# removed is rounding. Rounding does not grow with how far the settings move. Nor
-# does it follow the step count closely: four of the trajectories take 6 000
-# steps and the unperfused load takes 9 000, yet the unperfused load gives the
-# smallest figure. A trajectory
-# here earns its place by the domain it covers, not by the size of the residual
-# it produces.
+# removed is rounding, and rounding does not grow with how far the settings move.
+# The unperfused load gives the smallest figure although it runs longest, 9 000
+# steps against the others' 6 000. Its worst falls in the loading phase, while
+# the blood and tissue states are still exactly zero and only the circuit and
+# alveoli hold any agent. A trajectory here earns its place by the domain it
+# covers, not by the size of the residual it produces.
 #
-# `test_the_disagreement_does_not_shrink_with_the_step` also drives the same
-# trajectories at 0.05 s and 0.025 s. Those runs are where the largest residual
-# in this module now occurs, exactly as rounding predicts. The worst anywhere is
-# **5.8870e-14**, for desflurane on the ventilator start at the 0.025 s step, in
-# the circuit fraction. That is the figure this bound is set against.
+# `test_the_disagreement_does_not_shrink_with_the_step` also drives three of
+# these trajectories, the reference point, the ventilator start and the
+# unperfused load, at 0.05 s and 0.025 s. Those runs are where the largest
+# residual in this module now occurs, exactly as rounding predicts. The worst
+# measured is **5.8870e-14**, for desflurane on the ventilator start at the
+# 0.025 s step, in the circuit fraction. That is the figure this bound is set
+# against.
 #
 # **The margin is set by platform variation, not by that figure.** This bound
 # constrains accumulated rounding, which is not reproducible between machines. A
@@ -1152,15 +1163,16 @@ def _worst_error_over_phases(
     piecewise schedules.
 
     Sampling endpoints is not enough here, and neither is one held setting.
-    The worst disagreement does not sit at one predictable instant. Under the
-    exact step it mostly falls in a run's last seconds, where rounding has
-    accumulated longest, but on the unperfused load it falls in the loading
-    phase.
-    Under the operator split it fell inside a transient, either the wash-in
-    transient or one that a setting change starts. Stepping the two solutions
-    in lockstep and taking the maximum costs
-    nothing extra, because the RK4 integration is the expensive part and it
-    happens either way.
+    The worst disagreement does not sit at one predictable instant, and where it
+    sits moves with the step. At the shipped step it mostly falls in a run's
+    last seconds, where rounding has accumulated longest. On the ventilator
+    start at 0.025 s it falls in the circuit while ventilation is still off. On
+    the unperfused load it falls in the loading phase at every step. Under the
+    operator split it fell inside a transient, either the wash-in transient or
+    one that a setting change starts. `docs/MODEL.md` § "Independent-solution
+    test" gives the measured instants. Stepping the two solutions in lockstep
+    and taking the maximum costs nothing extra, because the RK4 integration is
+    the expensive part and it happens either way.
 
     Until `PL-X9KD` this function returned `worst_error / shipped_step_s`, and
     a second wrapper multiplied the step back in for the callers that wanted
@@ -1263,9 +1275,9 @@ def test_the_shipped_step_reaches_the_pinned_reference_horizons(
     disagreement is rounding accumulated once per step, so it keeps growing
     for as long as the run does. By 3600 s it is about five times its 600 s
     value, for all three agents. None of the trajectory gates can see that
-    growth, because they top out at 900 s and take a maximum over a transient.
-    By the endpoint the worst state is muscle, which is never the worst state
-    on any of the five gate trajectories.
+    growth past their own end, at 600 s or 900 s. By the endpoint the worst
+    state is muscle. On the five gate trajectories, muscle is the worst state
+    only for sevoflurane's held envelope corner, and only at its last step.
 
     Sampling the endpoint rather than the whole run is right for the same
     reason: at 3600 s the maximum *is* at the endpoint.

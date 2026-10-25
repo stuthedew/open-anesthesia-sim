@@ -3848,13 +3848,15 @@ the *ventilator start*, 1.34e-14 for the *reference point* and 8.80e-15 for the
 trajectory. Re-measured on 2026-10-25, all five were unchanged to every digit
 that `tests/reference/test_coupled_dynamics.py` records (`PL-S86L`). They lie
 within a factor of 1.8 of one another, because what is measured is
-accumulated rounding. Rounding does not grow with how far the settings move.
-Nor does it follow the step count closely: the unperfused load runs 900 s
-where the others run 600 s, and it still gives the smallest figure. The gate
-also drives the same trajectories at 0.05 s and 0.025 s. That gives the worst figure
-anywhere: **5.89e-14**, for desflurane on a *ventilator start* at the finest
-step. The operator split's worst over the same domain was 2.29e-4 at this
-step. Against it, the exact step is nine orders of magnitude closer to the
+accumulated rounding, and rounding does not grow with how far the settings
+move. The unperfused load gives the smallest figure although it runs longest,
+900 s against the others' 600 s. Its worst falls in the loading phase, while
+the blood and tissue states are still exactly zero and only the circuit and
+alveoli hold any agent. The gate also drives three of the five, the reference
+point, the ventilator start and the unperfused load, at 0.05 s and 0.025 s.
+That gives the worst figure measured: **5.89e-14**, for desflurane on a
+*ventilator start* at the finest step. The operator split's worst over the
+same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the
 independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 900 s -->
@@ -3939,18 +3941,28 @@ In every case the maximum is taken over the whole trajectory rather than at
 an endpoint, because the worst disagreement does not sit at one predictable
 instant. Under the operator split it always lay inside a transient: at about
 85 s into the wash-in at held settings, and about 13 s after a setting change.
-Under the exact step it mostly lies at the end of the run, where rounding has
-accumulated longest. Measured on 2026-10-25 over the fifteen pairs of agent
-and trajectory, nine peak in the last 1.5 s of a 600 s run. Desflurane peaks
-there on four of the five trajectories. The unperfused load peaks during its
-loading phase for every agent, between 350.8 s and 424.0 s, long after the
-circuit and alveoli have saturated. Only sevoflurane on the ventilator start
-peaks inside a transient, 6.4 s after ventilation starts (`PL-S86L`). So the
-gate's runs contain the instants at which the operator split's error peaked,
-and that kind of error is what the gate exists to catch. They do not contain
-the largest rounding residual, which on nine of the fifteen pairs was still
-reaching new highs in the run's last 1.5 s. The pinned reference states follow
-that growth at held settings out to 3600 s.
+Under the exact step it lies wherever rounding happens to peak, and that moves
+with the step. Measured on 2026-10-25 (`PL-S86L`):
+
+- At the shipped 0.1 s step, nine of the fifteen pairs of agent and trajectory
+  peak in the last 1.5 s of a 600 s run. Desflurane peaks there on four of the
+  five trajectories. Only sevoflurane on the ventilator start peaks inside a
+  transient, 6.4 s after ventilation starts.
+- At 0.05 s and 0.025 s, only two of the nine pairs at each step peak in the
+  last 1.5 s. The ventilator start peaks in the circuit between 236 s and
+  283 s, while ventilation is still off, for every agent at 0.025 s and for
+  two of the three at 0.05 s. The 5.89e-14 above is one of these, at 236.1 s.
+- At every step, the unperfused load peaks during its loading phase, between
+  350.8 s and the phase's end at 600 s, long after the circuit and alveoli
+  have saturated.
+
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+
+So the gate's runs contain the instants at which the operator split's error
+peaked, and that kind of error is what the gate exists to catch. They do not
+contain the largest rounding residual, which at the shipped step was still
+reaching new highs in the last 1.5 s on nine of the fifteen pairs. The pinned
+reference states follow that growth at held settings out to 3600 s.
 
 The corner and the two setting-change trajectories were chosen by measuring
 the operator split's error coefficient, not by assumption. Across held
@@ -3968,8 +3980,11 @@ pair. Every axis was monotone toward the corner used, except cardiac output
 during loading. That axis was worst at *zero*, which is the opposite end from
 the held-settings corner. Under the exact step, the two setting-change
 trajectories have swapped places, and the residual does accumulate over a run.
-So what the sweep still shows is that these trajectories bracket what a
-turning run does, not which of them is the extreme. The monotonicity was
+So what the sweep still shows is where a method that is not exact has its
+largest error, which is the error the gate exists to catch. It does not bound
+the exact step's rounding residual, which a longer run raises. Three
+ventilator starts in a row give desflurane 2.46e-14, against 1.39e-14 for one
+(measured 2026-10-25, `PL-S86L`). The monotonicity was
 measured, not proved. A change to the governing equations could move the
 maximum off these trajectories, so it is worth re-running the sweep rather
 than trusting it.
