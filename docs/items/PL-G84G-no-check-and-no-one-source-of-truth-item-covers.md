@@ -3,11 +3,12 @@ id: PL-G84G
 title: No check and no one-source-of-truth item covers a text fact restated under src/ (a unit label, a display name): tools/literal_home_check.py reads numbers only and PL-K88Z's inventory surveyed no strings; on 2026-10-24, 112 distinct short string literals sit in two or more modules under src/anesthesia_sim/, 12 of them unit-like
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, planning
 feature: one-source-of-truth
-touches: src/anesthesia_sim/app/, tests/unit/
+touches: src/anesthesia_sim/app/, tests/unit/, docs/ARCHITECTURE.md
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a unit label shown beside a value cannot change in one module and stay old in another
 verify: ! grep -q '"L/min"' src/anesthesia_sim/app/control_record.py && ! grep -q '"×MAC"' src/anesthesia_sim/app/qt_chart.py && ! grep -q '"% of 1 atm"' src/anesthesia_sim/app/qt_chart.py
 ---
@@ -78,3 +79,5 @@ print(len(multi), len(units))
 **Decided 2026-10-25: a unit type that carries its label, in `app/`, for units only, and review for every other string.** This is the recommendation above, taken because the count found real copies beyond `PL-Q3G9`'s. The type lives in `app/`, not in `core/units.py`. The label shown beside a value is presentation, and `CLAUDE.md` keeps presentation out of the calculation code. Each unit the interface shows is one member of the type. A member carries the unit as the run record writes it and the label the interface shows beside a value, and the chart's axis titles read the same member. The record's unit for the delivered concentration stays "percent of 1 atm" and the panel's label stays "%", as the comment above `CONTROL_INPUT_UNITS` explains, but both come from one member. The type's name, its module and whether the axis title is a third field are the building session's call. A string check stays refused: it would have to guess which strings are units.
 
 **Done when.** `CONTROL_INPUT_UNITS`, `PARAMETER_CONTROLS`, `formatting.py`'s flow, concentration and MAC formatters, `MAC_UNIT_SUFFIX` and `qt_chart.py`'s two axis titles all read their unit from the one type, and none of them types `"L/min"`, `"%"` or `"×MAC"` as a unit. The function that sizes the time entry measures text made by `formatting.py`'s duration formatter, not its own copy of the format. A test shows that a control's label and its recorded unit come from one member. `PL-Q3G9` is built in the same pull request, as this type's first use.
+
+**Built 2026-10-25.** `app/display_units.py` holds `DisplayUnit`, whose `FLOW`, `CONCENTRATION` and `MAC_MULTIPLE` members each carry the recorded unit, the label and the axis title. `CONTROL_INPUT_UNITS`, `PARAMETER_CONTROLS`, the flow and MAC formatters, `MAC_UNIT_SUFFIX` and the chart's two axis titles read their unit from a member. `widest_fork_point_label` measures text that `format_elapsed` writes. `tests/unit/test_display_units.py` pins each member's spellings, and shows that a slider label and its recorded unit come from one member.
