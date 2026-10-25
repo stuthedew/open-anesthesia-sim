@@ -79,7 +79,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.lines import record_text, split_lines  # noqa: E402
-from docket.model import pr_number  # noqa: E402
+from docket.model import PullRequestNumber, pr_number  # noqa: E402
 from docket.vcs import (  # noqa: E402
     PULL_MERGED,
     PULL_OPEN,
@@ -190,7 +190,7 @@ class Remote:
 
     default: str
     heads: dict[str, str]
-    frozen: dict[int, str]
+    frozen: dict[PullRequestNumber, str]
 
 
 def read_remote(run: Runner) -> Remote:
@@ -213,7 +213,7 @@ def read_remote(run: Runner) -> Remote:
         raise Declined(f"{kind}: git ls-remote {REMOTE} failed ({first})")
     default = ""
     heads: dict[str, str] = {}
-    frozen: dict[int, str] = {}
+    frozen: dict[PullRequestNumber, str] = {}
     for line in split_lines(done.out):
         value, _, ref = line.partition("\t")
         if value.startswith("ref: ") and ref == "HEAD":

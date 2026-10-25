@@ -355,6 +355,16 @@ def test_a_newest_entry_the_api_has_promised_nothing_about_is_a_refusal(
     assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") is None
 
 
+@pytest.mark.parametrize("number", [True, 0, -3], ids=["json-true", "zero", "negative"])
+def test_a_newest_entry_whose_number_github_would_never_give_is_a_refusal(
+    _served, number: object
+) -> None:
+    """The number is read through `pr_number`, the one builder of a pull request
+    number, so a JSON `true`, which Python counts as an int, is refused (`PL-SC0N`)."""
+    _served(json.dumps([{**_newest(841, "open", None), "number": number}]))
+    assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") is None
+
+
 def _switch(event: str, at: str) -> dict:
     return {"event": event, "created_at": at}
 
