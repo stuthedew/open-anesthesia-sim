@@ -3,11 +3,12 @@ id: PL-ZWXD
 title: Check the other correct reviewer findings from PL-TCBJ's replay against main and file each one that still reproduces
 priority: P2
 effort: M
-status: ready
+status: done
 classes: housekeeping
 feature: replay-findings
 touches: docs/items
 added: 2026-10-24
+closed: 2026-10-25
 payoff: every still-present defect a blind checker confirmed in the replay is queued, instead of lost with the session that found it
 verify: grep -qE '^Every entry above is checked against main\.$' docs/items/PL-ZWXD-*.md
 ---
@@ -30,3 +31,16 @@ verify: grep -qE '^Every entry above is checked against main\.$' docs/items/PL-Z
 **Generator check.** Work the owner asked for: it finishes filing `PL-TCBJ`'s replay, which the owner requested.
 
 **Done when.** Each entry above is checked against `main` and either filed as its own item or recorded here as fixed or not reproducing, and the brief ends with the line "Every entry above is checked against main."
+
+**Checked 2026-10-25, against `main` at `603b3ebb`, by `PL-GTHP`.** `PL-TBQS`'s replay reviewed the same pull requests, so `PL-GTHP` checked each entry above alongside its own findings, once per fault. Numbering follows the order of the entries under each pull request above. Of the 24 entries, 11 still hold and are filed, 12 are fixed, and 1 describes code that is gone. The fixed entry for `#775`'s undrawn halt is `PL-T995`, as the list says.
+
+- `#204`: ZWXD-1 filed as `PL-HF4B`; ZWXD-2 fixed; ZWXD-3 code gone.
+- `#331`: ZWXD-1 fixed; ZWXD-2 fixed; ZWXD-3 filed as `PL-X4X2`; ZWXD-4 fixed; ZWXD-5 filed as `PL-TPBH`.
+- `#578`: ZWXD-1 filed as `PL-CJJ1`; ZWXD-2 filed as `PL-T5NJ`; ZWXD-3 fixed; ZWXD-4 fixed (`PL-FPCK`).
+- `#775`: ZWXD-1 fixed (`PL-T995`); ZWXD-2 filed as `PL-QBQX`; ZWXD-3 filed as `PL-M8F6`.
+- `#1292`: ZWXD-1 fixed; ZWXD-2 fixed.
+- `#1350`: ZWXD-1 fixed (`PL-5D1Z`).
+- `#1451`: ZWXD-1 filed as `PL-3JTH`.
+- `#1585`: ZWXD-1 filed as `PL-HF1B`; ZWXD-2 fixed; ZWXD-3 fixed; ZWXD-4 filed as `PL-6RJ0`; ZWXD-5 filed as `PL-M4WT`.
+
+Every entry above is checked against main.
