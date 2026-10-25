@@ -60,3 +60,10 @@ unchanged.
 on Flet", and a comment in `app/control_timeline.py` above the ASCII arrow
 names "The Flutter client this interface renders in". The rewrite kept both
 as they were, because changing a fact was outside that item.
+
+**Two more, folded in from `PL-3TWT` on 2026-10-25.** `tests/unit/test_chart_time_base.py`
+line 4 says its subject is checkable "without constructing a Flet interface".
+`tests/integration/test_sevo_controller.py` lines 22 and 23 cite
+`app/simulation_view.SIMULATION_STEP_S`, which that module no longer defines,
+and say the value is restated "because that module needs Flet". Both files are
+already in this item's `touches`.

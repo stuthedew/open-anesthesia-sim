@@ -1,0 +1,5 @@
+time	session	guard	rule
+2026-10-25T19:26:28.448196+00:00	8983a6e9-af13-5e7e-b531-69a7e7fdd2eb	floor-interpreter-guard	floor-interpreter
+2026-10-25T19:26:28.449820+00:00	8983a6e9-af13-5e7e-b531-69a7e7fdd2eb	gate-status-guard	status-swallowed
+2026-10-25T19:26:36.335058+00:00	8983a6e9-af13-5e7e-b531-69a7e7fdd2eb	gate-status-guard	status-swallowed
+2026-10-25T19:28:43.127835+00:00	8983a6e9-af13-5e7e-b531-69a7e7fdd2eb	gate-status-guard	status-swallowed
