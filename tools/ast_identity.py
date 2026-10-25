@@ -10,7 +10,9 @@ script that compared the two files' syntax trees and was then lost
 (`PL-VHHB`).
 
 This is that comparison, kept. For each Python file it parses both versions,
-removes every docstring, and compares `ast.dump` of the two trees. A comment
+removes every docstring, and compares `ast.dump` of the two trees. A docstring
+is any string that stands as a statement of its own, the attribute docstring
+under an assignment included, as `docket.python.docstrings` defines it. A comment
 never reaches the tree, and `ast.dump` leaves out line and column numbers, so
 equal dumps mean no executable statement changed. A docstring is removed
 rather than replaced, so a docstring added or deleted reads as unchanged too.
@@ -47,6 +49,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.python import without_docstrings as strip_docstrings  # noqa: E402
 from docket.vcs import GitUnanswered, listed_paths, read_git  # noqa: E402
 
 #: The verdict for each file, as the line for it prints it.
@@ -61,31 +64,20 @@ TEXT_CHANGED = "changed, compared as text"
 #: The verdicts under which a file's code did not move.
 UNMOVED = frozenset({SAME, SAME_BUT_DOCSTRINGS, TEXT_SAME})
 
-#: The nodes whose first statement, when it is a string, Python takes as a docstring.
-_DOCUMENTED = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-
 
 def without_docstrings(source: str, name: str) -> str:
     """`ast.dump` of `source` with every docstring removed.
 
+    A docstring is any string that stands as a statement of its own, as
+    `docket.python.docstrings` defines it, so an attribute docstring is one.
+    Removing only each body's first string read 19 files as changed at the
+    v0.6.7 cut, where only attribute docstrings had been reworded (`PL-6GP9`).
+    No string statement has any effect when the program runs, apart from the
+    first one's `__doc__`, so removing every one hides no executable change.
     `name` is used only in the `SyntaxError` a file that does not parse raises.
-    A body left empty by the removal is left empty: the dump is compared, never
-    compiled.
     """
 
-    tree = ast.parse(source, filename=name)
-    for node in ast.walk(tree):
-        if not isinstance(node, _DOCUMENTED):
-            continue
-        body = node.body
-        if (
-            body
-            and isinstance(body[0], ast.Expr)
-            and isinstance(body[0].value, ast.Constant)
-            and isinstance(body[0].value.value, str)
-        ):
-            del body[0]
-    return ast.dump(tree)
+    return ast.dump(strip_docstrings(ast.parse(source, filename=name)))
 
 
 def verdict(old: str | None, new: str | None, path: str) -> str:

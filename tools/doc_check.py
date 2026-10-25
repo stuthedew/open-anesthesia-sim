@@ -224,7 +224,9 @@ try:
     # signature wrapped over several lines included (`PL-V2HK`).
     # What `ast.parse` raises where this interpreter cannot parse a file, which
     # `verify` names a file for (`PL-LCBQ`), read from where both find it.
+    # Which files are Python source is `python.SOURCE_SUFFIXES` too (`PL-H716`).
     from docket.python import (
+        SOURCE_SUFFIXES,
         UNPARSABLE,
         UNTOKENIZABLE,
         definition,
@@ -2834,9 +2836,12 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     where a source writes "l/min"; each number of a list joined by slashes,
     such as "6/33/14.5 L"; and a symbol given a number in a math span, such
     as $`V_A = 2.5`$ L, by `MATH_FIGURE_RE` (`PL-2T6S`). It does not read any
-    other number in a math span, a span split across two lines, or a figure
-    in a code span. A restatement written in one of those forms is not
-    checked.
+    other number in a math span, or a figure in a code span. A restatement
+    written in one of those forms is not checked. It reads a line at a time,
+    so a math span split across two lines gives it no figure. That form never
+    passes, though: the split span renders as literal text, and
+    `check_math_delimiters` refuses it until it is joined onto one line, where
+    this check reads its figure (`PL-P0RG`).
     """
     homes = stored_values(root)
     for document in PROVENANCE_DOCUMENTS:
@@ -9771,8 +9776,6 @@ JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
 #: A patch's old-file header where the base has no such file.
 NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
-#: The suffixes whose definitions are read as statements.
-PYTHON_SUFFIXES = (".py", ".pyi")
 
 # A term's shape decides how it is searched for, because the two shapes carry
 # different risk. `doc_check.py`, `changed_tokens` and `TreeMap` cannot be
@@ -9843,7 +9846,7 @@ def changed_tokens(
         diff = [line for line in split_lines(patch) if line.strip()]
         if relative in docs:
             found = _removed_headings(root, base, relative, patch)
-        elif PurePosixPath(relative).suffix in PYTHON_SUFFIXES:
+        elif PurePosixPath(relative).suffix in SOURCE_SUFFIXES:
             name = PurePosixPath(relative)
             found = {
                 name.name,
