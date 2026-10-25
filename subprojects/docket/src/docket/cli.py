@@ -5206,42 +5206,60 @@ def _auto_merge(root: Path, config: Config) -> Callable[[int], arming.AutoMerge]
     return ask
 
 
-#: How long `prose_count_command` is given. Longer than the forge's limit,
-#: because the count parses every simulator file the branch changes, and a
-#: count that timed out holds the pull request rather than arming it.
-PROSE_COUNT_TIMEOUT = 60.0
+#: How long `prose_count_command` and `blind_count_command` are each given.
+#: Longer than the forge's limit, because the prose count parses every
+#: simulator file the branch changes, and a count that timed out holds the
+#: pull request rather than arming it.
+COUNT_TIMEOUT = 60.0
 
 
-def _prose_count(root: Path, config: Config) -> Callable[[str], arming.ProseCount] | None:
+def _command_count(command: str, root: Path, *extra: str) -> arming.CommandCount:
+    """The whole number `command` prints, run with `extra` appended, or why it gave none.
+
+    A command that failed, timed out or printed anything but one whole number
+    comes back `declined`, naming the command, and `arm` holds on it.
+    """
+    done = _run_forge_command(command, root, *extra, timeout=COUNT_TIMEOUT)
+    if isinstance(done, str):
+        return arming.CommandCount(declined=f"`{command}` was not answered: {done}")
+    if done.returncode != 0:
+        err = " ".join(done.stderr.split())
+        return arming.CommandCount(
+            declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
+        )
+    said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
+    if len(said) == 1 and (count := whole_number(said[0])) is not None:
+        return arming.CommandCount(count=count)
+    return arming.CommandCount(
+        declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
+    )
+
+
+def _prose_count(root: Path, config: Config) -> Callable[[str], arming.CommandCount] | None:
     """A way to count a branch's unreviewed long prose, or None if there is none.
 
     `prose_count_command` answers it, with the commit carrying the newest
-    `Prose-review` record appended where there is one (`PL-W04Z`). A command
-    that failed, timed out or printed anything but a whole number comes back
-    `declined`, naming the command, and `arm` holds on it.
+    `Prose-review` record appended where there is one (`PL-W04Z`).
     """
     command = config.prose_count_command
     if not command:
         return None
 
-    def ask(since: str) -> arming.ProseCount:
-        extra = (since,) if since else ()
-        done = _run_forge_command(command, root, *extra, timeout=PROSE_COUNT_TIMEOUT)
-        if isinstance(done, str):
-            return arming.ProseCount(declined=f"`{command}` was not answered: {done}")
-        if done.returncode != 0:
-            err = " ".join(done.stderr.split())
-            return arming.ProseCount(
-                declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
-            )
-        said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
-        if len(said) == 1 and (count := whole_number(said[0])) is not None:
-            return arming.ProseCount(count=count)
-        return arming.ProseCount(
-            declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
-        )
+    def ask(since: str) -> arming.CommandCount:
+        return _command_count(command, root, *((since,) if since else ()))
 
     return ask
+
+
+def _blind_count(root: Path, config: Config) -> Callable[[], arming.CommandCount] | None:
+    """A way to count the blind review passes a branch owes, or None if there is none.
+
+    `blind_count_command` answers it, with nothing appended (`PL-HDRN`).
+    """
+    command = config.blind_count_command
+    if not command:
+        return None
+    return lambda: _command_count(command, root)
 
 
 def cmd_flight(args: argparse.Namespace) -> int:
@@ -5442,6 +5460,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         newest=_newest_pull_request(inv.root, inv.config),
         auto_merge=_auto_merge(inv.root, inv.config),
         prose_count=_prose_count(inv.root, inv.config),
+        blind_count=_blind_count(inv.root, inv.config),
     )
     if args.owner_ask:
         line = verdict.sendable

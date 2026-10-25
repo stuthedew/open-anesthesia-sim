@@ -654,6 +654,16 @@ auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
 # The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
 prose_count_command = "uv run python tools/new_prose.py --count"
 
+# How `bin/docket arm` counts the blind generalist review passes a simulator
+# branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
+# parameter files or `docs/MODEL.md` (`PL-TDV9`). `arm` holds the branch until
+# its newest `Blind-review:` trailer records at least that many passes, and
+# holds where the script exits non-zero. It runs under `uv run python` for the
+# reason the prose count does: it parses each changed test under `tests/` to
+# tell a test of the tooling from the simulator's, and those tests may use
+# grammar newer than the bare interpreter reads.
+blind_count_command = "uv run python tools/blind_review.py --count"
+
 # How `bin/docket verify` measures whether the branch's tests still catch a
 # change to its own lines (`PL-CZXN`; project owner, 2026-10-19, ratified, over
 # making the old assertion check an advisory and over keeping it). The package

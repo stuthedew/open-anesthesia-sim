@@ -45,7 +45,8 @@ generalist review passes have run and their findings are dealt with.**
 changes the model's code, its parameter files or `docs/MODEL.md`. Close-out
 step 9 in `.claude/skills/docket/modes/close-out.md` says how to run them and
 where their findings go: fixed on the branch, filed as items, or rejected,
-each listed in the pull request body (`PL-TDV9`).
+each listed in the pull request body (`PL-TDV9`). `bin/docket arm` holds the
+pull request until a `Blind-review:` trailer records the passes (`PL-HDRN`).
 
 ## Ask `bin/docket arm` before arming and before every later push
 
