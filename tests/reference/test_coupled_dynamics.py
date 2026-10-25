@@ -84,25 +84,27 @@ DELIVERED_PERCENT = 5.0
 FRESH_GAS_FLOW_L_MIN = 4.0
 CIRCUIT_VOLUME_L = 6.0
 
-# The model's own supported input ranges. They are restated here rather than
-# imported, for the same reason as SHIPPED_STEP_S below: this gate states in its
-# own file the domain it claims to cover. A widened domain then fails here rather
-# than silently enlarging what these measurements are taken to cover.
-# `test_envelope_limits_match_the_supported_input_ranges` keeps the restatement
-# true. Without that test, moving a limit would silently shrink or stretch the
-# domain this gate covers, which is the defect PL-042 exists to fix. Before
-# PL-0MLQ these were the interface's slider limits, and the restatement was
-# checked against `simulation_view`, because the interface was the only place the
-# domain was declared.
+# These constants restate the model's own supported input ranges instead of
+# importing them, for the same reason as SHIPPED_STEP_S below: this gate should
+# state, in its own file, the domain it claims to cover.
+# `test_envelope_limits_match_the_supported_input_ranges` fails when the
+# model's ranges and this restatement differ. Without that test, widening a
+# range would silently enlarge what these measurements are taken to cover, and
+# moving any limit would silently shrink or stretch the domain this gate covers.
+# That is the defect PL-042 exists to fix. Before PL-0MLQ these constants were
+# the interface's slider limits, and the restatement was checked against
+# `simulation_view`, because the interface was the only place the domain was
+# declared.
 #
 # The minimums matter as much as the maximums, and the same test checks both.
 # Two gate trajectories hold a control at zero. `_ventilator_start` holds
-# alveolar ventilation there, and `_unperfused_load_then_dial_off` holds cardiac
-# output there and then closes the vaporizer. If a minimum were raised above
+# alveolar ventilation at zero. `_unperfused_load_then_dial_off` holds cardiac
+# output at zero and then closes the vaporizer. If a minimum were raised above
 # zero, the supported-range types would reject those settings, and the
-# trajectory would raise rather than run. The test's own message then says which
-# measurements to re-derive. `docs/MODEL.md` § "Supported input ranges" records
-# that zero is supported on all four controls, deliberately (PL-629Z).
+# trajectory would raise an error instead of running. The test's failure
+# message then says which measurements to re-derive. `docs/MODEL.md`
+# § "Supported input ranges" records that zero is supported on all four
+# controls, and that this was deliberate (PL-629Z).
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
 MAX_CARDIAC_OUTPUT_L_MIN = 10.0
@@ -172,35 +174,40 @@ def _max_dial(agent_id: str) -> float:
 
 
 def _envelope_corner(agent_id: str) -> OperatingPoint:
-    """The settings envelope's corner: each control where the operator split measured worst.
+    """Return the settings-envelope corner at which the operator split measured worst.
 
-    This corner was found by sweeping all four axes, not assumed. Fresh gas
-    flow and alveolar ventilation both increase the disagreement monotonically
-    up to their slider maxima. Along cardiac output the disagreement has an
-    interior *minimum* near 5 L/min and rises toward both ends, more at the
-    upper end. The equations are linear in the delivered fraction, so the
-    agent's own vaporizer maximum is its worst dial setting. The measurements
-    are recorded in `docs/MODEL.md` § "Independent-solution test".
+    This corner was found by sweeping all four controls, not assumed. Fresh gas
+    flow and alveolar ventilation both increase the disagreement with the oracle
+    monotonically, up to their slider maxima. Along cardiac output, the
+    disagreement has an interior *minimum* near 5 L/min. It rises toward both
+    ends, and more toward the upper end. The equations are linear in the
+    delivered fraction, so the agent's own vaporizer maximum is its worst dial
+    setting. The measurements are recorded in `docs/MODEL.md`
+    § "Independent-solution test".
 
     The sweep was run while the operator split was the shipped method. This
-    corner is now kept for the domain it covers rather than for being the
-    worst case, which it no longer is by any margin worth the name. With the
-    oracle converged (`ORACLE_STEP_S`), all five gate trajectories report the
-    same thing at the shipped step, which is accumulated rounding. Rounding is
-    set by the number of steps taken, not by how violently the settings move.
-    At 0.1 s, four of the five run 600 s and the unperfused load runs 900 s.
-    All five land within a factor of 1.8 of each other. Each figure below is
-    the worst state and agent measured at the shipped step, and desflurane is
-    the worst agent throughout: 1.5786e-14 for ordinary use, 1.5377e-14 here,
-    1.3906e-14 for the ventilator start, 1.3427e-14 for held defaults, and
-    8.7985e-15 for the unperfused load.
+    corner is no longer the worst case by any meaningful margin, and it is now
+    kept for the part of the domain it covers. Now that the oracle has converged
+    (`ORACLE_STEP_S`), all five gate trajectories measure the same thing at the
+    shipped step: accumulated rounding error. That error does not grow with how
+    violently the settings move. At the 0.1 s step, four of the five
+    trajectories run for 600 s and the unperfused load runs for 900 s. Their
+    results all lie within a factor of 1.8 of each other. The unperfused load
+    takes the most steps and still reports the least. For desflurane its worst
+    comes at 416.5 s, inside its loading phase, while cardiac output is zero and
+    every blood and tissue state is still empty. Each figure below is measured
+    at the shipped step and is the largest over all states and agents.
+    Desflurane is the worst agent in every trajectory: 1.5786e-14 for ordinary
+    use, 1.5377e-14 here, 1.3906e-14 for the ventilator start, 1.3427e-14 for
+    held defaults, and 8.7985e-15 for the unperfused load.
 
-    That is a change in what this trajectory is *for*, and it is worth saying
-    so explicitly. Under the coarse oracle, the corner and the ventilator
-    start carried the largest reported numbers, so they appeared to be the
-    binding cases. What they were really binding was the oracle's ability to
-    resolve a transient. They now earn their place by driving settings that no
-    other trajectory reaches. That is a coverage argument, not a worst-case one.
+    This changes what this trajectory is *for*. With the earlier, coarser
+    oracle, the corner and the ventilator start reported the largest numbers,
+    so they appeared to be the cases that limited the gate. In fact, those
+    numbers were limited by how well the coarse oracle could resolve a
+    transient. The two trajectories are now kept because they drive settings
+    that no other trajectory reaches. They are kept for coverage, not as worst
+    cases.
 
     Monotonicity is measured, not proved. A change to the governing equations
     could move the maximum off this corner. That is why the sweep should be
@@ -254,44 +261,46 @@ def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
 
 
 def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
-    """Fill circuit and lungs with no circulation, then restore it and dial off.
+    """Fill the circuit and lungs with no circulation, then restore it and dial off.
 
-    This is the most violent trajectory the four sliders can produce, for a
-    structural rather than clinical reason. Holding cardiac output at zero lets
-    the circuit and alveoli saturate at the dial setting while every blood and
-    tissue compartment stays empty. That drives the six states as far apart as
-    they can go. Turning perfusion on and the vaporizer off in the same move
-    then puts every compartment's equilibrium at the opposite extreme from
+    This is the most violent trajectory the four sliders can produce. The reason
+    is structural, not clinical. Holding cardiac output at zero lets the circuit
+    and alveoli saturate at the dial setting while every blood and tissue
+    compartment stays empty. That drives the six states as far apart as they
+    can go. The next phase turns perfusion on and the vaporizer off at the same
+    moment. Every compartment's equilibrium is then at the opposite extreme from
     where the compartment sits, so all six transients run at once.
 
-    Under the operator split, this was also the trajectory that measured
-    worst, which is why it was added. It is no longer the worst. Since the
-    oracle was refined (`ORACLE_STEP_S`), every gate trajectory reports the
-    shipped step's accumulated rounding, and this one reports the least of the
-    five. For desflurane it is 8.7985e-15, against 1.3906e-14 on
-    `_ventilator_start` and 1.5786e-14 on `_ordinary_use`. `_envelope_corner`
-    lists all five. The scenario is kept for two reasons. It still sets up the
-    widest spread of initial states the interface allows. It is also the only
-    gate trajectory that takes cardiac output or the delivered concentration to
-    its minimum. `_ventilator_start` is the only other trajectory that takes a
-    control to its minimum, and the control it takes there is alveolar
-    ventilation.
+    Under the operator split, this trajectory also measured worst, which is why
+    it was added. It is no longer the worst. Since the oracle was refined
+    (`ORACLE_STEP_S`), every gate trajectory reports the shipped step's
+    accumulated rounding, and this one reports the least of the five. For
+    desflurane it is 8.7985e-15, against 1.3906e-14 on `_ventilator_start` and
+    1.5786e-14 on `_ordinary_use`. The docstring of `_envelope_corner` lists the
+    figures for all five. The scenario is kept for two reasons. It still sets up
+    the widest spread of initial states the interface allows. It is also the
+    only gate trajectory that takes cardiac output or the delivered
+    concentration to its minimum. `_ventilator_start` is the only other
+    trajectory that takes a control to its minimum, and that control is
+    alveolar ventilation.
 
     Zero cardiac output is a supported input. That was decided and recorded,
     not inherited, and `docs/MODEL.md` § "Supported input ranges" gives the
     reasons. The main reason is that reducing cardiac output speeds up
     alveolar wash-in, and zero is the clearest case of that lesson. So this
-    trajectory is inside the domain the gate must cover. It is not an edge
-    case tolerated at the boundary.
+    trajectory is inside the domain the gate must cover. It is not an edge case
+    tolerated at the boundary.
 
     Even so, the gate does not rest on this trajectory alone.
-    `_ventilator_start` above needs no zero-perfusion phase and measures
-    worse. If a later decision raised the slider's minimum above zero, this
-    trajectory would be replaced, and the gate would still mean something.
+    `_ventilator_start` above needs no zero-perfusion phase and reports a larger
+    error. If a later decision raised the cardiac output slider's minimum above
+    zero, this trajectory would be replaced, and the gate would still mean
+    something.
 
     Ten minutes of loading is enough to saturate. Extending the loading to
-    twenty minutes changed the measured coefficient by 4e-5 relative, at the
-    time when that coefficient was the quantity being measured.
+    twenty minutes changed the measured coefficient by a relative 4e-5. That
+    figure dates from when the coefficient itself was the quantity being
+    measured.
     """
 
     return (
@@ -409,40 +418,42 @@ ALL_GATE_TRAJECTORIES = (
 # `test_the_shipped_step_reaches_the_pinned_reference_horizons` is for.
 ENVELOPE_HORIZON_S = 600.0
 
-# The step the interface runs at (`app.dashboard_frame.SIMULATION_STEP_S`). It is
-# restated rather than imported so that this reference test stays independent of
-# the application layer.
+# SHIPPED_STEP_S is the step the interface runs at
+# (`app.dashboard_frame.SIMULATION_STEP_S`). It is restated rather than imported
+# so that this reference test stays independent of the application layer.
 #
 # `test_displayed_resolution_and_shipped_step_match_the_interface` checks the
-# restatement, for the same reason it checks the slider limits. It no longer
-# checks it for the reason this comment used to give. That reason was that every
-# measured figure here was a first-order coefficient multiplied by this step, so
-# moving the step rescaled all of them. That was true of the operator split. It is
-# not true of the exact propagator, which solves the interval exactly however it
-# is subdivided and has no coefficient to multiply (`PL-X9KD`).
+# restatement, for the same reason it checks the slider limits. This comment
+# used to give a different reason, which no longer applies. Under the operator
+# split, every measured figure here was a first-order coefficient multiplied by
+# this step, so moving the step rescaled all of them. That is not true of the
+# exact propagator. It solves each interval exactly, however the interval is
+# divided into steps, so it has no coefficient to multiply (`PL-X9KD`).
 #
 # The step still has to be checked, for two reasons that still apply:
 #
-#   - What this module measures is accumulated floating-point rounding, and
-#     rounding accumulates with the *number* of steps rather than with their
-#     size. A 600 s trajectory is 6 000 roundings at this step and 24 000 at
-#     0.025 s. The measured residual over held default settings grows
-#     accordingly: 2.8935e-15, 1.3385e-14, 3.8337e-14 for sevoflurane at 0.1 s,
-#     0.05 s and 0.025 s. Since `PL-B1WW` refined `ORACLE_STEP_S`, the
+#   - This module measures accumulated floating-point rounding. Rounding
+#     accumulates with the *number* of steps, not with their size. A 600 s
+#     trajectory involves 6 000 roundings at this step and 24 000 at 0.025 s.
+#     With the default settings held, the measured residual for sevoflurane
+#     grows accordingly: 2.8935e-15 at 0.1 s, 1.3385e-14 at 0.05 s and
+#     3.8337e-14 at 0.025 s. Since `PL-B1WW` refined `ORACLE_STEP_S`, the
 #     trajectory gates report this same quantity, which is also what
-#     `HELD_RUN_ROUNDING_BOUND` measures. The oracle is converged on the
-#     transients too, so the figure is the shipped step's own throughout this
-#     module, not in only one gate of it.
-#   - The step is when a setting change takes effect, so it defines the phase
-#     boundaries of every trajectory here. Two of the five trajectories turn.
-#     If the shipped step moved while this constant did not, those turns would
-#     move off the instants at which these measurements were taken.
+#     `HELD_RUN_ROUNDING_BOUND` measures. The oracle has converged on the
+#     transients too. So every figure in this module is the shipped step's own
+#     rounding, not just the figure from one gate.
+#   - A setting change takes effect only at a step, so the step sets the phase
+#     boundaries of every trajectory here. Two of the five trajectories change
+#     their settings partway through. If the shipped step moved while this
+#     constant did not, those changes would move off the instants at which
+#     these measurements were taken.
 #
-# What is *not* a reason any more: `core.simulation_step.MAXIMUM_SIMULATION_STEP_S`
-# is not derived from anything measured here. `docs/MODEL.md` § "Supported
-# simulation step" records that its old derivation is void and that the value is
-# carried forward pending `PL-X9KD`. Until PL-VP7N, the step was restated here
-# without any check at all.
+# One former reason no longer applies.
+# `core.simulation_step.MAXIMUM_SIMULATION_STEP_S` is not derived from anything
+# measured here. `docs/MODEL.md` § "Supported simulation step" records that its
+# old derivation no longer holds, and that the value is kept unchanged until
+# `PL-X9KD` is resolved. Until PL-VP7N, the step was restated here without any
+# check at all.
 SHIPPED_STEP_S = 0.1
 
 # The oracle's own step, an eighth of the shipped one. It is deliberately not
