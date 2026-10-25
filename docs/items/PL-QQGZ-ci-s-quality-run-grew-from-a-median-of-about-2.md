@@ -9,6 +9,7 @@ feature: defect-review-2026-10
 touches: tools/main_ci_status.py, .github/workflows/quality.yml, tests/unit/test_main_ci_status.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1771
 payoff: every pull request's CI comes back minutes sooner, or the pytest drift warning that opens each session gives its reason and goes quiet
 verify: grep -qE '^\*\*Attribution\.' docs/items/PL-QQGZ-*.md
 ---
