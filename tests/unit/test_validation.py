@@ -138,8 +138,8 @@ def test_each_guard_refuses_what_is_not_a_number_and_an_overflowing_int_in_its_o
 def test_a_rejected_value_appears_in_the_message(guard, value: float, reason: str) -> None:
     """A refusal names the value it refused, and why (`PL-T137`).
 
-    Before, `gas_volume_l` of `-0.0`, `nan` and `-2.5` gave one message,
-    though a value that is not finite and one below the range want
+    Before this, `gas_volume_l` gave the same message for `-0.0`, `nan` and
+    `-2.5`. A value that is not finite and a value below the range need
     different fixes.
     """
 

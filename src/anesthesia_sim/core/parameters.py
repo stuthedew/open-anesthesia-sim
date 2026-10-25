@@ -1211,10 +1211,10 @@ def load_agent_parameters(agent_id: str) -> AgentParameters:
         The agent's parameters, parsed by `parse_agent_parameters`.
 
     Raises:
-        SimulationConfigurationError: `agent_id` names no built-in agent; the
-            packaged file is missing, unreadable or not valid JSON; the file fails
-            `parse_agent_parameters`; or the file declares an id other than
-            `agent_id`.
+        SimulationConfigurationError: If `agent_id` names no built-in agent.
+            It is also raised if the packaged file is missing, unreadable or
+            not valid JSON, if the file fails `parse_agent_parameters`, or if
+            the file declares an id other than `agent_id`.
     """
 
     filename = AGENT_DATA_FILENAMES.get(agent_id)

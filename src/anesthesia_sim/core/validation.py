@@ -69,16 +69,16 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 def require_positive_finite(name: str, value: float) -> None:
     """Require a finite numeric value greater than zero.
 
-    The value is required to be a number first, by `require_a_number`
-    (`core/checked_number.py`), as every checked type requires of what it is
-    built from: until `PL-3800` `True` passed as the 1 it is to Python, so
-    `BreathingCircuit(circuit_volume_l=True)` held a 1 L circuit, a `Decimal`
-    was held as given and entered the arithmetic as one, and a `str` was
-    refused in `math.isfinite`'s words, naming neither the field nor its
-    constraint. Then an `int` outside the range a `float` holds is refused by
-    name (`_require_within_the_float_range`), where `isfinite` raised
-    `OverflowError` converting it. What is left is the test this guard has
-    always made, on a value it can now read.
+    The guard makes three checks in order. First, `require_a_number`
+    (`core/checked_number.py`) requires the value to be a number, as every
+    checked type requires of the value it is built from. Before `PL-3800`,
+    Python treated `True` as 1, so `BreathingCircuit(circuit_volume_l=True)`
+    held a 1 L circuit. A `Decimal` entered the arithmetic unconverted, and a
+    `str` was refused in `math.isfinite`'s words, which named neither the
+    field nor its constraint. Second, `_require_within_the_float_range`
+    refuses by name an `int` too large for a `float`, where `isfinite` used
+    to raise `OverflowError` while converting it. Third, the guard checks
+    that the value is finite and greater than zero.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`. A
@@ -86,9 +86,9 @@ def require_positive_finite(name: str, value: float) -> None:
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
             `float` holds, or is zero, negative, a NaN or an infinity. The
-            message names the value, and says whether it is not finite or
-            not greater than zero, since the two want different fixes
-            (`PL-T137`).
+            message names the value. It also says whether the value is not
+            finite or not greater than zero, because the two need different
+            fixes (`PL-T137`).
     """
 
     require_a_number(name, value)
@@ -108,19 +108,20 @@ def require_positive_finite(name: str, value: float) -> None:
 def require_nonnegative_finite(name: str, value: float) -> None:
     """Require a finite numeric value greater than or equal to zero.
 
-    Built as `require_positive_finite` is, and for the same reasons: a number
-    first, an `int` outside the float range refused by name, then the test on
-    the value itself. Zero is admitted, as the supported zero it is - the
-    fresh gas turned off, an unperfused tissue, no agent yet - and so is minus
-    zero, which equals it.
+    This guard makes the same three checks as `require_positive_finite`, for
+    the same reasons. It requires a number, refuses by name an `int` too
+    large for a `float`, and then checks the value itself. It accepts zero,
+    because zero is a supported value here: the fresh gas turned off, an
+    unperfused tissue, or no agent yet. It accepts minus zero too, which
+    equals zero.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`, as
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
             `float` holds, or is negative, a NaN or an infinity. The message
-            names the value, and says whether it is not finite or negative
-            (`PL-T137`).
+            names the value. It also says whether the value is not finite or
+            negative (`PL-T137`).
     """
 
     require_a_number(name, value)
