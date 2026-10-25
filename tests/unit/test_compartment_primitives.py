@@ -190,6 +190,7 @@ class CompartmentPrimitive:
 
 def _build_circuit(fresh_gas_flow_l_min: float) -> BreathingCircuit:
     return BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
         delivered_concentration_percent=DRIVING_PERCENT,

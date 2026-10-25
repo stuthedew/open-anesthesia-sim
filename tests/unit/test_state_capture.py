@@ -83,6 +83,8 @@ def _breathing_circuit() -> BreathingCircuit:
     """
 
     return BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         inspired_partial_pressure_fraction=Fraction(0.013),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.5, maximum_l_min=8.0
@@ -91,7 +93,9 @@ def _breathing_circuit() -> BreathingCircuit:
 
 
 def _alveolar_compartment() -> AlveolarCompartment:
-    return AlveolarCompartment(agent_amount_l=0.029)
+    return AlveolarCompartment(
+        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0), agent_amount_l=0.029
+    )
 
 
 def _tissue_group() -> TissueGroup:

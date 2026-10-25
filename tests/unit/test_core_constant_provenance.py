@@ -13,16 +13,14 @@ as a literal, and it must appear in the table's Selected-value column.
 a field with its row would need a mapping kept by hand (`gas_volume_l` is
 documented as `alveolar_gas_volume_l`). So a new constant equal to any value
 the table already selects passes: 6.0 L is the vessel-rich tissue volume as
-well as the circuit volume. Each default is pinned to its own file's value by
-`test_the_bare_circuit_defaults_match_the_shipped_machine_file` and
-`test_the_bare_alveolar_defaults_match_the_shipped_patient_file`.
+well as the circuit volume, which had a default until `PL-M85T`. The fresh gas
+flow default is pinned to its file's value by
+`test_the_flow_default_matches_the_shipped_machine_file`.
 
 Empty state and the whole carry no science and are not screened: 0 and 1, or
 0 and 100 for a `Percent`, the same two bounds on the dial's own scale.
-`BreathingCircuit`'s vaporizer maximum defaults to 100, meaning no device
-limit declared. Only a field's own scalar default is read, a factory's
-included; a tuple of numbers, a `ClassVar`, or a module constant no field
-defaults to is not.
+Only a field's own scalar default is read, a factory's included; a tuple of
+numbers, a `ClassVar`, or a module constant no field defaults to is not.
 """
 
 from __future__ import annotations

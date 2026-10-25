@@ -12,10 +12,9 @@ from anesthesia_sim.core.exponential_approach import exponential_approach
 from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
-    require_a_capacity,
+    require_a_capacity_with_room_for_the_agent,
     require_nonnegative_finite,
     require_positive_finite,
-    require_room_for_the_agent_held,
     require_within_the_capacity,
 )
 
@@ -96,42 +95,24 @@ class VenousBloodCompartment:
                 require_positive_finite(field, value)
 
                 if hasattr(self, "blood_gas_partition_coefficient"):
-                    require_a_capacity(
+                    require_a_capacity_with_room_for_the_agent(
                         field,
                         value,
                         value,
                         self.blood_gas_partition_coefficient,
-                        "venous blood",
-                        "Blood compartments",
-                    )
-
-                if hasattr(self, "agent_amount_l"):
-                    require_room_for_the_agent_held(
-                        field,
-                        value,
-                        value * self.blood_gas_partition_coefficient,
-                        self.agent_amount_l,
+                        getattr(self, "agent_amount_l", None),
                         "venous blood",
                         "Blood compartments",
                     )
             elif name == "blood_gas_partition_coefficient":
                 require_positive_finite(field, value)
+                held_l = getattr(self, "agent_amount_l", None)
 
                 # The constructor, a copy and a pickle write the volume
                 # first, so it is always there to multiply.
-                require_a_capacity(
-                    field, value, self.volume_l, value, "venous blood", "Blood compartments"
+                require_a_capacity_with_room_for_the_agent(
+                    field, value, self.volume_l, value, held_l, "venous blood", "Blood compartments"
                 )
-
-                if hasattr(self, "agent_amount_l"):
-                    require_room_for_the_agent_held(
-                        field,
-                        value,
-                        self.volume_l * value,
-                        self.agent_amount_l,
-                        "venous blood",
-                        "Blood compartments",
-                    )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
                 require_within_the_capacity(

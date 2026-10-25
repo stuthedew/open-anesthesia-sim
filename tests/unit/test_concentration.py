@@ -510,7 +510,9 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
     `TypeError` is the run-time one `PL-4R3W` added, and it says to convert.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+    )
 
     with pytest.raises(
         TypeError,
@@ -524,7 +526,9 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
 def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
     """The same missing conversion in the other direction, a hundred times too large."""
 
-    circuit = BreathingCircuit()
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+    )
 
     with pytest.raises(
         TypeError,
@@ -560,7 +564,9 @@ def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
     writers each passing a value already in percent stands against it.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+    )
 
     circuit.set_delivered_concentration_percent(Percent(0.08))
 
@@ -622,13 +628,21 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     assert system.state_vector() == vector_before
 
     with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
-        BreathingCircuit(delivered_concentration_percent=2.0)  # type: ignore[arg-type]
+        BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
+            delivered_concentration_percent=2.0,
+        )  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
-        BreathingCircuit(max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+        BreathingCircuit(circuit_volume_l=6.0, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
-        BreathingCircuit(inspired_partial_pressure_fraction=0.0)  # type: ignore[arg-type]
+        BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
+            inspired_partial_pressure_fraction=0.0,
+        )  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
         BreathingCircuitState(inspired_partial_pressure_fraction=0.0)  # type: ignore[arg-type]
@@ -719,7 +733,9 @@ def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_i
     the circuit that refuses 50% against 8% (`PL-BBMG`). Neither moves the dial.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT)
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+    )
 
     with pytest.raises(SimulationConfigurationError, match="percent of 150.0 is outside 0 to 100"):
         circuit.set_delivered_concentration_percent(Percent(150.0))

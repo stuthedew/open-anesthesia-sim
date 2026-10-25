@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.resources import files
 from math import isfinite
@@ -36,7 +37,7 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import MacMultiple, Percent, require_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.validation import require_positive_finite
+from anesthesia_sim.core.validation import require_positive_finite, require_within_vaporizer_maximum
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,16 +106,73 @@ MACHINE_SCHEMA_VERSIONS = SupportedSchemaVersions(
 )
 
 #: How far the tissue perfusion fractions may sum from 1 before the sum is
-#: called wrong. Two guards enforce that rule and both should keep doing so -
-#: this module guards the data file, `PatientCompartments.__post_init__`
-#: guards direct construction, and defence in depth is the point. What must
-#: not be duplicated is the *number*: it is a policy value that could
-#: reasonably be retuned, unlike `SECONDS_PER_MINUTE`, and two copies would
-#: let the two guards disagree about what "sums to 1" means with nothing to
-#: say so (`PL-TCW5`). `core/patient.py` imports this one rather than
-#: declaring its own; it already imports `AgentParameters` from here, so the
-#: single definition costs no new edge between the two modules.
+#: called wrong. Two places enforce that rule and both should keep doing so.
+#: This module checks the data file, `PatientCompartments` checks direct
+#: construction and each write of a fraction, and defence in depth is the
+#: point. Both call `require_perfusion_fractions_sum_to_one` below, so the
+#: number and the refusal are each written once. The number is a policy value
+#: that could reasonably be retuned, unlike `SECONDS_PER_MINUTE`, and two
+#: copies would let the two checks disagree about what "sums to 1" means with
+#: nothing to say so (`PL-TCW5`, `PL-YHWH`). `core/patient.py` imports both
+#: from here. It already imports `AgentParameters` from here, so the single
+#: definition costs no new edge between the two modules.
 FLOW_FRACTION_TOLERANCE = 1e-12
+
+
+def require_perfusion_fractions_sum_to_one(total_perfusion_fraction: float) -> None:
+    """Refuse tissue perfusion fractions whose sum is not 1.
+
+    Raises:
+        SimulationConfigurationError: the sum differs from 1 by more than
+            `FLOW_FRACTION_TOLERANCE`.
+    """
+
+    if abs(total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
+        raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
+
+
+def require_one_mac_deliverable(
+    mac_percent: Percent, max_delivered_concentration_percent: Percent
+) -> None:
+    """Refuse an agent whose own vaporizer cannot deliver 1 MAC, where a run opens.
+
+    The comparison is `require_within_vaporizer_maximum`'s, the rule every
+    dial is held to. This function adds the reason the rule applies to MAC:
+    `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC.
+    `AgentParameters` and the agent file's schema both call it (`PL-YHWH`).
+
+    Raises:
+        SimulationConfigurationError: `mac_percent` is above
+            `max_delivered_concentration_percent`.
+    """
+
+    try:
+        require_within_vaporizer_maximum(
+            "mac_percent", mac_percent, max_delivered_concentration_percent
+        )
+    except SimulationConfigurationError as error:
+        raise SimulationConfigurationError(
+            f"{error}: the agent's own vaporizer could not deliver 1 MAC, which is where a "
+            "run opens"
+        ) from error
+
+
+@contextmanager
+def _collected_by_pydantic() -> Iterator[None]:
+    """Raise a guard's refusal as the `ValueError` that Pydantic collects.
+
+    A validator below calls the same guard that the record it loads into
+    calls, so the file and the record are held to one rule. The guard raises
+    `SimulationConfigurationError`, which Pydantic would not collect into its
+    `ValidationError`, as the module docstring says. So the validator raises
+    the guard's message as a `ValueError` instead.
+    """
+
+    try:
+        yield
+    except SimulationConfigurationError as error:
+        raise ValueError(str(error)) from error
+
 
 #: The closed vocabulary a `sources` entry's `tier` is drawn from, in the
 #: order `docs/MODEL.md` § "Source hierarchy" defines them: a study that
@@ -266,13 +324,7 @@ class AgentParameters:
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_positive_finite("mac_percent", self.mac_percent)
-
-        if self.mac_percent > self.max_delivered_concentration_percent:
-            raise SimulationConfigurationError(
-                f"mac_percent of {self.mac_percent:g}% is above the vaporizer maximum of "
-                f"{self.max_delivered_concentration_percent:g}%: the agent's own vaporizer "
-                "could not deliver 1 MAC, which is where a run opens"
-            )
+        require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> float:
@@ -838,10 +890,9 @@ class _AgentPayload(_StrictPayload):
         depends on this holding.
         """
 
-        if self.mac_percent > self.max_delivered_concentration_percent:
-            raise ValueError(
-                "mac_percent must not exceed max_delivered_concentration_percent "
-                f"({self.mac_percent} > {self.max_delivered_concentration_percent})"
+        with _collected_by_pydantic():
+            require_one_mac_deliverable(
+                Percent(self.mac_percent), Percent(self.max_delivered_concentration_percent)
             )
 
         return self
@@ -891,14 +942,12 @@ class _ReferenceAdultPayload(_StrictPayload):
     def _perfusion_fractions_must_sum_to_one(
         cls, value: _TissueGroupsPayload
     ) -> _TissueGroupsPayload:
-        total = (
-            value.vessel_rich.perfusion_fraction
-            + value.muscle.perfusion_fraction
-            + value.fat.perfusion_fraction
-        )
-
-        if abs(total - 1.0) > FLOW_FRACTION_TOLERANCE:
-            raise ValueError("tissue perfusion fractions must sum to 1")
+        with _collected_by_pydantic():
+            require_perfusion_fractions_sum_to_one(
+                value.vessel_rich.perfusion_fraction
+                + value.muscle.perfusion_fraction
+                + value.fat.perfusion_fraction
+            )
 
         return value
 

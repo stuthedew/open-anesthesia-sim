@@ -230,7 +230,9 @@ def require_room_for_the_agent_held(
     accounting passing (`PL-544D`, found at review; measured 2026-10-17). So
     the alveolar compartment, the venous pool and each tissue group call this
     as either factor is written, with the capacity that writing `value` would
-    leave, which only the caller knows how to form.
+    leave, which only the caller knows how to form. The breathing circuit
+    calls it when `BreathingCircuit.set_circuit_volume` changes the volume
+    (`PL-84G1`).
 
     Raises:
         SimulationConfigurationError: `agent_amount_l` is above `capacity_l`.
@@ -307,4 +309,40 @@ def require_a_capacity(
             f"{capacity_l!r} L, its volume of {volume_l!r} L times its partition coefficient "
             f"of {capacity_per_litre!r}. A capacity must be positive and finite, because "
             f'every partial pressure is read by dividing by it (docs/MODEL.md, "{section}")'
+        )
+
+
+def require_a_capacity_with_room_for_the_agent(
+    name: str,
+    value: float,
+    volume_l: float,
+    capacity_per_litre: float,
+    agent_amount_l: float | None,
+    compartment: str,
+    section: str,
+) -> None:
+    """Refuse a volume or partition coefficient that leaves a blood or tissue capacity unusable.
+
+    A blood or tissue compartment makes the same two checks whenever its
+    volume or its partition coefficient is written. `require_a_capacity`
+    refuses a product that is zero or not finite, and
+    `require_room_for_the_agent_held` refuses one too small for the agent
+    already held. The venous pool and each tissue group call this function,
+    so the pair is written once (`PL-VWXL`). `value` is the factor being
+    written, and `name` is its name.
+
+    `agent_amount_l` is `None` while the compartment holds no amount yet. The
+    constructor, a copy and a pickle write the amount last, so the first
+    writes of the volume and the coefficient have no agent to make room for.
+
+    Raises:
+        SimulationConfigurationError: the capacity is zero or not finite, or
+            is less than `agent_amount_l`.
+    """
+
+    require_a_capacity(name, value, volume_l, capacity_per_litre, compartment, section)
+
+    if agent_amount_l is not None:
+        require_room_for_the_agent_held(
+            name, value, volume_l * capacity_per_litre, agent_amount_l, compartment, section
         )

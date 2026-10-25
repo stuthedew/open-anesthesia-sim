@@ -33,6 +33,7 @@ def test_circuit_wash_in_matches_a_closed_form_written_from_literals(elapsed_s: 
     """From an empty circuit, F_I(t) = F_D (1 - e^(-t / tau_C)), with F_D and tau_C as literals."""
 
     circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(8.0),

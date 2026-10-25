@@ -144,11 +144,12 @@ class AgentUptakeSystem:
         guaranteed to be within the maximum by the cross-field check in
         `core/parameters.py`.
 
-        Its volume and fresh gas flow are passed explicitly from
-        `data/machines/reference_circle_system.json` rather than left to
-        `BreathingCircuit`'s field defaults, so that every scientific constant
-        a run uses comes from a cited data file (`PL-4YY1`). The alveolar
-        compartment's two are passed the same way and for the same reason.
+        Its volume and fresh gas flow are passed from
+        `data/machines/reference_circle_system.json`, so that every scientific
+        constant a run uses comes from a cited data file (`PL-4YY1`). The
+        alveolar compartment's two are passed the same way and for the same
+        reason. Neither class has a default for its volume, so neither can be
+        built without one (`PL-M85T`).
 
         The flow is the one of them a profile may leave out, because no
         surveyed machine publishes a startup fresh gas flow (`PL-QW19`). A run

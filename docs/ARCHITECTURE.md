@@ -966,11 +966,9 @@ in it, or a line left behind after a deletion, fails `make check`.
 - A new physiological compartment or coupling → `core/`, with its equations
   and reference cases documented in `docs/MODEL.md` first (per `CLAUDE.md`).
 - A new agent, patient or machine profile → a new validated, cited file under
-  the matching subdirectory of `data/`, not hardcoded values in `core/`. Where
-  a compartment keeps a field default restating one of those values for bare
-  unit construction, the default is pinned to the file by a test, as
-  `test_the_bare_circuit_defaults_match_the_shipped_machine_file` pins
-  `BreathingCircuit`'s.
+  the matching subdirectory of `data/`, not hardcoded values in `core/`. A
+  compartment takes such a value as a required argument, with no default
+  restating it, as `BreathingCircuit` takes its volume (`PL-M85T`).
 - A number the code needs → one home, read through its name at every use: a
   cited data file under `data/` for a scientific value, `core/units.py` for a
   factor between units, and otherwise a module-level constant in the module

@@ -6,11 +6,12 @@ import pytest
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
+    FLOW_FRACTION_TOLERANCE,
     load_agent_parameters,
     load_reference_adult_parameters,
     load_sevoflurane_parameters,
 )
-from anesthesia_sim.core.patient import FLOW_FRACTION_TOLERANCE, PatientCompartments
+from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN, CardiacOutput
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem

@@ -448,8 +448,8 @@ def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() 
     with pytest.raises(
         SimulationConfigurationError,
         match=(
-            r"^mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
-            r"vaporizer could not deliver 1 MAC, which is where a run opens$"
+            r"^mac_percent exceeds the vaporizer maximum \(9% requested, 8% maximum\): the "
+            r"agent's own vaporizer could not deliver 1 MAC, which is where a run opens$"
         ),
     ):
         replace(
@@ -468,8 +468,24 @@ def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> 
     payload["max_delivered_concentration_percent"] = 8.0
     payload["mac_percent"] = 9.0
 
-    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"mac_percent exceeds the vaporizer maximum \(9% requested, 8% maximum\): the "
+            r"agent's own vaporizer could not deliver 1 MAC, which is where a run opens"
+        ),
+    ):
         parse_agent_parameters(payload)
+
+
+def test_an_agent_file_with_its_mac_at_the_vaporizer_maximum_loads() -> None:
+    """The file is held to the record's rule, so a MAC equal to the maximum is accepted."""
+
+    payload = _valid_agent_payload()
+    payload["max_delivered_concentration_percent"] = 8.0
+    payload["mac_percent"] = 8.0
+
+    assert parse_agent_parameters(payload).mac_percent == 8.0
 
 
 def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
@@ -1334,19 +1350,22 @@ def test_the_reference_patient_loader_shares_that_boundary(
     assert isinstance(raised.value.__cause__, OSError)
 
 
-def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
-    """`PL-TCW5`: the duplicated *check* is wanted, the duplicated number is not.
+def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
+    """`PL-TCW5`, `PL-YHWH`: the check is made in two places, from one rule.
 
-    Two guards enforce "tissue perfusion fractions sum to 1" - this module
-    guards the data file and `PatientCompartments.__post_init__` guards
-    direct construction - and both should stay. What must not be duplicated
-    is the tolerance itself, which is a policy value that could reasonably be
-    retuned; two copies would let the guards disagree about what the rule
+    Two places enforce "tissue perfusion fractions sum to 1". This module
+    checks the data file, and `PatientCompartments` checks direct
+    construction. Both should stay. What must not be duplicated is the rule
+    or its tolerance, which is a policy value that could reasonably be
+    retuned. Two copies would let the two checks disagree about what the rule
     means with nothing to say so. This asserts the shape rather than the
     value, so retuning it stays a one-line change.
     """
 
-    assert patient_module.FLOW_FRACTION_TOLERANCE is parameters_module.FLOW_FRACTION_TOLERANCE
+    assert (
+        patient_module.require_perfusion_fractions_sum_to_one
+        is parameters_module.require_perfusion_fractions_sum_to_one
+    )
 
     definitions = sorted(
         str(path.relative_to(REPO_ROOT))
@@ -1364,9 +1383,9 @@ def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() 
     `tools/doc_check.py`'s `check_provenance` walks data files in both
     directions, so a scientific constant that never entered one is invisible
     to the only tool built to catch a missing citation. This is the load side
-    of moving them into one; `test_the_bare_circuit_defaults_match_the_shipped_machine_file`
-    in `tests/unit/test_circuit.py` is the other side, and asserts that the
-    literals still in `core/circuit.py` agree with what this loads.
+    of moving them into one. Since `PL-M85T` `core/circuit.py` holds no
+    volume of its own, and `test_the_flow_default_matches_the_shipped_machine_file`
+    in `tests/unit/test_circuit.py` holds its flow default to what this loads.
 
     The values are asserted rather than only their provenance: this item was
     required not to change a modelled number, and 6.0 L with 4.0 L/min is what

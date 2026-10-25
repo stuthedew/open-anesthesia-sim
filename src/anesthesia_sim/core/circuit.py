@@ -34,7 +34,7 @@ once, and the interface's fresh gas flow control offers what it states
 (`PL-7CRY`).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import expm1, inf
 from typing import TYPE_CHECKING
 
@@ -58,6 +58,7 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_positive_finite,
+    require_room_for_the_agent_held,
     require_within_the_capacity,
     require_within_vaporizer_maximum,
 )
@@ -78,7 +79,7 @@ Its authority is the rationale `data/machines/reference_circle_system.json`
 records in its `provenance_gap` for storing the same value - chosen so that a
 learner sees the machine lag as a distinct phase of the early rise - and not
 any source. `docs/MODEL.md` carries that row, and
-`test_the_bare_circuit_defaults_match_the_shipped_machine_file` in
+`test_the_flow_default_matches_the_shipped_machine_file` in
 `tests/unit/test_circuit.py` fails if this value and the file's ever differ.
 """
 
@@ -291,29 +292,28 @@ class BreathingCircuitState:
 class BreathingCircuit:
     """Ideal, well-mixed breathing circuit with constant volume.
 
-    Every default below is agent-independent, which is the only thing a
-    class holding no agent parameters can honestly claim to know. So a
-    bare `BreathingCircuit()` is an empty 6 L circuit at 4 L/min with the
-    vaporizer off: zero is the one dial position every vaporizer of every
-    agent has, and therefore the only delivered concentration this class
-    can supply without borrowing some particular agent's number (PL-019).
+    The circuit's volume and its vaporizer maximum have no default, so every
+    caller states the values it means (`PL-M85T`). The other defaults are
+    agent-independent, which is the only thing a class holding no agent
+    parameters can honestly claim to know. A circuit is built empty, at
+    4 L/min, with the vaporizer off. Zero is the one dial position every
+    vaporizer of every agent has, and therefore the only delivered
+    concentration this class can supply without borrowing some particular
+    agent's number (PL-019).
 
     **`data/machines/reference_circle_system.json` is the authority for the
-    first two, and this class is not.** Every shipped path builds the circuit
-    through `AgentUptakeSystem.for_agent()`, which passes both explicitly: the
-    volume from the machine profile, and the flow from the profile where it
-    states one. So the volume literal below is reached only by a bare
-    unit-test construction of circuit physics, and is kept as a default rather
-    than made required so that such a test does not have to load package data
-    to exercise an equation. The flow default is
-    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, which is also what `for_agent()`
-    opens a run at when the profile states no startup flow (`PL-QW19`).
-    `test_the_bare_circuit_defaults_match_the_shipped_machine_file` in
-    `tests/unit/test_circuit.py` fails if either default and the file ever
-    disagree, because a reader meeting `6.0` here will take it for the model's
-    circuit volume whatever this paragraph says (`PL-4YY1`). The file also
-    carries why 6.0 is kept where the published Gas Man convention is 8 L, and
-    that the 4 L/min has no published counterpart at all.
+    volume and the flow, and this class is not.** Every shipped path builds the
+    circuit through `AgentUptakeSystem.for_agent()`, which passes the volume
+    from the machine profile, and the flow from the profile where it states
+    one. Until `PL-M85T` the volume defaulted to 6.0 L, a second copy of the
+    file's value that only a test held equal to it (`PL-4YY1`). The flow
+    default is `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, which is also what
+    `for_agent()` opens a run at when the profile states no startup flow
+    (`PL-QW19`). `test_the_flow_default_matches_the_shipped_machine_file` in
+    `tests/unit/test_circuit.py` fails if that default and the file ever
+    disagree. The file also carries why 6.0 L is kept where the published Gas
+    Man convention is 8 L, and that the 4 L/min has no published counterpart
+    at all.
 
     `fresh_gas_flow_l_min` is the flow at the common gas outlet - carrier
     gas plus the vapour the vaporizer added - and not the flowmeter
@@ -338,15 +338,15 @@ class BreathingCircuit:
 
     `max_delivered_concentration_percent` is the vaporizer's calibrated
     dial maximum for the agent in use, in the unit of the dial it bounds. It
-    defaults to 100.0, meaning "no device limit declared", which is only
-    appropriate for a circuit built without an agent (a bare unit test of
-    circuit physics). Every
-    agent-aware path builds the circuit through
-    `AgentUptakeSystem.for_agent()`, which sets both the real limit and
-    that agent's own starting dial from the agent data file. A dial set to
-    100% under that default maximum can carry a computed fraction a rounding
-    past 1, which `Fraction` refuses where it is built;
-    `core/concentration.py` records that as the type's limit (`PL-4R3W`).
+    has no default (`PL-M85T`). Until then it defaulted to 100%, which no
+    agent's vaporizer delivers, so a circuit built without it accepted any
+    dial setting. Every agent-aware path builds the circuit through
+    `AgentUptakeSystem.for_agent()`, which sets both the real limit and that
+    agent's own starting dial from the agent data file. A test of circuit
+    physics that wants no device limit passes 100% itself. A dial set to 100%
+    under that maximum can carry a computed fraction a rounding past 1, which
+    `Fraction` refuses where it is built; `core/concentration.py` records that
+    as the type's limit (`PL-4R3W`).
 
     Every field is checked at every write to it, in `__setattr__`, the
     constructor's writes included, so an assignment made past the constructor
@@ -372,11 +372,15 @@ class BreathingCircuit:
     read together, the one statement of their intersection.
     """
 
-    circuit_volume_l: float = 6.0
+    circuit_volume_l: float
     fresh_gas_flow_l_min: FreshGasFlow = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
     delivered_concentration_percent: Percent = Percent(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
-    max_delivered_concentration_percent: Percent = Percent(100.0)
+    # Keyword-only, because a field with no default cannot follow one with a
+    # default. The constructor still writes the fields in the order listed, so
+    # the maximum is written after the dial, which its check in `__setattr__`
+    # reads.
+    max_delivered_concentration_percent: Percent = field(kw_only=True)
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None = None
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
@@ -557,8 +561,14 @@ class BreathingCircuit:
 
         stored_agent_l = self.agent_amount_l
 
-        if stored_agent_l > circuit_volume_l:
-            raise SimulationConfigurationError("circuit_volume_l is smaller than stored agent")
+        require_room_for_the_agent_held(
+            "circuit_volume_l",
+            circuit_volume_l,
+            circuit_volume_l,
+            stored_agent_l,
+            "breathing circuit",
+            "Breathing circuit",
+        )
 
         inspired_partial_pressure_fraction = Fraction(
             stored_agent_l / circuit_volume_l, name="inspired_partial_pressure_fraction"

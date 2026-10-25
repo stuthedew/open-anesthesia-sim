@@ -79,6 +79,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+from anesthesia_sim.core.validation import require_positive_finite
 
 _PropagatorKey = tuple[UptakeEquationSettings, float]
 """A stretch's settings and an interval: the whole of what a propagator is formed from."""
@@ -635,6 +636,8 @@ class RunDefinition:
             Ascending, duplicate-free instants and the state at each.
 
         Raises:
+            TypeError: `spacing_s` is not an `int` or a `float`, or is a
+                `bool` (`require_positive_finite`).
             SimulationConfigurationError: `spacing_s` is not positive or not
                 finite; either bound is not finite; either bound precedes
                 `opened_at_s`; `stop_s` precedes `start_s`; `stop_s` is past
@@ -646,10 +649,7 @@ class RunDefinition:
                 what the columns asked for.
         """
 
-        if not isfinite(spacing_s) or spacing_s <= 0.0:
-            raise SimulationConfigurationError(
-                f"a column spacing is a positive interval, not {spacing_s}"
-            )
+        require_positive_finite("spacing_s", spacing_s)
 
         self._require_within_run(start_s)
         self._require_within_run(stop_s)

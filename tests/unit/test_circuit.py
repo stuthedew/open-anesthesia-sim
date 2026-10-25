@@ -33,7 +33,9 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 def test_rejects_agent_amount_above_circuit_capacity() -> None:
-    circuit = BreathingCircuit()
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+    )
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -47,6 +49,7 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(100.0),
@@ -59,6 +62,8 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
 def test_zero_fresh_gas_flow_preserves_concentration() -> None:
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(0.0),
         delivered_concentration_percent=Percent(100.0),
         inspired_partial_pressure_fraction=Fraction(0.25),
@@ -72,6 +77,7 @@ def test_zero_fresh_gas_flow_preserves_concentration() -> None:
 
 def test_zero_delivered_concentration_washes_out_circuit() -> None:
     circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(0.0),
@@ -92,8 +98,16 @@ def test_exact_update_is_independent_of_step_size() -> None:
     stayed at zero, which is agreement about nothing.
     """
 
-    one_step = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
-    many_steps = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
+    one_step = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        delivered_concentration_percent=Percent(100.0),
+    )
+    many_steps = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        delivered_concentration_percent=Percent(100.0),
+    )
 
     one_step.advance(60.0)
 
@@ -109,13 +123,19 @@ def test_exact_update_is_independent_of_step_size() -> None:
 @pytest.mark.parametrize("circuit_volume_l", [0.0, -1.0, float("inf")])
 def test_rejects_invalid_circuit_volume(circuit_volume_l: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(circuit_volume_l=circuit_volume_l)
+        BreathingCircuit(
+            max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=circuit_volume_l
+        )
 
 
 @pytest.mark.parametrize("fresh_gas_flow_l_min", [-1.0, float("nan")])
 def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min))
+        BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
+            fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
+        )
 
 
 def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
@@ -126,6 +146,7 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """
 
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -139,6 +160,7 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
 def test_rejects_construction_above_the_vaporizer_maximum() -> None:
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
         BreathingCircuit(
+            circuit_volume_l=6.0,
             delivered_concentration_percent=Percent(8.0),
             max_delivered_concentration_percent=Percent(5.0),
         )
@@ -146,6 +168,7 @@ def test_rejects_construction_above_the_vaporizer_maximum() -> None:
 
 def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> None:
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -158,6 +181,7 @@ def test_accepts_a_delivered_concentration_of_zero() -> None:
     """The vaporizer off is always a valid dial position: it is washout."""
 
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(5.0),
     )
@@ -182,6 +206,7 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: 
         match="^max_delivered_concentration_percent must be positive and finite$",
     ):
         BreathingCircuit(
+            circuit_volume_l=6.0,
             delivered_concentration_percent=Percent(0.0),
             max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
         )
@@ -192,7 +217,11 @@ def test_accepts_fresh_gas_flow_at_both_ends_of_the_supported_range() -> None:
     corner of the settings envelope every reference gate measures at."""
 
     for fresh_gas_flow_l_min in (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN):
-        circuit = BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min))
+        circuit = BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
+            fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
+        )
 
         assert circuit.fresh_gas_flow_l_min == fresh_gas_flow_l_min
 
@@ -211,7 +240,11 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
     argument the vaporizer maximum above rests on.
     """
 
-    circuit = BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        fresh_gas_flow_l_min=FreshGasFlow(4.0),
+    )
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
         circuit.set_fresh_gas_flow(FreshGasFlow(500.0))
@@ -221,7 +254,11 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
 
 def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(500.0))
+        BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
+            fresh_gas_flow_l_min=FreshGasFlow(500.0),
+        )
 
 
 def test_changing_circuit_volume_conserves_stored_agent() -> None:
@@ -235,7 +272,9 @@ def test_changing_circuit_volume_conserves_stored_agent() -> None:
     check that can halt a run is computed from exactly this quantity.
     """
 
-    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+    )
     circuit.set_agent_amount(0.048288200)
 
     circuit.set_circuit_volume(3.0)
@@ -258,11 +297,18 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
     and whose concentration had not.
     """
 
-    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+    )
     circuit.set_agent_amount(2.0)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^circuit_volume_l is smaller than stored agent$"
+        SimulationConfigurationError,
+        match=(
+            r"^circuit_volume_l of 1.0 is too small for the 2.0 L of agent the breathing "
+            r"circuit holds: it would leave room for 1.0 L at a partial pressure of one "
+            r'atmosphere \(docs/MODEL.md, "Breathing circuit"\)$'
+        ),
     ):
         circuit.set_circuit_volume(1.0)
 
@@ -281,7 +327,9 @@ def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> No
     state the docstring rules out.
     """
 
-    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+    )
     object.__setattr__(circuit, "inspired_partial_pressure_fraction", nan)
 
     with pytest.raises(
@@ -296,7 +344,9 @@ def test_a_volume_whose_fraction_is_refused_leaves_the_circuit_unchanged() -> No
 def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
     """The capacity bound is closed, matching `set_agent_amount`'s own."""
 
-    circuit = BreathingCircuit(circuit_volume_l=6.0)
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0), circuit_volume_l=6.0
+    )
     circuit.set_agent_amount(2.0)
 
     circuit.set_circuit_volume(2.0)
@@ -313,6 +363,7 @@ def _a_circuit_holding_agent() -> BreathingCircuit:
     """
 
     return BreathingCircuit(
+        circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(4.0),
         delivered_concentration_percent=Percent(2.0),
         inspired_partial_pressure_fraction=Fraction(0.01),
@@ -553,7 +604,9 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_percent=Percent(5.0))
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(5.0)
+    )
 
     assert circuit.delivered_concentration_percent == 0.0
     assert circuit.max_delivered_concentration_percent == 5.0
@@ -563,34 +616,42 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     assert circuit.inspired_partial_pressure_fraction == 0.0
 
 
-def test_the_bare_circuit_defaults_match_the_shipped_machine_file() -> None:
-    """`PL-4YY1`: the literals in `core/circuit.py` are a checked restatement.
+@pytest.mark.parametrize("missing", ["circuit_volume_l", "max_delivered_concentration_percent"])
+def test_a_circuit_cannot_be_built_without_its_volume_or_its_vaporizer_maximum(
+    missing: str,
+) -> None:
+    """`PL-M85T`: neither value has a default, so every caller states the one it means.
 
-    `data/machines/reference_circle_system.json` is the authority, and
-    `AgentUptakeSystem.for_agent()` passes its volume explicitly, so the
-    volume default is reached only by a bare unit-test construction. It is
-    kept so that a test of circuit physics need not load package data — but a
-    reader meeting `circuit_volume_l: float = 6.0` in `core/circuit.py` will
-    take it for the model's circuit volume whatever the docstring says, so the
-    two are not allowed to drift apart silently.
+    The volume defaulted to 6.0 L, a second copy of
+    `data/machines/reference_circle_system.json` that only a test held equal
+    to the file (`PL-4YY1`). The vaporizer maximum defaulted to 100%, which no
+    agent's vaporizer delivers, so a circuit built without it accepted any
+    dial. `AgentUptakeSystem.for_agent()` passes both from the data files.
+    """
 
-    The flow default is `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, and since
-    `PL-QW19` it is more than a restatement: it is the flow a run opens at when
+    given = {"circuit_volume_l": 6.0, "max_delivered_concentration_percent": Percent(8.0)}
+    del given[missing]
+
+    with pytest.raises(TypeError, match=f"missing 1 required .*argument: '{missing}'"):
+        BreathingCircuit(**given)  # type: ignore[arg-type]
+
+
+def test_the_flow_default_matches_the_shipped_machine_file() -> None:
+    """`PL-QW19`: the flow a run opens at when its machine profile states none.
+
+    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` is the one default `PL-M85T` kept,
+    because it is more than a restatement: it is the flow a run opens at when
     its machine profile states none, and its only authority is the rationale
-    this file records for storing the same value. So the file has to keep
-    stating it, and the constant, the field default and the file have to agree.
-
-    Deliberately not solved by importing the loader into `core/circuit.py`:
-    `core/parameters.py` is the one module permitted to import Pydantic
-    (`tools/import_boundary_check.py` enforces it), and reading package data
-    at class-definition time would make a pure physics class depend on the
-    installed distribution's files.
+    the shipped file records for storing the same value. So the file has to
+    keep stating it, and the constant, the field default and the file have to
+    agree.
     """
 
     machine = load_reference_circle_system_parameters()
-    circuit = BreathingCircuit()
+    circuit = BreathingCircuit(
+        circuit_volume_l=machine.circuit_volume_l, max_delivered_concentration_percent=Percent(8.0)
+    )
 
-    assert circuit.circuit_volume_l == machine.circuit_volume_l
     assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
     assert machine.default_fresh_gas_flow_l_min == TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
 
@@ -605,8 +666,8 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     machine lag is the quantity a learner reads off the early rise, and it is
     what a silent change to either value would move.
 
-    It cannot show that the file was read, because the shipped values equal
-    those field defaults. A profile stating other values shows it:
+    It cannot show that the file was read for the flow, because the shipped
+    flow equals the field default. A profile stating other values shows it:
     `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` for
     the volume and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
     for the flow, both below (`PL-H8QP`).
@@ -719,10 +780,10 @@ def test_a_silent_profile_whose_range_excludes_the_teaching_default_is_refused(
 
 # --- A profile stating another volume (PL-H8QP) -------------------------------
 
-# The shipped profile's volume equals `BreathingCircuit`'s field default, so no
-# run built from it shows whether `for_agent()` read the volume at all. A run
-# built from a profile stating another one does, handed over as the profiles
-# above are.
+# The shipped profile's volume was `BreathingCircuit`'s field default until
+# `PL-M85T`, so no run built from it showed whether `for_agent()` read the
+# volume at all. A run built from a profile stating another one does, handed
+# over as the profiles above are.
 
 
 def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
@@ -730,7 +791,7 @@ def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
 ) -> None:
     """A `for_agent()` that stopped passing the profile's volume fails here.
 
-    It would build the run at the 6.0 L field default instead, and every
+    It would build the run at another volume, or fail to build it, and every
     provenance row pointing at `data/machines/reference_circle_system.json`
     would quietly become a claim about a file the model no longer consults.
     3.3 L at the shipped 4.0 L/min is 49.5 s.
@@ -762,6 +823,8 @@ def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
     """
 
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(1.0),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.5, maximum_l_min=8.0
@@ -783,6 +846,8 @@ def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="machine can deliver"):
         BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
             fresh_gas_flow_l_min=FreshGasFlow(0.2),
             deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
                 minimum_l_min=0.5, maximum_l_min=8.0
@@ -799,7 +864,9 @@ def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
     bound - which is the behavior that shipped before the field existed.
     """
 
-    circuit = BreathingCircuit()
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+    )
 
     assert circuit.deliverable_fresh_gas_flow_range is None
 
@@ -822,10 +889,12 @@ def test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built() ->
 
     with pytest.raises(SimulationConfigurationError) as raised:
         BreathingCircuit(
+            circuit_volume_l=6.0,
+            max_delivered_concentration_percent=Percent(100.0),
             deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
                 minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 2.0,
                 maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0,
-            )
+            ),
         )
 
     message = str(raised.value)
@@ -839,6 +908,8 @@ def test_a_range_touching_the_envelope_at_one_point_is_built() -> None:
     """The overlap test is on the closed intervals, so one shared flow is enough."""
 
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -876,9 +947,11 @@ def test_a_range_may_be_floored_at_zero() -> None:
     """
 
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.0, maximum_l_min=8.0
-        )
+        ),
     )
 
     circuit.set_fresh_gas_flow(FreshGasFlow(0.0))
@@ -939,6 +1012,8 @@ def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
 
     lowest, highest = accepted
     circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
         fresh_gas_flow_l_min=FreshGasFlow(lowest),
         deliverable_fresh_gas_flow_range=(
             None
@@ -974,6 +1049,7 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
     """
 
     circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(2.0),

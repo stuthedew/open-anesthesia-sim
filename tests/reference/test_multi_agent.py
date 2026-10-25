@@ -67,6 +67,7 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
+            circuit_volume_l=6.0,
             delivered_concentration_percent=DELIVERED_CONCENTRATION_PERCENT,
             max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),

@@ -154,6 +154,7 @@ def _build_system_with_blood_gas_coefficient(
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
+            circuit_volume_l=6.0,
             delivered_concentration_percent=agent.mac_percent,
             max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),

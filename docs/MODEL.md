@@ -2860,7 +2860,7 @@ where no provenance row could reach them and changed neither value.
   in `core/circuit.py`
   (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
   That fallback's authority is this rationale and not a source, and
-  `test_the_bare_circuit_defaults_match_the_shipped_machine_file` fails if the
+  `test_the_flow_default_matches_the_shipped_machine_file` fails if the
   constant and the file's value ever differ. The rationale is stated for this
   file's 6.0 L circuit: at a smaller assembled volume the same flow opens a
   shorter lag, as § "What real workstations hold" below computes.
@@ -6093,33 +6093,27 @@ files could not see it: `check_provenance` walks data files in both
 directions, and a constant that never entered one is invisible to it.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
-**Each parameter file is the single authority for its own values, and the
-`core/` field defaults that restate them are held to it by test.**
-`AlveolarCompartment` and `BreathingCircuit` both still carry their two
-figures as dataclass field defaults — `gas_volume_l: float = 2.5` and
-`alveolar_ventilation_l_min: float = 4.0` on the first,
-`circuit_volume_l: float = 6.0` and a fresh gas flow of 4.0 L/min, named
-`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, on the second. They are kept so that a
-unit test of one compartment's physics need not load package data, and every
-shipped path goes through `AgentUptakeSystem.for_agent()`, which reads all four
-from the two files and passes them explicitly. The flow is the one that can
-also be reached another way: since `PL-QW19` a machine profile may state no
-startup flow, and a run built from such a profile opens at the named constant,
-whose authority is the teaching-default rationale recorded with the flow's
-provenance row rather than any source. What makes all of this safe to keep is
-that neither restatement may drift.
-`test_the_bare_circuit_defaults_match_the_shipped_machine_file` (`PL-4YY1`)
-and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file`
-(`PL-DJYF`) each assert the literals against the file, and
-`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
-`test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` each assert
-that the shipped path arrives at the file's values. Those cannot tell reading a
-file from falling through to the defaults, because the two are equal, and that
-is the consequential failure: a change that stopped `for_agent()` reading a
-file would move no number, and every provenance row in this table would
-silently become a claim about a file the model no longer consults. So each of
-the four is also held by a run built from a file stating another value, which
-fails when `for_agent()` stops passing it:
+**Each parameter file is the single authority for its own values, and `core/`
+holds no copy of them.** `AlveolarCompartment` has no default for its gas
+volume or its ventilation, and `BreathingCircuit` has none for its volume or
+its vaporizer maximum (`PL-M85T`). Until then the first three defaulted to
+2.5 L, 4.0 L/min and 6.0 L, copies of the files' values that only a test held
+equal to them, and the maximum defaulted to 100%, which no agent's vaporizer
+delivers. Every shipped path goes through `AgentUptakeSystem.for_agent()`,
+which reads the values from the agent, patient and machine files and passes
+them. The fresh gas flow keeps a default, named
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, because it is reached another way:
+since `PL-QW19` a machine profile may state no startup flow, and a run built
+from such a profile opens at the named constant. Its authority is the
+teaching-default rationale recorded with the flow's provenance row rather than
+any source, and `test_the_flow_default_matches_the_shipped_machine_file` holds
+it equal to the file. `test_for_agent_builds_the_circuit_at_the_machine_file_s_values`
+and `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` each
+assert that the shipped path arrives at the file's values. The consequential
+failure is a change that stopped `for_agent()` reading a file: every provenance
+row in this table would silently become a claim about a file the model no
+longer consults. So each of the four is also held by a run built from a file
+stating another value, which fails when `for_agent()` stops passing it:
 `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` (3.3 L)
 and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
 (2.0 L/min) for the machine file, and
