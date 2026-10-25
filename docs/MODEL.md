@@ -2273,12 +2273,45 @@ of steps: 9.6e-11, 9.6e-10 and 4.8e-9 (measured 2026-10-25).
 propagator for each stretch of unchanged settings
 (§ "The canonical evaluation rule"). At the stiffest corner, a stretch longer
 than about 1,610 s needs more than 32 squarings. `matrix_exponential` then
-refuses it with `SimulationConfigurationError` rather than returning it. So a
-run at that corner is refused, not drawn, once its settings stay unchanged for
-about 27 minutes. That refusal is an error from `core/exceptions.py` and is the
+refuses it with `SimulationConfigurationError` rather than returning it. So on
+the canonical path a run at that corner is refused, not drawn, once its settings
+stay unchanged for about 27 minutes. That refusal is an error from `core/exceptions.py` and is the
 obvious failure that this document prefers to a plausible-looking number. The
 shipped parameters need 19 squarings over the whole 24 hours.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**What a stepped run does at the stiffest corners: the mass-balance check halts
+it.** Each step's propagator is formed, but the run stops long before 24 hours.
+After every step, the check in § "Mass-balance identity" requires the agent
+delivered, exhausted and stored to agree within
+`AGENT_ACCOUNTING_RELATIVE_TOLERANCE`, one part in $`10^{9}`$. At 19 squarings
+each step's rounding is about $`10^{-10}`$ of the state, so the residual passes
+that tolerance within a few dozen steps. The run then halts with
+`AgentSimulationValidationError` and the step is rolled back. It was measured on
+2026-10-25 for sevoflurane at the widest supported flows, with every tissue:blood
+coefficient set to 1:
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+| Alveolar gas | Blood:gas | The mass-balance check halted the run at |
+| --- | --- | --- |
+| 0.01 L | 10 000 | 4.3 s |
+| 0.01 L | 100 | 499 s |
+| 1.0 L | 10 000 | 934 s |
+| 0.01 L | 12 | no halt within 1 h |
+| 2.5 L | 100 | no halt within 1 h |
+| 0.1 L | 1.3 | no halt within 1 h |
+<!-- not-restated: 2.5 L -->
+<!-- not-restated: 1.3 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+
+So the "After 24 h" column above measures the propagator applied 864,000 times.
+It is not a run that core completes at the stiffest corners. Inside the
+envelope, a run either agrees with the high-precision evaluation to the bounds in
+that table, or is refused by an error from `core/exceptions.py`. A blood:gas
+coefficient of 12, as high as any volatile agent's, ran an hour without a halt
+even in a 0.01 L lung.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **What would reopen the bounds.** The volume floor was measured at the adult
 supported flows. A patient profile with much smaller volumes would bring much

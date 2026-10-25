@@ -43,9 +43,11 @@ envelope carries a larger error bound than a propagator that a shipped run
 already forms. The step is never refused either: 19 leaves a factor of 2**13
 below the cap of 32. A long interval can be. At the stiffest corner, one stretch
 of unchanged settings longer than about 1,610 s needs more than 32 squarings, so
-`matrix_exponential` refuses it rather than return it. `docs/MODEL.md`
-§ "The numerical envelope" gives the measurement against a 70-digit evaluation
-and what it means for a long run.
+`matrix_exponential` refuses it rather than return it. A stepped run at the
+stiffest corners is halted sooner, by the mass-balance check: there each step's
+rounding passes the check's tolerance of one part in 10**9 within seconds to
+minutes. `docs/MODEL.md` § "The numerical envelope" gives the measurement
+against a 70-digit evaluation and the measured halt times.
 
 **The tissue:blood coefficient is a partition coefficient too, and is checked
 where it is formed.** It is the quotient of the tissue:gas and blood:gas
