@@ -21,3 +21,14 @@ verify: ! grep -qF 'plotted_wash_in_ratio' src/anesthesia_sim/app/wash_in.py && 
 **Why it matters.** A reader who follows a named function to find where a wash-in fraction is formed finds nothing. One of the three names is in an error message, which is the text that is meant to send a developer to the right code.
 
 **Done when.** The three code spans and the error message name symbols that exist (`read_wash_in`, `wash_in_quotients`, and the `ControlChange` field meant). No behaviour changes.
+
+**Regression test, 2026-10-25.**
+`test_a_window_refusing_the_wash_in_ratio_names_a_method_that_forms_it` in
+`tests/unit/test_chart_frame.py` checks that every name the refusal puts in
+backticks is a method of `DrawnWindow`. Run against `origin/main`'s
+`app/run_series.py` with `uv run pytest -q tests/unit/test_chart_frame.py -k
+names_a_method`, it fails with this assertion message:
+
+```text
+AssertionError: wash_in_ratio is not a compartment state; it is derived from two of them, and `wash_in_readings` is what forms it
+```
