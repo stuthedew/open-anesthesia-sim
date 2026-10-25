@@ -23,16 +23,23 @@ reenters: PL-JS6P
 
 **What was done.** `tools/doc_check.py` now reads each number of a list joined
 by slashes, with the list's unit; a unit written in lower case (`UNIT_CASES`:
-`l/min`, `l/s`, `l`); and a math span that ends by giving a symbol a number,
-such as $`V_A = 2.5`$ L or $`\Delta t = 0.1\ \mathrm{s}`$. Any other number in
-a math span stays unread, and that limit is recorded with its reason in the
-check's docstring and in `docs/MODEL.md`'s convention text. On 2026-10-25,
+`l/min`, `l/s`, `l`); and each symbol in a math span given a number with `=`
+or `\approx`, where the number ends the span or comes before a comma, a
+semicolon or `\quad`, such as $`V_A = 2.5`$ L or $`\Delta t = 0.1\ \mathrm{s}`$.
+Any other number in a math span stays unread, and that limit is recorded with
+its reason in the check's docstring and in `docs/MODEL.md`'s convention text. On 2026-10-25,
 128 numbers inside math spans in `docs/MODEL.md` shared a value with some
 stored value, and nearly all were exponents and coefficients, such as the 10
 in $`10^{-12}`$. Reading the new forms found nine figures with no
 marker, all in `docs/MODEL.md`. Each is now marked: the 2.5 l functional
-residual capacity is tied to `alveolar_gas_volume_l`, and the rest, which quote
-a source or a superseded method, are declared `not-restated`.
+residual capacity and the 4 l/min alveolar ventilation are tied to
+`alveolar_gas_volume_l` and `default_alveolar_ventilation_l_min`, and the rest,
+which quote a source or a superseded method, are declared `not-restated`. The
+two blind review passes found the ventilation marked `not-restated` at first,
+and math forms the first version missed: `\%`, `\text{L}`, `~`, `\approx`,
+`L\,min^{-1}` and a second symbol in one span. Both were fixed on the branch.
+A math span split across two lines is still read on neither line, and is
+`PL-P0RG`.
 
 **Generator check.** A re-entry of `PL-JS6P`, closed today, whose check these
 forms slipped past. Recorded as `reenters: PL-JS6P`.
