@@ -436,15 +436,19 @@ ONE_MAC_LINE_STROKE_WIDTH = 1.5
 # the same MUTED ink for the same reason. It is not a compartment, and a hue of
 # its own would join the trace palette's separation problem while implying
 # that it is one. It needs no second colour channel, because it already has a
-# stronger cue: it is the only vertical thing on the chart. No colour-vision
-# deficiency and no greyscale rendering can take that cue away. Reusing MUTED
+# stronger cue: it is vertical, where both references and every trace run
+# along the time axis. The gridlines are vertical too, but they are solid,
+# finer and drawn in their own grey. The fork mark is the one other vertical
+# line in this ink, and `BRANCH_POINT_STROKE_WIDTH`'s comment says how the two
+# are told apart. No colour-vision deficiency and no greyscale rendering can
+# take these cues away. Reusing MUTED
 # also declares no new pair for `tools/contrast_check.py`, because MUTED on
 # PANEL is already measured as the 1 MAC line.
 CONTROL_MARK_COLOR = MUTED
 
 # The mark is finer than every trace, because a control mark annotates the run
 # rather than showing any part of it. It has the same width as the two
-# references, 1.5 px, and is told apart from them by its dash. In a case with a
+# references, 1.5 px, and is told apart from them by its direction. In a case with a
 # dozen adjustments, a mark as heavy as a trace would compete with the curves
 # it exists to be read against. It is heavier than the vertical grid lines,
 # though, and dashed where they are solid. Measured against a rendered frame, a
