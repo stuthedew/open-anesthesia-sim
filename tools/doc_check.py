@@ -2550,9 +2550,7 @@ def stored_values(root: Path) -> list[StoredValue]:
             if value:
                 found.append(StoredValue(relative, key, value, _unit_of(key)))
 
-    for module in sorted(package.rglob("*.py")):
-        if IGNORED_DIRS.intersection(module.relative_to(root).parts):
-            continue
+    for module in tracked_under(root, PACKAGE_ROOT, ".py"):
         relative = module.relative_to(package).as_posix()
         try:
             constants = module_constants(module)
