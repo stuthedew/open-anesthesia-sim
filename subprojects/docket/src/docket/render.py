@@ -4173,7 +4173,8 @@ def format_inflow(report: Inflow) -> str:
         lines += [
             "",
             "Re-entered by three or more filings and answered by a successor: a head whose own",
-            "reenters: names the line, so the question is that head's rather than this list's:",
+            "reenters: names the line holds the question, until three filings after the last",
+            "successor closed:",
         ]
         for closed, filed in succeeded.items():
             heads = ", ".join(
