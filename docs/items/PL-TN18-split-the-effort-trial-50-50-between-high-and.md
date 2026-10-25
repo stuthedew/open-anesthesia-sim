@@ -42,3 +42,6 @@ period before and after this change as a stratum.
 test checks that about half of a fixed set of ids is `xhigh`, and
 `docs/maintainer.md`, `docs/apparatus.md` and `PL-63CB` state the 50/50 split
 and when it began.
+
+**Generator check.** Not a generator. The owner changed one parameter of an
+existing mechanism, and nothing in the change causes further items.
