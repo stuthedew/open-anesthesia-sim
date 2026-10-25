@@ -3,11 +3,13 @@ id: PL-TDV9
 title: Add one more blind generalist review pass on each simulator pull request: in PL-TCBJ's replay one generalist caught the later-filed defect in 5 of 10 merged pull requests, as many as a three-specialist panel at a third of the cost
 priority: P3
 effort: M
-status: ready
+status: done
 classes: infra
 feature: review-panel
-touches: .claude/skills/pull-request/SKILL.md
+touches: .claude/skills/pull-request/SKILL.md, tools/blind_review.py, tests/unit/test_blind_review.py, subprojects/docket/src/docket/arming.py, .claude/skills/docket/modes/close-out.md, docket.toml, docs/apparatus.md
 added: 2026-10-24
+closed: 2026-10-24
+pr: 1759
 payoff: each simulator pull request gets a blind generalist review before it merges, and one that changes the clinical model gets two; in PL-TBQS's replay of 20 merged pull requests, one such run named 18 of the 39 defects filed later and three named 21
 verify: grep -qiE 'generalist (review )?pass' .claude/skills/pull-request/SKILL.md
 ---
@@ -43,3 +45,7 @@ verify: grep -qiE 'generalist (review )?pass' .claude/skills/pull-request/SKILL.
 **Decision** (project owner, 2026-10-24, ratified, over two passes on every simulator pull request and over one pass everywhere). Every simulator pull request gets one blind generalist pass. A pull request that changes `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md` gets a second. Those are the paths `CLAUDE.md`'s fix-in-place rule treats as the clinical floor. The reason is usage. A second pass everywhere adds about 26% to a median simulator item. In the replay, it named 1 to 2 more key defects per 20 pull requests than the best single run, and about 4 to 5 more than a typical one. Spending that where a missed defect can produce a wrong clinical value buys most of the safety for part of the cost. The trade-off is that interface code that formats a clinical value gets one pass, not two. No module defines this set of paths yet, so the build writes it once in code and reads it from there. It does not restate the list in the skill.
 
 **Done when.** Every simulator pull request gets one blind generalist review pass before it merges, and one that changes `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md` gets a second. Each pass is a subagent at the session's own model and effort, given only the tree at the head commit, the diff and the brief that `PL-TCBJ` ran. The set of paths that earns a second pass is defined once, in code. `.claude/skills/pull-request/SKILL.md` says when the passes run and where their findings go.
+
+**Built, 2026-10-24.** `docket.arming.SECOND_PASS_PATHS` holds the three clinical paths, and `docket.arming.blind_passes` returns how many passes a set of changed paths owes. It reads the simulator's paths from `waits_on_read`, the rule `bin/docket arm` already uses, so "a simulator pull request" has one definition. `tools/blind_review.py` counts the passes for the branch, builds one directory per pass outside the repository holding only the committed tree (from `git archive`, so no history) and the branch's diff, and prints the generalist brief that `PL-TCBJ` ran, with each pass's directory filled in. Close-out step 9 in `.claude/skills/docket/modes/close-out.md` says when the passes run and what happens to each finding, and `.claude/skills/pull-request/SKILL.md` says a simulator pull request is not marked ready until they have run.
+
+Nothing yet stops a session from skipping the step. `PL-W04Z` measured that 5 of 6 simulator branches skipped the prose review until `arm` held for it. The same hold for these passes is `PL-HDRN` (the `arm` hold for unrun blind passes), filed rather than built here because it edits the tests that pin `arm`'s answers, so its pull request waits on the owner's read, and because this session's budget would not fit it.

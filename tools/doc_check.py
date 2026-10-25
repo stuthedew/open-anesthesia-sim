@@ -143,6 +143,7 @@ try:
     # say which milestone is current and what it still owes.
     from docket.config import Config
     from docket.config import load as load_docket_config
+    from docket.digits import whole_number
 
     # `fences` is the one reading of where a fenced block is (`PL-92MY`). This
     # tool held three spellings of its own beside docket's two, and one read a
@@ -349,6 +350,9 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
+# The simulator package's location is `product_paths`'s (`PL-H5T9`).
+from product_paths import PACKAGE_DIR
+
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
 # `.claude/worktrees/` is not read as this one and a nested rule is measured
@@ -469,7 +473,7 @@ def roadmap_path(root: Path) -> Path:
 
 REFERENCES = Path("docs/references/README.md")
 
-PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
+PACKAGE_ROOT = PurePosixPath(PACKAGE_DIR)
 
 # The subdirectories of the package's `data/` whose JSON files are not
 # parameter files. The shipped Workspaces are layout, which
@@ -2566,8 +2570,8 @@ HEADING_ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entr(?:y|ies)\b")
 def _count_word(word: str) -> int | None:
     """The number a count word states, or `None` where it states none."""
     token = word.strip().casefold()
-    if token.isdigit():
-        return int(token)
+    if (count := whole_number(token)) is not None:
+        return count
     if token in _UNITS:
         return _UNITS.index(token)
     tens, _, unit = token.partition("-")
@@ -3841,7 +3845,9 @@ def _version_claim(
     named = _version_list(match.string, match.end(), match.endpos)
 
     stated = match.group("count")
-    count = int(stated) if stated.isdigit() else NUMBER_WORDS.get(stated.casefold())
+    count = whole_number(stated)
+    if count is None:
+        count = NUMBER_WORDS.get(stated.casefold())
     if count is None:
         return frozenset(named), [f'{roadmap_name}:{line}: cannot read "{stated}" as a count'], line
     if count != len(named):

@@ -3,11 +3,13 @@ id: PL-58MP
 title: docs/apparatus.md says two tools run both bare and under uv run, but quality.yml runs three (branch_id_check too), and README.md and CONTRIBUTING.md say make check runs everything CI runs, which doc_check's GATE_ONLY records is not so
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: one-source-of-truth
 touches: README.md, CONTRIBUTING.md, docs/apparatus.md
 added: 2026-10-19
+closed: 2026-10-25
+pr: 1760
 payoff: a contributor no longer reads a green make check as a promise that CI will pass
 verify: ! grep -qF 'everything CI runs' README.md CONTRIBUTING.md && ! grep -qF 'and two' docs/apparatus.md
 reenters: PL-ZQ3R
@@ -22,3 +24,5 @@ reenters: PL-ZQ3R
 **Checked 2026-10-24.** `README.md` line 172 and `CONTRIBUTING.md` line 36 both say "everything CI runs". `quality.yml` runs `tools/branch_id_check.py` bare and again as `uv run python tools/branch_id_check.py`, and `docs/apparatus.md` still says "two more both bare and under it".
 
 **Generator check.** A re-entry of `PL-ZQ3R`, closed 2026-10-18. The misread fact is "the checks the local gate and the merge gate each run, and where the two sets differ". `PL-ZQ3R`'s head states that fact, and its fix made `GATE_ONLY` the record. These two documents still restate the old claim of parity.
+
+**Closed 2026-10-25 in #1760.** `README.md` and `CONTRIBUTING.md` now say that `make check` runs most of what CI runs and point at `GATE_ONLY` in `tools/doc_check.py` for the rest, rather than listing it. `docs/apparatus.md` counts three tools run both ways and names `branch_id_check.py` as the third.

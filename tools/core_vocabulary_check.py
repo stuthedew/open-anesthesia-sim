@@ -96,10 +96,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "subprojects" / "do
 
 from docket.roadmap import section_table
 
+from product_paths import CORE_DIR
 from workflow_paths_check import tracked_under
 
 #: The tree whose vocabulary is governed, relative to the repository root.
-CORE_TREE = "src/anesthesia_sim/core"
+CORE_TREE = CORE_DIR
 
 #: The specification the symbol map is read from.
 MODEL_DOC = "docs/MODEL.md"

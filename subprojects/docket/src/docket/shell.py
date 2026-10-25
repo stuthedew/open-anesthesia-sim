@@ -45,12 +45,15 @@ reads the string the harness hands it, an unended body running to the end of
 the input and a trailing backslash a backslash. Bash 5.2.21 keeps that
 backslash under `bash -c` and drops one it reads from a file (`PL-JNYL`).
 
-It imports nothing, because every guard imports it on every Bash call; its
-value classes are plain classes rather than dataclasses for the same reason,
-since `dataclasses` and the `inspect` it brings cost each call about 15 ms
-(`PL-JNYL`). `tests/unit/test_shell_reader.py` holds a guard's import to
-the modules it loads.
+It imports only `docket.digits`, which imports nothing, because every guard
+imports it on every Bash call. Its value classes are plain classes rather than
+dataclasses for the same reason, since `dataclasses` and the `inspect` it
+brings cost each call about 15 ms (`PL-JNYL`).
+`tests/unit/test_shell_reader.py` holds a guard's import to the modules it
+loads.
 """
+
+from .digits import whole_number
 
 #: What a word may hold outside quotes with the shell doing nothing to it. `*`
 #: and `?` are the exception, admitted in a path to read, where they choose
@@ -492,7 +495,7 @@ def _arithmetic(command: str, index: int, stop: int) -> bool:
 
 def names_a_descriptor(text: str) -> bool:
     """Whether `text` is what a descriptor written against a redirection is: digits, or `{name}`."""
-    if text.isascii() and text.isdecimal():
+    if whole_number(text) is not None:
         return True
     name = text[1:-1]
     return text[:1] == "{" and text[-1:] == "}" and name.isascii() and name.isidentifier()
@@ -2065,7 +2068,7 @@ def _nice_adjustment(word: str) -> bool:
     rest = word[1:]
     if rest[:1] in ("-", "+"):
         rest = rest[1:]
-    return word.startswith("-") and rest[:1].isdigit()
+    return word.startswith("-") and whole_number(rest[:1]) is not None
 
 
 def _long_option(grammar: Grammar, written: str) -> str | None:
@@ -2164,7 +2167,7 @@ def is_python(word: str) -> bool:
     if version in ("", "3"):
         return True
     minor = version[2:]
-    return version.startswith("3.") and minor.isdigit() and minor.isascii()
+    return version.startswith("3.") and whole_number(minor) is not None
 
 
 #: The options a Python interpreter reads ahead of what it runs (`python3

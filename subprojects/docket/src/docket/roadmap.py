@@ -38,7 +38,7 @@ from . import markdown
 from .lines import split_lines
 from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN, split_deferred_from
 from .release import SEMVER_RE, version_key
-from .store import ID_PATTERN
+from .store import CITED_ID_RE
 from .vcs import leading_ids
 
 # --- markdown primitives ----------------------------------------------------
@@ -378,7 +378,7 @@ SECTION_SEPARATORS = " -–—: "
 # ("Explicitly out of scope for v0.4.0").
 # Where a milestone records the debt list frozen when it was scoped, and where
 # it states the scope it clears itself. These two subsections are the whole of
-# what places an id; the reasoning is beneath `SECTION_ID_RE`.
+# what places an id; the reasoning is in the comment on reading a section's ids.
 GATE_SUBSECTION = "debt gate"
 SCOPE_SUBSECTION = "required scope"
 #: The heading whose whole meaning is exclusion. Read separately from
@@ -388,7 +388,7 @@ SCOPE_SUBSECTION = "required scope"
 EXCLUDED_SUBSECTION = "explicitly out of scope"
 REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explicitly out of scope")
 
-# An id wherever it sits in a sentence. Left to `Explicitly out of scope`,
+# Reading a section's ids. An id wherever it sits in a sentence. Left to `Explicitly out of scope`,
 # whose heading has already said what every id beneath it means, because
 # elsewhere the sentence around an id is unreadable and a section says far
 # more about an id than "this is mine".
@@ -421,7 +421,9 @@ REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explici
 # direction to fail, and it is no longer silent - `tools/doc_check.py` fails
 # an entry that declares none where the section's other entries declare, so
 # the cost is paid by a loud failure rather than by a quiet undercount.
-SECTION_ID_RE = re.compile(ID_PATTERN)
+#
+# The pattern itself is `store.CITED_ID_RE`, the id grammar's one compiled form
+# for finding ids in prose, so this module compiles no copy of it (`PL-H5T9`).
 
 # The slot that *declares* membership, and the run of ids it may hold. An
 # entry writes "(queue item `PL-T691`)" after its bold title, or "(queue items
@@ -486,7 +488,7 @@ class MilestoneSection:
     gate_entries: tuple[GateEntry, ...]
     #: The ids this section *places*: its frozen list's entries, then the ids
     #: named under `Required scope`, in the order they appear. An id the
-    #: section merely mentions is absent, deliberately - see `SECTION_ID_RE`.
+    #: section merely mentions is absent, deliberately - see the comment on reading a section's ids.
     scope_ids: tuple[str, ...]
     #: The `Required scope` half of `scope_ids`, alone - the ids its entries
     #: *declare*, in the order they are written, never the ids its prose cites
@@ -578,7 +580,7 @@ def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
     literal or a comment rather than what the page says (`PL-HKHP`, `PL-MPJL`).
     """
     for line in _subsection_lines(lines, start):
-        for match in SECTION_ID_RE.finditer(line):
+        for match in CITED_ID_RE.finditer(line):
             yield match.group(0)
 
 
@@ -1280,7 +1282,7 @@ class ScopeStatus:
     list of *entries*, because one problem may have surfaced under two ids and
     be frozen as a single bullet; `Required scope` is prose with ids written
     into whatever grammar the sentence wanted, so there is no entry to count
-    and the honest unit is the id. `SECTION_ID_RE` explains why the two
+    and the honest unit is the id. the comment on reading a section's ids explains why the two
     subsections are read by different grammars, and it is the same reading
     `Scope.placement` already rests on - this adds no parser, only the split
     (`PL-KD98`).
@@ -1370,7 +1372,7 @@ class Scope:
     beat its ids are later work mapped to the port, where reading "below the
     anchor" as "released" left them placed by nobody (`PL-FWJF`).
 
-    Three structures are the whole of the evidence, per `SECTION_ID_RE`: the
+    Three structures are the whole of the evidence, per the comment on reading a section's ids: the
     frozen list a section records, the declarations under its `Required
     scope`, and - for the anchor alone - the ids under its `Explicitly out of
     scope`. So a milestone that records scope in a sentence carrying no
@@ -1673,7 +1675,7 @@ class ReleaseTrain:
 
         The same two structures `Scope` reads - the frozen list and `Required
         scope` - so an id a section merely mentions is placed by nobody here
-        too (`SECTION_ID_RE`).
+        too (the comment on reading a section's ids).
         """
         return next((s for s in self.ahead if identifier in s.scope_ids), None)
 

@@ -74,7 +74,7 @@ from .release import (
 )
 from .roadmap import SENTENCE_BREAK, MilestoneStates, gate_status
 from .shell import COMMAND_ENDS, PIPES, Clause, Word, clause_commands, shell_words
-from .store import ID_PATTERN, ID_RE, declared_item_file, filename_for
+from .store import CITED_ID_RE, ID_PATTERN, ID_RE, declared_item_file, filename_for
 from .vcs import (
     DEFAULT_BRANCHES,
     ClosureReport,
@@ -3149,8 +3149,6 @@ STANDING_LEFT = re.compile(
     r"(?:\A|[.!?:]\s|\b(?:is|are|be|been|being)\s)[\s*_>`-]*\Z", re.IGNORECASE
 )
 
-_ANY_ID = re.compile(ID_PATTERN)
-
 
 def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) -> None:
     """Refuse `ready` on an item that says it is waiting for something open.
@@ -3583,7 +3581,9 @@ def _names_another_item(item: Item, position: int) -> bool:
     start, _end = _passage(item.body, position)
     for boundary in SENTENCE_BREAK.finditer(item.body, start, position):
         start = boundary.end()
-    return any(found != item.identifier for found in _ANY_ID.findall(item.body, start, position))
+    return any(
+        found != item.identifier for found in CITED_ID_RE.findall(item.body, start, position)
+    )
 
 
 def _sentence(body: str, match: re.Match[str]) -> str:

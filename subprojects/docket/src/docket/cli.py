@@ -52,6 +52,7 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
+from .digits import whole_number
 from .duplicates import anchor, near_duplicates
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
@@ -5234,8 +5235,8 @@ def _prose_count(root: Path, config: Config) -> Callable[[str], arming.ProseCoun
                 declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
             )
         said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
-        if len(said) == 1 and said[0].isdigit():
-            return arming.ProseCount(count=int(said[0]))
+        if len(said) == 1 and (count := whole_number(said[0])) is not None:
+            return arming.ProseCount(count=count)
         return arming.ProseCount(
             declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
         )

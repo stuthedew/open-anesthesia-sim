@@ -49,6 +49,7 @@ from pathlib import Path, PurePath, PurePosixPath
 
 from . import markdown
 from .config import Config
+from .digits import whole_number
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import (
@@ -267,6 +268,8 @@ def listed_paths(listing: str) -> tuple[str, ...]:
 
 
 #: The escapes git writes inside a quoted path, beside `\\ooo` for a byte.
+#: The three octal digits git writes for a byte it escapes in a quoted path.
+_OCTAL_ESCAPE_RE = re.compile(r"[0-7]{3}")
 _QUOTED_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
 
 
@@ -291,7 +294,7 @@ def unquoted_path(field: str) -> str:
         if char != "\\" or at + 1 == len(body):
             raw += char.encode()
             at += 1
-        elif body[at + 1 : at + 4].isdigit() and len(body[at + 1 : at + 4]) == 3:
+        elif _OCTAL_ESCAPE_RE.fullmatch(body[at + 1 : at + 4]):
             raw.append(int(body[at + 1 : at + 4], 8) & 0xFF)
             at += 4
         else:
@@ -717,9 +720,10 @@ def batch_header(line: bytes) -> tuple[str, str, int] | None:
     fields = line.split()
     if len(fields) >= 2 and fields[-1] in _NO_OBJECT:
         return None
-    if len(fields) != 3 or not fields[2].isdigit():
+    size = whole_number(fields[2].decode("ascii", "replace")) if len(fields) == 3 else None
+    if size is None:
         raise ValueError(f"not a `cat-file --batch` header: {line!r}")
-    return fields[0].decode("ascii"), fields[1].decode("ascii"), int(fields[2])
+    return fields[0].decode("ascii"), fields[1].decode("ascii"), size
 
 
 @dataclass
@@ -2042,8 +2046,7 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
             added, deleted = counts
             if (
                 added == "0"
-                and deleted.isdigit()
-                and int(deleted) > 0
+                and (whole_number(deleted) or 0) > 0
                 and _holds_nothing_more(ref, base, path, root, run)
             ):
                 superseded.add(path)
@@ -2429,7 +2432,7 @@ def _has_own_commits(name: str, base: str, root: Path, run: Runner) -> bool:
     branch rather than on every one.
     """
     count = run(["rev-list", "--count", f"{base}..{name}"], root).strip()
-    return count.isdigit() and int(count) > 0
+    return (whole_number(count) or 0) > 0
 
 
 @dataclass(frozen=True)
@@ -2895,7 +2898,7 @@ def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int
     if not run(["rev-parse", "--verify", "--quiet", remote], root).strip():
         return None
     counts = run(["rev-list", "--count", f"{base}..{remote}"], root).strip()
-    return int(counts) if counts.isdigit() else None
+    return whole_number(counts)
 
 
 # What a branch should do about where it stands, decided from the counts rather
@@ -3530,12 +3533,14 @@ def _branch_state(root: Path, run: Runner) -> BranchState:
     fork = run(["merge-base", "HEAD", base], root).strip()
 
     counts = run(["rev-list", "--left-right", "--count", f"{base}...HEAD"], root).split()
-    if len(counts) != 2 or not all(part.isdigit() for part in counts):
+    behind, ahead = (
+        (whole_number(counts[0]), whole_number(counts[-1])) if len(counts) == 2 else (None, None)
+    )
+    if behind is None or ahead is None:
         return BranchState(
             branch=branch, base=base, absent=True, declined="git would not count the two sides"
         )
 
-    behind, ahead = int(counts[0]), int(counts[1])
     # Asked before the missing-fork-point guard rather than after it, because a
     # rewrite is the case that most needs an answer and the case least likely
     # to have a fork point: `filter-repo` and `filter-branch` rebuild every
@@ -6779,7 +6784,7 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
         touched = listed_paths(
             run(changed_path_args("diff", "--name-only", fork, name, "--", prefix), root)
         )
-        walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
+        walked.append((name, whole_number(ahead) or 0, len(touched)))
         distinct.update(touched)
     return RefWalk(
         listed=len(listing),

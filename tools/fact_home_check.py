@@ -28,7 +28,13 @@ Three rules over every tracked Python file under `tools/`,
    where `store.ID_PATTERN` is the record - or two facts that should not share
    a name; either way one of them changes. An alias of another module's name
    (`X = other.X`) is an import and not a definition. `EXEMPT_NAMES` holds the
-   one name every tool must spell itself, with the reason.
+   one name every tool must spell itself, with the reason. The same holds
+   for one value under two names, where the value is a call given arguments:
+   `roadmap.SECTION_ID_RE` and `store.CITED_ID_RE` were both
+   `re.compile(ID_PATTERN)`, and a match on the name passed them (`PL-MM3Q`).
+   A plain constant and a call with no arguments are not compared, because
+   two names for `"unplaced"` can be two facts and each `object()` is a new
+   sentinel.
 3. **A predicate one module answers is not written again by hand.**
    `PREDICATES` names each one with its home, one entry per predicate, and
    the visitor decides its hand form. A membership test (`in` or `not in`)
@@ -36,12 +42,13 @@ Three rules over every tracked Python file under `tools/`,
    second answer to whether an item is open (`PL-TSXD`). An `isdigit`, `int`
    or pattern match applied to the `pr` field itself (`x.pr`, `x["pr"]`,
    `x.get("pr")`) is a second reading of `model.pr_number` (`PL-4DK2`).
-   Digits read from anywhere else are not refused, because whether a string
-   is a pull request number is decided by where it was read, which the
-   syntax does not show: `isdigit` reads counts and line numbers too, so a
-   forge command's output, a record's file name and a ref name reach
-   `pr_number` by review rather than by this check (`PL-N4FP`). This rule
-   started with an empty baseline.
+   Any other `isdigit`, `isdecimal` or `isnumeric` call is a second reading
+   of `digits.whole_number`, since each is true for `'²'`, which `int` then
+   refuses (`PL-PNGQ`). Whether digits read elsewhere are a pull request
+   number is decided by where they were read, which the syntax does not
+   show, so a forge command's output, a record's file name and a ref name
+   reach `pr_number` by review rather than by this check (`PL-N4FP`). This
+   rule started with an empty baseline.
 
 The sites the tree held when this landed sat in `BASELINE`, keyed by file,
 rule and enclosing scope and never by line. It only shrinks: a count above an
@@ -80,7 +87,7 @@ import ast
 import re
 from collections import Counter, defaultdict
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from workflow_paths_check import tracked_files
@@ -219,6 +226,18 @@ PREDICATES: tuple[Home, ...] = (
         ),
         remedy="read the number with `model.pr_number`",
     ),
+    Home(
+        rule="whole-number",
+        reads="tests text for digits by hand",
+        where=((DOCKET + "digits.py", None),),
+        why=(
+            "`digits.whole_number` is the one reading of a whole number in ASCII digits; "
+            "`isdigit`, `isdecimal` and `isnumeric` are each true for `'²'`, which `int` "
+            "then refuses with `ValueError`, so a count tested that way crashes where it "
+            "should read as no number (`PL-PNGQ`)"
+        ),
+        remedy="read the number with `digits.whole_number`",
+    ),
 )
 
 #: The names rule 3's `item-status` entry looks for on the right of `in`.
@@ -234,6 +253,8 @@ TRIMS = frozenset({"strip", "lstrip", "rstrip", "removeprefix", "removesuffix"})
 
 #: Rule 2's name in a finding and a baseline key.
 DEFINITION = "definition"
+#: Rule 2's name for one call bound under two names, in a finding and a baseline key.
+SAME_CALL = "same call"
 
 #: Names rule 2 does not count, each with its reason.
 EXEMPT_NAMES: dict[str, str] = {
@@ -275,11 +296,18 @@ class Site:
 
 @dataclass(frozen=True)
 class Definition:
-    """A module-level upper-case name and the file that binds it."""
+    """A module-level upper-case name and the file that binds it.
+
+    `call` is the bound value's syntax tree, dumped, where the value is a call
+    given at least one argument, such as `re.compile(ID_PATTERN)`, and empty
+    otherwise. Two files that bind the same call under different names hold one
+    fact twice, which a match on the name alone misses (`PL-MM3Q`).
+    """
 
     path: str
     line: int
     name: str
+    call: str = ""
 
     @property
     def shared(self) -> str:
@@ -366,6 +394,8 @@ class _Readers(ast.NodeVisitor):
                 self._record(node, "shell-lexer", f"shlex.{function}")
         if (read := _hand_read_pr(node)) is not None:
             self._record(node, "pr-number", read)
+        elif isinstance(node.func, ast.Attribute) and node.func.attr in DIGIT_TESTS:
+            self._record(node, "whole-number", f"{node.func.attr}()")
         self.generic_visit(node)
 
     def visit_Compare(self, node: ast.Compare) -> None:
@@ -476,6 +506,20 @@ def _recursive(node: ast.Call) -> bool:
     )
 
 
+def _shared_call(value: ast.expr) -> str:
+    """The dumped call a module-level value makes, or "" where it is not one rule 2 compares.
+
+    A call with no arguments is left out, because `object()` makes a new
+    sentinel each time it is called, so two modules that each call it hold two
+    facts, not one. A plain constant is left out too: two names bound to
+    `"unplaced"` can mean different things, as `trend.UNPLACED_PATH` and
+    `roadmap.UNPLACED` do, and the syntax cannot tell them apart.
+    """
+    if isinstance(value, ast.Call) and (value.args or value.keywords):
+        return ast.dump(value, include_attributes=False)
+    return ""
+
+
 def read_module(source: str, path: str) -> Module:
     """Every rule's view of one file.
 
@@ -495,11 +539,12 @@ def read_module(source: str, path: str) -> Module:
             continue
         if isinstance(statement.value, (ast.Name, ast.Attribute)):
             continue  # an alias of a name defined elsewhere is an import, not a definition
+        call = _shared_call(statement.value)
         targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
         for target in targets:
             if isinstance(target, ast.Name) and NAME_RE.match(target.id):
                 if target.id.lstrip("_") not in EXEMPT_NAMES:
-                    definitions.append(Definition(path, statement.lineno, target.id))
+                    definitions.append(Definition(path, statement.lineno, target.id, call))
     return Module(tuple(visitor.found), tuple(definitions))
 
 
@@ -536,6 +581,9 @@ class Report:
     unparsed: tuple[tuple[str, str], ...]
     #: Every file that defines each shared name, for the finding's list.
     defined: Mapping[str, tuple[Definition, ...]]
+    #: Every binding of each call that two files make under different names,
+    #: keyed by those names joined with " = ".
+    same_call: Mapping[str, tuple[Definition, ...]] = field(default_factory=dict)
 
     @property
     def errors(self) -> int:
@@ -590,6 +638,24 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
             found[entry.path][site.key] += 1
             sites[(entry.path, site.key)].append(site)
 
+    by_call: dict[str, list[Definition]] = defaultdict(list)
+    for definition in definitions:
+        if definition.call:
+            by_call[definition.call].append(definition)
+    same_call: dict[str, tuple[Definition, ...]] = {}
+    for bindings in by_call.values():
+        if len({binding.path for binding in bindings}) < 2:
+            continue
+        if len({binding.shared for binding in bindings}) < 2:
+            continue  # one name in every file, which the name match already reports
+        ordered = tuple(sorted(bindings, key=lambda binding: (binding.path, binding.line)))
+        names = " = ".join(sorted({binding.shared for binding in ordered}))
+        same_call[names] = ordered
+        for entry in ordered:
+            site = Site(entry.path, entry.line, SAME_CALL, names, f"{entry.name} = ...")
+            found[entry.path][site.key] += 1
+            sites[(entry.path, site.key)].append(site)
+
     overflows: list[Overflow] = []
     for (path, key), listed in sorted(sites.items()):
         allowed = baseline.get(path, {}).get(key, 0)
@@ -615,6 +681,7 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
         stale=tuple(stale),
         unparsed=tuple(unparsed),
         defined=defined,
+        same_call=same_call,
     )
 
 
@@ -673,6 +740,18 @@ def format_report(report: Report) -> str:
         lines.append(
             "  Keep one definition and import it everywhere else; where they are two facts, "
             "name them apart. Two copies agree only until one is edited; the baseline does "
+            "not grow."
+        )
+
+    if by_rule.get(SAME_CALL):
+        lines.append("")
+        lines.append("One call bound under different names in more than one module:")
+        for name, entries in report.same_call.items():
+            where = ", ".join(f"{d.path}:{d.line} {d.name}" for d in entries)
+            lines.append(f"  {name}: {where}")
+        lines.append(
+            "  The names differ, so the name match does not see them, but the value is "
+            "one fact. Keep one binding and import it everywhere else; the baseline does "
             "not grow."
         )
 

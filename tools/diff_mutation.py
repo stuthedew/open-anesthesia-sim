@@ -105,6 +105,7 @@ from docket.vcs import (  # noqa: E402
 )
 
 import doc_check  # noqa: E402
+from product_paths import PACKAGE  # noqa: E402
 
 #: The directory mutmut copies the tree into and runs the tests in. mutmut
 #: 3.8.0 fixes the name, relative to the directory it runs from.
@@ -163,7 +164,7 @@ NOTE_NAMES = 5
 #: these mutants run against the two versions of a changed test, which keeps
 #: both runs to minutes (`PL-7FPD`). A test of `core/` on a branch that changes
 #: no `core/` function stays unmeasured (`PL-H57W`).
-DISPLAY_PACKAGE = "anesthesia_sim.app"
+DISPLAY_PACKAGE = f"{PACKAGE}.app"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900

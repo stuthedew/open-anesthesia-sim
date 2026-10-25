@@ -219,6 +219,50 @@ def test_a_name_defined_in_two_modules_fails_and_an_import_or_alias_does_not(
     assert analyze(tmp_path, baseline=drained).errors == 0
 
 
+def test_a_fact_copied_under_another_name_is_reported(tmp_path: Path) -> None:
+    """`roadmap.SECTION_ID_RE` and `store.CITED_ID_RE` were one compiled pattern
+    under two names, which the name match passed (`PL-MM3Q`)."""
+    _tree(
+        tmp_path,
+        docket__store='import re\n\nID_PATTERN = "PL-"\nCITED_ID_RE = re.compile(ID_PATTERN)\n',
+        docket__roadmap=(
+            "import re\n\nfrom .store import ID_PATTERN\n\nSECTION_ID_RE = re.compile(ID_PATTERN)\n"
+        ),
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 2
+    assert "One call bound under different names in more than one module:" in printed
+    assert (
+        "CITED_ID_RE = SECTION_ID_RE: subprojects/docket/src/docket/roadmap.py:5 "
+        "SECTION_ID_RE, subprojects/docket/src/docket/store.py:4 CITED_ID_RE"
+    ) in printed
+
+    drained = {
+        "subprojects/docket/src/docket/store.py": {("same call", "CITED_ID_RE = SECTION_ID_RE"): 1},
+        "subprojects/docket/src/docket/roadmap.py": {
+            ("same call", "CITED_ID_RE = SECTION_ID_RE"): 1
+        },
+    }
+    assert analyze(tmp_path, baseline=drained).errors == 0
+
+
+def test_two_facts_that_share_a_value_or_a_sentinel_call_are_not_reported(tmp_path: Path) -> None:
+    """A plain constant can mean two things, as `trend.UNPLACED_PATH` and
+    `roadmap.UNPLACED` both hold `"unplaced"`, and each `object()` is a new
+    sentinel, so neither is read as one fact copied (`PL-MM3Q`)."""
+    _tree(
+        tmp_path,
+        docket__trend='UNPLACED_PATH = "unplaced"\nUNREAD = object()\n',
+        docket__roadmap='UNPLACED = "unplaced"\nABSENT = object()\n',
+        tools__other='import re\n\nONE_RE = re.compile("a")\nTWO_RE = re.compile("b")\n',
+    )
+
+    assert analyze(tmp_path, baseline={}).errors == 0
+
+
 def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) -> None:
     """`PL-TSXD`: about 48 sites asked whether an item is open by hand, two ways.
 
@@ -304,19 +348,44 @@ def test_a_pr_field_read_by_hand_is_refused(tmp_path: Path) -> None:
     assert "So read the number with `model.pr_number`" in printed
 
 
-def test_pr_number_of_the_pr_field_and_other_digit_tests_are_accepted(tmp_path: Path) -> None:
+def test_pr_number_of_the_pr_field_and_whole_number_elsewhere_are_accepted(tmp_path: Path) -> None:
     """The one reader passes, and so do a presence test and digits that are not a `pr:` value."""
     _tree(
         tmp_path,
         tools__body=(
+            "from docket.digits import whole_number\n"
             "from docket.model import pr_number\n\n"
             "def number(item, count, number):\n"
-            "    if item.pr and pr_number(item.pr.strip()) is not None and count.isdigit():\n"
+            "    if item.pr and pr_number(item.pr.strip()) is not None and whole_number(count):\n"
             "        return item.pr == number, int(item.priority[1:])\n"
         ),
     )
 
     assert analyze(tmp_path, baseline={}).errors == 0
+
+
+def test_a_digit_test_outside_the_whole_number_reader_is_refused(tmp_path: Path) -> None:
+    """`PL-PNGQ`: `isdigit` and its kin are true for a superscript digit that `int` refuses."""
+    _tree(
+        tmp_path,
+        tools__count=(
+            "def count(said, word):\n"
+            "    if said.isdigit() or word.isdecimal() or word.isnumeric():\n"
+            "        return int(said)\n"
+        ),
+        docket__digits=(
+            "def whole_number(text):\n    return int(text) if text.isdigit() else None\n"
+        ),
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 1
+    for test in ("isdigit", "isdecimal", "isnumeric"):
+        assert f"tools/count.py:2: {test}() in count" in printed
+    assert "digits.py:" not in printed
+    assert "So read the number with `digits.whole_number`" in printed
 
 
 def test_the_baseline_covers_what_it_names_and_refuses_one_more(tmp_path: Path) -> None:

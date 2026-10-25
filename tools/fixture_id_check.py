@@ -161,6 +161,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.fences import blocks  # noqa: E402
 from docket.frontmatter import Unread, closing, quoted  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
+from docket.markdown import fence_opening  # noqa: E402
 from docket.python import docstrings  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
@@ -221,11 +222,6 @@ TEXT_ROOT = ".claude"
 #: The info strings that mark a fenced block as a shell sample, which bash would
 #: read as it reads a `.sh` file.
 SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
-
-#: A fence's opening line with its info string's first word, where no block
-#: quote holds it: up to three columns in, as CommonMark 0.31.2 § 4.5 opens one,
-#: those columns being what it takes off each line inside.
-FENCE_OPENING_RE = re.compile(r"(?P<margin> {0,3})(?:`{3,}|~{3,})[ \t]*(?P<info>[^\s`]*)")
 
 #: A token of a JSON document `json` has read whole: a string's literal, or one
 #: character outside every string, white space aside. A string followed by a
@@ -504,14 +500,14 @@ def _fence_joins(text: str) -> Iterator[tuple[int, int]]:
     for line in lines:
         starts.append(starts[-1] + len(line))
     for block in blocks(text):
-        opening = FENCE_OPENING_RE.match(lines[block.start])
-        if opening is None or opening["info"].lower() not in SHELL_FENCES:
+        opening = fence_opening(lines[block.start])
+        if opening is None or opening.info.lower() not in SHELL_FENCES:
             continue
         script: list[str] = []
         where: list[int] = []
         for index in block.body:
             line = lines[index]
-            margin = min(len(opening["margin"]), len(line) - len(line.lstrip(" ")))
+            margin = min(opening.margin, len(line) - len(line.lstrip(" ")))
             yield starts[index], starts[index] + margin
             script.append(line[margin:])
             where.extend(range(starts[index] + margin, starts[index + 1]))

@@ -24,8 +24,8 @@
 # probed for.
 #
 # Two interpreters are in play here and both halves are deliberate. `src/` and
-# `tests/` target 3.14 - `pyproject.toml` declares `requires-python =
-# ">=3.14,<3.15"` and `.python-version` pins 3.14.7. Everything under `tools/`
+# `tests/` target 3.14 - `pyproject.toml`'s `requires-python` gives the range
+# and `.python-version` pins the patch release. Everything under `tools/`
 # and `.claude/hooks/`, plus `bin/docket` and the `subprojects/docket/` tree it
 # runs, runs under whatever bare `python3` is on PATH, with no virtualenv and
 # no install step, which is what lets a hook and a bare checkout work at all;

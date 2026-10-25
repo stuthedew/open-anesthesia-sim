@@ -169,10 +169,12 @@ uv sync --locked --dev
 make run          # or: uv run anesthesia-sim
 ```
 
-For development, `make check` runs everything CI runs — formatting, linting,
-strict type checking, and the full test suite under a 100% statement and branch
+For development, `make check` runs CI's checks — formatting, linting, strict
+type checking, and the full test suite under a 100% statement and branch
 coverage gate on the simulation core — and must pass before a change is
-complete. `make test` is the suite alone, without the coverage gate;
+complete. A few checks run in only one of the two gates; `GATE_ONLY` in
+[`tools/doc_check.py`](tools/doc_check.py) lists them, so a green `make check`
+does not promise a green CI run. `make test` is the suite alone, without the coverage gate;
 `make fix` applies the formatter and the safe lint fixes.
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the map of where new code
 belongs.
