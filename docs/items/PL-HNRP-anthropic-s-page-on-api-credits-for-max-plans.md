@@ -28,6 +28,6 @@ not-delegable: the answer is an external terms question settled by the project o
 
 **Recommended:** keep `claude -p` until support answers, and start no new runner work that depends on the credit in the meantime. Move to the Agent SDK only if support says the use is not covered.
 
-**Decided 2026-10-24 (project owner, 2026-10-24):** the headless runner's use is covered. The owner answered "yes it is covered" when asked whether the Max plan's monthly API credit pays for `claude -p` on a Console API key from the linked organization. The reply did not say whether the answer came from Anthropic support or from the program terms. So the runner keeps calling `claude -p`, no move to the Agent SDK is needed, and this item closes as its Done-when says.
+**Decided 2026-10-24 (project owner, 2026-10-24):** the headless runner's use is covered. The owner answered "yes it is covered" when asked whether the Max plan's monthly API credit pays for `claude -p` on a Console API key from the linked organization. The owner based it on two things: a web search that said the use is covered, and the Console's credit balance falling by each run's cost, as it did on 2026-10-19. Neither is Anthropic support's answer or the program terms themselves. So the runner keeps calling `claude -p`, no move to the Agent SDK is needed, and this item closes as its Done-when says.
 
 **Generator check.** One-off. An external terms question, not a misread fact in the tree.
