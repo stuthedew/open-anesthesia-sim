@@ -3,11 +3,14 @@ id: PL-LF0P
 title: Scope v0.7.0, the schematic, in ROADMAP.md and freeze Gate 3 under it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: schematic
 touches: ROADMAP.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1761
+reason: v0.7.0 scoped in ROADMAP.md with Gate 3 frozen under it and its build items filed
 payoff: The schematic has a scope, build items a session can pick, and a frozen Gate 3, so v0.7.0 can be worked instead of waiting on a section nobody wrote.
 verify: grep -qF "## v0.7.0 - the schematic" ROADMAP.md && grep -qF "### Debt gate: the frozen list" ROADMAP.md
 ---
