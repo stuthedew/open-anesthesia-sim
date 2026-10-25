@@ -131,13 +131,14 @@ def _assert_perfused_at_5_l_min(patient: PatientCompartments) -> None:
 def test_replace_leaves_the_original_perfused_at_its_own_output() -> None:
     """Regression (`PL-Z0T3`): a copy at another output rewrote the original's flows.
 
-    `dataclasses.replace` hands its copy the original's own tissue groups and
-    venous pool, and the constructor set the copy's flows on them, so the
-    original went on recording 5 L/min while perfused at 10, and its next step
-    was refused as a numerical failure though nothing numerical had failed.
-    `PL-Z0T3` refused such a copy. Since `PL-HQF5` no compartment stores a
-    flow, so the copy is built, shares the compartments, and is perfused at
-    its own output while the original stays perfused at its own.
+    `dataclasses.replace` gives its copy the original's own tissue groups and
+    venous pool. The constructor then set the copy's flows on those shared
+    compartments. So the original went on recording 5 L/min while it was
+    perfused at 10, and its next step was refused as a numerical failure,
+    although nothing numerical had failed. `PL-Z0T3` refused such a copy.
+    Since `PL-HQF5`, no compartment stores a flow. So the copy is built and
+    shares the compartments. The copy is perfused at its own output, and the
+    original stays perfused at its own.
     """
 
     system = AgentUptakeSystem.default()
@@ -175,7 +176,7 @@ def test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else() -> N
     output did not give it. The tissue half was refused only at the next step.
     The venous half was never refused, because no step reads the pool's flow.
     Neither compartment now has a flow field or a setter. Each tissue's flow
-    is formed from its patient's output when it is read. The expected flows
+    is computed from its patient's output when it is read. The expected flows
     are the reference adult's fractions (0.76, 0.18 and 0.06, typed from
     `data/patients/reference_adult.json`) times the output, worked here.
     """
@@ -269,11 +270,11 @@ def test_tissue_return_is_flow_weighted() -> None:
 def _load_patient_stores(patient: PatientCompartments) -> None:
     """Put agent in every patient compartment without stepping anything.
 
-    The setters rather than a step, because `PL-74R0` deleted
-    `PatientCompartments.advance()`: it was an operator split whose answer
-    moved with the step size, not a closed form. What the tests below assert
-    is that a *setting* leaves stored agent alone and that `reset()` clears
-    it, neither of which needs a trajectory to reach a loaded state.
+    It uses the setters rather than a step, because `PL-74R0` deleted
+    `PatientCompartments.advance()`. That method was an operator split whose
+    result changed with the step size, not a closed form. The tests below
+    assert that a *setting* leaves stored agent alone and that `reset()` clears
+    it. Neither assertion needs a trajectory to reach a loaded state.
     """
 
     patient.vessel_rich.set_partial_pressure_fraction(Fraction(0.08))
@@ -286,9 +287,10 @@ def test_the_patient_side_exposes_no_step_of_its_own() -> None:
     """Regression (`PL-74R0`): `PatientCompartments.advance()` is gone.
 
     A run advances one state vector through `AgentUptakeSystem.advance()`.
-    This class composing its own step is what made it a split rather than a
-    closed form, so the absence is the fix and not an accident of refactoring
-    - `core/__init__.py` carries the measurement that decided it.
+    When this class composed its own step, the model became an operator split
+    rather than a closed form. So the missing method is the fix, not an
+    accident of refactoring. `core/__init__.py` records the measurement that
+    decided it.
     """
 
     assert not hasattr(PatientCompartments, "advance")
@@ -317,9 +319,12 @@ def test_reset_clears_all_patient_stores() -> None:
 
 
 def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
-    """Zero is the loading phase of a reference gate trajectory, so it has to
-    stay reachable; the maximum is the envelope corner the same gates measure
-    at."""
+    """Both ends of the supported cardiac output range are accepted.
+
+    Zero is the loading phase of a reference gate trajectory, so it has to stay
+    reachable. The maximum is the corner of the envelope at which the same
+    gates measure.
+    """
 
     patient = _build_patient()
 
@@ -332,10 +337,10 @@ def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
 def test_rejects_cardiac_output_above_the_supported_range() -> None:
     """Regression (PL-0MLQ): `set_cardiac_output(1000.0)` was accepted.
 
-    At that setting the shipped split's error coefficient is 40 times the
-    documented bound, which is 91 counts of the displayed resolution — an
-    alveolar readout wrong in its first decimal while presenting itself as
-    settled. `docs/MODEL.md` § "Supported input ranges" records the
+    At that setting, the shipped split's error coefficient is 40 times the
+    documented bound. That is 91 counts of the displayed resolution, so the
+    alveolar readout would be wrong in its first decimal while presenting
+    itself as settled. `docs/MODEL.md` § "Supported input ranges" records the
     measurement.
     """
 

@@ -60,7 +60,7 @@ from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import WorkspaceName, WorkspaceSet
 
-# The chooser's entry for the accounting View, as a reader reads it.
+# The chooser's entry for the accounting View, as a reader sees it.
 _ACCOUNTING_ENTRY = "Agent accounting"
 
 # The close entry's label in each Area's menu.
@@ -87,7 +87,7 @@ def application() -> Iterator[QApplication]:
 
 
 def _paused_run() -> SimulationController:
-    """A real run, paused after `_HISTORY_S` of simulated time with one recorded change."""
+    """Return a real run, paused after `_HISTORY_S` of simulated time, with one recorded change."""
 
     controller = SimulationController()
     controller.start()
@@ -148,7 +148,7 @@ def _close(application: QApplication, view: SimulationView) -> None:
 
 
 def _texts(widget: QWidget) -> tuple[str, ...]:
-    """The text a value's widget draws: its own, or that of every label inside it."""
+    """Return the text that a value's widget draws: its own, or that of every label inside it."""
 
     labels = [widget] if isinstance(widget, QLabel) else widget.findChildren(QLabel)
 
@@ -156,7 +156,7 @@ def _texts(widget: QWidget) -> tuple[str, ...]:
 
 
 def _on_screen_by_run(view: SimulationView) -> tuple[frozenset[UnconditionalValue], ...]:
-    """Each run's unconditional values that a reader can see now, in drawing order.
+    """Return, for each run in drawing order, the unconditional values a reader can see now.
 
     "Can see" is checked through `visible_strings`.
     """
@@ -179,7 +179,7 @@ def _on_screen_by_run(view: SimulationView) -> tuple[frozenset[UnconditionalValu
 
 
 def _on_screen(view: SimulationView) -> frozenset[UnconditionalValue]:
-    """The unconditional values a reader can see now, for any run."""
+    """Return the unconditional values that a reader can see now, in any run."""
 
     return frozenset().union(*_on_screen_by_run(view))
 
@@ -217,7 +217,10 @@ def _check(
 def _operation(
     view: SimulationView, area_id: AreaId, group: str | None, label: str
 ) -> AreaOperation:
-    """The first available entry of Area `area_id`'s menu in `group` whose label starts `label`."""
+    """Return the first available entry in `group` of Area `area_id`'s menu, by label prefix.
+
+    The entry's label must start with `label`.
+    """
 
     for operation in view.layout_container.operations(area_id):
         if operation.group == group and operation.label.startswith(label) and operation.available:
@@ -240,7 +243,7 @@ def _chart(view: SimulationView) -> ConcentrationView:
 
 
 def _widest_chord_px(view: SimulationView) -> int:
-    """The widest gap, in plot pixels, between two consecutive drawn alveolar instants."""
+    """Return the widest gap, in plot pixels, between two consecutive drawn alveolar instants."""
 
     chart = _chart(view).chart
     times, percents = chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
@@ -329,11 +332,11 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
         assert view.workspaces.current.name == WorkspaceName("Default")
         seen = _check(application, view, "launch", frozenset())
 
-        # Narrow the chart to its least width, then widen it by less than it
+        # Narrow the chart to its minimum width, then widen it by less than it
         # was narrowed. Once the border has moved, the splitter keeps the
         # controls Area at its size hint, which is wider than the width the
         # Area opened at (`PL-4L8B`). That hint depends on the platform's
-        # fonts. A short widening from the least width stays clear of it.
+        # fonts. A short widening from the minimum width stays clear of it.
         _drag_only_border(application, view, -800)
         view.present(False)
         narrowed_px = _chart(view).chart.plot_width_px()

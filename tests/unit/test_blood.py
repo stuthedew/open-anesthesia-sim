@@ -12,14 +12,16 @@ from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 BLOOD_FLOW_L_MIN = 5.0
-"""The flow these tests mix the pool at, in L/min, unless a test says otherwise.
+"""The blood flow, in L/min, at which these tests mix the pool, unless a test says otherwise.
 
-The pool stores no flow since `PL-HQF5`, so each closed form takes it.
+The pool has stored no flow since `PL-HQF5`, so each closed form takes the flow
+as an argument.
 """
 
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# The end of a shared guard's refusal message, which names the refused value and
+# the reason (`PL-T137`). The guard's own tests pin each reason. These tests pin
+# the field name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
@@ -132,16 +134,17 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
 def test_a_direct_write_is_held_to_the_constructors_checks(
     field: str, value: object, error: type[Exception], message: str
 ) -> None:
-    """An assignment past the constructor and the setters is refused as they refuse it.
+    """A direct assignment is refused as the constructor and the setters would refuse it.
 
-    Until `PL-19Y0` the venous pool checked nothing past its constructor, so
-    an amount past its capacity written onto a built pool was stored and read
-    back as a partial pressure fraction of 1.0000001. The capacity, the volume
-    times the blood:gas coefficient, is held to the agent the pool holds at
-    the write of any of the three. A name that is no field passes the guard to
-    the slots, which refuse it, so a misspelt write cannot leave the field it
-    meant unchanged while appearing to succeed. Nothing is written when a
-    value is refused.
+    Until `PL-19Y0`, the venous pool checked nothing after its constructor. So
+    an amount greater than its capacity, written onto a built pool, was stored
+    and read back as a partial pressure fraction of 1.0000001. The capacity is
+    the volume times the blood:gas coefficient. A write of the volume, the
+    coefficient or the amount is refused if it would leave the capacity less
+    than the agent the pool holds. A name that is not a field passes through the guard to the slots,
+    which refuse it. So a misspelt write cannot leave its intended field
+    unchanged while appearing to succeed. Nothing is written when a value is
+    refused.
     """
 
     venous = _build_venous_blood()
@@ -158,11 +161,11 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
     """The capacity bound is closed, and `replace`, a copy and a pickle meet the same checks.
 
     An amount equal to the capacity is a partial pressure of exactly one
-    atmosphere, and is written. `dataclasses.replace` builds a new pool
-    through its constructor's writes, and a copy and a pickle restore the
-    fields one at a time through `__setattr__`, so an amount planted past the
-    guard is refused when either is made rather than carried into the new
-    pool (`PL-19Y0`).
+    atmosphere, and it is written. `dataclasses.replace` builds a new pool
+    through its constructor's writes. A copy and a pickle restore the fields
+    one at a time through `__setattr__`. So an amount planted by bypassing the
+    guard is refused when the copy or the pickle is made, rather than carried
+    into the new pool (`PL-19Y0`).
     """
 
     venous = _build_venous_blood()
@@ -191,11 +194,12 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
 
 
 def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> None:
-    """The room a blood:gas coefficient leaves is the volume times it, not the coefficient alone.
+    """A blood:gas coefficient is checked through the capacity it gives, not by its value alone.
 
-    A 2 L pool at half its 1.3 L capacity holds 0.65 L. A coefficient of 0.4
-    leaves 0.8 L of room and is written, though 0.4 alone is under the agent
-    held; 0.3 leaves 0.6 L and is refused (`PL-19Y0`).
+    The capacity is the volume times the coefficient. A 2 L pool at half its
+    1.3 L capacity holds 0.65 L. A coefficient of 0.4 leaves 0.8 L of room and
+    is written, although 0.4 alone is less than the amount of agent held. A
+    coefficient of 0.3 leaves 0.6 L and is refused (`PL-19Y0`).
     """
 
     venous = VenousBloodCompartment(volume_l=2.0, blood_gas_partition_coefficient=0.65)
@@ -211,11 +215,12 @@ def test_a_coefficient_is_held_to_the_agent_through_the_capacity_it_leaves() -> 
 
 @pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
 def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
-    """A flow the closed form cannot be read at is refused, and the step changes nothing.
+    """A flow at which the closed form cannot be evaluated is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and its write refused it
-    (`PL-19Y0`). It is now the argument of `time_constant_s` and `advance`,
-    which refuse it in the same words before anything changes.
+    The flow was a stored field until `PL-HQF5`, and a write to that field
+    refused such a flow (`PL-19Y0`). The flow is now an argument of
+    `time_constant_s` and `advance`, which refuse it in the same words before
+    anything changes.
     """
 
     venous = _build_venous_blood()
@@ -244,13 +249,13 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
 def test_a_rollback_restores_the_captured_amount_past_the_capacity_guard() -> None:
     """`restore_state` writes what the pool held, whatever the capacity has become.
 
-    The venous counterpart of `tests/unit/test_alveolar.py`'s test of the same
-    name: a rollback that could raise would replace the step's own error, so
-    the captured amount is written past the capacity guard (`PL-544D`,
-    `PL-19Y0`). The volume is written past its own guard, which refuses it,
-    because what is under test is the rollback; the restored state is the one
-    the step began from, over capacity, for the snapshot's `Fraction` to
-    refuse.
+    This is the venous counterpart of the test of the same name in
+    `tests/unit/test_alveolar.py`. A rollback that could raise would replace
+    the step's own error, so the captured amount is written without passing
+    the capacity guard (`PL-544D`, `PL-19Y0`). The test writes the volume by
+    bypassing its own guard, which would refuse it, because the rollback is
+    what is under test. The restored state is the one the step began from. It
+    is over capacity, so the snapshot's `Fraction` is left to refuse it.
     """
 
     venous = _build_venous_blood()
@@ -328,7 +333,7 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
     The expected values are worked out by hand for a 2.0 L pool:
     60 x 2.0 / 4.0 = 30 s at 4.0 L/min and 60 x 2.0 / 6.0 = 20 s at 6.0 L/min.
-    Neither flow is 5 L/min, so a time constant formed at the reference
+    Neither flow is 5 L/min, so a time constant computed at the reference
     patient's output fails. The volume is not 1 L, so dividing by it instead
     of multiplying fails too.
     """
@@ -393,12 +398,13 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
 ) -> None:
     """`PL-WP52`: the venous pool stepped on its own refuses a step shorter than 1 ms.
 
-    Rounding grows as the step shrinks in the pool stepped alone, as it does in a
-    run. This pool was held at a fraction of 0.01 and stepped toward 0.02 at
+    In the pool stepped alone, as in a run, rounding error grows as the step
+    shrinks. This pool was held at a fraction of 0.01 and stepped toward 0.02 at
     5 L/min. Over 10 000 steps of 1e-14 s, its change was 4% wrong.
-    The step is refused and the amount held does not change. The floor itself is
-    accepted, and so is a step of 1 s, longer than the run's 0.1 s ceiling, which
-    does not apply to a compartment stepped alone. The expected floor, 0.001 s, is
+    The step is refused and the amount held does not change. A step equal to the
+    smallest supported step is accepted. So is a step of 1 s, which is longer
+    than the run's 0.1 s ceiling, because that ceiling does not apply to a
+    compartment stepped alone. The expected smallest step, 0.001 s, is
     written out here rather than read from `MINIMUM_SIMULATION_STEP_S`.
     """
 

@@ -15,33 +15,35 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
-# The conservation bound the reference runs are held to, restated here rather
-# than imported for the reason `tests/unit/test_agent_simulation_validation.py`
+# The conservation bound that the reference runs must meet. It is restated here
+# rather than imported, for the reason `tests/unit/test_agent_simulation_validation.py`
 # gives: a bound that followed the constant it tests would move wherever that
 # constant moved. `docs/MODEL.md` § "Mass-balance identity" is the documented
 # basis and carries the derivation.
 #
-# Relative, not absolute. The mass-balance residual is rounding accumulated
-# once per step, so it scales with how much agent a run has handled: halving
-# the dial halves `absolute_error_l` exactly and leaves `relative_error`
-# unchanged to four significant figures. Asserting the absolute figure
-# therefore measured this test's own setup rather than conservation, and was
-# additionally false past about an hour of simulated time - it first exceeds
-# 1e-12 L at t = 3452 s at these settings, and these runs stop at 1200 s
-# (`PL-4GN8`, measured 2026-09-06 on the shipped exact step).
+# The bound is relative, not absolute. The mass-balance residual is rounding
+# error accumulated once per step, so it scales with how much agent a run has
+# handled. Halving the dial halves `absolute_error_l` exactly and leaves
+# `relative_error` unchanged to four significant figures. So the former
+# assertion on the absolute figure measured this test's own setup rather than
+# conservation. That assertion was also false after about an hour of simulated
+# time. At these settings the absolute error first exceeds 1e-12 L at
+# t = 3452 s, and these runs stop at 1200 s (`PL-4GN8`, measured 2026-09-06 on
+# the shipped exact step).
 MASS_BALANCE_RELATIVE_GATE = 1e-10
 
-# The dial every system below runs at. Both agents run at the same one, so
-# the only thing differing between two systems is the agent's own parameters,
-# which is the claim these gates make. 4% is inside both calibrated ranges -
-# isoflurane's 5% maximum is the lower of the two, desflurane reaches 18% -
-# and each circuit carries its own agent's maximum, so construction refuses
-# this value if it ever stops being deliverable.
+# The dial setting at which every system below runs. Both agents run at the
+# same setting, so the only difference between two systems is the agent's own
+# parameters, which is the claim these gates make. 4% is inside both calibrated
+# ranges: isoflurane's 5% maximum is the lower of the two, and desflurane
+# reaches 18%. Each circuit carries its own agent's maximum, so construction
+# refuses this value if it ever stops being deliverable.
 #
-# Deliberately not the 5% - a fraction of 0.05 - the equilibrium test fills
-# every compartment to: at that dial the circuit would already sit at its own
-# delivered concentration, and that test's `set_fresh_gas_flow(0.0)` would stop
-# being load-bearing - it would pass at any flow, testing less than it reads as.
+# It is deliberately not 5%, the fraction of 0.05 to which the equilibrium test
+# fills every compartment. At that dial setting, the circuit would already sit
+# at its own delivered concentration. That test's `set_fresh_gas_flow(0.0)`
+# would then stop mattering: the test would pass at any flow, and would test
+# less than it appears to.
 DELIVERED_CONCENTRATION_PERCENT = Percent(4.0)
 
 
@@ -57,13 +59,14 @@ def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: fl
 def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
     """Build a patient system for a named built-in agent.
 
-    Proves the v0.1.0 core is agent-generic: only the agent parameters
-    change here, not any governing equation or compartment structure.
+    This shows that the v0.1.0 core is agent-generic: only the agent
+    parameters change here, not any governing equation or compartment
+    structure.
 
-    Built by hand rather than through `AgentUptakeSystem.for_agent()`
-    precisely to keep that true of the circuit as well: `for_agent()`
-    starts each agent at its own 1 MAC, which would leave the two systems
-    below differing in two things at once.
+    The system is built by hand rather than through
+    `AgentUptakeSystem.for_agent()`, to keep that true of the circuit as well.
+    `for_agent()` starts each agent at its own 1 MAC, so the two systems below
+    would differ in two things at once.
     """
 
     agent = load_agent_parameters(agent_id)
@@ -100,8 +103,8 @@ def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
     assert validation.passes_validation is True
     # The relative residual, not the absolute one: the absolute figure scales
     # with the dial and the run length, so asserting it measures this test's
-    # setup rather than conservation (`PL-4GN8`). `mass_balance_gate` carries
-    # the measurements the bound comes from.
+    # setup rather than conservation (`PL-4GN8`). `mass_balance_gate` records
+    # the measurements that the bound comes from.
     assert validation.relative_error <= MASS_BALANCE_RELATIVE_GATE
     assert validation.delivered_agent_l > 0.0
     assert validation.exhausted_agent_l > 0.0
@@ -139,7 +142,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
 
 
 def test_desflurane_alveolar_circuit_ratio_rises_faster_than_isoflurane() -> None:
-    """Directional solubility check using real agent data, not synthetic.
+    """This is a directional solubility check that uses real agent data, not synthetic data.
 
     Desflurane (blood:gas 0.42) is markedly less soluble than isoflurane
     (blood:gas 1.3, per the shared Gas Man source table cited in both

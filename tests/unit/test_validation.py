@@ -1,11 +1,12 @@
 """The shared numeric guards raise inside the project's hierarchy.
 
-Covered separately from the compartments that call them because the
-guard functions are the single place the type is decided: a guard that
-reverted to a bare `ValueError` would leave `app/` unable to recognise a
-core failure, without any individual compartment test noticing. What each
-guard is willing to read at all - a number, inside the range a `float` holds -
-is pinned here for the same reason, since `PL-3800`.
+These tests cover the guards separately from the compartments that call
+them, because the guard functions are the one place where the exception
+type is decided. If a guard went back to raising a bare `ValueError`, `app/`
+could no longer recognise a core failure, and no single compartment test
+would notice. For the same reason, these tests also check what each guard
+accepts at all: a number inside the range that a `float` can represent. That
+check dates from `PL-3800`.
 """
 
 import sys
@@ -42,7 +43,11 @@ def test_require_nonnegative_finite_rejects_within_the_hierarchy(value: float) -
     ("guard", "value"), [(require_positive_finite, 0.5), (require_nonnegative_finite, 0.0)]
 )
 def test_guards_accept_their_boundary_values(guard, value: float) -> None:
-    """A fraction's own edges are its constructor's since `PL-4R3W`, in `test_concentration.py`."""
+    """Each guard accepts its own boundary value.
+
+    Since `PL-4R3W`, a fraction's own edges are checked by its constructor, and
+    `test_concentration.py` tests them.
+    """
 
     guard("value", value)
 
@@ -56,17 +61,19 @@ NOT_A_NUMBER = (
     numpy.float32(2.5),
     numpy.int64(2),
 )
-"""What each guard read before `PL-3800`, and what came of it.
+"""Values that each guard accepted before `PL-3800`, and what happened to each.
 
-`True` and `numpy.True_` each passed as the 1 it is to a comparison, so
-`BreathingCircuit(circuit_volume_l=True)` held a 1 L circuit; the `Decimal`
-was held as given and entered the arithmetic as one; the signalling NaN
-escaped as `math.isfinite`'s `ValueError` and the string as its `TypeError`,
-naming neither the field nor its constraint. The first five are the flows'
-list, `NOT_A_NUMBER` in `test_supported_ranges.py`. The two NumPy scalars are
-neither an `int` nor a `float` subclass, which is all `require_a_number`
-admits: a value rounded in a narrower format is converted by its caller, never
-read as the number it was (`core/checked_number.py`).
+`True` and `numpy.True_` each passed, because a comparison treats each as
+the number 1. So `BreathingCircuit(circuit_volume_l=True)` held a 1 L
+circuit. The `Decimal` was stored as given and entered the arithmetic as a
+decimal. The signalling NaN escaped as the `ValueError` from
+`math.isfinite`, and the string escaped as its `TypeError`. Neither error
+named the field or its constraint. The first five values are the list used
+for the flows, `NOT_A_NUMBER` in `test_supported_ranges.py`. The two NumPy
+scalars are neither an `int` subclass nor a `float` subclass, and
+`require_a_number` accepts only those. A value rounded in a narrower format
+must be converted by its caller, so that the rounded value is never taken for
+the number it was before rounding (`core/checked_number.py`).
 """
 
 
@@ -77,19 +84,22 @@ read as the number it was (`core/checked_number.py`).
 def test_each_guard_refuses_what_is_not_a_number_and_an_overflowing_int_in_its_own_words(
     guard, name: str
 ) -> None:
-    """A guard reads an int or a float inside the range a float holds, and nothing else.
+    """A guard accepts only an int or a float inside the range that a float can represent.
 
-    Each of `NOT_A_NUMBER` is refused with a `TypeError` in the simulator's
-    words naming the field, the value and its type, before any comparison
-    reads it - the signalling NaN and the string would each raise in a
-    comparison or in `isfinite`, in Python's words, so the message is what
-    shows the refusal came first. An `int` past the float range, which
-    `isfinite` raised `OverflowError` converting, is refused inside the
-    simulator's own hierarchy, naming the field, the value and the bound; one
-    too long to print is named by how long it is, as a refused count is
-    (`PL-5F76`). The bound is closed: the largest float itself, as a `float`
-    or as the `int` it converts to, is admitted, and so is every `int` and
-    `float` the guard admitted before, a NumPy double among them.
+    Each value in `NOT_A_NUMBER` is rejected with a `TypeError` that names
+    the field, the value and its type in the simulator's words. The
+    rejection comes before any comparison uses the value. The signalling NaN
+    and the string would each raise in a comparison or in `isfinite`, in
+    Python's words, so the message shows that the rejection came first.
+
+    An `int` beyond the float range used to make `isfinite` raise
+    `OverflowError` while converting it. Such an `int` is now rejected inside
+    the simulator's own hierarchy, with a message that names the field, the
+    value and the bound. An `int` too long to print is described by its
+    length, as a rejected count is (`PL-5F76`). The bound is closed. The
+    largest float itself is accepted, as a `float` or as the `int` it
+    converts to. So is every `int` and `float` that the guard accepted
+    before, a NumPy double among them.
     """
 
     for value in NOT_A_NUMBER:
@@ -136,9 +146,9 @@ def test_each_guard_refuses_what_is_not_a_number_and_an_overflowing_int_in_its_o
     ],
 )
 def test_a_rejected_value_appears_in_the_message(guard, value: float, reason: str) -> None:
-    """A refusal names the value it refused, and why (`PL-T137`).
+    """A rejection message names the rejected value and the reason (`PL-T137`).
 
-    Before this, `gas_volume_l` gave the same message for `-0.0`, `nan` and
+    Before that change, `gas_volume_l` gave the same message for `-0.0`, `nan` and
     `-2.5`. A value that is not finite and a value below the range need
     different fixes.
     """
@@ -151,7 +161,7 @@ def test_a_rejected_value_appears_in_the_message(guard, value: float, reason: st
 
 
 def test_require_within_vaporizer_maximum_rejects_within_the_hierarchy() -> None:
-    """The one relation among the guards refuses in the circuit's sentence (`PL-BBMG`)."""
+    """The only guard that compares two values rejects in the circuit's wording (`PL-BBMG`)."""
 
     with pytest.raises(
         SimulationConfigurationError,

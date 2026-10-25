@@ -1,9 +1,9 @@
 """Unit tests for `app/chart_time_base.py`, the chart's window width.
 
-The ladder, the two window rules and the tick placement, checked without
-constructing a Flet interface. What the *interface* does with them - which
-control selects a width, what the axis labels read, what the caption claims -
-is in `tests/unit/test_simulation_view.py`.
+These tests check the ladder of widths, the two window rules and the tick
+placement without constructing a Flet interface. What the *interface* does with
+them is tested in `tests/unit/test_simulation_view.py`: which control selects a
+width, what the axis labels show, and what the caption claims.
 
 `PL-012` decided this design and `PL-SSBP` built it. Three of its
 requirements are properties rather than examples, so they are asserted over
@@ -37,8 +37,8 @@ def test_the_ladder_climbs_and_never_nudges() -> None:
 
     The project owner's requirement (2026-09-04): discrete steps,
     geometrically spaced, so choosing the next one is a decision rather than
-    a drag. Half again is the floor the ladder is built to; most steps
-    double.
+    a drag. Each rung is at least half again as wide as the one before it,
+    and most rungs are twice as wide.
     """
 
     for narrower, wider in zip(TIME_BASE_LADDER, TIME_BASE_LADDER[1:], strict=False):
@@ -48,10 +48,10 @@ def test_the_ladder_climbs_and_never_nudges() -> None:
 def test_every_rung_is_ruled_into_between_four_and_six_intervals() -> None:
     """The gridline interval is derived from the width, and legibly.
 
-    `PL-012`'s requirement is that it be derived at all - the fixed 60 s
-    interval it replaced would rule the twelve-hour rung into 720 lines.
-    The bounds are what makes the derivation a grid rather than either a
-    bare axis or a hatch, at every width the chart can take.
+    `PL-012` requires the interval to be derived from the width. The fixed
+    60 s interval that it replaced would divide the twelve-hour rung into 720
+    lines. The bounds of four to six intervals keep the result a readable grid,
+    rather than a bare axis or a dense hatch, at every width the chart can take.
     """
 
     for time_base in TIME_BASE_LADDER:
@@ -62,11 +62,11 @@ def test_every_rung_is_ruled_into_between_four_and_six_intervals() -> None:
 
 
 def test_the_selector_offers_fifteen_minutes_to_twelve_hours() -> None:
-    """The list the project owner settled on 2026-09-04.
+    """The project owner settled on this list on 2026-09-04.
 
-    The ladder reaches below the floor for "Fit run"'s sake and those rungs
-    are deliberately not offered, so this pins both halves: what is listed,
-    and that nothing below the floor is.
+    The ladder has rungs narrower than the narrowest selectable width so that
+    "Fit run" can use them. Those rungs are deliberately not offered. So this
+    test pins both halves: what is listed, and that no narrower rung is listed.
     """
 
     assert [time_base.span_s for time_base in SELECTABLE_TIME_BASES] == [
@@ -86,9 +86,9 @@ def test_the_selector_offers_fifteen_minutes_to_twelve_hours() -> None:
 def test_fitting_a_run_always_contains_it() -> None:
     """ "Fit run" that showed part of the run would be a false claim.
 
-    The mode's name is what a reader trusts about what they are looking at,
-    so containment is asserted across the ladder's boundaries and past its
-    widest rung rather than at a convenient length.
+    A reader trusts the mode's name to describe what they are looking at. So
+    the test checks containment at the ladder's boundaries and past its widest
+    rung, rather than at a convenient length.
     """
 
     instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 86_400.0]
@@ -102,7 +102,7 @@ def test_fitting_a_run_always_contains_it() -> None:
 
 
 def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
-    """A wider one would draw the run into part of the plot for no reason."""
+    """A wider width would squeeze the run into part of the plot for no reason."""
 
     assert fit_to_run(CaseInstant(0.0)).span_s == 60.0
     assert fit_to_run(CaseInstant(60.0)).span_s == 60.0
@@ -127,7 +127,9 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     beyond = fit_to_run(CaseInstant(widest.span_s * 1.5))
 
     assert beyond.span_s == widest.span_s * 2.0
-    # Doubled together, so the wider axis is ruled like every declared rung.
+    # The span and the tick interval double together. So the wider axis has as
+    # many intervals as the widest declared rung, and it is ruled like every
+    # declared rung.
     assert beyond.span_s / beyond.tick_interval_s == widest.span_s / widest.tick_interval_s
     # A run that ends exactly on a doubled width fits it, as a run that ends
     # exactly on a declared rung fits that rung, and is not doubled again.
@@ -135,7 +137,7 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
 
 
 def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
-    """The property the whole design rests on.
+    """The whole design rests on this property.
 
     Seconds-per-pixel is constant, so a trace's slope means the same thing
     at the start of a run and an hour in. A window that grew with the run
@@ -170,7 +172,7 @@ def test_a_run_shorter_than_the_chosen_width_still_shows_whole() -> None:
 
 
 def test_a_chosen_width_follows_the_run_once_it_is_outgrown() -> None:
-    """Past the width the window slides, keeping the newest instant in view."""
+    """Once the run outgrows the width, the window slides to keep the newest instant in view."""
 
     time_base = time_base_for_span(900.0)
     headroom_s = 900.0 * CHART_LIVE_HEADROOM_FRACTION
@@ -183,9 +185,9 @@ def test_a_chosen_width_follows_the_run_once_it_is_outgrown() -> None:
 def test_fitting_charges_no_headroom_so_a_run_stays_on_its_own_rung() -> None:
     """A fifteen-minute run belongs on the fifteen-minute rung.
 
-    Charging the live headroom against the fit as well would push it onto
-    the thirty-minute rung and draw the whole run across half the plot, one
-    step before the run reaches that width anyway.
+    If the fit also added the live headroom, the run would move onto the
+    thirty-minute rung and fill only half the plot. That would happen one step
+    before the run reaches that width anyway.
     """
 
     assert fit_to_run(CaseInstant(900.0)) is time_base_for_span(900.0)
@@ -194,9 +196,9 @@ def test_fitting_charges_no_headroom_so_a_run_stays_on_its_own_rung() -> None:
 def test_ticks_stand_at_absolute_times_rather_than_at_the_window_s_edge() -> None:
     """A gridline must not crawl as the window slides underneath it.
 
-    Ticks measured from the left edge would move with it, so the grid would
-    drift and every label would be rewritten on every frame - the per-frame
-    churn the axis-label guard in `simulation_view.py` exists to avoid.
+    Ticks measured from the window's left edge would move with the window. The
+    grid would drift, and every label would be rewritten on every frame. The
+    axis-label guard in `simulation_view.py` exists to avoid that per-frame churn.
     """
 
     assert tick_times(0.0, 900.0, 180.0) == (0.0, 180.0, 360.0, 540.0, 720.0, 900.0)
@@ -205,7 +207,7 @@ def test_ticks_stand_at_absolute_times_rather_than_at_the_window_s_edge() -> Non
 
 
 def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
-    """Both ends are inclusive; the fitted window's own ends are ticks."""
+    """Both ends of the window are inclusive, so the fitted window's own ends are ticks."""
 
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
@@ -217,7 +219,7 @@ def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
-    displayed value, and every drawn time is read against the window's width.
+    displayed value, and every drawn time is placed against the window's width.
     Both windows take a `CaseInstant`. So an instant before induction, one that
     is not finite, or one past the supported run length is rejected where the
     instant is built, and neither window checks it again (`PL-9DF9`).
@@ -237,7 +239,7 @@ def test_fitting_refuses_an_instant_not_built_as_one(newest_instant_s: float) ->
 
 @pytest.mark.parametrize("interval_s", [0.0, -60.0, math.nan, math.inf])
 def test_tick_placement_refuses_an_interval_that_would_not_rule_anything(interval_s: float) -> None:
-    """A non-positive interval is an unruled axis or an infinite loop."""
+    """A non-positive interval would give an axis with no gridlines, or an infinite loop."""
 
     with pytest.raises(ValueError, match="positive and finite"):
         tick_times(0.0, 900.0, interval_s)
@@ -269,7 +271,7 @@ def test_the_headroom_is_a_fraction_of_the_width_rather_than_a_fixed_gap() -> No
 
 
 def test_a_time_base_carries_its_own_interval() -> None:
-    """The pairing is what stops a width and its ruling drifting apart."""
+    """Keeping a width and its tick interval in one record stops them drifting apart."""
 
     time_base = ChartTimeBase(span_s=900.0, tick_interval_s=180.0)
 

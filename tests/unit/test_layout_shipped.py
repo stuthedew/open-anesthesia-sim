@@ -1,13 +1,14 @@
 """Unit tests for `layout/shipped.py`: the Workspaces shipped under `data/workspaces/`.
 
-`PL-KXTL` ships three Workspaces as validated, versioned JSON, read by the
-reader a reader's own `workspaces.json` goes through. These hold the shipped
-files to what they say they are: one Workspace each, of the current version,
-naming its own file's id, written in the form the writer produces. They also
-check what each arrangement shows: none holds the accounting View (project
-owner, 2026-09-16), and the default gives the chart the window's full height
-beside the parameter controls, the composition the pixel budget was set for
-(`PL-84QX`). The refusals run against a directory of the test's own.
+`PL-KXTL` ships three Workspaces as validated, versioned JSON. They are read
+by the same reader that a user's own `workspaces.json` goes through. These
+tests check that each shipped file is what it claims to be: one Workspace, at
+the current version, naming its own file's id, and written in the form that
+the writer produces. They also check what each arrangement shows. No shipped
+Workspace contains the accounting View (project owner, 2026-09-16). The
+default gives the chart the window's full height beside the parameter
+controls, which is the composition the pixel budget was set for (`PL-84QX`).
+The tests of refusals run against a directory of the test's own.
 """
 
 import json
@@ -50,7 +51,7 @@ def shipped_text(shipped_id: ShippedWorkspaceId) -> str:
 
 
 def copy_of_the_shipped_files(directory: Path) -> Path:
-    """`directory` holding a copy of every shipped file, for a test to break one of."""
+    """Return `directory` holding a copy of every shipped file, for a test to break one of them."""
 
     directory.mkdir()
 

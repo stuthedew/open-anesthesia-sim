@@ -1,10 +1,10 @@
-"""The run's step as a type: checked once when it is built, and required at each
-of the run's entry points (`PL-0GJC`).
+"""Tests of the run's step as a type, checked once when it is built (`PL-0GJC`).
 
-The refusals each entry point used to make of an out-of-range step are now the
-constructor's, and the tests that pinned them at each entry point still do,
-because they build the step at the call. What is pinned here is the type
-itself, and the one thing an entry point still refuses: a step nothing built.
+Each of the run's entry points requires the type. Each entry point used to
+refuse an out-of-range step itself, and the constructor now makes those
+refusals. The tests that pinned them at each entry point still pin them,
+because they build the step at the call. These tests pin the type itself, and
+the one thing an entry point still refuses: a step that nothing built.
 """
 
 import copy
@@ -62,10 +62,12 @@ def test_a_supported_step_is_the_number_it_was_built_from(seconds: float) -> Non
     ],
 )
 def test_a_step_outside_the_supported_range_cannot_be_built(seconds: float, refusal: str) -> None:
-    """The one place a step is checked, at each edge of the range and past it.
+    """The constructor, the one place a step is checked, refuses a step past either edge.
 
-    `5e-324` is the step `PL-YZ17` was filed for: the run length divided by it
-    overflows, and it reached `maximum_step_count` as a bare `OverflowError`.
+    The cases sit just past each edge of the range and further past it.
+    `5e-324` is the step `PL-YZ17` was filed for. The run length divided by it
+    overflows, and the overflow reached `maximum_step_count` as a bare
+    `OverflowError`.
     """
 
     with pytest.raises(SimulationConfigurationError, match=refusal):
@@ -75,17 +77,18 @@ def test_a_step_outside_the_supported_range_cannot_be_built(seconds: float, refu
 def test_a_step_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words() -> None:
     """A step is built from an int or a float and nothing else, inside the range a float holds.
 
-    The guard the step is built on, `require_positive_finite`, reads the value
-    first since `PL-3800`. Until then `True` passed as the 1 it is to Python
-    and was refused as a step of 1 s rather than as no step at all;
-    `Decimal('0.05')` was converted and held as a 0.05 s step; a string was
-    refused in `math.isfinite`'s words; and `SimulationStep(10**400)` escaped
-    as `OverflowError` from `isfinite` converting it (`PL-21V4`), outside the
-    simulator's own exceptions, so a caller catching the
-    `SimulationConfigurationError` the docstring promised did not catch it.
-    Each is refused by the guard and the type alike, in the same words; an
-    `int` inside the float range is still refused against the step's own
-    range, as any step outside it is.
+    Since `PL-3800`, the guard that the step is built on,
+    `require_positive_finite`, first checks that the value is a number. Before that,
+    `True` passed as the 1 that it equals in Python, and was refused as a step
+    of 1 s rather than as no step at all. `Decimal('0.05')` was converted and
+    stored as a 0.05 s step. A string was refused in `math.isfinite`'s words.
+    And `SimulationStep(10**400)` escaped as an `OverflowError` when `isfinite`
+    converted it (`PL-21V4`). That exception is outside the simulator's own
+    exceptions, so a caller catching the `SimulationConfigurationError` that
+    the docstring promised did not catch it. The guard and the type now refuse
+    each of these in the same words. An `int` inside the float range is still
+    checked against the step's own range, and refused outside it, as any step
+    is.
     """
 
     for value in (True, numpy.True_, Decimal("0.05"), Decimal("sNaN"), "0.05"):
@@ -117,11 +120,11 @@ def test_a_step_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words
 
 
 def test_arithmetic_on_a_step_is_a_plain_float() -> None:
-    """What a step is multiplied into is not itself a checked step.
+    """The result of arithmetic on a step is not itself a checked step.
 
-    The elapsed time a count of steps reaches is the product of the count and
-    the step, and it is no step at all; were it a `SimulationStep`, a reader
-    of a signature could take it for one the constructor had checked.
+    The elapsed time after a count of steps is the count times the step, and
+    it is not a step at all. If it were a `SimulationStep`, a reader of a
+    signature could take it for a step that the constructor had checked.
     """
 
     step = SimulationStep(0.1)
@@ -135,8 +138,9 @@ def test_arithmetic_on_a_step_is_a_plain_float() -> None:
 def test_a_copied_or_pickled_step_is_still_a_step() -> None:
     """A state copied for a branch, or saved, keeps a step that is still checked.
 
-    Each of these rebuilds the step through the constructor rather than around
-    it, so a copy cannot carry an unchecked value under the type's name.
+    Each of these rebuilds the step through the constructor rather than
+    bypassing it, so a copy cannot carry an unchecked value under the type's
+    name.
     """
 
     step = SimulationStep(0.1)
@@ -147,13 +151,14 @@ def test_a_copied_or_pickled_step_is_still_a_step() -> None:
 
 
 def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
-    """A step nobody built is refused before anything moves, at all four entries.
+    """A step that nobody built is refused at all four entry points, before anything changes.
 
     `mypy` refuses a bare `float` at each of these in `src/`, but it does not
-    read `tests/`, and it passes a value typed `Any`. This is the runtime half:
-    a `TypeError`, because passing the wrong type is a programming error rather
-    than a setting the simulator rejected (`core/exceptions.py`). The value is
-    a supported step, so what is refused is the type and nothing else.
+    read `tests/`, and it passes a value typed `Any`. This test checks the
+    runtime half. It expects a `TypeError`, because passing the wrong type is a
+    programming error rather than a setting the simulator rejected
+    (`core/exceptions.py`). The value is a supported step, so what is refused
+    is the type and nothing else.
     """
 
     bare_step_s = 0.1
@@ -208,15 +213,16 @@ def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
 def test_another_quantity_handed_in_as_the_step_is_refused_as_a_swapped_argument(
     other: object,
 ) -> None:
-    """Named as the quantity it was built as, and not told to rebuild as the step.
+    """The refusal names the value's own quantity and does not say to rebuild it as a step.
 
     A `CaseInstant(0.1)` arriving where the step belongs is a swapped
-    argument. Until `PL-848D` the refusal prescribed `SimulationStep(0.1)`,
-    which would have the caller build a 0.1 s step from an instant, passing
-    every check and holding the wrong quantity, so the message names the type
-    the value was built as and prescribes nothing. Every checked quantity is
-    one record (`core/checked_number.py`), so a count, a flow and both forms
-    of a concentration are refused in the same words.
+    argument. Until `PL-848D`, the refusal prescribed `SimulationStep(0.1)`.
+    That advice would have the caller build a 0.1 s step from an instant,
+    which passes every check and holds the wrong quantity. So the message now
+    names the type that the value was built as, and prescribes nothing. Every
+    checked quantity is marked as one in a single record
+    (`core/checked_number.py`), so a count, a flow and both forms of a
+    concentration are refused in the same words.
     """
 
     with pytest.raises(TypeError) as raised:

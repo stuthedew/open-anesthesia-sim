@@ -1,9 +1,9 @@
-"""Tests of what a checked type is built from, pinned once, where the rule is written.
+"""Test, in one place, the shared rule for what a checked type may be built from.
 
 `core/checked_number.py` sets the rule for every checked type: `Fraction`,
 `Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant` and
 `StepCount`. The rule says what may be built into one, that none is built from
-another, and how a zero is held. Each type's own tests check that the type
+another, and how a zero is stored. Each type's own tests check that the type
 follows the rule. These tests check the rule itself, so that a change to it
 fails here before any type's tests fail (`PL-LLMN`, `PL-979Z`).
 """
@@ -46,9 +46,10 @@ from anesthesia_sim.core.supported_ranges import (
 class _AFloat(float):
     """A `float` subclass with no check of its own, standing in for the checked types.
 
-    The checked types are `float` subclasses too, and each one's own tests hold
-    that it passes; building one here would make a slip in this module report
-    as that type's refusal at collection, with no test of the rule run.
+    The checked types are `float` subclasses too, and each type's own tests
+    check that it passes. Building one here would make a slip in this module
+    show up as that type's refusal at collection, and no test of the rule
+    would run.
     """
 
 
@@ -63,17 +64,18 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     MacPercent: 0.05,
     StepCount: 1,
 }
-"""A number to build each checked type from that every other type's range admits, bar one.
+"""For each checked type, a number that every other type's range accepts, with one exception.
 
 0.05 is a supported step, a flow of 0.05 L/min, an instant of 0.05 s, a
-fraction of 0.05 and a dial at 0.05%, and a count of one step is an instant of
-1 s, a flow of 1 L/min, a fraction of 1.0 and a dial at 1%. So whatever
-refuses one of these built as another type refuses the type, not the number -
-except the step built from the count, since no whole number of seconds is a
-supported step: there the range would refuse 1 s too, as a
-`SimulationConfigurationError`, and the `TypeError` the pair test asserts is
-what proves the type was read first. The values are built inside each test
-rather than here, as `_AFloat` says.
+fraction of 0.05 and a dial at 0.05%. A count of one step is an instant of
+1 s, a flow of 1 L/min, a fraction of 1.0 and a dial at 1%. So when one of
+these values, built as one type, is refused by another type, the refusal
+comes from the type and not from the number. The one exception is the step
+built from the count, because no whole number of seconds is a supported
+step. There the range would refuse 1 s too, as a
+`SimulationConfigurationError`. The `TypeError` that the pair test asserts
+is what proves that the type was checked first. The values are built inside
+each test rather than here, for the reason that `_AFloat` gives.
 """
 
 NAMED_AS: dict[type[Any], str] = {
@@ -87,9 +89,11 @@ NAMED_AS: dict[type[Any], str] = {
     MacPercent: "mac_percent",
     StepCount: "step_count",
 }
-"""What each constructor calls its value in a refusal: its parameter, the run's
-`simulation_step_s` for the step, whose parameter is `seconds`, or a
-concentration's default `name`."""
+"""The name that each constructor gives its value in a refusal.
+
+The name is the constructor's parameter, with two exceptions. The step uses
+the run's `simulation_step_s`, although its parameter is `seconds`. A
+concentration uses its default `name`."""
 
 ORDERED_PAIRS = [
     (built_as, building)
@@ -126,13 +130,13 @@ def _every_subclass(base: type) -> list[type]:
 
 
 def test_a_refused_value_is_shown_as_itself_and_a_count_too_long_to_print_by_its_length() -> None:
-    """What a refusal prints for the value that failed it.
+    """Check what a refusal prints for the value that failed the check.
 
-    A string keeps its quotes, so `'2.5'` cannot be read as the number 2.5;
-    an `int` prints in digits up to the limit CPython prints at all, and past
-    it as more than that many, with its sign, where `repr` raises `ValueError`
-    and a refusal built on it escaped the simulator's own exceptions
-    (`PL-5F76`, `PL-LLMN`).
+    A string keeps its quotes, so `'2.5'` cannot be mistaken for the number
+    2.5. An `int` prints in digits up to the limit at which CPython prints
+    digits at all. Past that limit, it prints as more than that many digits,
+    with its sign. There `repr` raises `ValueError`, and a refusal built on
+    `repr` escaped the simulator's own exceptions (`PL-5F76`, `PL-LLMN`).
     """
 
     assert shown(2.5) == "2.5"
@@ -166,13 +170,14 @@ def test_a_refused_value_is_shown_as_itself_and_a_count_too_long_to_print_by_its
     ],
 )
 def test_an_int_or_a_float_is_a_number_whatever_it_holds(value: object) -> None:
-    """The type is all this decides: the range, and finiteness, are each type's own.
+    """This check decides only the type, and each type checks its own range and finiteness.
 
-    A `float` subclass is a `float`, so a NumPy double passes, as does a value
-    already built as a checked type, which each type's own tests hold - whether
-    it is the type in hand is `require_not_another_quantity`'s question, asked
-    before this one; so does an `int` of any length - a count or a flow too
-    long to print is refused by its own range, in its own words.
+    A `float` subclass is a `float`, so a NumPy double passes. So does a value
+    already built as a checked type, as each type's own tests check. Whether
+    that value is the type in hand is the question that
+    `require_not_another_quantity` asks, before this one. An `int` of any
+    length passes too. A count or a flow too long to print is refused by its
+    own range, in its own words.
     """
 
     require_a_number("value", value)
@@ -208,15 +213,16 @@ def test_an_int_or_a_float_is_a_number_whatever_it_holds(value: object) -> None:
 def test_what_is_not_an_int_or_a_float_is_refused_naming_the_value_and_its_type(
     value: object,
 ) -> None:
-    """A `TypeError` outside the simulator's hierarchy, since the caller's code is what is wrong.
+    """The error is a `TypeError` outside the simulator's hierarchy, as the caller's code is wrong.
 
-    A `bool` is an `int` to Python and is refused all the same, and so is the
-    NumPy `bool`, which is not a `bool`: the check admits two types rather
-    than refusing one. A NumPy scalar narrower than a double, a `Decimal` and a
-    stdlib `Fraction` are refused rather than converted, so a value rounded or
-    held in another arithmetic never reads as the number it was. The message
-    says `has type int64`, not `is a int64`, since the type's name is not a
-    word and a NumPy integer's reader would call it an int.
+    A `bool` is an `int` to Python, and it is refused all the same. So is the
+    NumPy `bool`, which is not a `bool`. The check accepts two types rather
+    than refusing one. A NumPy scalar narrower than a double, a `Decimal` and
+    a stdlib `Fraction` are refused rather than converted. So a value that
+    was rounded, or held in another arithmetic, is never treated as the
+    number it was. The message says `has type int64`, not `is a int64`,
+    because the type's name is not a word, and a reader would call a NumPy
+    integer an int.
     """
 
     with pytest.raises(TypeError) as raised:
@@ -233,13 +239,14 @@ def test_what_is_not_an_int_or_a_float_is_refused_naming_the_value_and_its_type(
 def test_a_value_built_as_another_quantity_is_refused_by_name_and_anything_else_passes() -> None:
     """The rule itself: the type in hand and an unbuilt value pass, another quantity does not.
 
-    It decides the type and nothing about the number, so a bare `float`, an
-    `int`, a `bool`, a string and a `float` subclass nobody checked all pass
-    to whatever reads the number next. What it refuses it names in full - the
-    parameter, the value, the type it was built as and the type in hand - and
-    it prescribes no rebuild, since the rebuild is the error. A count is any
-    whole nonnegative number however long, so the value it prints goes through
-    `shown`, where `repr` of a count past the digits CPython prints raised
+    The rule decides the type and nothing about the number. So a bare
+    `float`, an `int`, a `bool`, a string and a `float` subclass that nobody
+    checked all pass to whatever reads the number next. A refusal names
+    everything in full: the parameter, the value, the type the value was
+    built as, and the type in hand. It prescribes no rebuild, because the
+    rebuild is the error. A count is any whole nonnegative number, however
+    long, so the value that the refusal prints goes through `shown`. Calling
+    `repr` on a count longer than the digits CPython prints raised
     `ValueError` while the refusal was being written (`PL-5F76`).
     """
 
@@ -272,22 +279,23 @@ def test_a_value_built_as_another_quantity_is_refused_by_name_and_anything_else_
 def test_no_checked_type_is_built_from_another_checked_quantity(
     built_as: type[Any], building: type[Any]
 ) -> None:
-    """Every ordered pair of checked types refuses, before any comparison reads the number.
+    """Every ordered pair of checked types is refused, before any comparison reads the number.
 
-    `mypy --strict` passes each of these calls but the seven that build
-    `StepCount` from a float type, a checked `float` being a `float` and an
-    `int` admitted where a `float` is annotated, so the constructor is the one
-    check a slip of this shape meets, and until `PL-979Z` it checked the
-    number against its own range and held a count of 600 steps as an instant
-    of 600 s. The number is inside the range of the type being built
-    (`INSIDE_EVERY_RANGE`, which names the one pair where it is not), so what
-    refuses it is the type, and the refusal names the parameter, the value,
-    the type it was built as and the type asked for, and prescribes no
-    rebuild. `Fraction` and `Percent` keep their own refusal of each other,
-    which says to convert, since that pair is a missed conversion rather than
-    a swapped argument. A `TypeError` outside the simulator's hierarchy, since
-    the caller's code is what is wrong; a `SimulationConfigurationError` here
-    would mean the range read the number first.
+    `mypy --strict` accepts each of these calls except the seven that build
+    `StepCount` from a float type. It accepts them because a checked `float`
+    is a `float`, and an `int` is accepted where a `float` is annotated. So
+    the constructor is the only check that a slip of this kind meets. Until
+    `PL-979Z`, the constructor checked the number against its own range, and
+    so it stored a count of 600 steps as an instant of 600 s. The number is
+    inside the range of the type being built (`INSIDE_EVERY_RANGE` names the
+    one pair where it is not). So what refuses it is the type. The refusal
+    names the parameter, the value, the type the value was built as and the
+    type asked for, and it prescribes no rebuild. `Fraction` and `Percent`
+    keep their own refusal of each other, which says to convert, because that
+    pair is a missed conversion rather than a swapped argument. The error is
+    a `TypeError` outside the simulator's hierarchy, because the caller's
+    code is what is wrong. A `SimulationConfigurationError` here would mean
+    that the range checked the number first.
     """
 
     value = built_as(INSIDE_EVERY_RANGE[built_as])
@@ -315,7 +323,7 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
 def test_a_checked_type_is_rebuilt_from_its_own_kind(checked: type[Any]) -> None:
     """The type in hand passes, so an instant is rebuilt from an instant as before.
 
-    It holds the same number it was built from.
+    The rebuilt value holds the same number that it was built from.
     """
 
     built = checked(INSIDE_EVERY_RANGE[checked])
@@ -327,14 +335,14 @@ def test_a_checked_type_is_rebuilt_from_its_own_kind(checked: type[Any]) -> None
 
 @pytest.mark.parametrize("checked", list(INSIDE_EVERY_RANGE), ids=lambda checked: checked.__name__)
 def test_the_number_comes_before_the_base_in_every_checked_type(checked: type[Any]) -> None:
-    """`float` or `int` first and `CheckedQuantity` after, as `CheckedQuantity` says.
+    """`float` or `int` comes before `CheckedQuantity` in the bases, as `CheckedQuantity` says.
 
     `mypy` takes the nearest common base of two checked types as the type of
-    a container holding both; with the base first that is `CheckedQuantity`
-    rather than `float`, which refused a `float` variable in the interface
-    (`app/dashboard_frame.py`). `mypy` catches it there today, and this holds
-    the order where it is decided, so a refactor of that one variable cannot
-    lose the guard.
+    a container holding both. With the base first, that type is
+    `CheckedQuantity` rather than `float`, and `mypy` then refused a `float`
+    variable in the interface (`app/dashboard_frame.py`). `mypy` catches that
+    there today. This test enforces the order where it is decided, so that a
+    refactor of that one variable cannot lose the guard.
     """
 
     mro = checked.__mro__
@@ -346,12 +354,13 @@ def test_the_number_comes_before_the_base_in_every_checked_type(checked: type[An
 def test_every_checked_type_in_core_is_one_the_pairs_above_run() -> None:
     """A checked type added to `core/` joins the pairs above or fails here.
 
-    The record of which types are checked is the class hierarchy, so this
-    reads it, from every module under `core/`, rather than keeping a second
-    list: a type that subclasses `CheckedQuantity` with no number here is one
-    no pair above refuses, and the test that would have caught it never ran.
-    Only the package's own classes count, so a subclass a test defines is not
-    read as a checked type the simulator ships.
+    The class hierarchy is the record of which types are checked. So this
+    test reads the hierarchy, from every module under `core/`, rather than
+    keeping a second list. A type that subclasses `CheckedQuantity` but has
+    no number here is one that no pair above refuses, so the test that would
+    have caught it never ran. Only the package's own classes count, so a
+    subclass that a test defines is not treated as a checked type that the
+    simulator ships.
     """
 
     for module in pkgutil.walk_packages(
@@ -369,7 +378,7 @@ def test_every_checked_type_in_core_is_one_the_pairs_above_run() -> None:
 
 
 def test_negative_zero_is_held_as_zero_and_every_other_number_as_itself() -> None:
-    """Only the sign of a zero changes, since only a zero can carry a sign a comparison misses."""
+    """Only the sign of a zero changes, as only a zero can carry a sign that a comparison misses."""
 
     assert negative_zero_as_zero(-0.0).hex() == (0.0).hex()
     assert negative_zero_as_zero(0.0).hex() == (0.0).hex()
@@ -390,7 +399,7 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
     MacPercent: 150.0,
     StepCount: -5,
 }
-"""A number each checked type's own range refuses, written into a saved pickle by hand."""
+"""For each checked type, a number that its own range refuses, written into a pickle by hand."""
 
 
 def _tampered(pickled: bytes, held: float, written: float, protocol: int) -> bytes:

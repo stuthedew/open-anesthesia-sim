@@ -18,10 +18,10 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 
-#: The step this suite drives the controller at, matching the shipped
-#: `app/simulation_view.SIMULATION_STEP_S`. Restated rather than imported:
-#: that module needs Flet, and `tests/unit/test_simulation_view.py` is what
-#: holds the interface to the core's supported step.
+#: The step at which this suite drives the controller, matching the shipped
+#: `app/simulation_view.SIMULATION_STEP_S`. It is restated rather than imported,
+#: because that module needs Flet. `tests/unit/test_simulation_view.py` is the
+#: test that checks the interface uses a step the core supports.
 SIMULATION_STEP_S = SimulationStep(0.1)
 
 
@@ -66,8 +66,8 @@ def test_running_controller_advances_patient_and_named_history() -> None:
     assert snapshot.agent_accounting_passes_validation is True
 
     # The trace's right-hand end is the instant the readouts show. Both
-    # bounds of a drawn window are always columns, so this holds by
-    # construction rather than by the two reads being ordered.
+    # bounds of a drawn window are always columns, so this is true by
+    # construction, not because the two reads happen in a particular order.
     assert drawn.times_s[-1] == pytest.approx(snapshot.elapsed_s)
     assert drawn.compartment_fractions(
         RecordedSeries(snapshot.agent_id, RecordedQuantity.ALVEOLAR)
@@ -149,13 +149,12 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
 def _scripted_run(
     bursts: Iterable[int], simulation_step_s: float = SIMULATION_STEP_S
 ) -> SimulationController:
-    """One scripted run, its steps grouped into ticks of the given sizes.
+    """Return one scripted run, with its steps grouped into ticks of the given sizes.
 
     The script changes a setting at fixed *step counts*, never at a burst
-    boundary, so two runs given different burst patterns differ in nothing
-    but how the steps were grouped and how often the interface read the run
-    between them - which is the difference between a fast host and a slow
-    one.
+    boundary. So two runs given different burst patterns differ only in how
+    the steps were grouped and how often the interface read the run between
+    them. That is the difference between a fast host and a slow one.
     """
 
     controller = SimulationController()
@@ -174,7 +173,8 @@ def _scripted_run(
             elif steps_taken == 400:
                 controller.set_delivered_concentration_percent(Percent(5.0))
 
-        # What a frame does between ticks: read the run, and never move it.
+        # This is what a frame does between ticks: it reads the run and never
+        # advances it.
         controller.drawn_window(
             controller.snapshot().elapsed_s - 60.0, controller.snapshot().elapsed_s, 150
         )
@@ -183,7 +183,7 @@ def _scripted_run(
 
 
 def _ragged_bursts(total_steps: int) -> list[int]:
-    """Steps per tick for a host that wakes the loop irregularly."""
+    """Return the steps per tick for a host that wakes the loop irregularly."""
 
     bursts: list[int] = []
     remaining = total_steps
@@ -202,19 +202,21 @@ def _ragged_bursts(total_steps: int) -> list[int]:
 def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     """Identical inputs must reproduce element-wise, whatever the host did.
 
-    Required test from docs/MODEL.md, and the half the test above does not
-    reach: that one drives both runs identically, so it holds the model to
-    the same trajectory twice and says nothing about the machine. Simulated
-    time is the number of steps taken times the step, and the run loop takes
-    a fixed number of steps per tick and never extra ones to make up lost
-    wall-clock time, so a host that wakes the loop late or drops a frame
-    runs *slower* than one that does not - it does not run *differently*.
+    This is a required test from docs/MODEL.md. It covers the half that the
+    test above does not. That test drives both runs identically, so it checks
+    that the model gives the same trajectory twice and says nothing about the
+    machine. Simulated time is the number of steps taken times the step. The
+    run loop takes a fixed number of steps per tick, and never takes extra
+    steps to make up lost wall-clock time. So a host that wakes the loop late
+    or drops a frame runs *slower* than one that does not, but it does not run
+    *differently*.
 
-    The same 600 steps and the same settings at the same step counts, taken
-    one per tick and in ragged bursts. Compared sample by sample rather than
-    endpoint against endpoint, because that is the comparison a forked run
-    makes against the run it forked from: a divergence anywhere in the
-    recorded history is one a chart drawn from it would show.
+    Both runs take the same 600 steps, with the same settings at the same step
+    counts. One run takes one step per tick, and the other takes ragged
+    bursts. They are compared sample by sample rather than endpoint against
+    endpoint, because that is the comparison a forked run makes against the
+    run it forked from. A divergence anywhere in the recorded history would
+    show on a chart drawn from it.
     """
 
     steps = 600
@@ -222,10 +224,11 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     one_step_per_tick = _scripted_run([1] * steps)
     ragged = _scripted_run(_ragged_bursts(steps))
 
-    # The definition *is* the run now, so identity is compared there: the
-    # settings each stretch was computed under and the keyframe opening it,
-    # element for element and bit for bit, which the canonical evaluation
-    # rule guarantees is reproducible rather than merely close.
+    # The definition *is* the run now, so the runs are compared there. The
+    # comparison covers the settings each stretch was computed under and the
+    # keyframe that opens it, element for element and bit for bit. The
+    # canonical evaluation rule guarantees that these are reproducible, not
+    # merely close.
     assert one_step_per_tick.run_segments == ragged.run_segments
     assert one_step_per_tick.snapshot() == ragged.snapshot()
 
@@ -233,18 +236,18 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
 def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
     """`PL-SN2C`: playing a run faster must not change the run.
 
-    The playback multiplier is how many steps a tick takes and nothing
-    else - the step stays 0.1 s at every rate - so a case played at 300x is
-    the same steps in the same order as one played at real time, grouped
-    differently. That makes it exactly the burst pattern the test above
-    generalises, driven here through the *shipped* rates rather than
-    invented burst sizes, so a rate added to the ladder is covered by this
-    test on the day it is added.
+    The playback multiplier sets only how many steps a tick takes. The step
+    stays 0.1 s at every rate. So a case played at 300x takes the same steps
+    in the same order as one played at real time, grouped differently. That
+    makes each rate exactly the kind of burst pattern that the test above
+    generalises over. Here the patterns come from the *shipped* rates rather
+    than invented burst sizes, so a rate added to the ladder is covered by
+    this test on the day it is added.
 
-    Element for element, and against the snapshot too: two learners
-    comparing the same case at different speeds have to be comparing the
-    same arithmetic, and a divergence anywhere in the recorded history is
-    one the chart drawn from it would show.
+    The runs are compared element for element, and by snapshot too. Two
+    learners comparing the same case at different speeds must be comparing
+    the same arithmetic. A divergence anywhere in the recorded history would
+    show on the chart drawn from it.
     """
 
     steps = 600

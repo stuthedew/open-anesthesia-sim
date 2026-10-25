@@ -1,14 +1,15 @@
 """Unit tests for `app/formatting.py`, the interface's displayed values.
 
-These are the last transformation between a modeled number and what a
-reader sees, so they are tested here directly rather than only through the
-dashboard: `docs/MODEL.md` § "Displayed precision" reasons about this
-module, and a claim it makes should be checkable against the function it
-describes without constructing a Flet interface.
+The functions in that module are the last step between a modeled number and
+what a reader sees. They are therefore tested here directly, not only
+through the dashboard. `docs/MODEL.md` § "Displayed precision" reasons about
+that module, and each claim it makes should be checkable against the
+function it describes without constructing a Flet interface.
 
-The end-to-end path - real controller, real step, real formatter, the
-string on the panel - stays in `tests/unit/test_simulation_view.py`, which
-is where a displayed value can be read off the control that carries it.
+The end-to-end path stays in `tests/unit/test_simulation_view.py`. That path
+runs the real controller, a real step and the real formatter, and checks the
+string on the panel. That file is where a displayed value can be read off
+the control that shows it.
 """
 
 import inspect
@@ -71,13 +72,14 @@ from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME
 
 
 def test_format_percent_uses_the_documented_display_resolution() -> None:
-    """Pin the PL-040 decision: 0.01 percentage points, uniformly.
+    """Pin the PL-040 decision to show every concentration to 0.01 percentage points.
 
-    The resolution is derived in `docs/MODEL.md` § "Displayed precision" from
-    what the partition coefficients' measured spread supports, so this test
-    exists to make a change to it deliberate.
+    `docs/MODEL.md` § "Displayed precision" derives the resolution from the
+    measured spread of the partition coefficients. This test exists so that a
+    change to the resolution is made deliberately.
     `test_concentration_decimals_are_a_choice_within_a_recorded_band` is the
-    other half, and says which direction of change re-derives something.
+    other half. It says which direction of change requires re-deriving
+    something.
     """
 
     assert CONCENTRATION_DISPLAY_DECIMALS == 2
@@ -92,21 +94,22 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
 def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     """Two decimals is the owner's pick inside a one-to-two decimal band.
 
-    The band is what `docs/MODEL.md` § "Displayed precision" derives; the count
-    inside it is a presentation decision (`PL-88GQ`). The two halves fail
-    differently on purpose, and that is the whole point of pinning the band
+    `docs/MODEL.md` § "Displayed precision" derives the band. The count of
+    decimals inside the band is a presentation decision (`PL-88GQ`). The two
+    halves fail differently on purpose, and that is the reason to pin the band
     separately from the value:
 
-    - Moving to **one** decimal stays inside the band. It is the project
-      owner's to make and re-derives nothing in `core/`; what rules it out
-      today is a teaching judgment - fat and muscle read a flat `0.0%` for
-      minutes to an hour - rather than a numerical limit.
-    - Moving to **three** leaves the band. It would assert a resolution finer
-      than the measured spread of the partition coefficients that produced the
-      number, which is false precision under `CLAUDE.md`'s safety standard.
+    - Moving to **one** decimal stays inside the band. That change is the
+      project owner's to make, and it re-derives nothing in `core/`. What rules
+      it out today is a teaching judgment, not a numerical limit: fat and
+      muscle would show a flat `0.0%` for minutes to an hour.
+    - Moving to **three** decimals leaves the band. It would claim a
+      resolution finer than the measured spread of the partition coefficients
+      that produced the number. That is false precision under `CLAUDE.md`'s
+      safety standard.
 
-    A session reading only the constant cannot tell those apart, which is why
-    the band is asserted here rather than left in prose.
+    A session that reads only the constant cannot tell these two cases apart.
+    That is why the band is asserted here rather than left in prose.
     """
 
     minimum_supported_decimals = 1
@@ -115,22 +118,23 @@ def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     assert minimum_supported_decimals <= CONCENTRATION_DISPLAY_DECIMALS
     assert CONCENTRATION_DISPLAY_DECIMALS <= maximum_supported_decimals
 
-    # `PL-X9KD` cut the dependency that ran from this count back into `core/`.
-    # This keeps the *named* route cut, and is honest about being only that: a
-    # textual check. An import is the other route, and
-    # `tools/import_boundary_check.py` refuses `core/` importing
-    # `anesthesia_sim.app` by any form it can read - absolute, relative, or a
-    # dynamic import with a literal name (`PL-YXFF`) - so what is left for this
-    # to catch is the identifier typed into `core/` by hand: in a comment, or as
-    # a second definition, which `tools/literal_home_check.py` also refuses.
+    # `PL-X9KD` removed the dependency that ran from this count back into
+    # `core/`. The loop below keeps `core/` from naming the constant again. It
+    # is only a textual check. An import is the other way the dependency could
+    # return, and `tools/import_boundary_check.py` rejects any import of
+    # `anesthesia_sim.app` from `core/` in every form it can parse: absolute,
+    # relative, or a dynamic import with a literal name (`PL-YXFF`). What is
+    # left for this loop to catch is the identifier typed into `core/` by hand.
+    # That could be in a comment, or in a second definition, which
+    # `tools/literal_home_check.py` also rejects.
     #
-    # It would not have caught the defect it commemorates. What
+    # This check would not have caught the defect that prompted it. What
     # `core/supported_ranges.py` actually said was that the ranges rested on
-    # "every claim docs/MODEL.md makes about the last displayed digit" - the
-    # reasoning without the name. No check catches that phrasing without
-    # guessing at the judgment, which is the half `CLAUDE.md` says not to
-    # script; docs/MODEL.md § "Displayed precision" carries it in prose and a
-    # reviewer is the guard.
+    # "every claim docs/MODEL.md makes about the last displayed digit". That
+    # sentence states the reasoning without naming the constant. No check can
+    # catch that phrasing without guessing at the judgment, and `CLAUDE.md`
+    # says not to script the judgment. docs/MODEL.md § "Displayed precision"
+    # states the reasoning in prose, and a reviewer is the guard.
     core_modules = (Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim" / "core").rglob(
         "*.py"
     )
@@ -145,10 +149,11 @@ def test_format_percent_rounds_rather_than_truncates() -> None:
     """The last displayed digit is the nearest one, not a truncation.
 
     Truncation would bias every reading downward by up to a full count of
-    the last displayed digit - a systematic error introduced by the display
-    itself, and the largest one anywhere between a slider and a pixel now that
-    the solver's own residual is nine orders below the readout. Exact ties are
-    not asserted: a decimal tie is not generally representable as a double.
+    the last displayed digit. That would be a systematic error introduced by
+    the display itself. It would also be the largest error anywhere between a
+    slider and a pixel, now that the solver's own residual is nine orders of
+    magnitude smaller than the readout. Exact ties are not asserted, because a
+    decimal tie is not generally representable as a double.
     """
 
     assert format_percent(Fraction(0.021_39)) == "2.14%"
@@ -156,19 +161,19 @@ def test_format_percent_rounds_rather_than_truncates() -> None:
 
 
 def test_format_percent_marks_a_value_below_the_resolution() -> None:
-    """A filling compartment must not read as an empty one.
+    """A filling compartment must not look like an empty one.
 
-    Muscle and fat sit under 0.01% for the opening minutes of every run.
-    Rounding them to `0.00%` would assert the model holds zero there when
-    it does not, so a positive value that rounds to zero is shown as below
-    the resolution instead.
+    Muscle and fat stay below 0.01% for the opening minutes of every run.
+    Rounding them to `0.00%` would claim that the model has zero agent there
+    when it does not. A positive value that rounds to zero is therefore shown
+    as below the resolution instead.
     """
 
     assert format_percent(Fraction(1e-8)) == "<0.01%"
     assert format_percent(Fraction(4.0e-5)) == "<0.01%"
 
-    # Exactly zero is the one value that may read as zero: nothing has
-    # reached the compartment, which is a fact the model does hold.
+    # Exactly zero is the one value that may display as zero. It means that no
+    # agent has reached the compartment, which the model does know.
     assert format_percent(Fraction(0.0)) == "0.00%"
 
     # Either side of the rounding threshold, at half the resolution.
@@ -177,10 +182,10 @@ def test_format_percent_marks_a_value_below_the_resolution() -> None:
 
 
 def _displayed_value(reading: str) -> float:
-    """The percent a reading from `format_percent` states, as a number to compare.
+    """Return the percent that a reading from `format_percent` states, as a number.
 
-    "<0.01%" says that the value is above zero and below the resolution, so
-    it is read as half the resolution, a number strictly between the two.
+    "<0.01%" says that the value is above zero and below the resolution. It is
+    therefore treated as half the resolution, a number strictly between the two.
     """
 
     assert reading.endswith("%"), reading
@@ -198,7 +203,7 @@ _DISPLAY_COUNT_FRACTION = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0
 
 
 def _ulps_from(value: float, steps: int) -> float:
-    """`value` moved `steps` units in the last place, kept inside 0 to 1."""
+    """Return `value` moved by `steps` units in the last place, clamped to 0 to 1."""
 
     for _ in range(abs(steps)):
         value = math.nextafter(value, math.inf if steps > 0 else -math.inf)
@@ -206,10 +211,10 @@ def _ulps_from(value: float, steps: int) -> float:
     return min(max(value, 0.0), 1.0)
 
 
-# A fraction anywhere in 0 to 1, or within two units in the last place of a
-# whole or half display count. The rounding threshold between two readings is
-# at a half count, so that is where a formatter that is not monotone would
-# show it first.
+# Draw a fraction anywhere in 0 to 1, or within two units in the last place of
+# a whole or half display count. The rounding threshold between two readings
+# is at a half count, so a formatter that does not preserve order would show
+# the fault there first.
 _FRACTIONS = st.one_of(
     st.floats(min_value=0.0, max_value=1.0),
     st.builds(
@@ -230,14 +235,14 @@ _FRACTIONS = st.one_of(
 def test_format_percent_preserves_order(first: float, second: float) -> None:
     """A higher fraction is never displayed as a lower percent.
 
-    The dashboard shows six concentrations side by side to be read in
-    order, and `docs/MODEL.md` § "Displayed precision" relies on the
-    display not reordering them. Rounding is monotone, but `format_percent`
-    also has a below-resolution branch, so the property is checked on the
-    shipped function rather than assumed (`PL-0M7K`). Each reading is
-    parsed back to a number, with "<0.01%" read as strictly between 0 and
-    0.01. The fractions cover 0, the below-resolution branch and both
-    sides of every display-count boundary from 0% to 100%.
+    The dashboard shows six concentrations side by side, to be compared in
+    order. `docs/MODEL.md` § "Displayed precision" relies on the display not
+    reordering them. Rounding preserves order, but `format_percent` also has a
+    below-resolution branch. The property is therefore checked on the shipped
+    function rather than assumed (`PL-0M7K`). Each reading is parsed back to a
+    number, and "<0.01%" is treated as strictly between 0 and 0.01. The
+    fractions cover 0, the below-resolution branch, and both sides of every
+    display-count boundary from 0% to 100%.
     """
 
     lower, higher = sorted((first, second))
@@ -251,14 +256,18 @@ def test_format_percent_preserves_order(first: float, second: float) -> None:
 def test_format_percent_refuses_an_impossible_fraction(impossible: float) -> None:
     """A fraction outside 0 to 1 cannot occur, and must not be disguised if it does.
 
-    No `Fraction` can hold one, so reaching here means a caller `mypy` does not
-    read handed in a bare float, and something upstream is wrong. The
-    below-resolution form would render a small negative as an ordinary small
-    positive reading, and a value a rounding past 1 would read as `100.00%`;
-    `CLAUDE.md` requires the obvious failure instead. Until `PL-4R3W` a negative
-    was rendered with its sign; that item refused it by its range, and since
-    `PL-1DP1` the bare float it has to arrive as is refused for carrying no form
-    at all, before its value is read, which is the stronger form again.
+    No `Fraction` can hold such a value. Reaching this point means that a
+    caller which `mypy` does not check passed in a bare float, and something
+    upstream is wrong. The below-resolution form would render a small negative
+    value as an ordinary small positive reading. A value just past 1 because of
+    rounding would display as `100.00%`. `CLAUDE.md` requires the obvious
+    failure instead.
+
+    Until `PL-4R3W`, a negative value was rendered with its sign. That item
+    rejected the value by its range. Since `PL-1DP1`, such a value can only
+    arrive as a bare float, and the bare float is rejected because it is not a
+    `Fraction` at all, before its value is examined. That is the stronger
+    check again.
     """
 
     with pytest.raises(TypeError, match="was not built as Fraction, it is float: build it as"):
@@ -268,11 +277,11 @@ def test_format_percent_refuses_an_impossible_fraction(impossible: float) -> Non
 def test_format_percent_states_the_below_resolution_form_from_the_constant() -> None:
     """The marker must say the resolution the readouts actually use.
 
-    `<0.01%` is not a literal anywhere; it is rendered from
+    `<0.01%` is not a literal anywhere. It is rendered from
     `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` at
-    `CONCENTRATION_DISPLAY_DECIMALS`. A hardcoded marker would keep saying
-    `<0.01%` after a resolution change, telling a reader the display
-    resolves a digit finer or coarser than it does.
+    `CONCENTRATION_DISPLAY_DECIMALS` decimals. A hardcoded marker would keep
+    saying `<0.01%` after a resolution change. It would then tell a reader
+    that the display resolves a digit finer or coarser than it does.
     """
 
     expected = f"<{CONCENTRATION_DISPLAY_RESOLUTION_PERCENT:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
@@ -281,12 +290,12 @@ def test_format_percent_states_the_below_resolution_form_from_the_constant() -> 
 
 
 def test_format_subtitle_names_the_running_model_and_its_version() -> None:
-    """The one line tying a displayed value to what produced it.
+    """The subtitle is the one line that ties a displayed value to what produced it.
 
     `CLAUDE.md` requires a clinically meaningful value to be traceable to
-    the model and version behind it, and this subtitle is where the
-    interface says both. It is asserted against `APP_BUILD_VERSION` rather
-    than against a literal so that the test cannot pass a stale version.
+    the model and version behind it. This subtitle is where the interface
+    states both. The test compares it with `APP_BUILD_VERSION` rather than
+    with a literal, so that the test cannot pass with a stale version.
     """
 
     expected = f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
@@ -299,12 +308,12 @@ def test_format_subtitle_names_the_running_model_and_its_version() -> None:
 def test_the_subtitle_carries_the_build_identifier_when_there_is_one() -> None:
     """Between two releases every build shows the same version string.
 
-    That is what made a merged fix indistinguishable from the code it
-    replaced when the project owner went to confirm it by eye - the symptom
-    was reported still present, and the version on screen would have
-    confirmed the wrong answer (`PL-QC38`, `PL-YKF8`). The subtitle now
-    carries whatever `app_metadata.py` could establish about the running
-    build, and carries the bare version when that is all there is.
+    That made a merged fix look identical to the code it replaced when the
+    project owner tried to confirm the fix by eye. The symptom was reported as
+    still present, and the version on screen would have confirmed that wrong
+    conclusion (`PL-QC38`, `PL-YKF8`). The subtitle now shows whatever
+    `app_metadata.py` could establish about the running build. It shows the
+    bare version when that is all there is.
     """
 
     subtitle = format_subtitle("Isoflurane")
@@ -320,9 +329,9 @@ def test_the_subtitle_carries_the_build_identifier_when_there_is_one() -> None:
 def test_format_delivered_label_names_the_agent_being_delivered() -> None:
     """The vaporizer control must name the agent it is dialling.
 
-    A delivered concentration is meaningless without its agent — 2% is
-    a third of a MAC of desflurane and a full MAC of sevoflurane — so the
-    label carries the name rather than reading "Delivered agent".
+    A delivered concentration is meaningless without its agent. 2% is a third
+    of a MAC of desflurane and a full MAC of sevoflurane. The label therefore
+    includes the agent's name rather than saying "Delivered agent".
     """
 
     assert format_delivered_label("Sevoflurane") == "Delivered sevoflurane"
@@ -332,20 +341,20 @@ def test_format_delivered_label_names_the_agent_being_delivered() -> None:
 def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
     """One stated resolution has to govern both display units.
 
-    A MAC multiple is a percent divided by the agent's own `mac_percent`,
-    so the percent resolution already fixes how finely the quotient is
-    known. `docs/MODEL.md` § "Displayed precision" therefore *derives*
-    `MAC_DISPLAY_DECIMALS` rather than choosing it: the finest power of
-    ten that is nowhere finer than the percent resolution converted into
-    MAC. Deriving it a second time independently would mean re-deriving
-    two numbers whenever the first is re-measured, which is what
-    `PL-X9KD` is about to do to the percent side.
+    A MAC multiple is a percent divided by the agent's own `mac_percent`.
+    The percent resolution therefore already fixes how finely the quotient is
+    known. For that reason `docs/MODEL.md` § "Displayed precision" *derives*
+    `MAC_DISPLAY_DECIMALS` rather than choosing it. The MAC resolution is the
+    finest power of ten that is nowhere finer than the percent resolution
+    converted into MAC. Deriving it independently would mean re-deriving two
+    numbers whenever the first is re-measured, and `PL-X9KD` is about to
+    re-measure the percent side.
 
-    This re-runs that arithmetic against every shipped agent, so adding
-    an agent, or changing the percent resolution, fails here rather than
-    silently over-claiming on the display. The binding agent today is
-    isoflurane: 0.01 percentage points of a 1.2% MAC is 0.0083 MAC, and
-    0.01 is the finest power of ten at or above it.
+    This test repeats that arithmetic for every shipped agent. Adding an
+    agent, or changing the percent resolution, therefore fails here rather
+    than silently over-claiming on the display. The agent that sets the limit
+    today is isoflurane: 0.01 percentage points of a 1.2% MAC is 0.0083 MAC,
+    and 0.01 is the finest power of ten at or above that.
     """
 
     coarsest_supported = max(
@@ -366,12 +375,12 @@ def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
 def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
     """The two units are read side by side, so neither may out-claim the other.
 
-    The property is the one the derivation above exists to guarantee,
-    stated in the terms a reader meets it in: for every shipped agent, one
-    count of the MAC line is at least one count of the percent line above
-    it. Where that failed, a reader could watch the MAC digit move while
-    the percent digit stood still and conclude the model resolved
-    something it does not.
+    This is the property that the derivation in the test above exists to
+    guarantee, stated as a reader meets it. For every shipped agent, one count
+    of the MAC line is at least one count of the percent line above it. If
+    that failed, a reader could watch the MAC digit move while the percent
+    digit stayed still. The reader could then conclude that the model resolves
+    a difference that it does not.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -384,11 +393,11 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
 
 
 def test_one_mac_of_every_agent_reads_as_one() -> None:
-    """The unit's defining case, on the three agents that ship.
+    """Check the defining case of the MAC unit on the three agents that ship.
 
-    This is the whole reason for the second unit: the same clinical depth
-    reads as the same number whichever agent is running, where the percent
-    line reads 2.00%, 1.20% and 6.00% for the identical situation.
+    This is the whole reason for the second unit. The same clinical depth
+    shows as the same number whichever agent is running. The percent line
+    shows 2.00%, 1.20% and 6.00% for the identical situation.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -399,13 +408,12 @@ def test_one_mac_of_every_agent_reads_as_one() -> None:
 
 
 def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
-    """`0.80 MAC` reads as a depth; `0.80 ×MAC` reads as a ratio.
+    """`0.80 MAC` looks like a depth, and `0.80 ×MAC` looks like a ratio.
 
-    The sign is the display-side half of `docs/MODEL.md` § "MAC multiples
-    as a display unit": on the four non-alveolar compartments the number
-    is a partial-pressure ratio and asserts nothing about anesthetic
-    depth, and the two readings are indistinguishable if the unit is
-    written as a bare "MAC".
+    The sign is the display side of `docs/MODEL.md` § "MAC multiples as a
+    display unit". On the four non-alveolar compartments, the number is a
+    partial-pressure ratio and claims nothing about anesthetic depth. The two
+    meanings cannot be told apart if the unit is written as a bare "MAC".
     """
 
     assert MAC_UNIT_SUFFIX == " ×MAC"
@@ -415,14 +423,14 @@ def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
 
 
 def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
-    """A filling compartment must not read as an empty one, in either unit.
+    """A filling compartment must not look like an empty one, in either unit.
 
-    The below-resolution form matters more in MAC than in percent, not
-    less: 0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
-    desflurane, so a compartment clears the MAC line's last digit later
-    than it clears the percent readout beside it. `0.00 ×MAC` under a
-    percent line already showing the compartment filling would be the two
-    readouts contradicting each other.
+    The below-resolution form matters more in MAC than in percent, not less.
+    0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of desflurane.
+    A compartment therefore reaches the MAC line's last digit later than it
+    reaches the last digit of the percent readout beside it. If the MAC line
+    showed `0.00 ×MAC` under a percent line that already shows the
+    compartment filling, the two readouts would contradict each other.
     """
 
     expected = f"<{MAC_DISPLAY_RESOLUTION_MAC:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX}"
@@ -435,12 +443,13 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
 
 @pytest.mark.parametrize("impossible", [-0.02, -1e-9])
 def test_format_mac_multiple_refuses_an_impossible_negative(impossible: float) -> None:
-    """A negative is an upstream defect and must not be read as a value.
+    """A negative value is an upstream defect and must not be shown as a value.
 
-    Same rule as `format_percent`, for the same reason: no `Fraction` holds a
-    negative, so one arriving here is refused before it can be absorbed into
-    the plausible-looking below-resolution form - since `PL-1DP1` as the bare
-    float it has to be, before its value is read.
+    The rule is the same as for `format_percent`, for the same reason. No
+    `Fraction` can hold a negative value, so one that arrives here is rejected
+    before it can be hidden in the plausible-looking below-resolution form.
+    Since `PL-1DP1`, such a value can only arrive as a bare float, and it is
+    rejected as one before its value is examined.
     """
 
     with pytest.raises(TypeError, match="was not built as Fraction, it is float: build it as"):
@@ -521,11 +530,11 @@ def test_mac_axis_ticks_land_on_round_mac_values_inside_the_plotted_range() -> N
 def test_every_shipped_agent_gets_the_same_mac_axis_spacing() -> None:
     """One mental scale has to survive an agent change.
 
-    The three vaporizer maxima span 5% to 18%, which is 3.0 to 4.2 MAC —
-    close enough that the ladder gives all three a half-MAC step. That is
-    what makes the cross-agent comparison the second unit exists for
-    actually readable: the gridline a reader learns under sevoflurane
-    means the same thing under desflurane.
+    The three vaporizer maxima span 5% to 18%, which is 3.0 to 4.2 MAC. That
+    range is narrow enough that the ladder gives all three agents a half-MAC
+    step. The second unit exists for comparison across agents, and the shared
+    step is what makes that comparison readable. A gridline that a reader
+    learns under sevoflurane means the same thing under desflurane.
     """
 
     spacings = set()
@@ -545,9 +554,9 @@ def test_every_shipped_agent_gets_the_same_mac_axis_spacing() -> None:
 def test_the_mac_axis_coarsens_rather_than_crowding_a_wide_range() -> None:
     """The spacing is a function of the range, not a constant.
 
-    `MAX_MAC_AXIS_INTERVALS` is the ceiling; the ladder supplies the
-    steps. A fixed step would put sixty labels on a wide axis, which is
-    an unreadable axis rather than a precise one.
+    `MAX_MAC_AXIS_INTERVALS` is the maximum number of intervals, and the
+    ladder supplies the steps. A fixed step would put sixty labels on a wide
+    axis. That axis would be unreadable rather than precise.
     """
 
     for max_percent, expected_step in (
@@ -573,12 +582,13 @@ def test_the_mac_axis_is_unlabelled_rather_than_invented_for_an_empty_range() ->
 
 
 def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
-    """The one free parameter of the second unit, named on the display.
+    """The display names the one free parameter of the second unit.
 
     `CLAUDE.md` requires a clinically meaningful displayed value to be
     traceable to the transformation that produced it. A MAC multiple has
-    exactly one, so naming it beside the axis is what lets a reader who
-    disagrees with the divisor see that they disagree — and convert back.
+    exactly one transformation, the division by MAC. Naming the divisor beside
+    the axis lets a reader who disagrees with it see that they disagree. They
+    can then convert back.
     """
 
     assert format_mac_reference("Sevoflurane", MacPercent(2.0)) == "1 MAC sevoflurane = 2.0%"
@@ -595,12 +605,11 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
 def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() -> None:
     """The band's height is a fraction times a divisor, and nothing else.
 
-    Checked against every shipped agent rather than one literal, because the
-    property that matters is that the band is placed by *that agent's* two
-    values. Independently calculated here from the data files: the expected
-    edges are recomputed from the file rather than restated, so a corrected
-    value in a data file moves the assertion with it instead of failing as a
-    stale literal.
+    The test checks every shipped agent rather than one literal. The property
+    that matters is that *that agent's* two values place the band. The
+    expected edges are calculated here independently from the data files
+    rather than restated. A corrected value in a data file therefore moves the
+    assertion with it, instead of failing against a stale literal.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -622,25 +631,26 @@ def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() ->
 
 
 def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() -> None:
-    """The denominator trap, pinned as arithmetic.
+    """Pin the denominator trap as arithmetic.
 
-    Desflurane's published MAC-awake of 2.60% is 36% of a MAC of about 7.25%
-    - Rampil's 18-30 year figure - while this project stores Rampil's 31-65
-    year figure of 6.0%. Importing the *percent* would place the band at
-    2.60% where the fraction places it at 2.16%, 20% too high, and a
-    reference drawn too high is crossed too soon by a falling trace: it
-    teaches an earlier wake-up than the literature supports.
-    `docs/MODEL.md` § "MAC-awake as a chart reference" carries the reasoning.
+    Desflurane's published MAC-awake of 2.60% is 36% of a MAC of about 7.25%,
+    which is Rampil's figure for ages 18-30. This project stores Rampil's
+    figure for ages 31-65, which is 6.0%. Importing the *percent* would place
+    the band at 2.60%, where the fraction places it at 2.16%. That is 20% too
+    high. A falling trace crosses a reference drawn too high too soon, so the
+    chart would teach an earlier wake-up than the literature supports.
+    `docs/MODEL.md` § "MAC-awake as a chart reference" gives the reasoning.
 
-    This is what makes the fraction the stored form rather than a schema
-    preference, so it is tested as a value the interface must not be able to
-    produce.
+    This trap is why the fraction is the stored form, rather than a schema
+    preference. The test therefore treats the wrong band as a value that the
+    interface must not be able to produce.
 
-    The band is also compared with an independent measurement: Song et al.
-    2005's non-jaundiced control arm, in the population the 31-65 year
-    divisor describes. That comparison is coarse. Its tolerance is Song's
-    standard deviation, so it fails only when the stored fraction is more
-    than about 11% too low or 12% too high, outside 0.320-0.403 of MAC.
+    The band is also compared with an independent measurement. That
+    measurement is the non-jaundiced control arm of Song et al. 2005, in the
+    population that the 31-65 year divisor describes. The comparison is
+    coarse. Its tolerance is Song's standard deviation, so it fails only when
+    the stored fraction is more than about 11% too low or 12% too high, that
+    is, outside 0.320-0.403 of MAC.
     `test_mac_awake_matches_its_adopted_primary_source` in
     `tests/unit/test_parameters.py` pins the fraction exactly (`PL-H1JH`).
     """
@@ -659,14 +669,15 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     # Song et al. 2005 (PMID 15731594), Abstract, read through PubMed on
     # 2026-10-17: the control group's MAC-awake was "2.17 +/- 0.25%" (mean +/-
     # SD). The centre lies within one of Song's standard deviations of that
-    # mean. The bound is not the display's resolution: 2.16 against 2.17 sits
-    # exactly on that bound in decimal arithmetic, and only float rounding
-    # passed a strict `<` there.
+    # mean. The bound is not the display's resolution. The difference between
+    # 2.16 and 2.17 falls exactly on that resolution in decimal arithmetic, and
+    # only float rounding let a strict `<` pass there.
     assert abs(centre - 2.17) <= 0.25
-    # Chortkoff's absolute percent, which the stored fraction must not
-    # reproduce: it belongs to a different population's MAC.
+    # The stored fraction must not reproduce Chortkoff's absolute percent,
+    # because that percent belongs to a different population's MAC.
     assert centre != pytest.approx(2.60)
-    # And the mistake of dividing that absolute percent by the stored MAC.
+    # Also rule out the mistake of dividing that absolute percent by the
+    # stored MAC.
     assert mac_awake.fraction_of_mac != pytest.approx(2.60 / desflurane.mac_percent, abs=1e-3)
 
 
@@ -697,16 +708,16 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
 def test_each_shipped_mac_awake_band_lands_at_its_published_values(
     agent_id: str, band_percent: tuple[float, float], reference_line: str
 ) -> None:
-    """A run's MAC-awake band and its line of text, checked against literals.
+    """Check a run's MAC-awake band and its line of text against literals.
 
-    The run is built from the shipped data file, and each edge was worked out
-    by hand as the published mean minus or plus one standard deviation, times
-    the MAC the display divides by. The fractions are Katoh et al.'s and
+    The run is built from the shipped data file. Each edge was worked out by
+    hand as the published mean minus or plus one standard deviation, times
+    the MAC that the display divides by. The fractions are Katoh et al.'s and
     Chortkoff et al.'s, and `test_mac_awake_matches_its_adopted_primary_source`
     in `tests/unit/test_parameters.py` gives their locators. The MACs are De
     Wolf et al.'s. The other band tests in this file compute their expected
-    band from the loaded file, so none of them can see a value that was wrong
-    when it was stored (`PL-H1JH`).
+    band from the loaded file. None of them can therefore detect a value that
+    was wrong when it was stored (`PL-H1JH`).
     """
 
     snapshot = SimulationController(agent_id=agent_id).snapshot()
@@ -728,12 +739,12 @@ def test_each_shipped_mac_awake_band_lands_at_its_published_values(
 
 
 def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
-    """An obvious failure rather than a plausible-looking band.
+    """The band raises an obvious failure rather than drawing a plausible-looking band.
 
-    A non-positive divisor has no meaningful multiple, and a lower edge at or
+    A non-positive divisor has no meaningful multiple. A lower edge at or
     below zero is not a concentration. `_MacAwakePayload` already makes both
-    unreachable from a shipped data file, so one arriving here means
-    something upstream is wrong and the band must not be drawn anyway.
+    impossible from a shipped data file. If either arrives here, something
+    upstream is wrong, and the band must not be drawn anyway.
     """
 
     with pytest.raises(TypeError, match="MacPercent"):
@@ -778,11 +789,12 @@ def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
 
 
 def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
-    """A transposition the type system cannot catch, refused by the signature.
+    """The signature rejects a transposition that the type system cannot catch.
 
     The mean and its standard deviation are two dimensionless numbers of the
-    same magnitude and the same type. Positionally, swapping them draws a
-    band centred on the spread rather than the mean, with no error anywhere.
+    same magnitude and the same type. If they were positional, swapping them
+    would draw a band centred on the spread rather than the mean, with no
+    error anywhere.
     """
 
     with pytest.raises(TypeError):
@@ -790,19 +802,19 @@ def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
 
 
 def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy_alone() -> None:
-    """The swap `MacMultiple` exists to refuse, and what it costs when it lands.
+    """Show the swap that `MacMultiple` exists to reject, and what it costs if it happens.
 
     A fraction of an atmosphere and a ratio to MAC are both small
-    dimensionless numbers of the same magnitude, so neither reads as wrong in
-    place of the other. Sevoflurane's band is 0.34 +/- 0.05 MAC against a MAC
-    of 2.0%, which is 0.58-0.78% - the decrement a falling alveolar trace has
-    to cross for arousal. Passing a circuit fraction at the vaporizer's own 8%
-    maximum instead clears every runtime guard, because 0.08 - 0.05 is still
-    positive, and draws the same band at 0.06-0.26%: *below* the awakening
-    concentration, so a trace crosses it late or not at all, with nothing on
-    the screen saying so.
+    dimensionless numbers of the same magnitude. Neither looks wrong in place
+    of the other. Sevoflurane's band is 0.34 +/- 0.05 MAC against a MAC of
+    2.0%, which is 0.58-0.78%. That is the range a falling alveolar trace has
+    to cross for arousal. A circuit fraction at the vaporizer's own 8% maximum,
+    passed instead, clears every runtime guard, because 0.08 - 0.05 is still
+    positive. It draws the same band at 0.06-0.26%. That
+    band is *below* the awakening concentration, so a trace crosses it late
+    or not at all, and nothing on the screen says so.
 
-    The directive below is therefore the whole of the safeguard, and the two
+    The directive below is therefore the whole of the safeguard. The two
     assertions are what a reader needs in order to believe that (`PL-BQ46`).
     """
 
@@ -822,17 +834,19 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
 
 
 def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> None:
-    """The other direction, which reaches a readout rather than a reference.
+    """The swap in the other direction is rejected too: it would corrupt a readout, not a reference.
 
-    `mac_multiple()` returns a ratio to MAC, and the two readouts beside each
-    other are the same compartment in the two units. Sevoflurane at 0.34 MAC
-    is an alveolar fraction of 0.0068; rendering the multiple as though it
-    were the fraction prints the percent of 0.34 next to "0.34" of MAC, so the
-    two readouts of one compartment disagree by the factor of 50 between them.
-    `mypy` refuses the call, which the directive asserts, and since `PL-1DP1`
-    so does the formatter at run time: a `MacMultiple` is a bare `float` there,
-    built as no `Fraction`, where until then it printed as the fraction it is
-    not.
+    `mac_multiple()` returns a ratio to MAC. The two readouts beside each
+    other show the same compartment in the two units. Sevoflurane at 0.34 MAC
+    is an alveolar fraction of 0.0068. Rendering the multiple as though it
+    were the fraction prints the percent of 0.34 next to "0.34" of MAC. The
+    two readouts of one compartment would then disagree by the factor of 50
+    between them.
+
+    `mypy` rejects the call, which the directive asserts. Since `PL-1DP1`, the
+    formatter also rejects it at run time. There a `MacMultiple` is a bare
+    `float`, not built as a `Fraction`. Until then, the formatter printed it
+    as the fraction it is not.
     """
 
     fraction = Fraction(0.0068)
@@ -851,10 +865,10 @@ def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
     """Every `mac_percent` this module takes is a `MacPercent`, never a bare `float`.
 
     Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
-    Handed the fraction, every function named below runs without complaint,
+    Given the fraction, every function named below runs without complaint,
     because the divisor is still positive. The chart's ceiling lands at 0.06%
-    instead of 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
-    `float`, so only a parameter typed `Percent` refuses one. A parameter
+    instead of 6%, and 1 MAC displays as 100.00 ×MAC. A `Fraction` is a
+    `float`, so only a parameter typed `Percent` rejects one. A parameter
     typed `float` breaks no caller, so `mypy` never asks for it to change.
     Six of these eight were `float` until `PL-W3Q5`. The test reads the types
     from the signatures rather than from a list, so a function added with a
@@ -885,10 +899,10 @@ def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
 def test_format_mac_awake_reference_names_both_free_parameters() -> None:
     """The band has two free parameters, so both are on the display.
 
-    A MAC multiple has one divisor and `format_mac_reference` names it. The
-    band is a published fraction *applied to* that divisor, so a reader has
-    two things to be able to disagree with, and the line states the fraction,
-    the percent it lands at, and the edges it spans.
+    A MAC multiple has one divisor, and `format_mac_reference` names it. The
+    band is a published fraction *applied to* that divisor. A reader therefore
+    has two values to be able to disagree with. The line states the fraction,
+    the percent it lands at, and the edges of the band.
     """
 
     reference = format_mac_awake_reference(
@@ -919,8 +933,9 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         assert f"{mac_awake.fraction_of_mac:.{MAC_DISPLAY_DECIMALS}f}{MAC_UNIT_SUFFIX}" in rendered
         assert f"{lower:.{CONCENTRATION_DISPLAY_DECIMALS}f}" in rendered
         assert f"{upper:.{CONCENTRATION_DISPLAY_DECIMALS}f}" in rendered
-        # The endpoint, named. MAC-awake is responsiveness to command; MAC is
-        # immobility to incision, and the two read alike unless said.
+        # The line must name the endpoint. MAC-awake is responsiveness to
+        # command. MAC is immobility in response to incision. The two look alike unless
+        # the line says which one it means.
         assert "MAC-awake" in rendered
 
 
@@ -935,12 +950,12 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
 def test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled(
     mac_percent: float, expected_top: float, expected_interval: float
 ) -> None:
-    """Independently calculated: the constant times the agent's 1 MAC.
+    """Each expected value is calculated independently as the constant times the agent's 1 MAC.
 
-    Desflurane's 18.0 is the one worth reading twice. It is also that
-    agent's vaporizer dial maximum, so the number is unchanged from the
-    rule PL-CC23 replaced while the reason for it is entirely different —
-    a coincidence of 18 % / 6 % = 3.00 rather than agreement between the
+    Desflurane's 18.0 deserves a second look. It is also that agent's
+    vaporizer dial maximum. The number is therefore unchanged from the rule
+    that PL-CC23 replaced, but the reason for it is entirely different. The
+    match is a coincidence of 18 % / 6 % = 3.00, not agreement between the
     two rules.
     """
 
@@ -949,12 +964,12 @@ def test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled(
 
 
 def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
-    """The invariant the axis exists to hold, stated in the unit it holds it in.
+    """Check, in MAC, the invariant that the axis exists to keep.
 
-    Read in MAC the ceiling is one number for every agent — that is what
-    makes two agents' wash-in curves the same shape for the same case.
-    Stated here as a property over a range of 1 MAC values rather than
-    over the three shipped agents, so it constrains the *rule* rather
+    Measured in MAC, the ceiling is one number for every agent. That is what
+    gives two agents' wash-in curves the same shape for the same case. The
+    test states this as a property over a range of 1 MAC values rather than
+    over the three shipped agents. It therefore constrains the *rule* rather
     than today's data files.
     """
 
@@ -968,19 +983,19 @@ def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
 
 
 def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure() -> None:
-    """The two constraints that chose 3 rather than 2 or 4.
+    """Check the two constraints that chose 3 rather than 2 or 4.
 
-    1 MAC must sit inside the plot rather than on its frame, and the
-    2-3x MAC range that overpressure induction works in must be on the
-    plot. A ceiling of 2 would put the 1 MAC line at half height with no
-    room above it for the technique; the assertions below are what stop
-    the constant drifting back toward either edge.
+    1 MAC must sit inside the plot rather than on its frame. The 2-3x MAC
+    range in which overpressure induction works must also be on the plot. A
+    ceiling of 2 would put the 1 MAC line at half height, with no room above
+    it for the technique. The assertions below stop the constant from
+    drifting back toward either edge.
     """
 
     assert CHART_AXIS_TOP_MAC >= 3.0, "overpressure at 2-3x MAC must stay on the plot"
     assert 1.0 / CHART_AXIS_TOP_MAC <= 0.34, "1 MAC must not sit near the top of the frame"
-    # The rules have to divide the ceiling exactly, or the topmost gap is a
-    # different size from the rest and reads as a scale change at the top.
+    # The gridlines have to divide the ceiling exactly. Otherwise the topmost
+    # gap is a different size from the rest and looks like a scale change.
     assert (CHART_AXIS_TOP_MAC / CHART_GRID_INTERVAL_MAC) % 1 == pytest.approx(0.0)
 
 
@@ -990,9 +1005,9 @@ def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> No
 
     Failing is the required behavior. A chart drawn against such an axis
     would still render, and a reader could still read a number off every
-    value on it. The axis takes a `MacPercent`, so such a MAC
-    is refused when it is built, before an axis can be computed from it
-    (`PL-F9TC`). A bare `float` is refused by the axis itself, as
+    value on it. The axis takes a `MacPercent`, so such a MAC is rejected when
+    the `MacPercent` is built, before an axis can be computed from it
+    (`PL-F9TC`). The axis itself rejects a bare `float`, as
     `test_a_mac_not_built_as_one_refuses_to_produce_a_number` shows.
     """
 
@@ -1001,17 +1016,17 @@ def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> No
 
 
 def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> None:
-    """One rendering of simulated time, not a second one written here.
+    """The warning uses the clock's one rendering of simulated time, not a second one.
 
-    A warning quoting "1 min" beside a clock reading "1m" would leave a
-    reader converting between two displayed forms of the same quantity at
-    the moment they are deciding whether to destroy it, which is the failure
-    `format_elapsed` exists to prevent.
+    A warning quoting "1 min" beside a clock showing "1m" would leave a
+    reader converting between two displayed forms of the same quantity. They
+    would be doing that at the moment they decide whether to destroy the case.
+    `format_elapsed` exists to prevent that failure.
 
-    The literal is asserted as well as the call, so that the two cannot
-    agree by both being wrong: `format_elapsed` moved from `1234.5 s` to the
-    compound form under `PL-Q4M4` and `PL-CZFY`, and a test written only
-    against the function would have followed it silently.
+    The test asserts the literal as well as the call, so that the two cannot
+    agree by both being wrong. `format_elapsed` moved from `1234.5 s` to the
+    compound form under `PL-Q4M4` and `PL-CZFY`. A test written only against
+    the function would have followed that change silently.
     """
 
     warning = format_case_discard_warning("Sevoflurane", 1234.5, 3)
@@ -1021,11 +1036,11 @@ def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> 
 
 
 def test_the_discard_warning_names_the_agent_being_left() -> None:
-    """Named, and in sentence case, because it reads as prose and not as a label.
+    """The agent is named in sentence case, because the warning is prose and not a label.
 
-    The agent is what makes the warning about *this* case rather than about
-    cases in general, and it is the cue a reader checks the header badge
-    against before answering.
+    The agent's name makes the warning about *this* case rather than about
+    cases in general. It is also the cue that a reader compares with the
+    header badge before answering.
     """
 
     assert "The current sevoflurane case" in format_case_discard_warning("Sevoflurane", 60.0, 1)
@@ -1046,10 +1061,10 @@ def test_the_discard_warning_counts_control_changes_in_agreeing_grammar(
 ) -> None:
     """A count and its noun have to agree, including at one.
 
-    Not decoration: this sentence is read once, under time pressure, by
-    someone about to lose the run it describes, and "1 recorded control
-    changes" is the kind of seam that costs a reader a second pass over the
-    one clause that matters.
+    This is not decoration. The sentence is read once, under time pressure, by
+    someone about to lose the run it describes. "1 recorded control changes"
+    is the kind of flaw that makes a reader read the one clause that matters
+    a second time.
     """
 
     assert expected in format_case_discard_warning("Sevoflurane", 60.0, control_change_count)
@@ -1058,9 +1073,9 @@ def test_the_discard_warning_counts_control_changes_in_agreeing_grammar(
 def test_the_branch_discard_warning_states_both_instants_the_clock_showed() -> None:
     """`PL-W5WX`: a branch's time is two instants on the case's clock, not a duration.
 
-    The literal is written from `format_elapsed`'s stated grammar - `1m`,
-    `5m30.5s` - rather than from a call, so a change to the clock's form
-    fails here instead of being followed.
+    The literal is written from `format_elapsed`'s stated grammar, such as
+    `1m` and `5m30.5s`, rather than from a call. A change to the clock's form
+    therefore fails here instead of being followed silently.
     """
 
     assert format_branch_discard_warning("Run 2", 60.0, 330.5, 2) == (
@@ -1073,10 +1088,10 @@ def test_the_branch_discard_warning_states_both_instants_the_clock_showed() -> N
 def test_the_branch_discard_warning_states_no_second_instant_it_cannot_stand_behind(
     elapsed_s: float | None,
 ) -> None:
-    """A branch not run past its fork, or whose time could not be read, is given its fork alone.
+    """Show only the fork time for a branch not run past its fork, or whose time is unknown.
 
-    "Run to 1m" beside "branched at 1m" says nothing, and an unread instant
-    must not be printed as though it were known.
+    "Run to 1m" beside "branched at 1m" says nothing. An instant that could
+    not be read must not be printed as though it were known.
     """
 
     assert format_branch_discard_warning("Run 2", 60.0, elapsed_s, 1) == (
@@ -1114,7 +1129,7 @@ def test_the_branch_discard_warning_states_no_second_instant_it_cannot_stand_beh
 def test_the_case_discard_warning_is_pinned_whole(
     agent: str, elapsed_s: float, control_change_count: int, expected: str
 ) -> None:
-    """The whole sentence, so a wrong plural cannot pass as a substring.
+    """Pin the whole sentence, so that a wrong plural cannot pass as a substring.
 
     The grammar test above asserts `expected in warning`, and "1 recorded
     control change" is a substring of "1 recorded control changes". So a
@@ -1127,10 +1142,10 @@ def test_the_case_discard_warning_is_pinned_whole(
 
 
 def test_the_discard_warning_says_the_loss_is_final() -> None:
-    """The one thing a reader cannot recover from getting wrong.
+    """Finality is the one thing a reader cannot recover from misunderstanding.
 
-    There is no undo and no saved state behind this dialog, so the sentence
-    has to say so rather than leaving "discarded" to be read as reversible.
+    There is no undo and no saved state behind this dialog. The sentence has
+    to say so, rather than leaving a reader to take "discarded" as reversible.
     """
 
     warning = format_case_discard_warning("Sevoflurane", 60.0, 1)
@@ -1142,8 +1157,8 @@ def test_the_discard_warning_says_the_loss_is_final() -> None:
 def test_the_playback_rate_is_stated_at_every_rate_including_real_time() -> None:
     """A rate is a mode, and the label's absence must never be the signal.
 
-    Rendering nothing at 1x would make "no label" mean real time, which is
-    a convention a reader has to have been taught. `PL-SN2C` requires the
+    Rendering nothing at 1x would make "no label" mean real time. A reader
+    would have to be taught that convention. `PL-SN2C` requires the
     multiplier beside the clock at all times for exactly that reason.
     """
 
@@ -1154,8 +1169,8 @@ def test_the_playback_rate_is_stated_at_every_rate_including_real_time() -> None
 def test_the_playback_rate_uses_the_multiplication_sign_the_readouts_use() -> None:
     """One typographic convention for a multiple, across the whole display.
 
-    The MAC readouts already write a multiple with U+00D7; a rate written
-    with a lowercase "x" beside them would read as a different kind of
+    The MAC readouts already write a multiple with U+00D7. A rate written
+    with a lowercase "x" beside them would look like a different kind of
     quantity.
     """
 
@@ -1164,11 +1179,12 @@ def test_the_playback_rate_uses_the_multiplication_sign_the_readouts_use() -> No
 
 
 def test_the_playback_rate_is_not_a_second_reading_of_the_clock() -> None:
-    """It names a pace, so it must not carry a unit of simulated time.
+    """The playback rate names a pace, so it must not carry a unit of simulated time.
 
     A second string ending in "s" beside `format_elapsed` invites a reader
-    to take it as another elapsed time - the modeled-versus-context
-    confusion arriving through a label rather than through a number.
+    to take it as another elapsed time. That would be the confusion between
+    modeled state and context, arriving through a label rather than through
+    a number.
     """
 
     rate = format_playback_rate(60)
@@ -1194,13 +1210,13 @@ def test_the_playback_rate_is_not_a_second_reading_of_the_clock() -> None:
     ],
 )
 def test_a_time_axis_tick_carries_its_own_unit(elapsed_s: float, expected: str) -> None:
-    """The one property this label cannot be allowed to lose.
+    """A time-axis label must never lose its unit.
 
-    The chart's horizontal axis spans anything from a minute to half a day,
-    so a bare number would mean seconds on one time base and hours on
-    another while looking identical on both. A reader who missed the caption
-    would have nothing in the label to correct them, and reading a
-    twelve-hour axis as twelve minutes inverts every rate on the plot.
+    The chart's horizontal axis spans anything from a minute to half a day.
+    A bare number would mean seconds on one time base and hours on another,
+    while looking identical on both. A reader who missed the caption would
+    have nothing in the label to correct them. Reading a twelve-hour axis as
+    twelve minutes inverts every rate on the plot.
     """
 
     assert format_chart_time_label(elapsed_s) == expected
@@ -1213,11 +1229,12 @@ def test_the_run_s_start_is_labelled_without_a_unit() -> None:
 
 
 def test_a_time_axis_tick_shows_a_fraction_of_a_second_only_when_there_is_one() -> None:
-    """A trailing `.0` on every label is noise; a dropped tenth is a wrong time.
+    """A trailing `.0` on every label is noise, but a dropped tenth is a wrong time.
 
-    Every tick `app/chart_time_base.py` places falls on a whole second, so
-    the fraction is unreachable from the ladder - but rounding it away
-    silently is how a label comes to name a time the chart is not drawing.
+    Every tick that `app/chart_time_base.py` places falls on a whole second,
+    so the ladder never produces a fraction. Rounding a fraction away
+    silently, though, is how a label comes to name a time that the chart is
+    not drawing.
     """
 
     assert format_chart_time_label(90.5) == "1m30.5s"
@@ -1248,20 +1265,20 @@ def test_a_time_axis_tick_refuses_a_time_that_is_not_one(elapsed_s: float) -> No
 def test_a_time_base_is_named_in_words_the_reader_chooses_from(
     span_s: float, expected: str
 ) -> None:
-    """The selector's entries and the axis caption, in the same words.
+    """The selector's entries and the axis caption use the same words.
 
-    Spelled out rather than in `format_chart_time_label`'s compact form,
-    because this is a sentence a reader picks from and reads back rather
-    than a tick competing for width. The two stay consistent about the
-    quantity: `15 minutes` in the caption over an axis whose last tick reads
-    `15m`.
+    The name is spelled out rather than written in `format_chart_time_label`'s
+    compact form. A reader picks it from a list and reads it back, and it does
+    not compete for width as a tick label does. The two forms stay consistent
+    about the quantity: `15 minutes` in the caption sits over an axis whose
+    last tick shows `15m`.
     """
 
     assert format_time_base(span_s) == expected
 
 
 def test_a_time_base_name_agrees_with_its_own_count() -> None:
-    """ "1 hours" is the kind of seam that costs a reader a second pass."""
+    """ "1 hours" is the kind of flaw that makes a reader read a line twice."""
 
     assert format_time_base(3_600.0) == "1 hour"
     assert format_time_base(60.0) == "1 minute"
@@ -1270,11 +1287,12 @@ def test_a_time_base_name_agrees_with_its_own_count() -> None:
 def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> None:
     """The interface may not state a limit the model does not enforce.
 
-    Derived rather than written out, so the two cannot drift: a change to
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` that left a hardcoded "24 hours" in
-    the banner would tell a reader the run stopped somewhere it did not,
-    which is the correct-number-wrong-label failure `CLAUDE.md` treats as a
-    safety defect rather than a typo.
+    The stated limit is derived rather than written out, so the two cannot
+    drift apart. Suppose a change to `MAXIMUM_ELAPSED_SIMULATION_TIME_S` left a
+    hardcoded "24 hours" in the banner. The banner would then tell a reader
+    that the run stopped somewhere it did not. That is the
+    correct-number-wrong-label failure, which `CLAUDE.md` treats as a safety
+    defect rather than a typo.
     """
 
     assert format_supported_run_length() == (f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours")
@@ -1283,18 +1301,18 @@ def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> N
 def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
     monkeypatch: Any,
 ) -> None:
-    """`PL-KCWD`: a provenance field must not state a version-shaped non-answer.
+    """`PL-KCWD`: a provenance field must not show a non-answer that looks like a version.
 
     `app_metadata.py` falls back to `UNKNOWN_VERSION` where installed-package
-    metadata is missing, and that policy is right - failing visibly beats
-    crashing on launch. The objection was where the visible failure landed.
-    Substituted into this sentence it read "Version unknown", and this
-    subtitle is the interface's only link between a displayed number and the
-    model that produced it, so a reader was given an answer where there was
-    none. `CLAUDE.md` requires a displayed value to be traceable to the exact
-    version behind it; a build that cannot offer that has to say so, because
-    an unidentified build is precisely the one whose numbers must not later
-    be quoted back as having come from a known version.
+    metadata is missing. That policy is right, because failing visibly is
+    better than crashing on launch. The objection was to where the visible
+    failure appeared. Substituted into this sentence, it read "Version
+    unknown". This subtitle is the interface's only link between a displayed
+    number and the model that produced it, so a reader was given an answer
+    where there was none. `CLAUDE.md` requires a displayed value to be
+    traceable to the exact version behind it. A build that cannot offer that
+    has to say so. An unidentified build is precisely the one whose numbers
+    must not later be quoted as having come from a known version.
     """
 
     monkeypatch.setattr(formatting_module, "APP_VERSION_IS_KNOWN", False)
@@ -1321,27 +1339,27 @@ def test_an_identified_build_still_names_its_version() -> None:
     [0.1, 20.0, 59.9, 60.0, 90.0, 3600.0, 5400.0, 86_399.9, MAXIMUM_ELAPSED_SIMULATION_TIME_S],
 )
 def test_the_clock_and_the_axis_state_one_quantity_one_way(elapsed_s: float) -> None:
-    """`PL-Q4M4`: the conversion the reader was doing is the display's job.
+    """`PL-Q4M4`: the display, not the reader, must do the unit conversion.
 
-    `PL-SSBP` gave the chart a time base spanning a case, so its axis reads
-    `1h30m` while the clock above it read `5400.0 s`. One quantity, two
-    formats, on one screen - and locating a control mark on a twelve-hour
-    axis meant dividing by 3600 by hand. Asserted across the whole range
-    rather than at one value, because the forms have to agree at every
-    boundary where a component appears or falls away, which is exactly where
-    two independent implementations would drift.
+    `PL-SSBP` gave the chart a time base that spans a case, so its axis shows
+    `1h30m`. The clock above it used to show `5400.0 s`. That was one quantity
+    in two formats on one screen. Locating a control mark on a twelve-hour
+    axis meant dividing by 3600 by hand. The test checks the whole range
+    rather than one value. The two forms have to agree at every boundary where
+    a component appears or disappears, and that is exactly where two
+    independent implementations would drift apart.
     """
 
     assert format_elapsed(elapsed_s) == format_chart_time_label(elapsed_s)
 
 
 def test_the_origin_is_the_one_place_the_two_forms_differ() -> None:
-    """The axis origin is a bare `0`; the clock says `0s`.
+    """The axis origin is a bare `0`, and the clock says `0s`.
 
-    Deliberate, and the only difference: `0s` invites reading a whole axis
-    as seconds, where the origin needs no unit to be understood, while a
-    clock reading a bare `0` beside six percent readings has nothing saying
-    what it is a count of.
+    This difference is deliberate, and it is the only one. On the axis, `0s`
+    invites reading the whole axis as seconds, and the origin needs no unit
+    to be understood. On the clock, a bare `0` beside six percent readings
+    has nothing to say what it counts.
     """
 
     assert format_chart_time_label(0.0) == "0"
@@ -1351,16 +1369,16 @@ def test_the_origin_is_the_one_place_the_two_forms_differ() -> None:
 def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated() -> None:
     """`PL-CZFY`: `86400.0 s` was false precision on a boundary declared in hours.
 
-    `PL-Y5WR` declared the 24-hour envelope, so this is the clock's top
-    reading and a reader had to divide by 3600 to place themselves in the
-    case. `format_supported_run_length` had already refused to reuse the old
-    form for exactly this reason; now the two agree about the quantity and
+    `PL-Y5WR` declared the 24-hour envelope, so `86400.0 s` was the clock's
+    top reading. A reader had to divide by 3600 to know where they were in the
+    case. `format_supported_run_length` had already declined to reuse the old
+    form for exactly this reason. Now the two agree about the quantity and
     differ only in register.
 
-    That holds for a limit of whole hours, which every limit declared so far
-    has been. At any other, the clock's `24h30m` against the sentence's
-    `24.5 hours` would differ in more than register, and this fails so that
-    the pairing is looked at rather than shipped.
+    That agreement holds for a limit of whole hours, and every limit declared
+    so far has been one. At any other limit, the clock's `24h30m` and the
+    sentence's `24.5 hours` would differ in more than register. This test
+    then fails, so that someone reviews the pairing rather than shipping it.
     """
 
     hours = MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600
@@ -1370,13 +1388,13 @@ def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated() -> No
 
 
 def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
-    """The tenth survives the move, which is what made one form possible.
+    """The compound form keeps the tenth of a second, which is what made one form possible.
 
     `format_elapsed`'s docstring used to argue that the clock and the axis
     could not share a form because "a compound duration form would round the
-    stamp away". That was false of the compound form that shipped, and this
-    is the assertion that keeps it false: a recorded control change has to
-    resolve the `0.1 s` step it was taken at.
+    stamp away". That was false of the compound form that shipped, and these
+    assertions keep it false. A recorded control change has to resolve the
+    `0.1 s` step at which it was taken.
     """
 
     assert format_elapsed(0.1) == "0.1s"
@@ -1387,19 +1405,21 @@ def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
 def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() -> None:
     """The clock's reserved width is measured from this string, in the rendering font.
 
-    The compound form changes length as components appear and fall away, so
-    the readout reserves a width rather than letting its panel move every
-    render tick. `dashboard_frame.WIDEST_READOUT_VALUE` is this string, and
-    `qt_widgets.MetricPanel` measures it in the font it draws with (`PL-3355`);
-    the fixed pixel guess the Flet build carried as `theme.ELAPSED_VALUE_WIDTH`
-    was retired with that port (`PL-25KS`). This test is what holds the
-    premise honest if either the form or the envelope changes.
+    The compound form changes length as components appear and disappear. The
+    readout therefore reserves a width, rather than letting its panel move on
+    every render tick. `dashboard_frame.WIDEST_READOUT_VALUE` is this string,
+    and `qt_widgets.MetricPanel` measures it in the font it draws with
+    (`PL-3355`). The Flet build used a fixed pixel guess,
+    `theme.ELAPSED_VALUE_WIDTH`, which was retired with that port
+    (`PL-25KS`). This test keeps the premise true if either the form or the
+    envelope changes.
 
-    So it checks the premise rather than a string (`PL-T5J5`): no hour of the
-    span may read wider than the reading the reservation is measured from.
-    An hour's widest reading is its last tenth, where the minutes and seconds
-    are both present at two digits and the tenth is shown, so that instant
-    stands for the whole hour, at whatever limit the model declares.
+    The test therefore checks the premise rather than a string (`PL-T5J5`).
+    No hour of the span may display wider than the reading from which the
+    reserved width is measured. An hour's widest reading is its last tenth.
+    There the minutes and the seconds both have two digits and the tenth is
+    shown. That instant therefore represents the whole hour, at whatever
+    limit the model declares.
     """
 
     widest = max(
@@ -1419,10 +1439,10 @@ def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() 
 
 @pytest.mark.parametrize("bad_elapsed_s", [-0.1, float("nan"), float("inf")])
 def test_the_clock_refuses_a_time_that_cannot_have_elapsed(bad_elapsed_s: float) -> None:
-    """A behaviour the old one-decimal form did not have.
+    """The clock raises on an impossible time, which the old one-decimal form did not.
 
-    `f"{-1.0:.1f} s"` renders `-1.0 s` quite happily. Simulated time cannot
-    run backwards, so a value that does is a fault upstream, and `CLAUDE.md`
+    `f"{-1.0:.1f} s"` renders `-1.0 s` without complaint. Simulated time
+    cannot run backwards, so a negative value is a fault upstream. `CLAUDE.md`
     prefers an obvious failure to a plausible-looking displayed number.
     """
 
@@ -1434,11 +1454,11 @@ def test_agent_amounts_precision() -> None:
     """Pin the `PL-TG60` decision: one decimal of a litre, and the below-resolution form.
 
     The Flet panel printed six decimals of an exhaust total whose parameter
-    uncertainty is 0.016-0.23 L across the supported span; one count of
-    0.1 L sits inside the band `docs/MODEL.md` § "Displayed precision"
-    derives for the concentration readouts, and 0.01 L does not. A positive
-    amount that rounds to zero reads as below the resolution rather than as
-    an empty circuit.
+    uncertainty is 0.016-0.23 L across the supported span. One count of 0.1 L
+    lies inside the band that `docs/MODEL.md` § "Displayed precision" derives
+    for the concentration readouts, and 0.01 L does not. A positive amount
+    that rounds to zero is shown as below the resolution rather than as an
+    empty circuit.
     """
 
     assert AGENT_VOLUME_DISPLAY_DECIMALS == 1
@@ -1455,7 +1475,7 @@ def test_format_agent_volume_rounds_rather_than_truncates() -> None:
 
 
 def test_format_agent_volume_marks_a_value_below_the_resolution() -> None:
-    """In the first minute of a run the exhaust is real and under a tenth of a litre."""
+    """In the first minute of a run, the exhaust is real and less than a tenth of a litre."""
 
     assert format_agent_volume(1e-8) == "<0.1 L"
     assert format_agent_volume(0.04) == "<0.1 L"
@@ -1476,7 +1496,7 @@ def test_format_agent_volume_leaves_an_impossible_negative_visible() -> None:
     """A negative amount cannot occur, and must not be disguised if it does.
 
     The below-resolution form would render it as an ordinary small positive
-    reading; `CLAUDE.md` requires the obvious failure instead, as
+    reading. `CLAUDE.md` requires the obvious failure instead, as
     `format_percent` does for a negative fraction.
     """
 
@@ -1485,7 +1505,7 @@ def test_format_agent_volume_leaves_an_impossible_negative_visible() -> None:
 
 
 def test_format_agent_residual_prints_the_power_of_ten_it_lies_below() -> None:
-    """The two residual lines exist for their order of magnitude (`PL-TG60`), and print only it."""
+    """The two residual lines exist to show an order of magnitude (`PL-TG60`) and print only it."""
 
     assert format_agent_residual(1.5e-13) == "<1e-12 L"
     assert format_agent_residual(5.601e-14) == "<1e-13 L"
@@ -1495,12 +1515,13 @@ def test_format_agent_residual_prints_the_power_of_ten_it_lies_below() -> None:
 
 
 def test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws() -> None:
-    """Regression for `PL-3PJZ`: one passing check, before and after a correct change, reads alike.
+    """Regression for `PL-3PJZ`: a passing check looks the same before and after a correct change.
 
-    `PL-2MD9` moved the propagator at the last bits, and the same branch sample
-    read `5.601e-14 L` on the v0.5.21 tag and `5.609e-14 L` on v0.5.22, with
-    the residual moving by up to 5.9 times elsewhere inside one decade.
-    Four significant digits printed that rounding as if it were a reading.
+    `PL-2MD9` changed the propagator's result in the last bits. The same
+    branch sample showed `5.601e-14 L` on the v0.5.21 tag and `5.609e-14 L` on
+    v0.5.22. Elsewhere, the residual moved by up to 5.9 times inside one
+    decade. Four significant digits printed that rounding as if it were a
+    reading.
     """
 
     assert format_agent_residual(5.601e-14) == format_agent_residual(5.609e-14)
@@ -1508,10 +1529,11 @@ def test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws() -> No
 
 
 def test_format_agent_residual_drops_the_sign_the_rounding_chose() -> None:
-    """A passing residual's sign is the direction its rounding fell, so the two lines read alike.
+    """A passing residual's sign is only the direction of its rounding, so both signs look alike.
 
-    The signed value is still on screen where it means something: a check
-    that fails halts the run, and the failure notice prints it to six figures.
+    The signed value is still on screen where it means something. A check
+    that fails halts the run, and the failure notice prints the value to six
+    figures.
     """
 
     assert format_agent_residual(-3.289e-15) == "<1e-14 L"
@@ -1522,8 +1544,9 @@ def test_format_agent_residual_drops_the_sign_the_rounding_chose() -> None:
 def test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten(power: int) -> None:
     """The printed decade is exact for the float's own value, either side of each power of ten.
 
-    `math.log10` would place the float written `1e-16`, which is 9.99...e-17
-    exactly, in the decade above; the bound must be the one it lies in.
+    `math.log10` would place the float written `1e-16`, which is exactly
+    9.99...e-17, in the decade above. The bound must be the decade that the
+    float actually lies in.
     """
 
     nearest = float(f"1e{power}")
@@ -1547,7 +1570,7 @@ def test_format_agent_residual_reads_zero_as_zero() -> None:
 
 @pytest.mark.parametrize("litres", [math.nan, math.inf, -math.inf])
 def test_format_agent_residual_leaves_a_non_finite_value_visible(litres: float) -> None:
-    """The accounting check cannot produce one; if it does, it shows instead of being bounded."""
+    """The accounting check cannot produce a non-finite value, but one would be shown unbounded."""
 
     assert format_agent_residual(litres) == f"{litres} L"
 
@@ -1556,13 +1579,13 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
     """The 0.01% resolution is a property of the display alone.
 
     `docs/MODEL.md` § "Displayed precision" argues at length for two decimal
-    places, and a reader could reasonably take that for a statement about the
-    model. It is not: every compartment state and every integration step
-    carries full binary64 throughout, and the rounding happens once, in the
-    formatter. Two runs whose only difference is four orders of magnitude
-    below the display resolution must therefore reach different states; if
-    anything in the pipeline quantized to what the display shows, the two
-    would be identical here and this fails.
+    places. A reader could reasonably take that as a statement about the
+    model, but it is not one. Every compartment state and every integration
+    step keeps full binary64 precision throughout, and the rounding happens
+    once, in the formatter. Two runs whose only difference is four orders of
+    magnitude smaller than the display resolution must therefore reach
+    different states. If anything in the pipeline rounded to what the display
+    shows, the two states would be identical and this test would fail.
     """
 
     step_s = 0.1

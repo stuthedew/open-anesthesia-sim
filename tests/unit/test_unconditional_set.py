@@ -1,4 +1,4 @@
-"""The declaration of `docs/MODEL.md`'s unconditional set, held without a toolkit.
+"""Tests of the declaration of `docs/MODEL.md`'s unconditional set, without a widget toolkit.
 
 Each expected value below is transcribed from `docs/MODEL.md` § "Minimum
 displayed outputs" -> "What this list requires once the layout is the
@@ -25,9 +25,9 @@ from anesthesia_sim.app.unconditional_set import (
 from anesthesia_sim.layout.model import MAIN_WINDOW
 
 #: "Simulated time; the rate it is advancing at; run state; why a run
-#: halted, when one has; what is being administered" - the invariant tier,
-#: in that document's order. The run's name joins it only once a second
-#: top-level window can exist, which v0.6.0 does not build.
+#: halted, when one has; what is being administered". That quotation lists the
+#: invariant tier, in the document's order. The run's name joins the tier only
+#: once a second top-level window can exist, which v0.6.0 does not build.
 _INVARIANT_TIER_AS_DOCUMENTED = (
     UnconditionalValue.SIMULATED_TIME,
     UnconditionalValue.PLAYBACK_RATE,
@@ -37,9 +37,10 @@ _INVARIANT_TIER_AS_DOCUMENTED = (
 )
 
 #: "the delivered concentration and the six compartment concentrations, in
-#: both units, with that agent's 1 MAC in percent stated" - the inhaled
-#: instance. The six compartments are the readouts the minimum list names:
-#: circuit, alveolar, mixed-venous, vessel-rich, muscle and fat.
+#: both units, with that agent's 1 MAC in percent stated". That quotation
+#: describes the inhaled instance. The six compartments are the readouts that
+#: the minimum list names: circuit, alveolar, mixed-venous, vessel-rich, muscle
+#: and fat.
 _INHALED_CONCENTRATIONS_AS_DOCUMENTED = (
     UnconditionalValue.DELIVERED_CONCENTRATION,
     UnconditionalValue.CIRCUIT_CONCENTRATION,
@@ -50,8 +51,8 @@ _INHALED_CONCENTRATIONS_AS_DOCUMENTED = (
     UnconditionalValue.FAT_CONCENTRATION,
 )
 
-#: What only an inhaled agent from a vaporizer has: "no vaporizer dial, no
-#: circuit concentration and no MAC multiple".
+#: The values that only an inhaled agent from a vaporizer has: "no vaporizer
+#: dial, no circuit concentration and no MAC multiple".
 _INHALED_ONLY = (
     UnconditionalValue.DELIVERED_CONCENTRATION,
     UnconditionalValue.CIRCUIT_CONCENTRATION,
@@ -60,14 +61,14 @@ _INHALED_ONLY = (
 
 
 def test_the_invariant_tier_is_the_five_values_docs_model_names() -> None:
-    """Five values that depend on nothing the run models, and none that does."""
+    """The tier contains five values that depend on nothing the run models, and none that does."""
 
     assert INVARIANT_TIER == _INVARIANT_TIER_AS_DOCUMENTED
     assert all(value.tier is Tier.INVARIANT for value in INVARIANT_TIER)
 
 
 def test_the_inhaled_run_still_returns_the_seven_concentrations_and_their_divisor() -> None:
-    """Today's instance: seven concentrations, then the 1 MAC that divides them."""
+    """The current instance is seven concentrations, followed by the 1 MAC that divides them."""
 
     tier = unconditional_set(INHALED_AGENT).tier(Tier.PER_SUBSTANCE)
 
@@ -81,9 +82,10 @@ def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value() -
     The instance is a hypothetical intravenous drug with no tier of its own
     written yet: `docs/MODEL.md` says such a run "owes its own instance of the
     same test instead, named where that substance's model is specified", and
-    no such model is specified. What this holds is that nothing outside the
-    instance - the invariant tier and the record - carries a value only a
-    volatile agent has, so a later intravenous run is never asked for one.
+    no such model is specified. This test checks that nothing outside the
+    instance, meaning the invariant tier and the record, carries a value that
+    only a volatile agent has. So a later intravenous run is never asked for
+    one.
     """
 
     intravenous = SubstanceInstance("an intravenous drug by infusion (hypothetical)", ())
@@ -96,7 +98,7 @@ def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value() -
 
 
 def test_the_control_input_record_is_unconditional_and_in_neither_tier() -> None:
-    """The record itself is required; its chart marks are not, and are not here."""
+    """The record itself is required. Its chart marks are not required, and are not in the set."""
 
     assert CONTROL_RECORD_TIER == (UnconditionalValue.CONTROL_INPUT_RECORD,)
     assert UnconditionalValue.CONTROL_INPUT_RECORD.tier is Tier.CONTROL_RECORD
@@ -104,7 +106,7 @@ def test_the_control_input_record_is_unconditional_and_in_neither_tier() -> None
 
 
 def test_the_set_holds_no_accounting_value() -> None:
-    """The accounting tier is reachable rather than visible, so the region does not owe it."""
+    """The accounting tier is reachable rather than visible, so the region need not show it."""
 
     names = {value.value for value in UnconditionalValue}
 
@@ -154,13 +156,13 @@ _WINDOW_COUNTS = (1, 2, 3, 4)
 
 @pytest.mark.parametrize("window_count", _WINDOW_COUNTS)
 def test_every_window_region_carries_the_invariant_tier_and_its_run_name(window_count: int) -> None:
-    """Every window holds the five invariant values, and names its run once it has company.
+    """Every window shows the five invariant values, and names its run once it is not alone.
 
     `docs/MODEL.md` § "What a second top-level window owes, and it is not the
     whole set": "Every top-level window the application owns carries the
     invariant tier ... together with the name of the run that window is
-    showing". A lone main window has no other window to tell its run apart
-    from, so it owes no name (`PL-W54S`).
+    showing". A lone main window has no other window whose run must be told
+    apart from its own, so it needs no name (`PL-W54S`).
     """
 
     run_set = unconditional_set(INHALED_AGENT)
@@ -179,10 +181,10 @@ def test_the_per_substance_tier_and_the_record_live_only_in_the_main_window(
     """The concentrations, the 1 MAC and the control-input record have one home.
 
     `docs/MODEL.md`: "The per-substance tier lives once, in the main window".
-    The record goes with it, being a statement about the whole run rather
-    than about one surface. A broken-out window holds only the invariant tier
-    and the run's name, so a small window is not squeezed by seven
-    concentrations in two units.
+    The record goes with it, because the record is a statement about the
+    whole run rather than about one surface. A broken-out window shows only
+    the invariant tier and the run's name, so a small window does not have to
+    fit seven concentrations in two units.
     """
 
     run_set = unconditional_set(INHALED_AGENT)
@@ -212,7 +214,7 @@ def test_the_lone_main_window_owes_exactly_the_whole_set() -> None:
 
 
 def test_the_run_name_is_in_no_tier_of_the_run_s_set() -> None:
-    """The name is owed by a window, not by the run, so `UnconditionalSet` never holds it."""
+    """The name is required of a window, not of the run, so `UnconditionalSet` never contains it."""
 
     assert UnconditionalValue.RUN_NAME.tier is Tier.RUN_NAME
     assert UnconditionalValue.RUN_NAME not in unconditional_set(INHALED_AGENT).values
@@ -231,7 +233,7 @@ def test_the_run_name_is_in_no_tier_of_the_run_s_set() -> None:
 def test_a_window_outside_the_layout_is_refused(
     window: int, window_count: int, message: str
 ) -> None:
-    """A region is never returned for a window the layout does not hold."""
+    """A region is never returned for a window that the layout does not contain."""
 
     with pytest.raises(ValueError, match=message):
         window_region(unconditional_set(INHALED_AGENT), window, window_count)

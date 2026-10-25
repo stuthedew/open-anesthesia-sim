@@ -1,22 +1,23 @@
 """Unit tests for the layout model: `layout/tree.py` and `layout/model.py`.
 
-`PL-1FT6` built the model `PL-C842` decided - a pure-Python tree of Splits and
-Areas that is the layout's source of truth, with no widget anywhere in it - so
-every test here runs with no `QApplication`, and the first asserts that
-importing the package loads no toolkit at all.
+`PL-1FT6` built the model that `PL-C842` decided on. The model is a
+pure-Python tree of Splits and Areas that is the layout's source of truth,
+with no widget anywhere in it. So every test here runs with no
+`QApplication`, and the first test asserts that importing the package loads
+no toolkit at all.
 
-The design these hold the code to was decided before it was written:
-`PL-3J2P` took the tree knowing it is strictly less expressive than Blender's
-screen, on the ground that the limit shows up as an operation refused rather
-than as a wrong layout, which is what
-`test_a_join_the_tree_cannot_express_is_refused` holds; `PL-HJPY` put a set of
-windows in the root from the first version, with Area ids unique across all
-of them and never handed out twice, and the border chain stopping at a
-window's edge; `PL-R1WQ` made a View kind an opaque tag the model checks the
-syntax of and nothing else. The serialized form is in
-`tests/unit/test_layout_serialization.py`; the round trip and the version-1
-window set the brief names are asserted here as well, so its `verify:` line
-covers its whole definition of done.
+The design that these tests check the code against was decided before the
+code was written. `PL-3J2P` chose the tree knowing that it is strictly less
+expressive than Blender's screen. The reason was that the limit shows up as a
+refused operation rather than as a wrong layout, which is what
+`test_a_join_the_tree_cannot_express_is_refused` checks. `PL-HJPY` put a set
+of windows in the root from the first version. Area ids are unique across all
+of the windows and are never handed out twice, and the border chain stops at
+a window's edge. `PL-R1WQ` made a View kind an opaque tag: the model checks
+its syntax and nothing else. The serialized form is tested in
+`tests/unit/test_layout_serialization.py`. The round trip and the version-1
+window set that the brief names are asserted here as well, so the brief's
+`verify:` line covers its whole definition of done.
 """
 
 import json
@@ -78,7 +79,7 @@ def column(sizes: tuple[float, ...], *children: Node) -> Split:
 
 
 def layout(*trees: Node) -> LayoutModel:
-    """A layout of one window per tree, its counter one above the highest id."""
+    """Return a layout with one window per tree, and its counter one above the highest id."""
 
     windows = tuple(Window(tree) for tree in trees)
     highest = max(held.id for window in windows for held in _areas(window.tree))
@@ -94,10 +95,11 @@ def _areas(node: Node) -> list[Area]:
 
 
 def rectangles(model: LayoutModel, window: int = 0) -> dict[int, tuple[float, float, float, float]]:
-    """Each Area's (left, top, right, bottom) in fractions of its window, worked out independently.
+    """Return each Area's (left, top, right, bottom) in fractions of its window.
 
-    Written here rather than read from the model, so a test asserting where
-    an Area sits is not asserting the model's arithmetic against itself.
+    The rectangles are worked out independently here rather than read from
+    the model. So a test that asserts where an Area sits does not check the
+    model's arithmetic against itself.
     """
 
     found: dict[int, tuple[float, float, float, float]] = {}
@@ -125,7 +127,7 @@ def rectangles(model: LayoutModel, window: int = 0) -> dict[int, tuple[float, fl
 
 
 def split_at(model: LayoutModel, path: tuple[int, ...], window: int = 0) -> Split:
-    """The split at `path` in a window's tree, which the test asserts is one."""
+    """Return the node at `path` in a window's tree, asserting that it is a split."""
 
     node = model.windows[window].tree
 
@@ -139,10 +141,10 @@ def split_at(model: LayoutModel, path: tuple[int, ...], window: int = 0) -> Spli
 
 
 def cut_down(depth: int) -> LayoutModel:
-    """Area 1 cut in half `depth` times by the model's own `split`, alternating axis.
+    """Return a layout in which the model's own `split` cuts Area 1 in half `depth` times.
 
-    Area 1 keeps the part before each cut, so the deepest split, `depth` deep,
-    is at the path `(0,) * (depth - 1)`, and Area 1 is its first child.
+    The cuts alternate in axis. Area 1 keeps the part before each cut. So the
+    deepest split, `depth` deep, is at the path `(0,) * (depth - 1)`, and Area 1 is its first child.
     """
 
     model = LayoutModel.single_area(CHART)
@@ -154,7 +156,10 @@ def cut_down(depth: int) -> LayoutModel:
 
 
 def nested(depth: int) -> Split:
-    """The same shape built directly, unchecked: `depth` splits, Areas 1 to `depth` + 1."""
+    """Build the same shape directly, without the layout model's checks.
+
+    The tree has `depth` splits and holds Areas 1 to `depth` + 1.
+    """
 
     tree = row((0.5, 0.5), area(1), area(2))
 
@@ -165,10 +170,11 @@ def nested(depth: int) -> Split:
 
 
 def buried(tree: Split, levels: int) -> LayoutModel:
-    """`tree` nested `levels` splits deep: each split around it holds one more Area, from id 100.
+    """Return a layout with `tree` nested inside `levels` more splits, each holding one more Area.
 
-    The splits alternate in orientation outward from `tree`'s own, so `tree`
-    is `levels + 1` deep and the splits it holds sit deeper still.
+    The added Areas take ids from 100 upward. The splits alternate in
+    orientation outward from `tree`'s own orientation. So `tree` is
+    `levels + 1` deep, and the splits it holds sit deeper still.
     """
 
     orientation = tree.orientation
@@ -183,7 +189,10 @@ def buried(tree: Split, levels: int) -> LayoutModel:
 def joined_places(
     places: dict[int, tuple[float, float, float, float]], keep: int, remove: int
 ) -> dict[int, tuple[float, float, float, float]]:
-    """Each Area's rectangle after a join, from the rectangles before it: `keep` takes both."""
+    """Return each Area's rectangle after a join, from the rectangles before it.
+
+    Area `keep` takes both rectangles.
+    """
 
     kept, removed = places[keep], places[remove]
     after = {number: place for number, place in places.items() if number != remove}
@@ -214,12 +223,13 @@ def assert_places(
 
 
 def test_importing_the_layout_package_loads_no_toolkit() -> None:
-    """`PL-C842`: the model is plain Python a test drives with no widget library loaded.
+    """`PL-C842`: the model is plain Python that a test can drive with no widget library loaded.
 
     `tools/import_boundary_check.py` refuses a `PySide6` or `pyqtgraph`
-    import written under `layout/`; this asserts the same of everything the
-    package reaches when it is imported, in a fresh interpreter, since this
-    test process may already hold Qt from another test.
+    import written under `layout/`. This test asserts the same of everything
+    that importing the package loads, directly or indirectly. It runs in a
+    fresh interpreter, because this test process may already hold Qt from
+    another test.
     """
 
     probe = (
@@ -240,11 +250,11 @@ def test_importing_the_layout_package_loads_no_toolkit() -> None:
 
 
 def test_an_area_id_is_a_whole_number_from_one_to_the_largest_json_holds_exactly() -> None:
-    """Ids are allocated from 1 and are keys a file is read back by (`layout/tree.py`).
+    """Ids are allocated from 1 and are the keys by which a file is read back (`layout/tree.py`).
 
-    `True` is refused although it is an `int`, since it would be the Area with
-    id 1, and an int too long to print is refused by its length rather than
-    escaping as the `ValueError` printing it would raise.
+    `True` is refused although it is an `int`, because it would be the Area
+    with id 1. An int too long to print is refused and named by its length,
+    rather than escaping as the `ValueError` that printing it would raise.
     """
 
     assert AreaId(1) == 1
@@ -260,7 +270,7 @@ def test_an_area_id_is_a_whole_number_from_one_to_the_largest_json_holds_exactly
 
 
 def test_a_view_kind_is_a_tag_of_the_syntax_the_registry_decided() -> None:
-    """`PL-R1WQ` Q1: lowercase snake case, beginning with a letter, at most 40 long."""
+    """`PL-R1WQ` Q1: lowercase snake case, beginning with a letter, at most 40 characters long."""
 
     longest = "a" * VIEW_KIND_MAXIMUM_LENGTH
 
@@ -279,7 +289,7 @@ def test_a_view_kind_is_a_tag_of_the_syntax_the_registry_decided() -> None:
 
 
 def test_a_split_refuses_what_is_not_a_layout() -> None:
-    """Each invariant a split states of itself, refused as it is built, by name."""
+    """A split checks each of its own invariants as it is built, and refuses a breach by name."""
 
     one, two = area(1), area(2)
     cases: list[tuple[tuple[float, ...], tuple[Node, ...], str]] = [
@@ -304,12 +314,14 @@ def test_a_split_refuses_what_is_not_a_layout() -> None:
 
 
 def test_sizes_that_miss_one_only_by_rounding_are_accepted() -> None:
-    """Sizes that are one to any reader can sum, exactly rounded, to a unit in the last place short.
+    """Sizes that miss one by a unit in the last place are accepted.
 
-    The check sums with `math.fsum`, which rounds once, so it is not a tenth
-    ten times that shows the tolerance at work: those sum to exactly one that
-    way, though adding them one by one, without compensation, gives
-    0.9999999999999999. One hundredth, twenty-nine and seventy do miss one,
+    Sizes that any reader would take to sum to one can, exactly rounded, sum
+    to one unit in the last place less than one. The check sums with
+    `math.fsum`, which rounds only once. So a tenth ten times does not show
+    the tolerance at work: `math.fsum` sums those to exactly one, although
+    adding them one by one without compensation gives 0.9999999999999999.
+    One hundredth, twenty-nine hundredths and seventy hundredths do miss one,
     and are accepted.
     """
 
@@ -326,11 +338,12 @@ def test_sizes_that_miss_one_only_by_rounding_are_accepted() -> None:
 def test_the_sum_of_a_splits_sizes_is_held_to_the_tolerance_and_no_further() -> None:
     """`LAYOUT_SIZE_SUM_TOLERANCE`, a billionth, is the bound, and the refusal says what it is.
 
-    Sizes a thousandth of the tolerance off one, or nine tenths of it, are
-    read as summing to one; eleven tenths of it off, or twice it, are
-    refused. The operations rescale each split they rebuild
-    (`test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_tolerance`),
-    so the bound is the reader's, and the model's own splits sit far inside it.
+    Sizes that miss one by a thousandth of the tolerance, or by nine tenths
+    of it, are treated as summing to one. Sizes that miss by eleven tenths of
+    it, or by twice it, are refused. The operations rescale each split they rebuild
+    (`test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_tolerance`).
+    So the bound limits what the file reader accepts, and the model's own
+    splits sit far inside it.
     """
 
     assert LAYOUT_SIZE_SUM_TOLERANCE == 1e-9
@@ -346,13 +359,13 @@ def test_the_sum_of_a_splits_sizes_is_held_to_the_tolerance_and_no_further() -> 
 
 
 def test_a_split_never_holds_a_split_of_its_own_orientation() -> None:
-    """A row inside a row is one wider row, so a tree takes one form (`layout/tree.py`).
+    """A row inside a row is one wider row, so a layout has one tree form (`layout/tree.py`).
 
-    The form is one only where no four Areas meet at a point. Where they do,
-    either cut through the point can be the outer one, so a join reads the
-    rectangles rather than which two Areas share a split, as
-    `test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first`
-    holds the model to.
+    The form is unique only where no four Areas meet at a point. Where four
+    do meet, either cut through the point can be the outer one. So a join
+    works from the rectangles rather than from which two Areas share a split,
+    as `test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first`
+    checks.
     """
 
     with pytest.raises(InvalidLayout, match="a row split never holds another row split"):
@@ -362,7 +375,11 @@ def test_a_split_never_holds_a_split_of_its_own_orientation() -> None:
 
 
 def test_a_layout_refuses_no_window_a_shared_id_and_a_counter_it_has_passed() -> None:
-    """`PL-HJPY` Q1 and Q3: a main window always, ids unique across windows, never reused."""
+    """`PL-HJPY` Q1 and Q3: a layout always has a main window, and ids are never shared or reused.
+
+    Ids are unique across all windows, and the counter always stays above
+    every id in use.
+    """
 
     with pytest.raises(InvalidLayout, match="at least one window"):
         LayoutModel((), AreaId(1))
@@ -377,11 +394,12 @@ def test_a_layout_refuses_no_window_a_shared_id_and_a_counter_it_has_passed() ->
 
 
 def test_a_layout_refuses_a_tree_nested_past_the_depth_maximum() -> None:
-    """`TREE_DEPTH_MAXIMUM`, checked before anything recurses through the tree.
+    """Depth is checked against `TREE_DEPTH_MAXIMUM` before anything recurses through the tree.
 
-    The refusal names the window and the path of the first split too deep.
-    A tree far deeper than Python could recurse through is refused the same
-    way, rather than by the `RecursionError` walking it would end in.
+    The refusal names the window and the path of the first split that is too
+    deep. A tree far deeper than Python could recurse through is refused in
+    the same way, rather than with the `RecursionError` that walking it would
+    end in.
     """
 
     deepest = LayoutModel((Window(nested(TREE_DEPTH_MAXIMUM)),), AreaId(TREE_DEPTH_MAXIMUM + 2))
@@ -416,8 +434,8 @@ def test_a_new_layout_is_one_window_holding_one_area() -> None:
 def test_split_cuts_an_area_where_asked_and_the_new_area_shows_the_same_view() -> None:
     """`PL-TH35` Q10: the new Area starts as a copy of the source, as Blender's split does.
 
-    The Area keeps the part before the cut and the new one takes the rest,
-    with the id the counter held.
+    The original Area keeps the part before the cut, and the new Area takes
+    the rest, with the id that the counter held.
     """
 
     model, added = LayoutModel.single_area(ACCOUNTING).split(AreaId(1), ROW, 0.7)
@@ -430,10 +448,10 @@ def test_split_cuts_an_area_where_asked_and_the_new_area_shows_the_same_view() -
 
 
 def test_split_along_its_splits_axis_adds_a_child_and_moves_no_border() -> None:
-    """The one form: cutting a row's Area across the row widens the row, not the tree.
+    """Cutting a row's Area along the row's axis adds a child to the row, not a level to the tree.
 
-    Every border that was there stays where it was; only the cut Area's
-    space is divided.
+    This follows from the tree's one form. Every border that was there stays
+    where it was, and only the cut Area's space is divided.
     """
 
     model = layout(row((0.25, 0.75), area(1), area(2)))
@@ -457,7 +475,10 @@ def test_split_across_its_splits_axis_nests_a_split_in_the_areas_place() -> None
 
 
 def test_a_cut_outside_the_area_is_refused_and_the_layout_is_unchanged() -> None:
-    """A cut lies strictly inside the Area; the ends and beyond leave a part with no size."""
+    """A cut must lie strictly inside the Area.
+
+    A cut at either end, or beyond either end, would leave a part with no size.
+    """
 
     model = LayoutModel.single_area(CHART)
     copy = layout_to_json(model)
@@ -473,7 +494,7 @@ def test_a_cut_outside_the_area_is_refused_and_the_layout_is_unchanged() -> None
 
 
 def test_a_split_past_the_last_id_is_refused() -> None:
-    """The counter cannot pass `AREA_ID_MAXIMUM`, so a layout that has reached it refuses."""
+    """The counter cannot pass `AREA_ID_MAXIMUM`, so a layout at that counter refuses."""
 
     full = LayoutModel((Window(area(1)),), AreaId(AREA_ID_MAXIMUM))
 
@@ -556,9 +577,9 @@ def test_a_layout_holding_an_area_no_wider_than_the_alignment_tolerance_is_refus
 def test_the_last_id_a_layout_hands_out_is_one_below_the_maximum() -> None:
     """The counter stays above every id in use and cannot pass `AREA_ID_MAXIMUM`.
 
-    So the last id handed out is 2**53 - 2, the refusal after it names the
-    counter's value rather than an id an Area holds, and no Area can hold the
-    maximum itself.
+    So the last id handed out is 2**53 - 2. The refusal after it names the
+    counter's value rather than an id that an Area holds, and no Area can hold
+    the maximum itself.
     """
 
     model, last = LayoutModel((Window(area(1)),), AreaId(AREA_ID_MAXIMUM - 1)).split(
@@ -581,10 +602,11 @@ def test_the_last_id_a_layout_hands_out_is_one_below_the_maximum() -> None:
 
 
 def test_a_cut_that_would_nest_past_the_depth_maximum_is_refused() -> None:
-    """A cut across the deepest split's axis would add a level; one along it adds a child.
+    """A cut across the deepest split's axis would add a level, but a cut along it adds a child.
 
-    The layout the model builds at the maximum is read back equal, so no
-    layout it holds is one it cannot save.
+    The cut across the axis is refused. The layout that the model builds at
+    the maximum depth is read back equal, so the model holds no layout that it
+    cannot save.
     """
 
     model = cut_down(TREE_DEPTH_MAXIMUM)
@@ -628,17 +650,18 @@ def test_a_join_that_leaves_one_child_gives_the_split_way_to_it() -> None:
 
 
 def test_a_join_the_tree_cannot_express_is_refused() -> None:
-    """`PL-3J2P`'s refusal: a layout a splitter tree cannot hold is not offered.
+    """`PL-3J2P`'s refusal: a layout that a splitter tree cannot hold is not offered.
 
-    Blender joins any two Areas sharing a whole edge, and `PL-3J2P` found
-    that one such join leaves every layout a tree can hold: six Areas built
-    by full-span cuts, whose left column is in two parts, join into the
-    five-Area pinwheel no sequence of full-span cuts produces. This builds
-    those six - the pinwheel with its left bar cut at two thirds - and asks
-    for the join. The two parts share their whole edge, as the independent
-    geometry below confirms. No straight cut divides the five Areas the join
-    would leave, so the tree refuses rather than return a layout other than
-    the one asked for, and the layout it was asked of is unchanged.
+    Blender joins any two Areas that share a whole edge. `PL-3J2P` found that
+    one such join leaves the set of layouts that a tree can hold. Six Areas
+    built by full-span cuts, whose left column is in two parts, join into the
+    five-Area pinwheel that no sequence of full-span cuts produces. This test
+    builds those six Areas, which are the pinwheel with its left bar cut at
+    two thirds, and asks for the join. The two parts share their whole edge,
+    as the independent geometry below confirms. No straight cut divides the
+    five Areas that the join would leave. So the tree refuses, rather than
+    return a layout other than the one asked for, and the layout that was
+    asked to join is unchanged.
     """
 
     third, two_thirds = 1 / 3, 2 / 3
@@ -666,7 +689,7 @@ def test_a_join_the_tree_cannot_express_is_refused() -> None:
 
 
 def test_a_join_of_areas_that_do_not_share_a_whole_edge_is_refused() -> None:
-    """The cases Blender refuses as well, or trims: no side by side pair, no join."""
+    """Blender also refuses or trims these cases: Areas that are not side by side are not joined."""
 
     partial = layout(row((0.5, 0.5), area(1), column((0.5, 0.5), area(2), area(3))))
     apart = layout(row((0.25, 0.25, 0.5), area(1), area(2), area(3)))
@@ -675,9 +698,9 @@ def test_a_join_of_areas_that_do_not_share_a_whole_edge_is_refused() -> None:
     with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
         partial.join(AreaId(1), AreaId(2))
 
-    # Neighbouring places in two different splits: Area 1 is the root's first
-    # child and Area 3 the column's second, so it is the split, not the place
-    # in it, that keeps them apart.
+    # The two Areas have neighbouring places in two different splits. Area 1 is
+    # the root's first child, and Area 3 is the column's second child. So what
+    # keeps them apart is the split, not their place in it.
     with pytest.raises(LayoutRefused, match="only where they sit next to each other"):
         partial.join(AreaId(1), AreaId(3))
 
@@ -692,16 +715,16 @@ def test_a_join_of_areas_that_do_not_share_a_whole_edge_is_refused() -> None:
 
 
 def test_where_four_areas_meet_a_join_is_taken_whichever_cut_came_first() -> None:
-    """A 2x2 grid is two trees, and a join reads the rectangles, never which tree holds them.
+    """A 2x2 grid can be either of two trees, and a join works from the rectangles alone.
 
-    Cut across first, the grid is a column of two rows; cut down first, a row
-    of two columns. Which two Areas sit in one split differs between them,
-    and before `PL-G60V` a join depended on it: Area 1 could join the Area
-    beside it in one tree and the Area below it in the other. Now each join
-    of two Areas that share an edge is taken from both trees, in either
-    order, and gives the rectangles worked out here from the grid's
-    quarters. The two pairs that meet only at the centre share no edge and
-    are refused from both.
+    Cut across first, the grid is a column of two rows. Cut down first, it is
+    a row of two columns. Which two Areas sit in one split differs between
+    the two trees. Before `PL-G60V`, a join depended on that: Area 1 could
+    join the Area beside it in one tree and the Area below it in the other.
+    Now each join of two Areas that share an edge succeeds in both trees, in
+    either order. It gives the rectangles worked out here from the grid's
+    quarters. The two pairs that meet only at the centre share no edge, and
+    both trees refuse them.
     """
 
     across_first = layout(
@@ -749,9 +772,10 @@ def test_a_join_across_a_junction_cuts_the_region_into_every_strip_it_holds() ->
     """Three columns of two rows: joining two Areas of the first column leaves three strips.
 
     The rows hold Areas 1, 2, 3 above and 4, 5, 6 below, so Areas 1 and 4
-    sit in different splits. Joined, the left third is one Area, and the
-    region is cut down at both thirds at once, since a row never holds a
-    row: one split of three children, not two nested ones.
+    sit in different splits. Once they are joined, the left third is one
+    Area. The region is cut down at both thirds at once, because a row never
+    holds a row. The result is one split of three children, not two nested
+    ones.
     """
 
     third = 1 / 3
@@ -777,11 +801,11 @@ def test_a_join_across_a_junction_cuts_the_region_into_every_strip_it_holds() ->
 
 
 def test_a_join_merges_a_re_sliced_region_into_the_split_above_it() -> None:
-    """A row inside a row is one wider row, so a region re-sliced down continues the row above.
+    """A row inside a row is one wider row, so a region re-cut downward extends the row above.
 
     The grid fills the right half of a row. Joining its two left Areas
-    leaves the grid's region cut down its middle, along the row's own axis,
-    so the merged Area and the column beside it become children of the row.
+    leaves the grid's region cut down its middle, along the row's own axis.
+    So the merged Area and the column beside it become children of the row.
     """
 
     model = layout(
@@ -817,12 +841,13 @@ def test_a_join_keeps_the_splits_beside_it_as_they_were() -> None:
 def test_a_join_opens_a_split_beside_it_where_that_splits_border_is_the_only_cut() -> None:
     """Where only a border inside a subtree beside the pair divides the region, the join opens it.
 
-    Areas 7 and 9 share their whole edge, and joined they span two thirds
-    of the window's width along its foot. The only straight cut through the
-    result runs down at one third, through the middle of the row holding
-    Areas 2 and 3, which holds neither Area joined. Kept whole, that row
-    would leave no cut at all, so the join is taken from the Areas
-    themselves, and Areas 2 and 3 end in different splits.
+    Areas 7 and 9 share their whole edge, and once joined they span two
+    thirds of the window's width along its bottom. The only straight cut
+    through the result runs down at one third. It passes through the middle
+    of the row that holds Areas 2 and 3, which holds neither of the joined
+    Areas. If that row were kept whole, no cut would be left at all. So the
+    join is worked out from the Areas themselves, and Areas 2 and 3 end up in
+    different splits.
     """
 
     third = 1 / 3
@@ -846,11 +871,11 @@ def test_a_join_opens_a_split_beside_it_where_that_splits_border_is_the_only_cut
 def test_a_join_needing_a_split_past_the_depth_maximum_is_refused() -> None:
     """A join can need a level more than the tree held, and is refused past the maximum depth.
 
-    Below Area 1 lie two rows of two, their borders in line. Joining the two
-    right-hand Areas leaves a column on the left inside a row, one level
-    deeper than the rows were, and no other tree holds those rectangles.
-    With the rows at the maximum depth the join is refused, and one level
-    higher it is taken.
+    Below Area 1 lie two rows of two Areas, with their borders in line.
+    Joining the two right-hand Areas leaves a column on the left inside a
+    row, one level deeper than the rows were, and no other tree holds those
+    rectangles. With the rows at the maximum depth, the join is refused. With
+    the rows one level higher, the join succeeds.
     """
 
     eighth = 0.125
@@ -872,10 +897,11 @@ def test_a_join_needing_a_split_past_the_depth_maximum_is_refused() -> None:
 def test_a_join_too_deep_cut_one_way_is_taken_cut_the_other() -> None:
     """Where cutting along the split's own axis would pass the depth maximum, the join cuts across.
 
-    Three rows of two lie at the maximum depth inside a row. Joining the top
-    two left Areas, a cut across first would leave the merged Area and a
-    column beside it in a row one level deeper. A cut down first gives two
-    columns, which join the row above, so the join is taken that way.
+    Three rows of two Areas lie at the maximum depth inside a row. The test
+    joins the top two left Areas. For that join, a cut across first would
+    leave the merged Area and a column beside it in a row one level deeper. A
+    cut down first gives two columns, which join the row above, so the join
+    is made that way.
     """
 
     third = 1 / 3
@@ -895,12 +921,13 @@ def test_a_join_too_deep_cut_one_way_is_taken_cut_the_other() -> None:
 def test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first() -> None:
     """Whether a join fits the depth maximum depends on the rectangles, not on the tree.
 
-    The two trees hold the same rectangles: a cut down at x = 0.75 and a cut
-    across at y = 0.25 meet at a point, and each tree takes a different one
-    first. Joining Areas 9 and 12 needs one level more inside the lowest split
-    holding both. In the tree that cut down first, that split is too deep, and
-    the join was refused there. Cutting the region of a split above it across
-    first fits, as the other tree shows, so both now take the join.
+    The two trees hold the same rectangles. A cut down at x = 0.75 and a cut
+    across at y = 0.25 meet at a point, and each tree makes a different one
+    first. Joining Areas 9 and 12 needs one more level inside the lowest
+    split that holds both. In the tree that cut down first, that split is too
+    deep, and the join used to be refused there. Cutting across the region of
+    a split above it first does fit, as the other tree shows. So both trees
+    now accept the join.
     """
 
     upper = row((1 / 3, 0.5, 1 / 6), area(7), area(8), area(9))
@@ -928,13 +955,13 @@ def test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first()
 
 
 def test_a_join_that_merges_into_the_split_above_may_reach_the_depth_maximum() -> None:
-    """A region one level deeper than its place is taken when it merges into the split above.
+    """A region one level too deep for its place is accepted when it merges into the split above.
 
-    Joining Areas 1 and 2 leaves a column holding the merged Area beside a
-    row of Areas 4 and 5 and, under it, Area 3 beside them. Cut down first,
-    the region becomes a row, which merges into the row above it, so the
-    result fits the maximum although the region alone counted one level too
-    many.
+    Joining Areas 1 and 2 leaves the merged Area in the left half. Area 3
+    fills the top of the right half, and Areas 4 and 5 sit side by side
+    below it. Cut down first, the region becomes a row, which merges into the
+    row above it. So the result fits the maximum, although the region alone
+    counted one level too many.
     """
 
     grid = column(
@@ -948,7 +975,7 @@ def test_a_join_that_merges_into_the_split_above_may_reach_the_depth_maximum() -
 
 
 def test_a_join_reads_two_edges_that_differ_only_by_rounding_as_one() -> None:
-    """Edges within `BORDER_ALIGNMENT_TOLERANCE` are one edge, to a join as to `borders()`.
+    """Edges within `BORDER_ALIGNMENT_TOLERANCE` count as one edge, for a join as for `borders()`.
 
     The top row's second border is placed at 0.1 + 0.2, which is
     0.30000000000000004, and the bottom row's border at 0.3. Areas 3 and 5
@@ -1011,7 +1038,7 @@ def test_a_chain_of_borders_wider_than_the_tolerance_is_cut_where_it_enters_no_a
 
 
 def test_an_id_is_never_handed_out_twice() -> None:
-    """`PL-HJPY` Q3: state kept per Area id must not reach an Area that never had it."""
+    """`PL-HJPY` Q3: state kept per Area id must never pass to an Area that did not have it."""
 
     model, second = LayoutModel.single_area(CHART).split(AreaId(1), ROW, 0.5)
     model = model.join(AreaId(1), second)
@@ -1038,9 +1065,10 @@ def test_resize_places_a_nested_border_where_it_is_dragged() -> None:
     """`position` is a fraction of the window, whatever share of it the border's split holds.
 
     Each row here is a split three deep, in the upper right quarter of the
-    window, so where a border sits in its split and where it sits in the
-    window differ. In the second, the border dragged is the row's second, so
-    the two children it divides begin after the first, a quarter of the way in.
+    window. So where a border sits in its split differs from where it sits in
+    the window. In the second layout, the border dragged is the row's second
+    border. So the two children it divides begin after the first child, a
+    quarter of the way in.
     """
 
     halves = layout(
@@ -1067,18 +1095,19 @@ def test_resize_places_a_nested_border_where_it_is_dragged() -> None:
 
 
 def test_a_drag_moves_only_the_borders_on_its_line() -> None:
-    """`PL-5HSG`: a border no reader touched keeps its place in the window, as in Blender.
+    """`PL-5HSG`: a border off the dragged line keeps its place in the window, as in Blender.
 
     The root border here divides Area 1 from a column whose upper row holds
-    Areas 2 and 4. Dragged from 0.5 to 0.25, the column widens, but the
-    border between Areas 2 and 4 lies on no moved line, so it stays at 0.75.
-    Area 2 takes all the width the drag gives, and Area 4 keeps its quarter
-    of the window. Blender's `area_move_apply_do` moves only the vertices on
-    the dragged line, which is what the project owner chose. The row's sizes
-    are worked out again, as fractions of its new width. The same holds with
-    that border at 0.625, where the row comes out halved, and with a third
-    Area in the row. Area 3, below, has its left edge on the line, so it
-    widens with the column, and the column's own border does not move.
+    Areas 2 and 4. When the root border is dragged from 0.5 to 0.25, the
+    column widens. But the border between Areas 2 and 4 lies on no moved
+    line, so it stays at 0.75. Area 2 takes all the width that the drag
+    gives, and Area 4 keeps its quarter of the window. Blender's
+    `area_move_apply_do` moves only the vertices on the dragged line, and the
+    project owner chose that behaviour. The row's sizes are worked out again,
+    as fractions of its new width. The same applies with that border at
+    0.625, where the row comes out halved, and with a third Area in the row.
+    Area 3, below, has its left edge on the line, so it widens with the
+    column, and the column's own border does not move.
     """
 
     model = layout(
@@ -1123,9 +1152,9 @@ def test_a_drag_past_a_border_beside_its_line_is_refused() -> None:
 
     Dragged from 0.5 to 0.75 or past it, the root border would reach the
     border between Areas 2 and 4, which does not move, and leave Area 2 no
-    room. While each child kept its proportions that border moved ahead of
-    the drag, and the drag was taken. Short of it, the drag is taken and
-    Area 2 narrows to what is left.
+    room. While each child kept its proportions, that border moved ahead of
+    the drag, and the drag was accepted. A drag that stops short of that
+    border is accepted, and Area 2 narrows to what is left.
     """
 
     model = layout(
@@ -1177,8 +1206,8 @@ def test_a_drag_refuses_a_gap_the_stored_sizes_would_round_away() -> None:
 def test_a_drag_leaves_a_split_off_its_line_exactly_as_it_was() -> None:
     """A split whose extent is the same and which holds no moved handle keeps its sizes as stored.
 
-    Worked out again from where its borders lie, a row of a tenth, two tenths
-    and seven tenths comes back with 0.20000000000000004 for its middle size.
+    A row of a tenth, two tenths and seven tenths, worked out again from where
+    its borders lie, comes back with 0.20000000000000004 for its middle size.
     The drag here moves only the top row's border, so the bottom row is left
     as it was, to the last bit.
     """
@@ -1195,8 +1224,9 @@ def test_a_drag_leaves_a_split_off_its_line_exactly_as_it_was() -> None:
 def test_a_drag_to_where_the_border_lies_returns_an_equal_layout() -> None:
     """A handle already at `position` is left as it is, not recomputed from where it lies.
 
-    Recomputed, a row of a tenth, two tenths and seven tenths came back with
-    0.20000000000000004 for its middle size, unequal to the layout dragged.
+    When it was recomputed, a row of a tenth, two tenths and seven tenths
+    came back with 0.20000000000000004 for its middle size. The result was
+    then not equal to the layout that was dragged.
     """
 
     model = layout(row((0.1, 0.2, 0.7), area(1), area(2), area(3)))
@@ -1208,9 +1238,9 @@ def test_a_drag_to_where_the_border_lies_returns_an_equal_layout() -> None:
 def test_borders_follows_a_line_through_its_crossings() -> None:
     """Three rows cut at one x make one vertical border, and a drag moves all three handles.
 
-    The junction where each meets the next is a crossing of two lines, and at
-    a crossing Blender's border is one line: the thing `PL-3J2P` measured a
-    tree to lose, and recovers by this query.
+    The junction where each row meets the next is a crossing of two lines. At
+    a crossing, Blender's border is one line. `PL-3J2P` measured that a tree
+    loses that single line, and the model recovers it through this query.
     """
 
     model = layout(
@@ -1235,11 +1265,11 @@ def test_borders_follows_a_line_through_its_crossings() -> None:
 def test_borders_stops_where_the_line_breaks() -> None:
     """Collinear is not enough: the handles must also meet end to end.
 
-    Two columns cut at the same height with a full-height Area between them
-    have collinear borders an Area separates, and Blender moves those
-    independently; so does this. A row cut off the line in the middle of
-    three ends the line there, and the rows above and below it are then not
-    connected to each other either.
+    Take two columns cut at the same height, with a full-height Area between
+    them. Their borders are collinear, but an Area separates them, so Blender
+    moves them independently, and so does this model. In a stack of three
+    rows, a middle row cut off the line ends the line there. The rows above
+    and below it are then not connected to each other either.
     """
 
     separated = layout(
@@ -1267,7 +1297,7 @@ def test_borders_stops_where_the_line_breaks() -> None:
 
 
 def test_borders_reads_the_line_to_within_rounding_and_no_further() -> None:
-    """Rounding never splits a line; a border a visible distance off it is not on it."""
+    """Rounding never splits a line, but a border a visible distance off the line is not on it."""
 
     near = 0.5 + BORDER_ALIGNMENT_TOLERANCE / 2
     far = 0.5 + BORDER_ALIGNMENT_TOLERANCE * 2
@@ -1285,12 +1315,12 @@ def test_borders_reads_the_line_to_within_rounding_and_no_further() -> None:
 
 
 def test_borders_is_one_set_whichever_of_its_handles_is_asked() -> None:
-    """Each handle is compared with the one that reached it, so the line is the same from each.
+    """Each handle is compared with the handle it was found from, so the line is the same from each.
 
-    Three rows cut 0.6 of the tolerance apart in turn: the top and bottom
+    Three rows are cut 0.6 of the tolerance apart in turn. The top and bottom
     handles are further apart than the tolerance, but each is within it of
-    the middle one, so all three are one line from every one of them, and a
-    drag from the top moves the bottom row too.
+    the middle one. So all three form one line, whichever of them is asked,
+    and a drag from the top moves the bottom row too.
     """
 
     step = 0.6 * BORDER_ALIGNMENT_TOLERANCE
@@ -1401,13 +1431,13 @@ def test_position_is_where_a_border_lies_in_its_window() -> None:
 
 
 def test_borders_joins_only_handles_of_its_own_orientation() -> None:
-    """A row's border runs down the window and a column's across it; one never continues the other.
+    """A row's border runs down and a column's runs across, so one never continues the other.
 
     The innermost column's border lies at a height of one half and ends a
-    quarter of the way across; the root row's lies at one half across and
-    begins a quarter of the way down. Compared as numbers, without their
-    direction, the two would read as one line meeting end to end; they are
-    perpendicular and do not touch.
+    quarter of the way across. The root row's border lies at one half across
+    and begins a quarter of the way down. Compared as numbers, without their
+    direction, the two would look like one line meeting end to end. In fact
+    they are perpendicular and do not touch.
     """
 
     model = layout(
@@ -1435,7 +1465,7 @@ def test_borders_joins_only_handles_of_its_own_orientation() -> None:
 
 
 def test_borders_stops_at_the_window_edge() -> None:
-    """`PL-HJPY` Q4: two windows' borders can be collinear on a screen and are unrelated."""
+    """`PL-HJPY` Q4: two windows' borders can be collinear on a screen and still be unrelated."""
 
     tree = column((0.5, 0.5), row((0.5, 0.5), area(1), area(2)), row((0.5, 0.5), area(3), area(4)))
     second = column(
@@ -1453,9 +1483,9 @@ def test_borders_stops_at_the_window_edge() -> None:
 def test_span_is_where_a_handles_split_begins_and_ends_in_its_window() -> None:
     """A row in the lower part of the right half spans that half, from 0.5 to 1.0 across.
 
-    What the adapter reads to turn a drag inside one splitter into a position
-    in the window (`PL-W9P6`), so each span is checked against the Areas'
-    rectangles as `rectangles` works them out, not against the model.
+    The adapter reads the span to turn a drag inside one splitter into a
+    position in the window (`PL-W9P6`). So each span is checked against the
+    Areas' rectangles as `rectangles` works them out, not against the model.
     """
 
     model = layout(
@@ -1475,12 +1505,13 @@ def test_span_is_where_a_handles_split_begins_and_ends_in_its_window() -> None:
 
 
 def test_a_border_cannot_move_onto_or_past_a_neighbouring_border() -> None:
-    """The model holds no minimum sizes, so its limit is that every child keeps some size.
+    """The model stores no minimum sizes, so its only limit is that every child keeps some size.
 
-    On a line, the tightest of the handles it holds decides. The two rows'
-    borders at one half are one line; the upper row's could go anywhere, but
-    the lower row's meets its neighbour at a quarter, so moving the line to
-    0.2 would leave no room for Area 4, which is the Area named.
+    On a line, the tightest of the line's handles decides. The two rows'
+    borders at one half are one line. The upper row's border could go
+    anywhere, but the lower row's border meets its neighbour at a quarter. So
+    moving the line to 0.2 would leave no room for Area 4, which is the Area
+    that the refusal names.
     """
 
     model = layout(
@@ -1509,9 +1540,10 @@ def test_a_border_cannot_move_onto_or_past_a_neighbouring_border() -> None:
 
 
 def test_swap_exchanges_places_and_each_area_keeps_its_id_and_view() -> None:
-    """`PL-TH35` Q10: a swap moves each View with what is kept for it; the places keep their sizes.
+    """`PL-TH35` Q10: a swap moves each View with its kept state, and the places keep their sizes.
 
-    Across windows too, since ids are unique across them (`PL-HJPY` Q3).
+    This applies across windows too, because ids are unique across them
+    (`PL-HJPY` Q3).
     """
 
     model = LayoutModel(
@@ -1542,7 +1574,7 @@ def test_set_view_changes_the_kind_and_nothing_else() -> None:
 
 
 def test_unknown_kinds_names_the_areas_whose_view_is_not_registered() -> None:
-    """`PL-R1WQ` Q2: membership is a question asked with the registry's tags passed in."""
+    """`PL-R1WQ` Q2: the caller passes in the registry's tags to ask which kinds are unknown."""
 
     model = layout(row((0.5, 0.5), area(1, CHART), area(2, ViewKind("retired_view"))))
 
@@ -1557,7 +1589,7 @@ def test_unknown_kinds_names_the_areas_whose_view_is_not_registered() -> None:
 
 
 def test_every_operation_leaves_the_layout_it_was_called_on_as_it_was() -> None:
-    """The layout is a value: trying an operation is how a menu asks whether it is available."""
+    """The layout is a value, so a menu tries an operation to ask whether it is available."""
 
     model = layout(column((0.5, 0.5), row((0.5, 0.5), area(1), area(2)), area(3)))
     before = layout_to_json(model)
@@ -1572,16 +1604,16 @@ def test_every_operation_leaves_the_layout_it_was_called_on_as_it_was() -> None:
 
 
 def test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_tolerance() -> None:
-    """A file may hold sizes up to `LAYOUT_SIZE_SUM_TOLERANCE` off one, which no operation inherits.
+    """An operation on sizes at the edge of the tolerance returns sizes that sum to one.
 
-    Each split here misses one by just under the tolerance: no code here
-    writes such sizes, and the reader accepts them as written. The operation
-    beside each once
-    carried the sum past the tolerance by its own rounding and raised
-    `InvalidLayout`, which no operation's Raises list names. Each split an
-    operation rebuilds is now rescaled to sum to one first, or has its sizes
-    worked out afresh from where its borders lie, so the result sums to one
-    and reads back equal.
+    A file may hold sizes up to `LAYOUT_SIZE_SUM_TOLERANCE` off one. Each
+    split here misses one by just under the tolerance. No code here writes
+    such sizes, but the file reader accepts them as written. The operation
+    beside each split once pushed the sum past the tolerance by its own
+    rounding, and raised `InvalidLayout`, which no operation's Raises list
+    names. Each split that an operation rebuilds is now rescaled to sum to
+    one first, or has its sizes worked out afresh from where its borders lie.
+    So the result sums to one and reads back equal.
     """
 
     def joined(model: LayoutModel) -> LayoutModel:
@@ -1620,7 +1652,7 @@ def test_every_operation_works_on_sizes_the_reader_accepts_at_the_edge_of_the_to
 
 
 def test_a_reference_the_layout_does_not_hold_is_refused() -> None:
-    """A stale id or handle is the caller's error, and says which."""
+    """A stale id or handle is the caller's error, and the refusal says which one it is."""
 
     model = layout(column((0.5, 0.5), row((0.5, 0.5), area(1), area(2)), area(3)))
 
@@ -1636,12 +1668,13 @@ def test_a_reference_the_layout_does_not_hold_is_refused() -> None:
 
 
 def test_a_bare_value_is_refused_where_a_checked_type_is_required() -> None:
-    """`mypy` reads `src/` and not a caller typed `Any`, so the types are required at run time.
+    """`mypy` checks `src/` but not a caller typed `Any`, so the types are required at run time too.
 
-    A bare `int` would find the Area it equals, and `True` the Area with id 1;
-    both are refused as the programming error they are, before anything is
-    looked up. The values a layout is built from check theirs the same way,
-    so a part of the wrong type is refused before a layout holds it.
+    A bare `int` would find the Area it equals, and `True` would find the
+    Area with id 1. Both are refused as the programming errors they are,
+    before anything is looked up. The values that a layout is built from
+    check the types of their own parts in the same way. So a part of the
+    wrong type is refused before a layout holds it.
     """
 
     with pytest.raises(TypeError, match="an Area's id is an AreaId"):
@@ -1711,7 +1744,7 @@ def test_a_bare_value_is_refused_where_a_checked_type_is_required() -> None:
 
 
 def test_the_serialized_root_holds_a_window_set_at_version_one() -> None:
-    """`PL-HJPY`: a root that gained a window set later would be a migration of learners' files."""
+    """`PL-HJPY`: adding a window set to the root later would mean migrating learners' files."""
 
     written = layout_to_dict(LayoutModel.single_area(CHART))
 
@@ -1724,7 +1757,7 @@ def test_the_serialized_root_holds_a_window_set_at_version_one() -> None:
 
 
 def test_a_layout_survives_the_round_trip_through_json_exactly() -> None:
-    """Every operation's result, across two windows, read back equal to what was written."""
+    """Every operation's result, across two windows, reads back equal to what was written."""
 
     model, added = LayoutModel.single_area(CHART).split(AreaId(1), ROW, 0.7)
     model, _ = model.split(added, COLUMN, 1 / 3)

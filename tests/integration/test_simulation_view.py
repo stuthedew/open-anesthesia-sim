@@ -1,25 +1,27 @@
 """The dashboard, driven headless against real runs.
 
-`app/run_view.py` and `app/simulation_view.py` are the toolkit half of the
-dashboard: every string and every per-tick claim is settled in
-`app/dashboard_frame.py` without a toolkit, and `tests/unit/test_dashboard_frame.py`
-holds it there. These tests hold the other half - that the widgets say what
-the frame said, that a control a reader moves reaches the run it belongs to
-and no other, that the two timer slots keep stepping and drawing apart, that
-a refusal is a notice and a raise is a halt - against real
-`SimulationController`s, under the `offscreen` platform `tests/conftest.py`
-selects.
+`app/run_view.py` and `app/simulation_view.py` are the half of the dashboard
+that uses the toolkit. `app/dashboard_frame.py` settles every string and every
+per-tick claim without a toolkit, and `tests/unit/test_dashboard_frame.py`
+tests that half. These tests cover the other half, against real
+`SimulationController`s, under the `offscreen` platform that
+`tests/conftest.py` selects. They check that the widgets say what the frame
+said, and that a control a reader moves changes the run it belongs to and no
+other. They check that the two timer slots keep the stepping and the drawing
+separate. They also check that a refusal is shown as a notice, while an
+exception raised by the run halts it.
 
-Ported by claim from the Flet suite this file replaces (`PL-25KS`), keeping
-each surviving test's name where a closed item's verify line greps for it.
-What is not carried is Flet's own mechanism: wire-protocol patch counts,
-per-point tooltip objects, control identity across frames. The one count
-that survives is `SimulationView.presented_frames`, which is what the
-coalescing rule (`PL-R2YM`) is about.
+The tests were ported claim by claim from the Flet suite that this file
+replaces (`PL-25KS`). Each surviving test keeps its name where a closed item's
+verify line greps for it. Flet's own mechanism is not carried over: the
+wire-protocol patch counts, the per-point tooltip objects and the control
+identity across frames. The one count that survives is
+`SimulationView.presented_frames`, because the coalescing rule (`PL-R2YM`) is
+about that count.
 
-The dashboard is shown at one fixed size before its first presentation,
-because a frame is assembled from the plot's laid-out width and a widget
-with no size has no pixels for the hover to measure against.
+The dashboard is shown at one fixed size before its first presentation. A
+frame is assembled from the plot's laid-out width, and a widget with no size
+has no pixels for the hover to measure against.
 """
 
 import importlib
@@ -264,9 +266,9 @@ _EVERY_VIEW = WorkspaceSet(
     0,
 )
 
-# The identities a dashboard gives the first runs it places, in order, which
-# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
-# rather than from where it is drawn (`PL-7Z84`).
+# The identities that a dashboard gives the first runs it places, in order.
+# They render as "Run 1", "Run 2" and "Run 3". A run is named from its identity,
+# not from where it is drawn (`PL-7Z84`).
 TEST_SESSION = SessionToken("0" * 32)
 RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
 FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
@@ -298,15 +300,16 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
-#: The dashboards `_shown_view` built and has not yet deleted. A view left to
-#: the garbage collector is deleted whenever a collection happens to run -
-#: inside a later test's `show()`, or at interpreter shutdown after Qt's own
-#: statics have gone - and either is a fatal error rather than a failure. So
-#: a view is held here and deleted deliberately: before the next dashboard is
-#: shown, and the last one in `_torn_down_views`, each time with the event
-#: loop still able to deliver the deferred deletion. One at a time rather
-#: than all at the end, because draining a hundred deferred deletions in one
-#: call took twenty seconds where one takes twenty milliseconds.
+#: The dashboards that `_shown_view` built and has not yet deleted. A view left
+#: to the garbage collector is deleted whenever a collection happens to run.
+#: That can be inside a later test's `show()`, or at interpreter shutdown after
+#: Qt's own statics have gone. Either one is a fatal error rather than a test
+#: failure. So each view is kept here and deleted deliberately, before the next
+#: dashboard is shown. `_torn_down_views` deletes the last one. Each time, the
+#: event loop is still able to deliver the deferred deletion. The views are
+#: deleted one at a time rather than all at the end, because draining a hundred
+#: deferred deletions in one call took twenty seconds, and one takes twenty
+#: milliseconds.
 _SHOWN_VIEWS: list[SimulationView] = []
 
 
@@ -429,12 +432,12 @@ def _middle_of(view: SimulationView) -> tuple[QScrollArea, QWidget]:
 def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
     """The accounting and control-change panels a run placed on the page, in that order.
 
-    The accounting panel is in the sidebar beside the charts and the
-    control-change panel in the unconditional region (`PL-NWTM`). Reached
-    through the heading placed in each rather than through the build methods,
-    so what the tests below measure is what the page holds whatever those
-    methods hand back. A second call to the method that built both used to
-    build panels with no parent and move the run's live labels into them
+    The accounting panel is in the sidebar beside the charts, and the
+    control-change panel is in the unconditional region (`PL-NWTM`). Each panel
+    is found through the heading placed in it, not through the build methods.
+    So the tests below measure what the page holds, whatever those methods
+    return. A second call to the method that built both panels used to build
+    new panels with no parent and move the run's live labels into them
     (`PL-N67T`).
     """
 
@@ -461,13 +464,14 @@ def _steps(run: RunView, ticks: int) -> None:
 
 
 def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment answer `quotient` for its partial-pressure fraction.
+    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
 
-    The one route left to a quotient outside 0 to 1: no supported setting
-    reaches one (`core/concentration.py`), and since `PL-544D` an amount
-    written past the capacity is refused at the write, so the quotient every
-    alveolar compartment answers is replaced, for the snapshot and the stepper
-    alike, rather than reached through the stored amount.
+    This is the one remaining way to get a quotient outside 0 to 1. No
+    supported setting produces one (`core/concentration.py`). Since `PL-544D`,
+    an amount larger than the capacity is refused when it is written. So the
+    quotient that every alveolar compartment returns is replaced directly, for
+    the snapshot and the stepper alike, instead of being produced through the
+    stored amount.
     """
 
     monkeypatch.setattr(
@@ -484,12 +488,12 @@ def _readout_secondary(run: RunView, quantity: RecordedQuantity) -> str:
 
 
 def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
-    """Move a slider the way a reader's drag reaches it: through the QSlider itself.
+    """Move a slider the way a reader's drag moves it, through the QSlider itself.
 
-    Through the control the run actually holds and the signal it actually
-    wired, so the tests assert the wiring as well as the effect: a handler
-    bound to the wrong run is exactly the mistake a comparison of two runs
-    has to be proof against.
+    The move goes through the control that the run actually holds and the
+    signal it actually wired. So the tests check the wiring as well as the
+    effect. A handler bound to the wrong run is exactly the mistake that a
+    comparison of two runs has to guard against.
     """
 
     control.slider.setValue(slider_position(value, decimals))
@@ -535,10 +539,11 @@ def _set_trace_shown(
 ) -> None:
     """Check or uncheck one compartment in the legend, as a reader clicking would.
 
-    Through the box, which is the route a click takes: the legend asks, and
-    the dashboard's answer is what both the boxes and the chart then show
-    (`PL-VN6M`). Once the two-compartment cap is holding, that answer keeps
-    what was just asked for and drops the longest-standing selection.
+    The change goes through the box, which is the route a click takes. The
+    legend makes a request, and the dashboard's decision is what both the
+    boxes and the chart then show (`PL-VN6M`). Once the two-compartment cap is
+    in force, that decision keeps what was just asked for and drops the
+    oldest selection.
     """
 
     _concentration(view).legend.set_compartment_shown(quantity, shown)
@@ -548,9 +553,9 @@ def _set_trace_shown(
 def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
     """A real, paused run holding both elapsed time and a recorded input.
 
-    Both halves deliberately: `SimulationSnapshot.has_recorded_run` reads
-    the two together, and a fixture carrying only one would leave the other
-    unexercised by every test built on it.
+    The run has both on purpose. `SimulationSnapshot.has_recorded_run` checks
+    the two together, and a fixture that carried only one would leave the
+    other untested by every test built on it.
     """
 
     controller = SimulationController()
@@ -566,9 +571,9 @@ def _branched_case(elapsed_s: float = 60.0) -> BranchedCase:
     """A case whose trunk is paused with a recorded run and two instants to fork at.
 
     `_paused_run_with_history` records one setting change, so the trunk holds
-    a keyframe at induction and another at `elapsed_s` - which is what
-    `BranchedCase.fork_points_s` offers and the only two instants
-    `resumed_at` will open a branch at.
+    a keyframe at induction and another at `elapsed_s`. Those two instants are
+    what `BranchedCase.fork_points_s` offers, and they are the only two
+    instants at which `resumed_at` will open a branch.
     """
 
     return BranchedCase(_paused_run_with_history(elapsed_s))
@@ -593,8 +598,8 @@ def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:
 def _take_fork(view: SimulationView, instant_s: float) -> None:
     """Choose an offered instant in the branch control and press its button.
 
-    `findData` answers the first entry at that instant, which is a recorded
-    control event wherever a mark stands at the same instant too, because
+    `findData` returns the first entry at that instant. Where a mark is also
+    set at the same instant, that entry is the recorded control event, because
     `fork_offer` lists the control event first.
     """
 
@@ -659,16 +664,17 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
 
 
 # The rewind tests' trunk records one setting change at 30 s and is paused at
-# 120 s, so a mark between the two lies behind its clock at an instant it holds
-# no keyframe for: the case `PL-W4XQ` asked for, which only the mark door can
-# branch at.
+# 120 s. So a mark between the two lies behind the trunk's clock, at an instant
+# for which the trunk holds no keyframe. That is the case `PL-W4XQ` asked for,
+# and only a branch taken at a mark can open there.
 _REWIND_CHANGE_S = 30.0
 _REWIND_PAUSE_S = 120.0
 
-# The mark set behind that clock, inside a step: 75.05 s is first reached by the
-# step ending at 751 x 0.1 s, so the instant a branch taken there opens at is
-# not the instant typed. Written as the product the clock forms rather than
-# read from the controller, so the two are compared rather than copied.
+# The mark set behind that clock, inside a step. The clock first reaches 75.05 s
+# at the step ending at 751 x 0.1 s, so a branch taken there opens at a
+# different instant from the one typed. The expected instant is written as the
+# product the clock forms, not read from the controller, so that the test
+# compares the two values instead of copying one.
 _BEHIND_MARK_S = 75.05
 _BEHIND_MARK_FORK_S = 751 * 0.1
 
@@ -681,11 +687,11 @@ _BEHIND_MARK_LABEL = f"{format_elapsed(_BEHIND_MARK_FORK_S)}, on your mark"
 def _rewind_case(application: QApplication) -> tuple[BranchedCase, SimulationView, TimeBookmark]:
     """A case whose trunk is paused past a setting change, marked behind its clock.
 
-    The owner's sequence at a minute's scale: paused at 3 h, a learner marks
-    1 h to go back and try something else there. The mark is set after the
-    clock has passed it, so no step crossed it and the trunk never halted on
-    it; the frame is drawn afterwards, so the panel is the one a learner
-    would be looking at.
+    This is the owner's sequence at the scale of minutes. A learner paused at
+    3 h marks 1 h, to go back and try something else there. The mark is set
+    after the clock has passed it, so no step crossed it and the trunk never
+    halted on it. The frame is drawn afterwards, so the panel is the one a
+    learner would be looking at.
     """
 
     trunk = SimulationController()
@@ -711,8 +717,9 @@ def _select_agent(run: RunView, agent_id: str) -> None:
     assert index >= 0, f"the selector does not offer {agent_id!r}"
 
     if index == combo.currentIndex():
-        # A combo reports no change on the same item, and a reader opening
-        # and closing it on the running agent still reaches the handler.
+        # A combo reports no change when the same item is chosen again. A
+        # reader who opens and closes it on the running agent still triggers
+        # the handler, so the helper calls the handler directly.
         run._handle_agent_change(index)
     else:
         combo.setCurrentIndex(index)
@@ -744,13 +751,13 @@ def _identity_controls(run: RunView) -> tuple[QWidget, ...]:
 
 
 def _interface_strings(view: SimulationView) -> set[str]:
-    """Every string the dashboard holds, hidden ones included: for what is never said."""
+    """Every string the dashboard holds, hidden ones included, to check what is never said."""
 
     return set(view.interface_strings())
 
 
 def _visible_strings(view: SimulationView) -> set[str]:
-    """The strings a reader can see now: for what the reader is told (`PL-904Y`)."""
+    """The strings a reader can see now, to check what the reader is told (`PL-904Y`)."""
 
     return set(view.visible_strings())
 
@@ -839,12 +846,12 @@ def _real_step_failure() -> SimulationNumericalError:
     """Capture the exception the core actually raises on a broken step.
 
     Reusing the real exception rather than inventing one keeps these tests
-    tied to what `core/` does: if the core stopped raising a
-    `SimulationNumericalError` here, this helper fails rather than letting
-    the interface tests pass against a fiction. The failure is injected,
-    because the exact propagator cannot carry a compartment out of range on
-    its own (`PL-GS5X`); what is stood in for is what the guard remains
-    cover for.
+    tied to what `core/` does. If the core stopped raising a
+    `SimulationNumericalError` here, this helper would fail, instead of letting
+    the interface tests pass against an invented error. The failure is
+    injected, because the exact propagator cannot carry a compartment out of
+    range on its own (`PL-GS5X`). The injected failure stands in for the case
+    that the guard still protects against.
     """
 
     system = AgentUptakeSystem.for_agent("isoflurane")
@@ -888,16 +895,16 @@ class _StepFailingController(SimulationController):
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
     """Make the tissue flows sum to `cardiac_output_l_min`, past the tissues' guard.
 
-    Each tissue's perfusion fraction is scaled by `cardiac_output_l_min` over
-    the patient's output, and written past the tissue's own guard. The patient
-    keeps its output. The settings record that a run's definition opens on
-    then refuses the tissue flows, because they no longer sum to the output.
-    It refuses them at the next step and at Reset (`PL-M4M0`), and no setting
-    repairs them. No guarded write can make this record now. Every flow is
-    formed from the output (`PL-HQF5`), and a fraction is written once
-    (`PL-Z0HN`). Until then, a tissue's `set_blood_flow` made it, and a
-    cardiac output change repaired it. `_with_the_tissue_fractions_put_back`
-    stands in for that repair.
+    Each tissue's perfusion fraction is multiplied by `cardiac_output_l_min`
+    divided by the patient's output, and written past the tissue's own guard.
+    The patient keeps its output. A run's definition opens on a settings
+    record, and that record then refuses the tissue flows, because they no
+    longer sum to the output. It refuses them at the next step and at Reset
+    (`PL-M4M0`), and no setting repairs them. No guarded write can produce
+    this record now. Every flow is formed from the output (`PL-HQF5`), and a
+    fraction is written once (`PL-Z0HN`). Before those changes, a tissue's
+    `set_blood_flow` could produce it, and a cardiac output change repaired
+    it. `_with_the_tissue_fractions_put_back` stands in for that repair.
     """
 
     patient = controller._state.uptake_system.patient
@@ -934,11 +941,11 @@ def test_a_dashboard_refuses_to_be_built_with_no_run() -> None:
 
 
 def test_a_dashboard_refuses_more_runs_than_may_be_displayed() -> None:
-    """`ROADMAP.md` bounds the comparison at two, and the cap is why.
+    """`ROADMAP.md` limits the comparison to two runs, for the reason below.
 
-    At three runs the encoding that tells one from another has nothing left:
-    colour and line style carry the compartment and line width is a two-level
-    channel. A third curve would be drawn with nothing identifying it.
+    With three runs, no visual channel is left to tell one run from another.
+    Colour and line style carry the compartment, and line width has only two
+    levels. A third curve would be drawn with nothing to identify it.
     """
 
     assert MAX_DISPLAYED_RUNS == 2
@@ -953,9 +960,9 @@ def test_a_dashboard_refuses_more_runs_than_may_be_displayed() -> None:
 def test_a_dashboard_refuses_two_runs_on_different_agents() -> None:
     """One ×MAC ruler and one set of references cannot describe two agents.
 
-    Two agents on one chart would leave one run's traces read against the
-    other's divisor - a correct number under the wrong label, which
-    `CLAUDE.md`'s standard treats as a failure of the value.
+    With two agents on one chart, one run's traces would be read against the
+    other agent's divisor. That gives a correct number under the wrong label,
+    which `CLAUDE.md`'s standard treats as a failure of the value.
     """
 
     with pytest.raises(
@@ -974,15 +981,15 @@ def test_a_dashboard_refuses_two_runs_on_different_agents() -> None:
 def test_every_transport_button_declares_its_own_foreground(application: QApplication) -> None:
     """None of the three is left to take its label colour from the host palette.
 
-    `PL-DHBX`: a button that declares no foreground is drawn in Qt's palette
-    `ButtonText` role, which follows the host appearance rather than this
-    interface, and went near-white under macOS Dark while every surface around
-    it stayed this light theme's. Both states are asserted because the defect
-    arrived twice - declaring `:enabled` alone left the *unavailable* button
-    still absent on the project owner's screen.
+    `PL-DHBX`: a button that declares no foreground is drawn in the colour of
+    Qt's palette `ButtonText` role. That role follows the host appearance
+    rather than this interface. Under macOS Dark it went near-white, while
+    every surface around it kept this light theme's colours. Both states are
+    checked because the defect arrived twice. Declaring `:enabled` alone still
+    left the *unavailable* button invisible on the project owner's screen.
 
-    `transport_button_stylesheet` carries the colours; this holds `RunView` to
-    applying them, which is the half a test of the helper alone would not catch.
+    `transport_button_stylesheet` carries the colours. This test checks that
+    `RunView` applies them, which a test of the helper alone would not catch.
     """
 
     view = _shown_view(application, SimulationController())
@@ -998,7 +1005,7 @@ def test_every_transport_button_declares_its_own_foreground(application: QApplic
 
 
 def test_start_pause_reset_handlers_drive_the_real_controller(application: QApplication) -> None:
-    """Each button reaches the run through its own click, and draws its own frame."""
+    """Each button acts on the run through its own click, and draws its own frame."""
 
     controller = SimulationController()
     view = _shown_view(application, controller)
@@ -1028,7 +1035,7 @@ def test_start_pause_reset_handlers_drive_the_real_controller(application: QAppl
 
 
 def test_the_status_word_is_drawn_in_its_own_emphasis(application: QApplication) -> None:
-    """Running in accent, paused in muted: the word and its colour move together."""
+    """Running is drawn in the accent colour and Paused in muted, so word and colour agree."""
 
     controller = SimulationController()
     view = _shown_view(application, controller)
@@ -1046,7 +1053,7 @@ def test_the_status_word_is_drawn_in_its_own_emphasis(application: QApplication)
 
 
 def test_the_integer_sliders_span_the_supported_input_ranges(application: QApplication) -> None:
-    """Read off the constructed controls, not off module constants."""
+    """The ranges are read from the constructed controls, not from module constants."""
 
     run = _shown_view(application, SimulationController()).runs[0]
 
@@ -1108,8 +1115,8 @@ def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
 ) -> None:
     """The dial is in percent and so is what the core holds (`PL-NJPB`).
 
-    The model reads that as a fraction of one atmosphere, which is the
-    magnitude the second assertion holds.
+    The model treats that value as a fraction of one atmosphere, and the
+    second assertion checks that magnitude.
     """
 
     controller = SimulationController()
@@ -1147,12 +1154,12 @@ def test_cardiac_output_slider_forwards_value_to_controller(application: QApplic
 def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
     application: QApplication,
 ) -> None:
-    """Without it two turns of one dial are one adjustment on the record.
+    """Without the boundary, two turns of one dial would be recorded as one adjustment.
 
     Each slider's press is wired to the boundary, so a second act on the
-    same control after a press is a second adjustment. Observed through the
-    controller rather than by inspecting the connection, which PySide6 does
-    not expose.
+    same control after a press is a second adjustment. The test observes this
+    through the controller rather than by inspecting the connection, because
+    PySide6 does not expose the connection.
     """
 
     for slider_name in (
@@ -1190,7 +1197,7 @@ def test_a_declared_boundary_reaches_the_controller(application: QApplication) -
 
 
 def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplication) -> None:
-    """One act by the person, however many settings the model was stepped under."""
+    """One drag is one mark and one entry, however many settings the model was stepped under."""
 
     controller = SimulationController()
     view = _shown_view(application, controller)
@@ -1225,15 +1232,16 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
 def test_a_refused_setting_is_reported_without_stopping_the_run(
     application: QApplication, dialled_percent: float, refusal: str
 ) -> None:
-    """Isoflurane's vaporizer stops at 5%, so 50% must be refused, and 150% is no percent.
+    """Isoflurane's vaporizer stops at 5%, so 50% must be refused, and 150% is not a percent.
 
-    Called on the handler rather than dragged, because the slider's own
-    ceiling keeps both unreachable on the control - which is exactly why the
-    handler needs its own cover. They are refused in different places: 50% by
-    the circuit, against the vaporizer maximum, and 150% by `Percent` as the
-    handler builds it. So the handler builds it inside the setting it applies,
-    and names it: built before, its refusal would escape the handler, and no
-    banner would say the setting was refused (`PL-4R3W`).
+    The test calls the handler rather than dragging the slider, because the
+    slider's own maximum makes both values unreachable on the control. That is
+    exactly why the handler needs its own test. The two values are refused in
+    different places. The circuit refuses 50% against the vaporizer maximum,
+    and `Percent` refuses 150% when the handler builds it. So the handler
+    builds the `Percent` inside the setting it applies, and names it. If the
+    `Percent` were built before, its refusal would escape the handler, and no
+    banner would say that the setting was refused (`PL-4R3W`).
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -1284,11 +1292,11 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplic
 def test_every_slider_handler_refuses_without_escaping_into_the_toolkit(
     application: QApplication, handler_name: str, slider_name: str
 ) -> None:
-    """No setting slot may let a core raise reach Qt's dispatcher.
+    """No setting slot may let an exception raised by the core reach Qt's dispatcher.
 
-    The sliders' own bounds keep a negative flow unreachable in the running
-    app, which is exactly why the guard needs its own cover: an exception
-    escaping a slot is lost under PySide6 rather than shown.
+    The sliders' own bounds make a negative flow unreachable in the running
+    app. That is exactly why the guard needs its own test: under PySide6, an
+    exception that escapes a slot is lost rather than shown.
     """
 
     controller = SimulationController()
@@ -1329,7 +1337,7 @@ def test_a_refused_setting_reaches_the_notice_through_apply_setting(
 def test_an_execution_error_in_a_setting_halts_the_run_through_apply_setting(
     application: QApplication,
 ) -> None:
-    """`PL-V6M0`: an execution error is not a refusal and must not read as one."""
+    """`PL-V6M0`: an execution error is not a refusal and must not be shown as one."""
 
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
@@ -1372,7 +1380,7 @@ def test_a_domain_limit_in_a_setting_reaches_the_supported_limit_channel_through
 def test_a_type_error_in_a_setting_halts_the_run_through_apply_setting(
     application: QApplication,
 ) -> None:
-    """`PL-YK2V`: a raise from outside the project hierarchy still halts the run."""
+    """`PL-YK2V`: an exception from outside the project's hierarchy still halts the run."""
 
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
@@ -1471,9 +1479,9 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
 def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QApplication) -> None:
     """`PL-R2YM`: a drag updates its own readout at once and defers the frame.
 
-    What must still be immediate is the view beside the dial, which has to
+    The view beside the dial must still update at once, because it has to
     agree with the snapshot the moment the setting is applied (`PL-018`).
-    What waits is the presentation - chart assembly, draw and captions.
+    The presentation waits: the chart assembly, the drawing and the captions.
     """
 
     controller = SimulationController()
@@ -1491,11 +1499,11 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QAppl
 
 
 def test_a_refused_slider_change_draws_its_own_frame(application: QApplication) -> None:
-    """The one state the coalescing rule may not defer.
+    """A refused change is the one state whose frame the coalescing rule may not defer.
 
     A refused setting is the only case where the dial on screen and the
-    simulation disagree; waiting even a tick there leaves a control stating
-    a setting the run is not using.
+    simulation disagree. Waiting even one tick there leaves a control showing
+    a setting that the run is not using.
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -1511,7 +1519,7 @@ def test_a_refused_slider_change_draws_its_own_frame(application: QApplication) 
 
 
 def test_the_frame_that_clears_a_refusal_is_drawn_too(application: QApplication) -> None:
-    """The same fault backwards: a notice left up after it stopped being true."""
+    """The same fault in reverse: a notice left up after it stopped being true."""
 
     controller = SimulationController(agent_id="isoflurane")
     view = _shown_view(application, controller)
@@ -1543,10 +1551,11 @@ def test_a_discrete_action_still_draws_its_own_frame(application: QApplication) 
 def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped(
     application: QApplication,
 ) -> None:
-    """The bound has to hold on the pause-change-resume route as well.
+    """The limit on deferring a frame still applies when a reader pauses, changes and resumes.
 
-    Paused there is no run to draw, but there is still a dial moving, so the
-    tick fires for a change that is owed a frame - and stops once it has.
+    While the run is paused there is no run to draw, but a dial can still move.
+    So the tick draws a frame for a change that is owed one, and stops drawing
+    once that frame is drawn.
     """
 
     controller = SimulationController()
@@ -1600,9 +1609,9 @@ def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
 ) -> None:
     """A late tick must cost the run real time, never change its trajectory.
 
-    How many steps a tick takes is the reader's playback setting rather
-    than a function of how long the tick took, so a host that wakes it late
-    leaves the run behind the wall clock and it stays behind.
+    The number of steps a tick takes is set by the reader's playback setting,
+    not by how long the tick took. So when a host wakes the tick late, the run
+    falls behind the wall clock and stays behind.
     """
 
     controller = SimulationController()
@@ -1661,7 +1670,7 @@ def test_a_failed_step_abandons_the_rest_of_its_tick(
     """A burst is not a licence to step past a step the core could not take.
 
     The run must stop on the last completed step, exactly as it does at real
-    time, and nothing after the raise runs in this tick or the next.
+    time. Nothing after the exception runs, in this tick or the next.
     """
 
     controller = SimulationController()
@@ -1772,10 +1781,10 @@ def test_a_failed_render_stops_the_run_rather_than_freezing_the_display(
 def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
     application: QApplication,
 ) -> None:
-    """A discrete action presents through a signal, and a slot's raise is printed and dropped.
+    """A discrete action presents through a signal, and Qt prints and drops a slot's exception.
 
-    So the immediate presentation guards itself as the render tick does:
-    without that, a frame that could not be drawn for a playback change
+    So the immediate presentation guards itself, as the render tick does.
+    Without that guard, a frame that could not be drawn for a playback change
     would leave every run advancing behind a display that had stopped.
     """
 
@@ -1816,13 +1825,13 @@ def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
 def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
     application: QApplication,
 ) -> None:
-    """The frame is the shared render path, and a halt for its raise cannot wait for it.
+    """The frame is the shared render path, so a halt caused by its exception cannot wait for it.
 
-    Every controller is failed; what a reader has to see is the status word
-    and the banner saying so, which need no frame. With one run's refresh
-    raising on every attempt, the halt's own presentation raises too and is
-    swallowed - and before `present_halt`, both status words went on
-    reading the state before the raise with no banner under either.
+    Every controller is failed. A reader has to see the status word and the
+    banner that say so, and neither needs a frame. When one run's refresh
+    raises on every attempt, the halt's own presentation raises too, and the
+    exception is swallowed. Before `present_halt`, both status words went on
+    showing the state from before the exception, with no banner under either.
     """
 
     first = SimulationController()
@@ -1853,16 +1862,16 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
 
 # ------------------------------------------ a run that stops itself (PL-T995)
 #
-# Driven through the dashboard's own timers and the Start button, because a
-# test that steps the controller and presents by hand draws the very frame
-# this path never asked for.
+# These tests drive the run through the dashboard's own timers and the Start
+# button. A test that steps the controller and presents by hand would draw the
+# very frame that this path never asked for.
 
-#: How long a real-timer test waits for what it is waiting on before failing
-#: rather than hanging: ample beside the half second of play each one needs.
+#: How long a real-timer test waits for its condition before it fails rather
+#: than hangs. It is ample beside the half second of play that each test needs.
 _REAL_TIMER_BUDGET_S = 10.0
 
-#: Half a second of 1x play past the 60 s `_branched_case` pauses at, so the
-#: step timer reaches it in five ticks.
+#: Half a second of 1x play past the 60 s at which `_branched_case` pauses, so
+#: the step timer reaches it in five ticks.
 _TIMED_STOP_S = 60.5
 
 
@@ -1876,7 +1885,7 @@ def _render_ticks(view: SimulationView) -> list[None]:
 
 
 def _run_the_timers_until(condition: Callable[[], bool], what: str) -> None:
-    """Let the dashboard's own timers fire until `condition` holds, or fail naming `what`."""
+    """Let the dashboard's own timers fire until `condition` is true, or fail naming `what`."""
 
     deadline = time.monotonic() + _REAL_TIMER_BUDGET_S
 
@@ -1909,11 +1918,12 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
 ) -> None:
     """A halt inside `step_tick` asks for no frame, and the next render tick draws one anyway.
 
-    The halt changes the run's record, which the tick compares against what
-    the run's view last wrote (`PL-X7D5`). Before that the tick drew only
-    while a run ran or a frame was owed, so the screen read "Running" with
-    Pause offered, the clock a step short and no offer to branch where the
-    run stood, until the learner pressed something (`PL-T995`).
+    The halt changes the run's record, and the tick compares that record with
+    what the run's view last wrote (`PL-X7D5`). Before that change, the tick
+    drew only while a run was running or a frame was owed. So until the
+    learner pressed something, the screen showed "Running" with Pause offered,
+    the clock one step short, and no offer to branch where the run stood
+    (`PL-T995`).
     """
 
     case = _branched_case()
@@ -1938,17 +1948,18 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
 def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The other stop `step_tick` makes without a raise, drawn the same way.
+    """The other stop that `step_tick` makes without an exception is drawn the same way.
 
     `SimulationController.advance` halts a run on the step that lands it on
-    the supported run length and raises nothing, so `RunView._halt_run`, the
+    the supported run length, and raises nothing. So `RunView._halt_run`, the
     one branch of `step_tick` that asked for a frame, is never reached
     (`PL-T995`). The span is shortened to end half a second past the trunk's
-    pause, because the timers would take a day to reach the real one and
-    stepping a run to a step short of it takes about 27 s. `maximum_step_count`
-    is the one count the controller and the core both read the span from, so
-    the two agree on the shortened one; where a run stops on the real span is
-    `test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`'s.
+    pause. The timers would take a day to reach the real span, and stepping a
+    run to one step short of it takes about 27 s. `maximum_step_count` is the
+    one count from which the controller and the core both read the span, so
+    the two agree on the shortened span. Where a run stops on the real span is
+    tested by
+    `test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`.
     """
 
     case = _branched_case()
@@ -1973,14 +1984,14 @@ def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_
 def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The halt stores the record it states, so the comparison does not re-halt the run every tick.
+    """The halt stores the record it shows, so the comparison does not halt the run on every tick.
 
-    A frame that raises halts every run, and the halt is then what the screen
-    states. Were a run's record stored only where a frame draws, the failed
-    run would differ from its view's record on every tick after, and the
-    tick would assemble, fail and halt again five times a second for as long
-    as the dashboard stood (`PL-X7D5`). The two attempts are the tick's and
-    the one retry `SimulationView._halt_every_run` makes.
+    A frame that raises halts every run, and the screen then shows the halt.
+    If a run's record were stored only where a frame is drawn, the failed run
+    would differ from its view's record on every later tick. The tick would
+    then assemble, fail and halt again five times a second for as long as the
+    dashboard stayed open (`PL-X7D5`). The two attempts are the tick's own
+    attempt and the one retry that `SimulationView._halt_every_run` makes.
     """
 
     case = _branched_case()
@@ -2012,19 +2023,19 @@ def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(
 def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt stated from a fresh snapshot is not stated at all when the snapshot is what refused.
+    """A halt shown from a fresh snapshot is not shown at all when the snapshot itself refused.
 
-    `snapshot()` builds every compartment's fraction, so an alveolar quotient
-    above 1 - reached by replacing what the compartment answers, since no
-    supported setting takes one (`core/concentration.py`) and a write past the
-    capacity is refused since `PL-544D` - refuses the snapshot and, through
-    it, the frame. Before `PL-7DJK`,
+    `snapshot()` builds every compartment's fraction. So an alveolar quotient
+    above 1 refuses the snapshot and, through it, the frame. The test gets
+    that quotient by replacing what the compartment returns. No supported
+    setting produces one (`core/concentration.py`), and since `PL-544D` a
+    write larger than the capacity is refused. Before `PL-7DJK`,
     `present_halt` read a fresh snapshot for the status word, the transport
-    and the banner, so the same refusal escaped the render tick with the
-    controller failed and the screen reading "Running", Pause offered and no
+    and the banner. So the same refusal escaped the render tick, with the
+    controller failed and the screen showing "Running", Pause offered and no
     banner. The three are now written from `SimulationController.record()`,
-    which no compartment value is built for, and the banner says no frame of
-    the stopped run could be drawn rather than that a step was rolled back.
+    which builds no compartment value. The banner says that no frame of the
+    stopped run could be drawn, not that a step was rolled back.
     """
 
     controller = SimulationController()
@@ -2065,17 +2076,18 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
 def test_an_agent_change_on_a_halted_run_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """A pick on a run halted by its own snapshot is answered by that halt, not a raise Qt prints.
+    """A pick on a run halted by its own snapshot gets that halt, not an exception Qt prints.
 
-    `_handle_agent_change` reads the snapshot to decide between nothing, a
-    new case and a question, inside a slot; on a run whose snapshot refuses
-    (`PL-7DJK`) the read raised there, so the toolkit printed the traceback
-    and the pick was accepted with nothing on screen answering it: no
-    dialog, and the selector naming an agent the run is not of (`PL-V2HC`).
-    The read now halts the run on the raise - the halt it is already in,
-    whose first reason the controller keeps - and restates it, and the
-    selector is put back to the running agent, which the controller names
-    since the snapshot cannot. Reset stays the way out the banner names.
+    Inside a slot, `_handle_agent_change` reads the snapshot to choose between
+    doing nothing, starting a new case and asking a question. On a run whose
+    snapshot refuses (`PL-7DJK`), the read raised there. So the toolkit
+    printed the traceback, and the pick was accepted with nothing on screen
+    responding to it. No dialog appeared, and the selector named an agent
+    that the run does not use (`PL-V2HC`). Now the exception from the read
+    halts the run, and the halt is restated. That is the halt the run is
+    already in, and the controller keeps its first reason. The selector is
+    put back to the running agent, which the controller names because the
+    snapshot cannot. Reset is still the way out that the banner names.
     """
 
     controller = SimulationController()
@@ -2112,17 +2124,17 @@ def test_an_agent_change_on_a_halted_run_restates_the_halt(
 def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """The labels a dragged slider owes at once come from the snapshot; its refusal is the halt.
+    """A dragged slider's immediate labels come from the snapshot, so its refusal halts the run.
 
-    `_apply_setting` rewrites this run's own labels after a coalesced change
-    from a snapshot read once the setting has been applied, outside the gate
-    the setting went through, so on a paused run whose snapshot refuses
-    (`PL-7DJK`) the drag was accepted and the read raised out of the slot:
-    the dial moved, the status word read "Paused" over a run no frame could
-    draw, and the toolkit printed what nothing on screen said (`PL-V2HC`).
-    The read now halts the run and states the halt from the controller's
-    status - the first statement of it here, since a paused run draws no
-    frame to refuse.
+    After a coalesced change, `_apply_setting` rewrites this run's own labels
+    from a snapshot read once the setting has been applied. That read happens
+    outside the gate the setting went through. So on a paused run whose
+    snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised
+    out of the slot. The dial moved, and the status word showed "Paused" over
+    a run that no frame could draw. The toolkit printed an error that nothing
+    on screen reported (`PL-V2HC`). The read now halts the run and shows the
+    halt from the controller's status. This is the first time the halt is
+    shown here, because a paused run draws no frame that could refuse.
     """
 
     controller = _paused_run_with_history()
@@ -2156,13 +2168,13 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
 ) -> None:
     """The value printed beside a dial dragged into a halt is the value the dial and the run hold.
 
-    `_apply_setting` applies the setting, then the snapshot read that would
-    rewrite the labels halts the run instead and no frame draws, so the
-    value label - written only through `set_setting` - kept the value before
-    the drag beside a dial standing at the new one: "2.0 L/min" beside a
-    dial at 4.0 with the circuit holding 4.0, until Reset (`PL-85LJ`, found
-    at `PL-V2HC`'s review). The halt now writes every dial from
-    `SimulationController.record()`, which builds no compartment value,
+    `_apply_setting` applies the setting. Then the snapshot read that would
+    rewrite the labels halts the run instead, and no frame is drawn. The
+    value label is written only through `set_setting`. So it kept the value
+    from before the drag, beside a dial set at the new value: "2.0 L/min"
+    beside a dial at 4.0, with the circuit holding 4.0, until Reset
+    (`PL-85LJ`, found at `PL-V2HC`'s review). The halt now writes every dial
+    from `SimulationController.record()`, which builds no compartment value,
     so the label, the dial and the run agree.
     """
 
@@ -2189,14 +2201,16 @@ def test_a_halt_is_stated_before_its_dials_are_written(
 ) -> None:
     """The status word, the transport and the banner are on screen before a dial is written.
 
-    `present_halt` writes the dials through `dashboard_frame.setting_readouts`,
-    which raises for a control that can offer no setting - a fresh gas flow
-    range narrower than the dial's 0.1 L/min step, which no shipped machine
-    declares and the circuit refuses at build. Written before the banner,
-    that raise left the halt half stated, the status word and the transport
-    written and no banner, and escaped the slot (found at `PL-85LJ`'s
-    review). The dials come last, so the three statements of the halt are
-    on screen before the raise, which still escapes rather than hiding.
+    `present_halt` writes the dials through `dashboard_frame.setting_readouts`.
+    That function raises for a control that can offer no setting, such as a
+    fresh gas flow range narrower than the dial's 0.1 L/min step. No shipped
+    machine declares such a range, and the circuit refuses one when it is
+    built. When the dials were written before the banner, that exception left
+    the halt half shown: the status word and the transport were written, but
+    no banner was. The exception also escaped the slot (found at `PL-85LJ`'s
+    review). The dials now come last, so the three signs of the halt are on
+    screen before the exception. The exception still escapes rather than
+    being hidden.
     """
 
     controller = _paused_run_with_history()
@@ -2222,7 +2236,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
 
 
 def _failing_assembly(*args: object, **kwargs: object) -> NoReturn:
-    """Stands in for `assemble_chart_frame` where every frame is to fail."""
+    """Stand in for `assemble_chart_frame` in a test where every frame must fail."""
 
     raise RuntimeError("this frame could not be assembled")
 
@@ -2233,12 +2247,12 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     """A run halted on the first frame after an agent change names that agent everywhere.
 
     A run that has recorded nothing switches agent at once on a pick, so the
-    frame that follows is the first to show the new agent. With it failing,
-    `present_halt` is the only writer, and it wrote the dials and nothing of
-    the agent's identity: "Delivered desflurane" under a subtitle, a chip
-    and a heading still naming sevoflurane, in sevoflurane's colours
-    (`PL-1YDD`). It now writes every identity widget from the controller's
-    record.
+    frame that follows is the first to show the new agent. When that frame
+    fails, `present_halt` is the only writer. It used to write the dials but
+    nothing of the agent's identity. The screen showed "Delivered desflurane"
+    under a subtitle, a chip and a heading that still named sevoflurane, in
+    sevoflurane's colours (`PL-1YDD`). `present_halt` now writes every
+    identity widget from the controller's record.
     """
 
     controller = SimulationController()
@@ -2273,9 +2287,10 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     `_paused_run_with_history` leaves the fresh gas flow change it records
     open, so dragging the dial back to where it started takes that change off
     the record. On a run whose snapshot refuses, the drag halts the run and
-    no frame draws, and the panel went on listing the change the run no
-    longer held (`PL-DTJQ`). The halt now writes the panel from the
-    controller's record, with no undrawn marks, since no frame drew.
+    no frame is drawn. The panel then went on listing the change that the run
+    no longer held (`PL-DTJQ`). The halt now writes the panel from the
+    controller's record. It writes no undrawn marks, because no frame was
+    drawn.
     """
 
     controller = _paused_run_with_history()
@@ -2292,20 +2307,21 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     assert run._control_timeline_overflow_text.isHidden() is True
 
 
-#: The widget attributes of a `RunView` that may read differently on a run
-#: drawn by a frame and on the same run halted with every frame failing, each
-#: against the reason it may. Every other widget attribute - one added later
-#: included - is held by the test below to read alike on both, which is what
-#: makes `RunView._write_statement` the one writer of a run's state rather
-#: than a list somebody has to keep: a widget left out of it reads the last
-#: frame's run on a halt, and fails there (`PL-X7D5`).
+#: The widget attributes of a `RunView` that may show different content on a
+#: run drawn by a frame and on the same run halted with every frame failing.
+#: Each is mapped to the reason it may differ. The test below requires every
+#: other widget attribute, including one added later, to show the same content
+#: on both runs. That requirement makes `RunView._write_statement` the one
+#: writer of a run's state, rather than a list that somebody has to maintain.
+#: A widget left out of `_write_statement` still shows the last frame's run on
+#: a halt, and the test fails there (`PL-X7D5`).
 #:
-#: Held live in both directions, as `FOREGROUND_NOT_DECLARED` is: an entry
-#: naming no widget attribute fails, and so does one whose widget reads alike
-#: on the two runs, since nothing then needs the exemption. The accounting
-#: panel's status and detail lines are frame widgets and are not listed for
-#: that reason: both runs below read "Valid", so the comparison holds them
-#: like any other widget.
+#: The list is checked in both directions, as `FOREGROUND_NOT_DECLARED` is. An
+#: entry that names no widget attribute fails. So does an entry whose widget
+#: shows the same content on the two runs, because nothing then needs the
+#: exemption. The accounting panel's status and detail lines are frame
+#: widgets, but they are not listed. Both runs below show "Valid" there, so
+#: the comparison checks them like any other widget.
 FRAME_WIDGETS: dict[str, str] = {
     "_readout_row": (
         "the readouts and the clock they were read with, from the compartment "
@@ -2328,7 +2344,7 @@ FRAME_WIDGETS: dict[str, str] = {
 
 
 def _widget_attributes(run: RunView) -> dict[str, QWidget]:
-    """Every widget a `RunView` holds as an attribute, by name, and each of a tuple of them.
+    """Every widget a `RunView` holds as an attribute, by name, and each widget of a tuple.
 
     Each live copy of a run surface is included with every widget it holds,
     named by its place in the run's list of copies (`PL-9LNF`).
@@ -2378,9 +2394,9 @@ def _widget_state(widget: QWidget) -> tuple[object, ...]:
 
 
 def _stated(widget: QWidget, attributes: set[int]) -> tuple[tuple[object, ...], ...]:
-    """One widget attribute as a reader sees it, with every widget under it no attribute names.
+    """One widget attribute as a reader sees it, with each widget under it that no attribute names.
 
-    A combo box's popup is left out: it is the toolkit's, and it shows
+    A combo box's popup is left out. It belongs to the toolkit, and it shows
     what the combo's own entries say.
     """
 
@@ -2399,20 +2415,21 @@ def _stated(widget: QWidget, attributes: set[int]) -> tuple[tuple[object, ...], 
 def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt states the run on every widget a frame would, by default rather than by a list.
+    """A halt shows the run on every widget a frame would, by default rather than by a list.
 
-    The run is drawn, then changed in every way a run-state widget states,
-    with every frame failing, so the halt is the only writer of what the
-    screen says: a new agent, which is a new case with no control changes,
-    its delivered dial renamed and the run failed by the frame. That screen
-    is compared, widget attribute by widget attribute, with the same run once
-    a frame draws it - one state, written once by `present_halt` and once by
-    `refresh`. Before `_write_statement`, the halt wrote four widgets and a
-    dial row, and the agent identity and the control-change panel went on
-    stating the run the last frame drew (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
+    The run is drawn. Then, with every frame failing, it is changed in every
+    way that a run-state widget shows, so the halt is the only writer of what
+    the screen says. The changes are a new agent, which is a new case with no
+    control changes, the delivered dial renamed, and the run failed by the
+    frame. That screen is compared, widget attribute by widget attribute, with
+    the same run once a frame draws it. It is one state, written once by
+    `present_halt` and once by `refresh`. Before `_write_statement`, the halt
+    wrote four widgets and a dial row. The agent identity and the
+    control-change panel went on showing the run that the last frame drew
+    (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
 
-    Every widget attribute is compared unless `FRAME_WIDGETS` names it, so a
-    widget added to `RunView` later is held here without being listed.
+    Every widget attribute is compared unless `FRAME_WIDGETS` names it. So a
+    widget added to `RunView` later is checked here without being listed.
     """
 
     controller = SimulationController()
@@ -2469,7 +2486,7 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 def test_a_halted_run_shows_the_new_playback_rate(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`PL-P58M`: a halted run states one playback rate, the one the reader just chose.
+    """`PL-P58M`: a halted run shows one playback rate, the one the reader just chose.
 
     The clock's second line sits in the readout row. A halt does not write
     that row, because its readouts are compartment values that only a frame
@@ -2497,16 +2514,17 @@ def test_a_halted_run_shows_the_new_playback_rate(
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """A confirmation answered once the snapshot refuses is answered by the halt, not a refusal.
+    """A confirmation answered after the snapshot refuses leads to the halt, not a refusal.
 
-    The question is asked from a snapshot read when the selector was used;
-    by the time the reader answers, the run's snapshot may refuse.
-    `set_agent` carries the settings over from the snapshot, so without the
-    gate its raise reached `_apply_setting` as a refused setting, recorded in
-    `_rejected_setting_notice` over a run halted for the same reason
-    (`PL-V2HC`, found at review). `_start_new_case` now reads the snapshot
-    through `_snapshot_for_a_control` first: the halt is stated, nothing is
-    recorded as refused, the dialog is gone and the run keeps its agent.
+    The question is asked from a snapshot read when the selector was used.
+    By the time the reader answers, the run's snapshot may refuse.
+    `set_agent` carries the settings over from the snapshot. So without the
+    gate, its exception reached `_apply_setting` as a refused setting. It was
+    recorded in `_rejected_setting_notice`, over a run halted for the same
+    reason (`PL-V2HC`, found at review). `_start_new_case` now reads the
+    snapshot through `_snapshot_for_a_control` first. The halt is shown,
+    nothing is recorded as refused, the dialog is gone and the run keeps its
+    agent.
     """
 
     controller = _paused_run_with_history()
@@ -2545,16 +2563,18 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     `SimulationController.reset()` refuses a settings record that the run's
     definition cannot open on. Tissue flows that no longer sum to the cardiac
     output make such a record, and tissue fractions written past their guard
-    leave them that way (`_with_stale_tissue_flows`). Before `PL-M4M0` the refusal escaped the
-    Reset slot after `pause()` and the state had been cleared, so the run
-    stood half reset - compartments and clock at zero, the old definition and
-    timeline kept, no failure recorded, `case_restarted` never emitted - with
-    the screen reading "Running" and Pause offered. The core now refuses
-    before it clears anything, and the view halts the run on the refusal:
-    recorded as the failure, said by the status word, the transport and the
-    banner, whose way out says no setting can repair the refusal rather than
-    naming the Reset just refused (`PL-01GY`). Nothing moved, so the frame
-    that follows draws the run where it stood.
+    leave the flows that way (`_with_stale_tissue_flows`). Before `PL-M4M0`,
+    the refusal escaped the Reset slot after `pause()` had run and the state
+    had been cleared. So the run was left half reset. The compartments and
+    the clock were at zero, the old definition and timeline were kept, no
+    failure was recorded, and `case_restarted` was never emitted. Meanwhile
+    the screen showed "Running" and offered Pause. The core now refuses
+    before it clears anything, and the view halts the run on the refusal.
+    The refusal is recorded as the failure and shown by the status word, the
+    transport and the banner. The banner's way out says that no setting can
+    repair the refusal, instead of naming the Reset that was just refused
+    (`PL-01GY`). Nothing changed, so the frame that follows draws the run
+    where it was.
     """
 
     controller = SimulationController()
@@ -2602,10 +2622,11 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
 def test_a_second_refused_reset_states_the_refusal_once(application: QApplication) -> None:
     """Pressing the refused Reset again leaves the banner as it was: one reason, not two.
 
-    The first press records the refusal as the failure, so on the second the
-    run has a recorded reason - but it is this same refusal, and the exit
-    that carries the refusal itself is for a run that failed for something
-    else. Stated twice, the one refusal read as two faults (`PL-M4M0`).
+    The first press records the refusal as the failure. So on the second
+    press the run already has a recorded reason, but that reason is this same
+    refusal. The exit text that repeats the refusal is meant for a run that
+    failed for some other reason. Stated twice, the one refusal looked like
+    two faults (`PL-M4M0`).
     """
 
     controller = SimulationController()
@@ -2632,9 +2653,9 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     """The first failure stays the banner's reason, so the exit carries the refusal itself.
 
     `SimulationController.fail` keeps the first reason it was given, which is
-    right - the failure that stopped the run is what the values on screen are
-    the last completed step of - so the refusal is stated where it can be:
-    in the way out, which says Reset was refused and why (`PL-M4M0`).
+    correct. The values on screen are the last completed step before that
+    first failure stopped the run. So the refusal is stated where it can be,
+    in the way out, which says that Reset was refused and why (`PL-M4M0`).
     """
 
     controller = _StepFailingController(_real_step_failure())
@@ -2668,11 +2689,11 @@ def test_a_refused_reset_takes_once_the_cardiac_output_is_set_again(
     """Once the record accepts a setting again, the exit is lifted and Reset clears the run.
 
     The accepted setting also takes the refused-Reset exit off the banner at
-    once, so the reader is sent to a Reset that will take rather than to a
-    setting already changed; a setting the stale record refuses leaves the
-    exit standing (`PL-M4M0`). Until `PL-HQF5`, the cardiac output change
-    itself repaired the stale flows. No setting repairs a fraction written
-    past its guard, so the fractions are put back first.
+    once. So the reader is sent to a Reset that will succeed, not to a
+    setting already changed. A setting that the stale record refuses leaves
+    the exit on the banner (`PL-M4M0`). Until `PL-HQF5`, the cardiac output
+    change itself repaired the stale flows. No setting repairs a fraction
+    written past its guard, so the test puts the fractions back first.
     """
 
     controller = SimulationController()
@@ -2720,9 +2741,9 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     output scales them all by one factor and the sum still disagrees with it.
     Until `PL-01GY` the banner said to change the setting the refusal names,
     which is the cardiac output. This test moves that dial on the refused run
-    and shows the record still refused: the exit still stands, and the next
-    Reset is refused again. The expected sentence is written here as a
-    literal rather than read from the constant.
+    and shows that the record is still refused. The exit is still on the
+    banner, and the next Reset is refused again. The expected sentence is
+    written here as a literal rather than read from the constant.
     """
 
     controller = SimulationController()
@@ -2825,7 +2846,7 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
 def test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step(
     application: QApplication,
 ) -> None:
-    """A setting the run never recorded halts the run before chart and readouts part (`PL-XRN8`).
+    """A setting the run never recorded halts the run before chart and readouts differ (`PL-XRN8`).
 
     The readouts come from the steps and the chart from the run definition.
     A cardiac output written onto the core past `SimulationController` would
@@ -2861,8 +2882,8 @@ def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_way_out(
     """The same halt on a branch's own run, naming the same way out.
 
     `_open_at` records the settings in force at the fork, and `reset()` reads
-    them before the branch is stood back there (`PL-M4M0`). The comparison
-    stands, with the trunk untouched. The way out is the one every run has,
+    them before the branch is put back there (`PL-M4M0`). The comparison stays
+    open, and the trunk is untouched. The way out is the one every run has,
     closing and reopening the application, because a branch cannot start a
     case of its own (`PL-TFX5`).
     """
@@ -2897,12 +2918,12 @@ def test_a_refused_trunk_reset_while_comparing_names_the_one_door_open(
 
     A comparison replaces the trunk's agent selector with the
     `COMPARING_AGENT_LOCK_TEXT` chip, and the branch's Reset leaves the
-    comparison standing, so a banner naming a new case named a control the
-    screen had hidden, with the trunk's Reset - the one just refused - the
-    only control left enabled (`PL-M4M0`). The exit names closing and
+    comparison open. So a banner that named a new case pointed at a control
+    the screen had hidden. The only control left enabled was the trunk's
+    Reset, the one just refused (`PL-M4M0`). The exit names closing and
     reopening the application instead (`PL-01GY`). Once the record builds
-    again, the trunk's Reset takes and ends the comparison as the fork panel
-    says it does.
+    again, the trunk's Reset succeeds and ends the comparison, as the fork
+    panel says it does.
     """
 
     case = _branched_case()
@@ -2937,10 +2958,10 @@ def _refusing_a_drawn_column(
 ) -> None:
     """Make the controller's next drawn window carry `value` in `quantity`'s last column.
 
-    The one route to a drawn fraction outside 0 to 1, since no supported
-    setting computes one (`core/concentration.py`): a drawn window is the
-    closed form's evaluation, so the value is written into the window the
-    controller answers with rather than into any compartment.
+    This is the one way to get a drawn fraction outside 0 to 1, because no
+    supported setting computes one (`core/concentration.py`). A drawn window
+    is an evaluation of the closed form. So the value is written into the
+    window that the controller returns, not into any compartment.
     """
 
     real_drawn_window = controller.drawn_window
@@ -2960,14 +2981,14 @@ def _refusing_a_drawn_column(
 def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplication) -> None:
     """Every drawn value is built before any is drawn, so a refusal leaves the chart as it was.
 
-    With each value built as the toolkit converted it, trace by trace, a
-    column refused in the muscle trace left the circuit, alveolar, mixed
-    venous and vessel-rich traces redrawn from the failed frame and muscle
-    and fat standing on the frame before it - six traces at two instants
-    under a banner blaming a step that never failed (`PL-7DJK`). Now
-    `assemble_chart_frame` refuses before a frame exists, the run halts,
-    the halt names the compartment, and no trace moves. The value is the one
-    that reproduced it.
+    Values used to be built as the toolkit converted them, trace by trace.
+    Then a column refused in the muscle trace left the circuit, alveolar,
+    mixed venous and vessel-rich traces redrawn from the failed frame. The
+    muscle and fat traces were left on the frame before it. So six traces
+    showed two instants, under a banner that blamed a step that never failed
+    (`PL-7DJK`). Now `assemble_chart_frame` refuses before a frame exists.
+    The run halts, the halt names the compartment, and no trace moves. The
+    value used here is the one that reproduced the defect.
     """
 
     controller = SimulationController()
@@ -3012,8 +3033,8 @@ def test_two_runs_that_come_to_be_on_different_agents_halt_visibly(
     """The same failure through a real refusal rather than a patched one.
 
     `assemble_chart_frame` refuses two runs on two agents on every attempt,
-    so the halt it causes can never be drawn as a frame; each run still says
-    it stopped, and why, from its own snapshot.
+    so the halt it causes can never be drawn as a frame. Each run still says
+    that it stopped, and why, from its own snapshot.
     """
 
     first = SimulationController()
@@ -3043,10 +3064,10 @@ def test_a_resize_while_paused_redraws_the_frame_for_the_new_width(
 ) -> None:
     """`PL-GS3R`: no chord wider than a pixel, at the width the plot has now.
 
-    A frame is assembled for the width it is drawn on, so the one on screen
-    is right for that width only. Paused, with nothing owed, nothing would
-    redraw after a resize, and the columns drawn for the narrow plot would
-    stand on the wide one at twice the chord.
+    A frame is assembled for the width it is drawn on, so the frame on screen
+    is right for that width only. On a paused run with no frame owed, nothing
+    would redraw after a resize. The columns drawn for the narrow plot would
+    then stay on the wide plot, at twice the chord.
     """
 
     controller = _paused_run_with_history()
@@ -3122,7 +3143,7 @@ def test_the_mounted_interface_states_the_playback_rate(application: QApplicatio
 
 
 def test_the_playback_control_is_never_disabled(application: QApplication) -> None:
-    """A view control stays live while the run's own controls lock."""
+    """A view control stays enabled while the run's own controls are locked."""
 
     controller = SimulationController()
     view = _shown_view(application, controller)
@@ -3334,9 +3355,9 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
     """A widget shown before a layout adopts it is a top-level window.
 
     The selector and the chip have their visibility written as the view is
-    built, before any layout places them, so each is built with the view as
-    its parent; a parentless one shown there opened a window of its own
-    beside the dashboard (`PL-25KS`).
+    built, before any layout places them. So each is built with the view as
+    its parent. A parentless one shown at that point opened a window of its
+    own beside the dashboard (`PL-25KS`).
     """
 
     host = QWidget()
@@ -3420,7 +3441,7 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered(
     assert (controller.snapshot().elapsed_s, controller.run_segments) == run_before
     assert run._new_case_dialog is not None
     assert run._new_case_dialog.isVisible() is True
-    # The selector reads the agent that is actually running, not the one
+    # The selector shows the agent that is actually running, not the one
     # being offered, for as long as the question is open.
     assert run._agent_dropdown.currentData() == before.agent_id
 
@@ -3457,7 +3478,7 @@ def test_an_open_new_case_question_follows_a_running_run(application: QApplicati
 def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched(
     application: QApplication,
 ) -> None:
-    """Declining costs nothing: the run, its history and the selector stand."""
+    """Declining costs nothing: the run, its history and the selector stay as they were."""
 
     controller = _paused_run_with_history()
     before = controller.snapshot()
@@ -3556,8 +3577,9 @@ def test_the_dismissal_that_follows_a_confirmed_switch_does_not_undo_it(
 ) -> None:
     """A dialog reports its close after the button that closed it.
 
-    That report reaches the declining branch, so without the guard in
-    `_resolve_new_case` it would run over the case that had just started.
+    That report reaches the branch that handles a decline. Without the guard
+    in `_resolve_new_case`, that branch would undo the case that had just
+    started.
     """
 
     controller = _paused_run_with_history()
@@ -3598,9 +3620,10 @@ def test_an_answered_confirmation_is_gone_from_the_view_and_its_strings(
 ) -> None:
     """A question that has been answered is not part of the interface.
 
-    Deleted once its `finished` has been read, or every confirmation ever
-    asked stays a child of the run: its title on `interface_strings` and its
-    widgets in every walk of the tree (`PL-25KS`).
+    The dialog is deleted once its `finished` signal has been read. Otherwise
+    every confirmation ever asked would stay a child of the run, with its
+    title in `interface_strings` and its widgets in every walk of the tree
+    (`PL-25KS`).
     """
 
     controller = _paused_run_with_history()
@@ -3626,8 +3649,8 @@ def test_a_selection_while_a_confirmation_is_open_does_not_retarget_its_answer(
 ) -> None:
     """The open dialog names one agent, and its answer starts that agent and no other.
 
-    A second selection while the question stands is reverted and not
-    answered; before the guard it opened a second dialog and moved the
+    A second selection while the question is open is reverted and gets no
+    dialog. Before the guard, it opened a second dialog and changed the
     pending agent, so the first dialog's discard started the second agent.
     """
 
@@ -3731,8 +3754,8 @@ def test_the_readouts_say_they_are_model_outputs_beside_the_values(
 ) -> None:
     """`PL-2K1R`: the interpretation line sits on the readout section's heading row.
 
-    Once, beside the values it qualifies, rather than at the foot of the
-    page where a repeated disclaimer stops being read.
+    The line appears once, beside the values it qualifies, rather than at the
+    foot of the page, where a repeated disclaimer stops being read.
     """
 
     run = _shown_view(application, SimulationController()).runs[0]
@@ -3751,12 +3774,13 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
 ) -> None:
     """`PL-YVHK`: a hover over a drawn point names what it is, in both units.
 
-    Through the dashboard rather than the bare chart, so the shipped
-    composition is what answers, and against the frame it drew, so the
-    readout is the state the run was evaluated at rather than a position
-    between two. A drawn instant is a grid column's rather than a step's,
-    so the time the readout states is the instant at the hover's own
-    resolution, not the column's raw time.
+    The test goes through the dashboard rather than the bare chart, so the
+    readout comes from the shipped composition. It checks against the frame
+    the dashboard drew, so the readout is the state at which the run was
+    evaluated, not a position between two states. A drawn instant belongs to
+    a grid column rather than to a step. So the time the readout states is
+    the instant rounded to the hover's own resolution, not the column's raw
+    time.
     """
 
     controller = SimulationController()
@@ -3825,7 +3849,7 @@ def test_hiding_a_trace_changes_only_what_is_drawn(application: QApplication) ->
 def test_the_hidden_traces_advisory_is_present_always_and_shown_only_when_nothing_is_drawn(
     application: QApplication,
 ) -> None:
-    """A plot missing all six is a blank panel, and a blank panel reads as a failure."""
+    """A plot missing all six is a blank panel, and a blank panel looks like a failure."""
 
     view = _shown_view(application, SimulationController())
 
@@ -3883,8 +3907,8 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
     presented = view.presented_frames
     view.present(False)
 
-    # `present` turns a raise into a halt rather than letting it out, so the
-    # count is what tells a frame drawn from one refused.
+    # `present` turns an exception into a halt rather than letting it escape.
+    # So the count is what tells a drawn frame apart from a refused one.
     assert view.presented_frames == presented + 1, "no frame could be drawn without the legend"
     assert view.compartment_selection == chosen
 
@@ -3938,8 +3962,9 @@ def test_the_compartment_selection_outlives_the_legend_that_renders_it(
 def test_a_legend_click_draws_one_frame_over_the_cap_too(application: QApplication) -> None:
     """A click is a discrete action, so it draws once and at once (`PL-R2YM`).
 
-    Held on one run, and on two, where the click is over the cap and the
-    selection rather than the legend decides which compartment makes room.
+    The test checks this on one run, and then on two runs. With two runs the
+    click goes over the cap, and the selection, not the legend, decides
+    which compartment makes room.
     """
 
     view = _case_view(application, _branched_case())
@@ -3972,12 +3997,13 @@ def test_a_legend_click_whose_frame_fails_keeps_the_legend_on_the_frame_drawn(
 ) -> None:
     """The legend names the curves on the plot even when the frame a click asked for fails.
 
-    A click set the selection, handed it to the legend and then asked for a
-    frame, so where that frame failed to assemble the boxes showed the new
-    selection over a plot still drawing the old one: fat unchecked beside a
-    fat trace (`PL-G3K7`). The legend is now handed the selection a frame was
-    assembled from once both plots have drawn it, and a box nobody answers
-    goes back to the selection the legend last showed.
+    A click used to set the selection, hand it to the legend and then ask for
+    a frame. So when that frame failed to assemble, the boxes showed the new
+    selection over a plot still drawing the old one: fat was unchecked beside
+    a fat trace (`PL-G3K7`). The legend is now given the selection that a
+    frame was assembled from, once both plots have drawn that frame. A box
+    whose request nobody acts on goes back to the selection the legend last
+    showed.
     """
 
     controller = SimulationController()
@@ -4375,7 +4401,7 @@ def test_the_mac_awake_band_after_a_switch_is_the_new_agents_own(
 def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time(
     application: QApplication,
 ) -> None:
-    """`PL-DR1Z`: the mark stands at the change's instant on both plots."""
+    """`PL-DR1Z`: the mark is drawn at the change's instant on both plots."""
 
     controller = SimulationController()
     controller.start()
@@ -4420,10 +4446,10 @@ def test_the_page_leaves_the_application_name_to_the_window_title(
 ) -> None:
     """The page no longer restates the name the window's title bar carries (`PL-J8K2` Q2).
 
-    `PL-HK75` put the name on screen from `app_metadata`; the title bar is
-    where it now is, and `test_bootstrap` holds the window title to it. The
-    in-page title row cost 44 px the chart cannot spare on a laptop
-    (`PL-84QX`).
+    `PL-HK75` put the name on screen from `app_metadata`. The name is now in
+    the title bar, and `test_bootstrap` checks that the window title shows
+    it. The in-page title row cost 44 px that the chart cannot spare on a
+    laptop (`PL-84QX`).
     """
 
     view = _shown_view(application, SimulationController())
@@ -4493,10 +4519,10 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
 ) -> None:
     """`PL-6580`: the panel above the compartment plot is legend and labels, not prose.
 
-    The two state advisories are exempt and skipped by identity: they are
-    empty here and speak only when they apply, which is the distinction
-    being drawn - a message at the moment of need is not a standing
-    paragraph.
+    The two state advisories are exempt, and the walk skips them by identity.
+    They are empty here and show text only when they apply. That is the
+    distinction this test draws: a message at the moment of need is not a
+    standing paragraph.
     """
 
     view = _shown_view(application, SimulationController())
@@ -4569,9 +4595,9 @@ def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
 def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplication) -> None:
     """`PL-F52R`: the claim the band exists *instead of*, checked against the whole tree.
 
-    A readout of the form "time to wake-up: 14 min" reads as a per-patient
-    prediction this model does not support, and no surrounding disclaimer
-    undoes that.
+    A readout of the form "time to wake-up: 14 min" looks like a per-patient
+    prediction that this model does not support, and no surrounding
+    disclaimer undoes that.
     """
 
     controller = SimulationController()
@@ -4611,16 +4637,17 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
 
 
 #: Every control kind on the built dashboard that paints its own content and
-#: declares no foreground, against the reason it is allowed not to. Read by
-#: `tools/contrast_check.py`, which counts the entries into its report line:
-#: that tool measures declared pairs, so a control declaring nothing is absent
-#: from its numerator *and* its denominator and reads there as covered. What
-#: nothing measures has to be stated somewhere, and this is where.
+#: declares no foreground, mapped to the reason it is allowed not to.
+#: `tools/contrast_check.py` reads this mapping and counts its entries in its
+#: report line. That tool measures declared pairs, so a control that declares
+#: nothing is absent from its numerator *and* its denominator, and looks
+#: covered there. What nothing measures has to be stated somewhere, and this
+#: is the place.
 #:
-#: A name here is a claim about a kind, not an excuse for one: the test below
-#: fails on an entry naming a kind the dashboard no longer builds, and on one
-#: that has since been given a foreground, so an entry cannot outlive the
-#: reason beside it.
+#: A name here is a claim about a kind, not an excuse for one. The test below
+#: fails on an entry that names a kind the dashboard no longer builds, and on
+#: an entry whose kind has since been given a foreground. So an entry cannot
+#: outlive the reason beside it.
 FOREGROUND_NOT_DECLARED: dict[str, str] = {
     "PlotWidget": (
         "the concentration chart and the wash-in plot. Their axis ticks and "
@@ -4681,17 +4708,18 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
 #: takes and the form `QColor.name` returns.
 _HEX_COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
 
-#: A foreground colour nothing in this interface declares, installed on the
-#: application palette before the dashboard is built. A control that declares
-#: none of its own resolves to it, which makes "undeclared" a value to read
-#: rather than an absence to infer - and stops a host whose own default
-#: happened to match a theme colour from making the walk vacuous.
+#: A foreground colour that nothing in this interface declares, installed on
+#: the application palette before the dashboard is built. A control that
+#: declares no colour of its own resolves to this one. That makes
+#: "undeclared" a value to read rather than an absence to infer. It also
+#: stops a host whose own default happened to match a theme colour from
+#: making the walk prove nothing.
 _ALIEN_FOREGROUND = "#FF00FF"
 
-#: The palette roles a control on this dashboard draws its content in. All of
-#: them move together, because `QWidget.foregroundRole` differs by control -
-#: WindowText for a label, ButtonText for a button, Text for a list - and a
-#: role left at the platform's value would read as declared.
+#: The palette roles in which a control on this dashboard draws its content.
+#: All of them are changed together, because `QWidget.foregroundRole` differs
+#: by control: WindowText for a label, ButtonText for a button and Text for a
+#: list. A role left at the platform's value would be treated as declared.
 _ALIEN_ROLES = (
     QPalette.ColorRole.WindowText,
     QPalette.ColorRole.Text,
@@ -4704,10 +4732,10 @@ _ALIEN_ROLES = (
     QPalette.ColorRole.LinkVisited,
 )
 
-#: The Qt classes that paint a string of their own. Held to declaring a
-#: foreground whatever they are painting today: a label built empty and filled
+#: The Qt classes that paint a string of their own. Each must declare a
+#: foreground, whatever it is painting today. A label built empty and filled
 #: on the first frame draws text just as one built with its string does, and a
-#: check that read `text()` would pass it while it was empty.
+#: check that read `text()` would pass the label while it was empty.
 _TEXT_CONTROLS = (
     QAbstractButton,
     QAbstractItemView,
@@ -4718,10 +4746,11 @@ _TEXT_CONTROLS = (
     QLineEdit,
 )
 
-#: The frame shapes Qt rules from the foreground role. A `NoFrame` frame draws
-#: no line at all and a `StyledPanel` is drawn by the style from its bevel
-#: roles, so neither says anything about a foreground - which is what keeps
-#: every panel and column container out of the walk without naming one.
+#: The frame shapes whose lines Qt draws in the foreground role. A `NoFrame`
+#: frame draws no line at all, and the style draws a `StyledPanel` from its
+#: bevel roles. So neither shape says anything about a foreground. That is
+#: what keeps every panel and column container out of the walk without
+#: naming one.
 _PLAIN_LINE_SHAPES = (
     QFrame.Shape.Box,
     QFrame.Shape.Panel,
@@ -4734,9 +4763,10 @@ _PLAIN_LINE_SHAPES = (
 def _declared_colours() -> frozenset[str]:
     """Every colour `app/theme.py` declares, including both agent pairs.
 
-    Read off the module rather than listed here: `contrast_check`'s
-    `check_colors_live_in_the_theme` is what holds every colour to being
-    declared there, so the module is the complete set by construction.
+    The colours are read from the module rather than listed here.
+    `contrast_check`'s `check_colors_live_in_the_theme` requires every colour
+    to be declared there, so the module holds the complete set by
+    construction.
     """
 
     colours = {
@@ -4754,15 +4784,16 @@ def _declared_colours() -> frozenset[str]:
 def _paints_its_own_content(widget: QWidget) -> bool:
     """Whether `widget` draws anything of its own in its foreground role.
 
-    Three questions in order, because the first two would answer the third
-    wrongly. A text control is in whatever it inherits from - `QLabel` is a
-    `QFrame`, and asking the frame question first would drop every label on
-    the dashboard. A frame that is not a plain line is a container or is drawn
-    by the style, so it is out unless its class paints below `QFrame`; that is
-    what keeps `MetricPanel`, `QSplitter` and the panels out of the walk while
-    keeping `PlotWidget`, which is a `QGraphicsView` and paints its own scene.
-    Everything else is in exactly when its class overrides `paintEvent`, which
-    is the decidable form of "draws something nobody else declares".
+    The function asks three questions in order, because asking them in
+    another order gives wrong results. A text control is included whatever it
+    inherits from. `QLabel` is a `QFrame`, so asking the frame question first
+    would drop every label on the dashboard. A frame that is not a plain line
+    is a container or is drawn by the style. So it is excluded unless its
+    class paints below `QFrame`. That rule keeps `MetricPanel`, `QSplitter`
+    and the panels out of the walk. It still keeps `PlotWidget`, which is a
+    `QGraphicsView` and paints its own scene. Every other widget is included
+    exactly when its class overrides `paintEvent`. That is the decidable form
+    of "draws something nobody else declares".
     """
 
     if isinstance(widget, _TEXT_CONTROLS):
@@ -4806,13 +4837,14 @@ def _resolved_foreground(widget: QWidget) -> str:
 def alien_foreground(application: QApplication) -> Iterator[QApplication]:
     """The application with every foreground role set to `_ALIEN_FOREGROUND`.
 
-    On the application rather than on a widget, for the reason
-    `tests/integration/test_dark_appearance.py` sets a host appearance there:
-    a palette assigned to the widget under test would overwrite the
-    declaration being tested instead of exercising it. The dashboard is built
-    inside the fixture's scope so that every stylesheet resolves against this
-    palette, and the views are deleted before it is restored, since the
-    modules in this tree share one `QApplication`.
+    The palette is set on the application rather than on a widget. That is
+    the same reason `tests/integration/test_dark_appearance.py` sets a host
+    appearance there: a palette assigned to the widget under test would
+    overwrite the declaration being tested instead of exercising it. The
+    dashboard is built inside the fixture's scope, so that every stylesheet
+    resolves against this palette. The views are deleted before the original
+    palette is restored, because the modules in this tree share one
+    `QApplication`.
     """
 
     original = QPalette(application.palette())
@@ -4834,21 +4866,21 @@ def test_every_control_that_paints_its_own_content_declares_a_foreground(
 ) -> None:
     """`PL-4L49`: what declares nothing is drawn by the host, and says nothing.
 
-    `tools/contrast_check.py` measures the pairs somebody wrote down. A
-    control that writes none contributes to neither side of its count, so its
-    report line reads the same whether the interface is covered or has three
-    invisible controls on it - which is the state `PL-DHBX` was found in, by
-    the project owner, on his own screen. The question it cannot answer is
-    this one, and it needs a built tree rather than an `ast` walk: which
-    widget a stylesheet actually reached is settled by Qt, not by the source.
+    `tools/contrast_check.py` measures the pairs that somebody wrote down. A
+    control that writes none adds to neither side of its count. So its report
+    line is the same whether the interface is covered or has three invisible
+    controls on it. That was the state in which the project owner found
+    `PL-DHBX`, on his own screen. That tool cannot answer the question this
+    test asks, and the question needs a built tree rather than an `ast` walk.
+    Qt, not the source, decides which widget a stylesheet actually applies to.
 
-    So every foreground role is set to a colour this interface never uses, the
-    dashboard is built under it, and each content-painting widget is asked
-    what it resolves to. A declared control answers with its own colour,
-    because Qt folds a stylesheet's `color` into the widget's palette when it
-    polishes it - and inherits it down from an ancestor's stylesheet exactly
-    as it would on screen, which is why no rule here has to parse CSS or
-    decide which selector reached what.
+    So every foreground role is set to a colour this interface never uses,
+    the dashboard is built under it, and each content-painting widget is asked
+    what colour it resolves to. A declared control returns its own colour.
+    Qt folds a stylesheet's `color` into the widget's palette when it polishes
+    the widget. Qt also passes the colour down from an ancestor's stylesheet,
+    exactly as it would on screen. That is why no rule here has to parse CSS
+    or decide which selector applied to which widget.
     """
 
     view = _shown_view(alien_foreground, SimulationController())
@@ -4885,13 +4917,14 @@ def test_no_control_kind_is_exempted_from_declaring_a_foreground_without_cause(
 ) -> None:
     """Every entry in `FOREGROUND_NOT_DECLARED` still names a live exemption.
 
-    The half that keeps the list from becoming a comment nobody checks, which
-    is what `tools/contrast_check.py` does with `KNOWN_SHORTFALLS`: an entry
-    for a kind the dashboard stopped building, or for one that has since been
-    given a foreground, fails here rather than sitting on as an exemption
-    nothing needs. Both directions matter to the count the report line prints
-    - it is the size of this mapping, and an entry that has stopped being true
-    overstates what nothing measures just as a missing one understates it.
+    This test keeps the list from becoming a comment that nobody checks, in the
+    same way that `tools/contrast_check.py` checks `KNOWN_SHORTFALLS`. An entry for a
+    kind the dashboard stopped building fails here. So does an entry for a
+    kind that has since been given a foreground. Neither stays on as an
+    exemption that nothing needs. Both directions matter to the count that
+    the report line prints, because the count is the size of this mapping. An
+    entry that has stopped being true overstates what nothing measures, just
+    as a missing entry understates it.
     """
 
     view = _shown_view(alien_foreground, SimulationController())
@@ -4929,16 +4962,17 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 ) -> None:
     """Nothing holds the page wider than the window: the sidebar and every slider are on screen.
 
-    The readout row reports a one-column minimum and the legend rows wrap,
-    so the page's minimum is well inside the window and the scroll area
-    never widens it; the chart column alone asks for less than a thousand
-    pixels.
+    The readout row reports a one-column minimum and the legend rows wrap.
+    So the page's minimum width is well inside the window, and the scroll
+    area never widens it. The chart column alone asks for less than a
+    thousand pixels.
 
-    The record panels measured are the ones the page holds, which the test
-    below proves. They used to come from a second build of the panels,
-    whose panels had no parent: `mapTo(page, ...)` assumes the page is
-    an ancestor and checks nothing, so the last two assertions compared
-    coordinates that never reached the page and could not fail (`PL-JS0X`).
+    The record panels measured are the ones the page holds, as the test below
+    proves. They used to come from a second build of the panels, and those
+    panels had no parent. `mapTo(page, ...)` assumes that the page is an
+    ancestor and checks nothing. So the last two assertions compared
+    coordinates that were never on the page, and they could not fail
+    (`PL-JS0X`).
     """
 
     controller = SimulationController()
@@ -4965,12 +4999,12 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QApplication) -> None:
     """Each panel the width test measures is the page's only panel of its kind, and is shown.
 
-    Matched against the page's own children by the object name the panel's
-    stylesheet is scoped by, so a rebuilt panel fails here, and so does a
-    widget the heading might come to sit in between it and the panel. The
-    second build of the panels that this replaced also moved the run's
-    live labels out of the column the assertions before it had measured
-    (`PL-JS0X`, `PL-N67T`).
+    Each panel is matched against the page's own children by the object name
+    that scopes the panel's stylesheet. So a rebuilt panel fails here. So does
+    a widget that might come to sit between the heading and the panel. The
+    second build of the panels, which this check replaced, also moved the
+    run's live labels out of the column that the earlier assertions had
+    measured (`PL-JS0X`, `PL-N67T`).
     """
 
     view = _shown_view(application, SimulationController())
@@ -4987,19 +5021,20 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
 ) -> None:
     """Asking a run again for its accounting or control-change panel leaves the placed one drawn.
 
-    The method that built both used to build two new panels on every call and
-    lay the run's own labels into them, and a layout takes a widget from
-    wherever it sits: a second call moved the accounting status, its amounts
-    and the control changes into panels with no parent, and the sidebar a
-    learner was reading went empty of them (`PL-N67T`). Each label is held to
-    being on screen and in its shared column before the call as well as after
-    it, so the test cannot pass on a column that never showed them. The
-    overflow line is hidden while nothing overflows, so it is held to its
-    column alone. Since `PL-NWTM` the accounting panel is in the sidebar and
-    the control-change panel in the unconditional region's record column.
-    Since `PL-9LNF` the accounting panel may sit in an Area, so a second call
-    builds a second copy for another Area and leaves the first where it is.
-    The control-change panel stays in the region, so it is handed back.
+    The method that built both panels used to build two new panels on every
+    call and lay the run's own labels into them. A layout takes a widget from
+    wherever it sits. So a second call moved the accounting status, its
+    amounts and the control changes into panels with no parent, and they
+    vanished from the sidebar a learner was reading (`PL-N67T`). Each label
+    must be on screen and in its shared column before the call as well as
+    after it, so the test cannot pass on a column that never showed them. The
+    overflow line is hidden while nothing overflows, so the test checks only
+    that it is in its column. Since `PL-NWTM`, the accounting panel is in the
+    sidebar and the control-change panel is in the unconditional region's
+    record column. Since `PL-9LNF`, the accounting panel may sit in an Area.
+    So a second call builds a second copy for another Area and leaves the
+    first where it is. The control-change panel stays in the region, so the
+    placed one is returned.
     """
 
     view = _shown_view(application, SimulationController())
@@ -5041,17 +5076,18 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
 def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QApplication) -> None:
     """Asking a run again for its transport row or readouts hands back the placed one.
 
-    Each of the three used to lay the run's live widgets into a new container
-    on every call, so a second call took the Start button, the substance
-    heading and the fresh gas flow slider off screen, and dropping its result
-    deleted them (`PL-KZR1`). Held the way the sidebar's test above holds its
-    panels (`PL-N67T`): every widget is on the page before the call as well as
-    after it, and each shown one stays shown, so the test cannot pass on a
-    row that never showed them. Each case names a widget that has to be
-    shown to begin with; the lone run's name and the agent chip are hidden
-    in this state, so they are held to the page alone. The setting controls
-    are not among the cases, because since `PL-9LNF` a second call builds a
-    second copy for another Area (`tests/integration/test_run_surfaces.py`).
+    Each of the three methods used to lay the run's live widgets into a new
+    container on every call. So a second call took the Start button, the
+    substance heading and the fresh gas flow slider off screen, and dropping
+    its result deleted them (`PL-KZR1`). The check works like the sidebar's
+    test above (`PL-N67T`). Every widget must be on the page before the call
+    as well as after it, and each shown widget must stay shown, so the test
+    cannot pass on a row that never showed them. Each case names a widget
+    that has to be shown to begin with. The lone run's name and the agent
+    chip are hidden in this state, so the test checks only that they are on
+    the page. The setting controls are not among the cases, because since
+    `PL-9LNF` a second call builds a second copy for another Area
+    (`tests/integration/test_run_surfaces.py`).
     """
 
     view = _shown_view(application, SimulationController())
@@ -5154,10 +5190,10 @@ def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
 
 
 def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
-    """`PL-B9PY`: two runs, two controllers, and neither states the other's numbers.
+    """`PL-B9PY`: two runs, two controllers, and neither shows the other's numbers.
 
-    A regression here would look like one branch's readouts standing over
-    the other branch's numbers, which is the wrong-patient-context failure
+    A regression here would look like one branch's readouts shown over the
+    other branch's numbers. That is the wrong-patient-context failure that
     `CLAUDE.md`'s safety-critical standard names.
     """
 
@@ -5199,9 +5235,9 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
     """The pairing hazard, doubled: a line must carry its run and its compartment.
 
     The model is linear in partial pressure, so a run at twice the dial
-    reaches exactly twice every compartment at every instant: a line
-    carrying the wrong run's values is visible in the drawn points rather
-    than inferred.
+    reaches exactly twice every compartment at every instant. So a line that
+    carries the wrong run's values is visible in the drawn points, rather
+    than having to be inferred.
     """
 
     single = SimulationController()
@@ -5216,8 +5252,9 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
 
     frame = chart.frame
     assert frame is not None
-    # Every compartment the cap leaves drawn, which is what "each run draws
-    # its own values" has to hold for; the cap itself is `PL-8PSW`'s own test.
+    # The check covers every compartment that the cap leaves drawn, because
+    # "each run draws its own values" has to be true for each of them. The
+    # cap itself has its own test, for `PL-8PSW`.
     assert frame.visible
 
     for quantity in frame.visible:
@@ -5240,8 +5277,9 @@ def test_one_compartment_selection_applies_to_every_run(application: QApplicatio
     _advance(second, 60.0)
     view = _shown_view(application, first, second)
     chart = _concentration(view).chart
-    # One of the two the cap leaves drawn, so what is being tested is the
-    # selection reaching both runs rather than the cap removing a trace.
+    # One of the two compartments that the cap leaves drawn. So the test
+    # checks that the selection applies to both runs, not that the cap
+    # removes a trace.
     quantity = RecordedQuantity.ALVEOLAR
 
     _set_trace_shown(application, view, quantity, False)
@@ -5256,11 +5294,11 @@ def test_one_compartment_selection_applies_to_every_run(application: QApplicatio
 
 
 def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApplication) -> None:
-    """`PL-8PSW`: the cap holds the selection, the boxes agree with it, and it is stated.
+    """`PL-8PSW`: the cap limits the selection, the boxes agree with it, and it is stated.
 
-    The cap is what frees the line width for the run, so it is the half of
-    the encoding that must hold whatever a reader does - including checking
-    a third compartment, which takes the longest-standing one off rather
+    The cap is what frees the line width to carry the run. So it is the half
+    of the encoding that must stay true whatever a reader does. That includes
+    checking a third compartment, which takes the oldest selection off rather
     than being silently ignored.
     """
 
@@ -5280,7 +5318,8 @@ def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApp
     frame = chart.frame
 
     assert frame is not None
-    # Reduced from six on the way in, to the top of the compartment table.
+    # With two runs, the selection is reduced from six compartments to the top
+    # two of the compartment table.
     assert _concentration(view).legend.shown == (
         RecordedQuantity.CIRCUIT,
         RecordedQuantity.ALVEOLAR,
@@ -5325,7 +5364,7 @@ def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> No
 
 
 def test_halting_one_run_leaves_the_other_advancing(application: QApplication) -> None:
-    """A raise out of one run's step says nothing about the other run."""
+    """An exception from one run's step says nothing about the other run."""
 
     halted = SimulationController()
     untouched = SimulationController()
@@ -5347,7 +5386,7 @@ def test_halting_one_run_leaves_the_other_advancing(application: QApplication) -
 
 
 def test_a_frame_that_cannot_be_drawn_halts_every_run(application: QApplication) -> None:
-    """The render loop draws all of them, so a raise out of it is nobody's."""
+    """The render loop draws every run, so an exception from it belongs to no single run."""
 
     first = SimulationController()
     second = SimulationController()
@@ -5368,9 +5407,9 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
 ) -> None:
     """The whole-interface walk covers what the Flet walk covered: axis titles too.
 
-    The hedge and the wake-time walks guarantee only what the walk reaches,
-    and the plots' axis titles and the legend boxes' accessible names are
-    standing text a reader or a screen reader meets; both are on the walk
+    The hedge and wake-time tests guarantee only what the walk reaches. The
+    plots' axis titles and the legend boxes' accessible names are standing
+    text that a reader or a screen reader meets, so both are on the walk
     (`PL-25KS`).
     """
 
@@ -5391,9 +5430,9 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
     """`PL-GMM7`: the educational disclaimer is on the dashboard, verbatim.
 
     `test_the_educational_disclaimer_says_what_the_tool_is_not` pins the
-    words; this holds that the dashboard places them where a reader meets
-    them, at the foot of the page, so the string the project's regulatory
-    posture rests on cannot silently leave the screen.
+    words. This test checks that the dashboard places them where a reader
+    meets them, at the foot of the page. So the string on which the project's
+    regulatory posture rests cannot silently leave the screen.
     """
 
     from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
@@ -5506,11 +5545,11 @@ def test_a_value_hidden_from_the_reader_is_not_counted_as_shown(application: QAp
 def test_a_hidden_advisory_and_a_closed_combo_entry_are_held_but_not_shown(
     application: QApplication,
 ) -> None:
-    """Present in the tree and visible to the reader are two answers (`PL-904Y`).
+    """Being in the tree and being visible to the reader are two different things (`PL-904Y`).
 
-    The no-traces advisory waits hidden until every trace is off, and a
-    combo shows its current entry only. Both are held, so a test that a
-    string is never said still reaches them, and neither is told to the
+    The no-traces advisory stays hidden until every trace is off, and a combo
+    shows only its current entry. Both strings are in the tree, so a test
+    that a string is never said still reaches them. Neither is shown to the
     reader.
     """
 
@@ -5527,11 +5566,11 @@ def test_a_hidden_advisory_and_a_closed_combo_entry_are_held_but_not_shown(
 
 # --------------------------------------------------------------- bookmarks
 #
-# The editing path end to end: a form filled in, a mark reaching both runs,
-# and the listing a reader sees. `tests/unit/test_bookmarks.py` holds what a
-# mark refuses and `tests/unit/test_dashboard_frame.py` what a row says; what
-# is here is that the dialog is wired to every run rather than to one
-# (`PL-LPLD`).
+# These tests cover the editing path end to end: a form filled in, a mark
+# reaching both runs, and the listing a reader sees.
+# `tests/unit/test_bookmarks.py` tests what a mark refuses, and
+# `tests/unit/test_dashboard_frame.py` tests what a row says. These tests
+# check that the dialog is wired to every run rather than to one (`PL-LPLD`).
 
 
 def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
@@ -5611,9 +5650,9 @@ def test_the_compartment_picker_offers_the_six_drawn_compartments_and_no_ratio(
 def test_the_height_control_stops_at_what_the_running_agent_can_reach(
     application: QApplication,
 ) -> None:
-    # No compartment exceeds the delivered concentration and the vaporizer
-    # bounds that, so a target above it is one no run of this agent could
-    # cross. Refused in the control rather than reported afterwards.
+    # No compartment exceeds the delivered concentration, and the vaporizer
+    # limits that. So no run of this agent could cross a target above it. The
+    # control refuses such a target rather than reporting it afterwards.
     controller = SimulationController()
     view = _shown_view(application, controller)
     dialog = _opened_bookmark_dialog(view)
@@ -5633,9 +5672,9 @@ def test_the_height_control_stops_at_what_the_running_agent_can_reach(
 def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
     application: QApplication,
 ) -> None:
-    # The marks are the case's. Two runs compared at two different heights,
-    # because a learner typed one of them twice, is what writing to every run
-    # makes unreachable.
+    # The marks belong to the case. Writing to every run makes it impossible
+    # to compare two runs at two different heights because a learner typed
+    # one of them twice.
     first = SimulationController()
     second = SimulationController()
     view = _shown_view(application, first, second)
@@ -5699,18 +5738,20 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
 def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplication) -> None:
     """The invariant the marks panel now rests on, in the one shape `main` produces.
 
-    `bookmark_panel` reads the reference run's mark *set* and every run's
-    standings against it, so a branch whose set had drifted from the trunk's
-    no longer draws the trunk's answer quietly - `BookmarkStandings` refuses
-    the lookup, `present` catches it and the whole dashboard halts. That is
-    the right direction under `CLAUDE.md`'s safety-critical standard, and it
-    makes the invariant load-bearing in a way it was not.
+    `bookmark_panel` reads the reference run's mark *set*, and every run's
+    standings against that set. So a branch whose set had drifted from the
+    trunk's no longer quietly draws the trunk's answer. Instead
+    `BookmarkStandings` refuses the lookup, `present` catches the refusal, and
+    the whole dashboard halts. That is the right direction under `CLAUDE.md`'s
+    safety-critical standard, and it makes the invariant matter in a way it
+    did not before.
 
-    The three tests that hold it build two loose trunks, which is a
-    configuration `main()` cannot produce: it opens one trunk and a
-    `BranchedCase`. This walks the real one - fork, then add and remove from
-    the dashboard - because `_branch_from` copies the set at the fork and
-    `_apply_to_every_run` is what has to keep the two in step afterwards.
+    The three tests that check the invariant build two separate trunks. That
+    is a configuration `main()` cannot produce, because it opens one trunk and
+    a `BranchedCase`. This test walks through the real configuration: a fork,
+    then an add and a removal from the dashboard. `_branch_from` copies the
+    set at the fork, and `_apply_to_every_run` has to keep the two sets in
+    step afterwards.
     """
 
     case = _branched_case()
@@ -5747,8 +5788,8 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
 
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
     # The refusal fires on the second run rather than the first only if the
-    # two have drifted; this asserts they have not, which is the invariant
-    # the write-to-every-run path exists for.
+    # two runs have drifted apart. This checks that they have not, which is
+    # the invariant that the write-to-every-run path exists for.
     first = SimulationController()
     second = SimulationController()
     view = _shown_view(application, first, second)
@@ -5764,7 +5805,8 @@ def test_a_name_field_is_cleared_after_a_mark_is_added_and_the_value_is_not(
     application: QApplication,
 ) -> None:
     # Adding a second mark near the first is the common case, so the instant
-    # stays; a reused name would name two marks alike, so the name goes.
+    # stays. A reused name would give two marks the same name, so the name is
+    # cleared.
     view = _shown_view(application, SimulationController())
     dialog = _opened_bookmark_dialog(view)
     dialog.instant_spin.setValue(600.0)
@@ -5791,9 +5833,9 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
 
 def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QApplication) -> None:
     # `PL-FPY2`: the two rows `PL-LHBY`'s review measured wrapping at 350 px.
-    # Joined into one label, the first row's continuation began at the margin
-    # every row begins at, so `Run 2 reached` read as a mark of its own and
-    # attached one run's answer to the wrong mark.
+    # When the rows were joined into one label, the first row's continuation
+    # began at the same margin as every row. So `Run 2 reached` looked like a
+    # mark of its own, and attached one run's answer to the wrong mark.
     listing = MarkListingLabel()
     listing.set_listing(
         MarkListing(
@@ -5807,13 +5849,14 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
     )
     wrapped, below = listing.rows
 
-    # Both dimensions follow the row, not a sidebar width in pixels, because
-    # each was a bet on the font the host resolves for sans-serif (`PL-VCF0`).
-    # The width is half the row's own one-line advance, so the row wraps under
-    # any font. The height is the listing's height at that width, as the
-    # sidebar's layout gives it: a bare window opens at the height its size
-    # hint works out for a width of its own choosing, which under Inter at the
-    # sidebar's narrow end, 300 px, was 66 px against the 81 px the wrap needs.
+    # Both dimensions are taken from the row, not from a sidebar width in
+    # pixels. A fixed width was a bet on the font that the host resolves for
+    # sans-serif (`PL-VCF0`). The width is half the row's own one-line advance,
+    # so the row wraps under any font. The height is the listing's height at
+    # that width, as the sidebar's layout gives it. A bare window opens at the
+    # height its size hint works out for a width of its own choosing. Under
+    # Inter at the sidebar's narrow end, 300 px, that was 66 px, against the
+    # 81 px that the wrap needs.
     width = wrapped.text_label.fontMetrics().horizontalAdvance(wrapped.text_label.text()) // 2
     listing.resize(width, listing.heightForWidth(width))
     listing.show()
@@ -5840,13 +5883,13 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
 
     The trunk is paused at 60 s at 0.17 xMAC alveolar and never advances, so
     it is still running for a target at 0.50 xMAC. The branch is opened at
-    that instant, its delivered concentration raised to the agent's ceiling,
-    and stepped until the crossing halts it - at 114.7 s, which is where the
-    offscreen reproduction on `PL-LHBY` put it.
+    that instant, and its delivered concentration is raised to the agent's
+    maximum. It is then stepped until the crossing halts it, at 114.7 s,
+    which is where the offscreen reproduction on `PL-LHBY` put the halt.
 
-    The time bookmark rides along for the second half of the same defect: at
+    The time bookmark is added for the second half of the same defect. At
     30 s it is behind the trunk's clock and before the branch's own opening
-    instant, so the two runs answer it in opposite words.
+    instant, so the two runs describe it in opposite words.
     """
 
     case = _branched_case()
@@ -5881,15 +5924,15 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
 def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
     """`PL-LHBY`, the silent negative, end to end from the marks to the drawn row.
 
-    The branch stops itself on a height the learner marked. Drawn from the
-    reference run the row said nothing at all - the trunk was still running
-    for that target - so the one on-screen indication that a run stopped
-    where it was asked to existed for a lone run and vanished as soon as a
-    second was drawn, leaving the halt indistinguishable from a Pause.
+    The branch stops itself on a height the learner marked. When the row was
+    drawn from the reference run, it said nothing at all, because the trunk
+    was still running for that target. So the one on-screen sign that a run
+    stopped where it was asked to existed for a lone run. It vanished as soon
+    as a second run was drawn, and the halt then looked the same as a Pause.
 
-    Asserted on the run that halted *and* on the run that did not: naming
-    only the branch would leave the trunk's silence to be read as the
-    trunk having no answer rather than as its answer being "not yet".
+    The test checks the run that halted *and* the run that did not. If only
+    the branch were named, the trunk's silence could be read as the trunk
+    having no answer, rather than as its answer being "not yet".
     """
 
     view = _halted_branch_view(application)
@@ -5908,12 +5951,12 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
 ) -> None:
     """`PL-LHBY`, the false positive, and the worse half of the pair.
 
-    An instant the branch inherited but opened after read as the trunk's
-    `passed`, so the screen asserted of the displayed branch something the
-    model decides is false from `ResumePoint.fork.instant_s` alone.
-    `MarkStanding.BEFORE_THIS_BRANCH` exists so that is not said, and no
-    screen could reach it: the reference run is the trunk, and no instant
-    stands before a trunk.
+    The branch inherits an instant but opens after it. That instant used to
+    show the trunk's `passed`. So the screen claimed something about the
+    displayed branch that the model shows to be false from
+    `ResumePoint.fork.instant_s` alone. `MarkStanding.BEFORE_THIS_BRANCH`
+    exists so that this is not said, but no screen could show it. The
+    reference run is the trunk, and no instant comes before a trunk.
     """
 
     view = _halted_branch_view(application)
@@ -5929,32 +5972,35 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
 def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplication) -> None:
     """`PL-N3N5`, read as the adversarial review of `PL-LHBY` found it.
 
-    One of two displayed runs is failed the way a raised step fails it -
-    `RunView.halt` records the disposition, which is what the tick handler
-    calls - and the whole screen is then read at one instant. The trunk's own
-    panel said `Stopped - simulation error` while its clause on a mark it had
-    not reached said `not yet`, which is `MarkStanding.STILL_RUNNING`
-    asserting the run can still reach the mark, on a run
-    `SimulationController.start` refuses to resume without a reset.
+    One of two displayed runs is failed the way a step that raised fails it.
+    `RunView.halt` records the disposition, and the tick handler calls that
+    method. The whole screen is then read at one instant. The trunk's own
+    panel said `Stopped - simulation error`, while its clause on a mark it had
+    not reached said `not yet`. That is `MarkStanding.STILL_RUNNING`, which
+    claims the run can still reach the mark. But `SimulationController.start`
+    refuses to resume that run without a reset.
 
-    The failed run is the trunk rather than the branch so that the *drawn*
-    defect is reproduced and not only the standing behind it: the branch has
-    something to say about both new marks, so the rows are attributed and the
-    trunk's answer reaches the screen in words. Where the two runs agreed the
-    row drew as silence instead, which is the same false claim made quietly.
+    The failed run is the trunk rather than the branch, so that the test
+    reproduces the *drawn* defect and not only the standing behind it. The
+    branch has something to say about both new marks, so the rows are
+    attributed, and the trunk's answer reaches the screen in words. Where the
+    two runs agreed, the row was drawn as silence instead, which made the same
+    false claim quietly.
 
-    Both kinds are read, because a failure ends a clock and a height alike,
-    and the trunk's inherited `passed` is read beside them: a failure stops a
-    clock without taking it back, so the answers about what did happen stand.
+    Both kinds of mark are checked, because a failure ends a clock and a
+    height alike. The trunk's inherited `passed` is checked beside them. A
+    failure stops a clock without taking it back, so the answers about what
+    did happen still apply.
     """
 
     view = _halted_branch_view(application)
     trunk = view.runs[0]
-    # Marked after the fork and through the editor, so both runs hold them:
-    # the set is the case's and `_apply_to_every_run` is what writes one. The
-    # instant is ahead of the trunk's clock and behind the branch's, and fat
-    # at 0.8 xMAC is out of reach of either run here, so each mark is left
-    # outstanding on the trunk with the branch answering it.
+    # The marks are added after the fork and through the editor, so both runs
+    # hold them. The set belongs to the case, and `_apply_to_every_run` is
+    # what writes a mark. The instant is ahead of the trunk's clock and behind
+    # the branch's. Fat at 0.8 xMAC is out of reach of either run here. So
+    # each mark is left outstanding on the trunk, while the branch has an
+    # answer for it.
     dialog = _opened_bookmark_dialog(view)
     dialog.instant_spin.setValue(90.0)
     dialog.add_time_button.click()
@@ -5989,11 +6035,11 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
 def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     application: QApplication,
 ) -> None:
-    # The other side of the same rule: an unattributed clause is a claim
-    # about the case, and on one run it is one. A run name on every row of a
-    # single-run panel would be the standing chrome
-    # `.claude/rules/ui-reader.md` rules out, and it is what the dashboard
-    # already refuses for the legend and the run headings.
+    # The other side of the same rule: a clause that names no run is a claim
+    # about the case, and with one run that claim is true. A run name on every
+    # row of a single-run panel would be the standing chrome that
+    # `.claude/rules/ui-reader.md` rules out. The dashboard already refuses
+    # such names for the legend and the run headings.
     controller = SimulationController()
     view = _shown_view(application, controller)
     controller.start()
@@ -6012,8 +6058,8 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
 def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
     application: QApplication,
 ) -> None:
-    # `PL-F9TQ` governs what may stand between a chart heading and its plot.
-    # The marks are the case's rather than either plot's, so they are a
+    # `PL-F9TQ` governs what may sit between a chart heading and its plot.
+    # The marks belong to the case rather than to either plot, so they are a
     # section of their own below the Areas, in no View.
     view = _shown_view(application, SimulationController())
     page = _page_of(view)
@@ -6034,9 +6080,9 @@ def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
 def test_the_shipped_dashboard_opens_over_a_case_it_can_branch(application: QApplication) -> None:
     """`PL-VKJW`: every mechanism under v0.5.0's Goal had shipped and nothing called it.
 
-    A dashboard handed loose controllers cannot branch and says so by not
-    offering the control; one opened over a case offers it, from the trunk's
-    own keyframes.
+    A dashboard given loose controllers cannot branch, and shows this by not
+    offering the control. A dashboard opened over a case offers the control,
+    at the trunk's own keyframes.
     """
 
     case = _branched_case()
@@ -6049,7 +6095,7 @@ def test_the_shipped_dashboard_opens_over_a_case_it_can_branch(application: QApp
 
 
 def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QApplication) -> None:
-    """A control that could only refuse is one presenting itself as working."""
+    """A control that could only refuse would present itself as working."""
 
     view = _shown_view(application, SimulationController())
 
@@ -6058,7 +6104,7 @@ def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QAppl
 
 
 def test_a_dashboard_refuses_a_case_rooted_in_another_run() -> None:
-    """Two curves on one axis assert one patient; a foreign case would misattribute it."""
+    """Two curves on one axis claim one patient, so a foreign case would misattribute it."""
 
     with pytest.raises(
         ValueError,
@@ -6117,18 +6163,19 @@ def test_taking_a_fork_adds_the_branch_to_the_dashboard(application: QApplicatio
 def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplication) -> None:
     """The press draws the frame the branch appears on, and nothing else has to ask for it.
 
-    A fork is a discrete action, so it draws once and at once (`PL-R2YM`)
-    rather than leaving the frame owed: both runs stand paused afterwards, so
-    a frame left to the render tick would never be drawn. Nothing here
-    presents after the press, so the frame read is the one the press drew,
-    and a fork that added the run without redrawing fails on the one-run
-    frame `_case_view` drew (`PL-624C`).
+    A fork is a discrete action, so it draws once and at once (`PL-R2YM`),
+    rather than leaving the frame owed. Both runs are paused afterwards, so a
+    frame left to the render tick would never be drawn. Nothing here presents
+    after the press, so the frame read is the one the press drew. A fork that
+    added the run without redrawing fails on the one-run frame that
+    `_case_view` drew (`PL-624C`).
 
-    The selection is narrowed, through the legend, to the pair the cap would
-    draw first, so the second run leaves it as it stands.
+    The selection is narrowed, through the legend, to the pair that the cap
+    would draw first, so the second run leaves it unchanged.
     `test_a_fork_from_the_default_selection_draws_one_frame` takes the fork
-    from a selection the second run reduces, which drew a second frame until
-    `PL-B1R9`; between them a press draws once from either kind of selection.
+    from a selection that the second run reduces, which drew a second frame
+    until `PL-B1R9`. Together the two tests show that a press draws once from
+    either kind of selection.
     """
 
     case = _branched_case()
@@ -6158,7 +6205,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
 
     The frame read is the one the press drew, from the default selection
     rather than the narrowed one the test above takes the fork from. It used
-    to present a frame itself first, which made every assertion below hold
+    to present a frame itself first, which made every assertion below pass
     whether the fork redrew or not (`PL-624C`).
     """
 
@@ -6182,21 +6229,21 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
 def test_a_fork_from_the_default_selection_draws_one_frame(
     application: QApplication, door: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """One press, one frame, assembled once both runs know there are two, and telling both legends.
+    """One press draws one frame, assembled once both runs know there are two, for both legends.
 
     The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
     second run reduces it (`CompartmentSelection.with_run_count`), and the
-    legend is shown the reduction. The reduction used to announce
-    itself as a reader's change, and the dashboard drew a frame for it from
-    inside `_rename_runs` - while the wash-in legend still counted one run and
-    neither run had been named - before the press drew its own: two
-    assemblies for one discrete action where `PL-R2YM` says one (`PL-B1R9`).
-    Both legends are now told what a frame drew once it has drawn
-    (`PL-G3K7`), so the frame is assembled with each run named and is what
-    brings both legends to two runs.
-    `test_taking_a_fork_redraws_the_chart_without_prompting` holds the count
-    from a selection the cap leaves alone; this holds it from one the cap
-    reduces, through every door a branch is taken by.
+    legend is shown the reduction. The reduction used to announce itself as a
+    reader's change. The dashboard then drew a frame for it from inside
+    `_rename_runs`, before the press drew its own frame. At that point the
+    wash-in legend still counted one run, and neither run had been named.
+    That made two assemblies for one discrete action, where `PL-R2YM` says
+    one (`PL-B1R9`). Both legends are now told what a frame drew once it has
+    been drawn (`PL-G3K7`). So the frame is assembled with each run named, and
+    that frame is what brings both legends to two runs.
+    `test_taking_a_fork_redraws_the_chart_without_prompting` checks the count
+    from a selection that the cap leaves alone. This test checks it from a
+    selection that the cap reduces, through every way a branch can be taken.
     """
 
     if door == "here":
@@ -6246,10 +6293,11 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 ) -> None:
     """Everything that reads the run count follows the addition, not the construction.
 
-    The dashboard holds its compartment selection to the compared cap from
-    this count, the legends name the runs from it, the panels carry the names the legend
-    entries use, and each run has a section of setting controls of its own -
-    so a second run adds one, and its readouts join the region (`PL-NWTM`).
+    The dashboard uses this count to limit its compartment selection to the
+    compared cap, and the legends name the runs from it. The panels carry the
+    names that the legend entries use. Each run has a section of setting
+    controls of its own, so a second run adds one, and its readouts join the
+    region (`PL-NWTM`).
     """
 
     view = _case_view(application, _branched_case())
@@ -6271,21 +6319,21 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
 def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QApplication) -> None:
     """Both lines sit in the chart column the runs share, so each says whose value it is.
 
-    Once a branch is drawn the column stacks one line per run, and the run
-    names live in a different splitter section - so the only channel telling
-    the two apart is stacking order, which nothing on screen declares. Read
-    as the trunk's, the branch's F_A/F_I inverts the comparison the branch
-    exists to teach, and its off-scale notice reports a clipped trace on a
-    run that has none (`PL-25DD`).
+    Once a branch is drawn, the column stacks one line per run, and the run
+    names are in a different splitter section. So the only thing that tells
+    the two lines apart is their stacking order, which nothing on screen
+    declares. If the branch's F_A/F_I were read as the trunk's, it would
+    invert the comparison the branch exists to teach. Its off-scale notice
+    would report a clipped trace on a run that has none (`PL-25DD`).
 
     Sevoflurane's 8% dial is 4 MAC against a 3 MAC ceiling, and the branch
-    inherits the trunk's dial, so both runs draw a clipped circuit trace and
-    both advisories are on screen at once - which is the case where a bare
-    line is most easily taken for the other run's.
+    inherits the trunk's dial. So both runs draw a clipped circuit trace, and
+    both advisories are on screen at once. That is the case in which a line
+    with no name is most easily taken for the other run's.
 
-    No presentation is driven here beyond the one `_handle_fork` makes, so
-    the names arrive on the frame the branch appears on rather than on some
-    later tick.
+    The test drives no presentation beyond the one that `_handle_fork`
+    makes. So the names arrive on the frame the branch appears on, not on
+    some later tick.
     """
 
     trunk = SimulationController()
@@ -6316,9 +6364,9 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
 def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so the column carries no name.
 
-    The rule the run panels and both legends already follow (`_rename_runs`),
-    held here so the attribution `PL-25DD` adds does not become standing
-    chrome on the display a learner opens.
+    The run panels and both legends already follow this rule (`_rename_runs`).
+    The test checks it here, so that the attribution `PL-25DD` adds does not
+    become standing chrome on the display a learner opens.
     """
 
     controller = SimulationController()
@@ -6337,23 +6385,23 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
 
 
 #: A dial position above every agent's calibrated vaporizer maximum, so the core
-#: refuses it whichever agent the run is on. Driven through the handler because
-#: the slider's own ceiling keeps it unreachable on the control.
+#: refuses it whichever agent the run is on. Tests drive it through the handler,
+#: because the slider's own maximum makes it unreachable on the control.
 _ABOVE_ANY_VAPORIZER_PERCENT = 50.0
 
 
 def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) -> None:
     """The notice column is shared, and all three banners assert something about a run.
 
-    "Simulation stopped" read as the dashboard's says the case has stopped
-    while the other run is still going, and "The simulation is unchanged and
-    still running its previous setting" is false of the run it is not about -
-    which is the misreading the hazard table's halted-versus-paused row
-    exists to stop, arriving by attribution rather than by wording
-    (`PL-TSZM`).
+    Read as a message about the whole dashboard, "Simulation stopped" says
+    that the case has stopped while the other run is still going. "The
+    simulation is unchanged and still running its previous setting" is false
+    of the run it is not about. That is the misreading that the hazard table's
+    halted-versus-paused row exists to prevent, arriving through attribution
+    rather than through wording (`PL-TSZM`).
 
-    One of each is driven at once, on different runs, because that is the
-    case where the column holds two banners and neither names itself.
+    The test drives one of each at once, on different runs. That is the case
+    in which the column holds two banners and neither names its run.
     """
 
     view = _case_view(application, _branched_case())
@@ -6383,10 +6431,10 @@ def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
 ) -> None:
     """`present_halt` has no frame by design, so the name cannot be read off one.
 
-    It states a halt from the snapshot alone because the frame is what may
-    have failed (`PL-25KS`), and `_halt_every_run` swallows the redraw that
-    follows - so on a raise out of the shared render path this banner is the
-    last one written. Taking the run count off the frame would drop the
+    It shows a halt from the snapshot alone, because the frame is what may
+    have failed (`PL-25KS`). `_halt_every_run` swallows the redraw that
+    follows. So when the shared render path raises, this banner is the last
+    one written. Taking the run count from the frame would drop the
     attribution in exactly that case (`PL-TSZM`).
     """
 
@@ -6412,17 +6460,18 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
     """A refusal already on screen is about one run, and a fork puts a second beside it.
 
     "The simulation is unchanged and still running its previous setting" was
-    true of the display while the trunk was alone and is false of the branch
-    the moment it appears, so the name has to arrive on the frame the branch
-    appears on rather than on some later tick (`PL-TSZM`).
+    true of the display while the trunk was alone. It is false of the branch
+    the moment the branch appears. So the name has to arrive on the frame the
+    branch appears on, not on some later tick (`PL-TSZM`).
 
-    What delivers it is the presentation `_handle_fork` drives, which
-    rewrites every run's banner through `_write_notice` after
-    `_rename_runs` has named them - not a rewrite hung off `set_run_name`.
-    That was written and removed: with the fork's own presentation and the
-    Reset that drops a branch both already rewriting the banner, no scenario
-    could tell it from its absence, and a guarantee nothing can fail is not
-    one. This test is what holds the presentation in that role.
+    The presentation that `_handle_fork` drives delivers the name. It
+    rewrites every run's banner through `_write_notice` after `_rename_runs`
+    has named the runs. A rewrite attached to `set_run_name` would not be the
+    mechanism. Such a rewrite was written and then removed. The fork's own
+    presentation and the Reset that drops a branch both already rewrite the
+    banner. So no scenario could tell that rewrite from its absence, and a
+    guarantee that nothing can make fail is not a guarantee. This test is
+    what keeps the presentation in that role.
     """
 
     case = _branched_case()
@@ -6448,9 +6497,9 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
 def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so the banner is not named.
 
-    The rule `_rename_runs` applies to the run panels and both legends, held
-    here so the attribution does not become standing chrome on the display a
-    learner opens.
+    `_rename_runs` applies this rule to the run panels and both legends. The
+    test checks it here, so that the attribution does not become standing
+    chrome on the display a learner opens.
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -6509,22 +6558,24 @@ def test_hidden_notice_banners_take_no_height(application: QApplication, compare
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
     """Both panels sit in a column the runs share, so each heading says whose.
 
-    Once a branch is drawn the sidebar stacks two accounting panels and the
-    unconditional region's record column two control-change panels
-    (`PL-NWTM`); before that one column stacked all four, and nothing on any
-    of them said which run it recorded. Both carry a claim about one run: a
-    mass-balance status with litres of equivalent pure agent gas, and a list
-    of settings under the words "What was changed during this run". Read as
-    the other run's, the second says the trunk received an intervention it
+    Once a branch is drawn, the sidebar stacks two accounting panels, and the
+    unconditional region's record column stacks two control-change panels
+    (`PL-NWTM`). Before that change, one column stacked all four, and nothing
+    on any of them said which run it recorded. Both kinds of panel carry a
+    claim about one run. One is a mass-balance status with litres of
+    equivalent pure agent gas. The other is a list of settings under the
+    words "What was changed during this run". If the second were read as the
+    other run's, it would say that the trunk received an intervention it
     never got (`PL-C3GS`).
 
-    The trunk is given a setting change before the fork and the branch one
-    after it, so the two control-change lists differ and misattributing
-    either is a concrete wrong reading rather than a formal one.
+    The trunk is given a setting change before the fork, and the branch is
+    given one after it. So the two control-change lists differ, and
+    misattributing either list is a concrete wrong reading rather than a
+    formal one.
 
-    The attribution is asserted on the labels the panels hold rather than on
-    freshly built ones, and each is then found under the shared column, which
-    is what says the named heading is the heading on screen.
+    The test checks the attribution on the labels that the panels hold, not
+    on freshly built ones. Each label is then found under the shared column,
+    which shows that the named heading is the heading on screen.
     """
 
     trunk = SimulationController()
@@ -6567,12 +6618,12 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 def test_no_unconditional_value_sits_inside_the_layout_container(application: QApplication) -> None:
     """Every value `docs/MODEL.md` requires in every layout is in the region, outside the Areas.
 
-    The layout container holds the Areas a reader resizes (`PL-W9P6`), so a
-    value inside it is one a reader could close away once Areas can be
-    closed (`PL-NWTM`). Held for both runs of a compared case,
-    since the second run's widgets are placed an hour after the first's. The
-    halt banner is hidden while nothing has halted, and is held to its place
-    alone; every other value is on screen.
+    The layout container holds the Areas that a reader resizes (`PL-W9P6`).
+    So a reader could close away a value inside it once Areas can be closed
+    (`PL-NWTM`). The test checks both runs of a compared case, because the
+    second run's widgets are placed an hour after the first's. The halt
+    banner is hidden while nothing has halted, so the test checks only its
+    place. Every other value must be on screen.
     """
 
     view = _case_view(application, _branched_case())
@@ -6607,9 +6658,9 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
 ) -> None:
     """The region carries the delivered concentration in both units and the 1 MAC (`PL-NWTM`).
 
-    Expected text is worked by hand: the dial opens at sevoflurane's own
-    1 MAC, 2.0% (`data/agents/sevoflurane.json`), which is 1.00 ×MAC; moved
-    to 3.0% it is 1.50 ×MAC.
+    The expected text is worked out by hand. The dial opens at sevoflurane's
+    own 1 MAC, 2.0% (`data/agents/sevoflurane.json`), which is 1.00 ×MAC.
+    Moved to 3.0%, it is 1.50 ×MAC.
     """
 
     controller = SimulationController()
@@ -6670,9 +6721,9 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
 def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so neither heading gains a name.
 
-    The rule `_rename_runs` already applies to the run panels and both
-    legends, held here so `PL-C3GS`'s attribution does not become standing
-    chrome on the display a learner opens.
+    `_rename_runs` already applies this rule to the run panels and both
+    legends. The test checks it here, so that `PL-C3GS`'s attribution does not
+    become standing chrome on the display a learner opens.
     """
 
     controller = SimulationController()
@@ -6792,12 +6843,12 @@ def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplicatio
     """`PL-9LNF`: widening a chart's Area while paused redraws it, though the window kept its size.
 
     The frame on screen is sampled for the width it was drawn at (`PL-GS3R`).
-    A drag of the Area border changes the chart's width and not the
-    dashboard's, so a guard on the dashboard's own resize never fired: on
-    `main` at `512fdaed` the tick after the drag drew nothing and the widened
-    plot kept 2 px chords. Thirty minutes of history, so the frame has more
-    instants than the narrowed plot has pixels and the chord is set by the
-    columns rather than by the run.
+    A drag of the Area border changes the chart's width but not the
+    dashboard's, so a guard on the dashboard's own resize never fired. On
+    `main` at `512fdaed`, the tick after the drag drew nothing, and the
+    widened plot kept 2 px chords. The run has thirty minutes of history. So
+    the frame has more instants than the narrowed plot has pixels, and the
+    columns, not the run, set the chord.
     """
 
     controller = _paused_run_with_history(1800.0)
@@ -6827,9 +6878,9 @@ def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplicatio
 def test_narrowing_a_chart_owes_no_frame(application: QApplication) -> None:
     """A plot narrower than its frame's width draws chords closer than a pixel, and needs nothing.
 
-    So only a widening is owed a frame (`resample_owed`); a tick after a
-    narrowing drag draws nothing while paused, and no drawn chord is wider
-    than a pixel.
+    So only a widening is owed a frame (`resample_owed`). While the run is
+    paused, a tick after a narrowing drag draws nothing, and no drawn chord
+    is wider than a pixel.
     """
 
     controller = _paused_run_with_history(1800.0)
@@ -6847,10 +6898,11 @@ def test_narrowing_a_chart_owes_no_frame(application: QApplication) -> None:
 def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:
     """The display is capped at two and there is no run selector, so the way out is Reset.
 
-    Refused visibly rather than silently: the control is hidden in the same
-    form the transport hides the agent selector, and the reason stands where
-    it stood. Replacing the shown branch while the first went on living
-    inside `BranchedCase` would be state the screen does not carry.
+    The fork is refused visibly rather than silently. The control is hidden
+    in the same way that the transport hides the agent selector, and the
+    reason stays where it was, even after a press. Replacing the shown branch while
+    the first branch went on living inside `BranchedCase` would create state
+    that the screen does not show.
     """
 
     case = _branched_case()
@@ -6879,14 +6931,14 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
 def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QApplication) -> None:
     """`PL-TYWQ`, and `ROADMAP.md`'s v0.5.0 Definition of done end to end.
 
-    The one sequence the interface could not complete: mark the decision
-    point, watch the run stop there, branch there. The branch opens at the
-    instant the trunk halted on - not at the nearest keyframe, which is what a
-    learner had to settle for - and it arrives through the same panel a
-    control-event fork is taken from.
+    This is the one sequence that the interface could not complete: mark the
+    decision point, watch the run stop there, and branch there. The branch
+    opens at the instant on which the trunk halted. It does not open at the
+    nearest keyframe, which is what a learner used to have to settle for. It
+    arrives through the same panel from which a control-event fork is taken.
 
-    The trunk is left standing on its halt, which is what makes this a
-    comparison rather than an undo.
+    The trunk is left on its halt, which makes this a comparison rather than
+    an undo.
     """
 
     case, view = _halted_trunk_case(application)
@@ -6917,11 +6969,11 @@ def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
 ) -> None:
     """The label carries the halted instant, so a press is readable before it is made.
 
-    A bare "Branch here" beside the permanent one would leave two identical
-    buttons doing different things. The instant is the one the branch opens
-    at rather than the one the learner marked: those differ whenever a mark
-    lies inside a step, and naming the wrong one would be a correct control
-    under a wrong label.
+    A bare "Branch here" beside the permanent button would leave two
+    identical buttons doing different things. The instant is the one at which
+    the branch opens, not the one the learner marked. Those differ whenever a
+    mark lies inside a step, and naming the wrong one would put a correct
+    control under a wrong label.
     """
 
     case, view = _halted_trunk_case(application)
@@ -6943,12 +6995,13 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
     """The safety-relevant half of the label, end to end (`PL-TYWQ`).
 
     A mark that does not land on the step grid halts the run at the step's
-    end, so the instant a learner marked and the instant a branch can open at
-    are two different numbers. The branch opens at the second - it is the only
-    one the run holds state for - so the button has to say the second. Saying
-    the first would be a correct control under a label naming a time nothing
-    happens at, which `CLAUDE.md`'s safety-critical standard counts as a
-    failure of the value rather than of its presentation.
+    end. So the instant a learner marked and the instant at which a branch
+    can open are two different numbers. The branch opens at the second one,
+    because it is the only one for which the run holds state. So the button
+    has to show the second one. Showing the first would put a correct control
+    under a label naming a time at which nothing happens.
+    `CLAUDE.md`'s safety-critical standard counts that as a failure of the
+    value rather than of its presentation.
     """
 
     marked_s = 80.05
@@ -6978,17 +7031,17 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
 def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while_it_goes(
     application: QApplication,
 ) -> None:
-    """`PL-Y2SL`: paused anywhere, the control is there; going, it is absent rather than inert.
+    """`PL-Y2SL`: the control is shown on any pause, and while running it is absent, not inert.
 
-    There on the paused trunk, gone once it starts, back with the halt's own
-    words when a mark stops it, gone again on the next step, and back with the
-    plain words when the learner pauses. The selector does not follow it,
-    which is the point of making this a second control: a list that gained
-    and lost a row would change membership under a reader who had looked
-    away, where a control that is either there or not is detectable on sight.
-    The mark the run stopped on joins the selector when the clock reaches it,
-    as a mark the trunk has passed (`PL-W4XQ`), and the halt's ending does not
-    take it away again.
+    The control is there on the paused trunk and gone once the trunk starts.
+    It comes back with the halt's own words when a mark stops the trunk, goes
+    again on the next step, and comes back with the plain words when the
+    learner pauses. The selector does not follow it, which is the point of
+    making this a second control. A list that gained and lost a row would
+    change its entries under a reader who had looked away. A control that is
+    either there or not can be noticed on sight. The mark the run stopped on
+    joins the selector when the clock reaches it, as a mark the trunk has
+    passed (`PL-W4XQ`). The end of the halt does not take it away again.
     """
 
     case = _branched_case()
@@ -7043,10 +7096,10 @@ def test_a_paused_trunk_is_branched_where_it_stands_from_the_panel(
 ) -> None:
     """`PL-Y2SL` end to end: paused between keyframes, one press branches right there.
 
-    The trunk stands at 120 s, which is neither a keyframe nor a mark, so no
-    entry in the selector names it; the button does, and the branch it takes
-    opens at that instant and is drawn beside the trunk, which stays where it
-    stood.
+    The trunk is at 120 s, which is neither a keyframe nor a mark, so no
+    entry in the selector names it. The button names it. The branch that the
+    button takes opens at that instant and is drawn beside the trunk. The
+    trunk stays where it was.
     """
 
     case, view, _ = _rewind_case(application)
@@ -7070,13 +7123,13 @@ def test_a_paused_trunk_is_branched_where_it_stands_from_the_panel(
 def test_the_fork_here_is_refused_with_the_rest_while_two_runs_are_shown(
     application: QApplication,
 ) -> None:
-    """The cap is on branches, not on the door a branch came through.
+    """The cap applies to branches, whichever control a branch is taken through.
 
-    Taken through the transient control, the second fork has to be refused
-    exactly as the permanent one is - the display is capped at two runs and
-    there is no run selector - so the control goes off the panel rather than
-    staying live to apologise on press. The guard behind it holds too, for a
-    press that reaches it anyway.
+    A second fork taken through the transient control has to be refused
+    exactly as one through the permanent control is. The display is capped at
+    two runs, and there is no run selector. So the control goes off the panel
+    rather than staying enabled only to apologise when pressed. The guard
+    behind it still applies, for a press that reaches it anyway.
     """
 
     case, view = _halted_trunk_case(application)
@@ -7100,11 +7153,11 @@ def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
 ) -> None:
     """The trunk can be started after the frame that drew the button, so the press re-asks.
 
-    Where a running trunk stands moves with every step, so the case refuses
-    a fork there rather than taking one a step or a tick from the instant
-    the button named, and the reason reaches the notice instead of being
-    swallowed - the panel's own frame is not proof that the fork is still
-    there.
+    The position of a running trunk moves with every step. So the case
+    refuses a fork there, rather than taking one a step or a tick away from
+    the instant the button named. The reason reaches the notice instead of
+    being swallowed. The panel's own frame does not prove that the fork is
+    still available.
     """
 
     case, view = _halted_trunk_case(application)
@@ -7127,11 +7180,11 @@ def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here(
     """A paused trunk whose frame fails stops offering a branch where it stands.
 
     "Branch here" is offered at every pause (`PL-Y2SL`), and the panel was
-    redrawn only at the end of a frame, so with every frame failing the trunk
-    read "Stopped - simulation error" beside a live "Branch here: 1m", and a
-    press was refused by the case with the refusal lost to the next failing
-    frame (`PL-MMNX`). The halt now restates the panel from the case, which
-    offers no fork on a failed trunk.
+    redrawn only at the end of a frame. So with every frame failing, the
+    trunk showed "Stopped - simulation error" beside an enabled "Branch
+    here: 1m". A press was refused by the case, and the next failing frame
+    lost the refusal (`PL-MMNX`). The halt now redraws the panel from the
+    case, which offers no fork on a failed trunk.
     """
 
     case = _branched_case()
@@ -7156,8 +7209,9 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
 
     A branch opened there would be drawn by the same failing frame and halt
     on the next one, so each of the three could only fail (`PL-T2Q2`). Before
-    this, the keyframe selector's Branch button stayed live and `fork_at`
-    opened the branch. The case refuses the doors as well as the offer.
+    this, the keyframe selector's Branch button stayed enabled and `fork_at`
+    opened the branch. The case now refuses every way of opening a branch,
+    as well as withdrawing the offer.
     """
 
     case = _branched_case()
@@ -7233,10 +7287,10 @@ def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
 ) -> None:
     """A halt whose fork panel raises when restated withdraws the panel and still stands.
 
-    The restatement runs inside the halt path, where a raise would escape the
-    render path's guard into the toolkit and leave the halt's retry undone,
-    so it is guarded, and a panel it cannot restate offers nothing rather
-    than the last frame's offer (`PL-MMNX`).
+    The restatement runs inside the halt path. There, an exception would
+    escape the render path's guard into the toolkit and leave the halt's
+    retry undone. So the restatement is guarded. A panel that it cannot
+    restate offers nothing, rather than the last frame's offer (`PL-MMNX`).
     """
 
     case = _branched_case()
@@ -7330,8 +7384,8 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
 ) -> None:
     """If restating the bookmark panel raises, the halt hides both listings and still takes effect.
 
-    The restatement runs inside the halt path, where a raise would escape the
-    render path's guard and reach the toolkit. So the restatement is guarded, as
+    The restatement runs inside the halt path, where an exception would escape
+    the render path's guard and reach the toolkit. So the restatement is guarded, as
     the fork panel's restatement is (`PL-MMNX`). A panel that cannot be restated
     shows no standing at all, rather than the last frame's standings (`PL-YHR3`).
     The next frame that draws shows both listings again.
@@ -7405,7 +7459,7 @@ _CONTROL_TYPES = (
 
 
 def _controls(root: QWidget) -> list[QWidget]:
-    """Every control under `root` a reader can act through, a combo box's own popup apart."""
+    """Every control under `root` that a reader can act through, except a combo box's popup."""
 
     found: list[QWidget] = []
 
@@ -7874,9 +7928,9 @@ def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
 ) -> None:
     """Unmarking ends the halt and not the pause, so the control stays and drops the mark.
 
-    The run stands where it stopped either way, and a learner who unmarks the
-    instant they stopped on can still branch at it; what changes is that no
-    mark stopped it there any more, so the label stops saying one did.
+    The run stays where it stopped either way, and a learner who unmarks the
+    instant they stopped on can still branch at it. What changes is that no
+    mark stopped the run there any more, so the label stops saying one did.
     """
 
     case, view = _halted_trunk_case(application)
@@ -7899,11 +7953,11 @@ def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
 def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:
     """`resumed_at` refuses an instant that is not a keyframe rather than approximating.
 
-    The control cannot offer such an instant - `fork_offer` builds it from
-    `fork_points_s` - so an offer listing one is handed to the panel, the way
-    a frame hands it the real one, to reach the guard behind it. A refusal
-    leaves the case and the display untouched and says which instant was
-    refused.
+    The control cannot offer such an instant, because `fork_offer` builds the
+    offer from `fork_points_s`. So the test hands the panel an offer that
+    lists one, the way a frame hands it the real offer, to reach the guard
+    behind it. A refusal leaves the case and the display untouched and says
+    which instant was refused.
     """
 
     case = _branched_case()
@@ -7935,13 +7989,14 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
 def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     application: QApplication,
 ) -> None:
-    """The mark door re-asks the case on the press, and its refusal reaches the notice.
+    """A branch taken at a mark asks the case again on the press, and a refusal reaches the notice.
 
-    An entry outlives what it offers by the gap between a frame and a press,
-    so `_handle_fork` hands the mark back rather than trusting the entry.
-    Here the panel holds an entry for a mark the trunk does not hold - what an
-    unmark landing in that gap leaves behind - and `fork_at_mark` refuses it,
-    naming the instant, rather than branching anywhere near it.
+    An entry can outlive what it offers, by the gap between a frame and a
+    press. So `_handle_fork` hands the mark back to the case rather than
+    trusting the entry. Here the panel holds an entry for a mark that the
+    trunk does not hold. An unmark that lands in that gap leaves such an
+    entry behind. `fork_at_mark` refuses it and names the instant, rather
+    than branching anywhere near it.
     """
 
     case = _branched_case()
@@ -8043,11 +8098,11 @@ def test_the_trunks_selector_is_locked_while_two_runs_are_shown(application: QAp
     """`PL-QRD1`, the trunk half: `set_agent` succeeds on a trunk and destroys the case.
 
     With a branch displayed and the trunk paused, the trunk's selector was
-    live. Choosing another agent restarted the trunk, left `BranchedCase`
-    listing a branch of a run that no longer existed, and
-    `assemble_chart_frame` then refused the frame over the shared MAC axis -
-    so `_halt_every_run` failed both runs over an input to one of them. The
-    switch is refused before it reaches the controller.
+    enabled. Choosing another agent restarted the trunk and left
+    `BranchedCase` listing a branch of a run that no longer existed.
+    `assemble_chart_frame` then refused the frame over the shared MAC axis.
+    So `_halt_every_run` failed both runs over an input to one of them. The
+    switch is now refused before it reaches the controller.
     """
 
     case = _branched_case()
@@ -8073,9 +8128,10 @@ def test_the_trunks_selector_is_locked_while_two_runs_are_shown(application: QAp
 def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> None:
     """Reset is the way back to one run, and the case it leaves has no branches.
 
-    The trunk has started over, so it never passed through the instant the
-    branch was taken at: a branch left on the chart would be two curves
-    asserting one patient under two managements while no longer being one.
+    The trunk has started over, so it never passed through the instant at
+    which the branch was taken. A branch left on the chart would show two
+    curves claiming one patient under two managements, when they no longer
+    describe one patient.
     """
 
     case = _branched_case()
@@ -8104,10 +8160,10 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
 def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplication) -> None:
     """`PL-75P5`: a refusal names an instant of the run the trunk's Reset has just ended.
 
-    The one-run case is every case before a learner branches, and the guard
-    that spares a one-run dashboard its layout work once returned before the
-    refusal was cleared, so the banner went on reporting an instant the
-    restarted run, standing at induction, does not hold.
+    The one-run case is every case before a learner branches. The guard that
+    spares a one-run dashboard its layout work once returned before the
+    refusal was cleared. So the banner went on reporting an instant that the
+    restarted run does not hold, since that run is back at induction.
     """
 
     case = _branched_case()
@@ -8140,10 +8196,11 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
 def test_a_one_run_reset_leaves_a_case_with_no_branches(application: QApplication) -> None:
     """The case is a record of the trunk's run, so its Reset rebuilds it whatever is drawn.
 
-    A branch the case keeps without the dashboard drawing it is what a fork
-    whose drawing raised leaves (`PL-08SS`). Built here by forking the case
-    directly, it must not outlive the trunk's Reset as a branch of a run that
-    no longer exists, merely because one run was on screen.
+    A fork whose drawing raised leaves a branch that the case keeps but the
+    dashboard does not draw (`PL-08SS`). The test builds such a branch by
+    forking the case directly. It must not outlive the trunk's Reset as a
+    branch of a run that no longer exists, merely because one run was on
+    screen.
     """
 
     case = _branched_case()
@@ -8163,12 +8220,12 @@ def test_a_one_run_reset_leaves_a_case_with_no_branches(application: QApplicatio
 
 
 def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplication) -> None:
-    """A branch's Reset returns it to its fork; only the trunk's is a new case.
+    """A branch's Reset returns it to its fork, and only the trunk's Reset starts a new case.
 
-    The lock is asserted to be still there because that is the half a learner
-    is surprised by (`PL-WG73`): the run they were trying to end has lost
-    four steps of simulated case and the control they were sent to press is
-    still refused, under the same sentence.
+    The test checks that the lock is still there, because that is the part
+    that surprises a learner (`PL-WG73`). The run they were trying to end has
+    lost four steps of simulated case, and the control they were sent to
+    press is still refused, under the same sentence.
     """
 
     case = _branched_case()
@@ -8189,7 +8246,7 @@ def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplica
 
 
 def _branch_holding_work(view: SimulationView, application: QApplication, work: str) -> RunView:
-    """Take a branch at 60 s and give it one of the two kinds of work `has_recorded_run` reads.
+    """Take a branch at 60 s and give it one of the two kinds of work `has_recorded_run` checks.
 
     `elapsed` runs it four steps past its fork with nothing touched, and
     `change` records one fresh gas flow change at the fork with no time run.
@@ -8231,9 +8288,10 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
 ) -> None:
     """`PL-W5WX`: the press is on Run 1, so Run 2's work is not discarded until the reader says so.
 
-    Asked of both halves of `has_recorded_run`, because a question gated on
-    either alone misses the other. The warning is a literal: four steps of
-    0.1 s from the 60 s fork reach 1m0.4s on the case clock.
+    The test covers both halves of `has_recorded_run`, because a question
+    that checked only one half would miss the other. The warning is a
+    literal: four steps of 0.1 s from the 60 s fork reach 1m0.4s on the case
+    clock.
     """
 
     case = _branched_case()
@@ -8286,7 +8344,7 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
 
 
 def test_declining_the_trunks_reset_leaves_every_run_as_it_was(application: QApplication) -> None:
-    """Keeping the branch keeps the trunk too: nothing is reset, and the comparison stands."""
+    """Keeping the branch keeps the trunk too: nothing is reset, and the comparison stays open."""
 
     case = _branched_case()
     view = _case_view(application, case)
@@ -8379,8 +8437,9 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
 ) -> None:
     """The scroll a branch makes is the dashboard's until the reader scrolls the page themselves.
 
-    After that the reader owns the page, so a later change of layout - here
-    a shorter window, which moves the chart - does not scroll it back.
+    After that the reader owns the page. So a later change of layout does not
+    scroll the page back. Here that change is a shorter window, which moves
+    the chart.
     """
 
     view = _case_view(application, _branched_case(), width_px=1600)
@@ -8401,13 +8460,13 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
 def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApplication) -> None:
     """`PL-WG73` end to end: the words in the lock are on screen, on the button that works.
 
-    `test_the_comparison_lock_names_a_control_the_learner_can_press` holds
-    the sentence to what `run_label` and `RESET_LABEL` say; this holds that
-    the runs those names address are the ones drawn, that each carries its
-    name where a reader meets its Reset, and that the Reset the sentence
-    sends them to is the one that lifts the lock. Neither half is worth
-    anything alone - a name attributes a control only if the reader can find
-    what it refers to.
+    `test_the_comparison_lock_names_a_control_the_learner_can_press` checks
+    the sentence against what `run_label` and `RESET_LABEL` say. This test
+    checks that the runs those names refer to are the ones drawn, and that
+    each carries its name where a reader meets its Reset. It also checks that
+    the Reset the sentence sends the reader to is the one that lifts the
+    lock. Neither half is worth anything alone, because a name attributes a
+    control only if the reader can find what it refers to.
     """
 
     view = _case_view(application, _branched_case())
@@ -8424,11 +8483,11 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
         assert run._reset_button.text() == RESET_LABEL
         assert run._reset_button.isHidden() is False
 
-    # The run the way out is about, read off the sentence the way a learner
-    # reads it rather than looked up by position: a lock naming both runs
-    # correctly and pairing them with each other's outcomes would pass every
-    # assertion above and still send the reader to the button that keeps the
-    # mode.
+    # Find the run that the way out is about by reading the sentence as a
+    # learner reads it, not by looking it up by position. A lock that named
+    # both runs correctly but paired each with the other's outcome would pass
+    # every assertion above. It would still send the reader to the button
+    # that keeps the mode.
     way_out, _, _ = lock.partition(";")
     named = [run for run in view.runs if run._run_name_text.text() in way_out]
 
@@ -8446,7 +8505,7 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
 def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(
     application: QApplication,
 ) -> None:
-    """`start_simulation_timer` started the runs that existed; this one did not.
+    """`start_simulation_timer` started the runs that existed then, and this one did not exist.
 
     Without its own timer a branch would sit at its fork however often the
     learner pressed Start.
@@ -8476,7 +8535,7 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
 
     A caller of the public method that did not present afterwards left the
     plot on the old run set while both legends already named the new one,
-    because the tick drew only while a run ran or a frame was owed
+    because the tick drew only while a run was running or a frame was owed
     (`PL-0LG6`). The tick now reads the run set and the new run's unwritten
     record itself (`PL-X7D5`). A branch taken through the control still
     draws exactly once: its press draws the frame, and the tick after it
@@ -8512,7 +8571,7 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
 
 
 def test_adding_a_third_run_is_refused(application: QApplication) -> None:
-    """The cap is the display's, so it binds the public path as well as the control."""
+    """The cap belongs to the display, so it applies to the public method as well as the control."""
 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
@@ -8541,7 +8600,7 @@ def test_adding_a_run_on_another_agent_is_refused(application: QApplication) -> 
 
 
 def test_a_mark_added_after_a_fork_reaches_both_runs(application: QApplication) -> None:
-    """The marks are the case's, so the run added after construction is written too."""
+    """The marks belong to the case, so the run added after construction is written too."""
 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
@@ -8561,11 +8620,11 @@ def test_resetting_a_case_less_dashboards_first_run_keeps_the_others(
 ) -> None:
     """`PL-LQ19`: a dashboard with no case has no branches, so Reset drops nothing.
 
-    The runs of a case-less dashboard are independent trunks - what the
-    constructor admits and what the two-trunk tests build - so the first
-    starting over says nothing about the second. Dropping it would destroy a
-    recorded run over an input to another one, under the gesture a reader
-    reaches for to start a single run again.
+    The runs of a case-less dashboard are independent trunks. The constructor
+    accepts them, and the two-trunk tests build them. So the first run
+    starting over says nothing about the second. Dropping the second would
+    destroy a recorded run over an input to another one, through the action
+    a reader uses to start a single run again.
     """
 
     other = _paused_run_with_history()
@@ -8584,7 +8643,7 @@ def test_resetting_a_case_less_dashboards_first_run_keeps_the_others(
 
 
 def test_add_run_refuses_a_run_the_case_never_sanctioned(application: QApplication) -> None:
-    """`PL-K5NY`: two curves on one axis assert one patient, so a stranger is refused.
+    """`PL-K5NY`: two curves on one axis claim one patient, so a stranger is refused.
 
     Every guard but this one passed a fresh controller on the displayed
     agent: it was placed as "Run 2", drawn in the same frame against the same
@@ -8641,7 +8700,7 @@ def test_a_dashboard_with_no_case_cannot_gain_a_run(application: QApplication) -
 def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplication) -> None:
     """`PL-J12Z`: a chosen instant that stops being a keyframe clears the control.
 
-    Reachable without a reset. A keyframe collapses when a setting is
+    This state is reachable without a reset. A keyframe collapses when a setting is
     returned to its previous value at the same instant, which is a learner
     changing their mind about a dial while paused. Falling back to the first
     entry would leave induction selected under a reader who had chosen a
@@ -8718,14 +8777,14 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
 def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
     application: QApplication,
 ) -> None:
-    """`PL-J12Z`'s clear holds past the next rebuild, rather than lasting one frame.
+    """`PL-J12Z`'s cleared selection lasts past the next rebuild, not for only one frame.
 
     Qt selects the first entry of an emptied selector as soon as it is
-    refilled, so a rebuild that set no index put *induction* under a reader
-    whose choice had just been cleared - the substitution the clear exists to
-    refuse, arriving one setting change later. Each mark the trunk's clock
-    reaches is a rebuild too since `PL-W4XQ`, which makes that later change
-    the common case rather than a rare one.
+    refilled. So a rebuild that set no index put *induction* under a reader
+    whose choice had just been cleared. That is the substitution the clear
+    exists to refuse, arriving one setting change later. Since `PL-W4XQ`,
+    each mark the trunk's clock reaches also causes a rebuild. That makes the
+    later change the common case rather than a rare one.
     """
 
     trunk = SimulationController()
@@ -8765,12 +8824,12 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
 ) -> None:
     """`PL-W4XQ` end to end: paused past a mark, a learner branches there from the selector.
 
-    The mark was set after the clock had passed it, so no step crossed it,
-    the trunk holds no keyframe there and the trunk is standing on no halt -
-    the case the other two doors refuse. It is offered beside the control
-    events, labelled with the instant the branch will open at rather than the
-    one typed, and the branch opens there, while the trunk stays the case it
-    was.
+    The mark was set after the clock had passed it. So no step crossed it,
+    the trunk holds no keyframe there, and the trunk is not on a halt. The
+    other two ways of taking a branch refuse this case. The mark is offered
+    beside the control events. It is labelled with the instant at which the
+    branch will open, not the instant typed. The branch opens there, and the
+    trunk stays as it was.
     """
 
     case, view, mark = _rewind_case(application)
@@ -8804,7 +8863,7 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     assert branch.snapshot().elapsed_s == _BEHIND_MARK_FORK_S
     assert panel.notice.notice() is None
     # The trunk is read and not written: no keyframe is recorded where it was
-    # branched, and its clock stands where it was paused.
+    # branched, and its clock stays where it was paused.
     assert case.fork_points_s == keyframes
     assert case.trunk.snapshot().elapsed_s == pytest.approx(_REWIND_PAUSE_S)
 
@@ -8813,8 +8872,8 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
     """The case holds no state at a mark the clock has not reached, so nothing branches there.
 
     A branch there would be a prediction drawn as a run. The mark stops the
-    running case when it is reached, and then joins the selector; until
-    then the selector offers the control events and nothing else.
+    running case when it is reached, and then joins the selector. Until then
+    the selector offers the control events and nothing else.
     """
 
     case, view, behind = _rewind_case(application)
@@ -8838,13 +8897,13 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
 def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     application: QApplication,
 ) -> None:
-    """`PL-J12Z` at the mark door: an entry the learner removes takes the selection with it.
+    """`PL-J12Z` for marks: an entry the learner removes takes the selection with it.
 
-    Unmarking is the mark's way of leaving the list, as a collapsed keyframe
-    is a control event's. Moving the choice to a neighbour - induction, or
-    the other mark beside it - would branch on the next press somewhere the
-    learner did not choose, so the selector is left on nothing and the press
-    says so.
+    Unmarking is how a mark leaves the list, as a collapsed keyframe is how a
+    control event leaves it. Moving the choice to a neighbour, such as
+    induction or the other mark beside it, would make the next press branch
+    somewhere the learner did not choose. So the selector is left on nothing,
+    and the press says so.
     """
 
     case, view, mark = _rewind_case(application)
@@ -8969,7 +9028,7 @@ def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face(
 
 # --- one readout block at a laptop's width (`PL-F2YS`) -----------------------
 
-#: The laptop reference `PL-J8K2` and `PL-84QX` measured the region at.
+#: The laptop reference width at which `PL-J8K2` and `PL-84QX` measured the region.
 _LAPTOP_WIDTH_PX = 1366
 
 
@@ -8978,11 +9037,11 @@ def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns(
 ) -> None:
     """The record column takes the sidebar's share, so the readout row has room for seven.
 
-    Asserted from the row's own reservation rather than from a pixel figure,
-    so the test states the requirement on whatever font renders the panels:
-    the row is as wide as seven panels need, and it seats all seven across.
-    With the record at the box layout's 3:1 share the row was 3 px short of
-    seven and opened on four (`PL-Z4K6`, `PL-J8K2` Q3).
+    The test checks against the width the row itself reserves, not a pixel
+    figure. So it states the requirement for whatever font renders the
+    panels: the row is as wide as seven panels need, and it seats all seven
+    across. With the record at the box layout's 3:1 share, the row was 3 px
+    short of seven and opened on four (`PL-Z4K6`, `PL-J8K2` Q3).
     """
 
     view = _shown_view(application, SimulationController(), width_px=_LAPTOP_WIDTH_PX)
@@ -9089,15 +9148,15 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 ) -> None:
     """Each compared run's controls and delivered concentration share one line, one control high.
 
-    With two runs, each run's transport row and readout heading stood one
-    above the other, and the four lines left the chart about 200 px on the
-    1366 by 700 laptop reference (`PL-JG82`). Folded, a run's line carries
-    its own delivered concentration, the agent chip lays its caption on the
-    same line as the agent's name, and the values both runs share - the
-    substance, the agent's 1 MAC and the version-and-model badge - are
-    stated once, on the heading line above the paired readouts (`PL-QLZ5`).
-    The playback-rate selector is the tallest control on a run's line, so it
-    is the height one line is held to.
+    With two runs, each run's transport row and readout heading used to sit
+    one above the other. The four lines left the chart about 200 px on the
+    1366 by 700 laptop reference (`PL-JG82`). Now the rows are folded
+    together. A run's line carries its own delivered concentration, and the
+    agent chip puts its caption on the same line as the agent's name. The
+    values both runs share are stated once, on the heading line above the
+    paired readouts (`PL-QLZ5`). Those values are the substance, the agent's
+    1 MAC and the version-and-model badge. The playback-rate selector is the
+    tallest control on a run's line, so its height is the limit for one line.
     """
 
     view = _case_view(application, _branched_case(), width_px=_LAPTOP_WIDTH_PX)
@@ -9150,7 +9209,8 @@ def test_each_view_places_one_copy_per_run_inside_itself(application: QApplicati
 
     Each run's line names the run (`PL-C3GS`), which another test reads off
     the run's own list of copies. That list cannot tell a copy placed in its
-    View from one built and never placed, so this holds each copy to its View.
+    View from one built and never placed. So this test checks that each copy
+    is inside its View.
     """
 
     view = _case_view(application, _branched_case())

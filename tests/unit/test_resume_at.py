@@ -1,34 +1,36 @@
-"""What `AgentUptakeSystem.resume_at()` guarantees: a live system standing where a run stood.
+"""Tests that `AgentUptakeSystem.resume_at()` puts a live system at a state a run reached.
 
-`RunDefinition` answers any instant of a run in closed form, but what comes
-back is a state vector rather than a running system. `resume_at()` is the seam
-between the two, and `PL-J2TD` is what it exists for: a branch has to become
-something a learner can *manage*, which means advancing it, and advancing needs
-compartments rather than a curve.
+`RunDefinition` returns the state at any instant of a run in closed form, but
+what it returns is a state vector rather than a running system.
+`resume_at()` turns the one into the other. It exists for `PL-J2TD`. A learner
+has to be able to *manage* a branch, which means advancing it, and advancing
+needs compartments rather than a curve.
 
-**Three separate claims are held here, and each fails differently.**
+**These tests check three separate claims, and each one fails in a different
+way.**
 
-- *The compartments come to hold the state that was asked for.* A branch that
-  opened a fraction away from its parent would diverge from the first step, and
-  `ROADMAP.md` item 12 requires the pre-branch history to be the same history
-  rather than a reproduction of it.
-- *The mass-balance accounting continues the case rather than restarting.* The
-  two cumulative totals a keyframe carries are the case's - what the patient
-  has actually received - so a branch restarting them at zero would report a
-  litre count that is correct about the branch and wrong about the patient,
-  which `CLAUDE.md`'s safety-critical standard counts as a presentation failure
-  rather than a lesser kind. The anchor is carried for the same reason and the
-  measurement under `test_the_accounting_anchor_is_carried_rather_than_derived`
-  is why it is not derived.
-- *A state the equations could not be read against is refused, and refused
-  before anything is written.* `docs/MODEL.md` § "The canonical evaluation rule"
-  says a drawn value may be drawn and nothing else; a partially seeded system
-  would be the "partial state" `AgentUptakeSystem.advance()` already exists to
-  make unrepresentable, arriving by a second route.
+- *The compartments end up holding the state that was asked for.* A branch
+  that opened even slightly away from its parent's state would diverge from
+  the first step. `ROADMAP.md` item 12 requires the history before the branch
+  to be the same history, not a reproduction of it.
+- *The mass-balance accounting continues the case rather than restarting it.*
+  The two cumulative totals that a keyframe carries belong to the case: they
+  are what the patient has actually received. A branch that restarted them at
+  zero would report a litre count that is correct about the branch and wrong
+  about the patient. `CLAUDE.md`'s safety-critical standard counts that as a
+  presentation failure, not as a lesser kind of error. The accounting anchor
+  is carried for the same reason. The measurement in
+  `test_the_accounting_anchor_is_carried_rather_than_derived` shows why the
+  anchor is not derived instead.
+- *A state that the equations cannot be evaluated against is refused, before
+  anything is written.* `docs/MODEL.md` § "The canonical evaluation rule" says
+  that a drawn value may be drawn and used for nothing else. A partially
+  seeded system would be the "partial state" that `AgentUptakeSystem.advance()`
+  already exists to make unrepresentable, arriving by a second route.
 
-The clock a branch runs on is not this file's - it is the controller's, and
-`tests/integration/test_controller.py` holds it. Everything here is true
-whichever clock a branch keeps.
+This file does not test the clock a branch runs on. That clock belongs to the
+controller, and `tests/integration/test_controller.py` tests it. Everything
+here is true whichever clock a branch keeps.
 """
 
 import math
@@ -63,23 +65,24 @@ FRACTION_STATES: tuple[int, ...] = (
     VENOUS_FRACTION,
     *range(FIRST_TISSUE_FRACTION, FIRST_TISSUE_FRACTION + 3),
 )
-"""The six modelled fractions, as against the two accumulators and the constant.
+"""The six modelled fractions, leaving out the two accumulators and the constant.
 
-`state_vector()` reports each step's own delivered and exhausted agent while a
-keyframe carries the case's cumulative totals, so the two differ there by
-design and the comparison that means anything is over these six.
+`state_vector()` reports the agent delivered and exhausted in each step alone,
+while a keyframe carries the case's cumulative totals. So the two differ in
+those entries by design, and only a comparison over these six fractions means
+anything.
 """
 
 STEPPED_AGREEMENT = 5e-15
 """How far a resumed, stepped system may sit from the closed form, in fractions of 1 atm.
 
-Measured on the run below rather than assumed: the worst departure over every
-compartment at the instants probed is under 1e-15 of one atmosphere, against
-the 1e-4 that `docs/MODEL.md` § "Displayed precision" resolves. Stated as an
-absolute tolerance in fractions of one atmosphere for the reason
-`docs/MODEL.md` § "Closed-form agreement test" gives: a relative one would
-tighten without limit on the near-zero tissue fractions of an induction and
-would say nothing about a displayed digit.
+The value was measured on the run below, not assumed. The worst departure
+over every compartment at the instants probed is less than 1e-15 of one
+atmosphere. The display resolves 1e-4, as `docs/MODEL.md` § "Displayed
+precision" states. The tolerance is absolute, in fractions of one atmosphere,
+for the reason that `docs/MODEL.md` § "Closed-form agreement test" gives. A
+relative tolerance would tighten without limit on the near-zero tissue
+fractions of an induction, and it would say nothing about a displayed digit.
 """
 
 
@@ -88,14 +91,15 @@ def _run(
 ) -> tuple[AgentUptakeSystem, RunDefinition]:
     """Step a sevoflurane run across two setting changes, building its definition alongside.
 
-    The changes are applied the way `app/controller.py` applies them - the
-    setter first, so the core has accepted the value, then the definition,
-    which reads the settings back off the compartments - so the definition
-    describes the run the system actually took.
+    The changes are applied the way `app/controller.py` applies them. The
+    setter runs first, so the core has accepted the value. Then the definition
+    records the change, reading the settings back off the compartments. So the
+    definition describes the run the system actually took.
 
-    The two instants are arguments because the conservation residual a fork
-    inherits depends on them; `test_the_accounting_anchor_is_carried_rather_than_derived`
-    is the one test that needs a particular pair.
+    The two instants are arguments because the conservation residual that a
+    fork inherits depends on them.
+    `test_the_accounting_anchor_is_carried_rather_than_derived` is the one test
+    that needs a particular pair.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -119,26 +123,27 @@ def _run(
 
 
 def _fresh_system() -> AgentUptakeSystem:
-    """A system built the way a branch's is: the parent's agent, nothing stepped."""
+    """Return a system built the way a branch's is: the parent's agent, and nothing stepped."""
 
     return AgentUptakeSystem.for_agent("sevoflurane")
 
 
 def _like(parent: AgentUptakeSystem) -> AgentUptakeSystem:
-    """A fresh system carrying `parent`'s live settings, ready to be resumed at its state.
+    """Return a fresh system with `parent`'s live settings, ready to be resumed at its state.
 
-    A branch inherits its parent's agent and patient (`PL-TFX5`), so the
-    volumes and coefficients come from the same data files the parent's did
+    A branch inherits its parent's agent and patient (`PL-TFX5`). So the
+    volumes and coefficients come from the same data files as the parent's,
     and only the four live controls are written here.
 
-    **They are read off the compartments, in the litres per minute the
-    compartments hold.** A `RunSegment` has held the same values since
-    `PL-SM5V`, so it is now an equally sound source. Before that a segment held
-    litres per second, and multiplying back by sixty rebuilt a different
-    settings object for 7 of the 101 cardiac outputs on a 0.1 L/min grid: a
-    branch built that way solved a matrix one unit in the last place from its
-    parent's, inside every tolerance and so reported by nothing. The assertion
-    below is what catches a helper that drifts from its parent like that.
+    **The controls are read off the compartments, in the litres per minute
+    that the compartments store.** A `RunSegment` has stored the same values
+    since `PL-SM5V`, so it is now an equally sound source. Before that, a
+    segment stored litres per second. Multiplying back by sixty rebuilt a
+    different settings object for 7 of the 101 cardiac outputs on a 0.1 L/min
+    grid. A branch built that way solved a matrix that differed from its
+    parent's by one unit in the last place. The difference was inside every
+    tolerance, so nothing reported it. The assertion below catches a helper
+    that drifts from its parent in that way.
     """
 
     system = _fresh_system()
@@ -156,25 +161,26 @@ def _like(parent: AgentUptakeSystem) -> AgentUptakeSystem:
 
 
 def test_a_resumed_system_holds_the_state_it_was_given() -> None:
-    """Each fraction arrives within the one rounding its compartment makes.
+    """Each fraction arrives within the single rounding that its compartment makes.
 
     A compartment stores an amount and derives its fraction back from its
-    capacity, so writing a fraction and reading it back is not the identity.
-    `PL-J2TD` measured a different float for 11.7% of alveolar fractions, and
-    for 3.5% to 14% of fractions in the alveolar, venous and tissue
-    compartments no stored amount reads back as the value given at all
+    capacity. So writing a fraction and reading it back does not always return
+    the same value. `PL-J2TD` measured a different float for 11.7% of alveolar
+    fractions. For 3.5% to 14% of fractions in the alveolar, venous and tissue
+    compartments, no stored amount reads back as the given value at all
     (`PL-2MD9`). That is why a branch's definition opens from the parent's
-    `Keyframe` and never from this system's `state_vector()`: the exactness a
-    branch rests on is that definition's, and
-    `tests/integration/test_controller.py` holds a branch against its parent
+    `Keyframe` and never from this system's `state_vector()`. A branch's
+    exactness comes from that definition, and
+    `tests/integration/test_controller.py` checks a branch against its parent
     element for element on the canonical path.
 
     What this system can promise is that `resume_at` writes the state it was
-    given and nothing else reaches it - one multiplication into each
-    compartment and one division out, which is provably within one unit in the
-    last place of the value given. This asserted equality until `PL-2MD9`
-    moved the canonical path by a unit in the last place, after which the six
-    fractions it draws no longer happened to round-trip.
+    given, and that nothing else changes it. Each value goes through one
+    multiplication into its compartment and one division out, which is
+    provably within one unit in the last place of the given value. This test
+    asserted exact equality until `PL-2MD9` moved the canonical path by a unit
+    in the last place. After that change, the six fractions this test compares
+    no longer happened to round-trip.
     """
 
     system_parent, definition = _run()
@@ -194,13 +200,14 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
 
 
 def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
-    """The point of resuming at all: it advances by the path a live run takes.
+    """A resumed system advances along the path a live run takes, which is the point of resuming.
 
-    The system is stood at a keyframe and then stepped by the ordinary
-    `advance()` - no second way to move a run forward is introduced - and what
-    it reaches is compared against what the definition says the same settings
-    reach over the same span. That is `docs/MODEL.md` § "Closed-form agreement
-    test" applied to a system that did not step its way to its starting point.
+    The system is placed at a keyframe and then stepped by the ordinary
+    `advance()`. The test adds no second way to move a run forward. The state
+    the system reaches is compared with the state that the definition gives
+    for the same settings over the same span. That is `docs/MODEL.md`
+    § "Closed-form agreement test", applied to a system that did not step its
+    way to its starting point.
     """
 
     system_parent, definition = _run()
@@ -226,11 +233,12 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
 
 def test_two_systems_resumed_at_one_state_step_identically() -> None:
-    """Determinism across the seam, which is what a comparison of two branches needs.
+    """Two systems resumed at one state step identically, as a comparison of branches needs.
 
     `docs/MODEL.md` § "Deterministic replay test" requires element-for-element
-    agreement rather than agreement within a tolerance, and a fork is where two
-    runs most plausibly acquire a difference neither learner caused.
+    agreement rather than agreement within a tolerance. A fork is the most
+    likely place for two runs to acquire a difference that neither learner
+    caused.
     """
 
     system_parent, definition = _run()
@@ -253,10 +261,10 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
 def test_a_resumed_system_continues_the_case_s_cumulative_totals() -> None:
     """The litres reported are the patient's, not the branch's.
 
-    A keyframe's two accumulators are cumulative from the start of the case
-    rather than of the run holding the keyframe - which is what leaves a
-    branch anything to carry - so carrying them is what makes a branch's
-    mass-balance readout describe the case the patient is actually in.
+    A keyframe's two accumulators count from the start of the case, not from
+    the start of the run that holds the keyframe. That is why a branch has
+    anything to carry. Carrying them makes a branch's mass-balance readout
+    describe the case the patient is actually in.
     """
 
     system_parent, definition = _run()
@@ -273,14 +281,14 @@ def test_a_resumed_system_continues_the_case_s_cumulative_totals() -> None:
 
 
 def test_a_resumed_system_still_balances() -> None:
-    """The identity holds across the seam, and the residual stays inside the check.
+    """The mass-balance identity still holds after resuming, and the residual stays in bounds.
 
     `docs/MODEL.md`'s mass-balance identity is checked after every step at a
     tolerance tight enough to halt a run. Resuming writes the compartments and
-    the two totals from separate entries of one canonical state, so nothing
-    guarantees the identity closes by construction - which is the point. What
-    is left over is the canonical path's own conservation residual, reported
-    rather than absorbed.
+    the two totals from separate entries of one canonical state. So nothing
+    guarantees by construction that the identity closes, and that is the point
+    of this test. What is left over is the canonical path's own conservation
+    residual, which is reported rather than absorbed.
     """
 
     system_parent, definition = _run()
@@ -296,22 +304,23 @@ def test_a_resumed_system_still_balances() -> None:
 
 
 def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
-    """Why `initial_agent_l` is an argument and not a calculation.
+    """Show why `initial_agent_l` is an argument and not a calculation.
 
     The tempting alternative is to derive the anchor as the value that closes
-    `docs/MODEL.md`'s mass-balance identity exactly - stored + exhausted -
+    `docs/MODEL.md`'s mass-balance identity exactly: stored + exhausted -
     delivered. That quantity is the canonical path's own conservation residual
-    with its sign reversed, and a residual has no reason to fall on the
-    positive side; an anchor is an *amount* of agent, which
-    `AgentSimulationValidator` rightly refuses below zero. So the derivation
-    would refuse to open an ordinary branch, at rounding, for a reason with
-    nothing wrong with it.
+    with its sign reversed. A residual has no reason to fall on the positive
+    side. But an anchor is an *amount* of agent, which
+    `AgentSimulationValidator` rightly refuses when it is less than zero. So
+    the derivation would refuse to open an ordinary branch over a rounding
+    error, when nothing is wrong with the branch.
 
-    **Measured rather than argued.** Across 72 keyframes - three agents, four
-    dial instants, three flow instants, one keyframe per change - 16 of them,
-    22%, put the derived anchor below zero, the worst at -1.1e-13 L. The run
-    below is one of the 16 and is the smallest reproduction of it. Carried
-    instead, the same residual stays inside the accounting check, which is
+    **This was measured, not only argued.** The survey covered 72 keyframes:
+    three agents, four dial instants and three flow instants, with one
+    keyframe per change. In 16 of them, 22%, the derived anchor was less than
+    zero, the worst at -1.1e-13 L. The run below is one of the 16, and it is
+    the smallest reproduction of the problem. When the anchor is carried
+    instead, the same residual stays within the accounting check, which is
     where a conservation error belongs.
     """
 
@@ -342,7 +351,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
 
 
 def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
-    """A non-zero anchor is the parent's, and it is not quietly replaced by the store."""
+    """A non-zero anchor comes from the parent and is not quietly replaced by the stored agent."""
 
     system_parent, definition = _run()
     opening = definition.segments[-1].opening
@@ -357,11 +366,11 @@ def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
 
 
 def test_a_drawn_value_cannot_resume_a_system() -> None:
-    """`docs/MODEL.md` § "The canonical evaluation rule", enforced at this sink too.
+    """`resume_at` also enforces `docs/MODEL.md` § "The canonical evaluation rule".
 
     A drawn column and a fork's opening state are the same nine numbers in the
-    same order, so nothing about their contents separates them; what does is
-    that one of them is structurally not a state vector.
+    same order, so their contents cannot tell them apart. What separates them
+    is that a drawn column is structurally not a state vector.
     """
 
     _, definition = _run()
@@ -381,7 +390,7 @@ def test_a_state_of_the_wrong_length_cannot_resume_a_system() -> None:
 
 
 def test_a_non_finite_state_cannot_resume_a_system() -> None:
-    """An infinity reaching a compartment would be a run that cannot be stopped."""
+    """An infinity written into a compartment would make a run that cannot be stopped."""
 
     state = [0.0] * STATE_SIZE
     state[UNIT_STATE] = 1.0
@@ -413,7 +422,7 @@ def test_a_negative_cumulative_total_cannot_resume_a_system() -> None:
 
 
 def test_a_negative_anchor_cannot_resume_a_system() -> None:
-    """The same rule for the anchor, which is also an amount of agent."""
+    """The same rule applies to the anchor, which is also an amount of agent."""
 
     _, definition = _run()
     opening = definition.segments[-1].opening
@@ -427,9 +436,10 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was() -> None:
 
     `_write_state_vector` writes one compartment at a time, so a fraction the
     model cannot represent is refused after earlier compartments have already
-    taken their new values. That is the same shape `AgentUptakeSystem.advance()`
-    already handles, and it is handled the same way: the system is captured
-    before the write and restored on any exit that is not a completed resume.
+    taken their new values. `AgentUptakeSystem.advance()` already handles the
+    same problem, and `resume_at` handles it the same way. It captures the
+    system before the write and restores it on any exit that is not a
+    completed resume.
     """
 
     system_parent, definition = _run()
@@ -450,7 +460,7 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was() -> None:
 
 
 def test_a_refused_resume_leaves_the_accounting_period_as_it_was() -> None:
-    """The totals are written after the compartments, so the rollback has to reach them too."""
+    """The totals are written after the compartments, so the rollback has to restore them too."""
 
     system_parent, definition = _run()
     opening = definition.segments[-1].opening
@@ -474,13 +484,13 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was() -> None:
 
 
 def test_resuming_does_not_strand_the_cached_propagator() -> None:
-    """A propagator is a function of the settings, and this writes none of them.
+    """A propagator is a function of the settings, and resuming writes none of them.
 
     The cache is keyed on `_propagator_cache_key()`, which reads the volumes,
-    flows and coefficients the system matrix is assembled from. Resuming writes
-    compartment *fractions*, so the cached matrix is still the right one - and
-    the check that says so is that a system resumed after stepping reaches the
-    same place as one resumed before stepping ever built a cache.
+    flows and coefficients that the system matrix is assembled from. Resuming
+    writes compartment *fractions*, so the cached matrix is still the right
+    one. The test checks this: a system resumed after stepping reaches the same
+    state as one resumed before any step built a cache.
     """
 
     system_parent, definition = _run()
@@ -501,12 +511,13 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
 
 
 def test_a_keyframe_resumes_a_system_without_being_unwrapped_first() -> None:
-    """The two shapes a caller has are the same shape, which is what makes this safe.
+    """The two forms a caller may hold are the same object, which is what makes this safe.
 
     `Keyframe.state` and `RunDefinition.state_at` return the identical object
-    for an instant a run holds a keyframe at, so a branch built from either
-    opens at the same place. This pins that, because a future keyframe that
-    stored something else would make the two routes disagree silently.
+    for an instant at which a run holds a keyframe. So a branch built from
+    either opens at the same place. This test pins that, because a future
+    keyframe that stored something else would make the two routes disagree
+    silently.
     """
 
     system_parent, definition = _run()
@@ -526,28 +537,29 @@ def test_a_keyframe_resumes_a_system_without_being_unwrapped_first() -> None:
 
 
 def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system() -> None:
-    """The trap at the seam, pinned here because nothing downstream would catch it.
+    """A trap when resuming, pinned here because nothing downstream would catch it.
 
     `SimulationController._build_state` opens a run's definition from
-    `uptake_system.state_vector()`, which is right for a run starting from a
-    system that has not been told anything. Copying that line at a fork is
-    wrong, and silently so: a compartment stores an *amount* and derives its
-    fraction back from its own capacity, so writing a fraction in and reading
-    it out is not the identity.
+    `uptake_system.state_vector()`. That is right for a run that starts from a
+    system no state has been written into. Copying that line at a fork is
+    wrong, and silently so. A compartment stores an *amount* and derives its
+    fraction back from its own capacity. So writing a fraction in and reading
+    it out does not always return the same value.
 
-    **Measured on the shipped compartments**, over a 1e-6 grid across the
-    first two percent of an atmosphere - the range a sevoflurane case actually
-    occupies - the alveolar compartment returns a different float for 11.7% of
-    fractions, mixed venous blood for 11.6% and fat for 3.4%. The circuit is
-    exact over the same grid, which is what makes this the kind of defect that
-    survives a spot check.
+    **This was measured on the shipped compartments**, over a 1e-6 grid across
+    the first two percent of an atmosphere, which is the range a sevoflurane
+    case actually occupies. The alveolar compartment returns a different float
+    for 11.7% of fractions, mixed venous blood for 11.6% and fat for 3.4%. The
+    circuit is exact over the same grid, so this defect can survive a spot
+    check.
 
     A branch whose definition opened from the seeded system would fail
-    `ROADMAP.md` item 12's element-wise reproduction on exactly those entries,
-    at a magnitude no display resolves and no tolerance test would report. The
-    keyframe the parent already holds costs nothing and cannot drift, and the
-    second half below is why it is always available: a definition answers an
-    instant it holds a keyframe for with that keyframe itself.
+    `ROADMAP.md` item 12's element-wise reproduction on exactly those entries.
+    It would fail at a magnitude that no display resolves and no tolerance test
+    would report. The keyframe that the parent already holds costs nothing and
+    cannot drift. The second half of this test shows why that keyframe is
+    always available. For an instant at which a definition holds a keyframe,
+    the definition returns that keyframe's state itself.
     """
 
     system = _fresh_system()
@@ -585,11 +597,12 @@ def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system()
 
 
 def test_a_segment_and_its_opening_travel_together() -> None:
-    """The pairing `RunSegment` exists to enforce, read at the seam that consumes it.
+    """Check the pairing that `RunSegment` exists to enforce, where a branch consumes it.
 
     A branch is settings *and* the state they start from. Pairing one segment's
-    settings with another's opening would compute a stretch under settings it
-    was never under, so the seam takes the segment rather than the two halves.
+    settings with another's opening would compute a stretch of the run under
+    settings it never had. So a branch takes the whole segment rather than its
+    two halves.
     """
 
     _, definition = _run()

@@ -1,11 +1,13 @@
 """Unit tests for `layout/workspace.py`: a Workspace, and the set of them.
 
-`PL-WV9K` decided both (project owner, 2026-09-27, ratified): what a
-Workspace carries beside its layout, and how the set behaves - ordered, one
-active, never empty, names unique - with `ROADMAP.md` item 34's floor, that the
-last Workspace cannot be removed, raised by the type rather than by a dialog.
-These hold each refusal to a message that says which invariant it was, and
-each operation to returning a new value and leaving the old one as it was.
+`PL-WV9K` (project owner, 2026-09-27, ratified) decided two things. The first
+is what a Workspace carries beside its layout. The second is how the set
+behaves: it is ordered, it has one active Workspace, it is never empty, and
+its names are unique. `ROADMAP.md` item 34 requires that the last Workspace
+cannot be removed. The type enforces that rule by raising an exception, rather
+than leaving it to a dialog. These tests check that each rejection gives a
+message saying which invariant it enforces. They also check that each
+operation returns a new value and leaves the old one unchanged.
 """
 
 import math
@@ -43,7 +45,7 @@ LATER_BRANCH = RunId(SESSION, 3)
 
 
 def two_areas() -> LayoutModel:
-    """One window, Area 1 showing the chart beside Area 2 showing the accounting."""
+    """Return one window, with Area 1 showing the chart beside Area 2 showing the accounting."""
 
     layout, second = LayoutModel.single_area(CHART).split(ONE, Orientation.ROW, 0.5)
 
@@ -235,7 +237,10 @@ class TestWorkspace:
 
 
 class TestPinnedRun:
-    """`PL-WV9K` Q6 and `PL-7Z84`: a pin names a run, and an absent run is stated, not replaced."""
+    """A pin names a run, and an absent pinned run is reported, not replaced.
+
+    `PL-WV9K` Q6 and `PL-7Z84` decided this behaviour.
+    """
 
     def test_a_workspace_is_unpinned_unless_pinned(self) -> None:
         assert workspace("Mine").pinned_run is None
@@ -261,7 +266,7 @@ class TestPinnedRun:
         assert pinned.shown_runs((LATER_BRANCH, TRUNK, BRANCH)) == (BRANCH,)
 
     def test_an_absent_pinned_run_is_stated_and_no_other_run_takes_its_place(self) -> None:
-        """The branch it pinned was dropped and another taken: the new one is not shown instead."""
+        """When the pinned branch has been dropped, a branch taken later is not shown instead."""
 
         pinned = workspace("Mine").pinned_to(BRANCH)
 
@@ -474,7 +479,7 @@ class TestWorkspaceSetOperations:
 
 
 class TestWorkspaceSetMutationsFound:
-    """Cases the first adversarial review's surviving mutations named (2026-10-17)."""
+    """Cases found by the mutations that survived the first adversarial review (2026-10-17)."""
 
     def test_move_to_a_later_position_lands_there(self) -> None:
         start = a_set("Default", "Induction", "Maintenance")

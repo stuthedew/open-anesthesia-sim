@@ -40,7 +40,7 @@ def test_each_unit_has_the_spellings_a_reader_meets(
 
 
 def test_a_controls_slider_label_and_recorded_unit_are_one_member() -> None:
-    """The label beside each slider and the unit its changes record name one unit."""
+    """The label beside each slider and the unit recorded for its changes name the same unit."""
 
     assert {control.control for control in PARAMETER_CONTROLS} == set(ControlInput)
 

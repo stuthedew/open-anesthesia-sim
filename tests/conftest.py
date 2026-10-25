@@ -1,105 +1,115 @@
 """Settings every test tree needs before any test module is imported, and the order xdist deals.
 
-`QT_QPA_PLATFORM`: unset, Qt picks `xcb` on Linux and `QApplication` aborts
-the process when no display is attached - which is every CI runner and every
-web-container session. `offscreen` is the platform plugin the Qt build's
-tests render under, so it is set here, before any `PySide6` import, rather
-than on the pytest command line: `tools/doc_check.py`'s `check_coverage_gate`
-holds the `Makefile`'s pytest line and `quality.yml`'s to string equality, once
-it has put the threshold back into each of CI's two parts, and
-an environment prefix on either would break that comparison for a reason
-unrelated to coverage (`PL-YCWZ`'s pre-port survey, 2026-09-14).
+`QT_QPA_PLATFORM` names Qt's platform plugin. When it is unset, Qt picks
+`xcb` on Linux, and `QApplication` aborts the process when no display is
+attached. No display is attached on any CI runner or in any web-container
+session. The Qt build's tests render under the `offscreen` plugin. This
+module sets that plugin here, before any `PySide6` import, rather than on the
+pytest command line. The reason is `tools/doc_check.py`'s
+`check_coverage_gate`. Once it has put the coverage threshold back into the
+pytest line of each of CI's two parts, it requires the `Makefile`'s pytest
+line and `quality.yml`'s to be equal as strings. An environment prefix on
+either line would break that comparison for a reason unrelated to coverage
+(`PL-YCWZ`'s pre-port survey, 2026-09-14).
 
-`setdefault`, not assignment: a developer running the suite on a desktop with
-a display may set the variable themselves to watch a test render, and nothing
-here should override that.
+The module uses `setdefault`, not assignment. A developer running the suite
+on a desktop with a display may set the variable themselves to watch a test
+render, and nothing here should override their choice.
 
 **The order `--dist worksteal` deals** (`PL-4Z5Y`, `PL-K5VM`). A few tests
-compute something that takes about a sixth of the run: a 24-hour washout curve in
-`tests/reference/test_late_washout_against_published_fits.py`, and a
-controller stepped onto the 24-hour limit in
+compute something that takes about a sixth of the run. One kind is a 24-hour
+washout curve in `tests/reference/test_late_washout_against_published_fits.py`.
+The other is a controller stepped onto the 24-hour limit in
 `tests/integration/test_controller.py`. Each is computed once per run and
 shared between workers through the `computed_once` fixture below (`PL-F08Y`,
-`PL-ZWQS`). Where they ran was left to the scheduler,
-and `worksteal` deals the collection out in contiguous slices at the start and
-steals only from the tail of a queue as other queues run dry. So every curve
-began in the last third of the run, and a slow CI runner waited about 70 s for
-them after every other test had finished; and the six tests reading the two
-controller runs were split between two to four workers, each building the runs
-again.
+`PL-ZWQS`). Before this dealing, the scheduler decided where these tests ran.
+At the start of a run, `worksteal` deals the collection out in contiguous
+slices. After that, it steals only from the tail of a queue, as other queues
+run dry. So every curve began in the last third of the run, and a slow CI
+runner waited about 70 s for the curves after every other test had finished.
+The six tests that read the two controller runs were split between two to
+four workers, and each of those workers built the runs again.
 
 So `pytest_collection_modifyitems` moves each unit of that work to the head of
-a worker's first slice: the first test to read each curve, and the six
-controller tests as one group, back to back, since one of them reads both runs
-and pytest keeps a module fixture alive only across consecutive tests from its
-module. A module names its units in a table, with what each costs in simulated
-minutes - `CURVES_READ` for the curves each test reads, `MODULE_FIXTURE_MINUTES`
-for its costly module fixtures - and `deal` places them heaviest first, each
-in the slice with the least placed in it so far: longest processing time
-first (Graham RL, "Bounds on multiprocessing timing anomalies", SIAM J Appl
-Math 1969;17(2):416-429, https://doi.org/10.1137/0117039). Every worker then
-starts the run on one or two curves or on the two controller runs, computed in
-its own process where coverage measures them, and every other test reading them
-finds them built. The units' tests run apart from the rest of their modules,
-which share nothing else between tests.
+a worker's first slice. A unit is either the first test to read a curve, or
+the six controller tests as one group. The six run back to back, because one
+of them reads both runs, and pytest keeps a module fixture alive only across
+consecutive tests from its module. A module names its units in a table, with
+what each unit costs in simulated minutes. `CURVES_READ` names the curves each
+test reads, and `MODULE_FIXTURE_MINUTES` names the module's costly fixtures.
+`deal` places the units heaviest first, each in the slice with the least cost
+placed in it so far. This is the longest-processing-time-first rule (Graham RL,
+"Bounds on multiprocessing timing anomalies", SIAM J Appl Math
+1969;17(2):416-429, https://doi.org/10.1137/0117039). Every worker then starts
+the run on one or two curves, or on the two controller runs. It computes them
+in its own process, where coverage measures them, and every other test that
+reads them finds them already built. The units' tests run apart from the rest
+of their modules. That is safe because those modules share nothing else
+between tests.
 
-It mirrors how pytest-xdist 3.8.0 deals the first slices
-(`WorkStealingScheduling.check_schedule`, `xdist/scheduler/worksteal.py`), an
-internal, so `tests/unit/test_worksteal_dealing.py` holds the mirror to the
-installed scheduler. If the two part, the units start wherever they land, which
-costs speed and nothing else. Without xdist, or under another `--dist` mode,
-the order is left alone. A worker cannot read the mode from its own option,
-which pytest-xdist's `setup_config` sets to `no`, so `pytest_configure_node`
-records the controller's mode in each worker's `workerinput`. That hook runs on
-the controller, which collects nothing and so never loads a conftest below this
-one; the dealing sits beside it because it deals two test trees.
+The dealing copies how pytest-xdist 3.8.0 deals the first slices
+(`WorkStealingScheduling.check_schedule`, `xdist/scheduler/worksteal.py`).
+That code is internal to xdist, so `tests/unit/test_worksteal_dealing.py`
+checks that the copy still matches the installed scheduler. If the two drift
+apart, the units start wherever they land, which costs speed and nothing
+else. Without xdist, or under another `--dist` mode, the order is left alone.
+A worker cannot read the mode from its own option, because pytest-xdist's
+`setup_config` sets that option to `no`. So `pytest_configure_node` records
+the controller's mode in each worker's `workerinput`. That hook runs on the
+controller. The controller collects no tests, so it never loads a conftest
+below this one. The dealing lives in this conftest, beside that hook, because
+it deals tests from two test trees.
 
 **The parts CI runs the suite in** (`PL-T9X9`). `quality.yml` runs the suite
 in two jobs, each on its own runner, and `--part K/N` picks the tests one job
 runs. Every test that reads a costly computation runs in the last part, so each
 computation runs on one runner and not on both. The other tests are dealt in
 cycles, so each module is split between the parts, and `PART_SHARES` sets how
-many of each cycle each part takes. The first part's job also
-runs the linters, `mypy` and the floor section, which took about 95 s of a slow
-runner's 621 s job on 2026-10-17. The tests that read a costly computation took
+many tests of each cycle each part takes. The first part's job also runs the
+linters, `mypy` and the floor section, which runs the apparatus tools under the
+oldest supported Python with no virtualenv. On 2026-10-17 these took about
+95 s of a slow runner's 621 s job. The tests that read a costly computation took
 about 22% of the suite's time, so giving all of them to the second part was
 expected to balance the two jobs. It did not at first. On the split's first
-run, 2026-10-17, the second part's pytest step took 462 s and the first part's
-whole job 299 s. With half the other tests, the second part's workers ran out
-of work while one worker was still building the first controller run.
-`worksteal` then handed them the rest of the controller tests, and each of
-those workers built the runs again, because a module fixture lives in one
-process. A local profile showed four builds where the dealing expects two. Now
-the controller runs are shared through `computed_once` as the curves are, so a
-worker handed a controller test waits for the run instead of building it
-again (`PL-ZWQS`). `tools/main_ci_status.py`'s pytest line reads the parts'
-sum, so compare the two jobs' pytest steps in a run's log.
+run, 2026-10-17, the second part's pytest step took 462 s, and the first
+part's whole job took 299 s. With half the other tests, the second part's
+workers ran out of work while one worker was still building the first
+controller run. `worksteal` then handed them the rest of the controller tests,
+and each of those workers built the runs again, because a module fixture lives
+in one process. A local profile showed four builds where the dealing expects
+two. Now the controller runs are shared through `computed_once`, as the curves
+are. So a worker handed a controller test waits for the run instead of
+building it again (`PL-ZWQS`). The pytest line of `tools/main_ci_status.py`
+shows the sum of both parts' times, so compare the two jobs' pytest steps in a
+run's log instead.
 
 **A pull request that changes only apparatus files skips the costly tests**
 (`PL-STM6`). `--skip-costly` leaves out every test that reads a costly
-computation, by the same `_costly_reads` that the parts and the dealing use.
-`quality.yml` asks for it on the second part when `bin/docket ci-scope`
-answers `apparatus`, because no apparatus file is an input to those tests. It
-asks through `SKIP_COSTLY_TESTS=1`, which only this conftest reads, and not
-through `PYTEST_ADDOPTS`. Every pytest the suite starts in a subprocess
-inherits `PYTEST_ADDOPTS`. The docket tests start pytest in a scratch
-repository that has no `--skip-costly`, so that pytest stopped at exit 4
-on the first apparatus pull request that set it (`#1774`). With them
-gone, `PART_SHARES` stays as it is: the first part's linters already make up
-for most of the gap that leaving them out opens.
+computation. It finds them with the same `_costly_reads` that the parts and the
+dealing use. `quality.yml` asks for it on the second part when
+`bin/docket ci-scope` returns `apparatus`, because no apparatus file is an
+input to those tests. It asks through `SKIP_COSTLY_TESTS=1`, which only this
+conftest reads, and not through `PYTEST_ADDOPTS`. Every pytest that the suite
+starts in a subprocess inherits `PYTEST_ADDOPTS`. The docket tests start
+pytest in a scratch repository that has no `--skip-costly` option. So on the
+first apparatus pull request that set the option through `PYTEST_ADDOPTS`,
+that inner pytest stopped with exit code 4 (`#1774`). When the costly tests are left out,
+`PART_SHARES` stays as it is. The first part's linters already make up for
+most of the gap that leaving those tests out opens.
 
 **The windows the tests leave open** (`PL-CW51`). Many tests build a dashboard
 and never delete it, so a worker can end its run holding hundreds of windows.
-The interpreter's exit then destroyed them in no particular order. Qt also
-keeps parentless widgets of its own: each `QGraphicsLayoutStyleInfo`, which a
-pyqtgraph plot's layout builds, holds one in a `unique_ptr` and deletes it with
+Before this fix, the interpreter's exit destroyed them in no particular order.
+Qt also keeps parentless widgets of its own. A pyqtgraph plot's layout builds
+a `QGraphicsLayoutStyleInfo`, which holds one such widget in a `unique_ptr`
+and deletes it with
 the layout (https://github.com/qt/qtbase/blob/6.11/src/widgets/graphicsview/qgraphicslayoutstyleinfo.cpp).
 Deleting such a widget before its plot makes the plot's layout delete it a
 second time, which crashes the process. A drift job on CPython 3.15.0 printed
-"pure virtual method called" as a worker exited, and a worker here on 3.15.0
-died of a segmentation fault while the exit destroyed its windows. So
-`pytest_sessionfinish` deletes the windows Python built while the application
-still runs, and leaves Qt's own widgets to their owners, which delete them.
+"pure virtual method called" as a worker exited. A worker here on 3.15.0 died
+of a segmentation fault while the exit destroyed its windows. So, while the
+application is still running, `pytest_sessionfinish` deletes the windows that
+Python built. It leaves Qt's own widgets to their owners, which delete them.
 
 **A supported-range constant set to a wrong value, on request** (`PL-0Z0F`).
 `tools/restated_constants.py` runs the suite with one constant of
@@ -256,11 +266,11 @@ class _CurveRead(Protocol):
 
 
 def first_slice_sizes(tests: int, workers: int) -> list[int]:
-    """The slices `--dist worksteal` deals the collection out in, in order.
+    """Return the sizes of the slices that `--dist worksteal` deals the collection out in.
 
-    `check_schedule` hands the i-th of n idle workers `len(pending) // (n - i)`
-    of what is left, from the front, so the slices are contiguous and differ
-    in size by one at most.
+    `check_schedule` gives the i-th of n idle workers `len(pending) // (n - i)`
+    of the tests still left, taken from the front. So the slices are
+    contiguous, in order, and their sizes differ by one at most.
     """
 
     sizes: list[int] = []
@@ -272,14 +282,17 @@ def first_slice_sizes(tests: int, workers: int) -> list[int]:
 def deal[Test: Hashable](
     tests: Sequence[Test], units: Sequence[tuple[Sequence[Test], float]], workers: int
 ) -> list[Test]:
-    """`tests` reordered so each unit runs back to back at the head of a worker's first slice.
+    """Return `tests` reordered to put each unit at the head of a worker's first slice.
 
-    A unit is the tests that share one costly computation, with what it costs.
-    Heaviest first, each goes to the slice with the least placed in it so far,
-    so a slice holding one heavy unit takes no other until every slice holds as
-    much. The tests in no unit keep their order and fill each slice behind its
-    head. Where a slice's units would not fit in it, `tests` comes back as it
-    is, since dealing them would run them into the next slice.
+    A unit is a group of tests that share one costly computation, paired with
+    what that computation costs. The tests of a unit run back to back. The
+    units are placed heaviest first, each in the worker's slice with the least
+    cost placed in it so far. So a slice that holds one heavy unit takes no
+    other unit until every slice holds as much.
+    The tests that belong to no unit keep their order and fill each slice
+    behind its head. If a slice's units would not fit in it, `tests` is
+    returned unchanged, because dealing them would run them into the next
+    slice.
     """
 
     load = [0.0] * workers
@@ -307,11 +320,13 @@ def deal[Test: Hashable](
     return dealt
 
 
-#: How many of each cycle of ordinary tests each part takes, by the number of
-#: parts. The first part's job also runs about 115 s of linters and tree checks
-#: outside pytest. With an even split it finished last on both of `PL-ZWQS`'s
-#: measured runs, by 17 s and by 116 s. So of every 5 ordinary tests it takes 2.
-#: Retune this when the two jobs drift apart. A split not named here is even.
+#: How many tests of each cycle each part takes, keyed by the number of parts.
+#: The cycles deal only the ordinary tests, which are those that read no costly
+#: computation. The first part's job also runs about 115 s of linters and tree
+#: checks outside pytest. With an even split, that job finished last on both of
+#: `PL-ZWQS`'s measured runs, by 17 s and by 116 s. So the first part takes 2 of
+#: every 5 ordinary tests. Retune this when the two jobs' times drift apart. A
+#: number of parts that is not named here splits the tests evenly.
 PART_SHARES: dict[int, tuple[int, ...]] = {2: (2, 3)}
 
 
@@ -322,7 +337,7 @@ def part[Test: Hashable](
     parts: int,
     shares: Sequence[int] | None = None,
 ) -> list[Test]:
-    """The tests that part `index` of `parts` runs, in their order in `tests`.
+    """Return the tests that part `index` of `parts` runs, in their order in `tests`.
 
     Parts are numbered from 1. Every test in `costly` runs in the last part.
     The other tests are dealt in repeating cycles. In each cycle, part 1 takes
@@ -356,11 +371,11 @@ def selected[Test: Hashable](
     *,
     skip_costly: bool,
 ) -> list[Test]:
-    """The tests a run keeps, in their order in `tests`.
+    """Return the tests that a run keeps, in their order in `tests`.
 
-    With `skip_costly`, every test in `costly` is left out. With `chosen`, a
-    `(K, N)` pair from `--part`, `part` then picks part K of N from the rest,
-    with the shares `PART_SHARES` names for N parts.
+    With `skip_costly`, every test in `costly` is left out. When `chosen` is a
+    `(K, N)` pair from `--part`, `part` then picks part K of N from the
+    remaining tests, using the shares that `PART_SHARES` names for N parts.
     """
 
     kept = [test for test in tests if test not in costly] if skip_costly else list(tests)
@@ -386,7 +401,7 @@ SKIP_COSTLY_VARIABLE = "SKIP_COSTLY_TESTS"
 
 
 def skip_costly_asked(environ: Mapping[str, str]) -> bool:
-    """Whether the environment asks for `--skip-costly`, which only the value "1" does."""
+    """Return whether the environment asks for `--skip-costly`, which only the value "1" does."""
 
     return environ.get(SKIP_COSTLY_VARIABLE) == "1"
 
@@ -426,7 +441,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def _costly_reads(
     items: Sequence[pytest.Item],
 ) -> tuple[dict[pytest.Function, tuple[_CurveRead, ...]], dict[ModuleType, list[pytest.Function]]]:
-    """The tests that read a costly computation: each curve's readers, and each module's group."""
+    """Return the tests that read a costly computation.
+
+    The first mapping gives the curves that each test reads. The second gives,
+    for each module, the tests that use one of its costly module fixtures.
+    """
 
     reads: dict[pytest.Function, tuple[_CurveRead, ...]] = {}
     groups: dict[ModuleType, list[pytest.Function]] = {}
@@ -442,11 +461,12 @@ def _costly_reads(
 
 
 def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], float]]:
-    """Each costly computation the collection's modules name, as the tests it is dealt with."""
+    """Return the units to deal: each costly computation's tests, with its cost in minutes."""
 
     reads, groups = _costly_reads(items)
 
-    # A test that reads the curve first opens it; failing one, the first to read it at all.
+    # A curve's opener is the first test that reads it as its first curve. If no test does,
+    # the opener is the first test that reads the curve at all.
     openers: dict[_CurveRead, pytest.Function] = {}
     for item, curves in reads.items():
         openers.setdefault(curves[0], item)
@@ -468,14 +488,15 @@ def _units(items: Sequence[pytest.Item]) -> list[tuple[tuple[pytest.Item, ...], 
 
 
 def computed_once_in[Value](store: Path, name: str, compute: Callable[[], Value]) -> Value:
-    """`compute()`, run by the first process to ask for `name` and read from `store` by the rest.
+    """Return `compute()`, run by the first process to ask for `name`, read from `store` by others.
 
     The first process to ask takes a lock on `name`, runs `compute()` and
     publishes the pickled result in `store`. A process that asks meanwhile
     waits on the lock and then reads what was published. The result is written
     whole and then renamed into place. The lock is `flock`, which the kernel
-    releases if the process holding it dies. So a crash leaves the next process
-    to run `compute()`, rather than to read half a result or to wait for ever.
+    releases if the process holding it dies. So after a crash, the next process
+    runs `compute()` itself, rather than reading half a result or waiting for
+    ever.
     """
 
     published = store / f"{name}.pickle"
@@ -513,22 +534,23 @@ def computed_once(
     would from a module fixture built in that worker. This is what shares the
     24-hour washout curves (`PL-F08Y`) and the two controller runs stepped
     onto the 24-hour limit (`PL-ZWQS`). Sending each computation's tests to
-    one worker with `--dist loadgroup` would compute each once too. It was
-    measured for the curves and set aside: it slowed the rest of the suite by
-    8 to 11 s, and the whole run by 19 s against this (`PL-F08Y` has the
-    figures).
+    one worker with `--dist loadgroup` would also compute each value once.
+    That approach was measured for the curves and set aside. It slowed the
+    rest of the suite by 8 to 11 s, and the whole run by 19 s, compared with
+    this fixture (`PL-F08Y` has the figures).
 
-    The store is a directory in the run's own base temporary directory, the
-    parent of each worker's. Pytest makes that directory afresh for every run
-    and empties it when one is named with `--basetemp`. So a value published
-    there cannot be served to a later run built from different source, which
-    is the hazard `PL-0MLZ` closed for bytecode. For the same reason, whether
-    to share turns on `workerinput`, which xdist sets on a worker's own
-    configuration, and not on `PYTEST_XDIST_WORKER`, which a pytest started
-    inside a worker would inherit: that run's base directory's parent outlives
-    it. Without xdist one process runs every test, so `compute()` runs once
-    anyway. Windows has no `fcntl`, so there each worker computes what it
-    needs.
+    The store is a directory inside the run's own base temporary directory,
+    which is the parent of each worker's temporary directory. Pytest makes that
+    directory afresh for every run and empties it when one is named with
+    `--basetemp`. So a value published there cannot be served to a later run
+    built from different source, which is the hazard `PL-0MLZ` closed for
+    bytecode. For the same reason, the fixture decides whether to share by
+    checking `workerinput`, which xdist sets on a worker's own configuration.
+    It does not check `PYTEST_XDIST_WORKER`, which a pytest started inside a
+    worker would inherit. The parent of that inner run's base directory
+    outlives the inner run. Without xdist, one process runs every test, so
+    `compute()` runs once anyway. Windows has no `fcntl`, so there each worker
+    computes what it needs.
     """
 
     if fcntl is None or not hasattr(request.config, "workerinput"):
@@ -554,12 +576,13 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     `--part` then picks one part of what is left. Each costly computation that
     remains is dealt to the head of a worker's first slice.
 
-    `trylast`, so that the order dealt is the one every other hook has finished
-    with. Every worker runs this on the same collection and gets the same
-    answer, which xdist requires of a collection before it schedules any; the
-    costs are summed in table order, never a set's, so no worker's hash seed
-    can round them differently. The part is chosen before the dealing, so the
-    dealing places only the units this part runs.
+    The hook is `trylast`, so that it deals the order that every other hook has
+    finished with. Every worker runs this hook on the same collection and gets
+    the same result. xdist requires that of a collection before it schedules
+    any of its tests. The costs are summed in table order, never in a set's
+    order, so no worker's hash seed can round them differently. The part is
+    chosen before the dealing, so the dealing places only the units this part
+    runs.
     """
 
     chosen = config.getoption("part")
@@ -580,7 +603,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 
 def windows_built(windows: Sequence[Any]) -> list[Any]:
-    """The parentless windows among `windows` that Python built, in their order.
+    """Return the parentless windows among `windows` that Python built, in their order.
 
     A window Qt built for its own use is left out, because its owner deletes it
     and a second deletion crashes the process (`PL-CW51`).

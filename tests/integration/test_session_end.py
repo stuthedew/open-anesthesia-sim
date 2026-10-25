@@ -27,7 +27,7 @@ CONFTEST = Path(__file__).parents[1] / "conftest.py"
 
 
 def _conftest() -> ModuleType:
-    """The conftest loaded under a name of its own, since every conftest is `conftest`."""
+    """Return the conftest loaded under its own name, because every conftest is `conftest`."""
 
     spec = importlib.util.spec_from_file_location("tests_conftest", CONFTEST)
     assert spec is not None and spec.loader is not None
@@ -47,7 +47,7 @@ def application() -> Iterator[QApplication]:
 
 
 def _address(widget: QWidget) -> int:
-    """The address of the widget's C++ object, which stays the same across Python wrappers."""
+    """Return the address of the widget's C++ object, which is the same for every Python wrapper."""
 
     address: int = shiboken6.getCppPointer(widget)[0]
     return address
@@ -75,11 +75,12 @@ def test_the_cleanup_deletes_a_dashboard_and_the_widgets_qt_built_for_it(
     built = _new_windows(application, before)
 
     chosen = CLEANUP.windows_built(built)
-    # A menu built with a parent is a window too, and goes with its parent.
+    # A menu built with a parent is also a window, and it is deleted with its parent.
     left_to_qt = [window for window in built if window.parent() is None and window not in chosen]
 
     assert view in chosen
-    # The plain widget a plot's layout style holds, which Qt deletes itself.
+    # Among the windows left to Qt is the plain widget that a plot's layout style holds.
+    # Qt deletes that widget itself.
     assert any(type(window) is QWidget for window in left_to_qt)
     assert not any(shiboken6.createdByPython(window) for window in left_to_qt)
 

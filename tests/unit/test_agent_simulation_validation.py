@@ -22,72 +22,80 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# The three constants that set how far a run's numbers may drift before
-# `require_valid_agent_accounting()` halts it, restated here rather than
-# imported. Everything below uses these restatements and never the imported
-# names beside them: a boundary case measured against the constant it is
-# testing would follow that constant wherever it moved, which is the whole
-# defect (`PL-B7ZV`). Moving one in `core/` therefore fails
+# These are the three constants that set how far a run's numbers may drift
+# before `require_valid_agent_accounting()` halts the run. They are restated
+# here rather than imported. Every test below uses these restated values and
+# never the imported names. A boundary case measured against the constant it
+# tests would move with that constant wherever it moved, so it could never
+# catch a change to it. That was the whole defect in `PL-B7ZV`. Moving one of
+# the constants in `core/` therefore fails
 # `test_the_accounting_tolerances_are_the_documented_release_tolerances`,
-# which is the only place the two are compared. This is the idiom
-# `tests/reference/test_coupled_dynamics.py` uses twice, for the model's
-# supported input ranges and for the interface's displayed resolution.
+# which is the only place that compares the two sets of values.
+# `tests/reference/test_coupled_dynamics.py` uses the same idiom twice: for
+# the model's supported input ranges and for the interface's displayed
+# resolution.
 #
-# `docs/MODEL.md` § "Mass-balance identity" is the documented basis. It calls
-# the first two release tolerances, and states the third inline as the
-# `max(initial + delivered, 1e-15 L)` denominator that keeps the relative
-# error finite before anything has been delivered.
+# `docs/MODEL.md` § "Mass-balance identity" documents all three. It calls the
+# first two release tolerances. It states the third inline, in the denominator
+# `max(initial + delivered, 1e-15 L)`, which keeps the relative error finite
+# before any agent has been delivered.
 DOCUMENTED_ABSOLUTE_TOLERANCE_L = 1e-12
 DOCUMENTED_RELATIVE_TOLERANCE = 1e-9
 DOCUMENTED_MINIMUM_RELATIVE_SCALE_L = 1e-15
 
-# How far either side of a threshold the boundary cases probe. 10% is far
-# enough out that the floating-point error in constructing the residual — 4.1e-8
-# relative at worst, measured across the four cases — cannot reach the
-# threshold from either side, and close enough in that a tolerance loosened by
-# the orders of magnitude `PL-B7ZV` measured cannot straddle it.
+# These set how far on either side of a threshold the boundary cases probe.
+# 10% is far enough out that the floating-point error in building the residual
+# cannot carry a case across the threshold from either side. That error is at
+# most 4.1e-8 relative, measured across the four cases. 10% is also close
+# enough in that a tolerance loosened by the orders of magnitude that
+# `PL-B7ZV` measured cannot still fall between the two probes.
 INSIDE_THE_THRESHOLD = 0.9
 OUTSIDE_THE_THRESHOLD = 1.1
 
-# The delivered amount each pair of boundary cases is measured against, chosen
-# so that the other branch of the pass condition is out of reach and the case
-# therefore probes one threshold rather than the disjunction of two. Each case
-# asserts that isolation rather than assuming it.
+# These are the delivered amounts that each pair of boundary cases is measured
+# against. Each amount puts the other branch of the pass condition out of
+# reach. Each case therefore probes one threshold, rather than the disjunction
+# of two (a pass on either branch). Each case asserts that the other branch is
+# out of reach rather than assuming it.
 #
-# 1 L delivered puts a residual at the relative threshold near 1e-9 L, three
-# orders of magnitude above the absolute tolerance, so only the relative branch
-# can pass it. 1 µL delivered — an accounting period a few steps old — puts a
-# residual at the absolute threshold near 1e-6 relative, three orders above the
-# relative tolerance, so only the absolute branch can. Any delivered amount
-# below 9e-4 L would serve the second; 1 µL keeps the arithmetic legible.
+# With 1 L delivered, a residual at the relative threshold is near 1e-9 L.
+# That is three orders of magnitude above the absolute tolerance, so only the
+# relative branch can pass it. 1 µL is about what an accounting period a few
+# steps old has delivered. With 1 µL delivered, a residual at the absolute
+# threshold is near 1e-6 relative. That is three orders above the relative
+# tolerance, so only the absolute branch can pass it. Any delivered amount
+# less than 9e-4 L would serve for the second pair. 1 µL keeps the arithmetic
+# easy to read.
 RELATIVE_BRANCH_DELIVERED_L = 1.0
 ABSOLUTE_BRANCH_DELIVERED_L = 1e-6
 
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# This pattern matches the end of a shared guard's error message. The message
+# names the refused value and the reason it was refused (`PL-T137`). The
+# guard's own tests pin each reason. The tests here pin the field's name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
 def _period_short_by(
     delivered_agent_l: float, residual_l: float
 ) -> tuple[AgentSimulationValidator, AgentSimulationValidationResult]:
-    """A completed accounting period whose store is short by `residual_l`.
+    """Return a completed accounting period whose store is short by `residual_l`.
 
-    The validator is returned alongside its result so that a case can put the
-    same store — `check.currently_stored_agent_l` — back through
-    `require_valid_agent_accounting()`, which is what actually halts a run and
-    therefore what these cases are about. That guard recomputes the check from
-    the validator it is called on, so reading the store back off the result is
-    what keeps the two calls measuring one accounting period.
+    The validator is returned with its result so that a case can pass the same
+    store, `check.currently_stored_agent_l`, back through
+    `require_valid_agent_accounting()`. That guard is what actually halts a
+    run, so it is what these cases test. The guard recomputes the check from
+    the validator it is called on. Reading the store back from the result keeps
+    the two calls measuring the same accounting period.
 
-    The residual is built by subtraction, so the value the check sees is the
-    one asked for only to a rounding. That is asserted here rather than
-    assumed: a case whose constructed residual landed on the wrong side of a
-    threshold would pass or fail for a reason that has nothing to do with the
-    guard, and would go on looking correct. Measured across the four boundary
-    cases, the construction lands within 4.1e-8 relative of the value asked
-    for, against probes placed 10% either side of a threshold.
+    The residual is built by subtraction, so the value the check sees matches
+    the requested value only to within rounding. This function asserts that
+    match rather than assuming it. If a constructed residual landed on the
+    wrong side of a threshold, its case would pass or fail for a reason that
+    has nothing to do with the guard, and would still look correct. Measured
+    across the four boundary cases, the constructed residual is within 4.1e-8
+    relative of the requested value. The probes sit 10% on either side of a
+    threshold.
     """
 
     validator = AgentSimulationValidator()
@@ -154,20 +162,21 @@ def test_require_valid_raises_specific_project_exception() -> None:
 
 
 def test_require_valid_agent_accounting_reads_the_validators_own_state() -> None:
-    """The verdict and the halt message describe the validator that was asked.
+    """The verdict and the halt message describe the validator the guard is called on.
 
     The guard used to take a completed `AgentSimulationValidationResult` and
-    read only that, never `self`. So one validator would rule on another's
-    accounting period silently, and the halt message — the only account a
-    reader gets of why a run stopped — would have named that other period's
-    totals (`PL-X204`). Taking the store instead makes the mismatch
-    unrepresentable rather than merely unreached: there is no result to hand
-    in.
+    read only that result, never `self`. So one validator could silently judge
+    another validator's accounting period. The halt message would then have
+    named that other period's totals, and that message is the only explanation
+    a reader gets of why a run stopped (`PL-X204`). The guard now takes the
+    store instead. That makes the mismatch impossible to express, not merely
+    absent from the current callers, because there is no result to pass in.
 
-    Two periods and one store show it. Both validators are asked about the
-    same 0.75 L: it balances the first period exactly and leaves the second a
-    litre short, so the store alone decides nothing and the validator's own
-    state decides everything.
+    The test shows this with two accounting periods and one store. Both
+    validators are checked against the same store of 0.75 L. That store
+    balances the first period exactly and leaves the second period a litre
+    short. So the store alone decides nothing, and each validator's own state
+    decides everything.
     """
 
     balanced = AgentSimulationValidator()
@@ -237,12 +246,12 @@ def test_reset_clears_recorded_external_agent() -> None:
 def test_a_direct_write_is_held_to_the_constructors_checks(
     total: str, value: object, error: type[Exception], message: str
 ) -> None:
-    """An assignment past the constructor is refused as the constructor refuses it.
+    """An assignment after construction is refused for each value the constructor refuses.
 
-    Until `PL-19Y0` the three totals were checked in `__post_init__` alone, so
-    a negative or infinite total written onto a built validator was stored and
-    every later check of the identity read it. Nothing is written when a value
-    is refused.
+    Until `PL-19Y0`, only `__post_init__` checked the three totals. A negative
+    or infinite total assigned to a validator after construction was stored,
+    and every later check of the identity used it. When a value is refused,
+    nothing is written.
     """
 
     validator = AgentSimulationValidator(
@@ -257,12 +266,13 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 
 
 def test_a_total_that_overflows_is_refused_where_it_is_written() -> None:
-    """A running total past the largest float is refused at its write, not carried as an infinity.
+    """A running total above the largest float is refused when written, not stored as infinity.
 
-    `record_external_agent_transfer` checks each transfer it is handed, and
-    until `PL-19Y0` nothing checked the sum it stored: two of 1.7e308 L made
-    an infinity. Nothing a run delivers comes near it; the write holds the
-    total to what its constructor holds it to, and leaves it as it was.
+    `record_external_agent_transfer` checks each transfer that it receives.
+    Until `PL-19Y0`, nothing checked the sum that it stored, so two transfers
+    of 1.7e308 L made an infinity. No run delivers anywhere near that amount.
+    The write now applies the same check to the total that the constructor
+    applies, and a refused write leaves the total as it was.
     """
 
     validator = AgentSimulationValidator()
@@ -278,12 +288,12 @@ def test_a_total_that_overflows_is_refused_where_it_is_written() -> None:
 
 
 def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
-    """`replace`, a copy and a pickle each write through `__setattr__`, refusing what it refuses.
+    """`replace`, a copy and a pickle each write through `__setattr__`, so they refuse what it does.
 
-    `dataclasses.replace` builds a new validator through its constructor's
-    writes, and a copy and a pickle restore the totals one at a time through
-    `__setattr__`, so a total planted past the guard is refused when either is
-    made (`PL-19Y0`).
+    `dataclasses.replace` builds a new validator through the writes that its
+    constructor makes. A copy and a pickle restore the totals one at a time
+    through `__setattr__`. So a total planted by bypassing the guard is refused
+    when a copy or a pickle is made (`PL-19Y0`).
     """
 
     validator = AgentSimulationValidator(
@@ -306,11 +316,12 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
 
 @pytest.mark.parametrize("initial_agent_l", [-0.1, nan, inf])
 def test_a_refused_reset_changes_nothing(initial_agent_l: float) -> None:
-    """`reset` writes the new initial total first, so its refusal clears neither other total.
+    """`reset` writes the new initial total first, so a refused reset clears neither other total.
 
-    The check is the write's own since `PL-19Y0`, and `reset` makes none of
-    its own: a reset that cleared the two transfer totals before writing the
-    one it refuses would leave a validator describing no accounting period.
+    Since `PL-19Y0`, the write itself makes the check, and `reset` makes no
+    check of its own. Suppose a reset cleared the two transfer totals and then
+    refused the initial total. It would leave a validator that describes no
+    accounting period.
     """
 
     validator = AgentSimulationValidator(
@@ -331,18 +342,20 @@ def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> No
     """The guard's three sensitivity constants are the ones the model documents.
 
     `require_valid_agent_accounting()` stops a run whose numbers can no longer
-    be trusted, and these three decide how far the numbers must drift before it
-    does. Until this test, nothing in `tests/`, `tools/` or `docs/` named any of
-    them: measured 2026-09-03, the relative tolerance could be loosened to 1e-3,
-    the absolute tolerance to 1e-3 L and the scale floor to 1e3 L, one at a
-    time, with the whole suite still green (`PL-B7ZV`). At 1e-3 relative an
-    eight-hour case at the envelope corner, which delivers 384 L, would carry
-    0.38 L unaccounted — roughly a fifth of the circuit and alveolar store —
-    with the guard silent.
+    be trusted. These three constants decide how far the numbers must drift
+    before it stops the run. Until this test existed, nothing in `tests/`,
+    `tools/` or `docs/` named any of them. A measurement on 2026-09-03 found
+    that each could be loosened, one at a time, with the whole suite still
+    passing: the relative tolerance to 1e-3, the absolute tolerance to 1e-3 L
+    and the scale floor to 1e3 L (`PL-B7ZV`). At 1e-3 relative, an eight-hour
+    case at the envelope corner delivers 384 L and would carry 0.38 L
+    unaccounted for, with the guard silent. That is roughly a fifth of the
+    agent stored in the circuit and the alveoli.
 
-    So the values are pinned rather than described. The boundary cases below
-    prove the guard turns at whatever these are set to; this proves they are
-    still what the specification says they are.
+    So this test pins the values rather than describing them. The boundary
+    cases below prove that the guard changes its verdict at whatever values
+    these constants are set to. This test proves that the values are still the
+    ones the specification gives.
     """
 
     assert (
@@ -362,12 +375,12 @@ def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> No
 
 
 def test_a_residual_inside_the_relative_tolerance_passes_on_the_relative_branch() -> None:
-    """9e-10 of 1 L delivered passes, and only the relative branch can pass it.
+    """A residual of 9e-10 of 1 L delivered passes, and only the relative branch can pass it.
 
-    At 9e-10 L the residual is 900 times the absolute tolerance, so this is
-    the relative threshold on its own — which is the branch that governs any
-    real case, because a case delivering litres reaches an absolute residual
-    of 1e-12 L within its first minute.
+    At 9e-10 L the residual is 900 times the absolute tolerance, so this case
+    tests the relative threshold on its own. The relative branch is the one
+    that decides any real case. A case that delivers litres of agent reaches an
+    absolute residual of 1e-12 L within its first minute.
     """
 
     residual_l = INSIDE_THE_THRESHOLD * DOCUMENTED_RELATIVE_TOLERANCE * RELATIVE_BRANCH_DELIVERED_L
@@ -381,7 +394,7 @@ def test_a_residual_inside_the_relative_tolerance_passes_on_the_relative_branch(
 
 
 def test_a_residual_outside_the_relative_tolerance_halts_the_run() -> None:
-    """1.1e-9 of 1 L delivered fails, with neither branch able to admit it."""
+    """A residual of 1.1e-9 of 1 L delivered fails, because neither branch can pass it."""
 
     residual_l = OUTSIDE_THE_THRESHOLD * DOCUMENTED_RELATIVE_TOLERANCE * RELATIVE_BRANCH_DELIVERED_L
 
@@ -395,12 +408,13 @@ def test_a_residual_outside_the_relative_tolerance_halts_the_run() -> None:
 
 
 def test_a_residual_inside_the_absolute_tolerance_passes_on_the_absolute_branch() -> None:
-    """9e-13 L passes against 1 µL delivered, with the relative branch out of reach.
+    """A residual of 9e-13 L passes against 1 µL delivered, with the relative branch out of reach.
 
     The relative error here is 9e-7, nine hundred times the relative
-    tolerance, so the disjunction in `check_agent_accounting()` is what admits
-    this residual: a rounding at the scale of a few steps' delivery is not a
-    conservation failure, and the absolute branch is what says so.
+    tolerance. So this residual passes only because `check_agent_accounting()`
+    passes a residual that meets either branch. A rounding error at the scale
+    of a few steps' delivery is not a conservation failure, and the absolute
+    branch is what lets it pass.
     """
 
     residual_l = INSIDE_THE_THRESHOLD * DOCUMENTED_ABSOLUTE_TOLERANCE_L
@@ -414,7 +428,7 @@ def test_a_residual_inside_the_absolute_tolerance_passes_on_the_absolute_branch(
 
 
 def test_a_residual_outside_the_absolute_tolerance_halts_the_run() -> None:
-    """1.1e-12 L fails against 1 µL delivered, with neither branch able to admit it."""
+    """A residual of 1.1e-12 L fails against 1 µL delivered, because neither branch can pass it."""
 
     residual_l = OUTSIDE_THE_THRESHOLD * DOCUMENTED_ABSOLUTE_TOLERANCE_L
 
@@ -431,16 +445,17 @@ def test_the_absolute_tolerance_admits_a_residual_exactly_at_the_threshold() -> 
     """A residual of exactly 1e-12 L passes, because the specification is inclusive.
 
     `docs/MODEL.md` § "Mass-balance test" writes the condition as
-    |epsilon_M| <= epsilon_absolute,max, so a residual of exactly the tolerance
-    is a pass. Tightening the comparison to `<` would change the documented
-    condition rather than a value, and the cases above — placed 10% either side
-    — cannot see it; this is the only case that can.
+    |epsilon_M| <= epsilon_absolute,max, so a residual exactly equal to the
+    tolerance passes. Tightening the comparison to `<` would change the
+    documented condition rather than a value. The cases above sit 10% on either
+    side of the threshold, so they cannot detect that change. This is the only
+    case that can.
 
-    The construction is exact rather than approximate, which is what makes an
-    equality boundary testable at all. A picolitre delivered, nothing exhausted
-    and nothing stored leaves the residual as the delivered amount itself: no
-    subtraction of neighbouring quantities, so nothing is rounded, and the
-    result is the same double the tolerance is written as. The relative branch
+    The residual is built exactly rather than approximately, which is what
+    makes an equality boundary testable at all. With a picolitre delivered,
+    nothing exhausted and nothing stored, the residual is the delivered amount
+    itself. No nearly equal quantities are subtracted, so nothing is rounded,
+    and the residual is the same double as the tolerance. The relative branch
     is far out of reach, at a relative error of 1.
     """
 
@@ -458,19 +473,20 @@ def test_the_absolute_tolerance_admits_a_residual_exactly_at_the_threshold() -> 
 
 
 def test_the_relative_tolerance_admits_a_residual_exactly_at_the_threshold() -> None:
-    """A relative residual of exactly 1e-9 passes, on the same inclusive reading.
+    """A relative residual of exactly 1e-9 passes, because this condition is inclusive too.
 
-    Exact for the same reason, by a different route: a litre delivered and a
-    litre exhausted cancel to zero, so the residual is the nanolitre left in
-    the store and nothing is rounded, and dividing it by an accounting scale of
-    exactly 1 L leaves the same double the tolerance is written as. Building it
-    the obvious way — storing a litre less a nanolitre — would round the
-    residual by about 5e-17 and settle the case on whichever side of the
-    threshold that rounding happened to fall.
+    This residual is also built exactly, by a different route. A litre
+    delivered and a litre exhausted cancel to zero, so the residual is the
+    nanolitre left in the store, and nothing is rounded. Dividing that residual
+    by an accounting scale of exactly 1 L gives the same double as the
+    tolerance. The obvious construction would store a litre less a nanolitre.
+    That would round the residual by about 5e-17, and the case would land on
+    whichever side of the threshold the rounding happened to put it.
 
-    The residual is negative here: agent in the store that the identity says
-    should not be there. Both branches read `absolute_error_l`, so the guard is
-    symmetric, and the tests above approach each threshold from the other side.
+    The residual is negative here. The store holds agent that the identity
+    says should not be there. Both branches use `absolute_error_l`, so the
+    guard treats a surplus and a shortfall alike. The tests above approach each
+    threshold from the other side.
     """
 
     residual_l = DOCUMENTED_RELATIVE_TOLERANCE * RELATIVE_BRANCH_DELIVERED_L
@@ -492,19 +508,21 @@ def test_the_relative_tolerance_admits_a_residual_exactly_at_the_threshold() -> 
 def test_the_scale_floor_carries_the_relative_error_before_anything_is_delivered() -> None:
     """`MINIMUM_RELATIVE_SCALE_L` is the denominator when the accounting scale is zero.
 
-    A period with nothing initial and nothing delivered has an accounting
-    scale of zero, so the relative error is 0/0 without the floor. Two cases:
-    an exact accounting, which is the division that would raise; and an
-    unaccounted store, whose relative error is the residual over the floor and
-    nothing else.
+    A period with no initial agent and nothing delivered has an accounting
+    scale of zero, so without the floor the relative error would be 0/0. The
+    test has two cases. The first is an exact accounting, which is the
+    division that would raise. The second is a store with agent unaccounted
+    for, whose relative error is the residual divided by the floor and nothing
+    else.
 
-    The floor decides no verdict here, and cannot. With the scale at 1e-15 L
-    the relative branch admits only a residual at or below 1e-24 L, which the
-    absolute branch at 1e-12 L already admits — so there is no pass/fail
-    boundary either side of the floor to probe, and its job is to keep the
-    reported relative error finite and meaningful. These assertions are what
-    hold it to that: moving the floor by the twelve orders of magnitude
-    `PL-B7ZV` measured moves the second one by the same twelve.
+    The floor decides no verdict here, and cannot. With the scale at 1e-15 L,
+    the relative branch passes only a residual at or below 1e-24 L, and the
+    absolute branch at 1e-12 L already passes any such residual. So there is no
+    pass/fail boundary on either side of the floor to probe. The floor's job is
+    to keep the reported relative error finite and meaningful. These assertions
+    enforce that job. Moving the floor by the twelve orders of magnitude that
+    `PL-B7ZV` measured moves the relative error in the second assertion by the
+    same twelve.
     """
 
     validator = AgentSimulationValidator()
@@ -526,24 +544,26 @@ def test_the_scale_floor_carries_the_relative_error_before_anything_is_delivered
 def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`PL-3PRZ`: the regression at an alveolar volume of 1e-300 L.
+    """Regression test for `PL-3PRZ`, at an alveolar volume of 1e-300 L.
 
-    The accounting identity above is not what failed here, and hardening it
-    would not have helped. At 1e-300 L the squarings drove the propagator to
-    the zero matrix, `propagate()` returned the zero state vector, and the
-    identity was then handed 0 + 0 - 0 - 0: it balanced, correctly, on totals
-    that had all been annihilated together. Nothing delivered, nothing
-    exhausted, nothing stored, and a reported alveolar fraction of exactly
-    0.0 - the plausible-looking number `CLAUDE.md` puts above every other
-    failure, produced with every guard in the path satisfied.
+    The accounting identity tested above is not what failed here, and making
+    it stricter would not have helped. At 1e-300 L the repeated squarings drove
+    the propagator to the zero matrix, and `propagate()` returned the zero
+    state vector. The identity was then given 0 + 0 - 0 - 0. It balanced
+    correctly, on totals that had all been wiped out together. Nothing was
+    delivered, exhausted or stored, and the reported alveolar fraction was
+    exactly 0.0. That is the plausible-looking number that `CLAUDE.md` ranks
+    as worse than every other failure, and every guard in the path was
+    satisfied when it was produced.
 
-    What fixed it is upstream, in `core/matrix_exponential.py`, which refused
-    a zero propagator because `exp(A*dt)` is nonsingular. Since `PL-2MD9` this
-    volume stops earlier, at `MAXIMUM_SQUARINGS`, and the constant state can no
-    longer be annihilated with the rest - which is why the cap is needed, since
-    restoring that state alone let this volume advance again with every other
-    entry destroyed. This test pins the end of the path rather than either
-    refusal, so it still fails if the arithmetic reverts to returning a value.
+    The fix is upstream, in `core/matrix_exponential.py`, which refused a zero
+    propagator because `exp(A*dt)` is nonsingular. Since `PL-2MD9`, the run at
+    this volume stops earlier, at `MAXIMUM_SQUARINGS`. The constant state can
+    also no longer be wiped out with the rest. That is why the cap is needed:
+    restoring the constant state alone let this volume advance again with
+    every other entry destroyed. This test pins the end of the path rather than
+    either refusal, so it still fails if the arithmetic goes back to returning
+    a value.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -557,15 +577,16 @@ def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
 
 
 def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -> None:
-    """`PL-2MD9`: the regression at an alveolar volume of 1e-18 L.
+    """Regression test for `PL-2MD9`, at an alveolar volume of 1e-18 L.
 
-    The propagator there needs 58 squarings, and each can double the error the
-    scaled propagator carries. Before the cap, every entry came back wrong by
-    about 100% and the run advanced three steps with its accounting check
-    passing: 6.4e-32 L delivered where the vaporizer had delivered 0.0004 L,
-    with the stored and exhausted totals destroyed to match. That is
-    `PL-3PRZ`'s shape again, a residual formed from quantities one failure
-    reached together, and it is refused now before any arithmetic runs.
+    At that volume the propagator needs 58 squarings, and each squaring can
+    double the error that the scaled propagator carries. Before the cap, every
+    entry came back wrong by about 100%, and the run advanced three steps with
+    its accounting check passing. It recorded 6.4e-32 L delivered where the
+    vaporizer had delivered 0.0004 L, and the stored and exhausted totals were
+    destroyed to match. That is the same failure as `PL-3PRZ`: a residual
+    formed from quantities that one failure corrupted together. The step is
+    now refused before any arithmetic runs.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -578,12 +599,12 @@ def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -
 
 
 def test_an_alveolar_volume_the_model_can_still_step_is_not_refused() -> None:
-    """The boundary the regression above must not have moved.
+    """The fix for the regressions above must not have moved this boundary.
 
-    1e-6 L is four orders below anything a lung reaches and the model steps it
-    without complaint, which is the behaviour recorded in `PL-3PRZ`'s table
-    before the fix. A guard that took this with it would have traded a silent
-    wrong answer for a refusal of the model's own working range.
+    1e-6 L is four orders of magnitude less than any real lung volume, and the
+    model steps it without complaint. `PL-3PRZ`'s table recorded that behaviour
+    before the fix. A guard that also refused this volume would have traded a
+    silent wrong answer for a refusal of the model's own working range.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
