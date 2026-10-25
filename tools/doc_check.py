@@ -454,6 +454,10 @@ ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 APPARATUS_MAP = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
 MODEL = Path("docs/MODEL.md")
+# The documents whose restated numbers are held to their homes (`PL-JS6P`).
+# `docs/MODEL.md` is the specification, and `README.md` is the page a new
+# reader trusts first.
+PROVENANCE_DOCUMENTS = (MODEL, Path("README.md"))
 
 
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
@@ -939,12 +943,24 @@ NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 # inputs this figure was computed from have moved"; what it never decides is
 # what the new figure should be.
 #
-# A bare scan for numerals was rejected and cannot be revived: `2.5` appears in
-# `docs/MODEL.md` as an alveolar volume, a solver tolerance in seconds and a
-# fresh-gas flow, and `4 L/min` appears as both the reference adult's alveolar
-# ventilation and an unrelated fresh-gas rate. A check that bound those to a
-# key would be confidently wrong in exactly the places a reader trusts most.
-PROSE_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived):\s*(?P<body>.+?)\s*-->$")
+# A bare scan that bound numerals to keys was rejected and cannot be revived:
+# `2.5` appears in `docs/MODEL.md` as an alveolar volume, a solver tolerance in
+# seconds and a fresh-gas flow, and `4 L/min` appears as both the reference
+# adult's alveolar ventilation and an unrelated fresh-gas rate. A check that
+# bound those to a key would be confidently wrong in exactly the places a
+# reader trusts most.
+#
+# **A third kind, `not-restated:`, is what lets a scan find without binding**
+# (`PL-JS6P`). `check_untied_restatements` finds each number that equals a
+# stored value in that value's unit, and asks the writer to say which it is. A
+# `provenance:` or `derived:` marker says it is the stored value. A
+# `not-restated:` marker lists the figures in its paragraph that only coincide
+# with one, such as `<!-- not-restated: 4 L/min, 2 % -->`. The scan decides
+# only that a figure equals a stored value and nobody has said why. Which
+# value it means stays the writer's judgment.
+PROSE_MARKER_RE = re.compile(
+    r"^<!--\s*(?P<kind>provenance|derived|not-restated):\s*(?P<body>.+?)\s*-->$"
+)
 
 # A path a document names *because* it is not in the tree - one the project
 # lacks (`setup.py`), a tool it plans, a file since deleted - is declared in a
@@ -961,12 +977,12 @@ ABSENT_MARKER_RE = re.compile(r"^<!--\s*absent:\s*(?P<paths>.+?)\s*-->$")
 # line at a time, as the syntax they are, so a comment carried across lines was
 # read as nothing and the claim it made went unchecked; it is refused by name
 # instead, which costs the writer one join.
-SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|absent):(?!.*-->)")
+SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|not-restated|absent):(?!.*-->)")
 #: A marker's kind after its comment's opening, on that line or a later one; a
 #: comment is read whole by `_split_markers`.
-MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|absent):")
-DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
-MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
+MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|not-restated|absent):")
+DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.(?:json|py)\s.+)$")
+MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.(?:json|py))\s+(?P<assertions>.+)$")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
 
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
@@ -2135,10 +2151,28 @@ def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
     return end, end
 
 
-def _marked_block(lines: list[str], index: int) -> str:
-    """The run of prose a marker sits under, joined; see `_marked_span`."""
+def _marked_scope(lines: Sequence[str], index: int) -> tuple[int, int]:
+    """The lines a marker speaks for, as a half-open range of `lines`.
+
+    It is the block `_marked_span` finds. Where that block is inside a list or
+    a block quote, the scope reaches back over the whole list or quote. A
+    marker cannot stand inside a list item (`_misplaced_markers`), so a marker
+    under a list is the only way to tie a figure in one of its earlier items
+    (`PL-JS6P`). A paragraph after a list is still a scope of its own, as
+    `PL-JZNV` requires.
+    """
     start, end = _marked_span(lines, index)
-    return "\n".join(lines[start:end])
+    if start == end:
+        return start, end
+    blocks = read_blocks(lines).blocks
+    position = next(
+        (at for at, block in enumerate(blocks) if (block.start, block.end) == (start, end)), None
+    )
+    if position is None or blocks[position].depth == 0:
+        return start, end
+    while position > 0 and blocks[position - 1].depth > 0:
+        position -= 1
+    return blocks[position].start, end
 
 
 def _marker_assertions(
@@ -2153,7 +2187,8 @@ def _marker_assertions(
     source = MARKER_SOURCE_RE.match(body)
     if source is None:
         report.errors.append(
-            f"{where}: expected `<data file>.json <key> = <value>, ...`, found {body!r}"
+            f"{where}: expected `<data file>.json <key> = <value>, ...` or "
+            f"`<module>.py <CONSTANT> = <value>, ...`, found {body!r}"
         )
         return None
 
@@ -2162,7 +2197,14 @@ def _marker_assertions(
     if not data_path.is_file():
         report.errors.append(f"{where}: cites {relative}, which does not exist")
         return None
-    document = json.loads(data_path.read_text(encoding="utf-8"))
+    if data_path.suffix == ".py":
+        try:
+            document: object = module_constants(data_path)
+        except (SyntaxError, ValueError, *UNREADABLE) as error:
+            report.errors.append(f"{where}: cites {relative}, which cannot be read: {error}")
+            return None
+    else:
+        document = json.loads(data_path.read_text(encoding="utf-8"))
 
     resolved: list[tuple[str, str, float, float]] = []
     for clause in source.group("assertions").split(","):
@@ -2180,6 +2222,46 @@ def _marker_assertions(
             return None
         resolved.append((relative, key_path, stated, stored))
     return resolved
+
+
+def module_constants(path: Path) -> dict[str, float]:
+    """Each module-level constant in `path` that is written as a number.
+
+    A constant counts when its value is a number literal, a negated one, or a
+    call with one such argument and nothing else, as in
+    `SIMULATION_STEP_S: Final = SimulationStep(0.1)`. The module is parsed and
+    never imported, so reading it runs none of its code. A constant computed
+    from others is left out, because only running the module could say what
+    it holds.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    constants: dict[str, float] = {}
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+            target, value = statement.targets[0], statement.value
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            target, value = statement.target, statement.value
+        else:
+            continue
+        if not isinstance(target, ast.Name):
+            continue
+        if isinstance(value, ast.Call) and len(value.args) == 1 and not value.keywords:
+            value = value.args[0]
+        number = _number_literal(value)
+        if number is not None:
+            constants[target.id] = number
+    return constants
+
+
+def _number_literal(node: ast.expr) -> float | None:
+    """The number `node` is written as, or `None` when it is anything else."""
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        inner = _number_literal(node.operand)
+        return None if inner is None else -inner
+    if isinstance(node, ast.Constant) and not isinstance(node.value, bool):
+        if isinstance(node.value, (int, float)):
+            return float(node.value)
+    return None
 
 
 def check_prose_provenance(root: Path, report: Report) -> None:
@@ -2210,18 +2292,35 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     anywhere else - at a sentence's end, in a block quote - is refused by name
     (`_misplaced_markers`, `PL-Y6LP`).
     """
-    path = root / MODEL
-    if not path.is_file():
-        return  # `check_provenance` has already reported the missing document.
+    markers = 0
+    for document in PROVENANCE_DOCUMENTS:
+        path = root / document
+        if path.is_file():
+            markers += _check_prose_markers(
+                root, document, path.read_text(encoding="utf-8"), report
+            )
+    # A missing `docs/MODEL.md` has already been reported by `check_provenance`.
+    if not markers and (root / MODEL).is_file():
+        report.errors.append(
+            f"{MODEL}: no `<!-- provenance: ... -->` or `<!-- derived: ... -->` markers found; "
+            "either every marked value was removed or the format changed and this check has "
+            "gone blind"
+        )
 
-    text = path.read_text(encoding="utf-8")
+
+def _check_prose_markers(root: Path, document: Path, text: str, report: Report) -> int:
+    """Hold one document's `provenance:` and `derived:` markers to their homes.
+
+    Returns how many markers it read, so `check_prose_provenance` can tell a
+    document whose markers were all removed from one that never had any.
+    """
     lines = split_lines(text)
     fenced = _fenced_lines(text)
     split = {index: kind for index, kind in _split_markers(lines).items() if kind != "absent"}
     openings = _marker_lines(lines)
     for index, kind in _misplaced_markers(lines, _without_code(text)).items():
         if kind != "absent":
-            report.errors.append(_misplaced_marker(MODEL, index + 1, kind))
+            report.errors.append(_misplaced_marker(document, index + 1, kind))
     markers = 0
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
@@ -2231,15 +2330,17 @@ def check_prose_provenance(root: Path, report: Report) -> None:
         if index in fenced:
             continue
         if index in split:
-            report.errors.append(_split_marker(MODEL, index + 1, split[index]))
+            report.errors.append(_split_marker(document, index + 1, split[index]))
             continue
         if index not in openings:
             continue
         match = PROSE_MARKER_RE.match(line.strip())
-        if match is None:
+        # A `not-restated:` marker names no home, so `check_untied_restatements`
+        # is the check that reads it.
+        if match is None or match.group("kind") == "not-restated":
             continue
         markers += 1
-        where = f"{MODEL} (line {index + 1})"
+        where = f"{document} (line {index + 1})"
         kind, body = match.group("kind"), match.group("body")
 
         figure = ""
@@ -2248,7 +2349,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
             if derived is None:
                 report.errors.append(
                     f"{where}: a `derived:` marker reads `<figure> from <data file>.json "
-                    f"<key> = <value>, ...`; this one is {body!r}"
+                    f"<key> = <value>, ...` or `<figure> from <module>.py <CONSTANT> = "
+                    f"<value>, ...`; this one is {body!r}"
                 )
                 continue
             figure, body = derived.group("figure"), derived.group("rest")
@@ -2257,8 +2359,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
         if resolved is None:
             continue
 
-        block = _marked_block(lines, index)
-        in_prose = {float(number) for number in NUMBER_RE.findall(block)}
+        start, end = _marked_scope(lines, index)
+        in_prose = {float(number) for number in NUMBER_RE.findall("\n".join(lines[start:end]))}
 
         for relative, key_path, stated, stored in resolved:
             if stated != stored:
@@ -2289,12 +2391,256 @@ def check_prose_provenance(root: Path, report: Report) -> None:
                     "above; the marker is attached to the wrong paragraph"
                 )
 
-    if not markers:
-        report.errors.append(
-            f"{MODEL}: no `<!-- provenance: ... -->` or `<!-- derived: ... -->` markers found; "
-            "either every marked value was removed or the format changed and this check has "
-            "gone blind"
-        )
+    return markers
+
+
+#: Each unit a stored value can carry, read from the end of its data key or its
+#: constant's name, and how prose writes that unit. Longer endings come first,
+#: so `_l_min` is read before `_l`.
+UNIT_ENDINGS: tuple[tuple[str, str], ...] = (
+    ("_l_min", "L/min"),
+    ("_l", "L"),
+    ("_percent", "%"),
+    ("_kg", "kg"),
+    ("_s", "s"),
+    ("_mac", "MAC"),
+)
+
+#: A number in prose and the unit written after it, if any. A digit, letter, dot
+#: or comma on either side means the numeral is part of something else, such as
+#: a version, an identifier or a longer number. A space or a no-break space may
+#: stand between the number and its unit, and `×MAC` is read as `MAC`.
+PROSE_FIGURE_RE = re.compile(
+    r"(?<![\w.,/])(?P<number>\d+(?:\.\d+)?)"
+    r"(?:[ \u00a0]?×?(?P<unit>L/min|L|%|kg|s|MAC)(?![\w/]))?"
+    r"(?![\w]|[.,]\d)"
+)
+
+#: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
+LISTED_FIGURE_RE = re.compile(r"^(?P<number>\d+(?:\.\d+)?)(?:[ \u00a0]?×?(?P<unit>\S+))?$")
+
+#: An HTML comment written inside a line, which holds no prose.
+INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")
+
+
+@dataclass(frozen=True)
+class StoredValue:
+    """A number the simulator stores, where it is stored, and the unit it is in.
+
+    `unit` is `None` for a data-file value that has no unit, such as a
+    partition coefficient or a fraction of MAC. Prose writes such a value as a
+    bare decimal.
+    """
+
+    home: str
+    name: str
+    value: float
+    unit: str | None
+
+
+def _unit_of(name: str) -> str | None:
+    """The unit `name`'s ending declares, or `None` when it declares none."""
+    lowered = name.lower()
+    return next((unit for ending, unit in UNIT_ENDINGS if lowered.endswith(ending)), None)
+
+
+def stored_values(root: Path) -> list[StoredValue]:
+    """Every number a restatement in prose could repeat, with its unit.
+
+    These are each number in a parameter data file, and each public
+    module-level constant in the package whose name ends in a unit. A constant
+    with no unit in its name is left out: most are layout sizes, counts and
+    indices, and matching them would ask a writer about numbers no prose
+    restates. Zero is left out too, because it is in nearly every paragraph
+    and never names a particular value.
+    """
+    found: list[StoredValue] = []
+    package = root / PACKAGE_ROOT
+
+    def leaves(node: object, path: tuple[str, ...]) -> Iterator[tuple[str, float]]:
+        if isinstance(node, dict):
+            for key, child in node.items():
+                if not path and key in NON_PARAMETER_KEYS:
+                    continue
+                yield from leaves(child, (*path, str(key)))
+        elif isinstance(node, (int, float)) and not isinstance(node, bool):
+            yield ".".join(path), float(node)
+
+    for data in parameter_data_files(root):
+        relative = data.relative_to(package).as_posix()
+        document = json.loads(data.read_text(encoding="utf-8"))
+        for key, value in leaves(document, ()):
+            if value:
+                found.append(StoredValue(relative, key, value, _unit_of(key)))
+
+    for module in sorted(package.rglob("*.py")):
+        if IGNORED_DIRS.intersection(module.relative_to(root).parts):
+            continue
+        relative = module.relative_to(package).as_posix()
+        try:
+            constants = module_constants(module)
+        except (SyntaxError, ValueError, *UNREADABLE):
+            # The source-docstring check names a module this interpreter cannot
+            # read as declined, so it is not passed over in silence.
+            continue
+        for name, value in constants.items():
+            unit = _unit_of(name)
+            if value and unit is not None and not name.startswith("_") and name.isupper():
+                found.append(StoredValue(relative, name, value, unit))
+    return found
+
+
+def _matches(figure: tuple[float, str | None], stored: StoredValue, written: str) -> bool:
+    """Whether a prose figure states `stored`: the same value, in the same unit.
+
+    A value with no unit matches only a bare decimal, so a whole number such
+    as a count or a section number is never taken for a coefficient.
+    """
+    value, unit = figure
+    if value != stored.value:
+        return False
+    if stored.unit is None:
+        return unit is None and "." in written
+    return unit == stored.unit
+
+
+def _prose_lines(text: str, lines: Sequence[str]) -> list[str]:
+    """`lines` with code, math, comments and the provenance table blanked.
+
+    Code and math are blanked by `_without_code`. A line in an HTML block,
+    which holds the markers themselves, and an inline comment are blanked
+    too. So is each row of the provenance table, which `check_provenance`
+    already holds to the data files.
+    """
+    prose = _without_code(text)
+    hidden: set[int] = set()
+    if any("<!--" in line for line in lines):
+        for block in read_blocks(lines).blocks:
+            if block.kind == HTML:
+                hidden.update(range(block.start, block.end))
+    rows, _ = _provenance_rows(text)
+    if rows:
+        first = min(line for line, _ in rows)
+        hidden.update(range(first - 3, max(line for line, _ in rows)))
+    return [
+        "" if index in hidden else INLINE_COMMENT_RE.sub("", line)
+        for index, line in enumerate(prose[: len(lines)])
+    ]
+
+
+def _marker_ties(
+    lines: Sequence[str], fenced: Collection[int], report: Report, document: Path
+) -> list[tuple[int, int, set[float], set[tuple[float, str | None]], int]]:
+    """Each marker's scope, the values it ties there, and the figures it lists.
+
+    Each entry is the scope's first line and one past its last, the values its
+    `provenance:` and `derived:` markers name, the figures its `not-restated:`
+    markers list, and the line of the last of those markers.
+    """
+    scopes: dict[tuple[int, int], tuple[set[float], set[tuple[float, str | None]], int]] = {}
+    openings = _marker_lines(lines)
+    for index, line in enumerate(lines):
+        if index in fenced or index not in openings:
+            continue
+        match = PROSE_MARKER_RE.match(line.strip())
+        if match is None:
+            continue
+        scope = _marked_scope(lines, index)
+        values, listed, _ = scopes.get(scope, (set(), set(), index))
+        kind, body = match.group("kind"), match.group("body")
+        if kind == "not-restated":
+            for figure in body.split(","):
+                parsed = LISTED_FIGURE_RE.match(figure.strip())
+                if parsed is None:
+                    report.errors.append(
+                        f"{document} (line {index + 1}): a `not-restated:` marker lists "
+                        f"figures such as `4 L/min` or `0.65`, separated by commas; "
+                        f"{figure.strip()!r} is not one"
+                    )
+                    continue
+                unit = parsed.group("unit")
+                listed.add((float(parsed.group("number")), unit))
+        else:
+            values.update(float(number) for number in NUMBER_RE.findall(body))
+        scopes[scope] = (values, listed, index)
+    return [
+        (start, end, values, listed, at) for (start, end), (values, listed, at) in scopes.items()
+    ]
+
+
+def check_untied_restatements(root: Path, report: Report) -> None:
+    """Refuse a number that equals a stored value and that no marker explains.
+
+    `check_prose_provenance` holds a marked number to its home. This check
+    finds the numbers nobody marked (`PL-JS6P`). It reads each figure in
+    `docs/MODEL.md` and `README.md` that equals a stored value in that value's
+    unit (`stored_values`). The figure must sit under a marker that says what
+    it is. A `provenance:` or `derived:` marker naming the value says it is
+    the stored value, or was computed from it. A `not-restated:` marker
+    listing the figure says it only coincides with one.
+
+    The check never decides which kind a figure is. `4 L/min` in this
+    document is the reference adult's alveolar ventilation in one sentence
+    and a fresh gas flow in another, so that choice stays the writer's
+    judgment. What the check decides is that the choice was made. So a
+    restated number cannot go stale silently, because it is either tied to
+    its home or declared not to be a restatement.
+
+    A `not-restated:` marker that lists a figure no stored value in its scope
+    equals is refused too, so a declaration cannot outlive its sentence.
+    """
+    homes = stored_values(root)
+    for document in PROVENANCE_DOCUMENTS:
+        path = root / document
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        lines = split_lines(text)
+        fenced = _fenced_lines(text)
+        prose = _prose_lines(text, lines)
+        ties = _marker_ties(lines, fenced, report, document)
+        claimed: set[tuple[int, tuple[float, str | None]]] = set()
+
+        for index, line in enumerate(prose):
+            if index in fenced:
+                continue
+            for found in PROSE_FIGURE_RE.finditer(line):
+                written = found.group("number")
+                figure = (float(written), found.group("unit"))
+                matching = [home for home in homes if _matches(figure, home, written)]
+                if not matching:
+                    continue
+                scope = next((tie for tie in ties if tie[0] <= index < tie[1]), None)
+                if scope is not None and figure[0] in scope[2]:
+                    continue
+                if scope is not None and figure in scope[3]:
+                    claimed.add((scope[4], figure))
+                    continue
+                home = matching[0]
+                shown = written if figure[1] is None else f"{written} {figure[1]}"
+                others = (
+                    f", or one of {len(matching) - 1} other stored values"
+                    if len(matching) > 1
+                    else ""
+                )
+                report.errors.append(
+                    f"{document}:{index + 1}: {shown} equals {home.home} {home.name} = "
+                    f"{home.value:g}{others}, and no marker under its paragraph says what it "
+                    f"is. If it restates that value, add `<!-- provenance: {home.home} "
+                    f"{home.name} = {home.value:g} -->` on a line of its own under the "
+                    f"paragraph. If it only coincides, add `<!-- not-restated: {shown} -->`"
+                )
+
+        for _, _, _, listed, at in ties:
+            for figure in sorted(listed, key=lambda pair: (pair[0], pair[1] or "")):
+                if (at, figure) not in claimed:
+                    number, unit = figure
+                    shown = f"{number:g}" if unit is None else f"{number:g} {unit}"
+                    report.errors.append(
+                        f"{document} (line {at + 1}): the `not-restated:` marker lists {shown}, "
+                        "which is not a figure in the paragraph above that equals a stored "
+                        "value; remove it from the marker"
+                    )
 
 
 def check_timeline(root: Path, report: Report) -> None:
@@ -9023,6 +9369,7 @@ def _analyze(root: Path) -> Report:
     check_provenance(root, report)
     check_source_tiers(root, report)
     check_prose_provenance(root, report)
+    check_untied_restatements(root, report)
     check_citations(root, documents, report)
     check_line_citations(root, documents, report)
     check_quoted_sources(root, documents, report)
