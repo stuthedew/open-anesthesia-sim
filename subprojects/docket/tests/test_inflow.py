@@ -222,6 +222,56 @@ def test_a_line_a_successor_head_answers_names_it() -> None:
     assert "successor PL-0HD1 (ready)" in answered
 
 
+def test_a_line_re_entered_after_its_successors_closed_lists_as_open_again() -> None:
+    """`PL-SFW9`: a closed successor answers a line only until three later filings.
+
+    A successor's answer held whatever its status, so `PL-5DZ8` read as settled
+    by `PL-4S6C` (done) while `PL-TSXD` re-entered it. The count runs from the
+    last successor's close. An open successor answers whatever comes after it.
+    """
+    members = [_item(f"PL-0MB{n}", date(2026, 9, 1), touches=("src/c.py",)) for n in (1, 2, 3)]
+    first = _item(
+        "PL-0HD1",
+        date(2026, 9, 3),
+        closed=date(2026, 9, 5),
+        reenters=("PL-FXD0",),
+        root_cause_of=("PL-0MB1", "PL-0MB2", "PL-0MB3"),
+    )
+    second = _item(
+        "PL-0HD2",
+        date(2026, 9, 6),
+        closed=date(2026, 9, 9),
+        reenters=("PL-FXD0",),
+        root_cause_of=("PL-0MB1", "PL-0MB2", "PL-0MB3"),
+    )
+    early = [_item(f"PL-0RC{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (1, 2)]
+    # Filed after the first successor closed but not after the second.
+    between = [_item(f"PL-0RD{n}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (7, 8)]
+    later = [_item(f"PL-0RF{n - 9}", date(2026, 9, n), reenters=("PL-FXD0",)) for n in (10, 11, 12)]
+    store = [FIXED, *members, first, second, *early, *between]
+
+    settled = analyze([*store, *later[:2]], CONFIG, today=date(2026, 9, 14))
+    assert settled.successors == {"PL-FXD0": (first, second)}
+
+    reopened = analyze([*store, *later], CONFIG, today=date(2026, 9, 14))
+    assert "PL-FXD0" in reopened.reentered
+    assert reopened.successors == {}
+    text = format_inflow(reopened)
+    assert "PL-FXD0  by" in text.split("a generator whose fix did not hold:")[1]
+    assert "answered by a successor" not in text
+
+    still_open = _item(
+        "PL-0HD2",
+        date(2026, 9, 6),
+        reenters=("PL-FXD0",),
+        root_cause_of=("PL-0MB1", "PL-0MB2", "PL-0MB3"),
+    )
+    working = [FIXED, *members, first, still_open, *early, *between, *later]
+    assert analyze(working, CONFIG, today=date(2026, 9, 14)).successors == {
+        "PL-FXD0": (first, still_open)
+    }
+
+
 def test_a_line_answered_with_no_successor_is_listed_apart() -> None:
     """`PL-C4F0`: an item whose `no-successor:` names the line answers it, until three more.
 

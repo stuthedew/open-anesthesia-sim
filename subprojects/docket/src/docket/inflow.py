@@ -33,7 +33,9 @@ head's fix did not hold carries its own `reenters:` naming that head
 (`PL-4097`), so it is counted among the re-entries it explains. The list names
 it as the line's successor, read from the same record by `model.is_generator`,
 so a reader can tell a settled line from an open one without knowing which
-filings are heads (`PL-0WT0`).
+filings are heads (`PL-0WT0`). The answer holds while any successor is open.
+Once every successor has closed, three filings that re-enter the line after
+the last one closed list it as open again, as below (`PL-SFW9`).
 
 **So does a line answered with no successor owed.** The item that gives that
 answer names the line in its own `no-successor:` field, and the list names
@@ -183,7 +185,9 @@ class Inflow:
     #: For each id in `reentered` a successor answers, the heads whose
     #: `reenters:` names it, by id. Read over every item rather than over the
     #: filings counted, since the record makes a head the successor whether or
-    #: not its own `touches` made it an apparatus filing.
+    #: not its own `touches` made it an apparatus filing. A line whose heads
+    #: have all closed is left out once `MIN_ROOT_CAUSE_ITEMS` filings re-enter
+    #: it after the last head closed.
     successors: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
     #: For each id in `reentered` with no successor, the items whose
     #: `no-successor:` names it and which fewer than `MIN_ROOT_CAUSE_ITEMS`
@@ -280,9 +284,10 @@ def analyze(
         if len(filed) >= MIN_ROOT_CAUSE_ITEMS
     }
     known = {item.identifier for item in items if item.identifier}
+    added = {item.identifier: item.added for item in items}
     successors = {
         closed: heads
-        for closed in reentered
+        for closed, filed in reentered.items()
         if (
             heads := tuple(
                 sorted(
@@ -295,8 +300,8 @@ def analyze(
                 )
             )
         )
+        and _successors_hold(heads, filed, added)
     }
-    added = {item.identifier: item.added for item in items}
     answered = {
         closed: answers
         for closed, filed in reentered.items()
@@ -324,6 +329,25 @@ def analyze(
         successors=successors,
         answered=answered,
     )
+
+
+def _successors_hold(
+    heads: Sequence[Item], filed: Sequence[str], added: Mapping[str, date | None]
+) -> bool:
+    """Whether `heads` still answer a line that `filed` re-enter.
+
+    An open head is still working on the line, so it answers it. Once every
+    head has closed, the line counts as answered only until
+    `MIN_ROOT_CAUSE_ITEMS` filings re-enter it after the last head closed,
+    which is the test a `no-successor:` answer already meets (`PL-SFW9`).
+    A closed head with no `closed:` date gives no date to count from, so
+    every filing counts against it.
+    """
+    if any(head.is_open for head in heads):
+        return True
+    dates = [head.closed for head in heads]
+    last = None if None in dates else max(day for day in dates if day is not None)
+    return _reentered_after(filed, added, last) < MIN_ROOT_CAUSE_ITEMS
 
 
 def _reentered_after(

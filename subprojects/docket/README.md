@@ -1712,7 +1712,9 @@ item three filings re-enter is named under the table as a generator whose fix
 did not hold. Where a head's own `reenters:` names that item, the head is its
 successor (`PL-4097`), and the line is listed apart under a heading of its own,
 naming the successor and its status, so a settled line does not read as an open
-one (`PL-0WT0`). A line answered with no successor owed is listed apart under a
+one (`PL-0WT0`). The successor answers the line while any successor is open.
+Once every successor has closed, three filings that re-enter the line after the
+last one closed list it as open again (`PL-SFW9`). A line answered with no successor owed is listed apart under a
 third heading. The item that records that answer names the line in its own
 `no-successor:` field, and the list names that item and its status
 (`PL-C4F0`). Three filings that re-enter the line after the answer's date,
