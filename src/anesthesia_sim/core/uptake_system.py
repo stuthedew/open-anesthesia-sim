@@ -1,18 +1,19 @@
-"""Couples the breathing circuit, alveolar compartment, and patient
-compartments into one steppable system, and builds that system from the agent,
-reference-patient and apparatus parameter files via `for_agent()`.
+"""Couple the breathing circuit, alveolar and patient compartments into one steppable system.
 
-Named for uptake rather than for anatomy. What this module owns is agent
-moving from the circuit through the alveoli into blood and tissue, which is
-what "uptake" names in inhaled-anesthetic pharmacology. Only `alveoli` is
-respiratory in the clinical sense: `circuit` is anesthesia-machine equipment,
-and `patient` holds the vessel-rich, muscle and fat compartments.
+The module also builds that system from the agent, reference-patient and
+apparatus parameter files, through `for_agent()`.
 
-The distinction is not cosmetic. `total_stored_agent_l` sums all of them and
-feeds the conservation check that can halt a run, and at steady state most of
-that agent is in fat and muscle - so a reader who took the previous name
-"RespiratorySystem" at face value would read that quantity as agent in the
-lungs, and be wrong by a large factor on an accounting quantity (PL-006).
+The module is named for uptake rather than for anatomy. It owns the movement of
+agent from the circuit through the alveoli into blood and tissue, and that
+movement is what "uptake" means in inhaled-anesthetic pharmacology. Only
+`alveoli` is respiratory in the clinical sense. `circuit` is anesthesia-machine
+equipment, and `patient` holds the vessel-rich, muscle and fat compartments.
+
+The distinction matters. `total_stored_agent_l` sums all of these compartments
+and feeds the conservation check that can halt a run. At steady state, most of
+that agent is in fat and muscle. So a reader who took the previous name,
+"RespiratorySystem", at face value would treat that quantity as agent in the
+lungs, and would be wrong by a large factor on an accounting quantity (PL-006).
 """
 
 from __future__ import annotations
@@ -71,14 +72,15 @@ class UptakeStepResult:
 
 @dataclass(frozen=True, slots=True)
 class AgentUptakeSystemState:
-    """Every dynamic value one simulation step can change.
+    """Every dynamic value that one simulation step can change.
 
-    The counterpart of `UptakeStepResult`: that reports what a step
-    did, this records what it would have to undo. Each entry is captured by
-    the compartment that owns it rather than read out of it here, so that a
-    dynamic field added to a compartment later without a matching capture
-    is a local omission in one file rather than a partial restore that
-    looks complete. `advance()` says what it is for.
+    This record is the counterpart of `UptakeStepResult`. That record reports
+    what a step did, and this one records what a failed step would have to
+    undo. The compartment that owns each entry captures it, rather than this
+    module reading it out. So if a dynamic field is added to a compartment
+    later without a matching capture, the omission is local to one file. It
+    does not become a partial restore that looks complete. `advance()` explains
+    what this record is for.
     """
 
     circuit: BreathingCircuitState
@@ -91,19 +93,20 @@ class AgentUptakeSystemState:
 class AgentUptakeSystem:
     """Coupled circuit, alveolar gas, and patient compartments.
 
-    The four forwarding setters below are this system's control surface, and
-    what defines the set is that they are the live user-controllable inputs:
-    fresh gas flow and delivered concentration are machine controls, alveolar
-    ventilation and cardiac output are patient state, and the four are
-    exactly the sliders the interface exposes. They forward rather than
-    validate - each compartment keeps its own guard - so what they add is one
-    place a caller can reach every setting that may change during a run
-    without having to know which compartment holds it.
+    The four forwarding setters below are this system's control surface. They
+    form a set because they are the inputs that a user can change during a run.
+    Fresh gas flow and delivered concentration are machine controls, alveolar
+    ventilation and cardiac output are patient state, and the four are exactly
+    the sliders that the interface exposes. The setters forward each value
+    rather than validate it, because each compartment keeps its own guard. What
+    they add is one place where a caller can reach every setting that may
+    change during a run, without having to know which compartment holds it.
 
     A setting outside that set is reached through the compartment that owns
-    it. Circuit volume is `system.circuit.set_circuit_volume()`, because it
-    is a property of the rig rather than something a clinician turns mid-run,
-    and adding it here would make this set mean nothing in particular.
+    it. Circuit volume is set through `system.circuit.set_circuit_volume()`,
+    because it is a property of the equipment rather than something a
+    clinician changes during a run. Adding it here would make the set mean
+    nothing in particular.
     """
 
     circuit: BreathingCircuit
@@ -116,11 +119,12 @@ class AgentUptakeSystem:
     _propagator_key: tuple[float, ...] | None = field(
         default=None, init=False, repr=False, compare=False
     )
-    """The step and the raw compartment values the cached propagator was built for.
+    """The step and the raw compartment values that the cached propagator was built for.
 
-    Not captured by `capture_state()` and not restored: a propagator is a
-    function of the settings, which a step never writes and a rollback never
-    changes, so the cache is still correct for whatever the rollback left.
+    `capture_state()` does not capture this key, and a rollback does not restore
+    it. A propagator is a function of the settings. A step never writes the
+    settings and a rollback never changes them, so the cache is still correct
+    for whatever state the rollback left.
     """
 
     def __post_init__(self) -> None:
@@ -213,7 +217,7 @@ class AgentUptakeSystem:
 
     @property
     def total_stored_agent_l(self) -> float:
-        """Return agent currently stored in every compartment."""
+        """Return the total agent currently stored across all compartments."""
 
         return (
             self.circuit.agent_amount_l
@@ -242,75 +246,77 @@ class AgentUptakeSystem:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
-        """Advance one conservative, validated simulation step, or none.
+        """Advance the system by one conservative, validated step, or leave it unchanged.
 
         The step is all-or-nothing. `_advance_step()` applies five
-        sub-exchanges in sequence, and a guard can reject the fifth after
-        the first four have already written their compartments; so this
-        method captures every dynamic value first and restores it on any
-        exit that is not a completed step, leaving the system bit-identical
-        to what it was on entry.
+        sub-exchanges in sequence, and a guard can reject the fifth after the
+        first four have already written their compartments. So this method
+        captures every dynamic value first. It restores those values on any
+        exit that is not a completed step, which leaves the system
+        bit-identical to what it was on entry.
 
-        The rollback is on the unwind path rather than in an `except`
-        clause, so "any exit" means any: a `BaseException` — the reachable
-        one being `KeyboardInterrupt`, since `_advance_step()` contains no
-        `await` for a cancellation to arrive at — unwinds through it like
-        anything else. Enumerating exception types instead left exactly
-        that hole, measured before this changed: raising a `BaseException`
-        after the circuit had been written left
-        `inspired_partial_pressure_fraction` at 0.0020183972008138854 against
-        0.0020003856996684967 before the step, which is the partly applied
-        step this method exists to prevent, surviving in the live system
+        The rollback is on the unwind path rather than in an `except` clause,
+        so "any exit" really means any exit. A `BaseException` unwinds through
+        the rollback like any other exception. The one that can actually arrive is
+        `KeyboardInterrupt`, because `_advance_step()` contains no `await` at
+        which a cancellation could arrive. Listing exception types instead
+        left exactly that gap, and the gap was measured before this changed.
+        Raising a `BaseException` after the circuit had been written left
+        `inspired_partial_pressure_fraction` at 0.0020183972008138854, against
+        0.0020003856996684967 before the step. That is the partly applied step
+        that this method exists to prevent, surviving in the live system
         (PL-BNPY).
 
-        That matters because a partly applied step is not a solution of
-        anything. Its numbers are an artifact of the order the operators
-        ran in — the fifth having run against the second's output — rather
-        than evidence of where the model broke down, and `CLAUDE.md`
-        prefers an obvious failure to a plausible-looking number. Rolling
-        back leaves the last completed step, which *is* a solution, so a
-        caller that halts still holds state it can display and reason
-        about. The diagnosis goes in the raised message instead, where it
-        names the invariant and the step size a reader can act on.
+        This matters because a partly applied step is not a solution of
+        anything. Its numbers are an artifact of the order in which the
+        operators ran (the fifth having run against the second's output). They
+        are not evidence of where the model broke down, and `CLAUDE.md`
+        prefers an obvious failure to a plausible-looking number. Rolling back
+        leaves the last completed step, which *is* a solution. So a caller that
+        halts still holds a state that it can display and reason about. The
+        diagnosis goes in the raised message instead. There it names the
+        invariant and the step size, which a reader can act on.
 
-        Rolling back does not make the run resumable: the model reached a
-        state it could not step from, so the same step would fail again.
-        The caller must stop.
+        Rolling back does not make the run resumable. The model reached a state
+        that it could not step from, so the same step would fail again. The
+        caller must stop.
 
-        **A settings record the step cannot build is met here too, and
-        restated with the rest.** `_advance_step` builds the record through
-        `_propagator_for` when a setting has moved since the last step, and
-        the record refuses tissue flows that no longer sum to the cardiac
-        output. Setting a tissue's blood flow directly on the tissue can leave
-        them that way (`PL-HQF5`). The mismatch is not refused before the step as a
-        `SimulationConfigurationError`, because that type promises the caller
-        a run still worth continuing (`core/exceptions.py`), and a run whose
-        record cannot be built is not one: the same record is refused on
-        every step after, and by anything else that builds it, a Reset
-        included. Restated as a step that could not be completed, it reaches
-        the caller as the halt it is, with the two flows named in the litres
-        per minute they were set in (`PL-M4M0`).
+        **This method also handles a settings record that the step cannot
+        build, and restates that failure like the others.** When a setting has
+        changed since the last step, `_advance_step` builds the record through
+        `_propagator_for`. The record rejects tissue blood flows that no longer
+        sum to the cardiac output. Setting a tissue's blood flow directly on the
+        tissue can leave the flows that way (`PL-HQF5`). The mismatch is not
+        rejected before the step as a `SimulationConfigurationError`, because
+        that type promises the caller that the run is still worth continuing
+        (`core/exceptions.py`). A run whose record cannot be built is not worth
+        continuing. The same record is rejected on every later step, and by
+        anything else that builds it, a Reset included. Restated as a step that
+        could not be completed, the failure reaches the caller as the halt that
+        it is. The message names the two flows in the litres per minute in
+        which they were set (`PL-M4M0`).
 
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so
                 nothing has checked it against the supported range
-                (`core/simulation_step.py`). Checked before anything is
-                changed, so the system is untouched.
+                (`core/simulation_step.py`). This is checked before anything
+                changes, so the system is untouched.
             SimulationNumericalError: the step began and could not be
-                completed — a value the step itself produced was refused, a
-                fraction where `_write_state_vector` builds it as a
-                `Fraction`, under the name of the compartment that would have
-                held it. The exact propagator cannot reach the floor for any
-                step size, because its matrix is Metzler and the propagator
-                therefore entrywise nonnegative, and a rounding can carry a
-                fraction past the ceiling only where one stands at 1, which
-                needs a 100% dial no supported setting reaches
-                (`core/concentration.py`). Otherwise this is cover for a
-                model extension whose matrix is not a pure transfer system.
-                Or the settings record the step builds its propagator from
-                could not be built, as above. The step has been rolled back,
-                so what the system holds is the last completed step; the run
-                must stop rather than continue from it.
+                completed. There are two causes. The first is that a value the
+                step itself produced was rejected: a fraction that
+                `_write_state_vector` builds as a `Fraction`, rejected under the
+                name of the compartment that would have held it. The exact
+                propagator cannot take a fraction below 0 for any step size,
+                because its matrix is Metzler, so every entry of the propagator
+                is nonnegative. A rounding error can carry a fraction above 1
+                only where a fraction is already at 1. That needs a 100% dial,
+                which no supported setting reaches (`core/concentration.py`).
+                Otherwise this cause is a safeguard for a model extension whose
+                matrix is not a pure transfer system. The second cause is that
+                the settings record, from which the step builds its propagator,
+                could not be built, as described above. The step has been
+                rolled back, so the system holds the last completed step. The
+                run must stop rather than continue from it.
         """
 
         require_simulation_step(simulation_step_s)
@@ -324,34 +330,36 @@ class AgentUptakeSystem:
 
             return result
         except SimulationConfigurationError as error:
-            # A guard reached here means the step produced a state the
-            # model cannot represent, not that the caller passed a bad
-            # value: the arguments were already checked above. Restating
-            # it as a numerical error is what lets a caller tell "your
-            # setting was refused, nothing changed" apart from "the run is
-            # no longer trustworthy". The original guard is kept as the
-            # cause so the failing invariant stays traceable.
+            # If a guard's error reaches this point, the step produced a state
+            # that the model cannot represent. The caller did not pass a bad value,
+            # because the arguments were already checked above. Restating the
+            # error as a numerical error lets a caller tell "your setting was
+            # rejected, nothing changed" apart from "the run is no longer
+            # trustworthy". The guard's original error is kept as the cause, so
+            # the failing invariant stays traceable.
             #
-            # This is the only exception type restated. Everything else -
-            # `AgentSimulationValidationError` from the accounting check, a
-            # `TypeError` from some future refactor - propagates unchanged,
-            # because neither is a guard rejecting a value, and rewriting an
-            # accounting failure as a plain `SimulationNumericalError` would
-            # erase the more specific type a caller may key on. They need
-            # the same rollback all the same, which is what `finally` gives
-            # them without a clause each.
+            # This is the only exception type that is restated. Everything
+            # else propagates unchanged, such as `AgentSimulationValidationError`
+            # from the accounting check or a `TypeError` from some future
+            # refactor. Neither of those is a guard rejecting a value.
+            # Rewriting an accounting failure as a plain
+            # `SimulationNumericalError` would erase the more specific type
+            # that a caller may rely on. These exceptions still need the same
+            # rollback, and `finally` gives it to them without a separate
+            # clause for each.
             raise SimulationNumericalError(
                 f"the simulation step of {simulation_step_s} s could not be completed "
                 "and was rolled back, leaving the state the last completed step "
                 f"produced: {error}"
             ) from error
         finally:
-            # The flag rather than the exception is what decides this. A
-            # rollback keyed on catching something can only undo what it
-            # thought to catch, and the failure this closes was the one
-            # nobody enumerates: `BaseException`. Keyed on "did the step
-            # finish", the answer is right for every way out of the block,
-            # including the ones that have not been invented yet.
+            # The flag, not the exception, decides whether to roll back. A
+            # rollback triggered by catching an exception can undo only the
+            # cases it was written to catch. The failure that this closes was
+            # the one nobody lists: `BaseException`. When the rollback depends
+            # on whether the step finished, the decision is right for every
+            # way out of the block, including ways that have not been invented
+            # yet.
             if not step_completed:
                 self.restore_state(state_before_step)
 
@@ -366,16 +374,16 @@ class AgentUptakeSystem:
         )
 
     def restore_state(self, state: AgentUptakeSystemState) -> None:
-        """Restore state previously captured by `capture_state()`.
+        """Restore the state previously captured by `capture_state()`.
 
-        No compartment's restore can refuse what `capture_state()` captured,
-        so this cannot raise: the alveolar compartment, the venous pool and
-        each tissue group write their amount past their write guards, and the
-        circuit and the validator write theirs through guards that cannot
-        refuse a captured state (`PL-19Y0`). That is a requirement rather
-        than an accident: it runs while a failure is already being handled,
-        and a rollback that could fail partway would leave exactly the
-        partial state it exists to prevent.
+        No compartment's restore can reject what `capture_state()` captured,
+        so this method cannot raise. The alveolar compartment, the venous pool
+        and each tissue group write their amounts in a way that bypasses their
+        write guards. The circuit and the validator write theirs through guards
+        that cannot reject a captured state (`PL-19Y0`). This is a requirement,
+        not an accident. The method runs while a failure is already being
+        handled, and a rollback that could fail partway would leave exactly the
+        partial state that it exists to prevent.
         """
 
         self.circuit.restore_state(state.circuit)
@@ -386,20 +394,20 @@ class AgentUptakeSystem:
     def _advance_step(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance every compartment at once, by one exact propagation.
 
-        Writes each compartment as it goes and does not clean up after
-        itself: `advance()` is what makes a failure partway through safe,
-        and this is not called from anywhere else.
+        The method writes each compartment as it goes and does not clean up
+        after itself. `advance()` is what makes a failure partway through safe,
+        and nothing else calls this method.
 
-        The three reported transfers come out of the same solution rather
-        than out of separate calculations. Delivered and exhausted agent are
-        states of the system, so the propagator integrates them along the
-        trajectory it is producing. Patient uptake is the change in stored
-        patient agent, which by the tissue and venous balances *is* the
-        integral of the pulmonary uptake rate; and the ventilatory transfer
-        is that plus the change in stored alveolar agent, because the
-        alveolar balance says alveolar agent changes by exactly the
-        difference of the two. `governing_equations.py` carries why they are
-        recovered here instead of accumulated as rows of their own.
+        The three reported transfers come from the same solution rather than
+        from separate calculations. Delivered and exhausted agent are states of
+        the system, so the propagator integrates them along the trajectory it
+        produces. Patient uptake is the change in stored patient agent. By the
+        tissue and venous balances, that change *is* the integral of the
+        pulmonary uptake rate. The ventilatory transfer is the patient uptake
+        plus the change in stored alveolar agent. That is because the alveolar
+        balance says that alveolar agent changes by exactly the ventilatory
+        transfer minus the patient uptake. `governing_equations.py` explains why these transfers are
+        recovered here instead of being accumulated as rows of their own.
         """
 
         alveolar_agent_before_l = self.alveoli.agent_amount_l
@@ -438,21 +446,22 @@ class AgentUptakeSystem:
     def equation_settings(self) -> UptakeEquationSettings:
         """Read the governing equations' parameters out of the compartments.
 
-        Public because it is what a run's definition is written in:
-        `core/run_definition.py` records one of these per setting change and
-        rebuilds the same matrix from it, so a stretch of a run is replayed from
-        the settings the compartments actually held rather than from a second
-        copy kept alongside them.
+        The method is public because a run's definition is made of the records
+        it returns. `core/run_definition.py` records one of these settings
+        records per setting change and rebuilds the same matrix from it. So a stretch
+        of a run is replayed from the settings that the compartments actually
+        held, rather than from a second copy kept beside them.
 
-        Flows are passed on in the litres per minute the compartments hold,
-        which is what a clinician sets, and converted by nothing: the settings
-        derive the litres per second `docs/MODEL.md` § "Governing equations"
-        are written in, so the value a run records is the value that was set
-        (`PL-SM5V`). The delivered concentration is passed on in the percent it
-        was dialled, for the same reason, and the settings derive the fraction
-        (`PL-NJPB`). The vaporizer maximum goes with it, read off the circuit
-        that owns it, so the record refuses what the circuit refuses and a
-        stretch of a run says which limit its dial was set under (`PL-BBMG`).
+        Flows are passed on in litres per minute, the unit that the compartments
+        hold and that a clinician sets. Nothing here converts them. The
+        settings record derives the litres per second in which `docs/MODEL.md`
+        § "Governing equations" is written. So the value that a run records is
+        the value that was set (`PL-SM5V`). For the same reason, the delivered
+        concentration is passed on in the percent to which it was dialled, and
+        the settings record derives the fraction (`PL-NJPB`). The vaporizer
+        maximum is passed on with it, read from the circuit that owns it. So
+        the record rejects what the circuit rejects, and a stretch of a run
+        records which limit its dial was set under (`PL-BBMG`).
         """
 
         patient = self.patient
@@ -480,34 +489,35 @@ class AgentUptakeSystem:
         )
 
     def _propagator_for(self, simulation_step_s: SimulationStep) -> Matrix:
-        """Return `exp(A * simulation_step_s)`, rebuilding it if a setting moved.
+        """Return `exp(A * simulation_step_s)`, rebuilding it if a setting changed.
 
-        The cache is keyed on the settings themselves rather than invalidated
-        by the setters, and the key is the same object the matrix is built
-        from. A setter that forgot to invalidate would be a silently wrong
-        clinical value at every subsequent step, with no guard anywhere in its
-        path; keyed by value there is nothing to forget, and a setting reached
-        through a compartment rather than through this class's own control
-        surface is caught just the same.
+        The cache is keyed on the settings themselves rather than cleared by
+        the setters, and the key is the same object the matrix is built from.
+        If the setters cleared the cache, a setter that forgot to clear it
+        would give a silently wrong clinical value at every later step, with no
+        guard anywhere in its path. With a key compared by value, there is
+        nothing to forget. A setting changed through a compartment, rather than
+        through this class's own control surface, is caught just the same.
 
-        The comparison is the price. It is a handful of floats per step
-        against a matrix exponential per settings change, and settings are
-        constant for all but a few steps of a run.
+        The cost of this design is the comparison: a handful of floats compared
+        on every step, against one matrix exponential for each settings change.
+        The settings are constant for all but a few steps of a run.
 
         **What is compared is `_propagator_cache_key()`, not
-        `equation_settings()`** (`PL-R460`). The two answer the same question -
-        the key is a bijection of the settings, so equal keys mean equal
-        settings - but the settings object costs four frozen dataclasses and
-        about twenty validation guards to build, and it was being rebuilt at
-        full cost on every step to answer a question whose answer is "no" on
-        all but a few steps of a run. Measured at 7.1 us of a 33.5 us step.
+        `equation_settings()`** (`PL-R460`). Comparing either gives the same
+        result, because the key is a bijection of the settings: equal keys mean
+        equal settings. But building the settings object costs four frozen
+        dataclasses and about twenty validation guards. It was being rebuilt at
+        full cost on every step, to answer a question whose answer is "no" on
+        all but a few steps of a run. That rebuild was measured at 7.1 us of a
+        33.5 us step.
 
-        **The guards still run whenever they can discover anything.** They are
-        skipped only where the key is unchanged, which is where the values are
-        the ones `equation_settings()` already validated when this propagator
-        was built. Any change to any of them - through a setter or written
-        straight onto a compartment - moves the key, and the rebuild below
-        validates before it builds.
+        **The guards still run whenever they could find a problem.** They are
+        skipped only while the key is unchanged. In that case the values are
+        the ones that `equation_settings()` already validated when this
+        propagator was built. Any change to any of the values, through a setter
+        or written directly onto a compartment, changes the key, and the
+        rebuild below validates before it builds.
         """
 
         key = self._propagator_cache_key(simulation_step_s)
@@ -528,38 +538,39 @@ class AgentUptakeSystem:
         return (simulation_step_s, *self.settings_key())
 
     def settings_key(self) -> tuple[float, ...]:
-        """Return every compartment value the settings record holds, compared by value.
+        """Return every compartment value that the settings record holds, for comparison by value.
 
-        Equal keys mean equal `equation_settings()`, at about a sixth of the
-        cost of building the record: 1.8 us against 11.0 us, measured
-        2026-10-18. That is why the propagator cache compares this rather than
-        the record, and why `SimulationController` can ask it before every step
-        whether the core still holds the settings its run definition recorded
-        (`PL-XRN8`).
+        Equal keys mean equal `equation_settings()`. Building the key costs
+        about a sixth as much as building the record: 1.8 us against 11.0 us,
+        measured 2026-10-18. That is why the propagator cache compares the key
+        rather than the record. It is also why `SimulationController` can call
+        this method before every step, to check whether the core still holds
+        the settings that its run definition recorded (`PL-XRN8`).
 
-        One entry per field of `UptakeEquationSettings`, in its order, read
-        straight off the compartments and converted by nothing.
-        `test_the_propagator_cache_key_covers_every_equation_setting` holds the
-        two in step against `dataclasses.fields()`, so a field added to the
-        settings without an entry here fails rather than reintroducing the
-        stale propagator this key exists to make unrepresentable. The
-        vaporizer maximum is the one entry the matrix never reads; it is here
-        because it is in the record, which keeps the key a bijection of the
-        settings, and it costs at most one rebuild per run, where a run's
-        maximum differs from the last run's (`PL-BBMG`).
+        The key has one entry per field of `UptakeEquationSettings`, in the
+        same order. Each entry is read directly from the compartments and is
+        not converted. `test_the_propagator_cache_key_covers_every_equation_setting`
+        keeps the key and the settings matched by checking against
+        `dataclasses.fields()`. So if a field is added to the settings without
+        an entry here, that test fails. So the field cannot silently bring back
+        the stale propagator that this key exists to make impossible. The vaporizer maximum is
+        the one entry that the matrix never reads. It is included because it is
+        in the record, which keeps the key a bijection of the settings. It costs
+        at most one rebuild per run, when a run's maximum differs from the
+        previous run's (`PL-BBMG`).
 
-        Flows are in litres per minute, which is what the settings hold too
-        since `PL-SM5V`. The tissue flows are formed by the same
-        `TissueGroup.blood_flow_l_min_at` call as the settings' are
-        (`PL-HQF5`), and the delivered concentration
-        is the percent the circuit holds, as the settings have since
-        `PL-NJPB`, so equal settings and an equal key compare the same numbers.
+        Flows are in litres per minute. The settings have also held flows in
+        litres per minute since `PL-SM5V`. The tissue flows are computed by the
+        same `TissueGroup.blood_flow_l_min_at` call as the settings' tissue
+        flows (`PL-HQF5`). The delivered concentration is the percent that the
+        circuit holds, which the settings have also used since `PL-NJPB`. So
+        equal settings and an equal key compare the same numbers.
 
         `TissueGroupEquationSettings.name` is the one settings field with no
-        entry, because `build_system_matrix()` never reads it - the group's
+        entry, because `build_system_matrix()` never reads it. The group's
         position in the tuple is what places its rows.
-        `test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name` is
-        what keeps that true.
+        `test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name` keeps
+        that true.
         """
 
         patient = self.patient
@@ -589,11 +600,12 @@ class AgentUptakeSystem:
     def state_vector(self) -> tuple[float, ...]:
         """Read the trajectory out of the compartments, in equation order.
 
-        Public alongside `equation_settings` and for the same reason: it is the
-        state a `RunDefinition` opens from (`core/run_definition.py`).
+        The method is public, like `equation_settings`, and for the same
+        reason. Its result is the state that a `RunDefinition` opens from
+        (`core/run_definition.py`).
 
-        The two accumulator states start each step at zero, so after one
-        propagation they hold that step's own delivered and exhausted agent
+        The two accumulator states start each step at zero. So after one
+        propagation they hold that step's own delivered and exhausted agent,
         rather than a running total. The running totals belong to
         `AgentSimulationValidator`, which already owns an accounting period
         and can be reset independently of the trajectory.
@@ -613,58 +625,59 @@ class AgentUptakeSystem:
         return tuple(state)
 
     def resume_at(self, state: tuple[float, ...], initial_agent_l: float) -> None:
-        """Stand this system at `state`, on an accounting period anchored at `initial_agent_l`.
+        """Place this system at `state`, with its accounting anchored at `initial_agent_l`.
 
-        The write counterpart of `state_vector()`, and how a branch's system
-        comes to stand where its parent stood. `state` is a canonical state -
-        `RunDefinition.state_at`'s answer, or the `Keyframe` it was composed
-        from - so a branch opens from the trajectory the parent actually
-        passed through rather than from a re-derivation of it. Nothing here
-        advances anything: the system is positioned, and it is stepped after
-        that by the ordinary `advance()`, which is the only path that moves a
-        run forward.
+        This is the write counterpart of `state_vector()`. It is how a branch's
+        system comes to stand where its parent stood. `state` is a canonical
+        state: the result of `RunDefinition.state_at`, or the `Keyframe` that
+        result was composed from. So a branch opens from the trajectory that the
+        parent actually passed through, rather than from a re-derivation of it.
+        Nothing here advances anything. The system is positioned, and after
+        that it is stepped by the ordinary `advance()`, which is the only path
+        that moves a run forward.
 
-        **The two cumulative totals are the case's, and they are carried
-        rather than derived.** `state_vector()` reports each step's own
+        **The two cumulative totals belong to the case, and they are carried
+        over rather than derived.** `state_vector()` reports each step's own
         delivered and exhausted agent, because the propagator integrates them
-        over the interval it is given; a keyframe's are cumulative from the
-        start of the *case*, which for a branch's keyframes is earlier than
-        the run holding them - a branch opens carrying its parent's running
-        totals. Writing those in continues the
-        parent's mass-balance readout across the fork instead of restarting it
-        at zero, which a learner comparing two managements of one case needs,
-        since the agent the patient has received is the case's and not the
-        branch's.
+        over the interval it is given. A keyframe's totals are cumulative from
+        the start of the *case*. For a branch's keyframes, the start of the case
+        is earlier than the start of the run that holds them, because a branch
+        opens carrying its parent's running totals. Writing those totals in
+        continues the parent's mass-balance readout across the fork, instead of
+        restarting it at zero. A learner comparing two managements of one case
+        needs that, because the agent the patient has received belongs to the
+        case and not to the branch.
 
-        `initial_agent_l` is the anchor of that same accounting period - what
-        the *parent's* period started from - for the reason `reset()` gives
-        about not resting a check on an invariant it does not establish. The
-        alternative, deriving the anchor as the value that would make
-        `docs/MODEL.md`'s mass-balance identity close exactly, is what this
-        deliberately does not do: the canonical path's own conservation
-        residual has no reason to fall on the positive side, and measured on a
-        900 s sevoflurane run with two setting changes it puts the derived
-        anchor at -6.9e-14 L, a negative initial amount `AgentSimulationValidator`
-        rightly refuses. Carried rather than derived, that residual stays where
-        it belongs - inside the check, at 6.9e-14 L against the 1e-12 L
-        absolute tolerance - instead of being absorbed into the anchor where
-        nothing would report it.
+        `initial_agent_l` is the anchor of that same accounting period: the
+        amount that the *parent's* period started from. It is passed in for the
+        reason that `reset()` gives, that a check must not rest on an invariant
+        it does not establish. The alternative would derive the anchor as the
+        value that makes `docs/MODEL.md`'s mass-balance identity close exactly.
+        This method deliberately does not do that, because the canonical path's
+        own conservation residual has no reason to fall on the positive side.
+        On a 900 s sevoflurane run with two setting changes, the derived anchor
+        was measured at -6.9e-14 L. That is a negative initial amount, which
+        `AgentSimulationValidator` rightly rejects. When the anchor is carried
+        over rather than derived, that residual stays where it belongs: inside
+        the check, at 6.9e-14 L against the 1e-12 L absolute tolerance. It is
+        not absorbed into the anchor, where nothing would report it.
 
-        The system is left untouched if any guard fires, by the route
-        `advance()` uses and for the same reason: `_write_state_vector` writes
-        one compartment at a time, so a fraction the model cannot represent is
-        refused after earlier compartments have already been written.
+        If any guard fires, the system is left untouched, by the route that
+        `advance()` uses and for the same reason. `_write_state_vector` writes
+        one compartment at a time, so a fraction that the model cannot
+        represent is rejected after earlier compartments have already been
+        written.
 
         The cached propagator is neither rebuilt nor cleared, because
-        `_propagator_cache_key()` reads only the settings the system matrix is
-        assembled from and this writes none of them.
+        `_propagator_cache_key()` reads only the settings that the system matrix
+        is built from, and this method writes none of them.
 
         Raises:
             SimulationConfigurationError: `state` did not come from the
                 canonical path, is not `STATE_SIZE` long, holds a non-finite
-                value, or does not carry exactly one in `UNIT_STATE`;
+                value, or does not carry exactly one in `UNIT_STATE`. Or
                 `initial_agent_l` or either cumulative total is negative or not
-                finite; or a fraction is outside 0 to 1, which is refused
+                finite. Or a fraction is outside 0 to 1, which is rejected
                 under the name of the compartment that would hold it.
         """
 
@@ -692,30 +705,31 @@ class AgentUptakeSystem:
         """Write an advanced trajectory back into the compartments.
 
         Each fraction is built as a `Fraction`, under the name of the
-        compartment that will hold it, and handed to that compartment's own
-        setter, so a fraction the model could not represent is refused -
-        naming the compartment - rather than stored (`PL-SPN6`, `PL-4R3W`).
-        `advance()` restates such a refusal as `SimulationNumericalError` and
-        rolls the step back, which is the required behavior: an exact solution
-        of the equations cannot leave the physical range, so a value that does
-        is evidence the run is no longer trustworthy rather than a number to
-        display.
+        compartment that will hold it, and passed to that compartment's own
+        setter. So a fraction that the model could not represent is rejected,
+        with an error that names the compartment, rather than stored
+        (`PL-SPN6`, `PL-4R3W`). `advance()` restates such a rejection as
+        `SimulationNumericalError` and rolls the step back, which is the
+        required behavior. An exact solution of the equations cannot leave the
+        physical range. So a value that does leave it is evidence that the run
+        is no longer trustworthy, not a number to display.
 
-        This is also where a step's fractions are built, and so checked,
-        rather than carried: the state vector is nine bare floats, six of
-        them concentrations and three of them not, and the positions are what
-        separate them. `core/concentration.py` says what the type does and
-        does not guarantee.
+        This method is also where a step's fractions are built, and so checked,
+        rather than passed through unchecked. The state vector is nine bare
+        floats. Six of them are concentrations and three are not, and only
+        their positions tell them apart. `core/concentration.py` says what the
+        type does and does not guarantee.
 
-        **It checks the vector's shape not at all**, which is safe for its two
-        callers and for no third. `_advance_step` hands it what `propagate`
-        returned from this system's own state, and `resume_at` hands it a
-        state `require_canonical_state` has already refused on length,
-        finiteness and the constant. A caller reaching here with anything else
-        gets an `IndexError` from a short vector, a silent truncation from a
-        long one, and no complaint at all about a wrong `UNIT_STATE` - none of
-        which is how the rest of `core/` refuses a value. So `resume_at` is
-        the entry point for a state this system did not itself produce.
+        **The method does not check the vector's shape at all.** That is safe
+        for its two callers, and it would not be safe for a third.
+        `_advance_step` passes it what `propagate` returned from this system's
+        own state. `resume_at` passes it a state that `require_canonical_state`
+        has already checked for length, finiteness and the constant entry. A
+        caller that reached this method with anything else would get an
+        `IndexError` from a short vector, a silent truncation from a long one,
+        and no error at all for a wrong `UNIT_STATE`. None of these is how the
+        rest of `core/` rejects a value. So `resume_at` is the entry point for a
+        state that this system did not produce itself.
         """
 
         self.circuit.set_inspired_partial_pressure_fraction(
@@ -739,20 +753,23 @@ class AgentUptakeSystem:
     def reset(self) -> None:
         """Clear dynamic state and restart agent accounting.
 
-        The anchor is read back out of the compartments rather than left to
-        the validator's own zero default, so this says what `__post_init__`
-        says: an accounting period starts from whatever the system holds.
-        The two agree today - the three resets above clear every store, so
-        the expression below is exactly `0.0` - and they keep agreeing if a
+        The accounting anchor is read back from the compartments rather than
+        left at the validator's own default of zero. So this method does what
+        `__post_init__` does: an accounting period starts from whatever the
+        system holds. Today the read-back anchor equals the zero default. The
+        circuit, alveolar and patient resets clear every store, so the anchor
+        expression that follows them is exactly `0.0`. Reading the anchor back
+        keeps this method in agreement with `__post_init__` even if a
         compartment is ever added that resets to something other than empty.
 
-        The default does not. Anchored at zero against compartments holding
-        anything, the identity is short by that amount at every subsequent
-        check, so the residual check halts a run that is in fact perfectly
-        accounted for - and reports `AgentSimulationValidationError`, which
-        blames the numerics for what is an anchoring defect. That is the
-        safe direction to fail in, and still the wrong answer; a check must
-        not rest on an invariant it does not itself establish (PL-VYXP).
+        The zero default would not keep that agreement. Anchored at zero while the compartments
+        hold some agent, the mass-balance identity would be short by that
+        amount at every later check. The residual check would then halt a run
+        that is in fact correctly accounted for. It would report
+        `AgentSimulationValidationError`, which blames the numerics for what is
+        an anchoring defect. That is the safe direction in which to fail, but it
+        is still the wrong result. A check must not rest on an invariant that it
+        does not itself establish (PL-VYXP).
         """
 
         self.circuit.reset()

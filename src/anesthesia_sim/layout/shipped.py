@@ -1,31 +1,35 @@
 """The Workspaces shipped with the application, read from `data/workspaces/`.
 
-`PL-KXTL` ships three Workspaces as validated, versioned JSON beside the other
-shipped data files. Each is a Workspace set document holding one Workspace,
-the form a reader's own file takes, so each is read by
-`workspace_set_from_json`, the reader `layout/store.py` uses. A shipped file
-therefore cannot hold anything a reader's file could not.
+`PL-KXTL` ships three Workspaces as validated, versioned JSON files beside the
+other shipped data files. Each file is a Workspace set document that contains
+one Workspace. That is the same form as a reader's own saved file, so each
+shipped file is read by `workspace_set_from_json`, the function that
+`layout/store.py` also uses. A shipped file therefore cannot contain anything
+that a reader's file could not.
 
-**One file per Workspace, named by its id.** "Reset this Workspace" replaces
-one Workspace from its own shipped file (`PL-WV9K` Q3), so `shipped_workspace`
-reads one file, and `shipped_workspaces` reads them all in tab order, the
-first active. The file's stem is the Workspace's `ShippedWorkspaceId`, and the
-origin written inside the file must name the same id.
+**Each Workspace has its own file, named by its id.** "Reset this Workspace"
+replaces one Workspace from its own shipped file (`PL-WV9K` Q3). So
+`shipped_workspace` reads one file, and `shipped_workspaces` reads them all in
+tab order, with the first one active. The file's stem is the Workspace's
+`ShippedWorkspaceId`, and the origin written inside the file must name the
+same id.
 
-**Shipped files are held to the current version.** A shipped file travels
-with the build that reads it, so it is never migrated: one written at any
-other `schema_version` is refused. That is `core/parameters.py`'s rule for
-the files that ship with the code, which `PL-SSQW` kept for shipped files
-while deciding a different one for the reader's.
+**A shipped file must be written at the current schema version.** A shipped
+file travels with the build that reads it, so it is never migrated. A shipped
+file written at any other `schema_version` is rejected. `core/parameters.py`
+applies the same rule to the data files that ship with the code. `PL-SSQW`
+kept that rule for shipped Workspace files, and chose a different rule for the
+reader's own file.
 
-**Every refusal is `ShippedWorkspaceError`, naming the file.** A shipped file
-that does not read is a defect of the build, never the reader's doing, so
-nothing here sets it aside or falls back from it. A JSON file in the
-directory that `SHIPPED_WORKSPACE_IDS` does not list is refused too, since it
-would otherwise never be read.
+**Every refusal raises `ShippedWorkspaceError`, and its message names the
+file.** A shipped file that cannot be read is a defect in the build, never the
+reader's doing. So nothing here skips such a file or falls back to something
+in its place. A JSON file in the directory that `SHIPPED_WORKSPACE_IDS` does
+not list is rejected too, because otherwise it would never be read.
 
-Whether each View kind the files name is registered is the View registry's
-question (`PL-R1WQ` Q4), and is checked once the registry exists.
+This module does not check whether each View kind that the files name is
+registered. That check belongs to the View registry (`PL-R1WQ` Q4), and it
+runs once the registry exists.
 """
 
 from __future__ import annotations
@@ -54,7 +58,7 @@ __all__ = [
 # The package the shipped files are read from.
 SHIPPED_WORKSPACES_PACKAGE: Final = "anesthesia_sim.data.workspaces"
 
-# The shipped Workspaces in the order their tabs stand. The first is active
+# The shipped Workspaces, in the order of their tabs. The first one is active
 # on a first run.
 SHIPPED_WORKSPACE_IDS: Final = (
     ShippedWorkspaceId("default"),
@@ -68,17 +72,18 @@ _SUFFIX: Final = ".json"
 def shipped_workspace(
     shipped_id: ShippedWorkspaceId, source: Traversable | None = None
 ) -> Workspace:
-    """The shipped Workspace named `shipped_id`, as its file holds it.
+    """Return the shipped Workspace named `shipped_id`, as its file stores it.
 
     `source` is the directory to read from. It defaults to the shipped
     package, and a test passes a directory of its own.
 
     Raises:
         TypeError: `shipped_id` is not a `ShippedWorkspaceId`.
-        ShippedWorkspaceError: no shipped Workspace has that id, or its file
-            cannot be read, is not a Workspace set document of the current
-            version, holds other than one Workspace, or holds one whose origin
-            does not name the file's id. The message names the file.
+        ShippedWorkspaceError: no shipped Workspace has that id. Or the
+            Workspace's file cannot be read, is not a Workspace set document of
+            the current version, contains other than exactly one Workspace, or
+            contains one whose origin does not name the file's id. The message
+            names the file.
     """
 
     if not isinstance(shipped_id, ShippedWorkspaceId):
@@ -96,14 +101,14 @@ def shipped_workspace(
 
 
 def shipped_workspaces(source: Traversable | None = None) -> WorkspaceSet:
-    """Every shipped Workspace, in `SHIPPED_WORKSPACE_IDS` order, with the first active.
+    """Return every shipped Workspace, in `SHIPPED_WORKSPACE_IDS` order, with the first active.
 
     `source` is the directory to read from, as `shipped_workspace` takes it.
 
     Raises:
-        ShippedWorkspaceError: a file `shipped_workspace` would refuse; a JSON
-            file in the directory that no id names; or two shipped
-            Workspaces sharing a name, which a set refuses.
+        ShippedWorkspaceError: a file that `shipped_workspace` would reject, a
+            JSON file in the directory that no id names, or two shipped
+            Workspaces with the same name, which a set rejects.
     """
 
     directory = _directory(source)
@@ -134,7 +139,7 @@ def _directory(source: Traversable | None) -> Traversable:
 
 
 def _read(directory: Traversable, shipped_id: ShippedWorkspaceId) -> Workspace:
-    """The one Workspace in `directory`'s file for `shipped_id`, checked against the id."""
+    """Return the one Workspace in `directory`'s file for `shipped_id`, checked against the id."""
 
     name = f"{shipped_id}{_SUFFIX}"
     where = f"{SHIPPED_WORKSPACES_PACKAGE}/{name}"

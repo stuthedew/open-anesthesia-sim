@@ -1,6 +1,8 @@
-"""The mixed-venous blood compartment: pools flow-weighted outflow from every
-tissue group (see `patient.py`) before it returns to the alveoli as the
-arterial input, under this model's flow-limited arterial simplification.
+"""The mixed-venous blood compartment, which pools the outflow of every tissue group.
+
+The pool combines the flow-weighted outflow from every tissue group (see
+`patient.py`). Under this model's flow-limited arterial simplification, that
+blood then returns to the alveoli as the arterial input.
 """
 
 from dataclasses import dataclass
@@ -41,13 +43,14 @@ class VenousBloodCompartment:
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
-        # is: a class that defines `__setattr__` is one `mypy` lets assign any
-        # attribute name, typed by the method's `value`, so with the guard in
-        # view a misspelt field written in `src/` would pass `--strict` and
-        # fail at run time against the slots. Hidden, `mypy` reads the
-        # dataclass's fields and their types as before, and this is the
-        # runtime half for the callers it does not read; its lines are checked
-        # by their tests rather than by `mypy` (`PL-LBQY`, found at review).
+        # is. When a class defines `__setattr__`, `mypy` lets code assign any
+        # attribute name, typed by the method's `value` parameter. So with this
+        # guard visible, a misspelt field written in `src/` would pass
+        # `--strict` and fail at run time against the slots. With the guard
+        # hidden, `mypy` checks the dataclass's fields and their types as
+        # before. This guard is the runtime check for the callers that `mypy`
+        # does not check. Its lines are checked by their tests rather than by
+        # `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
             """Write a field, refusing a value the pool's constructor would refuse.
@@ -132,7 +135,7 @@ class VenousBloodCompartment:
 
     @property
     def partial_pressure_fraction(self) -> float:
-        """Return partial-pressure-equivalent venous fraction."""
+        """Return the venous partial-pressure-equivalent fraction."""
 
         return self.agent_amount_l / self.capacity_l
 
@@ -140,13 +143,14 @@ class VenousBloodCompartment:
         """The venous mixing time constant $`\\tau_v = V_v/Q`$.
 
         `docs/MODEL.md` § "Venous blood" defines it. No partition coefficient
-        appears: the pool and the blood flowing through it are the same phase,
-        so the $`\\lambda_{b:g}`$ in `capacity_l` cancels against the one in
-        the flow term. That is the whole difference from the tissue constant
-        above, and it is why this one is a mixing time rather than an uptake
-        time.
+        appears, because the pool and the blood flowing through it are the same
+        phase. So the $`\\lambda_{b:g}`$ in `capacity_l` cancels against the
+        one in the flow term. That is the whole difference from the tissue
+        group's time constant, and it is why this one is a mixing time rather
+        than an uptake time.
 
-        `inf` at zero flow, as there: nothing circulates, so nothing mixes.
+        It is `inf` at zero flow, as the tissue group's time constant is:
+        nothing circulates, so nothing mixes.
 
         The flow $`Q`$ is an argument, because the pool stores none. For the
         pool in a patient, it is the patient's cardiac output.
@@ -164,7 +168,7 @@ class VenousBloodCompartment:
         return SECONDS_PER_MINUTE * self.volume_l / blood_flow_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
-        """Set venous state from an equilibrium fraction.
+        """Set the venous state from an equilibrium fraction.
 
         Raises:
             TypeError: `partial_pressure_fraction` was not built as a
@@ -236,11 +240,12 @@ class VenousBloodCompartment:
     def restore_state(self, state: VenousBloodCompartmentState) -> None:
         """Restore run state previously captured by `capture_state()`.
 
-        Writes the slot past `__setattr__`, so that rolling back cannot
-        itself raise, for the reasons `AlveolarCompartment.restore_state`
-        gives: the amount came off this pool, and a rollback refused partway
-        would replace the step's own error and leave the compartments restored
-        after this one holding the failed step (`PL-544D`, `PL-19Y0`).
+        Writes the slot directly, bypassing `__setattr__`, so that rolling back
+        cannot itself raise. `AlveolarCompartment.restore_state` gives the
+        reasons. The amount was captured from this pool. A rollback rejected
+        partway would replace the step's own error. The compartments due to be
+        restored after this one would then still hold the failed step
+        (`PL-544D`, `PL-19Y0`).
         """
 
         object.__setattr__(self, "agent_amount_l", state.agent_amount_l)

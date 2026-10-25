@@ -1,7 +1,7 @@
-"""A layout as JSON: the body a Workspace holds, and a document holding one on its own.
+"""A layout as JSON, both as the body inside a Workspace and as a document on its own.
 
-**The shape is `PL-HJPY` Q5's**, which illustrated it and left the schema to
-this build:
+**The shape comes from `PL-HJPY` Q5**, which illustrated it and left the
+schema to this build:
 
     {"schema_version": 2,
      "next_area_id": 3,
@@ -10,14 +10,14 @@ this build:
                                         {"area": 2, "view": "agent_accounting"}]}}]}
 
 It departs from the illustration in one word: a split is `"row"` or `"column"`
-rather than `"horizontal"`, for the reason `layout/tree.py` gives. Each window
-is an object holding its tree rather than the bare tree, so a field a window
-gains later is a field rather than a change of shape.
+rather than `"horizontal"`, for the reason that `layout/tree.py` gives. Each
+window is an object that contains its tree, rather than the bare tree, so a
+field that a window gains later is a new field rather than a change of shape.
 
-**The body carries no version; a document does.** `layout_to_dict` and
-`layout_from_dict` write and read the layout alone - `next_area_id` and
-`windows` - which is what a Workspace holds under `"layout"` beside its own
-fields, in the one document the application writes (`PL-SSQW` Q2):
+**The body carries no version, but a document does.** `layout_to_dict` and
+`layout_from_dict` write and read the layout alone, which is `next_area_id` and
+`windows`. A Workspace stores that body under `"layout"`, beside its own
+fields, in the one document that the application writes (`PL-SSQW` Q2):
 
     {"schema_version": 2,
      "active": 0,
@@ -28,49 +28,54 @@ fields, in the one document the application writes (`PL-SSQW` Q2):
                      "pinned_run": null}]}
 
 `workspace_set_to_json` and `workspace_set_from_json` write and read that
-document, holding a whole `WorkspaceSet` - its order, its active Workspace and
-the floor that it is never empty are properties of the set, which a directory
-of files could not state. `workspace_to_dict` and `workspace_from_dict` write
-and read one Workspace's body, and `layout_to_json` and `layout_from_json` a
-document holding one layout on its own, with `schema_version` beside the body.
-A body never carries a version of its own, so a document holding several has
-one. `view_state` is keyed by Area id, written as the string a JSON object key
-is - the digits alone, as `str` writes the number - then by View kind, and each
-entry is the JSON object the View handed over, held and written as the JSON it
-is (`PL-WV9K` Q1). `pinned_run` is `null`, or the pinned run's identity as
-`{"session": "<32 hex digits>", "number": 2}` (`PL-7Z84`).
+document, which contains a whole `WorkspaceSet`. The order of the Workspaces,
+which one is active, and the rule that the set is never empty are properties of
+the set, which a directory of files could not state. `workspace_to_dict` and
+`workspace_from_dict` write and read one Workspace's body. `layout_to_json` and
+`layout_from_json` write and read a document that contains one layout on its
+own, with `schema_version` beside the body. A body never carries a version of
+its own, so a document that contains several bodies has one version.
 
-**Reading refuses, and says what it refused** (`PL-SSQW` Q5, ratified). Every
-way a document can fail to describe a valid layout raises `LayoutFormatError`
-naming the invariant and where it broke - `windows[0].tree.children[1]` - and
-nothing is repaired, rescaled or dropped. It is strict throughout, because
-nothing this code writes needs leniency and anything else deserves a person's
-reading: a key the schema does not have, a key given twice, `NaN` or
+`view_state` is keyed first by Area id and then by View kind. The Area id is
+written as a JSON object key, which is a string: the digits alone, as `str`
+writes the number. Each entry is the JSON object that the View handed over,
+stored and written as that JSON (`PL-WV9K` Q1). `pinned_run` is `null`, or
+the pinned run's identity as `{"session": "<32 hex digits>", "number": 2}`
+(`PL-7Z84`).
+
+**Reading rejects an invalid document, and says what it rejected** (`PL-SSQW`
+Q5, ratified). Every way in which a document can fail to describe a valid
+layout raises `LayoutFormatError`. The error names the invariant and where it
+broke, such as `windows[0].tree.children[1]`. Nothing is repaired, rescaled or
+dropped. Reading is strict throughout, because nothing this code writes needs
+leniency, and anything else deserves a person's review. Each of these is
+rejected by name: a key the schema does not have, a key given twice, `NaN` or
 `Infinity`, a fraction where a whole number belongs or the reverse, `true`
-where a number belongs, and a tree nested deeper than `TREE_DEPTH_MAXIMUM` are
-each refused by name. **A View kind no View is registered under is not among
-them**: a tag of the right syntax loads, and is the registry's to report in
-its own Area (`LayoutModel.unknown_kinds`).
+where a number belongs, and a tree nested deeper than `TREE_DEPTH_MAXIMUM`.
+**A View kind under which no View is registered is not among them.** A tag
+with the right syntax loads, and the View registry reports it in its own Area
+(`LayoutModel.unknown_kinds`).
 
-**The parse refuses nothing of its own.** A key given twice, `NaN` or
-`Infinity`, and a whole number longer than Python is set to read are kept
-where they stand and refused once the version has been read. A parse hook
-that refused one would be called with no idea where it stood, so its refusal
-could not name the place, and it would refuse a newer document as invalid
-before that document's version was read.
+**The JSON parse itself rejects nothing.** A key given twice, `NaN` or
+`Infinity`, and a whole number longer than Python is set to read are kept in
+place. They are rejected only once the version has been read. A parse hook
+that rejected one of them would not know where in the document the value was,
+so its error could not name the place. It would also reject a newer document
+as invalid before that document's version had been read.
 
-**Versions.** `LAYOUT_SCHEMA_VERSION` is `layout/migrations.py`'s, with the
-steps that read the versions before it; it is 2, which added `pinned_run`. A
-document from a newer build raises `UnsupportedSchemaVersion` whatever else it
-holds: no rule of this build's is applied to anything in it but its
-`schema_version`, since its body is free to follow rules this build does not
-know. One claiming a version below 1 is a format error, and so is text no
-version can be read from - text that is not JSON, or JSON nested past what the
-parser's stack holds, which on Python 3.14 with an 8 MB stack was measured
-between 50,000 and 100,000 levels on 2026-10-12. A set document from an older
-build is migrated, step by step, before it is read; a document holding one
-layout on its own is read at the current version only, since the only
-documents of that shape travel with the build that wrote them.
+**Versions.** `LAYOUT_SCHEMA_VERSION` is defined in `layout/migrations.py`,
+together with the steps that read the versions before it. It is 2, the version
+that added `pinned_run`. A document from a newer build raises
+`UnsupportedSchemaVersion`, whatever else it contains. No rule of this build is
+applied to anything in it except its `schema_version`, since its body is free
+to follow rules that this build does not know. A document that claims a
+version less than 1 is a format error. So is text from which no version can be
+read: text that is not JSON, or JSON nested deeper than the parser's stack
+allows. On Python 3.14 with an 8 MB stack, that limit was measured between
+50,000 and 100,000 levels on 2026-10-12. A set document from an older build is
+migrated, step by step, before it is read. A document that contains one layout
+on its own is read at the current version only, because the only documents of
+that shape ship with the build that wrote them.
 """
 
 from __future__ import annotations
@@ -122,7 +127,7 @@ _INDENT: Final = 2
 
 @dataclass(frozen=True, slots=True)
 class _NonFinite:
-    """`NaN`, `Infinity` or `-Infinity` as written: kept by the parse, refused where it stands."""
+    """`NaN`, `Infinity` or `-Infinity` as written, kept by the parse, rejected later in place."""
 
     written: str
 
@@ -135,7 +140,7 @@ class _LongInteger:
 
 
 class _RepeatedKeys(dict[str, object]):
-    """An object that gives a key more than once, kept by the parse with the keys it repeated."""
+    """An object that gives a key more than once, which the parse keeps with its repeated keys."""
 
     __slots__ = ("repeated",)
 
@@ -145,7 +150,7 @@ class _RepeatedKeys(dict[str, object]):
 
 
 def layout_to_dict(model: LayoutModel) -> dict[str, object]:
-    """The layout's body: plain values `json.dumps` writes and `layout_from_dict` reads back.
+    """Return the layout's body as plain values for `json.dumps` and `layout_from_dict`.
 
     Raises:
         TypeError: `model` is not a `LayoutModel`.
@@ -161,7 +166,7 @@ def layout_to_dict(model: LayoutModel) -> dict[str, object]:
 
 
 def layout_to_json(model: LayoutModel) -> str:
-    """A document holding the layout on its own, at `LAYOUT_SCHEMA_VERSION`, ending in a newline.
+    """Return a document of the layout on its own, at `LAYOUT_SCHEMA_VERSION`, ending in a newline.
 
     Raises:
         TypeError: `model` is not a `LayoutModel`.
@@ -176,18 +181,18 @@ def layout_from_dict(body: object) -> LayoutModel:
     """Read a layout's body, as `layout_to_dict` writes it.
 
     Raises:
-        LayoutFormatError: the body does not describe a valid layout - a tree
-            nested deeper than `TREE_DEPTH_MAXIMUM` among the ways it can
-            fail - and the message names the invariant and where in the body
-            it broke.
+        LayoutFormatError: the body does not describe a valid layout. A tree
+            nested deeper than `TREE_DEPTH_MAXIMUM` is one of the ways it can
+            fail. The message names the invariant and where in the body it
+            broke.
     """
 
     try:
         return _read_layout(body)
     except RecursionError:
-        # A backstop. The reader goes no deeper than the depth maximum, three
-        # frames a level, so only a caller that has left it less stack than
-        # that reaches this.
+        # This is a backstop. The reader goes no deeper than the depth maximum,
+        # at three frames per level. So this point is reached only when a caller
+        # has left the reader less stack than that.
         raise LayoutFormatError(
             f"the layout: the stack ran out while it was being read, though no tree is read "
             f"deeper than {TREE_DEPTH_MAXIMUM} splits: its caller left too little of it"
@@ -195,23 +200,24 @@ def layout_from_dict(body: object) -> LayoutModel:
 
 
 def layout_from_json(text: str) -> LayoutModel:
-    """Read a document holding one layout, as `layout_to_json` writes it.
+    """Read a document that contains one layout, as `layout_to_json` writes it.
 
-    The text is parsed once, by hooks that refuse nothing, and its
-    `schema_version` is read before any other rule of this build's is applied
-    to it. Only then are a key given twice, `NaN` or `Infinity`, and a whole
-    number too long to read refused where they stand, and the body read.
+    The text is parsed once, by hooks that reject nothing, and its
+    `schema_version` is read before any other rule of this build is applied to
+    it. Only after that are the values that the parse kept rejected in place: a
+    key given twice, `NaN` or `Infinity`, and a whole number too long to read.
+    Then the body is read.
 
     Raises:
         TypeError: `text` is not a `str`.
         UnsupportedSchemaVersion: a newer build wrote the document. Nothing in
-            it but its `schema_version` is held to this build's rules, so it is
-            reported as newer whatever its other fields hold.
-        LayoutFormatError: the text is not JSON, or is JSON nested past what
-            the parser's stack holds, so no version can be read from it; its
-            `schema_version` is missing, given twice, or not a whole number
-            from 1; or it does not describe a valid layout. The message names
-            the invariant and where it broke.
+            it except its `schema_version` is checked against this build's
+            rules, so it is reported as newer whatever its other fields contain.
+        LayoutFormatError: no version can be read, because the text is not
+            JSON or is JSON nested deeper than the parser's stack allows. Also
+            raised when its `schema_version` is missing, given twice, or not a
+            whole number from 1, or when it does not describe a valid layout.
+            The message names the invariant and where it broke.
     """
 
     document, version = _parse(text, "a layout document")
@@ -230,7 +236,7 @@ def layout_from_json(text: str) -> LayoutModel:
 
 
 def workspace_to_dict(workspace: Workspace) -> dict[str, object]:
-    """A Workspace's body: plain values `json.dumps` writes and `workspace_from_dict` reads back.
+    """Return a Workspace's body as plain values for `json.dumps` and `workspace_from_dict`.
 
     Raises:
         TypeError: `workspace` is not a `Workspace`.
@@ -255,16 +261,16 @@ def workspace_to_dict(workspace: Workspace) -> dict[str, object]:
 
 
 def workspace_from_dict(body: object, where: str = "the Workspace") -> Workspace:
-    """Read a Workspace's body, as `workspace_to_dict` writes it, standing at `where`.
+    """Read a Workspace's body, as `workspace_to_dict` writes it, found at `where`.
 
     Raises:
-        LayoutFormatError: the body does not describe a valid Workspace: a
-            name a tab could not show, an origin in neither written form, a
-            layout that does not read, a `view_state` keyed by anything
-            but an Area the layout holds and a View kind, or holding anything
-            but an object per kind, or a `pinned_run` that is neither `null`
-            nor a run identity. The message names the invariant and where it
-            broke.
+        LayoutFormatError: the body does not describe a valid Workspace. It
+            may have a name that a tab could not show, or an origin in neither
+            written form, or a layout that cannot be read. Its `view_state`
+            may be keyed by anything other than an Area in the layout and a
+            View kind, or may contain anything other than an object for each
+            kind. Its `pinned_run` may be neither `null` nor a run identity.
+            The message names the invariant and where it broke.
     """
 
     fields = _fields(
@@ -304,7 +310,7 @@ def workspace_from_dict(body: object, where: str = "the Workspace") -> Workspace
 
 
 def workspace_set_to_dict(workspaces: WorkspaceSet) -> dict[str, object]:
-    """A set's body: plain values `json.dumps` writes and `workspace_set_from_dict` reads back.
+    """Return a set's body as plain values for `json.dumps` and `workspace_set_from_dict`.
 
     Raises:
         TypeError: `workspaces` is not a `WorkspaceSet`.
@@ -323,10 +329,10 @@ def workspace_set_from_dict(body: object) -> WorkspaceSet:
     """Read a set's body, as `workspace_set_to_dict` writes it.
 
     Raises:
-        LayoutFormatError: the body does not describe a valid set - no
-            Workspaces, two of one name, an active position outside it, or a
-            Workspace that does not read - and the message names the
-            invariant and where in the body it broke.
+        LayoutFormatError: the body does not describe a valid set. It may
+            have no Workspaces, two Workspaces with one name, an active
+            position outside the set, or a Workspace that cannot be read. The
+            message names the invariant and where in the body it broke.
     """
 
     fields = _fields(body, "the Workspace set", "a Workspace set", ("active", "workspaces"))
@@ -355,7 +361,7 @@ def workspace_set_from_dict(body: object) -> WorkspaceSet:
 
 
 def workspace_set_to_json(workspaces: WorkspaceSet) -> str:
-    """The document holding `workspaces`, at `LAYOUT_SCHEMA_VERSION`, ending in a newline.
+    """Return the document for `workspaces`, at `LAYOUT_SCHEMA_VERSION`, ending in a newline.
 
     Raises:
         TypeError: `workspaces` is not a `WorkspaceSet`.
@@ -368,7 +374,7 @@ def workspace_set_to_json(workspaces: WorkspaceSet) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ReadWorkspaceSet:
-    """What reading a set document gives: the set, the version it was written at, what was lost."""
+    """A set document as read: the set, the version it was written at, and what was lost."""
 
     workspaces: WorkspaceSet
     written_at: SchemaVersion
@@ -378,22 +384,24 @@ class ReadWorkspaceSet:
 def workspace_set_from_json(text: str) -> ReadWorkspaceSet:
     """Read a set document, as `workspace_set_to_json` writes it, migrating an older one first.
 
-    The text is parsed once, by hooks that refuse nothing, and its
-    `schema_version` is read before any other rule of this build's is applied
-    to it. A document written at an older version is brought to this one by
-    `layout/migrations.py`'s steps, and `lossy` carries what each lossy step
-    says it could not keep; `written_at` is the version found, so the store
-    knows to keep the pre-migration file.
+    The text is parsed once, by hooks that reject nothing, and its
+    `schema_version` is read before any other rule of this build is applied to
+    it. A document written at an older version is migrated to this version by
+    the steps in `layout/migrations.py`. `lossy` carries what each lossy step
+    says it could not keep. `written_at` is the version found, so that the
+    store knows to keep the pre-migration file.
 
     Raises:
         TypeError: `text` is not a `str`.
         UnsupportedSchemaVersion: a newer build wrote the document. Nothing in
-            it but its `schema_version` is held to this build's rules.
-        LayoutFormatError: the text is not JSON, or is JSON nested past what
-            the parser's stack holds, so no version can be read from it; its
-            `schema_version` is missing, given twice, not a whole number from
-            1, or older than any step reads; or it does not describe a valid
-            set. The message names the invariant and where it broke.
+            it except its `schema_version` is checked against this build's
+            rules.
+        LayoutFormatError: no version can be read, because the text is not
+            JSON or is JSON nested deeper than the parser's stack allows. Also
+            raised when its `schema_version` is missing, given twice, not a
+            whole number from 1, or older than any step reads, or when it does
+            not describe a valid set. The message names the invariant and
+            where it broke.
     """
 
     document, version = _parse(text, "a Workspace set document")
@@ -406,13 +414,13 @@ def workspace_set_from_json(text: str) -> ReadWorkspaceSet:
 
 
 def _parse(text: str, noun: str) -> tuple[dict[str, object], SchemaVersion]:
-    """`text` as a document - an object with a `schema_version` - and that version.
+    """Parse `text` as a document, an object with a `schema_version`, and return it and the version.
 
     Raises:
         TypeError: `text` is not a `str`.
-        LayoutFormatError: the text is not JSON, is nested past what the
+        LayoutFormatError: the text is not JSON, is nested deeper than the
             parser reads, is not an object, or has no version that can be
-            read; `noun` names the kind of document the message asked for.
+            read. `noun` names the kind of document that the message asked for.
     """
 
     if not isinstance(text, str):
@@ -434,10 +442,12 @@ def _parse(text: str, noun: str) -> tuple[dict[str, object], SchemaVersion]:
 
 
 def _check_version(version: SchemaVersion) -> None:
-    """Refuse a version newer than this build reads; one below 1 is never built (`_read_version`).
+    """Refuse a version newer than this build reads.
+
+    A version less than 1 is never built, because `_read_version` rejects it.
 
     Raises:
-        UnsupportedSchemaVersion: `version` is above `LAYOUT_SCHEMA_VERSION`.
+        UnsupportedSchemaVersion: `version` is greater than `LAYOUT_SCHEMA_VERSION`.
     """
 
     if version > LAYOUT_SCHEMA_VERSION:
@@ -445,16 +455,16 @@ def _check_version(version: SchemaVersion) -> None:
 
 
 def _body_of(document: dict[str, object]) -> dict[str, object]:
-    """The document without its `schema_version`: the body a reader of one shape reads."""
+    """Return the document without its `schema_version`: the body that its shape's reader reads."""
 
     return {key: value for key, value in document.items() if key != "schema_version"}
 
 
 def _read_view_state(value: object, where: str) -> dict[AreaId, dict[ViewKind, dict[str, object]]]:
-    """The `view_state` at `where`: Area id keys as JSON wrote them, View kind keys, and objects.
+    """Read the `view_state` at `where`: Area id keys as JSON wrote them, View kind keys, objects.
 
-    Whether each Area is one the layout holds is the Workspace's check, which
-    `workspace_from_dict` reports at the Workspace.
+    Whether each Area is in the layout is checked by the Workspace, and
+    `workspace_from_dict` reports a failure at the Workspace.
     """
 
     if not isinstance(value, dict):
@@ -521,7 +531,10 @@ def _node_to_dict(node: Node) -> dict[str, object]:
 
 
 def _read_layout(body: object, where: str = "the layout", at: str = "") -> LayoutModel:
-    """The layout at `where`, whose members a refusal places under `at` - bare, for a document."""
+    """Read the layout at `where`, naming its members under `at` in an error message.
+
+    `at` is empty for a document, so an error then names each member by its key alone.
+    """
 
     fields = _fields(body, where, "a layout", ("next_area_id", "windows"))
     next_area_id = _read_area_id(fields["next_area_id"], _member(at, "next_area_id"))
@@ -550,11 +563,11 @@ def _read_window(value: object, where: str) -> Window:
 
 
 def _read_node(value: object, where: str, enclosing: int) -> Node:
-    """The node at `where`, which `enclosing` splits hold.
+    """Read the node at `where`, which sits inside `enclosing` splits.
 
-    A split past `TREE_DEPTH_MAXIMUM` is refused before its children are read,
-    so the reader recurses no deeper than the maximum, however deep the
-    document goes.
+    A split deeper than `TREE_DEPTH_MAXIMUM` is refused before its children
+    are read. So the reader recurses no deeper than the maximum, however deep
+    the document goes.
     """
 
     if not isinstance(value, dict):
@@ -600,7 +613,7 @@ def _read_node(value: object, where: str, enclosing: int) -> Node:
 
 
 def _read_split(fields: dict[str, object], where: str, depth: int) -> Split:
-    """The split at `where`, which sits `depth` deep: its children are held by that many."""
+    """Read the split at `where`, which sits `depth` deep, so its children sit inside that many."""
 
     orientation = fields["split"]
     sizes = fields["sizes"]
@@ -640,7 +653,7 @@ def _read_split(fields: dict[str, object], where: str, depth: int) -> Split:
 
 
 def _run_id_to_dict(run: RunId | None) -> dict[str, object] | None:
-    """A pinned run as a file holds it: `null`, or its session and its number."""
+    """Return a pinned run as a file stores it: `null`, or its session and its number."""
 
     if run is None:
         return None
@@ -649,7 +662,7 @@ def _run_id_to_dict(run: RunId | None) -> dict[str, object] | None:
 
 
 def _read_run_id(value: object, where: str) -> RunId | None:
-    """A pinned run, as `_run_id_to_dict` writes it: `null`, or a session and a number."""
+    """Read a pinned run, as `_run_id_to_dict` writes it: `null`, or a session and a number."""
 
     if value is None:
         return None
@@ -685,7 +698,7 @@ def _read_area_id(value: object, where: str) -> AreaId:
 
 
 def _fields(value: object, where: str, noun: str, keys: tuple[str, ...]) -> dict[str, object]:
-    """`value` as an object holding exactly `keys`: none missing, none the schema lacks."""
+    """Return `value` as an object with exactly `keys`, none missing and none extra."""
 
     if not isinstance(value, dict):
         raise LayoutFormatError(f"{where}: {noun} is an object, not {_json_kind(value)}")
@@ -706,10 +719,11 @@ def _fields(value: object, where: str, noun: str, keys: tuple[str, ...]) -> dict
 
 
 def _object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    """An object's pairs as a dict, noting a key given twice rather than keeping the last silently.
+    """Return an object's pairs as a dict, noting a repeated key rather than silently keeping one.
 
-    Which of two values was meant cannot be known, so the key is refused, but
-    where the object stands rather than here, where it is not known.
+    Which of two values was meant cannot be known, so the key is refused. The
+    refusal happens later, where the object's place in the document is known,
+    and not here, where it is not.
     """
 
     read = dict(pairs)
@@ -730,12 +744,13 @@ def _object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def _whole_number(digits: str) -> int | _LongInteger:
-    """A JSON integer as Python reads it, or how long it is when that is longer than Python reads.
+    """Return a JSON integer as Python reads it, or its length when it is too long for Python.
 
     Python refuses to convert a decimal string of more than
-    `sys.get_int_max_str_digits()` digits, a guard against a conversion whose
-    cost grows with the square of the length, and its refusal names no place;
-    the length is kept instead and refused where the number stands.
+    `sys.get_int_max_str_digits()` digits. That limit guards against a
+    conversion whose cost grows with the square of the length, and Python's
+    error names no place in the document. So the length is kept instead, and
+    the number is refused later, in place.
     """
 
     try:
@@ -753,8 +768,8 @@ def _read_version(document: dict[str, object]) -> SchemaVersion:
 
     Raises:
         LayoutFormatError: `schema_version` is missing, given twice, not a
-            whole number this build can read, or below 1; the message names
-            the value.
+            whole number this build can read, or less than 1. The message
+            names the value.
     """
 
     if isinstance(document, _RepeatedKeys) and "schema_version" in document.repeated:
@@ -786,11 +801,11 @@ def _read_version(document: dict[str, object]) -> SchemaVersion:
 
 
 def _refuse_kept(document: dict[str, object]) -> None:
-    """Refuse the first value the parse kept rather than refused, naming where it stands.
+    """Refuse the first value that the parse kept rather than rejected, naming where it is.
 
-    Walked in reading order with a list rather than by recursion, so a
-    document nested as deep as the parser reads is walked without a
-    `RecursionError`.
+    The document is walked in reading order with a list rather than by
+    recursion, so a document nested as deep as the parser reads is walked
+    without a `RecursionError`.
 
     Raises:
         LayoutFormatError: an object gives a key twice, a number is `NaN` or
@@ -826,11 +841,12 @@ def _refuse_kept(document: dict[str, object]) -> None:
 
 
 def _is_written_area_id(key: str) -> bool:
-    """Whether `key` is an Area id as `workspace_to_dict` writes one: `str` of the number, exactly.
+    """Whether `key` is an Area id as `workspace_to_dict` writes one: exactly `str` of the number.
 
-    ASCII digits only - `str.isdecimal` admits every script's digits and
-    `int` reads them - no longer than the largest id, which keeps `int` under
-    the digit limit it refuses past, and with no leading zero, so one id has
+    The key must be ASCII digits only, because `str.isdecimal` accepts the
+    digits of every script and `int` reads them. It must be no longer than
+    the largest id, which keeps `int` within the digit limit beyond which it
+    refuses to convert. And it must have no leading zero, so that each id has
     one key and two keys cannot name one Area.
     """
 
@@ -843,7 +859,7 @@ def _is_written_area_id(key: str) -> bool:
 
 
 def _member(where: str, key: str) -> str:
-    """Where `key`'s value stands in the object at `where`, as a refusal names the place."""
+    """Return the place of `key`'s value in the object at `where`, as an error names it."""
 
     if not key.isidentifier():
         return f"{where}[{key!r}]"
@@ -852,7 +868,7 @@ def _member(where: str, key: str) -> str:
 
 
 def _json_kind(value: object) -> str:
-    """What a parsed JSON value is, in JSON's words."""
+    """Return the kind of a parsed JSON value, in JSON's words."""
 
     if value is None:
         return "null"
@@ -876,7 +892,7 @@ def _json_kind(value: object) -> str:
 
 
 def _json_value(value: object) -> str:
-    """A parsed JSON value as a refusal names it: a number or a string itself, the rest by kind."""
+    """Return a parsed JSON value as an error names it: a number or string itself, else its kind."""
 
     if isinstance(value, bool) or value is None:
         return _json_kind(value)

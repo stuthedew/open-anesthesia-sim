@@ -1,11 +1,10 @@
-"""The step a run is taken at: the range the coupled system supports, and a
-type that cannot hold a step outside it.
+"""The run's step: the range the coupled system supports, and a type that holds no step outside it.
 
 A run's step is one fact: the simulated seconds that each call to
 `AgentUptakeSystem.advance()` moves. It used to be a bare `float`, checked by hand
-at each entry point that took one. An entry point that the check had not reached
-then took a step that nothing had checked, and each such entry point was found as
-a separate defect (`PL-0GJC` counts them). `SimulationStep` checks the step once,
+at each entry point that took one. An entry point that lacked the check then took
+a step that nothing had checked, and each such entry point was found as a
+separate defect (`PL-0GJC` counts them). `SimulationStep` checks the step once,
 when it is chosen. A function that takes one says so in its signature, where
 `mypy --strict` refuses a bare `float`.
 
@@ -18,19 +17,19 @@ floor is different. Rounding error grows as the step shrinks, in a compartment
 stepped alone just as in a run. So each compartment's own `advance` refuses a step
 below the floor, through `require_at_least_the_smallest_step` (`PL-WP52`).
 
-**Why a `float` subclass rather than either neighbour in `core/`.** A
-`NewType`, which `concentration.py` keeps for `MacMultiple` alone, is a
-label the type checker reads and the interpreter discards: calling one returns
-its argument unchanged, so it suits a unit, where every float is a valid
-value, and not a range. A frozen dataclass, the shape `tissue.py`'s states
-take, refuses as well as this does but puts `.seconds` into every equation
-that multiplies by the step. A `float` subclass is checked when it is built
-and is the number itself in the arithmetic, and that arithmetic returns a
-plain `float`, so a quantity derived from the step does not carry the step's
-guarantee by mistake.
+**Why a `float` subclass rather than either of the other shapes used in
+`core/`.** A `NewType` is a label that the type checker uses and the
+interpreter discards. `concentration.py` uses one only for `MacMultiple`.
+Calling a `NewType` returns its argument unchanged, so it suits a unit, where
+every float is a valid value, but not a range. A frozen dataclass, the shape
+that `tissue.py`'s states take, refuses a bad value as well as this type
+does. But it puts `.seconds` into every equation that multiplies by the step.
+A `float` subclass is checked when it is built and is the number itself in
+the arithmetic. That arithmetic returns a plain `float`, so a quantity derived
+from the step does not carry the step's guarantee by mistake.
 
-**What the type cannot reach, and the check that does.** `mypy` reads `src/`
-but not `tests/`, and it passes a value typed `Any`, so a bare `float` can
+**What the type cannot cover, and the check that does.** `mypy` checks `src/`
+but not `tests/`, and it accepts a value typed `Any`, so a bare `float` can
 still arrive at runtime. Each of the run's entry points calls
 `require_simulation_step` first. The entry points are `SimulationState`, at every
 write to its step field (`PL-8W1W`), `AgentUptakeSystem.advance()` and
@@ -49,68 +48,72 @@ from anesthesia_sim.core.validation import require_positive_finite
 
 # The largest simulation step `AgentUptakeSystem.advance()` accepts.
 #
-# It is not a bound on the arithmetic, and re-deriving it (`PL-X9KD`) did not
-# find one. The propagator is the exact solution of the governing equations
-# over whatever interval it is given, and its floating-point evaluation is
-# measured across the settings envelope at 1e-14 to 2e-12 in fraction for every
-# step from 1e-3 s to 3600 s - not growing with the step but U-shaped in it,
-# because the only mechanism left is rounding, which accumulates once per step
-# and so gets *worse* as the step shrinks. The first step at which any displayed
-# digit is wrong by a whole count is around 1e13 s. No numerical ceiling
-# reachable by a caller exists.
+# It is not a bound on the arithmetic, and re-deriving it (`PL-X9KD`) found no
+# such bound. The propagator is the exact solution of the governing equations
+# over whatever interval it is given. Its floating-point evaluation was
+# measured across the settings envelope for every step from 1e-3 s to 3600 s.
+# Its error is 1e-14 to 2e-12, as an absolute difference in concentration
+# fraction, not a relative error. That error does not grow with the step.
+# It is U-shaped in the step, because the only error mechanism left is
+# rounding, which accumulates once per step and so gets *worse* as the step
+# shrinks. The first step at which any displayed digit is wrong by a whole
+# count is around 1e13 s. No numerical ceiling that a caller can reach exists.
 #
 # What a longer step costs is control resolution. Every setting is held
 # constant across a step, so a control change takes effect at the next step
-# boundary and is displaced later by up to one whole step. That displacement is
-# exactly proportional to the step, with no threshold anywhere in it, so no step
-# size is the one at which control timing "becomes invisible" - which means this
-# constant is a declared tolerance rather than a derived limit, and is recorded
+# boundary and is delayed by up to one whole step. That delay is exactly
+# proportional to the step, with no threshold anywhere in it, so no step size
+# is the one at which control timing "becomes invisible". This constant is
+# therefore a declared tolerance rather than a derived limit, and is recorded
 # here as one.
 #
-# The tolerance it declares, measured 2026-09-06 in percentage points of one
-# atmosphere and stated in those units rather than in counts of any readout:
-# at this step the case-opening manoeuvre - dialling from off to 1 MAC at the
-# reference adult's own flows - displaces every displayed compartment by at most
-# 6.7e-3 pp, desflurane binding. One standard deviation of a single measured
-# partition coefficient displaces one by 9e-4 to 6.8e-2 pp (Yasuda 1989; see
-# docs/MODEL.md "Displayed precision"). So an ordinary control action is timed
-# well inside the model's own parameter uncertainty, which is the criterion,
-# and it is a criterion no display decimal count enters.
+# The tolerance it declares was measured on 2026-09-06 in percentage points
+# (pp) of one atmosphere. It is stated in those units rather than in counts of
+# any readout. At this step, the case-opening manoeuvre displaces every
+# displayed compartment by at most 6.7e-3 pp, with desflurane the worst agent.
+# That manoeuvre is dialling from off to 1 MAC at the reference adult's own
+# flows. One standard deviation of a single measured partition coefficient
+# displaces a compartment by 9e-4 to 6.8e-2 pp (Yasuda 1989; see docs/MODEL.md
+# "Displayed precision"). So an ordinary control action is timed well inside
+# the model's own parameter uncertainty. That is the criterion, and no count
+# of display decimals enters it.
 #
-# What that does *not* cover, stated rather than left to be found: an abrupt
-# manoeuvre is not held inside it. A ventilator start at this step displaces the
+# This tolerance does *not* cover an abrupt manoeuvre, and that is stated here
+# rather than left to be found. A ventilator start at this step displaces the
 # alveolar reading by up to 1.4e-1 pp for the duration of its transient, about
 # twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
 #
-# That was put to the project owner and decided on 2026-09-06: the value stays
-# here and the timing is accepted (PL-NBCJ). Moving to 0.05 s would double the
-# propagations per simulated second and force the interface's tick structure to
-# be revisited, and PL-NBWP had by then narrowed what it would buy to 1x
-# playback alone - above 1x the interface's own control grid is `multiplier x
-# 0.1` s and dominates the step outright. So this is a declared tolerance that
-# has been argued rather than a default nobody revisited, and the ventilator
-# start being timed to about twice one parameter SD is the accepted cost of it
-# rather than an oversight. docs/MODEL.md "Supported simulation step" carries
-# the measurements and the whole of the decision.
+# That choice was put to the project owner and decided on 2026-09-06: the
+# value stays here and the timing is accepted (PL-NBCJ). Moving to 0.05 s
+# would double the propagations per simulated second and force the
+# interface's tick structure to be revisited. By then, PL-NBWP had also
+# narrowed what the change would buy to 1x playback alone. Above 1x, the
+# interface's own control grid is `multiplier x 0.1` s, which dominates the
+# step outright. So this is a declared tolerance that has been argued, not a
+# default that nobody revisited. Timing the ventilator start to about twice
+# one parameter SD is its accepted cost, not an oversight. docs/MODEL.md
+# "Supported simulation step" carries the measurements and the whole of the
+# decision.
 #
 # Both figures are per step of delay, and a *caller* decides how many steps of
-# delay a control change waits (PL-NBWP). They are therefore what a caller
-# advancing one step per control opportunity sees, which the shipped interface
-# is only at 1x playback: it advances a whole tick's worth of steps between
-# opportunities, so its own resolution is that many times this one - 30 s and
-# up to about 10 pp at 300x, measured over the same manoeuvres. That is a
-# property of the caller's loop and not of this constant, which is why the
-# number here does not move; but the constant is a floor on the interface's
-# resolution rather than a statement of it, and a reader who takes it for the
-# latter is reading it as several hundred times better than it is. The whole
-# per-rate table is in docs/MODEL.md "Supported simulation step" beside this
-# one, and app/playback.py states which grid the interface actually offers.
+# delay a control change waits (PL-NBWP). So they are what a caller sees when
+# it advances one step per control opportunity. The shipped interface is such
+# a caller only at 1x playback. It advances a whole tick's worth of steps
+# between control opportunities, so its own resolution is that many times
+# coarser than this one: 30 s, and up to about 10 pp, at 300x, measured over
+# the same manoeuvres. That is a property of the caller's loop and not of this
+# constant, which is why the number here does not change. But the constant is
+# a lower bound on the interface's resolution, not a statement of it. A reader
+# who takes it for the interface's resolution thinks the interface is several
+# hundred times finer than it is. The whole per-rate table is in docs/MODEL.md
+# "Supported simulation step" beside this one, and app/playback.py states
+# which grid the interface actually offers.
 #
 # Every figure quoted above, and this constant's own value, is re-measured from
 # the parameter files at each run by tests/reference/test_control_resolution.py.
-# Until PL-ZVS7 they were held by this comment and by docs/MODEL.md and by
-# nothing else, so moving the model would have left both documents asserting a
-# tolerance the code no longer held, with make check passing.
+# Until PL-ZVS7, only this comment and docs/MODEL.md recorded them. So changing
+# the model would have left both documents asserting a tolerance that the code
+# no longer met, while make check still passed.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
 # This is the smallest simulation step that `AgentUptakeSystem.advance()` accepts
@@ -118,30 +121,31 @@ MAXIMUM_SIMULATION_STEP_S = 0.1
 # accepts (PL-WP52).
 #
 # Unlike the ceiling above, this bound is numerical. The exact step has no
-# truncation error at any step size, so what a finer step costs is rounding:
-# each step adds what it changed to what was already stored, and the finer the
-# step, the smaller that change is beside the store it is added to, so the same
-# rounding is a larger share of it. Measured 2026-10-03 over 10 000 steps from
-# 60 s into the default sevoflurane wash-in, what the alveolar, vessel-rich,
-# muscle and fat fractions changed by is wrong by at most 3e-12 of itself at
-# 1 ms, 7e-9 at 1 us, 1e-4 at 1e-10 s and a third at 1e-14 s, and nothing
-# raises at any of them. The growth has no knee, so - as with the ceiling - no
-# step is the one at which the answer "becomes wrong", and this constant is
-# declared rather than derived.
+# truncation error at any step size, so what a finer step costs is rounding.
+# Each step adds its change to the value already stored. The finer the step,
+# the smaller that change is beside the stored value, so the same rounding
+# error is a larger share of the change. This was measured on 2026-10-03 over
+# 10 000 steps, starting 60 s into the default sevoflurane wash-in. The change
+# in the alveolar, vessel-rich, muscle and fat fractions was wrong by at most
+# 3e-12 of itself at 1 ms, 7e-9 at 1 us, 1e-4 at 1e-10 s and a third at
+# 1e-14 s. Nothing raised an error at any of these steps. The growth has no
+# knee. So, as with the ceiling, no step is the one at which the result
+# "becomes wrong", and this constant is declared rather than derived.
 #
 # It is declared at the finest step at which the solution has been shown to match
 # the shipped one. That step is the bottom of the step sweep that PL-X9KD took. A
 # test beside the step-refinement gate in tests/reference/test_sevo_patient.py
-# drives the gate at this step, and pins this constant to the value its figures
-# were measured at. Nothing runs finer: apart from the tests of this floor itself,
+# drives the gate at this step, and pins this constant to the value at which
+# its figures were measured. Nothing runs finer: apart from the tests of this floor itself,
 # the finest step any test takes is 0.02304 s.
 #
 # It also keeps the run's own arithmetic exact. At this step the supported run
-# length is 86 400 000 steps, well inside the 2**53 below which a float holds
-# every whole count. Below about 9.6e-12 s a day's count passes that and
-# `elapsed_s` would round it before multiplying, and below about 4.8e-304 s the
-# run length divided by the step overflows, which `maximum_step_count` met as
-# an `OverflowError` from outside the simulator's own exceptions.
+# length is 86 400 000 steps, well below 2**53, the limit below which a float
+# represents every whole count exactly. Below a step of about 9.6e-12 s, a
+# day's count passes that limit, and `elapsed_s` would round the count before
+# multiplying. Below about 4.8e-304 s, the run length divided by the step
+# overflows. `maximum_step_count` met that as an `OverflowError`, from outside
+# the simulator's own exceptions.
 #
 # A compartment stepped on its own shows the same growth. This was measured on
 # 2026-10-19 over 10 000 steps of each of three compartments: a tissue group (time
@@ -237,11 +241,12 @@ class SimulationStep(float, CheckedQuantity):
     reaches is not itself a step, and is not presented as a checked one.
 
     Raises:
-        TypeError: `seconds` was built as another checked quantity - an
-            instant, a flow, a fraction - which is a swapped argument and is
-            refused before the range is read (`core/checked_number.py`,
-            `PL-979Z`); or it is not an `int` or a `float`, or is a `bool`,
-            as `require_supported_simulation_step` states.
+        TypeError: `seconds` was built as another checked quantity, such as
+            an instant, a flow or a fraction. That is a swapped argument, and
+            it is refused before the range is checked
+            (`core/checked_number.py`, `PL-979Z`). Or `seconds` is not an
+            `int` or a `float`, or is a `bool`, as
+            `require_supported_simulation_step` states.
         SimulationConfigurationError: the step is not positive and finite, is
             an `int` outside the range a `float` holds, is shorter than
             `MINIMUM_SIMULATION_STEP_S`, or exceeds
@@ -261,17 +266,21 @@ class SimulationStep(float, CheckedQuantity):
 def require_simulation_step(simulation_step_s: object) -> None:
     """Require a step that was built as a `SimulationStep`, and so checked.
 
-    The runtime half of the type, for the callers `mypy` does not read: a test,
-    a notebook, or a value typed `Any`. It checks the type and not the range,
-    which the constructor has already checked. A value built as another
-    checked quantity - an instant, a count, a flow, a concentration - is named
-    as that and not told to rebuild, by `require_not_another_quantity`, which
-    the constructor asks first as well (`core/checked_number.py`): until
-    `PL-848D` a `CaseInstant(0.1)` handed in as the step was told to build
-    `SimulationStep(0.1)` from it, which would hold a 0.1 s step built from
-    an instant, the swap this refusal exists to catch. The value prints
-    through `shown`, so a bare `int` too long for `repr` is named by its
-    length rather than escaping as `ValueError` while the refusal is written.
+    This is the runtime half of the type, for the callers that `mypy` does not
+    check: a test, a notebook, or a value typed `Any`. It checks the type and
+    not the range, which the constructor has already checked.
+
+    `require_not_another_quantity` (`core/checked_number.py`) runs before
+    this refusal, as it runs first in the constructor. It names a value built
+    as another checked quantity, such as an instant, a count, a flow or a concentration, as that
+    quantity, and does not tell the caller to rebuild it. Until `PL-848D`, a
+    `CaseInstant(0.1)` handed in as the step was told to build
+    `SimulationStep(0.1)` from it. That would hold a 0.1 s step built from an
+    instant, which is the swap this refusal exists to catch.
+
+    The value prints through `shown`. So a bare `int` too long for `repr` is
+    named by its length, rather than escaping as `ValueError` while the
+    refusal is written.
 
     Raises:
         TypeError: `simulation_step_s` is not a `SimulationStep` - a bare

@@ -1,9 +1,10 @@
-"""Shared numeric-range guards used by every core compartment's field
-writes and setters, so invalid state is rejected at the same boundary
-everywhere instead of trusted or coerced silently. Four of the guards check a
-relation between two values rather than a property of one value. They are here
-for the same reason. Every record that holds such a pair refuses it with the same
-message. `require_within_vaporizer_maximum` keeps a dial at or below its
+"""Shared numeric-range guards for the field writes and setters of every core compartment.
+
+The guards reject invalid state at the same boundary everywhere, rather than
+trusting it or coercing it silently. Four of the guards check a relation
+between two values rather than a property of one value. They live here for the
+same reason, so that every record that holds such a pair refuses it with the
+same message. `require_within_vaporizer_maximum` keeps a dial at or below its
 vaporizer's maximum (`PL-BBMG`). `require_room_for_the_agent_held` and
 `require_within_the_capacity` keep an agent amount within its compartment's
 capacity. The first checks a change to the capacity, and the second checks a
@@ -12,11 +13,11 @@ volume and a partition coefficient multiply to a capacity that is positive and
 finite (`PL-8LQZ`, `PL-FNH3`).
 
 A concentration's own range is not checked here. Until `PL-4R3W`, guards in this
-module checked a fraction's 0 to 1 and a percent's 0 to 100, at each of the twelve
-places a value entered. `PL-4R3W` made `Fraction` and `Percent` types that can be
-built only through those checks (`core/concentration.py`). What is left here is the
-check of sign and finiteness that every other quantity shares, and the four
-relations above.
+module checked that a fraction lay from 0 to 1 and a percent from 0 to 100, at
+each of the twelve places where such a value entered. `PL-4R3W` made `Fraction`
+and `Percent` types that can be built only through those checks
+(`core/concentration.py`). What is left here is the check of sign and
+finiteness that every other quantity shares, and the four relations above.
 
 Every guard raises `SimulationConfigurationError` for a value it refuses, because
 the value was rejected before it changed anything. A refusal partway through a step
@@ -139,24 +140,28 @@ def require_nonnegative_finite(name: str, value: float) -> None:
 
 
 def _require_within_the_float_range(name: str, value: float) -> None:
-    """Refuse an `int` outside the closed range a `float` holds, naming it.
+    """Refuse an `int` outside the closed range that a `float` can hold, and name it.
 
-    `math.isfinite` converts an `int` to a `float` before it answers, and
-    raises `OverflowError` for one it cannot, so an `int` past the float range
-    escaped both guards above as Python's own exception, naming neither the
-    field nor the bound, and `SimulationStep(10**400)` was refused that way
-    rather than as a step (`PL-3800`, folding `PL-21V4`'s step half). The
-    other guards in `core/` have a supported range to refuse such an `int`
-    against (`core/supported_ranges.py`); these two have only the sign, so
-    the bound is the `float`'s own, `sys.float_info.max` either side of zero.
+    `math.isfinite` converts an `int` to a `float` before it returns, and
+    raises `OverflowError` for an `int` it cannot convert. So an `int` beyond
+    the float range used to escape both guards above as Python's own
+    exception, which named neither the field nor the bound.
+    `SimulationStep(10**400)` was refused that way rather than as a step
+    (`PL-3800`, which folded in the step half of `PL-21V4`). The other guards
+    in `core/` have a supported range to refuse such an `int` against
+    (`core/supported_ranges.py`). These two guards check only the sign, so
+    their bound is the `float`'s own: `sys.float_info.max` on either side of
+    zero.
 
-    Python compares an `int` against a `float` exactly, so the interval here
-    converts nothing. A `float` is inside it or is an infinity or a NaN, which
-    the guard's own test refuses, so it passes through unread; an `int` at or
-    inside the bound passes as it always did. The few `int`s just above the
-    bound that `float` would round down to it were admitted by `isfinite` and
-    are refused here with the rest, as the `int`s past the largest float they
-    are: the rule is the closed interval, with no rounding in it.
+    Python compares an `int` with a `float` exactly, so the interval test here
+    converts nothing. A `float` is either inside the interval or is an
+    infinity or a NaN, which the calling guard's own finiteness test refuses.
+    So this function lets every `float` through without examining it. An
+    `int` at or inside the bound passes, as it always did. A few `int`s just
+    above the bound would round down to it as a `float`. `isfinite` admitted
+    them, but they are refused here with the rest, because they are `int`s
+    beyond the largest float. The rule is the closed interval, with no
+    rounding in it.
     """
 
     if isinstance(value, int) and not -sys.float_info.max <= value <= sys.float_info.max:
@@ -184,11 +189,12 @@ def require_within_vaporizer_maximum(
     `UptakeEquationSettings`, from which a run is built. Both call this function, so
     both refuse with the same sentence and the relation is written once (`PL-BBMG`).
 
-    Rejecting rather than clamping is deliberate: a silently clamped dial
-    position would simulate, display, and chart a concentration the caller
-    did not ask for, which is the plausible-but-wrong clinical value
-    `CLAUDE.md` forbids. Zero is always allowed - it is the vaporizer turned
-    off, which is how washout begins - and so is the maximum itself.
+    Rejecting rather than clamping is deliberate. A silently clamped dial
+    position would simulate, display and chart a concentration the caller did
+    not ask for. That is the plausible but wrong clinical value that
+    `CLAUDE.md` forbids. Zero is always allowed, because it is the vaporizer
+    turned off, which is how washout begins. The maximum itself is also
+    allowed.
 
     Both arguments are `Percent`s. The `Percent` constructor is what refuses a `nan`,
     because no comparison refuses it. Callers check that each argument was built as a
