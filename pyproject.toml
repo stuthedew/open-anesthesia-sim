@@ -122,6 +122,11 @@ dev = [
     # the tests nothing. Tests only: no module under `src/` imports it, and
     # `tools/import_boundary_check.py` still refuses it under `core/`.
     "numpy>=2.5.3",
+    # pylint's duplicate-code check (R0801) alone, run by
+    # `tools/duplicate_code_check.py` as a ratchet over `src/`, `tools/` and
+    # docket, so copied logic fails `make check` (`PL-VWXL`). No other pylint
+    # message is enabled; ruff is the linter.
+    "pylint>=4.1.3",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     # Shuffles the test order, for `drift.yml`'s weekly `order` job only. The

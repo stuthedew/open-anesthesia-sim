@@ -50,7 +50,6 @@ branch closes.
 
 from __future__ import annotations
 
-import argparse
 import os
 import sys
 from pathlib import Path
@@ -59,15 +58,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.model import pr_number  # noqa: E402
-from docket.vcs import default_base, landed_closure  # noqa: E402
+from docket.vcs import landed_closure  # noqa: E402
 
-from open_pull_requests import repo_slug  # noqa: E402
 from pr_title_check import (  # noqa: E402
-    WORKING_TREE,
     GitUnanswered,
-    _branch,
+    arguments,
     closed_items_at,
-    open_pull_request,
+    discovered_pull_request,
+    report_unread_trees,
+    where_read,
 )
 
 
@@ -91,20 +90,9 @@ def closures(base: str, head: str) -> dict[str, str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    # `vcs.default_base` off a pull request, as `pr_title_check.py` reads it (`PL-9KLN`).
-    parser.add_argument("--base", default=os.environ.get("PR_BASE") or default_base(ROOT))
-    parser.add_argument("--head", default=os.environ.get("PR_HEAD"))
-    parser.add_argument(
-        "--discover",
-        action="store_true",
-        help="when PR_NUMBER is unset, read the number from this branch's open "
-        "pull request; skip silently if it cannot be read; with no --head, read "
-        "what the branch closes from the working tree (for `make check`)",
-    )
-    args = parser.parse_args()
-    # As `pr_title_check.py` reads it, so the two cannot disagree (`PL-T8PT`).
-    head = args.head or (WORKING_TREE if args.discover else "HEAD")
+    # The arguments and the head as `pr_title_check.py` reads them, so the two
+    # cannot disagree (`PL-9KLN`, `PL-T8PT`).
+    args, head = arguments(__doc__, "PR_NUMBER", "number")
 
     # Through the environment rather than argv, like the title: `${{ }}` pasted
     # into a `run:` line is the standard Actions script-injection hole, and
@@ -112,8 +100,7 @@ def main() -> int:
     given = os.environ.get("PR_NUMBER")
     discovered = given is None and args.discover
     if discovered:
-        slug, branch = repo_slug(), _branch()
-        found = open_pull_request(slug, branch) if slug and branch else None
+        found = discovered_pull_request()
         if found is None:
             return 0
         number = found[0]
@@ -132,13 +119,7 @@ def main() -> int:
     try:
         closing = closures(args.base, head)
     except GitUnanswered as silence:
-        print(
-            f"pr-record: one of the trees at {args.base} and {head} could not be read, "
-            f"so what this branch closes is unknown; not checked.\n"
-            f"  {silence}\n"
-            f"  Name refs git can resolve - `git fetch origin` where the base is missing.",
-            file=sys.stderr,
-        )
+        report_unread_trees("pr-record", args.base, head, silence)
         return 0 if discovered else 1
     if not closing:
         print("pr-record: this branch closes no item; no number is owed")
@@ -152,8 +133,7 @@ def main() -> int:
         f"{identifier} (records `pr: {pr}`)" if pr else identifier
         for identifier, pr in owed.items()
     )
-    closer = "this checkout" if head == WORKING_TREE else "this branch"
-    where = " in its working tree" if head == WORKING_TREE else ""
+    closer, where = where_read(head)
     print(
         f"pr-record: {closer} closes {', '.join(closing)}{where}, but #{number} is not "
         f"recorded on {recorded}.\n"

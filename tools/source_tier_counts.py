@@ -29,7 +29,6 @@ Exits 1 when it refuses to count, and 2 when there is no data directory.
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from collections.abc import Mapping, Sequence
@@ -39,6 +38,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import doc_check
+from check_support import repository_root
 
 #: The tiers in the order `docs/MODEL.md` § "Source hierarchy" numbers them.
 TIERS = tuple(enumerate(doc_check.SOURCE_TIERS, start=1))
@@ -115,11 +115,7 @@ def _format(documents: Mapping[str, Any]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
-    parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    args = parser.parse_args(argv)
-
-    root = (args.root or Path(__file__).resolve().parent.parent).resolve()
+    root = repository_root(argv, __doc__)
     data_root = root / doc_check.PACKAGE_ROOT / "data"
     if not data_root.is_dir():
         print(f"source_tier_counts: no data directory at {data_root}", file=sys.stderr)
