@@ -2323,34 +2323,38 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
-    """Pin the direction in which a circuit-side store of agent moves the elimination.
+    """Check whether a store of agent in the breathing circuit speeds or slows the elimination.
 
-    A circuit wall that dissolves agent is one such store. It takes up agent
-    during the administration and gives it back during the washout. That holds
-    the inspired fraction up and slows the fall of the alveolar fraction, so
-    the five-minute F_A/F_A0 rises. Until this test, that direction rested on
-    the argument alone (`PL-P1P6`).
+    A circuit-side store is any part of the breathing circuit that holds agent
+    and later returns it to the inspired gas. A circuit wall that dissolves
+    agent is one such store. It takes up agent during the administration and
+    gives it back during the washout. This keeps the inspired fraction higher
+    and slows the fall of the alveolar fraction, so F_A/F_A0 at five minutes
+    rises. Before this test, only the argument above supported that direction
+    (`PL-P1P6`).
 
-    `docs/MODEL.md` uses the direction to rule circuit-wall absorption out for
-    sevoflurane and isoflurane. Through the shipped circuit, the model already
-    washes both out too slowly, so a wall store would move them further from
-    their published means. Desflurane's residual has the opposite sign: with
-    the apparatus removed, the model washes it out too fast. A wall store would
-    move that comparison toward the published value. So for desflurane the
-    direction rules nothing out. A measurement of a real circuit and the
-    published apparatus, which had no circle system, strike the candidate
-    instead (`PL-X9K0`).
+    `docs/MODEL.md` uses this direction to rule out circuit-wall absorption as
+    an explanation of the model's residual for sevoflurane and isoflurane. The
+    residual is the gap between the model's result and the published mean.
+    With the shipped circuit, the model already washes both agents out too
+    slowly, so a wall store would move them further from their published
+    means. Desflurane's residual has the opposite sign. With the apparatus
+    removed, the model washes desflurane out too fast, so a wall store would
+    move the result toward the published value. For desflurane, therefore,
+    the direction rules nothing out. Two other things rule out circuit-wall
+    absorption for desflurane instead: a measurement of a real circuit, and
+    the fact that the published apparatus had no circle system (`PL-X9K0`).
 
     The test runs the published protocol with the circuit volume scaled by
     each factor in `SWEPT_CIRCUIT_VOLUME_FACTORS`. It asserts that F_A/F_A0 at
     five minutes rises with each larger circuit. A higher ratio means that the
     alveolar fraction fell more slowly. The circuit volume stands in for the
     wall store and is not the wall store itself. Both are circuit-side stores
-    that return agent to the inspired gas after the vaporizer closes, and the
-    direction rests on that shared property. This model has no wall term, so
+    that return agent to the inspired gas after the vaporizer closes. The
+    direction depends on that shared property. This model has no wall term, so
     the circuit volume is the only circuit-side store that a test can vary.
 
-    On 2026-10-25, the five-minute ratio at each factor was:
+    On 2026-10-25, F_A/F_A0 at five minutes for each volume factor was:
 
     | Agent       | 0.5    | 1.0    | 1.5    | 2.0    |
     | ----------- | ------ | ------ | ------ | ------ |
@@ -2358,9 +2362,10 @@ def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
     | isoflurane  | 0.3094 | 0.3227 | 0.3374 | 0.3542 |
     | desflurane  | 0.1484 | 0.1626 | 0.1803 | 0.2023 |
 
-    F_A0 moved by less than 0.3% across the same range, so the rise comes from
-    the slower fall and not from a smaller denominator. Only the direction is
-    asserted. The ratio at the shipped volume is pinned by
+    F_A0 moved by less than 0.3% across the same range. So the rise comes from
+    the slower fall of the alveolar fraction, not from a smaller denominator.
+    Only the direction is asserted. The ratio at the shipped circuit volume is
+    checked against its earlier measured value by
     `test_five_minute_elimination_ratio_regression_pin`.
     """
 
