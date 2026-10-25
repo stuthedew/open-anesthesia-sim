@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: model-review
+milestone: v0.6.8
 touches: .claude/skills/model-review/SKILL.md
 deferred-from: v0.7.0 - a measure in the model review, which no v0.7.0 feature reads; the next review run is due about 2026-11-25
 added: 2026-10-25

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, test
+milestone: v0.6.8
 touches: tests/integration/test_simulation_view.py
 added: 2026-10-17
 closed: 2026-10-25
