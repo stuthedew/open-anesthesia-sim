@@ -5832,16 +5832,23 @@ def _unresolved(token: str) -> str:
     exist, which on the machine running the check may be false: the container
     paths sessions cite, `/root/.ccr/README.md` among them, are there (`PL-H0CF`).
     """
-    if token.startswith("/"):
-        where = "which is not in this repository - a leading `/` is read from its root"
-    elif next(_repository_paths(token), None) is None:
-        where = "which is outside this repository"
-    else:
-        where = "which does not exist"
     return (
-        f"{where}; a sentence naming it as absent, planned, deleted or elsewhere says so "
-        f"under its paragraph: <!-- absent: {token} -->"
+        f"{_unresolved_place(token)}; a sentence naming it as absent, planned, deleted or "
+        f"elsewhere says so under its paragraph: <!-- absent: {token} -->"
     )
+
+
+def _unresolved_place(token: str) -> str:
+    """Where a cited path that resolves to nothing is, as the clause that tells a reader.
+
+    `_unresolved` tells a path citation this, and `check_quoted_sources` tells a
+    quotation's source, so both say the same thing about the same path.
+    """
+    if token.startswith("/"):
+        return "which is not in this repository - a leading `/` is read from its root"
+    if next(_repository_paths(token), None) is None:
+        return "which is outside this repository"
+    return "which does not exist"
 
 
 def check_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -6566,6 +6573,15 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     written with an ellipsis cannot be found verbatim, and declining to
     answer beats a false error.
 
+    **The named file is found the way a path citation is found**, by
+    `_repository_paths`. A leading `/` is the repository's root, and a path
+    that climbs out of the repository names nothing. Before this, the check
+    joined the name to the root, which for a leading `/` asked the machine
+    running it. So a quotation from a container path, such as
+    `/root/.ccr/README.md`, passed in a session, where the file exists, and
+    failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
+    this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
+
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
     advisory: the words may be a proposal for the file or a sentence it has
@@ -6588,10 +6604,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
-            target = root / cited
+            target = next(
+                (root / path for path in _repository_paths(cited) if (root / path).is_file()), None
+            )
             bodies[cited] = (
                 _comparable_statements(target.read_text(encoding="utf-8"))
-                if target.is_file()
+                if target is not None
                 else None
             )
         return bodies[cited]
@@ -6629,7 +6647,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 continue
             body = body_of(cited)
             if body is None:
-                finding = f"{path}:{line}: quotes {cited}, which does not exist"
+                finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
             else:

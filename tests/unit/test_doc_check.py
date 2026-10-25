@@ -1858,6 +1858,28 @@ def test_a_possessive_quotation_of_text_that_is_there_passes(tmp_path: Path) -> 
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_quotation_source_is_found_in_the_tree_alone(tmp_path: Path) -> None:
+    """A leading `/` names the repository's root, never the machine's.
+
+    The quoted file used to be found by joining its name to the root, so an
+    absolute name asked the machine running the check. A quotation from
+    `/root/.ccr/README.md` passed in a session, where that file exists, and
+    failed on CI's runner, where it does not (`PL-2D1S`). The outside file here
+    holds the quoted words, so the old reading passed it.
+    """
+    outside = tmp_path / "outside" / "GUIDE.md"
+    outside.parent.mkdir()
+    outside.write_text("# Agent proxy\n", encoding="utf-8")
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", f'**Context.** `{outside.as_posix()}` § "Agent proxy".\n')
+    assert any(
+        f"quotes {outside.as_posix()}, which is not in this repository" in e for e in _errors(root)
+    )
+
+    _item(root, "PL-0000-demo", '**Context.** `/docs/MODEL.md` § "Known limitations".\n')
+    assert not any("quotes /docs/MODEL.md" in e for e in _errors(root))
+
+
 def test_a_marked_citation_of_an_item_is_held_to_its_brief(tmp_path: Path) -> None:
     """`` `PL-MB2W` § "X" `` cites that item's brief, and the brief is what holds the words.
 
