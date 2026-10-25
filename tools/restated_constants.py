@@ -21,13 +21,23 @@ perturbation confirms that the test passes there. The script exits non-zero
 when it reports a test.
 
 **Which way a value moves.** A wrong value widens the supported interval by
-its own width. A `MAXIMUM_` name moves up and a `MINIMUM_` name moves down, by
-the distance between the pair. A maximum with no paired minimum is measured
-from zero, so `MAXIMUM_ELAPSED_SIMULATION_TIME_S` doubles to 48 h, as in
+its own width. A `MAXIMUM_` name moves up by the distance between it and its
+paired `MINIMUM_` name. A maximum with no paired minimum is measured from
+zero, so `MAXIMUM_ELAPSED_SIMULATION_TIME_S` doubles to 48 h, as in
 `PL-T5J5`. Narrowing the interval would instead fail every test that uses an
 ordinary setting near the limit, which says nothing about whether the test
 restates it. Widening fails a test that asserts a value past the old limit is
 refused, or that otherwise depends on where the limit sits.
+
+A `MINIMUM_` name moves down by the same distance, but never below zero. A
+floor at zero is not moved at all, and the report says so without failing.
+Every quantity the module bounds is a flow or a time, which cannot be
+negative, so admitting a negative value breaks the model's own arithmetic.
+Measured on 2026-10-25, lowering the three zero floors failed 52 tests, and
+the three that did not import the floor's name failed for that reason or
+through a subprocess, not because they copied a zero. A test that copies a
+floor of zero writes `0.0`, which no perturbation can tell from an ordinary
+zero setting such as apnoea.
 
 **What it cannot see.** It reports what it could not judge rather than
 dropping it, and each of these makes the run fail:
@@ -36,6 +46,12 @@ dropping it, and each of these makes the run fail:
 - a run of the suite that pytest did not finish, or whose output does not
   show that the perturbation was applied;
 - a test that fails without the perturbation too.
+
+A failing test whose file imports `subprocess` is listed as not judged, and
+does not fail the run. The process it starts imports the unperturbed module,
+so it can fail by comparing the two processes, as
+`tests/integration/test_cross_process_determinism.py` does, without copying
+anything. A restating test in such a file is listed among them, not named.
 
 Two kinds of restating test pass the perturbed run and so are never named. A
 test that reads the constant only through a subprocess it starts sees the
@@ -149,13 +165,19 @@ def widened(constant: Constant, constants: Sequence[Constant]) -> float | None:
         partner = MINIMUM_PREFIX + constant.name.removeprefix(MAXIMUM_PREFIX)
         width = constant.value - values.get(partner, 0.0)
         return constant.value + width if width > 0 else None
-    if constant.name.startswith(MINIMUM_PREFIX):
+    if constant.name.startswith(MINIMUM_PREFIX) and not is_zero_floor(constant):
         partner = MAXIMUM_PREFIX + constant.name.removeprefix(MINIMUM_PREFIX)
         if partner not in values:
             return None
         width = values[partner] - constant.value
-        return constant.value - width if width > 0 else None
+        return max(constant.value - width, 0.0) if width > 0 else None
     return None
+
+
+def is_zero_floor(constant: Constant) -> bool:
+    """Whether `constant` is a floor at zero, which the module docstring says is not moved."""
+
+    return constant.name.startswith(MINIMUM_PREFIX) and constant.value == 0.0
 
 
 def parse_perturbation(text: str) -> tuple[str, float]:
@@ -286,6 +308,17 @@ def restating(failures: Sequence[Failure], name: str, read: Callable[[str], str]
     return [failure for failure in failures if not imports[failure.file]]
 
 
+def starts_a_subprocess(source: str) -> bool:
+    """Whether `source` imports `subprocess`, so a test in it can start a process."""
+
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import) and any(a.name == "subprocess" for a in node.names):
+            return True
+        if isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class SuiteRun:
     """One run of pytest: its exit status, its failures, and what it printed."""
@@ -335,6 +368,8 @@ class Finding:
     restating: tuple[str, ...] = ()
     #: Tests that also fail without the perturbation, so were not judged.
     unjudged: tuple[str, ...] = ()
+    #: Tests in a file that imports `subprocess`, which were not judged.
+    through_subprocess: tuple[str, ...] = ()
     #: Why the run gave no answer, or an empty string when it gave one.
     declined: str = ""
 
@@ -352,12 +387,24 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
         finding.declined = "pytest's output does not show the perturbation was applied"
         return finding
     finding.failed = len(run.failures)
-    candidates = restating(
-        run.failures, constant.name, lambda file: (ROOT / file).read_text(encoding="utf-8")
-    )
+    sources: dict[str, str] = {}
+
+    def read(file: str) -> str:
+        if file not in sources:
+            sources[file] = (ROOT / file).read_text(encoding="utf-8")
+        return sources[file]
+
+    candidates = []
+    through_subprocess = []
+    for failure in restating(run.failures, constant.name, read):
+        if starts_a_subprocess(read(failure.file)):
+            through_subprocess.append(failure.nodeid)
+        else:
+            candidates.append(failure)
+    finding.through_subprocess = tuple(through_subprocess)
     if not candidates:
         return finding
-    plain = {key: value for key, value in os.environ.items() if key != PERTURBED_CONSTANT_VARIABLE}
+    plain = {key: text for key, text in os.environ.items() if key != PERTURBED_CONSTANT_VARIABLE}
     rerun = run_suite([failure.nodeid for failure in candidates], workers, plain)
     if rerun.status not in (0, 1):
         finding.declined = (
@@ -371,8 +418,14 @@ def judge(constant: Constant, value: float, workers: str) -> Finding:
     return finding
 
 
-def report(findings: Sequence[Finding], unmoved: Sequence[Constant]) -> tuple[str, bool]:
-    """The report's text, and whether it names anything that fails the run."""
+def report(
+    findings: Sequence[Finding], unmoved: Sequence[Constant], floors: Sequence[Constant] = ()
+) -> tuple[str, bool]:
+    """The report's text, and whether it names anything that fails the run.
+
+    `unmoved` holds the constants no rule could move, which fail the run, and
+    `floors` the floors at zero, which are left alone by rule and do not.
+    """
 
     lines = []
     failing = bool(unmoved)
@@ -384,18 +437,25 @@ def report(findings: Sequence[Finding], unmoved: Sequence[Constant]) -> tuple[st
             lines.append(f"{head}: no answer, because {finding.declined}")
             continue
         lines.append(
-            f"{head}: {finding.failed} tests failed, {len(finding.restating)} without "
-            "importing the name"
+            f"{head}: {finding.failed} tests failed, {len(finding.restating)} of them named "
+            "as restating it"
         )
         lines.extend(f"  restates it: {nodeid}" for nodeid in finding.restating)
         lines.extend(
             f"  not judged, fails without the perturbation too: {nodeid}"
             for nodeid in finding.unjudged
         )
+        lines.extend(
+            f"  not judged, its file imports subprocess: {nodeid}"
+            for nodeid in finding.through_subprocess
+        )
         failing = failing or bool(finding.restating or finding.unjudged)
     lines.extend(
         f"{constant.name}: not perturbed, because no rule widens it; teach `widened` one"
         for constant in unmoved
+    )
+    lines.extend(
+        f"{constant.name}: not perturbed, because it is a floor at zero" for constant in floors
     )
     lines.append(
         "Not seen by this run: a test that reads a constant only through a subprocess, "
@@ -426,7 +486,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     findings = []
     unmoved = []
+    floors = []
     for constant in chosen:
+        if is_zero_floor(constant):
+            floors.append(constant)
+            continue
         value = widened(constant, constants)
         if value is None:
             unmoved.append(constant)
@@ -434,7 +498,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"perturbing {constant.name} to {value!r}", flush=True)
         findings.append(judge(constant, value, options.workers))
 
-    text, failing = report(findings, unmoved)
+    text, failing = report(findings, unmoved, floors)
     print(text)
     return 1 if failing else 0
 

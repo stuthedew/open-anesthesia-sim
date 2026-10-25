@@ -20,11 +20,13 @@ from restated_constants import (
     Finding,
     failures_in,
     imports_name,
+    is_zero_floor,
     numeric_constants,
     parse_perturbation,
     perturbed_tree,
     report,
     restating,
+    starts_a_subprocess,
     widened,
 )
 
@@ -125,9 +127,20 @@ def test_each_constant_widens_its_interval_by_its_width() -> None:
         Constant("MAXIMUM_TIME", 10.0),
         Constant("MINIMUM_ALONE", 1.0),
         Constant("STEP", 2.0),
+        Constant("MINIMUM_RATE", 0.0),
+        Constant("MAXIMUM_RATE", 5.0),
     ]
 
-    assert [widened(constant, constants) for constant in constants] == [-2.0, 7.0, 20.0, None, None]
+    assert [widened(constant, constants) for constant in constants] == [
+        0.0,
+        7.0,
+        20.0,
+        None,
+        None,
+        None,
+        10.0,
+    ]
+    assert [constant.name for constant in constants if is_zero_floor(constant)] == ["MINIMUM_RATE"]
 
 
 def test_every_constant_on_this_tree_can_be_moved() -> None:
@@ -136,7 +149,16 @@ def test_every_constant_on_this_tree_can_be_moved() -> None:
     constants = numeric_constants(RANGES_SOURCE.read_text(encoding="utf-8"))
 
     assert NAME in {constant.name for constant in constants}
-    assert all(widened(constant, constants) is not None for constant in constants)
+    assert all(
+        is_zero_floor(constant) or widened(constant, constants) is not None
+        for constant in constants
+    )
+
+
+def test_a_file_that_imports_subprocess_is_told_apart() -> None:
+    assert starts_a_subprocess("import subprocess\n")
+    assert starts_a_subprocess("from subprocess import run\n")
+    assert not starts_a_subprocess(IMPORTS_THE_NAME)
 
 
 def test_the_perturbed_tree_replaces_the_one_binding_and_refuses_anything_else() -> None:
@@ -165,3 +187,4 @@ def test_a_run_without_an_answer_fails_the_report() -> None:
     assert report([answered], [])[1] is False
     assert report([declined], [])[1] is True
     assert report([answered], [Constant("STEP", 2.0)])[1] is True
+    assert report([answered], [], [Constant("MINIMUM_RATE", 0.0)])[1] is False

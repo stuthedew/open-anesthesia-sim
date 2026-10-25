@@ -353,18 +353,19 @@ jobs:
   # Monthly, on the first cron line, rather than weekly. A copied value does
   # no harm until a limit moves, and moving one is a deliberate safety-critical
   # change, made rarely and with `docs/MODEL.md` revised beside it. So finding
-  # a new copy within a month is soon enough, and each run costs seven runs of
-  # the suite. Before moving a limit, run this job by hand.
+  # a new copy within a month is soon enough, and each run costs four runs of
+  # the suite, one for each limit that is not a floor at zero. The tool's
+  # docstring says why those floors are left alone. Before moving a limit, run
+  # this job by hand.
   restated-constants:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 1 * *'
     runs-on: ubuntu-latest
-    # Seven runs of the suite, one after another, plus a short rerun of any
-    # test it reports. On 2026-10-25 one run with the run length doubled took
-    # 12.4 minutes on a 4-core container that was also running another
-    # suite. The jobs above put the suite at 9.5 to 14 minutes on a hosted
-    # runner, so an honest run is about 70 to 100 minutes. 240 minutes leaves
-    # more than twice the slowest of those, below the 360 GitHub allows a job,
-    # so the limit bounds a hang rather than a slow run.
+    # Four runs of the suite, one after another, plus a short rerun of any
+    # test it reports. On 2026-10-25, on a 4-core container, seven runs took
+    # 53 minutes, about 7.5 minutes each. The jobs above put the suite at 9.5
+    # to 14 minutes on a hosted runner, so an honest run here is about 40 to
+    # 60 minutes. 240 minutes leaves four times the slowest of those, as the
+    # jobs above do, so the limit bounds a hang rather than a slow run.
     timeout-minutes: 240
 
     steps:
