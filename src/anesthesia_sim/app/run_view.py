@@ -1181,23 +1181,24 @@ class RunView(QWidget):
 
         `case_restarted` is emitted before the frame is asked for. So by the
         time the frame is assembled, the dashboard has already dropped any
-        branch of the run that just ended. A branch drawn beside a trunk that
-        is back at induction would be two curves claiming to show one case
-        when they no longer do.
+        branch of the run that just ended. If a branch were still drawn beside
+        a trunk that is back at induction, the two curves would claim to show
+        one case when they no longer do.
 
         **A Reset that the core refuses halts the run instead.**
         `SimulationController.reset()` refuses before it clears anything. It
         refuses when the settings record is one on which the next step would
         also be refused. So the run is left exactly as it was, and it is
         stopped through the failed-step path. That path records the refusal,
-        and the status word, the transport and the banner state it. In any
-        other halt, the banner names Reset as the way out. For this halt, the
-        way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says that no setting
-        can repair the refusal (`PL-01GY`). Every exception halts the run, as
-        an exception from a step does. A `SimulationConfigurationError` here
-        is not a refused setting, because the run it leaves cannot be cleared
-        (`PL-M4M0`). `case_restarted` is not emitted, since no case restarted.
-        The frame is asked for, as after any halt.
+        and the status word, the transport controls and the banner show it. In
+        any other halt, the banner names Reset as the way out. For this halt,
+        the way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says that no setting
+        can repair the refusal (`PL-01GY`). Every exception from `reset()`
+        halts the run, just as an exception from a step does. A
+        `SimulationConfigurationError` here is not treated as a refused
+        setting, because the run it leaves cannot be cleared (`PL-M4M0`).
+        `case_restarted` is not emitted, since no case restarted. The frame is
+        asked for, as after any halt.
 
         The exit text is chosen before the halt records the refusal, because
         its wording depends on what the banner's reason will be. A controller
@@ -1205,11 +1206,12 @@ class RunView(QWidget):
         failed for something else, the banner's reason stays that earlier
         failure, and the exit text itself has to state the refusal.
         `refused_reset_exit` tells that run apart from a run that this same
-        refusal stopped on an earlier press (`PL-M4M0`). The refusal then goes
-        on to the halt gate of the slot that called this method, which halts
-        the run once. This method used to halt the run itself, so when showing
-        that halt raised, the gate caught the new exception and halted the run
-        a second time (blind review of `PL-HJKN`).
+        refusal stopped on an earlier press (`PL-M4M0`). This method then
+        raises the refusal again, to the halt gate of the slot that called it,
+        and that gate halts the run once. This method used to halt the run
+        itself. When showing that halt raised an exception, the gate caught
+        the new exception and halted the run a second time (blind review of
+        `PL-HJKN`).
 
         Raises:
             Exception: What `SimulationController.reset()` raised, once the exit
@@ -1235,9 +1237,10 @@ class RunView(QWidget):
 
         If the control offers a multiplier that is not in `SUPPORTED_PLAYBACK_RATES`,
         `playback_rate_for` raises `SimulationConfigurationError`. A mismatch between
-        the two tables is a defect. The gate halts the run for it, so the screen states
-        the defect. The selector keeps the rate that the reader picked, and the run keeps
-        the rate that it held before, which the line beside the selector names.
+        the control's multipliers and `SUPPORTED_PLAYBACK_RATES` is a defect. The halt
+        gate halts the run for it, so the defect is shown on screen. The selector keeps
+        the rate that the reader picked. The run keeps the rate that it held before,
+        and the line beside the selector names that rate.
         """
 
         multiplier = self._playback_rate_dropdown.itemData(index)
@@ -1293,13 +1296,13 @@ class RunView(QWidget):
     def _show_running_agent(self, agent_id: str) -> None:
         """Put the selector back on `agent_id`, this run's agent, without responding to the pick.
 
-        The combo box reports the reader's pick as a change before the
-        handler runs. A pick that is not acted on leaves the selector naming
-        an agent that the run is not using, until the selector is put back.
-        Such a pick is one made while a question is open. A pick on a run whose
-        snapshot raises is put back by the halt instead, through `present_halt`.
-        Signals are blocked while the selector is put back, so that the change
-        is not read as a second pick.
+        The combo box changes to the reader's pick before the handler runs.
+        So a pick that is not acted on leaves the selector naming an agent
+        that the run is not using, until the selector is put back. This
+        method puts back a pick made while a question is open. On a run whose
+        snapshot raises, the halt puts the selector back instead, through
+        `present_halt`. Signals are blocked while the selector is put back, so
+        that the change is not treated as a second pick.
         """
 
         with QSignalBlocker(self._agent_dropdown):
@@ -1341,14 +1344,15 @@ class RunView(QWidget):
         """Ask before discarding a recorded run, with the selector already put back.
 
         While the question is open, the selector shows the agent that is
-        actually running. The count of changes that would be lost uses the
-        same grouping that the timeline panel lists.
+        actually running. The changes that would be lost are counted in the
+        same groups that the timeline panel lists.
 
-        The pending agent is recorded only once the dialog is built. A
-        pending agent makes the selector put back every later pick. So when
-        building the question raised, the selector stayed put back even after
-        the Reset that the halt names as the way out (blind review of
-        `PL-HJKN`).
+        The pending agent is recorded only once the dialog is built. While an
+        agent is pending, the selector puts back every later pick. The pending
+        agent used to be recorded before the dialog was built. So when building
+        the dialog raised an exception, the selector kept putting back every
+        pick, even after the Reset that the halt names as the way out (blind
+        review of `PL-HJKN`).
         """
 
         self._show_running_agent(snapshot.agent_id)
@@ -1429,17 +1433,17 @@ class RunView(QWidget):
     def halt(self, error: BaseException, *, in_frame: bool = False) -> None:
         """Stop the run for an exception, and record the disposition that it calls for.
 
-        This method draws nothing and writes nothing on screen. `_halt_run`
-        and `SimulationView._halt_every_run` call `present_halt` after
-        halting.
+        This method draws nothing and writes nothing on screen. To show the
+        halt, `_halt_run` and `SimulationView._halt_every_run` call
+        `present_halt` after they call this method.
 
         Args:
             error: The exception that was raised.
             in_frame: True when the exception came from the dashboard that
-                every run is drawn in, from its frame or from one of its own
-                slots, rather than from this run's own step or setting. The
-                controller records that as well, and a trunk with that record
-                offers no branch
+                draws every run, either from its frame or from one of its own
+                slots. False when it came from this run's own step or setting.
+                The controller also records an exception from the dashboard,
+                and a trunk with that record offers no branch
                 (`SimulationController.record_failed_frame`).
         """
 
@@ -1463,11 +1467,12 @@ class RunView(QWidget):
         banner are written before the frame is asked for. So a run whose
         frame cannot be drawn still says that it stopped.
 
-        `present_halt` can raise once it has written the halt, when a dial
-        cannot be written (`PL-M3M2`). The frame is still asked for, because
-        the dashboard restates its own panels, such as "Branch here", only
-        when it draws. Without the frame, those panels went on offering the
-        halted run as it was (blind review of `PL-HJKN`).
+        `present_halt` can raise an exception after it has written the halt,
+        when a dial cannot be written (`PL-M3M2`). The frame is still asked
+        for, because the dashboard restates its own panels, such as "Branch
+        here", only when it draws a frame. Before this change, no frame was
+        asked for here, so those panels kept offering the halted run as it was
+        before the halt (blind review of `PL-HJKN`).
 
         Args:
             error: The exception that was raised.

@@ -690,25 +690,25 @@ class SimulationController:
             self._failure_reason = reason
 
     def record_failed_frame(self, reason: str) -> None:
-        """Stop the run because the dashboard it is drawn in raised, recording why.
+        """Stop the run because the dashboard that draws it raised an exception, and record why.
 
         Every run on the dashboard is drawn in one shared frame, and the
-        dashboard's own slots act on the whole case. So a raise in the frame or
-        in one of those slots is attributable to no single run
-        (`SimulationView._halt_every_run`). This records that the dashboard
-        failed. It says nothing about whether the model failed, so the
-        interface also calls `fail()` or `halt_at_supported_limit()`, as the
-        raise deserves.
+        dashboard's own slots act on the whole case. So an exception raised in
+        the frame or in one of those slots belongs to no single run
+        (`SimulationView._halt_every_run`). This method records that the
+        dashboard failed. It says nothing about whether the model failed, so
+        the interface also calls `fail()` or `halt_at_supported_limit()`,
+        whichever fits the exception.
 
         A run with this record offers no branch at all (`PL-T2Q2`). A branch
         opened from it would be drawn by the same dashboard, beside this run,
-        and could fail the same way. The first reason is kept, as `fail()`
-        keeps its own. Only a fresh run clears it, via `reset()` or
-        `set_agent()`.
+        and could fail the same way. When this method is called more than once,
+        the first reason is kept, just as `fail()` keeps its first reason. Only
+        a fresh run clears the record, through `reset()` or `set_agent()`.
 
         Args:
-            reason: What the dashboard raised, as `dashboard_frame.halt_disposition`
-                words it.
+            reason: What the dashboard raised, in the words that
+                `dashboard_frame.halt_disposition` gives it.
         """
 
         self._is_running = False
@@ -718,15 +718,16 @@ class SimulationController:
 
     @property
     def fork_refusal(self) -> str | None:
-        """Why no branch at all may be taken from this run, or None where one may.
+        """Why no branch at all may be taken from this run, or None when one may.
 
         Two reasons rule out every way of taking a branch. Either this run is
-        itself a branch, or the dashboard it is drawn in has failed
-        (`record_failed_frame`). Each method that takes a branch raises from
-        this same check. So `BranchedCase` offers no fork point while a reason
-        is set, and the offer and the methods cannot disagree. A method may
-        still reject a particular fork for its own reason, which
-        `here_fork_point` and the methods' docstrings name.
+        itself a branch, or the dashboard that draws it has failed
+        (`record_failed_frame`). Each method that takes a branch raises when
+        this check gives a reason. `BranchedCase` uses the same check and
+        offers no fork point while a reason is set, so the offer and the
+        methods cannot disagree. A method may still reject a particular fork
+        for a reason of its own. `here_fork_point` and the methods' docstrings
+        name those reasons.
         """
 
         refusal_as_a_branch = self._refusal_as_a_branch()

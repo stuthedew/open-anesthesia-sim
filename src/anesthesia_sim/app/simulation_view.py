@@ -1286,17 +1286,17 @@ class SimulationView(QWidget):
         """Restate both branch controls from the case on a halt, and offer nothing if that raises.
 
         Apart from this method, `_refresh_fork_panel` is called only at the
-        end of a frame. So after a halt whose frame failed, "Branch here"
-        stayed live over a trunk that every other control said had failed.
-        A press was then refused, and the next failing frame overwrote the
-        refusal (`PL-MMNX`). The case computes its offer from the trunk's own
-        state, so the restatement needs no frame. On a trunk whose frame
-        failed, the panel offers nothing (`PL-T2Q2`).
+        end of a frame. So without this method, a halt whose frame failed left
+        "Branch here" enabled over a trunk that every other control said had
+        failed. A press was then refused, and the next failing frame overwrote
+        the refusal (`PL-MMNX`). The case computes its offer from the trunk's
+        own state, so the restatement needs no frame. On a trunk whose dashboard
+        failed, the panel offers no branch (`PL-T2Q2`).
 
-        The call is guarded, because it runs inside the halt path. There, an
-        exception would leave the halt gate that called the halt and reach the
-        toolkit. If the case raises while computing its offer, the panel is
-        given an offer of nothing rather than left with the last frame's.
+        The call is wrapped in a `try`, because it runs inside the halt path.
+        There, an exception would escape the halt gate that started the halt
+        and reach the toolkit. If the case raises while computing its offer,
+        the panel offers no branch rather than keeping the last frame's offer.
         """
 
         try:
@@ -1556,17 +1556,18 @@ class SimulationView(QWidget):
         """On a halt, restate both lists of marks from every run, or hide them if that raises.
 
         A mark's standing says whether the run has reached it. Apart from this method,
-        `_refresh_bookmarks` is called only with a drawn frame's snapshots. So when a halt
-        came from a failed frame, the last frame's standings stayed on screen. A mark
-        ahead of the clock still showed as still to come, while every other control said
-        that the run had failed (`PL-YHR3`). Each run's controller gives its marks and
-        their standings without building a snapshot. So the restatement needs no frame.
+        `_refresh_bookmarks` is called only with a drawn frame's snapshots. So without this
+        method, a halt that came from a failed frame left the last frame's standings on
+        screen. A mark ahead of the clock still showed as yet to come, although every other
+        control said that the run had failed (`PL-YHR3`). Each run's controller gives its
+        marks and their standings without building a snapshot. So the restatement needs
+        no frame.
 
-        The restatement is guarded, as `_restate_fork_panel` is. It runs inside the halt
-        path, where an exception would leave the halt gate that called the halt and reach
-        the toolkit. If the panel cannot be restated, it is hidden rather than left showing
-        the last frame's rows. The editor's lists and their Remove buttons are hidden
-        too, so the two places that list the marks agree (`PL-F5KT`).
+        The restatement is wrapped in a `try`, as in `_restate_fork_panel`. It runs inside
+        the halt path, where an exception would escape the halt gate that started the halt
+        and reach the toolkit. If the panel cannot be restated, it is hidden rather than
+        left showing the last frame's rows. The editor's lists and their Remove buttons
+        are hidden too, so the two places that list the marks agree (`PL-F5KT`).
         """
 
         controllers = tuple(run.controller for run in self._runs)
@@ -1813,20 +1814,21 @@ class SimulationView(QWidget):
     def halt_for_slot(self, error: Exception) -> None:
         """Halt every run for an exception that one of this view's slots raised.
 
-        `app/halt_gate.py`'s `halt_gate` calls this method. This view's slots act on
-        the case rather than on one run: the branch controls, the marks editor, the
-        Workspaces and the frame. So the exception belongs to no single run, and every
-        run halts, as it does for a frame that cannot be drawn. Before the gate, when
-        the trunk's snapshot rejected a value (`PL-7DJK`), pressing one of these
-        controls raised inside its slot. Then either the press did nothing and nothing
-        on screen said why (`PL-F2T2`), or a branch was kept that was never drawn
-        (`PL-08SS`).
+        `app/halt_gate.py`'s `halt_gate` calls this method. This view's slots belong to
+        the branch controls, the marks editor, the Workspaces and the frame, and they act
+        on the case rather than on one run. So the exception belongs to no single run,
+        and every run halts, as it does for a frame that cannot be drawn. Before the halt
+        gate, when the trunk's snapshot rejected a value (`PL-7DJK`), pressing one of
+        these controls raised an exception inside its slot. Then either the press did
+        nothing and nothing on screen said why (`PL-F2T2`), or a branch was kept that was
+        never drawn (`PL-08SS`).
 
-        The halt draws a frame, and laying that frame out can call one of this
-        view's slots, such as `_follow_chart`. If that slot raises while every run
-        is being halted, its exception is passed on, to be printed, rather than
-        starting the halt again inside itself. Before this rule, one raise in
-        `_follow_chart` started the halt 21 times, 6 deep (blind review of `PL-HJKN`).
+        The halt draws a frame, and laying that frame out can call one of this view's
+        slots, such as `_follow_chart`. If that slot raises while every run is being
+        halted, this method raises the exception again so that it is printed, rather
+        than starting the halt again inside the halt already under way. Before this
+        rule, one exception in `_follow_chart` started the halt 21 times, nested 6 deep
+        (blind review of `PL-HJKN`).
 
         Args:
             error: The exception that the slot raised.
@@ -1870,29 +1872,30 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _halt_every_run(self, error: BaseException) -> None:
-        """Halt every run on an exception in the dashboard, show it, then try to draw.
+        """Halt every run on an exception in the dashboard, show each halt, then try to draw.
 
         An exception raised in the shared render path, or in one of the dashboard's own
         slots, belongs to no single run, so every run stops. Each run shows its halt
-        before the frame is tried. It shows the halt from its controller's record, which
-        builds no compartment value. The frame may be what just failed, and it may fail
-        again for the same cause. For example, two runs may
+        before the dashboard tries to draw the frame. It shows the halt from its
+        controller's record, which builds no compartment value. The frame may be what
+        just failed, and it may fail again for the same cause. For example, two runs may
         have come to use different agents, or a snapshot's own values may be rejected. A
         halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
+
         The branch controls are restated from the case for the same reason
         (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated from each
         run's controller for the same reason (`_restate_bookmark_panel`, `PL-YHR3`). Both
-        come from one list, `halt_restatements`. A test checks that this list covers every
-        control the dashboard offers outside a run (`PL-5JTH`). The trunk records that its
-        dashboard failed, so the case then offers no branch at all. A branch opened now would
-        be drawn by the same frame and would halt on it (`PL-T2Q2`). If presenting the
-        frame fails afterwards, the halt is not undone.
+        restatements come from one list, `halt_restatements`. A test checks that this list
+        covers every control the dashboard offers outside a run (`PL-5JTH`). The trunk
+        records that its dashboard failed, so the case then offers no branch at all. A
+        branch opened now would be drawn by the same dashboard and could fail the same
+        way (`PL-T2Q2`). If presenting the frame fails afterwards, the halt is not undone.
 
         One run's `present_halt` can raise after it has shown the halt, when its dials
-        cannot be written. That exception no longer stops the path. Every other run shows
-        its halt, every panel is restated and the frame is tried. Only then does the first
-        exception escape, so it still reaches the console rather than being hidden
-        (`PL-TLH4`).
+        cannot be written. That exception no longer stops the halt path. Every other run
+        still shows its halt, every panel is restated, and the dashboard tries to draw the
+        frame. Only then does the first exception escape, so it still reaches the console
+        rather than being hidden (`PL-TLH4`).
 
         Raises:
             ValueError: The first exception raised by a run's `present_halt`, once

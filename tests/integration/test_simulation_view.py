@@ -2130,15 +2130,15 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
 ) -> None:
     """A dragged slider's immediate labels come from the snapshot, so its refusal halts the run.
 
-    After a coalesced change, `_apply_setting` rewrites this run's own labels
-    from a snapshot read once the setting has been applied. Before `PL-HJKN`, that
-    read happened outside the `try` that the setting went through. So on a paused run whose
-    snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised
-    out of the slot. The dial moved, and the status word showed "Paused" over
-    a run that no frame could draw. The toolkit printed an error that nothing
-    on screen reported (`PL-V2HC`). The read now halts the run and shows the
-    halt from the controller's status. This is the first time the halt is
-    shown here, because a paused run draws no frame that could refuse.
+    After a coalesced change, `_apply_setting` rewrites this run's own labels from a
+    snapshot that it reads after applying the setting. Before `PL-HJKN`, that read
+    happened outside the `try` block that applied the setting. So on a paused run whose
+    snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised an exception
+    that escaped the slot. The dial moved, and the status word showed "Paused" over a
+    run that no frame could draw. The toolkit printed an error, but nothing on screen
+    reported it (`PL-V2HC`). The read now halts the run and shows the halt from the
+    controller's status. In this test, the read is the first place where the halt is
+    shown, because a paused run draws no frame that could refuse.
     """
 
     controller = _paused_run_with_history()
@@ -7832,12 +7832,12 @@ def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
 def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboard(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A raise in one of the dashboard's slots halts every run, and the refusal names the dashboard.
+    """An exception in a dashboard slot halts every run, and the refusal names the dashboard.
 
-    Through the halt gate, every slot of `SimulationView` now halts every run, as a frame
-    that fails does. Edit on the marks panel is one, when the editor cannot be built. The
-    branch panel's refusal said "the frame this run is drawn in failed", for a frame that
-    never failed (blind review of `PL-HJKN`).
+    Through the halt gate, every slot of `SimulationView` that raises now halts every run,
+    as a frame that fails does. One such slot is Edit on the marks panel, which raises when
+    the editor cannot be built. The branch panel's refusal used to say "the frame this run
+    is drawn in failed", although no frame had failed (blind review of `PL-HJKN`).
     """
 
     case = _branched_case()
@@ -7860,14 +7860,13 @@ def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboar
 def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A run's halt asks for a frame even when its dials cannot be written, so "Branch here" goes.
+    """A halt asks for a frame even if the dials cannot be written, so "Branch here" is withdrawn.
 
-    `present_halt` raises once it has shown the halt, for a fresh gas flow range narrower
-    than the dial's step (`PL-M3M2`). `_halt_run` then asked for no frame, and the
-    dashboard restates its branch panel only when it draws. So "Branch here" went on
-    offering the halted trunk. Every slot of a run reaches this path through the halt
-    gate, including `_handle_adjustment_start`, which no `try` guarded before (blind
-    review of `PL-HJKN`).
+    `present_halt` raises once it has shown the halt, when a fresh gas flow range is narrower
+    than the dial's step (`PL-M3M2`). `_halt_run` used to ask for no frame then, and the
+    dashboard restates its branch panel only when it draws. So "Branch here" kept offering
+    the halted trunk. Every slot of a run reaches this path through the halt gate, including
+    `_handle_adjustment_start`, which no `try` guarded before (blind review of `PL-HJKN`).
     """
 
     case = _branched_case()
@@ -7896,12 +7895,12 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
 def test_a_new_case_question_that_cannot_be_built_leaves_the_selector_working_after_reset(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A raise while the new-case question is built halts the run, and Reset frees the selector.
+    """A failure to build the new-case question halts the run, and Reset frees the selector.
 
-    `_confirm_new_case` recorded the pending agent before it built the question. When
-    building it raised, the gate halted the run, but the pending agent stayed. So every
-    later pick was put back, even after the Reset that the halt names as the way out
-    (blind review of `PL-HJKN`).
+    `_confirm_new_case` used to record the pending agent before it built the question. When
+    building the question raised an exception, the gate halted the run, but the pending agent
+    was not cleared. So the selector put back every later pick, even after the Reset that the
+    halt names as the way out (blind review of `PL-HJKN`).
     """
 
     controller = _paused_run_with_history()
@@ -7965,12 +7964,12 @@ def test_a_refused_reset_whose_halt_cannot_write_its_dials_halts_the_run_once(
 def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A slot that the halt's own frame sets off, and that raises, does not halt every run again.
+    """If a slot that the halt's own frame sets off raises, it does not halt every run again.
 
     Halting every run ends by drawing a frame. Laying that frame out emits `rangeChanged`,
-    which calls `_follow_chart`. When `_follow_chart` raised, its gate started the halt
-    again inside itself, and one raise started it 21 times, 6 deep (blind review of
-    `PL-HJKN`).
+    which calls `_follow_chart`. Before this change, when `_follow_chart` raised, its gate
+    started the halt again inside the halt already under way. One exception started the halt
+    21 times, nested 6 deep (blind review of `PL-HJKN`).
     """
 
     case = _branched_case()
