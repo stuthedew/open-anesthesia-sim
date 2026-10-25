@@ -24,6 +24,7 @@ from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import PurePosixPath
+from typing import NewType
 
 # A field's own line holding only a YAML block-scalar header is declined by name
 # rather than read with the header as the first word of its value, which is how
@@ -77,7 +78,15 @@ EFFORTS = ("S", "M", "L")
 PR_RE = re.compile(r"[1-9][0-9]*")
 
 
-def pr_number(value: str) -> int | None:
+#: A pull request's number, as GitHub allocates it. Only `pr_number` builds
+#: one, so every holder of a pull request number - `vcs.NewestPullRequest`,
+#: `vcs.SubjectPullRequest`, `left_behind_check.Remote` and
+#: `pr_body_check.recovered` - takes a number that reading checked, and mypy
+#: refuses an `int` parsed by hand on its way to any of them (`PL-SC0N`).
+PullRequestNumber = NewType("PullRequestNumber", int)
+
+
+def pr_number(value: str) -> PullRequestNumber | None:
     """The pull request a `pr:` value records, or `None` where it holds no number GitHub gives.
 
     The one reading of the field: `checks` refuses what this returns `None`
@@ -85,7 +94,7 @@ def pr_number(value: str) -> int | None:
     number for, so no reader takes `07` for #7 while another refuses it
     (`PL-4DK2`).
     """
-    return int(value) if PR_RE.fullmatch(value) else None
+    return PullRequestNumber(int(value)) if PR_RE.fullmatch(value) else None
 
 
 # `untriaged` is the capture state: an idea recorded before anyone has decided

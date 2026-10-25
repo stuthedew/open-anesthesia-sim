@@ -206,7 +206,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.frontmatter import DELIMITER  # noqa: E402
-from docket.model import parse_front_matter, pr_number  # noqa: E402
+from docket.model import PullRequestNumber, parse_front_matter, pr_number  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     RECORDS,
@@ -340,11 +340,11 @@ def squash_commits(ref: str) -> list[tuple[str, int, str, str]]:
     return rows
 
 
-def recovered() -> set[int]:
+def recovered() -> set[PullRequestNumber]:
     """Pull request numbers already recorded under `docs/pr-bodies/`."""
     if not RECOVERY_DIR.is_dir():
         return set()
-    found: set[int] = set()
+    found: set[PullRequestNumber] = set()
     for path in RECOVERY_DIR.glob("*.md"):
         if (number := pr_number(path.stem)) is not None:
             found.add(number)
