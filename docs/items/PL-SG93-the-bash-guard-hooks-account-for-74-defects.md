@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: defect-review-2026-10
-touches: .claude/hooks, tools/hook_blocks.py, tests/unit/test_hook_blocks.py, tests/conftest.py, docs/hook-blocks, docket.toml, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_record_command.py, subprojects/docket/README.md, docs/apparatus.md
+touches: .claude/hooks, tools/hook_blocks.py, tools/rules_paths_check.py, tests/unit/test_hook_blocks.py, tests/unit/test_tools_portability.py, tests/conftest.py, docs/hook-blocks, docket.toml, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_record_command.py, subprojects/docket/README.md, docs/apparatus.md
 deferred-from: v0.7.0 - a workflow measurement that waits on the owner's choice of collection route; no v0.7.0 feature reads it
 added: 2026-10-19
 payoff: each Bash guard hook either shows what it blocked in return for its defect cost, or is simplified or retired
