@@ -3,12 +3,14 @@ id: PL-GZPX
 title: Hold a src/ function that raises to naming the failure in its docstring, as a doc_check rule, once the backlog it would fire on is clear
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: infra, docs
 feature: documentation-standard
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 blocked-by: PL-HXKC
 added: 2026-09-05
+payoff: a new public simulator function that raises without saying so in its docstring is refused by make check, so the backlog PL-HXKC cleared cannot regrow
+verify: grep -q 'def test_a_public_function_that_raises_names_the_failure_in_its_docstring' tests/unit/test_doc_check.py && grep -q 'check_raising_docstrings(root, report)' tools/doc_check.py
 ---
 
 **Problem.** "A public function that raises says so in its docstring" is
