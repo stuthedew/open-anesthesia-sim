@@ -403,15 +403,16 @@ def test_rejects_nonpositive_mac_percent() -> None:
 
 
 def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
-    """`PL-0FJ8`: the record refuses the divisor, not only the loader.
+    """The record refuses a zero MAC divisor, not only the loader (`PL-0FJ8`).
 
-    `Percent` admits zero, since a dial reads it, so the payload's
-    `PositivePercent` above was the only thing keeping a zero MAC out of an
-    `AgentParameters`, and a record built any other way - `dataclasses.replace`
-    in a test or a notebook - carried it to `format_mac_reference`, which
-    printed `1 MAC sevoflurane = 0.0%`. Since `PL-F9TC` the record holds its
-    MAC as a `MacPercent`, which refuses zero when it is built, and the record
-    refuses a MAC that was not built as one, a `Percent` included. A negative
+    `Percent` admits zero, because a dial can read zero. So the payload's
+    `PositivePercent` above was the only thing that kept a zero MAC out of an
+    `AgentParameters`. A record built any other way, such as by
+    `dataclasses.replace` in a test or a notebook, carried the zero to
+    `format_mac_reference`, which printed `1 MAC sevoflurane = 0.0%`. Since
+    `PL-F9TC`, the record holds its MAC as a `MacPercent`, which refuses zero
+    when it is built. The record also refuses a MAC that was not built as
+    one, a `Percent` included. A negative
     MAC never gets this far: `Percent` refuses it when built, and holds minus
     zero as zero.
     """

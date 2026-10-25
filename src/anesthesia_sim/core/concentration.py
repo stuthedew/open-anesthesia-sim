@@ -235,23 +235,24 @@ class Percent(float, CheckedQuantity):
 
 
 class MacPercent(Percent):
-    """An agent's 1 MAC as a percent of one atmosphere: a `Percent` that is above zero.
+    """An agent's 1 MAC as a percent of one atmosphere, held as a `Percent` that is above zero.
 
-    The MAC divides every MAC multiple the interface shows, and it is the
-    number in the `1 MAC = x%` reference beside the chart. A MAC of zero would
-    leave every multiple undefined. So the check that a MAC is above zero is
-    made once, when one of these is built. The check sets no lower bound beyond
-    zero. A MAC far smaller than any real agent's, such as 0.01%, still prints
-    as `1 MAC = 0.0%`, and one near the smallest float makes the multiples
-    overflow. The shipped MACs are 1.2% to 6.0%.
-    `AgentParameters` holds the agent's MAC as one, and each formatter in
-    `app/formatting.py` that divides by a MAC takes one (`PL-F9TC`). Before
-    that, `AgentParameters` refused a zero MAC through `require_positive_finite`,
-    and `app/formatting.py` tested `mac_percent > 0` again in five functions.
+    Every MAC multiple the interface shows is divided by the MAC. The MAC is
+    also the number in the `1 MAC = x%` reference beside the chart. A MAC of
+    zero would leave every multiple undefined. So the check that a MAC is
+    above zero is made once, when one of these is built. The check sets no
+    other lower bound. A MAC far smaller than any real agent's, such as
+    0.01%, still prints as `1 MAC = 0.0%`, and one near the smallest float
+    makes the multiples overflow. The shipped MACs are 1.2% to 6.0%.
+    `AgentParameters` holds the agent's MAC as a `MacPercent`, and each
+    formatter in `app/formatting.py` that divides by a MAC takes one
+    (`PL-F9TC`). Before that, `AgentParameters` refused a zero MAC through
+    `require_positive_finite`, and `app/formatting.py` tested
+    `mac_percent > 0` again in five functions.
 
     It is built from a number, as `Percent` is. It refuses a value already
     built as a `Percent`, as every checked type refuses a value built as
-    another, because a dial setting and a MAC are both percents and neither
+    another type. A dial setting and a MAC are both percents, and neither
     should pass for the other unnoticed. The upper end of the range is
     `Percent`'s 100%, which `Percent` says is an instance rather than a rule.
 
@@ -431,9 +432,10 @@ def require_percent(name: str, percent: object) -> None:
 def require_mac_percent(name: str, mac_percent: object) -> None:
     """Require a value that was built as a `MacPercent`, and so checked.
 
-    The runtime half of the type, as `require_percent` is for a percent. It
-    runs where a MAC is held, in `AgentParameters`, and where one is divided
-    by, in the formatters of `app/formatting.py` (`PL-F9TC`).
+    This is the runtime half of the type, as `require_percent` is for a
+    percent. It runs where a MAC is held, in `AgentParameters`. It also runs
+    where a MAC is used as a divisor, in the formatters of
+    `app/formatting.py` (`PL-F9TC`).
 
     Args:
         name: What the value is where it is handed in, for the message.

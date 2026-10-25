@@ -303,30 +303,30 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
 def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -> MacMultiple:
     """Convert a partial-pressure-equivalent fraction to multiples of 1 MAC.
 
-    The whole arithmetic of the second display unit, in one place, so the
-    transformation `docs/MODEL.md` § "MAC multiples as a display unit"
-    specifies can be read and tested without a formatter or a control
-    around it.
+    This function holds all the arithmetic of the second display unit, in one
+    place. So the transformation that `docs/MODEL.md` § "MAC multiples as a
+    display unit" specifies can be read and tested without a formatter or a
+    control around it.
 
-    What the returned number asserts is narrower than it looks, and the
-    specification section named above is where that is stated in full.
-    In short: it is this compartment's partial pressure expressed as a
-    multiple of the *alveolar* concentration that would be 1 MAC. On the
-    alveolar compartment that is the conventional reading. On the
-    circuit, mixed venous, vessel-rich, muscle and fat compartments it is
-    a partial-pressure ratio and nothing more — MAC is defined for an
-    alveolar concentration in a nominal 40-year-old, and this model has
-    no age, no second agent, and no depth-of-anesthesia endpoint.
+    The returned number claims less than it seems to, and that section of
+    the specification states its meaning in full. In short, it is this
+    compartment's partial pressure expressed as a multiple of the *alveolar*
+    concentration that would be 1 MAC. On the alveolar compartment, that is
+    the conventional reading. On the circuit, mixed venous, vessel-rich,
+    muscle and fat compartments, it is a partial-pressure ratio and nothing
+    more. MAC is defined for an alveolar concentration in a nominal
+    40-year-old, and this model has no age, no second agent, and no
+    depth-of-anesthesia endpoint.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
             fraction from zero through one.
         mac_percent: The running agent's 1 MAC as a percent of one
-            atmosphere, from `SimulationSnapshot.agent_mac_percent`.
-            Passed in rather than looked up: the divisor is what makes
-            the number agent-specific, so it travels with the value it
-            divides instead of being reachable from a module-level
-            default that could outlive an agent change.
+            atmosphere, from `SimulationSnapshot.agent_mac_percent`. It is
+            passed in rather than looked up. The divisor is what makes the
+            number agent-specific, so it travels with the value it divides.
+            It is not read from a module-level default, which could outlive
+            an agent change.
 
     Returns:
         The concentration as a multiple of the agent's 1 MAC.
@@ -336,8 +336,8 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -
             `MacPercent` is checked once, when it is built, to be above zero,
             so a divisor of zero cannot reach this function
             (`core/concentration.py`, `PL-F9TC`).
-        TypeError: the fraction was not built as a `Fraction`, which
-            `percent_from_fraction` refuses as `format_percent` says.
+        TypeError: the fraction was not built as a `Fraction`.
+            `percent_from_fraction` refuses it, as `format_percent` says.
     """
 
     require_mac_percent("mac_percent", mac_percent)
@@ -348,19 +348,20 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -
 def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -> str:
     """Render a partial-pressure-equivalent fraction as a MAC multiple.
 
-    The same three rules `format_percent` follows, for the same reasons,
-    at this unit's own derived resolution: round rather than truncate,
-    mark a positive value that rounds to zero as below the resolution
-    instead of showing it as `0.00`, and refuse a value never built as a
-    `Fraction`, an impossible negative among them, rather than absorb it,
-    which `mac_multiple` does before anything is rendered.
+    It follows the same three rules as `format_percent`, for the same
+    reasons, at this unit's own derived resolution. It rounds rather than
+    truncates. It marks a positive value that rounds to zero as below the
+    resolution, instead of showing it as `0.00`. It refuses a value that was
+    never built as a `Fraction`, an impossible negative among them, rather
+    than absorbing it. `mac_multiple` makes that check before anything is
+    rendered.
 
-    The below-resolution form matters more here than in percent, not
-    less. 0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
-    desflurane, so a compartment clears this unit's last digit later than
-    it clears the percent readout beside it — and a `0.00 ×MAC` on a fat
-    compartment that the percent line already shows filling would be the
-    two readouts contradicting each other.
+    The below-resolution form matters more here than in percent, not less.
+    0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
+    desflurane. So a compartment's value reaches this unit's last digit
+    later than it reaches the last digit of the percent readout beside it.
+    A `0.00 ×MAC` on a fat compartment that the percent line already shows
+    filling would make the two readouts contradict each other.
 
     Args:
         partial_pressure_fraction: Dimensionless partial-pressure-equivalent
@@ -375,8 +376,8 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPer
 
     Raises:
         TypeError: `mac_percent` was not built as a `MacPercent`, or the
-            fraction was not built as a `Fraction`, as `mac_multiple` refuses
-            each.
+            fraction was not built as a `Fraction`. `mac_multiple` refuses
+            each of them.
     """
 
     return render_mac_multiple(mac_multiple(partial_pressure_fraction, mac_percent))
@@ -415,11 +416,11 @@ def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> st
     """State the divisor every MAC multiple on screen was produced with.
 
     `CLAUDE.md` requires a clinically meaningful displayed value to be
-    traceable to the exact transformation that produced it, and a MAC
-    multiple has exactly one free parameter. Naming it on the display,
-    beside the axis it scales, is what makes the readouts traceable
-    without opening a data file: a reader who disagrees with the divisor
-    can see that they disagree, and can convert back.
+    traceable to the exact transformation that produced it. A MAC multiple
+    has exactly one free parameter, the MAC it divides by. Naming that MAC
+    on the display, beside the axis it scales, makes the readouts traceable
+    without opening a data file. A reader who disagrees with the divisor can
+    see that they disagree, and can convert back.
 
     The value is deliberately shown to one decimal, which is the
     precision the three stored values actually carry. `docs/MODEL.md`
@@ -452,26 +453,27 @@ def mac_awake_band_percent(
 ) -> tuple[float, float]:
     """Place the MAC-awake band on the chart's percent axis, as (lower, upper).
 
-    The stored value is a fraction of the agent's own MAC; the chart plots
-    percent of one atmosphere. This is that one multiplication, in the one
-    place, so the band's height on a labelled axis is testable without a
-    chart around it. `docs/MODEL.md` § "MAC-awake as a chart reference"
-    states what the band asserts and which trace it is read against.
+    The stored value is a fraction of the agent's own MAC. The chart plots
+    percent of one atmosphere. This function makes that one multiplication,
+    in one place, so the band's height on a labelled axis can be tested
+    without a chart around it. `docs/MODEL.md` § "MAC-awake as a chart
+    reference" states what the band asserts and which trace it is read
+    against.
 
-    Multiplying the *fraction* by the stored `mac_percent` — rather than
-    storing an absolute percent — is what keeps the band's height and the
-    axis it is drawn on consistent by construction. The population a
-    published MAC-awake percent was measured in has its own MAC, and
-    desflurane's is not this project's: Chortkoff's 2.60% sits against a MAC
-    of 7.25%, so importing that percent onto an axis scaled by a MAC of 6.0%
-    would raise the band by 20% and teach a later wake-up than the source
-    supports.
+    The band multiplies the *fraction* by the stored `mac_percent`, rather
+    than storing an absolute percent. That keeps the band's height
+    consistent with the axis it is drawn on, by construction. A published
+    MAC-awake percent was measured in a population that has its own MAC. For
+    desflurane, that MAC is not this project's. Chortkoff's 2.60% sits
+    against a MAC of 7.25%. Importing that percent onto an axis scaled by a
+    MAC of 6.0% would raise the band by 20%, and would teach a later wake-up
+    than the source supports.
 
     Every argument is keyword-only. The fraction and its standard deviation
-    are two dimensionless numbers of the same magnitude, so a positional
-    call is one transposition away from drawing a band ten times too wide
-    centered on the spread rather than the mean, with nothing in the type
-    system to catch it.
+    are two dimensionless numbers of the same magnitude. So a positional
+    call is one transposition away from drawing a band ten times too wide,
+    centered on the spread rather than the mean. Nothing in the type system
+    would catch it.
 
     Args:
         fraction_of_mac: Population MAC-awake as a fraction of this
@@ -483,8 +485,8 @@ def mac_awake_band_percent(
             roughly the middle two thirds of the population rather than
             its full range.
         mac_percent: The running agent's 1 MAC as a percent of one
-            atmosphere. Passed in beside the fraction it scales, for the
-            reason `mac_multiple` gives: the divisor is what makes the
+            atmosphere. It is passed in beside the fraction it scales, for
+            the reason `mac_multiple` gives. The divisor is what makes the
             number agent-specific.
 
     Returns:
@@ -497,8 +499,8 @@ def mac_awake_band_percent(
             so a divisor of zero cannot reach this function
             (`core/concentration.py`, `PL-F9TC`).
         ValueError: If the band's lower edge would not be strictly
-            positive. That band is not drawable, and `CLAUDE.md` requires
-            an obvious failure over a plausible-looking number. The
+            positive. That band cannot be drawn. `CLAUDE.md` requires an
+            obvious failure over a plausible-looking number. The
             loader's `_MacAwakePayload` already makes it unreachable from
             a shipped data file, so one arriving here means something
             upstream is wrong.
@@ -528,16 +530,17 @@ def format_mac_awake_reference(
 ) -> str:
     """State what the MAC-awake band was drawn from, in one line.
 
-    The same requirement `format_mac_reference` answers for the MAC axis:
-    a clinically meaningful mark on the display is traceable to the exact
-    values that produced it. The band has two free parameters rather than
-    one — a published fraction and the divisor it is applied to — so both
-    are named, together with the percent they land at, and a reader who
-    disagrees with either can see which one they disagree with.
+    This meets the same requirement that `format_mac_reference` meets for
+    the MAC axis. A clinically meaningful mark on the display must be
+    traceable to the exact values that produced it. The band has two free
+    parameters rather than one: a published fraction and the divisor it is
+    applied to. So both are named, together with the percent they land at.
+    A reader who disagrees with either can see which one they disagree with.
 
-    The fraction is shown at the MAC readouts' own resolution and the
-    percents at the concentration readouts', so the line carries no digit
-    the rest of the interface does not already stand behind.
+    The fraction is shown at the resolution of the MAC readouts. The
+    percents are shown at the resolution of the concentration readouts. So
+    the line claims no more precision than the rest of the interface already
+    does.
 
     Args:
         agent_display_name: Running agent's display name.
@@ -551,7 +554,7 @@ def format_mac_awake_reference(
         A one-line statement of the band's centre and its edges.
 
     Raises:
-        TypeError, ValueError: For the inputs `mac_awake_band_percent`
+        TypeError, ValueError: For the inputs that `mac_awake_band_percent`
             refuses.
     """
 
@@ -574,10 +577,10 @@ def format_mac_awake_reference(
 def chart_axis_top_percent(mac_percent: MacPercent) -> float:
     """Give the compartment chart's axis top, in percent, for one agent.
 
-    The chart plots percent, so the ceiling has to be handed over in
-    percent — but it is *chosen* in MAC, at `CHART_AXIS_TOP_MAC`, which
-    is what makes it the same ruler for every agent. That constant
-    carries why three, why fixed, and what it replaced.
+    The chart plots percent, so the axis top has to be passed to it in
+    percent. But the top is *chosen* in MAC, at `CHART_AXIS_TOP_MAC`, which
+    makes it the same ruler for every agent. The comment on that constant
+    explains why it is three, why it is fixed, and what it replaced.
 
     Args:
         mac_percent: The running agent's 1 MAC as a percent of one
@@ -602,10 +605,10 @@ def chart_axis_top_percent(mac_percent: MacPercent) -> float:
 def chart_grid_interval_percent(mac_percent: MacPercent) -> float:
     """Give the compartment chart's horizontal rule spacing, in percent.
 
-    The same conversion `chart_axis_top_percent` makes, for the same
-    reason and against `CHART_GRID_INTERVAL_MAC`: the chart's grid
-    interval is a percent, and the spacing that percent stands for is a
-    MAC multiple, so every agent is ruled at the same fractions of MAC.
+    This makes the same conversion as `chart_axis_top_percent`, for the
+    same reason, from `CHART_GRID_INTERVAL_MAC`. The chart's grid interval
+    is a percent, but the spacing it stands for is a MAC multiple. So every
+    agent's chart has its rules at the same fractions of MAC.
 
     Args:
         mac_percent: The running agent's 1 MAC as a percent of one
@@ -627,18 +630,18 @@ def chart_grid_interval_percent(mac_percent: MacPercent) -> float:
 def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[float, str], ...]:
     """Place the chart's MAC axis labels against a percent-valued axis.
 
-    The chart plots percent and always has: a MAC axis is the same
-    traces read against a second ruler, not a second set of points, so
-    nothing here converts a plotted value and the two axes cannot come
-    to disagree about a trace. Each tick is returned as the percent
-    position it sits at and the MAC number written beside it.
+    The chart plots percent, and always has. A MAC axis reads the same
+    traces against a second ruler. It is not a second set of points. So
+    nothing here converts a plotted value, and the two axes cannot come to
+    disagree about a trace. Each tick is returned as the percent position
+    it sits at and the MAC number written beside it.
 
-    Ticks land on round MAC values rather than on round percentages,
-    which is the point of the axis — a reader looks for 1 MAC, not for
-    whatever multiple 2% happens to be. The spacing comes from
-    `MAC_AXIS_STEP_LADDER_MAC`, taking the finest that keeps the axis
-    within `MAX_MAC_AXIS_INTERVALS`, so a wider plotted range coarsens
-    the labels instead of crowding them.
+    Ticks land on round MAC values rather than on round percentages, which
+    is the point of the axis. A reader looks for 1 MAC, not for whatever
+    multiple 2% happens to be. The spacing is the finest step in
+    `MAC_AXIS_STEP_LADDER_MAC` that keeps the axis within
+    `MAX_MAC_AXIS_INTERVALS` intervals. So a wider plotted range gets
+    coarser labels instead of crowded ones.
 
     Args:
         max_percent: Top of the chart's percent axis, which is what the

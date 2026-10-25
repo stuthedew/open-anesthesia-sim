@@ -588,8 +588,9 @@ class RunView(QWidget):
 
         The snapshot widgets are written first: the readouts, their clock and
         the accounting panel. The run-state widgets follow, through
-        `_write_statement`, which `present_halt` also calls. Here the banner is
-        the text that `dashboard_frame.notice` gives for a frame that drew.
+        `_write_statement`, which `present_halt` also calls. On this path the
+        banner shows the text that `dashboard_frame.notice` gives for a frame
+        that was drawn.
         Each chart writes the lines that depend on its window, such as which
         traces are above the axis, from its own frame (`PL-L59K`).
 

@@ -137,7 +137,7 @@ class PlaybackRate:
             )
 
     def steps_per_tick(self, *, tick_interval_s: float, simulation_step_s: SimulationStep) -> int:
-        """How many steps one tick takes to play at this rate.
+        """Return how many steps one tick takes to play at this rate.
 
         A tick of `tick_interval_s` real seconds must advance
         `multiplier * tick_interval_s` simulated seconds, and each step
@@ -146,11 +146,10 @@ class PlaybackRate:
         Args:
             tick_interval_s: Real seconds the run loop waits between
                 wakeups. Must be positive.
-            simulation_step_s: Simulated seconds one step advances, as the
-                `SimulationStep` the run is taken at, and left unchanged in
-                every case — this method
-                decides how many steps a tick takes and never how large one
-                is.
+            simulation_step_s: Simulated seconds that one step advances, as
+                the `SimulationStep` the run uses. It is left unchanged in
+                every case. This method decides how many steps a tick takes,
+                and never how large a step is.
 
         Returns:
             The whole number of steps, at least one.
@@ -162,13 +161,13 @@ class PlaybackRate:
                 supported range (`core/simulation_step.py`).
             SimulationConfigurationError: If the tick interval is not
                 positive and finite, as `core.validation.require_positive_finite`
-                checks (`PL-F9TC`); if the step count
-                these give is too large to count, which a vanishing step or
-                an enormous tick used to raise as a bare `OverflowError`
-                (`PL-YZ17`); or if this rate does not land on a whole number
-                of steps at these intervals. Refusing is the point: the
-                alternatives are a step of a different size or a run
-                playing at a rate other than the one displayed.
+                checks (`PL-F9TC`). Also if the step count that these give is
+                too large to count. A vanishing step or an enormous tick used
+                to raise that as a bare `OverflowError` (`PL-YZ17`). Also if
+                this rate does not land on a whole number of steps at these
+                intervals. The refusal is deliberate. The alternatives are a
+                step of a different size, or a run that plays at a rate other
+                than the one displayed.
         """
 
         require_positive_finite("tick_interval_s", tick_interval_s)

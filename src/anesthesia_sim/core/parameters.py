@@ -276,7 +276,7 @@ class AgentParameters:
 
     Built by `parse_agent_parameters()` from `_AgentPayload`, which validates
     the file and is discarded. The two carry overlapping field names on
-    purpose; `_StrictPayload` says why that is a boundary rather than
+    purpose. `_StrictPayload` says why that is a boundary rather than
     duplication.
 
     Raises:
@@ -290,18 +290,19 @@ class AgentParameters:
             shown divides by it (`PL-4R3W`).
         SimulationConfigurationError: `max_delivered_concentration_percent`
             is zero. A `Percent` refuses a negative value when it is built, so
-            zero is the only non-positive value it can hold, and a vaporizer
-            that delivers nothing has no dial to set. A zero MAC cannot reach
-            this record: a `MacPercent` refuses zero when it is built, because
-            the MAC divides every MAC multiple shown and is the number in the
+            zero is the only non-positive value it can hold. A vaporizer that
+            delivers nothing has no dial to set. A zero MAC cannot reach this
+            record, because a `MacPercent` refuses zero when it is built. The
+            MAC divides every MAC multiple shown, and it is the number in the
             `1 MAC = x%` reference beside the chart (`PL-0FJ8`, `PL-F9TC`).
             For a shipped file, the loader's `PositivePercent` refuses a zero
             MAC first. Also raised when `mac_percent` is above the vaporizer
             maximum. The loader's `_mac_percent_must_not_exceed_vaporizer_max`
             refuses a MAC above the maximum for a file, and this check refuses
-            it for every other record. A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a
-            dial cannot be set above the vaporizer maximum, so such a run would
-            open at a dial setting the vaporizer cannot deliver (`PL-HPKK`).
+            it for every other record. A run opens at 1 MAC
+            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above
+            the vaporizer maximum. So such a run would open at a dial setting
+            that the vaporizer cannot deliver (`PL-HPKK`).
     """
 
     schema_version: int

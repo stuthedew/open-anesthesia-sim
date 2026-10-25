@@ -453,8 +453,8 @@ def test_a_mac_not_built_as_one_refuses_to_produce_a_number(bad_mac: float) -> N
 
     A zero or negative divisor cannot produce a meaningful multiple. Each
     formatter that divides by a MAC takes a `MacPercent`, which refuses zero
-    when it is built, so a divisor that was not built as one is refused here
-    whatever its value. Before `PL-F9TC` each formatter tested the sign
+    when it is built. So a divisor that was not built as one is refused here,
+    whatever its value. Before `PL-F9TC`, each formatter tested the sign
     itself, and a positive bare `float` passed. A `Percent` is refused too,
     because a dial setting is not a MAC.
     """
@@ -752,12 +752,13 @@ def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
 
 
 def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
-    """The whole sentence the "Simulation stopped" banner shows for each display refusal.
+    """Pin the whole sentence that the "Simulation stopped" banner shows for each display refusal.
 
     A frame that cannot be drawn halts the run and prints the refusal. The
-    tests above match a phrase of each, which passes with the value it names
-    missing (`PL-79PK`). A zero MAC is no longer among them: a `MacPercent`
-    refuses it when the agent is read, before any run starts (`PL-F9TC`).
+    tests above match only a phrase of each refusal. Such a match still
+    passes when the value that the refusal names is missing (`PL-79PK`). A
+    zero MAC is no longer among these refusals. A `MacPercent` refuses it
+    when the agent is read, before any run starts (`PL-F9TC`).
     """
 
     with pytest.raises(ValueError) as no_band:
@@ -851,14 +852,14 @@ def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
 
     Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
     Handed the fraction, every function named below runs without complaint,
-    since the divisor is still positive: the chart's ceiling lands at 0.06%
-    where it belongs at 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
-    `float`, so only a parameter typed `Percent` refuses one, and a parameter
-    typed `float` breaks no caller, so `mypy` never asks for it to change: six
-    of these eight were `float` until `PL-W3Q5`. Read from the signatures
-    rather than from a list, so a function added with a bare `float` divisor
-    fails here too. Since `PL-F9TC` the type is `MacPercent`, a `Percent`
-    checked to be above zero.
+    because the divisor is still positive. The chart's ceiling lands at 0.06%
+    instead of 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
+    `float`, so only a parameter typed `Percent` refuses one. A parameter
+    typed `float` breaks no caller, so `mypy` never asks for it to change.
+    Six of these eight were `float` until `PL-W3Q5`. The test reads the types
+    from the signatures rather than from a list, so a function added with a
+    bare `float` divisor fails here too. Since `PL-F9TC`, the type is
+    `MacPercent`, a `Percent` checked to be above zero.
     """
 
     divisors = {
@@ -985,11 +986,11 @@ def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpress
 
 @pytest.mark.parametrize("bad_mac_percent", [0.0, -1.0, -0.001])
 def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> None:
-    """An axis of zero or negative height places every trace meaninglessly.
+    """An axis of zero or negative height would place every trace somewhere meaningless.
 
-    Failing is the required behavior: a chart drawn against such an axis
-    would still render, and every value on it would be somewhere a reader
-    could read a number off. The axis takes a `MacPercent`, so such a MAC
+    Failing is the required behavior. A chart drawn against such an axis
+    would still render, and a reader could still read a number off every
+    value on it. The axis takes a `MacPercent`, so such a MAC
     is refused when it is built, before an axis can be computed from it
     (`PL-F9TC`). A bare `float` is refused by the axis itself, as
     `test_a_mac_not_built_as_one_refuses_to_produce_a_number` shows.

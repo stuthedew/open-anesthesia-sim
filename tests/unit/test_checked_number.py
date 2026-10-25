@@ -1,12 +1,11 @@
-"""What a checked type is built from, pinned once where the rule is written.
+"""Tests of what a checked type is built from, pinned once, where the rule is written.
 
-`core/checked_number.py` decides for every checked type - `Fraction`,
+`core/checked_number.py` sets the rule for every checked type: `Fraction`,
 `Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant` and
-`StepCount` -
-what may be built into one, that none is built from another, and how a zero is
-held; each type's own tests hold it to the rule, and these hold the rule
-itself, so that a change here fails before any type does (`PL-LLMN`,
-`PL-979Z`).
+`StepCount`. The rule says what may be built into one, that none is built from
+another, and how a zero is held. Each type's own tests check that the type
+follows the rule. These tests check the rule itself, so that a change to it
+fails here before any type's tests fail (`PL-LLMN`, `PL-979Z`).
 """
 
 import importlib
@@ -99,19 +98,21 @@ ORDERED_PAIRS = [
 ]
 """Every ordered pair of two checked types, except a type built from its own subtype.
 
-`MacPercent` is a `Percent` that is above zero, so a `Percent` is rebuilt from
-one as from its own kind: a MAC is a percent of one atmosphere. The reverse is
-refused, because a `Percent` was not checked as a MAC (`PL-F9TC`)."""
+`MacPercent` is a `Percent` that is above zero. So a `Percent` is rebuilt from a
+`MacPercent` as from its own kind, because a MAC is a percent of one
+atmosphere. The reverse is refused, because a `Percent` was not checked as a
+MAC (`PL-F9TC`)."""
 
 CONCENTRATION_FORM: dict[type[Any], str] = {
     Fraction: "Fraction",
     Percent: "Percent",
     MacPercent: "Percent",
 }
-"""The form a refusal names for a concentration told to convert rather than rebuild.
+"""The concentration form that a refusal names when it says to convert rather than rebuild.
 
-A `MacPercent` is in the percent form, so a `Fraction` handed to it is told to
-convert from a fraction to a percent, in the words `Percent` uses."""
+A `MacPercent` is in the percent form. So the refusal of a `Fraction` handed to
+a `MacPercent` says to convert from a fraction to a percent, in the words that
+`Percent` uses."""
 
 
 def _every_subclass(base: type) -> list[type]:

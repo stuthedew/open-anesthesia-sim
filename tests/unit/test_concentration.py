@@ -811,11 +811,12 @@ def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
 ) -> None:
     """The opening dial is at 1 MAC, but it is a dial setting and not the agent's MAC.
 
-    Built from the agent's `MacPercent` itself, the opening setting passed a
-    MAC check until the learner first moved the dial. So a dial setting handed
-    to a formatter in place of the MAC drew a correct-looking 1.00 ×MAC at run
-    open, and failed only later, mid-run (`PL-F9TC`, blind review). The MACs
-    expected are the shipped data files' values, typed here.
+    When the opening setting was built from the agent's `MacPercent` itself,
+    it passed a MAC check until the learner first moved the dial. So a dial
+    setting handed to a formatter in place of the MAC drew a correct-looking
+    1.00 ×MAC at run open, and failed only later, mid-run (`PL-F9TC`, blind
+    review). The expected MACs are the values in the shipped data files,
+    typed out here by hand.
     """
     dial = AgentUptakeSystem.for_agent(agent).circuit.delivered_concentration_percent
 
