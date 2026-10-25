@@ -88,3 +88,41 @@ defects a review found, and `total_cost_usd`, read against the pre-registered
 reading above.
 
 **Generator check.** A one-off, asked for by the owner.
+
+**Trial plan, 2026-10-25.** Five delegable `S` items, chosen to cover different kinds of work, none of them claimed or reserved by another thread on that day:
+
+1. `PL-5HM5`: simulator code and its test (the bookmark dialog's refusal names a crossing by a Python repr).
+2. `PL-GKX6`: apparatus code and its test (`bin/docket delegable` offers an item whose work creates an unplaced file).
+3. `PL-CY5H`: a test helper (`_query` probes from a hard-coded 0.0).
+4. `PL-21KP`: docstrings across several modules (present-tense Flet claims left after the Qt port).
+5. `PL-DVTV`: a reference document (`docs/references/README.md` on Meyer et al.).
+
+If one of these closes before the runs start, take the next `S` item that `bin/docket delegable` lists and say so in the result.
+
+**Order of the runs.** Run every cheaper copy before the Opus run of the same item. The Opus run pushes a branch named for the item, and `tools/headless_worker.py` refuses an item that `bin/docket delegable` no longer offers, which an item in flight is not.
+
+**Reading the result.** A cheaper run whose record shows any permission denials ran in Manual mode, not auto mode, so it is scored "not comparable" rather than "refused". The runner's docstring says Claude Code falls back to Manual for a model that auto mode does not support. This does not change the pre-registered reading above.
+
+**The owner's steps**, on the Mac from a checkout of `main`, with `ANTHROPIC_API_KEY` exported as in `docs/maintainer.md` § "Spend the monthly API credit on delegable items". Read the credit left from platform.claude.com/settings/billing before each command, and pass it as `--credit-left`:
+
+1. `uv run python tools/headless_worker.py --credit-left <credit> --no-push --model claude-sonnet-5-5 --item PL-5HM5 --item PL-GKX6 --item PL-CY5H --item PL-21KP --item PL-DVTV`
+2. `uv run python tools/headless_worker.py --credit-left <credit> --no-push --model claude-haiku-5-5 --item PL-5HM5 --item PL-GKX6 --item PL-CY5H --item PL-21KP --item PL-DVTV`
+3. `uv run python tools/headless_worker.py --credit-left <credit> --item PL-5HM5 --item PL-GKX6 --item PL-CY5H --item PL-21KP --item PL-DVTV`
+4. Collect what a session needs to score the ten cheaper runs, which stay on the Mac:
+
+   ```
+   cd ~/.local/state/open-anesthesia-sim/workers
+   mkdir -p ~/Desktop/pl-6fx6
+   for c in pl-*-worker-sonnet-* pl-*-worker-haiku-*; do
+     [ -d "$c" ] || continue
+     id=$(echo "$c" | cut -d- -f1-2 | tr a-z A-Z)
+     git -C "$c" add -A
+     git -C "$c" diff --cached origin/main > ~/Desktop/pl-6fx6/"$c".diff
+     (cd "$c" && bin/docket verify "$id") > ~/Desktop/pl-6fx6/"$c".verify.txt 2>&1
+     cp "$c.log" ~/Desktop/pl-6fx6/
+   done
+   ```
+
+5. Attach the files in `~/Desktop/pl-6fx6` to a project thread and ask for `PL-6FX6` to be scored. The five Opus branches are reviewed and merged as ordinary worker branches.
+
+The runner stops after any failed run. When it stops, read the reason it prints, then start the same command again with only the items it has not run. Each run is capped at $15 by default, so the fifteen runs cost at most $225. That is more than one month's $200 credit, so the third command may have to wait for the next cycle.
