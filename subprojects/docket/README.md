@@ -3276,6 +3276,15 @@ positively and *everything else* is treated as an item entry, so an entry of
 neither shape is refused by name rather than falling out of both halves and
 being silently ignored.
 
+**An item that names both kinds is released by whichever clears last.** Where
+the milestone was scoped first, the item blocker's closure is what releases
+it, and that closure has a pull request. So `plan.promotable` returns such an
+item, `docket set` names it at the closure, and `docket check` refuses it at
+`blocked`, as for an item that names items alone. Where only a milestone holds
+it, scoping is no closure, so `docket check` keeps that case as advice. Until
+`PL-LL9F`, any milestone kept an item out of `promotable`, and `PL-K88Z`'s
+closure in #1712 left four items `blocked` with only the advisory.
+
 Without a readable `ROADMAP.md` the milestone half declines rather than
 guessing, and `docket check` names the items it could not judge. A bare
 checkout must not fail for the roadmap's absence, and must not report the store
@@ -4031,7 +4040,9 @@ not a `docket.toml` setting, so it has one home.
 `docket show` ends a closed item with a section headed "Sessions that worked
 it". It prints one line per session: the session id, the model that last
 served it, its effort level and its cost in USD. Where the configured model
-differs from the served one, the line names both. The section is where to
+differs from the served one, the line names both. A context-window suffix such
+as `[1m]` names the window and not the model, so a difference in it alone is
+not named (`PL-YF16`). The section is where to
 find which model and effort worked an item.
 
 The facts come from `docs/session-ledger.tsv`, at the project root. It is a

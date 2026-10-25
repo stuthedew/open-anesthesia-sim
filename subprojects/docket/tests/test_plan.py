@@ -1866,6 +1866,33 @@ def test_a_milestone_blocker_is_left_to_the_roadmap() -> None:
     assert promotable([closed, waiting]) == []
 
 
+def test_an_item_whose_milestone_cleared_first_is_promotable() -> None:
+    """`PL-LL9F`: once its milestone has cleared, an item blocker's closure releases it.
+
+    `PL-K88Z`'s closure in #1712 left four items `blocked-by: v0.6.0, PL-K88Z`
+    at `blocked` with only an advisory, because any milestone kept an item out.
+    A milestone still unscoped, or one whose `Required scope` names the item,
+    still holds it, and so does a milestone alone, which a scoping round
+    clears with no closure to refuse.
+    """
+    closed = _item("PL-1111", status="done")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111", "v0.6.0"))
+    alone = _item("PL-3333", status="blocked", blocked_by=("v0.6.0",))
+    items = [closed, waiting, alone]
+    scoped = MilestoneStates(known=frozenset({"v0.6.0"}), cleared=frozenset({"v0.6.0"}))
+    unscoped = MilestoneStates(known=frozenset({"v0.6.0"}), cleared=frozenset())
+    ships = MilestoneStates(
+        known=frozenset({"v0.6.0"}),
+        cleared=frozenset({"v0.6.0"}),
+        claimed={"v0.6.0": frozenset({"PL-2222"})},
+    )
+
+    assert [i.identifier for i in promotable(items, scoped)] == ["PL-2222"]
+    assert promotable(items, unscoped) == []
+    assert promotable(items, ships) == []
+    assert promotable(items) == []
+
+
 def test_an_item_declaring_no_blocker_at_all_is_not_promotable() -> None:
     """`status: blocked` with an empty `blocked-by` is a different defect, and
     `checks.py` already errors on it by name. Reporting it here would tell a

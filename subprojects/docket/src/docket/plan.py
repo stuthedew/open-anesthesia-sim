@@ -694,7 +694,7 @@ def _oldest_first(item: Item) -> tuple[int, date, int, str]:
     return (undated, item.added or date.max, band, item.identifier)
 
 
-def promotable(items: list[Item]) -> list[Item]:
+def promotable(items: list[Item], milestones: MilestoneStates | None = None) -> list[Item]:
     """Blocked items whose every recorded item blocker has closed.
 
     `_startable` filters on `status` alone and never opens `blocked_by`, so an
@@ -718,10 +718,16 @@ def promotable(items: list[Item]) -> list[Item]:
     onto the debt gate, because leaving `blocked` is what ends the
     `anticipated` exemption.
 
-    Item blockers only. A milestone blocker clears when a scoping round
-    happens, which takes the roadmap to answer and is a different question
-    from this one; `checks.py` keeps that branch, and `PL-162Y` is whether
-    `next` should name those too.
+    A milestone blocker alone stays out. It clears when a scoping round
+    happens, which is no closure, so `checks._groom` keeps that case as an
+    advisory, and `PL-162Y` is whether `next` should name those too. An item
+    that also waits on an item is different when its milestones cleared first.
+    Then the item blocker's closure is the event that releases it, and it has a
+    pull request to refuse, so the item is returned here once every milestone
+    it names `is_cleared` and none `ships_with` it. Leaving those out let
+    `PL-K88Z`'s closure in #1712 leave four items `blocked` with only an
+    advisory (`PL-LL9F`). Without `milestones` the roadmap was not read, so an
+    item naming any milestone stays out, which is the fail-closed reading.
 
     An id the store cannot place counts as unresolved, which is the
     fail-closed half: a `blocked-by` naming nothing is not evidence that the
@@ -734,10 +740,28 @@ def promotable(items: list[Item]) -> list[Item]:
             for item in items
             if item.status == "blocked"
             and item.blocked_by
-            and not item.blocking_milestones
             and set(item.blocking_items) <= resolved
+            and _milestones_released(item, milestones)
         ),
         key=lambda item: item.identifier,
+    )
+
+
+def _milestones_released(item: Item, milestones: MilestoneStates | None) -> bool:
+    """Whether `item`'s milestone blockers leave its item blockers to decide.
+
+    True for an item that names no milestone. One that names a milestone needs
+    an item blocker too, since a milestone alone is `checks._groom`'s advisory,
+    and every milestone it names cleared and not shipping with it.
+    """
+    versions = item.blocking_milestones
+    if not versions:
+        return True
+    if not item.blocking_items or milestones is None:
+        return False
+    return all(
+        milestones.is_cleared(version) and not milestones.ships_with(version, item.identifier)
+        for version in versions
     )
 
 
