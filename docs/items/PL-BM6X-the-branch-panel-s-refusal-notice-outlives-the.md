@@ -3,11 +3,12 @@ id: PL-BM6X
 title: The branch panel's refusal notice outlives the case it was about: an agent change on the trunk starts a new case without emitting case_restarted, so 'Select an instant to branch at' stays on screen after the switch (reproduced offscreen by PL-K88Z's inventory)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: one-source-of-truth
-touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-19
+closed: 2026-10-25
 payoff: after an agent change the branch panel no longer shows a notice about the case before
 verify: grep -q 'def test_an_agent_change_clears_the_fork_refusal_notice' tests/integration/test_simulation_view.py
 ---
@@ -19,3 +20,5 @@ verify: grep -q 'def test_an_agent_change_clears_the_fork_refusal_notice' tests/
 **Done when.** Changing the agent on the trunk clears the branch panel's refusal notice, whichever path starts the new case. A test named `test_an_agent_change_clears_the_fork_refusal_notice` in `tests/integration/test_simulation_view.py` fails on today's code and passes after the fix. `PL-WM5P`, which extends `PL-X7D5`'s single-writer guard to every surface that states run state, covers this kind of defect in general. This item fixes the reproduced instance, and can land before it or with it.
 
 **Checked 2026-10-24.** Nothing under `src/` has changed since `PL-K88Z` reproduced this offscreen on 2026-10-23. `run_view.py` still emits `case_restarted` on a restart only, and `simulation_view.py` clears the panel from `_handle_case_restarted`.
+
+**Built 2026-10-25.** An accepted agent change now emits `case_restarted`, whether it asked first or switched at once, so the dashboard clears the branch panel's refusal notice as a Reset does. `test_an_agent_change_clears_the_fork_refusal_notice` checks both paths.

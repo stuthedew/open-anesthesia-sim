@@ -3,13 +3,14 @@ id: PL-WM5P
 title: Extend the run view's single-writer guard (PL-X7D5) to every surface that states run state, so no displayed run state has a second writer
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/, tests/integration/test_simulation_view.py
 blocked-by: PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)
 added: 2026-10-19
+closed: 2026-10-25
 payoff: no displayed run state has a second writer that can leave it stale after a halt
 verify: grep -q 'def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one' tests/integration/test_simulation_view.py
 ---
@@ -29,3 +30,5 @@ verify: grep -q 'def test_every_run_state_surface_outside_the_run_view_reads_ali
 - The readout row's playback rate was the second writer that `PL-P58M` removed in this branch.
 - The bookmark editor's notice states the reader's last edit, not run state, so it has no run state to go stale and is left as it is.
 - The area chart's pin is written from one stored pin state, and a halt does not change that state, so it already had one writer.
+
+**Built 2026-10-25.** The surfaces above were settled in this branch. The open new-case and Reset questions are rewritten on every refresh, and `test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one` checks every widget outside the runs on a halted dashboard against the same dashboard drawn.
