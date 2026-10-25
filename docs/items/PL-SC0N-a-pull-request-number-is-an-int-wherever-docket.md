@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1769
 payoff: a hand-parsed number can no longer reach a pull request reader, because mypy refuses any int that model.pr_number did not build
 verify: grep -qF 'PullRequestNumber' subprojects/docket/src/docket/model.py
 ---
