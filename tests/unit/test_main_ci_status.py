@@ -72,6 +72,17 @@ def _workflow_step_names() -> list[str]:
     return names
 
 
+def _workflow_pytest_command() -> str:
+    """The first unnamed pytest step's command, as `quality.yml` writes it."""
+    commands = [
+        line.split("- run:", 1)[1].strip()
+        for line in _workflow().splitlines()
+        if line.strip().startswith("- run: uv run pytest")
+    ]
+    assert commands, "the workflow should run pytest in an unnamed step"
+    return commands[0]
+
+
 def _run(conclusion: str | None, number: int = 1550, sha: str = "abcdef1234") -> dict:
     """One run as the API returns it.
 
@@ -613,10 +624,8 @@ class TestAdvisoryNamesTheCause:
         """`quality.yml`'s pytest step has no `name:`, so GitHub names it after 150
         characters of shell. Printed whole it buries the run number and the URL.
         """
-        long_step = (
-            "Run uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') "
-            "--dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100"
-        )
+        long_step = "Run " + _workflow_pytest_command()
+        assert len(long_step) > main_ci_status.STEP_WIDTH, "the step should be long enough to cut"
         line = main_ci_status.advisory(_run("failure", 1553), _pairs([(long_step, "failure")]))
         assert "Run uv run pytest" in line
         assert "(cut)" in line, "a command cut to look complete is worse than one that says so"

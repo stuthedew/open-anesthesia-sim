@@ -33,7 +33,7 @@ If you would like to check your change before CI does, the project uses
 
 ```bash
 uv sync --locked --dev
-make check                   # everything CI runs; a few minutes
+make check                   # most of what CI runs (GATE_ONLY in tools/doc_check.py lists the rest); a few minutes
 make test                    # the test suite alone, no coverage gate
 make fix                     # apply the formatter and the safe lint fixes
 ```
