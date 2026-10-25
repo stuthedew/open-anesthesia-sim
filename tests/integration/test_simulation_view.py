@@ -24,16 +24,20 @@ frame is assembled from the plot's laid-out width, and a widget with no size
 has no pixels for the hover to measure against.
 """
 
+import ast
 import importlib
+import inspect
 import re
 import time
-from collections.abc import Callable, Iterator, Sequence
-from dataclasses import replace
-from typing import Any, NoReturn
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, replace
+from functools import cache, partial
+from typing import Any, Final, NoReturn
 
 import pytest
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPalette
+from PySide6.QtGui import QBrush, QColor, QFont, QPalette, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -137,6 +141,7 @@ from anesthesia_sim.app.formatting import (
     format_wash_in_ratio,
     mac_multiple,
 )
+from anesthesia_sim.app.halt_gate import halt_gate, passes_halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
@@ -2126,15 +2131,15 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
 ) -> None:
     """A dragged slider's immediate labels come from the snapshot, so its refusal halts the run.
 
-    After a coalesced change, `_apply_setting` rewrites this run's own labels
-    from a snapshot read once the setting has been applied. That read happens
-    outside the gate the setting went through. So on a paused run whose
-    snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised
-    out of the slot. The dial moved, and the status word showed "Paused" over
-    a run that no frame could draw. The toolkit printed an error that nothing
-    on screen reported (`PL-V2HC`). The read now halts the run and shows the
-    halt from the controller's status. This is the first time the halt is
-    shown here, because a paused run draws no frame that could refuse.
+    After a coalesced change, `_apply_setting` rewrites this run's own labels from a
+    snapshot that it reads after applying the setting. Before `PL-HJKN`, that read
+    happened outside the `try` block that applied the setting. So on a paused run whose
+    snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised an exception
+    that escaped the slot. The dial moved, and the status word showed "Paused" over a
+    run that no frame could draw. The toolkit printed an error, but nothing on screen
+    reported it (`PL-V2HC`). The read now halts the run and shows the halt from the
+    controller's status. In this test, the read is the first place where the halt is
+    shown, because a paused run draws no frame that could refuse.
     """
 
     controller = _paused_run_with_history()
@@ -2516,17 +2521,18 @@ def test_a_halted_run_shows_the_new_playback_rate(
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """A confirmation answered after the snapshot refuses leads to the halt, not a refusal.
+    """A confirmation answered after the snapshot rejects a value shows the halt, not a refusal.
 
     The question is asked from a snapshot read when the selector was used.
-    By the time the reader answers, the run's snapshot may refuse.
+    By the time the reader answers, the run's snapshot may reject a value.
     `set_agent` carries the settings over from the snapshot. So without the
-    gate, its exception reached `_apply_setting` as a refused setting. It was
-    recorded in `_rejected_setting_notice`, over a run halted for the same
-    reason (`PL-V2HC`, found at review). `_start_new_case` now reads the
-    snapshot through `_snapshot_for_a_control` first. The halt is shown,
-    nothing is recorded as refused, the dialog is gone and the run keeps its
-    agent.
+    gate, the exception from `set_agent` reached `_apply_setting` as a refused
+    setting. It was recorded in `_rejected_setting_notice`, even though the run
+    had halted for the same reason (`PL-V2HC`, found at review).
+    `_start_new_case` now reads the snapshot first, outside `_apply_setting`,
+    and the dialog's gated slot halts the run for the exception (`PL-HJKN`).
+    The test checks that the halt is shown, nothing is recorded as refused, the
+    dialog is gone and the run keeps its agent.
     """
 
     controller = _paused_run_with_history()
@@ -7238,10 +7244,14 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     assert case.fork_points_s == ()
     assert case.mark_fork_points == ()
 
-    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the dashboard this run is drawn in failed"
+    ):
         case.fork_at(CaseInstant(60.0))
 
-    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the dashboard this run is drawn in failed"
+    ):
         case.fork_at_mark(mark)
 
     assert case.branches == ()
@@ -7491,6 +7501,646 @@ def _ancestry(widget: QWidget) -> list[QWidget]:
         current = current.parentWidget()
 
     return chain
+
+
+#: Each entry is a callback that a view connects to a signal or passes to another call without
+#: the halt gate. Its key is the view class's name and the callback's source text, and its value
+#: is the reason the callback does not need the gate. Qt or a view calls every callback not
+#: listed here from the event loop, so an exception raised inside it is lost unless it passes
+#: the gate (`PL-HJKN`). The test fails on an entry if its callback is no longer connected or
+#: passed on, or if the callback now passes the gate, so the list stays accurate.
+_HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
+    ("RunView", "dialog.deleteLater"): (
+        "it is Qt's own slot, which deletes the dialog once it closes, and it reads no run"
+    ),
+    ("SimulationView", "self._trunk_reset_question"): (
+        "it returns the question that the trunk's Reset asks, and the trunk's own gated "
+        "Reset slot calls it"
+    ),
+    ("SimulationView", "self._open_runs"): (
+        "it returns the open runs' identities to the tab strip, and it reads no snapshot"
+    ),
+    ("SimulationView", "self._restate_fork_panel"): (
+        "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
+        "requires that it not raise"
+    ),
+    ("SimulationView", "self._restate_bookmark_panel"): (
+        "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
+        "requires that it not raise"
+    ),
+    ("SimulationView", "lambda: self.workspaces"): (
+        "it returns the Workspaces as the Areas draw them, for the tab strip to duplicate "
+        "or save, and it reads no run"
+    ),
+}
+
+
+def _own_method(node: ast.expr, view_class: type) -> str | None:
+    """Return `<name>` when `node` is `self.<name>` for a method of `view_class`, else None.
+
+    A property does not count as a method, because `self.<name>` then gives the property's
+    value, not a method.
+    """
+
+    if not (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    ):
+        return None
+
+    member = inspect.getattr_static(view_class, node.attr, None)
+
+    if member is None or isinstance(member, property) or not callable(member):
+        return None
+
+    return node.attr
+
+
+#: This set names the calls that take a slot as a positional argument after the first one,
+#: as `QTimer.singleShot(msec, slot)`, `QShortcut(key, parent, slot)` and
+#: `QMenu.addAction(text, slot)` do. The check treats those arguments as it treats a slot
+#: passed to `.connect` (coverage review of `PL-HJKN`).
+_CALLS_THAT_TAKE_A_SLOT: Final = frozenset({"singleShot", "callLater", "addAction", "QShortcut"})
+
+
+@cache
+def _qt_signal_names() -> frozenset[str]:
+    """Return the name of every signal that a class in QtCore, QtGui or QtWidgets declares.
+
+    PySide6 lets a constructor connect a signal. A keyword argument named after the signal
+    connects that signal to the argument's value, as in `QPushButton("Pause", clicked=slot)`.
+    So a keyword argument with a signal's name passes a slot.
+    """
+
+    return frozenset(
+        name
+        for module in (QtCore, QtGui, QtWidgets)
+        for _, member in inspect.getmembers(module, inspect.isclass)
+        for name, value in vars(member).items()
+        if isinstance(value, QtCore.Signal)
+    )
+
+
+def _elements(node: ast.expr) -> Iterator[ast.expr]:
+    """Yield `node`, or each element of it when it is a tuple, list, set, dict or starred value."""
+
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        for element in node.elts:
+            yield from _elements(element)
+    elif isinstance(node, ast.Dict):
+        for value in node.values:
+            yield from _elements(value)
+    elif isinstance(node, ast.Starred):
+        yield from _elements(node.value)
+    else:
+        yield node
+
+
+def _callback_bypass(
+    callback: ast.expr,
+    view_class: type,
+    local_functions: set[str],
+    *,
+    position: str,
+    run_at_once: bool,
+) -> str | None:
+    """Return why `callback` bypasses the halt gate, or None if it does not.
+
+    `position` says how the call takes `callback`. It is "connect" for the argument of
+    `.connect`. It is "slot" for a positional argument after the first of a call named in
+    `_CALLS_THAT_TAKE_A_SLOT`, and for the value of a keyword argument named after a signal.
+    It is "argument" for any other argument. `run_at_once` is True when the call is to one
+    of the view's own methods. Such a method runs the callback at once, inside the slot
+    that makes the call.
+
+    A method of the view passes the gate when it is gated, in any position. A lambda or a
+    local function bypasses the gate in every position, unless one of the view's own methods
+    runs it at once. In the "connect" and "slot" positions, every other callback bypasses
+    the gate too. That includes a slot of another object, such as `run.controller.pause`,
+    and a slot reached through an attribute of the view, such as `self.controller.pause`.
+    In the "slot" position, though, a name, a constant, a call or one of the view's own
+    attributes is a value and not a callback. An example is the parent widget that
+    `QShortcut` takes. In the "argument" position, anything else is a value too. This
+    function returns None for a value.
+    """
+
+    method = _own_method(callback, view_class)
+
+    if method is not None:
+        gated = passes_halt_gate(inspect.getattr_static(view_class, method))
+
+        return None if gated else f"{method} does not pass the gate"
+
+    local = isinstance(callback, ast.Lambda) or (
+        isinstance(callback, ast.Name) and callback.id in local_functions
+    )
+
+    if position == "argument":
+        if local and not run_at_once:
+            return "a lambda or a local function that the callee may call from the event loop"
+
+        return None
+
+    if local:
+        return "a lambda or a local function, which cannot pass the gate"
+
+    if position == "connect" and isinstance(callback, ast.Name):
+        return "a function named bare, which cannot pass the gate"
+
+    held_by_the_view = (
+        isinstance(callback, ast.Attribute)
+        and isinstance(callback.value, ast.Name)
+        and callback.value.id == "self"
+    )
+
+    if position == "slot" and (
+        held_by_the_view or isinstance(callback, (ast.Name, ast.Constant, ast.Call))
+    ):
+        return None
+
+    names_self = any(
+        isinstance(node, ast.Name) and node.id == "self" for node in ast.walk(callback)
+    )
+
+    if names_self:
+        return "a slot reached through the view that is not its own method"
+
+    return "a slot of another object, which may read or change a run outside the gate"
+
+
+def _unwrapped_partial(node: ast.expr) -> ast.expr:
+    """Return the function that `node` wraps when it is a `partial` call, or `node` itself."""
+
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "partial"
+        and node.args
+    ):
+        return node.args[0]
+
+    return node
+
+
+@dataclass(frozen=True)
+class _HaltGateReading:
+    """What `_halt_gate_bypasses` found in one view's source."""
+
+    #: Each call that passes on a callback bypassing the gate, or each method that overrides
+    #: Qt's own without the gate, as its source text and why.
+    bypasses: list[tuple[str, str]]
+    #: Each key of the exemptions whose callback passes the gate, so the entry is stale.
+    exempt_but_gated: list[tuple[str, str]]
+    #: Each key of the exemptions whose callback the source passes on.
+    exemptions_handed_out: set[tuple[str, str]]
+    #: How many `.connect` calls the source makes.
+    connections: int
+
+
+def _halt_gate_bypasses(
+    view_class: type, exemptions: Mapping[tuple[str, str], str]
+) -> _HaltGateReading:
+    """Find each call in `view_class`'s source whose callback bypasses the halt gate.
+
+    The source holds every connection the class makes, including the ones it makes when it
+    later builds a dialog. A `partial` in a slot position is treated as the method that it
+    wraps. A method that overrides one of Qt's own, such as `keyPressEvent`, is called by
+    Qt directly, so it must pass the gate too. Each key in `exemptions` pairs the class's
+    name with the callback's source text, or with `def <name>` for such a method. A callback
+    listed there is not reported as a bypass, but its entry is reported as stale when the
+    callback passes the gate.
+
+    The check reads only the class's own source. It cannot see a slot that a function
+    outside the class connects, or a callback held in a variable before it is passed on.
+    """
+
+    (class_node,) = ast.parse(inspect.getsource(view_class)).body
+    assert isinstance(class_node, ast.ClassDef), f"{view_class.__name__}'s source is not a class"
+    methods = [node for node in class_node.body if isinstance(node, ast.FunctionDef)]
+    local_functions = {
+        node.name
+        for method in methods
+        for node in ast.walk(method)
+        if isinstance(node, ast.FunctionDef) and node is not method
+    }
+    qt_bases = [base for base in view_class.__mro__ if base.__module__.startswith("PySide6")]
+    judged: list[tuple[str, str, str | None]] = []
+
+    for method in methods:
+        if not method.name.startswith("__") and any(
+            hasattr(base, method.name) for base in qt_bases
+        ):
+            gated = passes_halt_gate(inspect.getattr_static(view_class, method.name))
+            reason = None if gated else "it overrides a Qt method, which Qt calls directly"
+            judged.append((f"def {method.name}", f"def {method.name}", reason))
+
+    connections = 0
+
+    for call in (node for node in ast.walk(class_node) if isinstance(node, ast.Call)):
+        if isinstance(call.func, ast.Attribute):
+            called: str | None = call.func.attr
+        else:
+            called = call.func.id if isinstance(call.func, ast.Name) else None
+
+        if called == "disconnect":
+            continue
+
+        positioned: list[tuple[ast.expr, str]]
+
+        if called == "connect":
+            connections += 1
+            (slot,) = call.args
+            positioned = [(_unwrapped_partial(slot), "connect")]
+        else:
+            slots = call.args[1:] if called in _CALLS_THAT_TAKE_A_SLOT else []
+            passed = [(argument, any(argument is slot for slot in slots)) for argument in call.args]
+            passed += [
+                (keyword.value, keyword.arg in _qt_signal_names()) for keyword in call.keywords
+            ]
+            positioned = []
+
+            for value, takes_a_slot in passed:
+                if takes_a_slot:
+                    positioned.append((_unwrapped_partial(value), "slot"))
+                else:
+                    positioned.extend((element, "argument") for element in _elements(value))
+
+        run_at_once = _own_method(call.func, view_class) is not None
+
+        for callback, position in positioned:
+            reason = _callback_bypass(
+                callback, view_class, local_functions, position=position, run_at_once=run_at_once
+            )
+            judged.append((ast.unparse(call), ast.unparse(callback), reason))
+
+    bypasses: list[tuple[str, str]] = []
+    exempt_but_gated: list[tuple[str, str]] = []
+    exemptions_handed_out: set[tuple[str, str]] = set()
+
+    for text, callback_text, reason in judged:
+        key = (view_class.__name__, callback_text)
+
+        if key in exemptions:
+            exemptions_handed_out.add(key)
+
+            if reason is None:
+                exempt_but_gated.append(key)
+        elif reason is not None:
+            bypasses.append((text, reason))
+
+    return _HaltGateReading(bypasses, exempt_but_gated, exemptions_handed_out, connections)
+
+
+def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
+    """Every slot that `RunView` and `SimulationView` connect or hand out passes the halt gate.
+
+    A slot that reads or changes a run can raise, for example on a run whose snapshot
+    refuses a value. PySide6 prints an exception raised inside a slot and carries on, so the
+    run still said "Paused", and no halt appeared on screen. Each slot used to be wrapped in
+    a `try` by hand, and six were found without one, each in a separate review: `PL-YK2V`,
+    `PL-7DJK`, `PL-V2HC`, `PL-08SS`, `PL-F2T2` and `PL-M3M2`. Every slot now passes through
+    `app/halt_gate.py`'s `halt_gate`, and this test makes each new slot pass through it too
+    (`PL-HJKN`).
+
+    The test parses each class's source, and `_callback_bypass` decides which callbacks
+    bypass the gate. The test fails on any such callback unless it is listed in
+    `_HANDED_OUT_WITHOUT_THE_HALT_GATE` with the reason it does not need the gate.
+    `test_the_halt_gate_check_finds_each_way_around_the_gate` shows that the check
+    catches each kind of bypass.
+    """
+
+    bypasses: list[str] = []
+    exempt_but_gated: list[tuple[str, str]] = []
+    exemptions_handed_out: set[tuple[str, str]] = set()
+
+    for view_class in (RunView, SimulationView):
+        reading = _halt_gate_bypasses(view_class, _HANDED_OUT_WITHOUT_THE_HALT_GATE)
+        bypasses.extend(f"{view_class.__name__}: {call}: {why}" for call, why in reading.bypasses)
+        exempt_but_gated.extend(reading.exempt_but_gated)
+        exemptions_handed_out |= reading.exemptions_handed_out
+
+        assert reading.connections > 0, f"no connection found in {view_class.__name__}'s source"
+
+    stale = set(_HANDED_OUT_WITHOUT_THE_HALT_GATE) - exemptions_handed_out
+
+    assert not bypasses, "slots that bypass the halt gate:\n" + "\n".join(bypasses)
+    assert not exempt_but_gated, f"exempt callbacks that pass the gate: {exempt_but_gated}"
+    assert not stale, f"exempt callbacks that are no longer handed out: {sorted(stale)}"
+
+
+class _ViewWiredAroundTheGate(QWidget):
+    """A view that passes on callbacks in every shape the halt gate check must judge.
+
+    It is never built, and `_wire` is never called. The check reads its source.
+    """
+
+    controller: Any
+
+    def halt_for_slot(self, error: Exception) -> None:
+        raise AssertionError("the view is never built")
+
+    @halt_gate
+    def _gated(self) -> None:
+        pass
+
+    @halt_gate
+    def _gated_with_one(self, value: int) -> None:
+        pass
+
+    def _ungated(self) -> None:
+        pass
+
+    def _run_now(self, action: Callable[[], None]) -> None:
+        action()
+
+    def _register(self, actions: tuple[Callable[[], None], ...]) -> None:
+        pass
+
+    @halt_gate
+    def showEvent(self, event: Any) -> None:
+        pass
+
+    def keyPressEvent(self, event: Any) -> None:
+        self.controller.pause()
+
+    def _wire(self, button: Any, run: Any, timer: Any, menu: Any, key: Any) -> None:
+        def local() -> None:
+            self._gated()
+
+        button.clicked.connect(self._gated)
+        button.clicked.connect(partial(self._gated_with_one, 1))
+        button.clicked.connect(_bare_function)
+        button.clicked.connect(run.controller.pause)
+        button.clicked.connect(self._ungated)
+        button.clicked.connect(lambda: self._gated())
+        button.clicked.connect(local)
+        button.clicked.connect(self.controller.pause)
+        self._run_now(lambda: self._ungated())
+        self._run_now(local)
+        timer.singleShot(0, self._gated)
+        timer.singleShot(0, self._ungated)
+        timer.singleShot(0, lambda: self._gated())
+        timer.singleShot(0, local)
+        QShortcut(key, self, self._gated)
+        QShortcut(key, self, self.controller.pause)
+        menu.addAction("Pause", run.controller.pause)
+        timer.singleShot(0, run.controller.pause)
+        type(button)("Pause", clicked=self._gated)
+        type(button)("Pause", clicked=run.controller.pause)
+        self._run_now(*(self._ungated,))
+        self._register((self._gated, self._ungated))
+
+
+def _bare_function() -> None:
+    """A module-level function that `_ViewWiredAroundTheGate` connects by its bare name."""
+
+
+def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
+    """The check reports each callback in `_ViewWiredAroundTheGate` that bypasses the gate.
+
+    The expected list below was written by hand from that class's source. Four kinds of
+    callback pass the gate. They are a gated method in any position, a `partial` of a gated
+    method, a gated override of a Qt method, and a lambda or a local function that one of
+    the view's own methods runs at once. An exempt callback is not reported while it
+    bypasses the gate. Once the gate covers it, its entry is reported as stale (blind
+    review of `PL-HJKN`).
+    """
+
+    reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {})
+
+    assert [call for call, _ in reading.bypasses] == [
+        "def keyPressEvent",
+        "button.clicked.connect(_bare_function)",
+        "button.clicked.connect(run.controller.pause)",
+        "button.clicked.connect(self._ungated)",
+        "button.clicked.connect(lambda: self._gated())",
+        "button.clicked.connect(local)",
+        "button.clicked.connect(self.controller.pause)",
+        "timer.singleShot(0, self._ungated)",
+        "timer.singleShot(0, lambda: self._gated())",
+        "timer.singleShot(0, local)",
+        "QShortcut(key, self, self.controller.pause)",
+        "menu.addAction('Pause', run.controller.pause)",
+        "timer.singleShot(0, run.controller.pause)",
+        "type(button)('Pause', clicked=run.controller.pause)",
+        "self._run_now(*(self._ungated,))",
+        "self._register((self._gated, self._ungated))",
+    ]
+    assert reading.exempt_but_gated == []
+    assert reading.exemptions_handed_out == set()
+    assert reading.connections == 8
+
+    exempt = ("_ViewWiredAroundTheGate", "run.controller.pause")
+    gated = ("_ViewWiredAroundTheGate", "self._gated")
+    override = ("_ViewWiredAroundTheGate", "def keyPressEvent")
+    reading = _halt_gate_bypasses(
+        _ViewWiredAroundTheGate, {exempt: "a test", gated: "a test", override: "a test"}
+    )
+    reported = [call for call, _ in reading.bypasses]
+
+    assert "button.clicked.connect(run.controller.pause)" not in reported
+    assert "def keyPressEvent" not in reported
+    assert reading.exempt_but_gated == [gated] * 5
+    assert reading.exemptions_handed_out == {exempt, gated, override}
+
+
+def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exception in the Pause slot, which no hand-written `try` guarded, now halts the run.
+
+    Before the halt gate (`PL-HJKN`), PySide6 printed the exception and carried on. The run
+    kept showing that it was running, and nothing on screen said that it had failed. The
+    halt gate now halts the run.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    run._start_button.click()
+    assert run._pause_button.isEnabled() is True, "the started run offers no Pause to press"
+
+    def refuse() -> None:
+        raise RuntimeError("the pause could not be recorded")
+
+    monkeypatch.setattr(controller, "pause", refuse)
+    run._pause_button.click()
+
+    assert controller.has_failed is True
+    assert controller.snapshot().failure_reason == ("RuntimeError: the pause could not be recorded")
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+
+
+def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboard(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exception in a dashboard slot halts every run, and the refusal names the dashboard.
+
+    Through the halt gate, every slot of `SimulationView` that raises now halts every run,
+    as a frame that fails does. One such slot is Edit on the marks panel, which raises when
+    the editor cannot be built. The branch panel's refusal used to say "the frame this run
+    is drawn in failed", although no frame had failed (blind review of `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    def refuse(*args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("the marks editor could not be built")
+
+    monkeypatch.setattr(simulation_view_module, "BookmarkDialog", refuse)
+    view._bookmarks_panel.edit_button.click()
+
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
+    assert case.trunk.fork_refusal == (
+        "the dashboard this run is drawn in failed (RuntimeError: the marks editor could not "
+        "be built), and a branch would be drawn by the same dashboard and could fail the same "
+        "way; reset the run first"
+    )
+
+
+def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt asks for a frame even if the dials cannot be written, so "Branch here" is withdrawn.
+
+    `present_halt` raises once it has shown the halt, when a fresh gas flow range is narrower
+    than the dial's step (`PL-M3M2`). `_halt_run` used to ask for no frame then, and the
+    dashboard restates its branch panel only when it draws. So "Branch here" kept offering
+    the halted trunk. Every slot of a run reaches this path through the halt gate, including
+    `_handle_adjustment_start`, which no `try` guarded before (blind review of `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[0]
+    here = view._fork_panel.here_button
+    assert here.isHidden() is False, "the paused trunk offers no Branch here to withdraw"
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+
+    def refuse() -> None:
+        raise RuntimeError("the adjustment could not be recorded")
+
+    monkeypatch.setattr(case.trunk, "begin_control_adjustment", refuse)
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        trunk._handle_adjustment_start()
+
+    assert case.trunk.has_failed is True
+    assert here.isHidden() is True
+
+
+def test_a_new_case_question_that_cannot_be_built_leaves_the_selector_working_after_reset(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure to build the new-case question halts the run, and Reset frees the selector.
+
+    `_confirm_new_case` used to record the pending agent before it built the question. When
+    building the question raised an exception, the gate halted the run, but the pending agent
+    was not cleared. So the selector put back every later pick, even after the Reset that the
+    halt names as the way out (blind review of `PL-HJKN`).
+    """
+
+    controller = _paused_run_with_history()
+    run = _shown_view(application, controller).runs[0]
+    running = controller.agent_id
+    other = next(agent for agent in ("desflurane", "isoflurane", "sevoflurane") if agent != running)
+
+    def refuse(*args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("the question could not be built")
+
+    monkeypatch.setattr(run_view_module, "new_case_question", refuse)
+    _select_agent(run, other)
+
+    assert controller.has_failed is True
+    assert run._agent_dropdown.currentData() == running
+
+    monkeypatch.undo()
+    run._reset_button.click()
+    _select_agent(run, other)
+
+    assert controller.agent_id == other
+
+
+def test_a_refused_reset_whose_halt_cannot_write_its_dials_halts_the_run_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A refused Reset halts its run once, for the refusal, even when showing the halt raises.
+
+    `_reset_now` used to halt the run itself, inside the gated Reset slot. Showing that halt
+    raised for a fresh gas flow range narrower than the dial's step (`PL-M3M2`). The gate
+    then caught the dial's exception and halted the run a second time, for that exception
+    (blind review of `PL-HJKN`).
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    halted_for: list[str] = []
+    halt_for_slot = RunView.halt_for_slot
+
+    def recording(self: RunView, error: Exception) -> None:
+        halted_for.append(type(error).__name__)
+        halt_for_slot(self, error)
+
+    monkeypatch.setattr(RunView, "halt_for_slot", recording)
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        run._handle_reset()
+
+    assert halted_for == ["SimulationConfigurationError"]
+    assert controller.has_failed is True
+
+
+def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If a slot that the halt's own frame sets off raises, it does not halt every run again.
+
+    Halting every run ends by drawing a frame. Laying that frame out emits `rangeChanged`,
+    which calls `_follow_chart`. Before this change, when `_follow_chart` raised, its gate
+    started the halt again inside the halt already under way. One exception started the halt
+    21 times, nested 6 deep (blind review of `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    depth = 0
+    deepest = 0
+    halt_every_run = SimulationView._halt_every_run
+
+    def tracking(self: SimulationView, error: BaseException) -> None:
+        nonlocal depth, deepest
+        depth += 1
+        deepest = max(deepest, depth)
+
+        try:
+            halt_every_run(self, error)
+        finally:
+            depth -= 1
+
+    def refuse(self: SimulationView) -> NoReturn:
+        raise RuntimeError("the chart is gone")
+
+    monkeypatch.setattr(SimulationView, "_halt_every_run", tracking)
+    view._chart_view_owed = True
+    monkeypatch.setattr(SimulationView, "_chart_in_view", refuse)
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert deepest == 1
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
 
 
 def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:

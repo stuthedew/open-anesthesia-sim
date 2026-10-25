@@ -109,6 +109,7 @@ src/anesthesia_sim/
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
+│   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it, so a raise inside one halts its run, or every run for SimulationView, rather than escaping to Qt (PL-HJKN); toolkit-independent
 │   ├── run_surfaces.py             # the two parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
@@ -371,10 +372,11 @@ different treatment:
   an omission local to that compartment. `docs/MODEL.md`, "Step atomicity",
   is the contract.
 
-Both timer slots are guarded. `RunView.step_tick` steps the run and
-`SimulationView.render_tick` presents it, and both halt the run on any
-exception. They do so because a `TypeError` from a refactor is exactly as
-silent inside a Qt slot as a modelling failure is.
+Both timer slots pass the halt gate, as every other slot does (`PL-HJKN`).
+`RunView.step_tick` steps the run and `SimulationView.render_tick` presents
+it, and both halt on any exception: the first halts its run, and the second
+halts every run. They do so because a `TypeError` from a refactor is exactly
+as silent inside a Qt slot as a modelling failure is.
 `dashboard_frame.halt_disposition` decides which halt applies, and
 `RunView.halt` routes by its decision. A failure goes through
 `SimulationController.fail()`. A `SimulationDomainLimitError` raised on a path
@@ -413,14 +415,17 @@ repair the refusal, and that closing and reopening the application starts a new
 run (`PL-01GY`).
 
 A control used on a run whose snapshot refuses meets the same halt, rather than
-an exception that the toolkit prints. Two pieces of code read the snapshot
-inside a slot: `RunView._handle_agent_change`, and the label rewrite that a
-dragged slider needs at once. So both read it through
-`RunView._snapshot_for_a_control`. That method halts the run on the exception
-and restates the halt from `record()`. `_handle_agent_change` then sets the
-agent selector back to the agent that `SimulationController.agent_id` names. It
-cannot use the snapshot for this, because the snapshot that would name the
-agent is what refused (`PL-V2HC`).
+an exception that the toolkit prints. Every slot of `RunView` and
+`SimulationView` passes `app/halt_gate.py`'s `halt_gate`, which turns any
+exception raised inside the slot into a halt (`PL-HJKN`). A `RunView` slot halts
+its own run through `_halt_run`, and a `SimulationView` slot halts every run,
+because it acts on the case. `_halt_run` restates the halt from `record()`. So
+on a run whose snapshot refused, the agent selector goes back to the agent that
+the record names. The snapshot cannot name it, because the snapshot is what
+refused (`PL-V2HC`). Before `PL-HJKN`, each slot was put behind a `try` by
+hand, and six were found outside it, one review at a time.
+`test_every_slot_that_touches_a_run_passes_the_halt_gate` now fails on a
+connected slot that does not pass the gate.
 
 Every widget that states what the run holds is written by one writer.
 `RunView._write_statement` writes the status word, the transport, the agent
@@ -448,9 +453,11 @@ bookmark panel, are restated from one list, `SimulationView.halt_restatements`.
 `test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
 control that is not covered by a run, a listed panel or a named exemption. So a
 panel added later is checked without anyone having to remember it (`PL-5JTH`).
-The trunk records that its frame failed, so it then also offers no keyframe and
-no passed mark. A branch opened at one of them would be drawn by the same
-failing frame (`SimulationController.record_failed_frame`, `PL-T2Q2`).
+The trunk records that its dashboard failed, so it then also offers no keyframe
+and no passed mark. A branch opened at one of them would be drawn by the same
+dashboard, which could fail the same way. A raise in one of the dashboard's own
+slots is recorded the same way as a frame that fails, because it too belongs to
+no single run (`SimulationController.record_failed_frame`, `PL-T2Q2`, `PL-HJKN`).
 
 A run can stop itself inside its own step tick, on a mark or on arriving at the
 supported run length. Such a run asks for no frame, and nothing else needs to
