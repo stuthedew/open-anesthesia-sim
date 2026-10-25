@@ -10,6 +10,7 @@ touches: docket.toml, subprojects/docket/src/docket/config.py, tools/, tests/uni
 deferred-from: v0.7.0 - filed 2026-10-25 after the gate froze, at the owner's request in the workflow lane, and built at once outside the gate's scope
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1791
 payoff: a change of model or effort for any kind of work is one edit to docket.toml, and no stale copy can send a session to a model the owner has ruled out
 verify: grep -q '^\[models\]' docket.toml
 ---
