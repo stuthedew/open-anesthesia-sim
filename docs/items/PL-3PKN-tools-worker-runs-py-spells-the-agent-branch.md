@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.8
 touches: tools/worker_runs.py, tools/fact_home_check.py, tests/unit/test_fact_home_check.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25
