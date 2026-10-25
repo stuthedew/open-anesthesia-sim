@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/integration/test_controller.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1813
 payoff: a reader weighing the controller test's tolerance is given its true margin above the measured value and below the displayed precision
 verify: ! grep -qF 'eleven orders of magnitude below the 1e-4' tests/integration/test_controller.py && ! grep -qF 'is set an order of magnitude above that' tests/integration/test_controller.py
 ---
