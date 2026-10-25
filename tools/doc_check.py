@@ -8924,6 +8924,69 @@ def check_host_claims(root: Path, report: Report) -> None:
                 )
 
 
+# The words a docstring uses to say that its function can fail. Whether the
+# sentence around one is true stays the reviewer's (`PL-GZPX`).
+_FAILURE_WORDS = ("raise", "reject", "refus")
+
+
+def _public_functions(tree: ast.Module) -> Iterator[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Yield a module's public API: its top-level functions and its public classes' methods.
+
+    A function nested inside another is not public, and the enclosing
+    function's docstring states what the pair raises. A name with a leading
+    underscore is private by Python's own convention.
+    """
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
+            members: list[ast.stmt] = node.body
+        else:
+            members = [node]
+        for member in members:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not member.name.startswith("_"):
+                    yield member
+
+
+def check_raising_docstrings(root: Path, report: Report) -> None:
+    """Refuse a public simulator function that raises and whose docstring never says so (`PL-GZPX`).
+
+    A caller that cannot see which failures a function can produce writes
+    the wrong `except`, or none. `PL-HXKC` brought every such function under
+    the simulator's package to name its failure. This check keeps the next one
+    from arriving silently. It reads each top-level function and each method
+    of a public class under the simulator's package, `PACKAGE_ROOT`. A
+    function that contains a `raise` anywhere in its body must use one of
+    `_FAILURE_WORDS` somewhere in its docstring. Only that a sentence exists is
+    decided here. Whether it is true is judgment and stays with the reviewer.
+
+    CI's floor runs this file under the bare `python3`, which may not parse a
+    file written for the project's newer interpreter. Such a file is listed
+    as not checked, as the citation check lists it, and `make check` runs
+    the same check under `uv run python`, where every file parses.
+    """
+    package = root / PACKAGE_ROOT
+    for path in sorted(package.rglob("*.py")):
+        relative = path.relative_to(root)
+        # Parsed as bytes, as `_quoting_sources` parses them, so a byte-order
+        # mark or a coding cookie is honoured rather than declined.
+        try:
+            tree = ast.parse(path.read_bytes(), filename=str(relative))
+        except (OSError, SyntaxError, ValueError) as error:
+            report.declined.append(_unread_source(relative, error, "statement of a failure"))
+            continue
+        for function in _public_functions(tree):
+            if not any(isinstance(node, ast.Raise) for node in ast.walk(function)):
+                continue
+            docstring = (ast.get_docstring(function) or "").lower()
+            if any(word in docstring for word in _FAILURE_WORDS):
+                continue
+            report.errors.append(
+                f"{relative}:{function.lineno} `{function.name}` raises, and its docstring "
+                "never says what it raises or rejects: name the failure, and the exception, "
+                "in a Raises section (`PL-GZPX`)"
+            )
+
+
 def analyze(root: Path) -> Report:
     """Run every mechanical documentation check over a checkout.
 
@@ -8974,6 +9037,7 @@ def _analyze(root: Path) -> Report:
     check_math_delimiters(root, report)
     check_wrapped_list_items(root, report)
     check_host_claims(root, report)
+    check_raising_docstrings(root, report)
     check_resident_instructions(root, report)
     check_on_demand_instructions(root, report)
     _check_reference_files_exist(root, report)
