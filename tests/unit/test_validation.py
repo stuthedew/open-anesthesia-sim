@@ -122,6 +122,34 @@ def test_each_guard_refuses_what_is_not_a_number_and_an_overflowing_int_in_its_o
         guard(name, admitted)
 
 
+@pytest.mark.parametrize(
+    ("guard", "value", "reason"),
+    [
+        (require_positive_finite, -2.5, "-2.5 is not greater than zero"),
+        (require_positive_finite, 0.0, "0.0 is not greater than zero"),
+        (require_positive_finite, -0.0, "-0.0 is not greater than zero"),
+        (require_positive_finite, nan, "nan is not finite"),
+        (require_positive_finite, inf, "inf is not finite"),
+        (require_nonnegative_finite, -2.5, "-2.5 is negative"),
+        (require_nonnegative_finite, nan, "nan is not finite"),
+        (require_nonnegative_finite, -inf, "-inf is not finite"),
+    ],
+)
+def test_a_rejected_value_appears_in_the_message(guard, value: float, reason: str) -> None:
+    """A refusal names the value it refused, and why (`PL-T137`).
+
+    Before, `gas_volume_l` of `-0.0`, `nan` and `-2.5` gave one message,
+    though a value that is not finite and one below the range want
+    different fixes.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        guard("gas_volume_l", value)
+
+    assert str(refusal.value).startswith("gas_volume_l must be")
+    assert str(refusal.value).endswith(f", and {reason}")
+
+
 def test_require_within_vaporizer_maximum_rejects_within_the_hierarchy() -> None:
     """The one relation among the guards refuses in the circuit's sentence (`PL-BBMG`)."""
 

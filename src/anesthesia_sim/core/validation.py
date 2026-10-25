@@ -85,16 +85,24 @@ def require_positive_finite(name: str, value: float) -> None:
             programming error in the caller rather than a refused setting, as
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
-            `float` holds, named with the value, or is zero, negative, a NaN
-            or an infinity, named by the property it failed; naming the value
-            in that sentence too is `PL-T137`'s.
+            `float` holds, or is zero, negative, a NaN or an infinity. The
+            message names the value, and says whether it is not finite or
+            not greater than zero, since the two want different fixes
+            (`PL-T137`).
     """
 
     require_a_number(name, value)
     _require_within_the_float_range(name, value)
 
-    if not isfinite(value) or value <= 0.0:
-        raise SimulationConfigurationError(f"{name} must be positive and finite")
+    if not isfinite(value):
+        raise SimulationConfigurationError(
+            f"{name} must be positive and finite, and {shown(value)} is not finite"
+        )
+
+    if value <= 0.0:
+        raise SimulationConfigurationError(
+            f"{name} must be positive and finite, and {shown(value)} is not greater than zero"
+        )
 
 
 def require_nonnegative_finite(name: str, value: float) -> None:
@@ -110,14 +118,23 @@ def require_nonnegative_finite(name: str, value: float) -> None:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`, as
             `require_a_number` says.
         SimulationConfigurationError: `value` is an `int` outside the range a
-            `float` holds, or is negative, a NaN or an infinity.
+            `float` holds, or is negative, a NaN or an infinity. The message
+            names the value, and says whether it is not finite or negative
+            (`PL-T137`).
     """
 
     require_a_number(name, value)
     _require_within_the_float_range(name, value)
 
-    if not isfinite(value) or value < 0.0:
-        raise SimulationConfigurationError(f"{name} must be nonnegative and finite")
+    if not isfinite(value):
+        raise SimulationConfigurationError(
+            f"{name} must be nonnegative and finite, and {shown(value)} is not finite"
+        )
+
+    if value < 0.0:
+        raise SimulationConfigurationError(
+            f"{name} must be nonnegative and finite, and {shown(value)} is negative"
+        )
 
 
 def _require_within_the_float_range(name: str, value: float) -> None:
