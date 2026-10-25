@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: review-panel
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, subprojects/docket/README.md, docket.toml, tools/blind_review.py, .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-25

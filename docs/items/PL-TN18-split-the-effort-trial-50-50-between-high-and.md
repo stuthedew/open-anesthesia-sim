@@ -3,6 +3,7 @@ id: PL-TN18
 title: Split the effort trial 50/50 between high and xhigh instead of 1 in 4 xhigh, so it reaches the same statistical power with about a quarter fewer sessions
 status: done
 feature: model-evidence
+milestone: v0.6.3
 touches: tools/effort_trial.py, tests/unit/test_effort_trial.py, docs/maintainer.md, docs/apparatus.md, docs/items/PL-63CB-add-a-model-review-skill-that-on-a-cadence-and.md
 added: 2026-10-24
 closed: 2026-10-24

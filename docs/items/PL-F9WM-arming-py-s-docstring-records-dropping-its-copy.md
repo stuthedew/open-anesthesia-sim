@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/arming.py
 added: 2026-10-24
 closed: 2026-10-24
