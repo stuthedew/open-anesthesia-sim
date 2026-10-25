@@ -176,15 +176,19 @@ pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
 # records the baseline.
 [tool.mutmut]
 source_paths = ["src/"]
-# The clinical model, and the four presentation modules that compute a value
-# the interface displays. The rest of `app/` is Qt widget code, which the unit
-# tests do not reach.
+# The clinical model, and the seven presentation modules that compute a value
+# the interface displays and import no Qt. The last three build the readouts,
+# the chart labels and the control text (`PL-7FPD`). The rest of `app/` is Qt
+# widget code, whose tests are integration tests that mutmut does not run.
 only_mutate = [
     "src/anesthesia_sim/core/*",
     "src/anesthesia_sim/app/formatting.py",
     "src/anesthesia_sim/app/chart_time_base.py",
     "src/anesthesia_sim/app/wash_in.py",
     "src/anesthesia_sim/app/run_series.py",
+    "src/anesthesia_sim/app/dashboard_frame.py",
+    "src/anesthesia_sim/app/chart_frame.py",
+    "src/anesthesia_sim/app/control_timeline.py",
 ]
 # pytest reads its test files from `mutants/selected-tests.txt`, which
 # `tools/diff_mutation.py` writes before each run: every test file under

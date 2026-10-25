@@ -15,6 +15,16 @@ branch while a mutant of a line it changed survives the unit tests (project
 owner, 2026-10-19, ratified, `PL-CZXN`). A survivor on a line the branch did
 not change is reported and not counted.
 
+The same check also refuses a branch that weakens a test of what the interface
+displays (project owner, 2026-10-24, ratified, `PL-7FPD`). A mutant of the code
+cannot show that, because the test is what changed. So for each simulator unit
+test file that the branch changes, the check runs the mutants of the display
+modules twice: once against the base version of the tests that the branch
+changed, and once against the branch's version of the changed files. A mutant
+that the base version catches and the branch's version misses refuses the
+branch. The display modules are the seven files under `app/` that
+`[tool.mutmut] only_mutate` names.
+
 A high mutation score does not show that the tests catch a wrong clinical
 value. mutmut never changes the data files or the module-level constants, and a
 mutant cannot show whether a test's expected value is right.
@@ -42,6 +52,39 @@ must come from, and that rule applies whatever the score.
   refuses the audit. Write the test that kills it, or, where no input can tell
   the mutant from the original, mark its line `# pragma: no mutate`, which the
   check prints.
+
+### What the check of a changed test leaves unmeasured
+
+- **A fault outside the display modules.** Only the mutants of `app/` run
+  against the two versions of a changed test. That keeps each run to about
+  two minutes, where the mutants of `core/` that a display test reaches would
+  take 9 to 16 minutes (`PL-7FPD` has the measurements). So a changed test of `core/` on a branch that changes
+  no `core/` function is not measured (`PL-H57W`).
+- **The Qt widget modules and the integration tests.** mutmut does not mutate
+  the Qt modules, such as `simulation_view.py`, and the check runs no
+  integration test.
+- **The apparatus tests**, which import no simulator code (`PL-LBNN`).
+- **A changed fixture or helper outside a test file**, such as a
+  `conftest.py`. The base copy holds its base version, but only the changed
+  test files are selected, so a branch that changes only a helper compares
+  nothing.
+- **A fault that a test in an unchanged file still catches.** The branch's run
+  takes only the changed test files, so a branch that deletes a test because
+  another file already catches the same faults is refused. Running every unit
+  test on the branch's side would pass it, at the cost of mutmut's coverage
+  pass over the whole unit suite, about five more minutes. Make that change in
+  `compare_tests` if the refusal is ever wrong in practice.
+- **A base test that fails on the branch's source** with no mutant applied.
+  The branch changed what the test checks, so the check names the file in a
+  note and does not compare it.
+
+A changed line inside a test selects that test of the base version. Any other
+changed line in the file, such as an import or a helper, selects the whole
+file. A blank line or a comment selects nothing. A branch that only adds tests
+has nothing to compare. On 2026-10-24 the two runs for one changed function in
+`tests/unit/test_dashboard_frame.py` took 197 s together, on four otherwise idle
+cores. Only `--verdict` makes them, so `make mutate ARGS=--verdict` reproduces
+what `bin/docket verify` saw.
 
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
