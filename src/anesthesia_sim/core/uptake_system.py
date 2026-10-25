@@ -374,20 +374,22 @@ class AgentUptakeSystem:
         that it could not step from, so the same step would fail again. The
         caller must stop.
 
-        **This method also handles a settings record that the step cannot
-        build, and restates that failure like the others.** When a setting has
-        changed since the last step, `_advance_step` builds the record through
-        `_propagator_for`. The record rejects tissue blood flows that no longer
-        sum to the cardiac output. Setting a tissue's blood flow directly on the
-        tissue can leave the flows that way (`PL-HQF5`). The mismatch is not
-        rejected before the step as a `SimulationConfigurationError`, because
-        that type promises the caller that the run is still worth continuing
-        (`core/exceptions.py`). A run whose record cannot be built is not worth
-        continuing. The same record is rejected on every later step, and by
-        anything else that builds it, a Reset included. Restated as a step that
-        could not be completed, the failure reaches the caller as the halt that
-        it is. The message names the two flows in the litres per minute in
-        which they were set (`PL-M4M0`).
+        **This method also handles a settings record that the step cannot build, and
+        restates that failure like the others.** When a setting has changed since the
+        last step, `_advance_step` builds the record through `_propagator_for`. The
+        record rejects tissue blood flows that do not sum to the cardiac output. No
+        guarded write can leave the flows that way. Each flow is the tissue's perfusion
+        fraction of the patient's cardiac output (`PL-HQF5`). The patient refuses
+        fractions that do not sum to 1, and a tissue refuses a second write of its
+        fraction (`PL-Z0HN`). So this case is a safeguard, reached only by a write that
+        bypasses those guards. The mismatch is not rejected before the step as a
+        `SimulationConfigurationError`, because that type promises the caller that the
+        run is still worth continuing (`core/exceptions.py`). A run whose record cannot
+        be built is not worth continuing. The same record is rejected on every later
+        step, and by anything else that builds it, a Reset included. Restated as a step
+        that could not be completed, the failure reaches the caller as the halt that it
+        is. The message names the two flows in the litres per minute in which they were
+        set (`PL-M4M0`).
 
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so

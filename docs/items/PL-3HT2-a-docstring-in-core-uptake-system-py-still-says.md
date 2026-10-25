@@ -3,12 +3,14 @@ id: PL-3HT2
 title: A docstring in core/uptake_system.py still says a tissue's blood flow can be set directly, though #1537 removed that setter (found by PL-GTHP's checker on #376, 2026-10-25)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/core/uptake_system.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1837
 payoff: a reader of AgentUptakeSystem.advance learns that no guarded write can make the tissue flows miss the cardiac output, so the refusal it restates is a safeguard
 verify: ! grep -qF "Setting a tissue's blood flow directly on the" src/anesthesia_sim/core/uptake_system.py
 ---
