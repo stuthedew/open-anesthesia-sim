@@ -2455,6 +2455,10 @@ UNIT_WORDS: dict[str, str] = {
     "percent": "%",
 }
 
+#: A unit written in lower case, and the symbol a stored value is kept in. A
+#: source quoted in `docs/MODEL.md` writes "4 l/min" and "2.5 l" (`PL-2T6S`).
+UNIT_CASES: dict[str, str] = {"l/min": "L/min", "l/s": "L/s", "l": "L"}
+
 #: A unit of time that prose writes and no stored value is kept in, with the
 #: unit it converts to and the factor. So "24 hours" is read as 86400 s and
 #: "1 ms" as 0.001 s.
@@ -2468,17 +2472,48 @@ UNIT_SCALES: dict[str, tuple[str, float]] = {
     "hours": ("s", 3600.0),
 }
 
+#: Every unit a figure in prose may carry, longest first so that `L/min` is
+#: not read as `L`.
+PROSE_UNITS = "|".join(
+    sorted(
+        {"L/min", "L/s", "L", "%", "kg", "s", "MAC", *UNIT_WORDS, *UNIT_SCALES, *UNIT_CASES},
+        key=len,
+        reverse=True,
+    )
+)
+
 #: A number in prose and the unit written after it, if any. A digit, letter, dot
 #: or comma on either side means the numeral is part of something else, such as
-#: a version, an identifier or a longer number. A space or a no-break space may
-#: stand between the number and its unit, and `×MAC` is read as `MAC`. A unit
-#: written as a word, such as "seconds", is one of `UNIT_WORDS`.
+#: a version, an identifier or a longer number. A slash on either side means it
+#: is one of a list, which `LISTED_FIGURES_RE` reads. A space or a no-break
+#: space may stand between the number and its unit, and `×MAC` is read as
+#: `MAC`. A unit written as a word, such as "seconds", is one of `UNIT_WORDS`,
+#: and one written in lower case, such as "l/min", is one of `UNIT_CASES`.
 PROSE_FIGURE_RE = re.compile(
     r"(?<![\w.,/])(?P<number>\d+(?:\.\d+)?)"
-    r"(?:[ \u00a0]?×?(?P<unit>L/min|L/s|L|%|kg|s|MAC|"
-    + "|".join(sorted({*UNIT_WORDS, *UNIT_SCALES}, key=len, reverse=True))
-    + r")(?![\w/]))?"
-    r"(?![\w]|[.,]\d)"
+    r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
+    r"(?![\w/]|[.,]\d)"
+)
+
+#: Numbers joined by slashes, such as "6/33/14.5 L" or "0.76/0.18/0.06", and
+#: the unit written after the last of them, which each one carries
+#: (`PL-2T6S`). The edges are `PROSE_FIGURE_RE`'s.
+LISTED_FIGURES_RE = re.compile(
+    r"(?<![\w.,/])(?P<numbers>\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?)+)"
+    r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
+    r"(?![\w/]|[.,]\d)"
+)
+
+#: A math span that ends by giving a symbol a number, such as $`V_A = 2.5`$,
+#: and the unit written after the span or inside it as `\mathrm{...}`. Only
+#: that shape is read. Most numbers in a math span are exponents, indices and
+#: coefficients of an equation, such as $`10^{-12}`$ or $`M^{3/4}`$, and
+#: reading them would ask about every one that happens to equal a stored value
+#: (`PL-2T6S`).
+MATH_FIGURE_RE = re.compile(
+    r"\$`[^`]*?=[ ]*(?P<number>\d+(?:\.\d+)?)"
+    r"(?:\\[ ,;][ ]*\\mathrm\{(?P<inner>" + PROSE_UNITS + r")\})?[ ]*`\$"
+    r"(?:[ \u00a0]?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
 )
 
 
@@ -2493,7 +2528,23 @@ def _prose_figure(number: str, unit: str | None) -> tuple[float, str | None]:
     if unit in UNIT_SCALES:
         symbol, factor = UNIT_SCALES[unit]
         return round(float(number) * factor, 12), symbol
-    return float(number), UNIT_WORDS.get(unit, unit)
+    return float(number), UNIT_WORDS.get(unit, UNIT_CASES.get(unit, unit))
+
+
+def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
+    """Every figure one line states, as `(number as written, unit as written)`.
+
+    `prose` is the line with code and math blanked, and `raw` is the line as
+    written, from which only a math span's figure is read (`MATH_FIGURE_RE`).
+    A list joined by slashes gives each of its numbers with the list's unit.
+    """
+    for found in PROSE_FIGURE_RE.finditer(prose):
+        yield found.group("number"), found.group("unit")
+    for found in LISTED_FIGURES_RE.finditer(prose):
+        for number in found.group("numbers").split("/"):
+            yield number, found.group("unit")
+    for found in MATH_FIGURE_RE.finditer(raw):
+        yield found.group("number"), found.group("inner") or found.group("unit")
 
 
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
@@ -2614,6 +2665,15 @@ def _prose_lines(text: str, lines: Sequence[str]) -> list[str]:
     already holds to the data files.
     """
     prose = _without_code(text)
+    hidden = _hidden_lines(text, lines)
+    return [
+        "" if index in hidden else INLINE_COMMENT_RE.sub("", line)
+        for index, line in enumerate(prose[: len(lines)])
+    ]
+
+
+def _hidden_lines(text: str, lines: Sequence[str]) -> set[int]:
+    """The lines `_prose_lines` blanks whole: HTML blocks and the provenance table."""
     hidden: set[int] = set()
     if any("<!--" in line for line in lines):
         for block in read_blocks(lines).blocks:
@@ -2623,10 +2683,7 @@ def _prose_lines(text: str, lines: Sequence[str]) -> list[str]:
     if rows:
         first = min(line for line, _ in rows)
         hidden.update(range(first - 3, max(line for line, _ in rows)))
-    return [
-        "" if index in hidden else INLINE_COMMENT_RE.sub("", line)
-        for index, line in enumerate(prose[: len(lines)])
-    ]
+    return hidden
 
 
 @dataclass
@@ -2747,11 +2804,13 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     A `not-restated:` marker that lists a figure no stored value in its scope
     equals is refused too, so a declaration cannot outlive its sentence.
 
-    It reads a figure written as `PROSE_FIGURE_RE` reads one: a number, then
-    one of the unit symbols or words it lists. It does not read a figure in
-    a math span or a code span, a figure in a list joined by slashes such as
-    "6/33/14.5 L", or a unit spelled in another case, such as "l/min". A
-    restatement written in one of those forms is not checked.
+    It reads a figure as `_untied_figures` reads one: a number, then one of
+    the unit symbols or words `PROSE_UNITS` lists, in upper or lower case
+    where a source writes "l/min"; each number of a list joined by slashes,
+    such as "6/33/14.5 L"; and a math span that gives a symbol a number, such
+    as $`V_A = 2.5`$ L (`PL-2T6S`). It does not read any other number in a
+    math span, or a figure in a code span. A restatement written in either of
+    those forms is not checked.
     """
     homes = stored_values(root)
     for document in PROVENANCE_DOCUMENTS:
@@ -2762,15 +2821,15 @@ def check_untied_restatements(root: Path, report: Report) -> None:
         lines = split_lines(text)
         fenced = _fenced_lines(text)
         prose = _prose_lines(text, lines)
+        hidden = _hidden_lines(text, lines)
         ties = _marker_ties(lines, fenced, report, document)
         claimed: set[tuple[int, tuple[float, str | None]]] = set()
 
         for index, line in enumerate(prose):
-            if index in fenced:
+            if index in fenced or index in hidden:
                 continue
-            for found in PROSE_FIGURE_RE.finditer(line):
-                written = found.group("number")
-                unit = found.group("unit")
+            raw = INLINE_COMMENT_RE.sub("", lines[index])
+            for written, unit in _untied_figures(line, raw):
                 figure = _prose_figure(written, unit)
                 matching = [home for home in homes if _matches(figure, home, written)]
                 if not matching:
