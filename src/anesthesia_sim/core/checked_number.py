@@ -5,7 +5,9 @@ value against its own range when it is built. They are `Fraction` and
 `Percent` (`core/concentration.py`), the run's step, `SimulationStep`
 (`core/simulation_step.py`), the three flows, `FreshGasFlow`,
 `AlveolarVentilation` and `CardiacOutput`, the case instant, `CaseInstant`,
-and the completed-step count, `StepCount` (`core/supported_ranges.py`). So
+and the completed-step count, `StepCount` (`core/supported_ranges.py`). The
+compartment volumes and partition coefficients are `CompartmentVolume` and
+`PartitionCoefficient` (`core/numerical_envelope.py`). So
 having a value of one of these types proves that its check ran
 (`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
 type, checked once"). Before the range can be checked, two other questions

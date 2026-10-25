@@ -19,10 +19,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
-    require_positive_finite,
     require_room_for_the_agent_held,
     require_within_the_capacity,
 )
@@ -55,7 +55,7 @@ class AlveolarCompartment:
     measurement is adopted for either.
     """
 
-    gas_volume_l: float
+    gas_volume_l: CompartmentVolume
     alveolar_ventilation_l_min: AlveolarVentilation
     agent_amount_l: float = 0.0
 
@@ -104,18 +104,19 @@ class AlveolarCompartment:
             Raises:
                 TypeError: `name` is `alveolar_ventilation_l_min` and `value`
                     was not built as an `AlveolarVentilation`
-                    (`require_alveolar_ventilation`); or the volume or the
+                    (`require_alveolar_ventilation`); or the volume was not
+                    built as a `CompartmentVolume`, which checks it against the
+                    numerical envelope (`core/numerical_envelope.py`); or the
                     amount is not an `int` or a `float` (`require_a_number`).
-                SimulationConfigurationError: the volume is not positive and
-                    finite, the amount is negative or not finite, or the
-                    amount would be more than `gas_volume_l`, which is what
+                SimulationConfigurationError: the amount is negative or not
+                    finite, or the amount would be more than `gas_volume_l`, which is what
                     the compartment holds at a partial pressure of one
                     atmosphere. The last check applies whichever of the two is
                     written.
             """
 
             if name == "gas_volume_l":
-                require_positive_finite(name, value)
+                require_compartment_volume(name, value)
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(

@@ -1,23 +1,25 @@
 """Shared numeric-range guards for the field writes and setters of every core compartment.
 
 The guards reject invalid state at the same boundary everywhere, rather than
-trusting it or coercing it silently. Four of the guards check a relation
+trusting it or coercing it silently. Three of the guards check a relation
 between two values rather than a property of one value. They live here for the
 same reason, so that every record that holds such a pair refuses it with the
 same message. `require_within_vaporizer_maximum` keeps a dial at or below its
 vaporizer's maximum (`PL-BBMG`). `require_room_for_the_agent_held` and
 `require_within_the_capacity` keep an agent amount within its compartment's
 capacity. The first checks a change to the capacity, and the second checks a
-change to the amount (`PL-19Y0`, `PL-XVCV`). `require_a_capacity` checks that a
-volume and a partition coefficient multiply to a capacity that is positive and
-finite (`PL-8LQZ`, `PL-FNH3`).
+change to the amount (`PL-19Y0`, `PL-XVCV`). Until `PL-QX2G`, `require_a_capacity`
+also checked that a volume and a partition coefficient multiplied to a capacity
+that was positive and finite (`PL-8LQZ`, `PL-FNH3`). Both factors are now built
+only inside the numerical envelope (`core/numerical_envelope.py`), so their
+product is always positive and finite, and that guard could no longer fire.
 
 A concentration's own range is not checked here. Until `PL-4R3W`, guards in this
 module checked that a fraction lay from 0 to 1 and a percent from 0 to 100, at
 each of the twelve places where such a value entered. `PL-4R3W` made `Fraction`
 and `Percent` types that can be built only through those checks
 (`core/concentration.py`). What is left here is the check of sign and
-finiteness that every other quantity shares, and the four relations above.
+finiteness that every other quantity shares, and the three relations above.
 
 Every guard raises `SimulationConfigurationError` for a value it refuses, because
 the value was rejected before it changed anything. A refusal partway through a step
@@ -300,44 +302,6 @@ def require_within_the_capacity(
         )
 
 
-def require_a_capacity(
-    name: str,
-    value: float,
-    volume_l: float,
-    capacity_per_litre: float,
-    compartment: str,
-    section: str,
-) -> None:
-    """Refuse a volume or partition coefficient that would leave the capacity zero or not finite.
-
-    A blood or tissue compartment's capacity is its volume times its partition
-    coefficient. Its partial pressure is the agent it holds divided by that capacity.
-    Each factor is checked as positive and finite when it is written, but their product
-    can still leave that range. A volume and a coefficient of 1e-200 multiply to 0.0,
-    and every partial pressure read from that compartment then divided by zero
-    (`PL-8LQZ`). A volume and a coefficient of 1e200 multiply to `inf`, and the venous
-    pool's closed-form solution then computed an equilibrium of `inf` times 0.0 and
-    stored `nan` (`PL-FNH3`). So the compartment calls this function, with both
-    factors, whenever either factor is written and the other is already set. `value`
-    is the factor being written, and `name` is its name.
-
-    Raises:
-        SimulationConfigurationError: the product of `volume_l` and
-            `capacity_per_litre` is zero or not finite. The message names
-            the value written and both factors.
-    """
-
-    capacity_l = volume_l * capacity_per_litre
-
-    if not isfinite(capacity_l) or capacity_l <= 0.0:
-        raise SimulationConfigurationError(
-            f"{name} of {shown(value)} would make the {compartment}'s capacity "
-            f"{capacity_l!r} L, its volume of {volume_l!r} L times its partition coefficient "
-            f"of {capacity_per_litre!r}. A capacity must be positive and finite, because "
-            f'every partial pressure is read by dividing by it (docs/MODEL.md, "{section}")'
-        )
-
-
 def require_a_capacity_with_room_for_the_agent(
     name: str,
     value: float,
@@ -347,26 +311,25 @@ def require_a_capacity_with_room_for_the_agent(
     compartment: str,
     section: str,
 ) -> None:
-    """Refuse a volume or partition coefficient that leaves a blood or tissue capacity unusable.
+    """Refuse a volume or partition coefficient that leaves a blood or tissue capacity too small.
 
-    A blood or tissue compartment makes the same two checks whenever its
-    volume or its partition coefficient is written. Its capacity is the product
-    of the two. `require_a_capacity` rejects a capacity that is zero or not
-    finite. `require_room_for_the_agent_held` rejects one too small for the
-    agent already held. The venous pool and each tissue group call this
-    function, so the pair of checks is written once (`PL-VWXL`). `value` is the
-    factor being written, and `name` is its name.
+    A blood or tissue compartment's capacity is its volume times its partition
+    coefficient. The venous pool and each tissue group call this function
+    whenever either factor is written, so the product and the check are written
+    once (`PL-VWXL`). `value` is the factor being written, and `name` is its
+    name. Until `PL-QX2G` this function also refused a capacity that was zero
+    or not finite. Both factors are now built only inside the numerical
+    envelope (`core/numerical_envelope.py`), so the product is always positive
+    and finite.
 
     `agent_amount_l` is `None` while the compartment holds no amount yet. The
     constructor, a copy and a pickle all write the amount last. So the first
     writes of the volume and the coefficient have no agent to make room for.
 
     Raises:
-        SimulationConfigurationError: the capacity is zero or not finite, or
-            is less than `agent_amount_l`.
+        SimulationConfigurationError: the capacity is less than
+            `agent_amount_l` (`require_room_for_the_agent_held`).
     """
-
-    require_a_capacity(name, value, volume_l, capacity_per_litre, compartment, section)
 
     if agent_amount_l is not None:
         require_room_for_the_agent_held(

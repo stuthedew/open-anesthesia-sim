@@ -51,6 +51,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
 from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -384,7 +385,7 @@ class BreathingCircuit:
     is the one place that states their intersection.
     """
 
-    circuit_volume_l: float
+    circuit_volume_l: CompartmentVolume
     fresh_gas_flow_l_min: FreshGasFlow = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
     delivered_concentration_percent: Percent = Percent(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
@@ -447,10 +448,11 @@ class BreathingCircuit:
             Raises:
                 TypeError: `value` was not built as the field's type (a
                     `FreshGasFlow`, a `Percent`, a `Fraction`, or a
-                    `DeliverableFreshGasFlowRange` or `None`), or a volume is
-                    not an `int` or a `float`.
-                SimulationConfigurationError: the volume or the vaporizer
-                    maximum is not positive and finite. Or the dial is above
+                    `DeliverableFreshGasFlowRange` or `None`), or the volume was
+                    not built as a `CompartmentVolume`, which checks it against
+                    the numerical envelope (`core/numerical_envelope.py`).
+                SimulationConfigurationError: the vaporizer maximum is not
+                    positive and finite. Or the dial is above
                     the maximum, whichever of the two is being written. Or the
                     flow is outside the machine's range, whichever of the two
                     is being written. Or the machine's range does not overlap
@@ -458,7 +460,7 @@ class BreathingCircuit:
             """
 
             if name == "circuit_volume_l":
-                require_positive_finite(name, value)
+                require_compartment_volume(name, value)
             elif name == "fresh_gas_flow_l_min":
                 require_fresh_gas_flow(value)
 
@@ -558,7 +560,7 @@ class BreathingCircuit:
 
         return SECONDS_PER_MINUTE * self.circuit_volume_l / self.fresh_gas_flow_l_min
 
-    def set_circuit_volume(self, circuit_volume_l: float) -> None:
+    def set_circuit_volume(self, circuit_volume_l: CompartmentVolume) -> None:
         """Change the circuit's volume while conserving the agent in it.
 
         The circuit stores agent as a fraction of its volume, so changing the
@@ -577,14 +579,17 @@ class BreathingCircuit:
         amount out and put it back.
 
         Raises:
-            SimulationConfigurationError: the volume is not positive and
-                finite, or it is too small to hold the agent already in the
-                circuit. Both are checked, and the fraction that the new volume
-                gives is built, before anything changes. So a rejected volume
-                leaves the circuit exactly as it was.
+            TypeError: the volume was not built as a `CompartmentVolume`,
+                which checks it against the numerical envelope
+                (`core/numerical_envelope.py`).
+            SimulationConfigurationError: the volume is too small to hold the
+                agent already in the circuit. Both checks run, and the
+                fraction that the new volume gives is built, before anything
+                changes. So a rejected volume leaves the circuit exactly as it
+                was.
         """
 
-        require_positive_finite("circuit_volume_l", circuit_volume_l)
+        require_compartment_volume("circuit_volume_l", circuit_volume_l)
 
         stored_agent_l = self.agent_amount_l
 
