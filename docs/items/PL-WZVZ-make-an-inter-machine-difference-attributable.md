@@ -44,7 +44,7 @@ behavior somewhere it should not be, and this surface is where that shows up.
 2. **Attributed, after a run: the machine as a labelled input.** Planned-
    milestone item 11 (side-by-side comparison on a shared time axis, each
    curve labelled with the run and the settings that produced it) and item 12
-   (forking) are already scheduled for v0.5.0 and already do most of this. What
+   (forking) shipped in v0.5.0 and already do most of this. What
    this item adds is a requirement on them: when two compared runs used
    different machines, the machine must appear as a labelled input *expanded
    into the parameters that differ*, never collapsed to a trade name. If those
@@ -118,7 +118,7 @@ Surface 1 above - machines as columns, one row per parameter - is squarely that.
 
 The rule states its own condition and it names items rather than a version: it
 "ends when this item's View contract (`PL-TH35`) and view registry (`PL-R1WQ`)
-ship". Both are open and placed by v0.6.0. That is the re-point recorded below,
+ship". Both were open then and placed by v0.6.0, and both are done now (checked 2026-10-25). That is the re-point recorded below,
 and it follows the pattern § "Behind a design round no milestone section places"
 already prescribes for this gate's deferrals - name the item that does the work,
 so the entry does not depend on what number the milestone ships under.
@@ -179,3 +179,5 @@ What holds it is unchanged - `blocked-by` names the same four items, and
 the hazard is still not live. `ROADMAP.md` § "v0.6.0 - the layout is the
 reader's" -> "Debt gate: the frozen list" records the deferral and the reading
 of the tree it rests on.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): the hazard is still not live, and what it waits on has narrowed.** `src/anesthesia_sim/data/machines/` still holds one profile, and nothing under `src/` selects between profiles, so the deferral to Gate 4 still holds. Two of the four blockers are done: `PL-TH35` and `PL-R1WQ` shipped the View contract and the view registry, so item 34's rule against a new display surface no longer applies to surface 1. Surface 2 is now a requirement on the compare mode v0.5.0 shipped, as the brief foresaw. What still blocks the item is `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface that chooses between profiles.

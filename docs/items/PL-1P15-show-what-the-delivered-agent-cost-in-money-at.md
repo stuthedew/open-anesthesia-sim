@@ -42,3 +42,5 @@ independently. A test checks that no cost shows before a price is set.
 
 **Done when.** A learner can set a price per agent and see the cost of the
 delivered agent, labelled with its currency and the price's date.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Nothing under `src/` holds a price, a currency or an agent cost View, and its three blockers are open. The Gas Man Workbook quotation was not re-read, because the reference corpus is not in this tree.
