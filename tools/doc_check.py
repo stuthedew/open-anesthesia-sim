@@ -8929,22 +8929,33 @@ def check_host_claims(root: Path, report: Report) -> None:
 _FAILURE_WORDS = ("raise", "reject", "refus")
 
 
-def _public_functions(tree: ast.Module) -> Iterator[ast.FunctionDef | ast.AsyncFunctionDef]:
-    """Yield a module's public API: its top-level functions and its public classes' methods.
+def _public_functions(
+    tree: ast.Module,
+) -> Iterator[tuple[ast.FunctionDef | ast.AsyncFunctionDef, str]]:
+    """Yield a module's public functions, each with the docstrings that may state its failures.
 
-    A function nested inside another is not public, and the enclosing
-    function's docstring states what the pair raises. A name with a leading
-    underscore is private by Python's own convention.
+    The public functions are the top-level functions and the methods of public
+    classes. A name with a leading underscore is private by Python's own
+    convention, except a special method such as `__init__` or `__post_init__`
+    on a public class. That is where most of the simulator's refusals are
+    raised, and a caller meets it by building the class. Its failures may be
+    stated in the class docstring, where a dataclass documents its fields. A
+    function nested inside another is not public, because the enclosing
+    function's docstring states what the pair raises.
     """
     for node in tree.body:
-        if isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
-            members: list[ast.stmt] = node.body
-        else:
-            members = [node]
-        for member in members:
-            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if not member.name.startswith("_"):
-                    yield member
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not node.name.startswith("_"):
+                yield node, ast.get_docstring(node) or ""
+        elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
+            for member in node.body:
+                if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                own = ast.get_docstring(member) or ""
+                if member.name.startswith("__") and member.name.endswith("__"):
+                    yield member, f"{own}\n{ast.get_docstring(node) or ''}"
+                elif not member.name.startswith("_"):
+                    yield member, own
 
 
 def check_raising_docstrings(root: Path, report: Report) -> None:
@@ -8953,10 +8964,11 @@ def check_raising_docstrings(root: Path, report: Report) -> None:
     A caller that cannot see which failures a function can produce writes
     the wrong `except`, or none. `PL-HXKC` brought every such function under
     the simulator's package to name its failure. This check keeps the next one
-    from arriving silently. It reads each top-level function and each method
-    of a public class under the simulator's package, `PACKAGE_ROOT`. A
+    from arriving silently. It reads the public functions under the
+    simulator's package, `PACKAGE_ROOT`, as `_public_functions` lists them. A
     function that contains a `raise` anywhere in its body must use one of
-    `_FAILURE_WORDS` somewhere in its docstring. Only that a sentence exists is
+    `_FAILURE_WORDS` in its docstring, or a special method in its class's
+    docstring. Only that a sentence exists is
     decided here. Whether it is true is judgment and stays with the reviewer.
 
     CI's floor runs this file under the bare `python3`, which may not parse a
@@ -8974,11 +8986,10 @@ def check_raising_docstrings(root: Path, report: Report) -> None:
         except (OSError, SyntaxError, ValueError) as error:
             report.declined.append(_unread_source(relative, error, "statement of a failure"))
             continue
-        for function in _public_functions(tree):
+        for function, docstrings in _public_functions(tree):
             if not any(isinstance(node, ast.Raise) for node in ast.walk(function)):
                 continue
-            docstring = (ast.get_docstring(function) or "").lower()
-            if any(word in docstring for word in _FAILURE_WORDS):
+            if any(word in docstrings.lower() for word in _FAILURE_WORDS):
                 continue
             report.errors.append(
                 f"{relative}:{function.lineno} `{function.name}` raises, and its docstring "

@@ -12006,6 +12006,55 @@ def test_a_public_function_that_raises_names_the_failure_in_its_docstring(tmp_pa
     assert report.declined == []
 
 
+def test_a_public_class_s_special_method_that_raises_names_the_failure(tmp_path: Path) -> None:
+    """A constructor that refuses a value must say so, in its own or its class's docstring.
+
+    Most of the simulator's refusals are raised in `__post_init__` or
+    `__init__`, which a caller meets by building the class. A blind review
+    found that the rule first skipped them as private names, and that
+    `PlaybackRate.__post_init__` raised with neither docstring saying so.
+    """
+
+    report = _raising_docstring_errors(
+        tmp_path,
+        '''
+        class Silent:
+            """A public class."""
+
+            def __post_init__(self):
+                raise ValueError("no")
+
+
+        class StatedOnTheClass:
+            """A public class.
+
+            Raises:
+                ValueError: always.
+            """
+
+            def __post_init__(self):
+                raise ValueError("no")
+
+
+        class StatedOnTheMethod:
+            """A public class."""
+
+            def __init__(self):
+                """Refuse every value."""
+                raise ValueError("no")
+
+
+        class _Hidden:
+            def __init__(self):
+                raise ValueError("no")
+        ''',
+    )
+
+    assert [error.split(" raises,")[0] for error in report.errors] == [
+        f"{doc_check.PACKAGE_ROOT}/module.py:5 `__post_init__`"
+    ]
+
+
 def test_a_module_the_interpreter_cannot_parse_is_declined_not_failed(tmp_path: Path) -> None:
     """A file the bare `python3` cannot parse is listed as not checked (`PL-GZPX`)."""
 

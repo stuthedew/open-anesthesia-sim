@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: documentation-standard
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, src/anesthesia_sim/app/playback.py
 blocked-by: PL-HXKC
 added: 2026-09-05
 closed: 2026-10-24
