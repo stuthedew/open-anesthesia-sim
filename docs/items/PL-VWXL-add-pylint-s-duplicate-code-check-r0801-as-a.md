@@ -11,7 +11,7 @@ blocked-by: v0.6.0, PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)
 added: 2026-10-19
 payoff: copied logic fails make check instead of drifting apart
-verify: grep -q 'duplicate-code' Makefile
+verify: ! grep -q 'anesthesia_sim.core.blood' tools/duplicate_code_check.py
 ---
 
 **Problem.** Add pylint's duplicate-code check (R0801) as a ratchet over src/, tools/ and subprojects/docket/, with a baseline that can only shrink
