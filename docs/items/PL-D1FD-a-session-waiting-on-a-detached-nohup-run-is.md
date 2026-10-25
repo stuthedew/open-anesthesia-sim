@@ -7,6 +7,7 @@ status: done
 touches: CLAUDE.md
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1793
 payoff: a session waiting on a long run is re-invoked when it ends or dies, instead of sitting idle for hours
 verify: grep -q 'Wait on a long run only through the harness' CLAUDE.md
 ---
