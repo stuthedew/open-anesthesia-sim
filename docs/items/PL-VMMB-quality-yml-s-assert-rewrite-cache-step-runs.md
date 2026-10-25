@@ -10,6 +10,7 @@ touches: conftest.py, tests/unit/test_bytecode_guard.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1804
 payoff: moving CI to a runner with dozens of cores cannot fail the assert-rewrite cache step because one core's share of test modules came out empty
 verify: grep -q 'def test_a_share_that_collects_no_test_module_exits_cleanly' tests/unit/test_bytecode_guard.py
 ---

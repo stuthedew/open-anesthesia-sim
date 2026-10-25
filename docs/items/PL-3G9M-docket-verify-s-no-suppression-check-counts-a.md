@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1804
 payoff: a test that calls a conftest's collection hook no longer holds its pull request for the owner's read, since verify counts only a definition of the hook
 verify: grep -q 'def test_a_call_of_the_collection_hook_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 reenters: PL-G21K
