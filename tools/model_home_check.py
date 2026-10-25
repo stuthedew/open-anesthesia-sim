@@ -47,6 +47,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import CONFIG_NAME  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
+from docket.lines import split_lines  # noqa: E402
 from docket.model import is_under, parse_item  # noqa: E402
 from docket.vcs import tracked_files  # noqa: E402
 
@@ -127,7 +128,7 @@ def problems(root: Path, files: list[str] | None = None) -> list[str]:
 
 
 def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=split_lines(__doc__)[0])
     parser.parse_args(argv)
     found = problems(root)
     for line in found:
