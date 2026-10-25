@@ -89,6 +89,11 @@ far below the 1e-4 a readout can show so a real divergence still does.
 """
 
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
+
 def _compartments(system: AgentUptakeSystem) -> tuple[float, ...]:
     """The six compartment fractions the run records, in state order."""
 
@@ -1329,7 +1334,8 @@ def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s:
     _, definition, _ = _stepped_run(steps=100)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^spacing_s must be positive and finite$"
+        SimulationConfigurationError,
+        match="^spacing_s must be positive and finite" + REFUSAL_REASON,
     ):
         definition.evaluate_anchored(0.0, 10.0, spacing_s)
 
