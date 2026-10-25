@@ -1,5 +1,6 @@
 import importlib.resources
 import json
+import math
 import re
 from collections.abc import Callable
 from copy import deepcopy
@@ -1376,6 +1377,26 @@ def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
     )
 
     assert definitions == ["src/anesthesia_sim/core/parameters.py"]
+
+
+def test_a_perfusion_sum_exactly_at_the_tolerance_is_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The tolerance is the largest difference from 1 that is still accepted.
+
+    No float sum near 1 lands exactly 1e-12 from it, so the tolerance is
+    widened to 0.25 here, where 1.25 and 0.75 are exact. The patched module
+    attribute is the one the rule reads when it is called.
+    """
+
+    monkeypatch.setattr(parameters_module, "FLOW_FRACTION_TOLERANCE", 0.25)
+
+    parameters_module.require_perfusion_fractions_sum_to_one(1.25)
+    parameters_module.require_perfusion_fractions_sum_to_one(0.75)
+
+    for outside in (math.nextafter(1.25, 2.0), math.nextafter(0.75, 0.0)):
+        with pytest.raises(SimulationConfigurationError, match="must sum to 1"):
+            parameters_module.require_perfusion_fractions_sum_to_one(outside)
 
 
 def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() -> None:
