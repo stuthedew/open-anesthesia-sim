@@ -1043,29 +1043,30 @@ READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
 
 @dataclass(frozen=True, slots=True)
 class ParameterControl:
-    """One setting control's fixed half: what it sets and how it is offered.
+    """The fixed part of one setting control, saying what it sets and how it is offered.
 
     Attributes:
-        control: The setting it forwards to the controller.
-        name: The setting's name, or None where the name carries the
-            agent and comes from `format_delivered_label` per tick.
-        qualifier: Where the name alone would be read as a different
-            quantity than the model uses, the words that separate the two,
-            or None where the name is unambiguous. "common gas outlet"
-            because "Fresh gas flow" alone is what a flowmeter bank is
-            labelled, and a flowmeter reads the carrier gas only, while
-            the model's mass balance makes this the whole post-vaporizer
-            stream - 22% apart at desflurane's 18% dial, landing on the
-            circuit time constant the wash-in curve is about (`PL-71CF`).
-        decimals: The display resolution the slider steps at, from
-            `formatting.py`, so the value applied to the model is exactly
-            the value printed beside the slider (`PL-25KS`, decision D4).
+        control: The setting that the control forwards to the controller.
+        name: The setting's name. It is None where the name includes the agent;
+            `format_delivered_label` then supplies the name on each tick.
+        qualifier: Words that tell the setting apart from a different quantity
+            that the name alone would suggest, or None where the name is
+            unambiguous. Fresh gas flow has the qualifier "common gas outlet".
+            "Fresh gas flow" alone is how a flowmeter bank is labelled, and a
+            flowmeter reads only the carrier gas. In the model's mass balance,
+            this setting is the whole stream leaving the vaporizer. The two
+            differ by 22% at desflurane's 18% dial setting. That difference
+            carries into the circuit time constant, which is what the wash-in
+            curve shows (`PL-71CF`).
+        decimals: The display resolution at which the slider steps, taken from
+            `formatting.py`. So the value applied to the model is exactly the
+            value printed beside the slider (`PL-25KS`, decision D4).
 
-    The range is not here. Two of the four are instance state rather than
-    constants - the delivered dial's ceiling is the running agent's
-    vaporizer maximum, and the fresh gas flow's range is what the mounted
-    machine narrows the model's envelope to - so `setting_readouts` states
-    every control's range in one table, reading those two from the snapshot.
+    The range is not stored here. For two of the four controls, the range is
+    instance state rather than a constant. The delivered dial's ceiling is the
+    running agent's vaporizer maximum. The fresh gas flow's range is the model's
+    envelope, narrowed by the mounted machine. So `setting_readouts` states every
+    control's range in one table, and it reads those two ranges from the snapshot.
     """
 
     control: ControlInput
@@ -1077,10 +1078,11 @@ class ParameterControl:
     def unit(self) -> str:
         """The label of the unit the slider's value is in.
 
-        It is read from the member `control_record.CONTROL_INPUT_DISPLAY_UNITS`
-        gives the control, the member whose recorded spelling each recorded
-        change carries. So the slider's label and the recorded unit cannot
-        name different units (`PL-Q3G9`).
+        The label comes from the `DisplayUnit` member that
+        `control_record.CONTROL_INPUT_DISPLAY_UNITS` gives this control. Each
+        recorded change carries the recorded spelling of that same member. So the
+        slider's label and the recorded unit cannot name different units
+        (`PL-Q3G9`).
         """
 
         return CONTROL_INPUT_DISPLAY_UNITS[self.control].label

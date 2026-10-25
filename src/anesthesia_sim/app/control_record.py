@@ -1,24 +1,24 @@
-"""What a run's settings are addressed by, and the change a run records.
+"""This module defines the names and units of a run's settings, and one recorded change.
 
-The record half of a run's controls: which settings exist (`ControlInput`),
-the unit each is in (`CONTROL_INPUT_DISPLAY_UNITS`, and its recorded spelling
-`CONTROL_INPUT_UNITS`), and one change the running model actually saw
-(`ControlChange`). Nothing here reads simulation
+It is the record half of a run's controls. It defines which settings exist
+(`ControlInput`) and the unit each one is in (`CONTROL_INPUT_DISPLAY_UNITS`, with
+its recorded spelling in `CONTROL_INPUT_UNITS`). It also defines `ControlChange`,
+one change that the running model actually saw. Nothing here reads simulation
 state, holds a setting, or formats a value.
 
-`app/control_timeline.py` is the display half - it turns a recorded timeline
-into the acts a reader sees, and names each control in the interface's own
-words - and it reads these definitions from here rather than the other way
-round, so what a run records does not depend on the words chosen to show it.
+`app/control_timeline.py` is the display half. It turns a recorded timeline into
+the acts a reader sees, and it names each control in the interface's own words.
+That module imports these definitions from this one, and never the other way
+round. So what a run records does not depend on the words chosen to show it.
 
 **Why it is a module of its own rather than part of either.**
-`app/controller.py` writes the record and `app/control_timeline.py` reads it,
-so the definitions cannot sit in either without pointing an import backwards:
-in the controller they made every reader of a recorded change import the
-UI-to-core boundary, which is what `PL-RD3B` separated, and in the timeline
-they would make the controller import a module whose job is formatting
-strings for display. A leaf both import is the only placement that leaves the
-direction one-way.
+`app/controller.py` writes the record and `app/control_timeline.py` reads it. If
+the definitions sat in either module, one import would point the wrong way. When
+they were in the controller, every reader of a recorded change had to import the
+UI-to-core boundary, which `PL-RD3B` separated. In the timeline, they would make
+the controller import a module whose job is to format strings for display. A
+leaf module that both of them import is the only place that keeps every import
+pointing one way.
 """
 
 from collections.abc import Mapping
@@ -72,29 +72,28 @@ class ControlInput(StrEnum):
     CARDIAC_OUTPUT = "cardiac_output"
 
 
-# The unit each control's recorded values are in, declared once and carried
-# onto every entry that records one. Two properties are wanted at the same
-# time and neither alone is enough: a single table is auditable at a glance
-# and cannot drift between the recorder and the reader (the reason
-# `chart_frame.COMPARTMENT_TRACES` is one table rather than six call sites),
-# while a unit carried *on* the entry makes each recorded change
-# self-describing, so a displayed line reads its unit from the change that
-# produced it rather than from a lookup a later edit could desynchronise.
-# `CLAUDE.md`'s safety-critical standard asks for explicit units and for a
-# displayed value traceable to them; this is both halves.
+# The unit of each control's recorded values. It is declared once, here, and carried
+# onto every entry that records a value. Two properties are wanted at the same time,
+# and neither is enough alone. A single table can be audited at a glance, and it
+# cannot drift between the recorder and the reader. That is why
+# `chart_frame.COMPARTMENT_TRACES` is one table rather than six call sites. A unit
+# carried *on* each entry makes each recorded change describe itself. A displayed
+# line then reads its unit from the change that produced it, not from a lookup that
+# a later edit could put out of step. `CLAUDE.md`'s safety-critical standard asks for
+# explicit units and for each displayed value to be traceable to its unit. The table
+# and the unit on each entry together meet both requirements.
 #
 # The values are the model's own units, not the interface's. The delivered
-# concentration is stored as the percent the core is set with, which is
-# the percent that was dialled (`PL-NJPB`), so re-applying a recorded
-# timeline is a sequence of setter calls with the numbers already in them -
-# the reconstruction property this item exists for - and the percent a
-# reader sees is rendered by the same formatter every other concentration
-# goes through.
+# concentration is stored as the percent the core is set with, which is the percent
+# that was dialled (`PL-NJPB`). So re-applying a recorded timeline is a sequence of
+# setter calls with the numbers already in them. That reconstruction property is what
+# the record exists for. The percent a reader sees is rendered by the same formatter
+# that every other concentration goes through.
 #
-# Each control's unit is one `DisplayUnit` member, which the panel's slider
-# label reads too (`dashboard_frame.ParameterControl.unit`). So the label a
-# reader sees beside a slider and the unit its recorded changes carry are two
-# spellings of one member, and cannot name different units (`PL-Q3G9`).
+# Each control's unit is one `DisplayUnit` member, and the panel's slider label reads
+# that member too (`dashboard_frame.ParameterControl.unit`). So the label beside a
+# slider and the unit on its recorded changes are two spellings of one member. They
+# cannot name different units (`PL-Q3G9`).
 CONTROL_INPUT_DISPLAY_UNITS: Final[Mapping[ControlInput, DisplayUnit]] = {
     ControlInput.FRESH_GAS_FLOW: DisplayUnit.FLOW,
     ControlInput.DELIVERED: DisplayUnit.CONCENTRATION,

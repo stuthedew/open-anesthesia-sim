@@ -2,10 +2,11 @@
 
 A unit shown beside a value is part of that value under `CLAUDE.md`'s
 safety-critical standard: the correct number with the wrong unit is still a
-safety failure. Until `PL-G84G`, the panel typed "L/min" beside each flow
-slider, the run record typed it again for each recorded change, and the
-formatter typed it a third time. A change to one would have left the other two
-stating the old unit, and no check reads strings to notice.
+safety failure. Before `PL-G84G` gathered the units here, the panel typed
+"L/min" beside each flow slider, the run record typed it again for each recorded
+change, and the formatter typed it a third time. A change to one would have left
+the other two stating the old unit. No check reads strings, so nothing would
+have noticed.
 
 So each unit is one `DisplayUnit` member, and every place the interface writes
 the unit reads it from that member. A member holds each spelling a reader
@@ -21,8 +22,8 @@ spellings are one unit, so they live in one member.
 
 The units live in `app/`, not in `core/units.py`, because a label is
 presentation, and `CLAUDE.md` keeps presentation out of the calculation code.
-Other repeated strings, such as message fragments, are left to review: a check
-that read strings would have to guess which of them are units.
+Other repeated strings, such as message fragments, are left to code review. A
+check that read strings would have to guess which of them are units.
 """
 
 from enum import Enum
@@ -42,11 +43,11 @@ class DisplayUnit(Enum):
 
     FLOW = ("L/min", "L/min", "L/min")
     CONCENTRATION = ("percent of 1 atm", "%", "% of 1 atm")
-    # The multiplication sign is doing safety work rather than typographic
-    # work: "0.80 MAC" is read as a depth of anesthesia, and "0.80 ×MAC" as
-    # what the number actually is, a partial pressure expressed as a multiple
-    # of the concentration that would be 1 MAC. `docs/MODEL.md` § "MAC
-    # multiples as a display unit" states the convention.
+    # The multiplication sign is there for safety, not for typography. A reader
+    # takes "0.80 MAC" as a depth of anesthesia. "0.80 ×MAC" says what the number
+    # actually is: a partial pressure expressed as a multiple of the concentration
+    # that would be 1 MAC. `docs/MODEL.md` § "MAC multiples as a display unit"
+    # states the convention.
     MAC_MULTIPLE = ("multiple of MAC", "×MAC", "×MAC")
 
     recorded: str

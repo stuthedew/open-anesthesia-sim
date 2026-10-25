@@ -1,8 +1,9 @@
 """Each unit the interface states comes from one `DisplayUnit` member (`PL-G84G`, `PL-Q3G9`).
 
-The expected spellings below are typed from what a reader sees and what the
-run record has always written, not read from the code under test, so a change
-to a member's spelling fails here and is a decision rather than drift.
+The expected spellings below are typed from what a reader sees and from what the
+run record has always written. They are not read from the code under test. So a
+change to a member's spelling fails here, and the change has to be a deliberate
+decision rather than unnoticed drift.
 """
 
 from __future__ import annotations
@@ -53,8 +54,8 @@ def test_a_controls_slider_label_and_recorded_unit_are_one_member() -> None:
 def test_a_slider_label_follows_its_controls_member(monkeypatch: pytest.MonkeyPatch) -> None:
     """Moving a control to another member moves its slider label with it.
 
-    This is what makes the label a read of the member rather than a copy that
-    happens to match it.
+    This test shows that the label is read from the member, and is not a copy
+    that happens to match it.
     """
 
     moved = {**CONTROL_INPUT_DISPLAY_UNITS, ControlInput.FRESH_GAS_FLOW: DisplayUnit.CONCENTRATION}
@@ -70,13 +71,13 @@ def test_the_formatters_write_the_members_labels() -> None:
 
 
 def test_the_fork_point_entry_is_sized_from_the_clocks_own_format() -> None:
-    """The widest entry is measured from text `format_elapsed` writes.
+    """The widest entry is measured from text that `format_elapsed` writes.
 
-    The measure below counts each character as 1 and adds 10 for each "9".
-    For each part, the widest text is the first, in counting order, with the
-    most nines and the most characters. That is 19h, 19m and 19.9s: "9h"
-    scores 12 and "19h" scores 13, and "19.9s" scores 25 against 24 for
-    "9.9s".
+    The measure below counts each character as 1 and adds 10 for each "9". The
+    elapsed time has an hours part, a minutes part and a seconds part. For each
+    part, the widest text is the first value, counting upward, that has the most
+    nines and the most characters. That gives 19h, 19m and 19.9s. "9h" scores 12
+    and "19h" scores 13. "19.9s" scores 25, against 24 for "9.9s".
     """
 
     def advance_px(text: str) -> int:
