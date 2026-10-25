@@ -90,6 +90,21 @@ def test_a_keyword_reaches_the_slot() -> None:
     assert view.calls == [(4, True)]
 
 
+def test_a_keyword_only_parameter_takes_no_signal_argument() -> None:
+    """A signal's second argument is dropped, rather than filling a keyword-only parameter.
+
+    Counting the keyword-only `coalesce` as a place for a positional argument would pass
+    9 to a slot that takes one, which raises `TypeError` (coverage review of `PL-HJKN`).
+    """
+
+    view = _View()
+
+    view.takes_a_keyword(4, 9)  # type: ignore[call-arg]
+
+    assert view.halts == []
+    assert view.calls == [(4, False)]
+
+
 def test_a_raise_from_the_halt_itself_escapes_once_the_halt_is_called() -> None:
     """Stating a halt can raise, as `present_halt` does for a dial with no setting.
 

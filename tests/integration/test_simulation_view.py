@@ -31,12 +31,13 @@ import re
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
-from functools import partial
+from functools import cache, partial
 from typing import Any, Final, NoReturn
 
 import pytest
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPalette
+from PySide6.QtGui import QBrush, QColor, QFont, QPalette, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -7556,19 +7557,69 @@ def _own_method(node: ast.expr, view_class: type) -> str | None:
     return node.attr
 
 
-def _callback_bypass(
-    callback: ast.expr, call: ast.Call, view_class: type, local_functions: set[str]
-) -> str | None:
-    """Return why `callback`, passed to `call`, bypasses the halt gate, or None if it does not.
+#: The calls that take a slot as a positional argument after the first, as
+#: `QTimer.singleShot(msec, slot)`, `QShortcut(key, parent, slot)` and
+#: `QMenu.addAction(text, slot)` do. The check judges those arguments as it judges a
+#: slot passed to `.connect` (blind review of `PL-HJKN`).
+_CALLS_THAT_TAKE_A_SLOT: Final = frozenset({"singleShot", "callLater", "addAction", "QShortcut"})
 
-    A method of the view passes the gate when it is gated, whatever call it is passed to.
-    Every other slot passed to `.connect` bypasses the gate. That includes a lambda, a local
-    function, a slot of another object such as `run.controller.pause`, and a slot reached
-    through an attribute of the view such as `self.controller.pause`. A lambda or a local
-    function passed to any other call bypasses the gate too, because the called function can
-    keep it and call it from the event loop. The one exception is a call to one of the
-    view's own methods, because that method runs the callback inside the calling slot.
-    Any other argument is a value, not a callback, so this function returns None for it.
+
+@cache
+def _qt_signal_names() -> frozenset[str]:
+    """Return the name of every signal that a class in QtCore, QtGui or QtWidgets declares.
+
+    PySide6 connects a signal that is named as a keyword argument of a constructor, as in
+    `QPushButton("Pause", clicked=slot)`. So such a keyword argument passes on a slot.
+    """
+
+    return frozenset(
+        name
+        for module in (QtCore, QtGui, QtWidgets)
+        for _, member in inspect.getmembers(module, inspect.isclass)
+        for name, value in vars(member).items()
+        if isinstance(value, QtCore.Signal)
+    )
+
+
+def _elements(node: ast.expr) -> Iterator[ast.expr]:
+    """Yield `node`, or each element of it when it is a tuple, list, set, dict or starred value."""
+
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        for element in node.elts:
+            yield from _elements(element)
+    elif isinstance(node, ast.Dict):
+        for value in node.values:
+            yield from _elements(value)
+    elif isinstance(node, ast.Starred):
+        yield from _elements(node.value)
+    else:
+        yield node
+
+
+def _callback_bypass(
+    callback: ast.expr,
+    view_class: type,
+    local_functions: set[str],
+    *,
+    position: str,
+    run_at_once: bool,
+) -> str | None:
+    """Return why `callback` bypasses the halt gate, or None if it does not.
+
+    `position` says how the call takes `callback`. It is "connect" for the argument of
+    `.connect`, "slot" for an argument that `_CALLS_THAT_TAKE_A_SLOT` or a signal keyword
+    takes as a slot, and "argument" for any other argument. `run_at_once` is True when
+    the call is to one of the view's own methods, which runs the callback inside the
+    calling slot.
+
+    A method of the view passes the gate when it is gated, in any position. A lambda or a
+    local function bypasses the gate in every position, unless the view's own method runs
+    it at once. In a slot position, every other callback bypasses the gate too. That
+    includes a slot of another object such as `run.controller.pause`, and a slot reached
+    through an attribute of the view such as `self.controller.pause`. In a slot position
+    other than `.connect`, a name, a constant, a call or one of the view's own attributes
+    is a value, such as the parent widget that `QShortcut` takes. Any other argument is a
+    value, not a callback, so this function returns None for it.
     """
 
     method = _own_method(callback, view_class)
@@ -7582,14 +7633,28 @@ def _callback_bypass(
         isinstance(callback, ast.Name) and callback.id in local_functions
     )
 
-    if not (isinstance(call.func, ast.Attribute) and call.func.attr == "connect"):
-        if local and _own_method(call.func, view_class) is None:
+    if position == "argument":
+        if local and not run_at_once:
             return "a lambda or a local function that the callee may call from the event loop"
 
         return None
 
-    if local or isinstance(callback, ast.Name):
-        return "a lambda or a function named bare, which cannot pass the gate"
+    if local:
+        return "a lambda or a local function, which cannot pass the gate"
+
+    if position == "connect" and isinstance(callback, ast.Name):
+        return "a function named bare, which cannot pass the gate"
+
+    held_by_the_view = (
+        isinstance(callback, ast.Attribute)
+        and isinstance(callback.value, ast.Name)
+        and callback.value.id == "self"
+    )
+
+    if position == "slot" and (
+        held_by_the_view or isinstance(callback, (ast.Name, ast.Constant, ast.Call))
+    ):
+        return None
 
     names_self = any(
         isinstance(node, ast.Name) and node.id == "self" for node in ast.walk(callback)
@@ -7601,15 +7666,30 @@ def _callback_bypass(
     return "a slot of another object, which may read or change a run outside the gate"
 
 
+def _unwrapped_partial(node: ast.expr) -> ast.expr:
+    """Return the function that `node` wraps when it is a `partial` call, or `node` itself."""
+
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "partial"
+        and node.args
+    ):
+        return node.args[0]
+
+    return node
+
+
 @dataclass(frozen=True)
 class _HaltGateReading:
     """What `_halt_gate_bypasses` found in one view's source."""
 
-    #: Each call that hands out a callback bypassing the gate, as its source text and why.
+    #: Each call that passes on a callback bypassing the gate, or each method that overrides
+    #: Qt's own without the gate, as its source text and why.
     bypasses: list[tuple[str, str]]
     #: Each key of the exemptions whose callback passes the gate, so the entry is stale.
     exempt_but_gated: list[tuple[str, str]]
-    #: Each key of the exemptions whose callback the source hands out.
+    #: Each key of the exemptions whose callback the source passes on.
     exemptions_handed_out: set[tuple[str, str]]
     #: How many `.connect` calls the source makes.
     connections: int
@@ -7621,10 +7701,15 @@ def _halt_gate_bypasses(
     """Find each call in `view_class`'s source whose callback bypasses the halt gate.
 
     The source holds every connection the class makes, including the ones it makes when it
-    later builds a dialog. A `partial` passed to `.connect` is judged by the method that it
-    wraps. `exemptions` is keyed by the class's name and the callback's source text. A
-    callback listed there is not reported as a bypass, but its entry is reported as stale
-    when the callback passes the gate.
+    later builds a dialog. A `partial` in a slot position is judged by the method that it
+    wraps. A method that overrides one of Qt's own, such as `keyPressEvent`, is called by
+    Qt directly, so it must pass the gate too. `exemptions` is keyed by the class's name and
+    the callback's source text, or `def <name>` for such a method. A callback listed there
+    is not reported as a bypass, but its entry is reported as stale when the callback passes
+    the gate.
+
+    The check reads only the class's own source. It cannot see a slot that a function
+    outside the class connects, or a callback held in a variable before it is passed on.
     """
 
     (class_node,) = ast.parse(inspect.getsource(view_class)).body
@@ -7636,44 +7721,70 @@ def _halt_gate_bypasses(
         for node in ast.walk(method)
         if isinstance(node, ast.FunctionDef) and node is not method
     }
-    bypasses: list[tuple[str, str]] = []
-    exempt_but_gated: list[tuple[str, str]] = []
-    exemptions_handed_out: set[tuple[str, str]] = set()
+    qt_bases = [base for base in view_class.__mro__ if base.__module__.startswith("PySide6")]
+    judged: list[tuple[str, str, str | None]] = []
+
+    for method in methods:
+        if not method.name.startswith("__") and any(
+            hasattr(base, method.name) for base in qt_bases
+        ):
+            gated = passes_halt_gate(inspect.getattr_static(view_class, method.name))
+            reason = None if gated else "it overrides a Qt method, which Qt calls directly"
+            judged.append((f"def {method.name}", f"def {method.name}", reason))
+
     connections = 0
 
     for call in (node for node in ast.walk(class_node) if isinstance(node, ast.Call)):
-        called = call.func.attr if isinstance(call.func, ast.Attribute) else None
+        if isinstance(call.func, ast.Attribute):
+            called: str | None = call.func.attr
+        else:
+            called = call.func.id if isinstance(call.func, ast.Name) else None
 
         if called == "disconnect":
             continue
 
-        callbacks = [*call.args, *(keyword.value for keyword in call.keywords)]
+        positioned: list[tuple[ast.expr, str]]
 
         if called == "connect":
             connections += 1
-            (slot,) = callbacks
+            (slot,) = call.args
+            positioned = [(_unwrapped_partial(slot), "connect")]
+        else:
+            slots = call.args[1:] if called in _CALLS_THAT_TAKE_A_SLOT else []
+            passed = [(argument, any(argument is slot for slot in slots)) for argument in call.args]
+            passed += [
+                (keyword.value, keyword.arg in _qt_signal_names()) for keyword in call.keywords
+            ]
+            positioned = []
 
-            if (
-                isinstance(slot, ast.Call)
-                and isinstance(slot.func, ast.Name)
-                and slot.func.id == "partial"
-                and slot.args
-            ):
-                slot = slot.args[0]
+            for value, takes_a_slot in passed:
+                if takes_a_slot:
+                    positioned.append((_unwrapped_partial(value), "slot"))
+                else:
+                    positioned.extend((element, "argument") for element in _elements(value))
 
-            callbacks = [slot]
+        run_at_once = _own_method(call.func, view_class) is not None
 
-        for callback in callbacks:
-            reason = _callback_bypass(callback, call, view_class, local_functions)
-            key = (view_class.__name__, ast.unparse(callback))
+        for callback, position in positioned:
+            reason = _callback_bypass(
+                callback, view_class, local_functions, position=position, run_at_once=run_at_once
+            )
+            judged.append((ast.unparse(call), ast.unparse(callback), reason))
 
-            if key in exemptions:
-                exemptions_handed_out.add(key)
+    bypasses: list[tuple[str, str]] = []
+    exempt_but_gated: list[tuple[str, str]] = []
+    exemptions_handed_out: set[tuple[str, str]] = set()
 
-                if reason is None:
-                    exempt_but_gated.append(key)
-            elif reason is not None:
-                bypasses.append((ast.unparse(call), reason))
+    for text, callback_text, reason in judged:
+        key = (view_class.__name__, callback_text)
+
+        if key in exemptions:
+            exemptions_handed_out.add(key)
+
+            if reason is None:
+                exempt_but_gated.append(key)
+        elif reason is not None:
+            bypasses.append((text, reason))
 
     return _HaltGateReading(bypasses, exempt_but_gated, exemptions_handed_out, connections)
 
@@ -7715,8 +7826,8 @@ def test_every_slot_that_touches_a_run_passes_the_halt_gate() -> None:
     assert not stale, f"exempt callbacks that are no longer handed out: {sorted(stale)}"
 
 
-class _ViewWiredAroundTheGate:
-    """A view that hands out callbacks in every shape the halt gate check must judge.
+class _ViewWiredAroundTheGate(QWidget):
+    """A view that passes on callbacks in every shape the halt gate check must judge.
 
     It is never built, and `_wire` is never called. The check reads its source.
     """
@@ -7740,7 +7851,17 @@ class _ViewWiredAroundTheGate:
     def _run_now(self, action: Callable[[], None]) -> None:
         action()
 
-    def _wire(self, button: Any, run: Any, timer: Any) -> None:
+    def _register(self, actions: tuple[Callable[[], None], ...]) -> None:
+        pass
+
+    @halt_gate
+    def showEvent(self, event: Any) -> None:
+        pass
+
+    def keyPressEvent(self, event: Any) -> None:
+        self.controller.pause()
+
+    def _wire(self, button: Any, run: Any, timer: Any, menu: Any, key: Any) -> None:
         def local() -> None:
             self._gated()
 
@@ -7758,6 +7879,14 @@ class _ViewWiredAroundTheGate:
         timer.singleShot(0, self._ungated)
         timer.singleShot(0, lambda: self._gated())
         timer.singleShot(0, local)
+        QShortcut(key, self, self._gated)
+        QShortcut(key, self, self.controller.pause)
+        menu.addAction("Pause", run.controller.pause)
+        timer.singleShot(0, run.controller.pause)
+        type(button)("Pause", clicked=self._gated)
+        type(button)("Pause", clicked=run.controller.pause)
+        self._run_now(*(self._ungated,))
+        self._register((self._gated, self._ungated))
 
 
 def _bare_function() -> None:
@@ -7767,17 +7896,17 @@ def _bare_function() -> None:
 def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
     """The check reports each callback in `_ViewWiredAroundTheGate` that bypasses the gate.
 
-    The expected list below was written by hand from that class's source. Three kinds of
-    callback pass: a gated method, a `partial` of a gated method, and a lambda or a local
-    function that one of the view's own methods runs at once. An exempt callback is not
-    reported while it
-    bypasses the gate. Once the gate covers it, its entry is reported as stale (blind
-    review of `PL-HJKN`).
+    The expected list below was written by hand from that class's source. Four kinds of
+    callback pass: a gated method in any position, a `partial` of a gated method, a gated
+    override of a Qt method, and a lambda or a local function that one of the view's own
+    methods runs at once. An exempt callback is not reported while it bypasses the gate.
+    Once the gate covers it, its entry is reported as stale (blind review of `PL-HJKN`).
     """
 
     reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {})
 
     assert [call for call, _ in reading.bypasses] == [
+        "def keyPressEvent",
         "button.clicked.connect(_bare_function)",
         "button.clicked.connect(run.controller.pause)",
         "button.clicked.connect(self._ungated)",
@@ -7787,6 +7916,12 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
         "timer.singleShot(0, self._ungated)",
         "timer.singleShot(0, lambda: self._gated())",
         "timer.singleShot(0, local)",
+        "QShortcut(key, self, self.controller.pause)",
+        "menu.addAction('Pause', run.controller.pause)",
+        "timer.singleShot(0, run.controller.pause)",
+        "type(button)('Pause', clicked=run.controller.pause)",
+        "self._run_now(*(self._ungated,))",
+        "self._register((self._gated, self._ungated))",
     ]
     assert reading.exempt_but_gated == []
     assert reading.exemptions_handed_out == set()
@@ -7794,13 +7929,16 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
 
     exempt = ("_ViewWiredAroundTheGate", "run.controller.pause")
     gated = ("_ViewWiredAroundTheGate", "self._gated")
-    reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {exempt: "a test", gated: "a test"})
+    override = ("_ViewWiredAroundTheGate", "def keyPressEvent")
+    reading = _halt_gate_bypasses(
+        _ViewWiredAroundTheGate, {exempt: "a test", gated: "a test", override: "a test"}
+    )
+    reported = [call for call, _ in reading.bypasses]
 
-    assert "button.clicked.connect(run.controller.pause)" not in [
-        call for call, _ in reading.bypasses
-    ]
-    assert reading.exempt_but_gated == [gated, gated]
-    assert reading.exemptions_handed_out == {exempt, gated}
+    assert "button.clicked.connect(run.controller.pause)" not in reported
+    assert "def keyPressEvent" not in reported
+    assert reading.exempt_but_gated == [gated] * 5
+    assert reading.exemptions_handed_out == {exempt, gated, override}
 
 
 def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
