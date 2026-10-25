@@ -453,6 +453,7 @@ workflow_paths = [
   "docs/stress-2026-09-25",
   "docs/worker.md",
   "docs/worker-runs",
+  "docs/hook-blocks",
   "model-evidence.toml",
   "bin",
   "subprojects",
@@ -483,6 +484,7 @@ workflow_paths = [
   "tests/unit/test_gate_status_guard.py",
   "tests/unit/test_glyph_check.py",
   "tests/unit/test_headless_worker.py",
+  "tests/unit/test_hook_blocks.py",
   "tests/unit/test_worker_runs.py",
   "tests/unit/test_ignore_check.py",
   "tests/unit/test_main_ci_status.py",
@@ -671,6 +673,12 @@ prose_count_command = "uv run python tools/new_prose.py --count"
 # tell a test of the tooling from the simulator's, and those tests may use
 # grammar newer than the bare interpreter reads.
 blind_count_command = "uv run python tools/blind_review.py --count"
+
+# What `bin/docket record N` runs once it has written the number on a branch:
+# the copy of this machine's log of guard refusals into `docs/hook-blocks/`,
+# so the lines ride the commit that carries the number (`PL-SG93`). Bare, like
+# the hooks that write the log, since it reads text and parses no Python.
+record_command = "python3 tools/hook_blocks.py copy"
 
 # How `bin/docket verify` measures whether the branch's tests still catch a
 # change to its own lines (`PL-CZXN`; project owner, 2026-10-19, ratified, over

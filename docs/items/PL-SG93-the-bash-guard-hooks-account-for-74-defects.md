@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: defect-review-2026-10
-touches: .claude/hooks
+touches: .claude/hooks, tools/hook_blocks.py, tests/unit/test_hook_blocks.py, tests/conftest.py, docs/hook-blocks, docket.toml, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_record_command.py, subprojects/docket/README.md, docs/apparatus.md
 deferred-from: v0.7.0 - a workflow measurement that waits on the owner's choice of collection route; no v0.7.0 feature reads it
 added: 2026-10-19
 payoff: each Bash guard hook either shows what it blocked in return for its defect cost, or is simplified or retired
@@ -68,3 +68,16 @@ lane. Stuart's request to complete the workflow items lifts the generator pause
 for it.
 
 **Decided, 2026-10-25.** The local log, copied into a tracked file when a pull request is recorded (project owner, 2026-10-25, ratified, over recording the inability and deciding from defect cost alone). Stuart's words: "Agree with Recs except for 3", where 3 was `PL-5S71`'s run.
+
+**Built, 2026-10-25.** Every guard now refuses through `hook_input.deny`, in `.claude/hooks/hook_input.py`. It appends one tab-separated line to `~/.local/state/open-anesthesia-sim/hook-blocks.tsv`: the time in UTC, the session id, the guard's name and the rule that refused. The command and the reason are left out, because a command can carry a token. A log that cannot be written is skipped, so a refusal still refuses. The six guards and their rules are these.
+
+- `no-prune-guard`: `delete-push`, `prune`, `delete-ref` and `remove`, joined with `+` where one call trips several.
+- `direct-merge-guard`: `unreadable-call`, `no-answer` and `admins-unbound`. Its refusal when python3 cannot run is not logged, because logging needs python3.
+- `floor-interpreter-guard`: `floor-interpreter`.
+- `gate-status-guard`: `arm-piped` and `status-swallowed`.
+- `push-check-guard`: `checks-failed`.
+- `owner_ask_guard`: `bare-read-ask` and `coordinator-ask`.
+
+`bin/docket record N` now runs `docket.toml`'s new `record_command` once it has written the number, and this repository sets it to `python3 tools/hook_blocks.py copy`. That copies each session's lines into `docs/hook-blocks/<session id>.tsv`, keeping what the file already holds. One file per session, rather than one shared file, means two branches never append to the same file, so their copies do not conflict at merge. `python3 tools/hook_blocks.py count` prints each guard's and rule's refusals and sessions. The test suite points `HOOK_BLOCK_LOG` at a temporary file, so the guard tests' refusals stay out of the real log.
+
+**What is left.** Read the counts on or after 2026-11-22, four weeks from now, with `python3 tools/hook_blocks.py count`. Record them under a `**Block counts.**` heading here with a keep, simplify or retire verdict for each guard. Keep `no-prune-guard` and `direct-merge-guard` whatever the count, because each guards an action that cannot be undone. The counts are a floor: a session that ends without recording a pull request loses its lines, and a Projects thread runs no guard at all (`PL-CR81`).

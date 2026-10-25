@@ -3599,6 +3599,14 @@ pull request closed unmerged and reopened is the one way a closure
 legitimately changes number. A landed closure's number is never replaced by
 either form of the command.
 
+**A project can copy its own records at the same moment.** Once the branch
+form has written the number, it runs `record_command` from `docket.toml`, if
+one is set, from the repository root, and prints what it prints. Whatever the
+command writes rides the same commit as the number. A command that fails is
+reported, and the number stays written. This repository uses it to copy the
+local log of guard refusals into `docs/hook-blocks/` (`PL-SG93`). The merge
+form does not run it, because it repairs a closure that has already landed.
+
 **Which pull request closed an item is therefore a recorded fact, and nothing
 infers it** (`PL-HMZZ`, project owner, 2026-09-25, ratified, over commit-side
 recovery and over keeping the inference and closing the head spent). It used

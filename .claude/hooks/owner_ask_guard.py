@@ -340,22 +340,12 @@ def main() -> int:
     if not text:
         return 0
     if tool_name == COORDINATOR_POST:
-        reason = coordinator_refusal(text)
+        rule, reason = "coordinator-ask", coordinator_refusal(text)
     else:
-        reason = refusal(text, hook_input.project_root())
+        rule, reason = "bare-read-ask", refusal(text, hook_input.project_root())
     if reason is None:
         return 0
-    sys.stdout.write(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": reason,
-                }
-            }
-        )
-    )
+    sys.stdout.write(hook_input.deny("owner_ask_guard", rule, reason, json.dumps(payload)))
     return 0
 
 

@@ -5596,7 +5596,7 @@ def cmd_record(args: argparse.Namespace) -> int:
     rather than overwritten here: two numbers for one landed closure means one
     of them is wrong, and which is not something this can know.
     """
-    directory, items, _ = _load(args)
+    directory, items, config = _load(args)
     inv = _invocation(args)
     root, tracked = inv.root, inv.tracked
     if inv.git is None:
@@ -5612,7 +5612,10 @@ def cmd_record(args: argparse.Namespace) -> int:
         print(f"record: #{args.number} is not a pull request number")
         return 2
     if args.merge is None:
-        return _record_on_branch(directory, items, root, tracked, inv.git, args)
+        status = _record_on_branch(directory, items, root, tracked, inv.git, args)
+        if status == 0 and not args.dry_run:
+            _run_record_command(config.record_command, root)
+        return status
 
     merge = args.merge
     report = closed_by(merge, root, items_dir=tracked, runner=inv.git)
@@ -5664,6 +5667,31 @@ def cmd_record(args: argparse.Namespace) -> int:
         args.dry_run,
     )
     return 1 if conflicting else 0
+
+
+#: How long `record_command` is given.
+RECORD_COMMAND_TIMEOUT = 60.0
+
+
+def _run_record_command(command: str, root: Path) -> None:
+    """Run the project's `record_command` after the number is written, and print what it says.
+
+    The number is already written, so a command that fails is reported and
+    leaves it in place: the copy it makes is a record of its own, and losing
+    it must not cost the pull request its number (`PL-SG93`).
+    """
+    if not command:
+        return
+    done = _run_forge_command(command, root, timeout=RECORD_COMMAND_TIMEOUT)
+    if isinstance(done, str):
+        print(f"record: `{command}` did not run: {done}")
+        return
+    for line in split_lines(done.stdout):
+        if line.strip():
+            print(line)
+    if done.returncode != 0:
+        err = " ".join(done.stderr.split())
+        print(f"record: `{command}` exited {done.returncode}" + (f": {err}" if err else ""))
 
 
 def _record_on_branch(

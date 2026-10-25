@@ -356,6 +356,17 @@ def computed_once_in[Value](store: Path, name: str, compute: Callable[[], Value]
         return value
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _hook_block_log(tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Keep the guards' refusals out of this machine's real block log (`PL-SG93`).
+
+    The guard tests run each hook with this process's environment, and a hook
+    that refuses appends a line to the log `HOOK_BLOCK_LOG` names. Without
+    this, every test run would add hundreds of refusals that no session made.
+    """
+    os.environ["HOOK_BLOCK_LOG"] = str(tmp_path_factory.mktemp("hooks") / "hook-blocks.tsv")
+
+
 @pytest.fixture(scope="session")
 def computed_once(
     request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
