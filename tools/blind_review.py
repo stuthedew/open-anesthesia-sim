@@ -35,6 +35,9 @@ Prints how many passes the branch owes, then one brief per pass, separated by
 a rule. Exits 0 when it answered, whether or not a pass is owed, and 1 when the
 default branch is unknown or git did not answer, since a count taken from a
 partial read is not a count. `--count` prints only the number of passes owed.
+It is `blind_count_command` in `docket.toml`, which `bin/docket arm` runs to hold
+a simulator branch until a `Blind-review` trailer records that many passes
+(`PL-HDRN`).
 """
 
 from __future__ import annotations
