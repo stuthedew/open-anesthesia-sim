@@ -1003,8 +1003,7 @@ def claimed_here(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
         parsed[0]
         for commit in history
         for value in commit.claims
-        if (parsed := _parse_claim(value)) is not None
-        and _head_name(parsed[1], remotes) == branch
+        if (parsed := _parse_claim(value)) is not None and _head_name(parsed[1], remotes) == branch
     )
 
 
