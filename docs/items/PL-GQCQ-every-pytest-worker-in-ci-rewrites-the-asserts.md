@@ -1,10 +1,16 @@
 ---
 id: PL-GQCQ
 title: Every pytest worker in CI rewrites the asserts of all 261 test modules, about 13 s of CPU each, because bytecode writing is off (PL-0MLZ) and --part splits inside modules, so each part imports every module: measure whether a split by module or a safe rewrite cache cuts it (found working PL-QQGZ)
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: perf, infra
 feature: ci-cost
 touches: conftest.py, tests/conftest.py
+deferred-from: v0.7.0 - filed after the gate froze; a P3 CI cost of about 25 s a part, which waits for PL-ZWQS's rebalance to settle first
 added: 2026-10-25
+payoff: each CI test part finishes about 25 s sooner, on every pull request and push
+verify: grep -qE '^\*\*Measured\.' docs/items/PL-GQCQ-*.md
 ---
 
 **Problem.** Every pytest worker in CI rewrites the asserts of all 261 test modules, about 13 s of CPU each, because bytecode writing is off (PL-0MLZ) and --part splits inside modules, so each part imports every module: measure whether a split by module or a safe rewrite cache cuts it (found working PL-QQGZ)
@@ -18,4 +24,8 @@ Pytest caches a rewritten module as a `.pyc` beside it, but only when bytecode w
 1. Split the parts by module, so that each worker of a part imports only that part's modules. That would roughly halve the rewriting in each part. It changes `PART_SHARES` and the balance `PL-ZWQS` is tuning, so it belongs with that work.
 2. Let pytest cache its rewritten test modules while ordinary bytecode stays off. A fresh CI checkout has no cache, so this helps CI only if the cache is restored from an earlier run or written once before the workers start. Pytest validates its cache by the source's mtime and size, as CPython does, so `PL-0MLZ`'s hazard of an edit reverted inside one second applies to it too. It is safe only if nothing mutates and restores a test module that fast.
 
-**Done when.** The collection cost per worker in a CI part is measured before and after, and one lever is taken, or the item records why neither pays for itself.
+**Why it matters.** It is paid by every worker of both test parts on every CI run, pull request and push alike. On a 4-vCPU runner with 8 workers, about 13 s of CPU per worker is roughly 25 s of each part's wall time, about a twentieth of a part. The cost grows with every assert added, so it grows with the suite.
+
+**Done when.** The collection cost per worker in a CI part is measured before and after, and one lever is taken, or the item records why neither pays for itself. Either way the result goes under a `**Measured.**` heading here.
+
+**Generator check.** One-off. It is one cost with one cause, found while attributing `PL-QQGZ`'s slowdown, and no other open item comes from it.
