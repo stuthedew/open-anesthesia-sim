@@ -47,6 +47,9 @@ every later push while a pull request is open.
   Long docstrings and comments that a simulator change adds, and that no
   `Prose-review` record covers, hold it until the session records close-out
   step 8's review (`PROSE_ASK`), and so does a count that could not be read.
+  A simulator change holds until its newest `Blind-review` record says at
+  least as many blind review passes ran as it owes (`BLIND_ASK`), and so does
+  a count of the passes owed that could not be read.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -185,7 +188,17 @@ has already merged; what went unread is said beside it.
   `PL-W04Z`). Five of six simulator branches had skipped step 8's review, and
   their prose was rated awkward in 58% of verdicts against 22% for the one
   that ran it (`PL-J6CK`). Docket names no repository tool, so the count is a
-  configured command, as the forge's are.
+  configured command, as the forge's are;
+- a simulator change waits for its blind generalist review passes: `arm`
+  holds while the number `blind_count_command` gives is more than the newest
+  `Blind-review` record says ran, or could not be read (2026-10-25, a
+  session's call under `PL-HDRN`, over leaving close-out step 9 as prose
+  alone). No simulator branch had merged under step 9 yet, so its skip rate
+  was not measured. Step 8 was skipped by five branches in six while it was
+  prose alone (`PL-W04Z`), and a branch that ran the passes pays one trailer
+  line.
+  A record is not undone by a later change, because close-out step 9 says a
+  fix made for a finding needs no further pass.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -398,6 +411,34 @@ PROSE_ASK = (
 PROSE_UNCOUNTED = (
     "  A branch whose prose could not be counted is never armed as though it had none. Make "
     "the count readable, most often by fixing a file Python will not parse, and ask again."
+)
+
+#: The commit trailer a session records close-out step 9's blind generalist
+#: review passes in, with the value `passes N, findings F, fixed X, filed Y,
+#: rejected Z` (`PL-HDRN`). The newest such record covers the branch while its
+#: `passes` is at least the number `blind_count_command` says the branch owes.
+#: A later change does not undo it, because close-out step 9 says a fix made
+#: for a finding needs no further pass. A later change that raises the number
+#: owed, such as a first change to the model's code, does.
+BLIND_REVIEW = "Blind-review"
+BLIND_FORM = re.compile(r"passes (\d+), findings \d+, fixed \d+, filed \d+, rejected \d+", re.ASCII)
+
+#: What a `hold` on missing blind review passes tells the session. The step's
+#: own instructions are in the close-out mode, so they are pointed at.
+BLIND_ASK = (
+    "  Run close-out step 9's blind generalist review passes "
+    "(.claude/skills/docket/modes/close-out.md): commit the work, run "
+    "`python3 tools/blind_review.py`, start one subagent per brief it prints, and deal with "
+    "each finding as the step says. Then record the passes as a trailer in the last paragraph "
+    "of a commit made after them, beside its Co-authored-by line: "
+    f"`{BLIND_REVIEW}: passes N, findings F, fixed X, filed Y, rejected Z`. One commit can "
+    f"carry this, a {PROSE_REVIEW} record and an {OWNER_READ} record together. Then ask again."
+)
+
+#: What a `hold` tells the session when the passes owed could not be counted.
+BLIND_UNCOUNTED = (
+    "  A branch whose blind review passes could not be counted is never armed as though it "
+    "owed none. Make `python3 tools/blind_review.py --count` answer, and ask again."
 )
 
 #: What a `hold` on a simulator path with no record tells the session. The
@@ -731,11 +772,13 @@ AUTO_MERGE_ON = "on"
 
 
 @dataclass(frozen=True)
-class ProseCount:
-    """How many long docstrings and comments need a review, as `prose_count_command` says.
+class CommandCount:
+    """A count that a configured command printed, or why it could not be read.
 
-    `count` is that number. `declined` says why it could not be read, so that
-    "could not count" never reads as "nothing to review".
+    `prose_count_command` counts the long docstrings and comments that need a
+    review, and `blind_count_command` counts the blind review passes a branch
+    owes. `count` is that number. `declined` says why it could not be read, so
+    that "could not count" never reads as "nothing owed".
     """
 
     count: int = 0
@@ -908,8 +951,11 @@ class Verdict:
     delete, `switched_off` when the owner switched its auto-merge off,
     `unreviewed` how many long docstrings and comments it adds that no
     `PROSE_REVIEW` record covers, `prose_since` the commit carrying the newest
-    such record, `prose_declined` why that count could not be read, and
-    `behind`
+    such record, `prose_declined` why that count could not be read,
+    `blind_owed` how many blind review passes it owes, `blind_recorded` how
+    many the newest `BLIND_REVIEW` record says ran, `blind_since` the commit
+    carrying that record, `blind_declined` why the passes owed could not be
+    counted, and `behind`
     how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
     the remote holds that HEAD lacks, with what brings it in, or why that
     could not be read, said before anything else. `unread` is why the answer
@@ -934,6 +980,10 @@ class Verdict:
     unreviewed: int = 0
     prose_since: str = ""
     prose_declined: str = ""
+    blind_owed: int = 0
+    blind_recorded: int = 0
+    blind_since: str = ""
+    blind_declined: str = ""
     behind: int = 0
     unpulled: str = ""
     unread: tuple[str, ...] = ()
@@ -975,6 +1025,16 @@ class Verdict:
     def prose_held(self) -> bool:
         """Whether long prose with no recorded review, or a count that failed, holds it."""
         return self.unreviewed > 0 or bool(self.prose_declined)
+
+    @property
+    def unpassed(self) -> bool:
+        """Whether it owes more blind review passes than its newest record says ran."""
+        return not self.blind_declined and self.blind_owed > self.blind_recorded
+
+    @property
+    def blind_held(self) -> bool:
+        """Whether missing blind review passes, or a count that failed, holds it."""
+        return self.unpassed or bool(self.blind_declined)
 
     @property
     def needs_owner(self) -> bool:
@@ -1104,6 +1164,10 @@ class Verdict:
             said.append(PROSE_ASK)
         if self.prose_declined:
             said.append(PROSE_UNCOUNTED)
+        if self.unpassed:
+            said.append(BLIND_ASK)
+        if self.blind_declined:
+            said.append(BLIND_UNCOUNTED)
         if read and not self.claims:
             if self.misasked:
                 said.append(f"  {self.misasked}")
@@ -1158,6 +1222,19 @@ class Verdict:
                     f"it adds {self.unreviewed} long {noun} in the simulator since {since}, and "
                     f"no {PROSE_REVIEW} record covers {'it' if self.unreviewed == 1 else 'them'}"
                 )
+        if self.blind_declined:
+            reasons.append(
+                f"how many blind review passes it owes could not be counted - {self.blind_declined}"
+            )
+        elif self.unpassed:
+            noun = "pass" if self.blind_owed == 1 else "passes"
+            ran = (
+                f"the {BLIND_REVIEW} record on {self.blind_since[:12]} records "
+                f"{self.blind_recorded}"
+                if self.blind_since
+                else f"no {BLIND_REVIEW} record says any ran"
+            )
+            reasons.append(f"it owes {self.blind_owed} blind review {noun}, and {ran}")
         if self.record is not None and self.record.needed:
             reasons.append(
                 f"the {OWNER_READ} record on {self.record.commit[:12]} asks for the owner's "
@@ -1193,7 +1270,8 @@ def arm(
     runner: Runner | None = None,
     newest: Callable[[str, str], PullRequestLookup] | None = None,
     auto_merge: Callable[[int], AutoMerge] | None = None,
-    prose_count: Callable[[str], ProseCount] | None = None,
+    prose_count: Callable[[str], CommandCount] | None = None,
+    blind_count: Callable[[], CommandCount] | None = None,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -1232,6 +1310,12 @@ def arm(
     or `""` where none does. It is asked only where the change reaches a
     simulator path. A count above zero holds the pull request, and so does a
     count that could not be read.
+
+    **And its blind review passes may never have run** (`PL-HDRN`).
+    `blind_count` counts the passes the branch owes, and is asked only where
+    the change reaches a simulator path. The newest `BLIND_REVIEW` record
+    must record at least that many, and a count that could not be read holds
+    the pull request too.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -1355,6 +1439,23 @@ def arm(
         prose = prose_count(prose_since)
         prose_declined = prose.declined
         unreviewed = 0 if prose_declined else prose.count
+    blind_owed = 0
+    blind_recorded = 0
+    blind_since = ""
+    blind_declined = ""
+    if on_list and blind_count is not None:
+        blind_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], BLIND_REVIEW)
+        form = BLIND_FORM.fullmatch(value) if blind_since else None
+        if blind_since and form is None:
+            unread.append(
+                f"the {BLIND_REVIEW} record on {blind_since[:12]} is not 'passes N, findings F, "
+                f"fixed X, filed Y, rejected Z', so it was not read: {value}"
+            )
+            blind_since = ""
+        blind_recorded = (whole_number(form.group(1)) or 0) if form is not None else 0
+        passes = blind_count()
+        blind_declined = passes.declined
+        blind_owed = 0 if blind_declined else passes.count
     record, misread = _owner_read(root, run, base, on_list)
     unread.extend(misread)
     ask, misasked = _owner_ask(root, run, base, worked)
@@ -1403,11 +1504,22 @@ def arm(
         unreviewed=unreviewed,
         prose_since=prose_since,
         prose_declined=prose_declined,
+        blind_owed=blind_owed,
+        blind_recorded=blind_recorded,
+        blind_since=blind_since,
+        blind_declined=blind_declined,
         behind=behind,
         unpulled=unpulled,
         unread=tuple(unread),
     )
-    if claims or found.unjudged or found.needs_owner or switched_off or found.prose_held:
+    if (
+        claims
+        or found.unjudged
+        or found.needs_owner
+        or switched_off
+        or found.prose_held
+        or found.blind_held
+    ):
         return found
     if unpulled or unread:
         return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))

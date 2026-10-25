@@ -41,6 +41,11 @@ SESSION_URL_RE = re.compile(r"claude\.ai/code/(session_[A-Za-z0-9]+)")
 
 #: A cost as the ledger writes it: dollars, in plain decimal digits.
 COST_RE = re.compile(r"[0-9]+(\.[0-9]+)?")
+#: A context-window suffix on a model id, such as the `[1m]` on
+#: `claude-opus-5-5[1m]`. It names the window, not the model, so a configured
+#: model that differs from the served one by it alone ran on that model.
+#: 292 of the ledger's 327 differing rows differed only by it (`PL-YF16`).
+CONTEXT_WINDOW_SUFFIX_RE = re.compile(r"\[[^\[\]]*\]$")
 
 #: The ledger columns this module reads. A ledger missing one is refused.
 LEDGER_COLUMNS = ("session_id", "configured_model", "last_served_model", "effort_level", "cost_usd")
@@ -196,9 +201,14 @@ def _cost(value: str) -> str:
     return f"cost `{value}` is not a number" if value else "cost not recorded"
 
 
+def _model(name: str) -> str:
+    """The model a ledger's model id names, without its context-window suffix."""
+    return CONTEXT_WINDOW_SUFFIX_RE.sub("", name)
+
+
 def _describe(row: LedgerRow) -> str:
     served = row.last_served_model or "served model not recorded"
-    if row.configured_model and row.configured_model != row.last_served_model:
+    if row.configured_model and _model(row.configured_model) != _model(row.last_served_model):
         served += f" (configured {row.configured_model})"
     effort = f"effort {row.effort_level}" if row.effort_level else "effort not recorded"
     return f"{served} · {effort} · {_cost(row.cost_usd)}"

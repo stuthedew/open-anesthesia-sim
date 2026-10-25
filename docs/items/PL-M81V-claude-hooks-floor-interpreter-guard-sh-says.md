@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: .claude/hooks/floor-interpreter-guard.sh
 added: 2026-10-19
 closed: 2026-10-25

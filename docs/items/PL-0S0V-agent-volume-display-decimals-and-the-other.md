@@ -1,13 +1,13 @@
 ---
 id: PL-0S0V
 title: AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
-priority: P2
+priority: P1
 effort: M
 status: blocked
 classes: safety, anticipated
 feature: preferences-store
 touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit
-blocked-by: PL-S6WW, PL-B396
+blocked-by: PL-KZ99
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - agent amounts show in one fixed unit with no selector, so displayed precision is one quantity's
 added: 2026-09-16
 ---
@@ -69,6 +69,7 @@ whose precision is in question and is itself undecided between two options.
 Nothing here is actionable until both land; `AGENT_VOLUME_DISPLAY_DECIMALS` is
 correct for the unit currently displayed.
 
+[superseded 2026-10-25: v0.7.0 schedules item 28, and this item now waits on `PL-KZ99`]
 **Where the two stand, 2026-09-27 (`PL-18BD`).** `PL-S6WW` closed on
 2026-09-17. `PL-B396` is no longer undecided: its unit was settled on
 2026-09-16 as millilitres of liquid equivalent by default, and it is now
@@ -84,3 +85,9 @@ precision refused rather than clamped; and a unit offered with no derivation
 behind it fails loudly rather than formatting at a default. The two couplings
 above are stated where a reader of `formatting.py` will meet them, so a later
 session does not re-derive that a display constant is display-only.
+
+**Scheduled in v0.7.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 with planned-milestone item 28, agent cost, inside it (project owner, 2026-10-25, ratified, over leaving item 28 unscheduled and deferring this item to Gate 4). `PL-YRLM` closed with that answer. This item is in `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope", so v0.7.0 clears it itself.
+
+**It waits on `PL-KZ99` instead of `PL-B396`.** The per-unit precision of a
+liquid-equivalent figure depends on the vapour-to-liquid factor `PL-KZ99`
+stores. `PL-B396`'s readout then uses this item's derivation.

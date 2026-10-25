@@ -2075,7 +2075,9 @@ def cmd_set(args: argparse.Namespace) -> int:
         # each one, and `check` holds the pull request until it has moved
         # (`PL-2349`). The item written is never exempt - a write that makes
         # its own status false is refused like any other.
-        released = {stale_blocked_error(c) for c in promotable(after) if c is not updated}
+        released = {
+            stale_blocked_error(c) for c in promotable(after, milestones) if c is not updated
+        }
         introduced = [e for e in introduced if e not in already and e not in released]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report{raised}:")
@@ -2118,7 +2120,7 @@ def cmd_set(args: argparse.Namespace) -> int:
             "item on the generator tier is stored at P0 or P1, the rank `docket next` gives it"
         )
     print(f"  {path}")
-    _say_unblocked(item, updated, changes, items, after)
+    _say_unblocked(item, updated, changes, items, after, milestones)
     _say_contradicted(changes, items, after, today)
     for line in render.generator_check_on_set(item, updated, config.workflow_paths):
         print(line)
@@ -2186,7 +2188,12 @@ def _say_contradicted(
 
 
 def _say_unblocked(
-    item: Item, updated: Item, changes: dict[str, Any], before: list[Item], after: list[Item]
+    item: Item,
+    updated: Item,
+    changes: dict[str, Any],
+    before: list[Item],
+    after: list[Item],
+    milestones: MilestoneStates | None,
 ) -> None:
     """Name the items this closure just took the last recorded blocker off.
 
@@ -2227,8 +2234,8 @@ def _say_unblocked(
     """
     if "status" not in changes or updated.is_open:
         return
-    held = {candidate.identifier for candidate in promotable(before)}
-    freed = [c for c in promotable(after) if c.identifier not in held]
+    held = {candidate.identifier for candidate in promotable(before, milestones)}
+    freed = [c for c in promotable(after, milestones) if c.identifier not in held]
     if not freed:
         return
     print(f"Closing {item.identifier} clears the last recorded blocker on {len(freed)} item(s):")
@@ -2947,6 +2954,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     # digest's is, so it is built from the same inputs (`_complete_report`).
     report = _complete_report(root, items, config, args)
     plan = _plan(root, items, config)
+    milestones = _milestones(root, config)
     flight = _flight(args)
     if args.oldest:
         return _next_oldest(items, flight, config, args, plan, lane, report, replaced)
@@ -2973,10 +2981,8 @@ def cmd_next(args: argparse.Namespace) -> int:
         _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
-        _say_promotable(items)
-        _say_unranked_generators(
-            items, flight.ids, _milestones(root, config), config.generator_paths
-        )
+        _say_promotable(items, milestones)
+        _say_unranked_generators(items, flight.ids, milestones, config.generator_paths)
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_read_from_base(args, replaced)
@@ -2989,8 +2995,8 @@ def cmd_next(args: argparse.Namespace) -> int:
     _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
-    _say_promotable(items)
-    _say_unranked_generators(items, flight.ids, _milestones(root, config), config.generator_paths)
+    _say_promotable(items, milestones)
+    _say_unranked_generators(items, flight.ids, milestones, config.generator_paths)
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
@@ -3057,7 +3063,7 @@ def _next_oldest(
         )
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
-    _say_promotable(items)
+    _say_promotable(items, _milestones(_invocation(args).root, config))
     # The lane's set-aside count is taken over the owed work alone, so it
     # describes the answer above rather than a queue it was never drawn from.
     owed = [i for i in items if not is_new_work(i, config.new_work_classes, config.debt_classes)]
@@ -3145,7 +3151,7 @@ def _say_plan_pick(
     print(f"The plan's own pick{where} is {top.identifier} ({because}): `{command}`.")
 
 
-def _say_promotable(items: list[Item]) -> None:
+def _say_promotable(items: list[Item], milestones: MilestoneStates | None) -> None:
     """Name the blocked items whose every recorded blocker has since closed.
 
     `recommend` cannot offer them - `plan._startable` filters on `status` - and
@@ -3170,7 +3176,7 @@ def _say_promotable(items: list[Item]) -> None:
     passed alone, one closing a blocker and one adding the edge. So it says
     whose move it is rather than offering it as a choice.
     """
-    candidates = promotable(items)
+    candidates = promotable(items, milestones)
     if not candidates:
         return
     print(
@@ -5206,42 +5212,60 @@ def _auto_merge(root: Path, config: Config) -> Callable[[int], arming.AutoMerge]
     return ask
 
 
-#: How long `prose_count_command` is given. Longer than the forge's limit,
-#: because the count parses every simulator file the branch changes, and a
-#: count that timed out holds the pull request rather than arming it.
-PROSE_COUNT_TIMEOUT = 60.0
+#: How long `prose_count_command` and `blind_count_command` are each given.
+#: Longer than the forge's limit, because the prose count parses every
+#: simulator file the branch changes, and a count that timed out holds the
+#: pull request rather than arming it.
+COUNT_TIMEOUT = 60.0
 
 
-def _prose_count(root: Path, config: Config) -> Callable[[str], arming.ProseCount] | None:
+def _command_count(command: str, root: Path, *extra: str) -> arming.CommandCount:
+    """The whole number `command` prints, run with `extra` appended, or why it gave none.
+
+    A command that failed, timed out or printed anything but one whole number
+    comes back `declined`, naming the command, and `arm` holds on it.
+    """
+    done = _run_forge_command(command, root, *extra, timeout=COUNT_TIMEOUT)
+    if isinstance(done, str):
+        return arming.CommandCount(declined=f"`{command}` was not answered: {done}")
+    if done.returncode != 0:
+        err = " ".join(done.stderr.split())
+        return arming.CommandCount(
+            declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
+        )
+    said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
+    if len(said) == 1 and (count := whole_number(said[0])) is not None:
+        return arming.CommandCount(count=count)
+    return arming.CommandCount(
+        declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
+    )
+
+
+def _prose_count(root: Path, config: Config) -> Callable[[str], arming.CommandCount] | None:
     """A way to count a branch's unreviewed long prose, or None if there is none.
 
     `prose_count_command` answers it, with the commit carrying the newest
-    `Prose-review` record appended where there is one (`PL-W04Z`). A command
-    that failed, timed out or printed anything but a whole number comes back
-    `declined`, naming the command, and `arm` holds on it.
+    `Prose-review` record appended where there is one (`PL-W04Z`).
     """
     command = config.prose_count_command
     if not command:
         return None
 
-    def ask(since: str) -> arming.ProseCount:
-        extra = (since,) if since else ()
-        done = _run_forge_command(command, root, *extra, timeout=PROSE_COUNT_TIMEOUT)
-        if isinstance(done, str):
-            return arming.ProseCount(declined=f"`{command}` was not answered: {done}")
-        if done.returncode != 0:
-            err = " ".join(done.stderr.split())
-            return arming.ProseCount(
-                declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
-            )
-        said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
-        if len(said) == 1 and (count := whole_number(said[0])) is not None:
-            return arming.ProseCount(count=count)
-        return arming.ProseCount(
-            declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
-        )
+    def ask(since: str) -> arming.CommandCount:
+        return _command_count(command, root, *((since,) if since else ()))
 
     return ask
+
+
+def _blind_count(root: Path, config: Config) -> Callable[[], arming.CommandCount] | None:
+    """A way to count the blind review passes a branch owes, or None if there is none.
+
+    `blind_count_command` answers it, with nothing appended (`PL-HDRN`).
+    """
+    command = config.blind_count_command
+    if not command:
+        return None
+    return lambda: _command_count(command, root)
 
 
 def cmd_flight(args: argparse.Namespace) -> int:
@@ -5442,6 +5466,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         newest=_newest_pull_request(inv.root, inv.config),
         auto_merge=_auto_merge(inv.root, inv.config),
         prose_count=_prose_count(inv.root, inv.config),
+        blind_count=_blind_count(inv.root, inv.config),
     )
     if args.owner_ask:
         line = verdict.sendable

@@ -53,6 +53,7 @@ from .digits import whole_number
 from .gitargv import subcommand_of
 from .lines import ENCODING, file_text, record_text, split_lines
 from .model import (
+    PullRequestNumber,
     _front_matter_pairs,
     is_closed_status,
     is_under,
@@ -2624,7 +2625,7 @@ class NewestPullRequest:
     merged one names the commit its merge took, whatever the branch did since.
     """
 
-    number: int
+    number: PullRequestNumber
     #: One of `PULL_STATES`.
     state: str
     head: str
@@ -4599,7 +4600,7 @@ class SubjectPullRequest:
     (`PL-YYDT`).
     """
 
-    number: int
+    number: PullRequestNumber
     squash: bool
 
 

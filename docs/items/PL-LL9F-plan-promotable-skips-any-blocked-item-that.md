@@ -3,11 +3,14 @@ id: PL-LL9F
 title: plan.promotable skips any blocked item that also names a milestone in blocked-by, so closing an item blocker never refuses or names a dependent whose milestone blocker had already cleared: PL-K88Z's closure in #1712 left PL-JS6P, PL-WM5P, PL-VWXL and PL-SH0W (blocked-by v0.6.0, PL-K88Z) at blocked with only a grooming advisory
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: blocked-means-blocked
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
+milestone: v0.6.3
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1768
 payoff: closing an item's last blocker always names or refuses its dependents, whichever blocker cleared first
 verify: grep -q 'def test_an_item_whose_milestone_cleared_first_is_promotable' subprojects/docket/tests/test_plan.py
 reenters: PL-6T44

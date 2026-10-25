@@ -129,12 +129,12 @@ every tool here makes.
 
 from __future__ import annotations
 
-import argparse
 import ast
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from check_support import run_report
 from product_paths import APP_DIR, CORE_DIR, LAYOUT_DIR, PACKAGE, PACKAGE_DIR
 from workflow_paths_check import tracked_under
 
@@ -582,14 +582,7 @@ def format_report(report: Report, boundaries: Sequence[Boundary] = BOUNDARIES) -
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
-    parser.add_argument("--root", type=Path, default=None, help="path to the repository")
-    args = parser.parse_args(argv)
-
-    root = (args.root or Path(__file__).resolve().parent.parent).resolve()
-    report = analyze(root)
-    print(format_report(report))
-    return 1 if report.errors else 0
+    return run_report(argv, __doc__, analyze, format_report)
 
 
 if __name__ == "__main__":

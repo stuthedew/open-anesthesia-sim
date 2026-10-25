@@ -1873,9 +1873,12 @@ def test_an_item_only_blocker_still_reads_as_closed() -> None:
     assert not _has(report.advisories, "ready to promote")
 
 
-def test_a_scoped_milestone_and_a_closed_item_stay_advice() -> None:
-    """Milestone blockers keep their advisory (`PL-2349`'s Done-when): a
-    scoping round is no closure, so there is no pull request to refuse."""
+def test_a_scoped_milestone_and_a_closed_item_are_the_error() -> None:
+    """`PL-LL9F`: once the milestone has cleared, the item blocker's closure released it.
+
+    That closure has a pull request to refuse, so the item is the error and not
+    the advisory, which `PL-K88Z`'s closure in #1712 showed nobody acts on.
+    """
     done = _item("PL-B1B1", status="done", commit="abc1234", closed=TODAY, priority="", effort="")
     blocked = _item(
         "PL-C2C2", status="blocked", blocked_by=("PL-B1B1", "v0.5.0"), body=BLOCKED_BODY
@@ -1883,8 +1886,19 @@ def test_a_scoped_milestone_and_a_closed_item_stay_advice() -> None:
 
     report = analyze([done, blocked], TODAY, milestones=_milestones())
 
+    assert _has(report.errors, "every blocker has closed")
+    assert not _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
+
+
+def test_a_scoped_milestone_alone_stays_advice() -> None:
+    """A milestone blocker alone keeps its advisory (`PL-2349`'s Done-when): a
+    scoping round is no closure, so there is no pull request to refuse."""
+    blocked = _item("PL-C2C2", status="blocked", blocked_by=("v0.5.0",), body=BLOCKED_BODY)
+
+    report = analyze([blocked], TODAY, milestones=_milestones())
+
     assert not _has(report.errors, "every blocker has closed")
-    assert _has(report.advisories, "v0.5.0 is scoped and every other blocker has closed")
+    assert _has(report.advisories, "v0.5.0 is scoped")
 
 
 def test_a_milestone_blocker_survives_a_round_trip() -> None:

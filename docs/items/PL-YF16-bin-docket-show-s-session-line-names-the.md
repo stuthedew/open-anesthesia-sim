@@ -3,11 +3,14 @@ id: PL-YF16
 title: bin/docket show's session line names the configured model whenever it differs from the served one, and 292 of the ledger's 327 such rows differ only by a [1m] context-window suffix, so the note mostly flags sessions that never switched model and buries the 35 real fallbacks: compare with the suffix removed, or print the context window apart from the model
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: model-evidence
-touches: subprojects/docket/src/docket/sessions.py, subprojects/docket/tests/test_sessions.py
+milestone: v0.6.3
+touches: subprojects/docket/src/docket/sessions.py, subprojects/docket/tests/test_sessions.py, subprojects/docket/README.md
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1768
 payoff: the session line flags only the sessions that really ran on another model, so the 35 real fallbacks stand out
 verify: grep -q 'def test_a_context_window_suffix_alone_is_not_a_model_switch' subprojects/docket/tests/test_sessions.py
 ---
