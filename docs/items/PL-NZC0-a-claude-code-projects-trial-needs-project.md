@@ -3,10 +3,11 @@ id: PL-NZC0
 title: A Claude Code Projects trial needs project instructions carrying the approach gate and the queue as the only source of work: the coordinator starts threads by default, and thread limits asked for in conversation are preferences rather than caps
 priority: P2
 effort: S
-status: ready
+status: needs-decision
 classes: docs
 feature: projects-trial
 touches: docs/items
+deferred-from: v0.7.0 - the Projects trial's verdict, which waits on the owner; no v0.7.0 feature reads it
 added: 2026-09-19
 not-delegable: the work is a trial run in a Claude Code Project and the owner's verdict on it; no command can prove a coordinator saved the owner attention. What proves it is this brief recording the two numbers under Done when, measured at the trial's end.
 ---
@@ -107,3 +108,48 @@ request number, what you need from me, and any items filed.
 - the owner's decision whether the protocol becomes a committed docket skill mode, which is a new workflow mechanism and needs the generator pause ended or lifted.
 
 **If it fails either bar, `PL-2866`'s fallback follows** (project owner, 2026-09-25, ratified, over a pick rule that ends in a prompt the owner pastes): build the pick into `bin/docket next`, so that after a product item it offers the top startable root cause and after a root cause a product item, and the digest's top line is then the pick. That is a new workflow mechanism too, so it needs the generator pause ended or lifted, as the decision above does. Heads found in product sessions while the trial runs wait for it, outside its Goal line, until the owner adds them there (`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the pause they set").
+
+**Trial-end numbers, measured 2026-10-25.** The stop came long ago: all nine
+heads on the Goal line had drained by 2026-09-26, as `bin/docket generators`
+shows (`PL-Q4DF` on 2026-09-24, `PL-B8HZ` and `PL-MB2W` on 2026-09-25, the
+other six on 2026-09-26). The trial went on as the way of working after that,
+so these numbers cover the project chat from 2026-09-27 to 2026-10-25.
+
+- **Owner touches per closed item: about 0.36, a lower bound.** Stuart wrote
+  214 top-level messages in the project chat, read with `read_project_chat`
+  page by page. 591 items closed in that period name a Projects thread
+  session through their squash commit and the session ledger (the model
+  review's join, `docs/model-review.md` § "Run of 2026-10-25, the first").
+  Stuart's replies inside threads and his decision-card answers are not in
+  that count, because reading all 236 threads costs more than the bar is
+  worth. They would have to be more than three times his chat messages to
+  reach the 1.5 bar.
+- **Captures per item worked: 0.81.** 747 items were added and 926 closed in
+  the same period, across all sessions. That is under the 1.0 bar, so the
+  queue drained faster than it grew.
+- **Threads left waiting unseen for more than an hour: not measured.** No
+  record gives the time a thread entered "Waiting on you" and the time the
+  owner saw it.
+- **Project memory:** 66 files besides its index, all still in the project memory store. None
+  has moved into the repository or been deleted. They are workflow notes
+  written by threads, such as how a release thread runs.
+
+Both bars pass, so `PL-2866`'s fallback does not follow.
+
+**Decision needed.** Should the coordinator protocol become a committed docket
+skill mode? Two answers:
+
+- **Yes.** A mode file, `.claude/skills/docket/modes/coordinator.md`, holds
+  the project instructions' Order, Report and thread rules, and the project
+  instructions point at it. A change to the protocol is then reviewed in a
+  pull request like any other. The cost is one more mode file, and the
+  project instructions shrink to a pointer.
+- **No: keep it in Project settings.** Nothing to build. The protocol stays
+  editable from the app in one step, but no pull request reviews a change and
+  no session outside a project can read it.
+
+**Recommendation:** yes. The protocol has run the project for a month and
+passed both bars, so it is the way of working rather than a trial, and the
+project's rule is that a shared fact has one reviewed home. The choice is the
+owner's because it is a new workflow mechanism. Stuart's request to complete
+the workflow items lifts the generator pause for it.
