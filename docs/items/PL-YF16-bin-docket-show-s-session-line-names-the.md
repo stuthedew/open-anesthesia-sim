@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: model-evidence
-touches: subprojects/docket/src/docket/sessions.py, subprojects/docket/tests/test_sessions.py
+touches: subprojects/docket/src/docket/sessions.py, subprojects/docket/tests/test_sessions.py, subprojects/docket/README.md
 added: 2026-10-24
 payoff: the session line flags only the sessions that really ran on another model, so the 35 real fallbacks stand out
 verify: grep -q 'def test_a_context_window_suffix_alone_is_not_a_model_switch' subprojects/docket/tests/test_sessions.py

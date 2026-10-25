@@ -4034,7 +4034,9 @@ not a `docket.toml` setting, so it has one home.
 `docket show` ends a closed item with a section headed "Sessions that worked
 it". It prints one line per session: the session id, the model that last
 served it, its effort level and its cost in USD. Where the configured model
-differs from the served one, the line names both. The section is where to
+differs from the served one, the line names both. A context-window suffix such
+as `[1m]` names the window and not the model, so a difference in it alone is
+not named (`PL-YF16`). The section is where to
 find which model and effort worked an item.
 
 The facts come from `docs/session-ledger.tsv`, at the project root. It is a
