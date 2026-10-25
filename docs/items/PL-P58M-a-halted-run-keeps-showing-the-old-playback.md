@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1779
 payoff: a halted run states one playback rate, the one the learner just chose
 verify: grep -q 'def test_a_halted_run_shows_the_new_playback_rate' tests/integration/test_simulation_view.py
 ---

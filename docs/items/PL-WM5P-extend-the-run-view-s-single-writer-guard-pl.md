@@ -11,6 +11,7 @@ blocked-by: PL-K88Z
 deferred-from: v0.6.0 - placed on ROADMAP.md's v0.6.x one-source-of-truth row, built after v0.6.0 ships (project owner, 2026-10-19, ratified, PL-2LB5)
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1779
 payoff: no displayed run state has a second writer that can leave it stale after a halt
 verify: grep -q 'def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one' tests/integration/test_simulation_view.py
 ---

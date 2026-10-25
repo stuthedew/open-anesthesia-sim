@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1779
 payoff: after an agent change the branch panel no longer shows a notice about the case before
 verify: grep -q 'def test_an_agent_change_clears_the_fork_refusal_notice' tests/integration/test_simulation_view.py
 ---
