@@ -5,17 +5,29 @@ The package's location was spelt in five tools - `agent_identity_check`,
 six times in the last - so a move of the package would have left each tool
 reading a tree that is no longer there (`PL-H5T9`). This module is the one
 home of that fact for every tool under `tools/`, which imports it rather than
-typing the path again. `docket` cannot import `tools/`, so `docket.arming`
-keeps its own spelling of the data tree.
+typing the path again.
 
-Standard library only and floor-parseable, like every tool under `tools/`. It
-imports nothing, so a tool can read it before anything else is on the path.
+The package's import name already has a home, `docket.arming.PRODUCT_PACKAGE`,
+which the merge gate reads to tell a simulator test from a tooling test. This
+module reads it from there rather than typing it a second time. `docket`
+cannot import `tools/`, so the gate's own path tuples spell the data tree in
+`docket.arming`.
+
+Standard library and `docket` only, and floor-parseable, like every tool under
+`tools/`.
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
+
+from docket.arming import PRODUCT_PACKAGE
+
 #: The simulator package's import name.
-PACKAGE = "anesthesia_sim"
+PACKAGE = PRODUCT_PACKAGE
 #: The package's directory, relative to the repository root.
 PACKAGE_DIR = f"src/{PACKAGE}"
 #: The scientific core, which computes every clinical value.
