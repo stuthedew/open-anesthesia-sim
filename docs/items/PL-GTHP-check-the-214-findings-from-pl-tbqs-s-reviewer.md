@@ -9,6 +9,7 @@ feature: replay-findings
 touches: docs/items
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1830
 payoff: every defect the reviewer replay found that still holds on main is queued, instead of lost when the pull request's head can no longer be fetched
 verify: grep -qE '^Every finding above is checked against main\.$' docs/items/PL-GTHP-*.md
 ---

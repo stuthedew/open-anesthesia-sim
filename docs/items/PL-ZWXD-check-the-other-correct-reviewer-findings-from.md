@@ -9,6 +9,7 @@ feature: replay-findings
 touches: docs/items
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1830
 payoff: every still-present defect a blind checker confirmed in the replay is queued, instead of lost with the session that found it
 verify: grep -qE '^Every entry above is checked against main\.$' docs/items/PL-ZWXD-*.md
 ---
