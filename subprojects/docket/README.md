@@ -1044,6 +1044,12 @@ review covers (`PL-W04Z`): the package appends the commit carrying the newest
 `Prose-review: read N, rewrote M, rejected K` trailer, where one does, and the
 command prints one whole number or exits non-zero. A count above zero holds the
 pull request, and so does a count that could not be read.
+`blind_count_command` is how `arm` counts the blind review passes a simulator
+change owes (`PL-HDRN`): the package appends nothing, and the command prints
+one whole number or exits non-zero. The pull request holds until the newest
+`Blind-review: passes N, findings F, fixed X, filed Y, rejected Z` trailer on
+the branch records at least that many passes, and holds where the count could
+not be read.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the
