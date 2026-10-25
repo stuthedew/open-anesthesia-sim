@@ -1082,8 +1082,8 @@ serves the `pr:` check.
   of them, which is why both are marked `not-delegable`.
 - No equation, parameter, numerical method, unit or displayed value has
   changed, and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass
-  unaltered. Three entries make changes in `src/` and `tests/`, and each is
-  limited to what its brief describes. PL-020 may add type annotations.
+  unaltered. Three entries are permitted to reach into `src/` and `tests/`, and each
+  is limited to what its brief describes. PL-020 may add type annotations.
   PL-ZN0N and PL-69J3 may add, remove or annotate `noqa` directives. If any of
   them turns out to require a change to a modelled value, that change is a
   finding for Gate 0 and a scoped item of its own. It is not this release's
@@ -3554,8 +3554,8 @@ ordinary gate work. The other is a deferral that this section has to record:
   **It clears in Gate 2, and v0.5.0 ships without it** (project owner,
   2026-09-20, on `PL-S5Q9`). The paragraphs above establish that the entry is
   deferred. They do not say where it lands, and an entry deferred to nowhere
-  holds a release open. Gate 2 freezes when v0.5.0 ships, and it ships inside
-  v0.6.0. That is the same release that carries `PL-TH35` and `PL-R1WQ`, the
+  holds a release open. Gate 2 freezes when v0.5.0 ships, and Gate 2 itself
+  ships inside v0.6.0. That is the same release that carries `PL-TH35` and `PL-R1WQ`, the
   two items this entry waits on. So Gate 2 is the first gate at which the entry
   can be worked at all. Naming Gate 2 is therefore a statement about when the
   work becomes possible, not a preference about when it is done.
@@ -4454,8 +4454,8 @@ needs, whereas item 34's findings wait on a milestone two steps further out.
 eighteen were captured on 2026-09-16, ten days after this gate was frozen, so
 "The gate is a snapshot" already places them in the next gate. Most were filed
 by `PL-BNYF`'s area-model queue audit. They are written down with their reasons
-rather than only listed, for two reasons. Each group is deferred for a reason
-of its own. And without this record, a reader who found them open would have
+rather than only listed, for two reasons. Each group is here for a reason of
+its own. And without this record, a reader who found them open would have
 to work out why.
 
 **Eight are apparatus findings, deferred for the reason this subsection already
@@ -4614,7 +4614,7 @@ is placed. At that point they belong in that milestone's `Required scope`, on
 exactly the terms that apply to the four already there.
 
 **Ten from the 2026-09-17 triage of the twenty-six untriaged captures**
-(`PL-Y4D6`). They are deferred for two different reasons.
+(`PL-Y4D6`). They are disposed of on two different grounds.
 
 *One on the anticipated ground, which is the v0.6.0 section's rather than this
 one's.* `PL-KZ99` (store each agent's molar mass and liquid density with the
@@ -5212,7 +5212,7 @@ deferral is a statement about what has been measured, not about the hazard.
 
 - PL-1K9G (M) which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with - and two compartments of one run can carry two instants in one box
 
-**One more from the session that asked whether the generators and their
+**One more from the session that was asked whether the generators and their
 clusters were dealt with** (2026-09-21). `PL-J870` asks which test decides
 whether a mechanism enters the generator tier. One test is the count of three
 items that `CLAUDE.md` states. The other is a severity condition that the text
@@ -6344,8 +6344,8 @@ the reason that beat 3 gives.
 An open debt item that was captured after the cut (`e6cdfd93`, 07:04 on
 2026-09-21) is deferred to the next gate, with two exceptions. The item is not
 deferred if it is classed `safety` or `science`, or if an entry on the list
-waits on it. Such an item was not in the store that the snapshot was taken
-from. § "The gate is a snapshot, not a moving target" therefore applies the
+waits on it. An item captured after the cut was not in the store that the snapshot was
+taken from. § "The gate is a snapshot, not a moving target" therefore applies the
 presence test to it, and that test returns no. A capture that an entry waits
 on is not deferred because of its date. Either it is let in beside the entry,
 or the entry is deferred with it. These are two of the three places that
@@ -6363,7 +6363,7 @@ above with the rest. This section names each one with the date it re-entered.
 limitation in `docs/MODEL.md`. The triage pass that classed it placed it on the
 list. `PL-CBDX` (`safety`, 2026-09-25) is the review of simulator diffs that
 were merged without being read since 2026-09-23. It was split from `PL-SQTR` on
-the owner's answer, and it is on the list with `PL-SQTR`.
+the owner's answer, and like `PL-WMCJ` it is on the list.
 `PL-HBH2`, `PL-KK1Q` and `PL-YD2V` (`science`, 2026-09-27) are what `PL-WMCJ`
 found about the late washout when it read the two Yasuda 1991 papers. The
 fat-perfusion note was weighed against only one source. The 24-hour tail was
