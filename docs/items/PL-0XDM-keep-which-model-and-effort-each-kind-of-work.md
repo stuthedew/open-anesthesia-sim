@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: one-source-of-truth
+milestone: v0.6.6
 touches: docket.toml, subprojects/docket/src/docket/config.py, tools/, tests/unit/, subprojects/docket/tests/, .claude/, docs/maintainer.md, docs/apparatus.md, subprojects/docket/README.md
 deferred-from: v0.7.0 - filed 2026-10-25 after the gate froze, at the owner's request in the workflow lane, and built at once outside the gate's scope
 added: 2026-10-25
