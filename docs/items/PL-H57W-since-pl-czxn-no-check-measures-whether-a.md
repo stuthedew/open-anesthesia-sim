@@ -9,6 +9,7 @@ touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation
 blocked-by: PL-7FPD
 added: 2026-10-24
 closed: 2026-10-25
+pr: 1807
 payoff: a branch that loosens a core unit test, such as a wider tolerance on a concentration, is refused before it merges, as a loosened display test already is
 verify: grep -q 'def test_a_branch_that_weakens_a_core_test_is_refused' tests/unit/test_diff_mutation.py
 reenters: PL-CZXN
