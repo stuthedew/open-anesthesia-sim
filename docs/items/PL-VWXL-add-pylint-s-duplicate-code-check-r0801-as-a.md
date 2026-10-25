@@ -29,3 +29,5 @@ verify: ! grep -q 'anesthesia_sim.core.blood' tools/duplicate_code_check.py
 - One between the new-case dialog in `app/qt_widgets.py` and the Workspace question dialog in `app/workspace_tabs.py`, which now share `lay_out_question`.
 
 **What is left.** The pair `core/blood.py` and `core/tissue.py`: both make the same capacity and room checks when a partition coefficient is written. Removing it means a helper in `core/validation.py`, which is the clinical floor, so it is built with the core batch (`PL-84G1`, `PL-YHWH`, `PL-M85T`, `PL-6YKY`) and this item closes there, with `ALLOWED_BLOCKS` empty.
+
+**Blind review, 2026-10-25.** One pass on #1765 returned three `should-fix` findings in `tools/duplicate_code_check.py`, all fixed in `cfce8730`: a module pylint could not parse dropped out of the comparison silently, a block in three modules raised instead of being reported, and a contributor's own pylintrc could change the count.
