@@ -1,34 +1,34 @@
 """The frame-cost harness still runs, and still reports the three stages it names.
 
-The harness itself is a measurement, and a measurement has no pass mark - so
-nothing here asserts a duration. What it asserts is the decidable half: that
-the thing still drives a real dashboard, that its cadence arithmetic agrees
-with the shipped constants, and that it refuses a configuration whose
-timings would not be a measurement.
+The harness itself is a measurement, and a measurement has no pass mark, so
+nothing here asserts a duration. These tests assert the part that can be
+decided: that the harness still drives a real dashboard, that its cadence
+arithmetic agrees with the shipped constants, and that it refuses a
+configuration whose timings would not be a measurement.
 
-That is the whole reason the harness is kept rather than rewritten a sixth
-time (`PL-ZG5J`). A harness that has silently stopped compiling against
+Those checks are the whole reason the harness is kept rather than rewritten a
+sixth time (`PL-ZG5J`). A harness that has silently stopped compiling against
 `SimulationView.present` is worth less than none, because the session that
 finds it broken writes a new one and the method is lost again. These tests
-are what fail instead.
+fail instead.
 
 Timings are excluded deliberately, not overlooked. A CI runner's speed is
-not a property of this repository, so a threshold here would fire on the
-runner rather than on the code - `CLAUDE.md`'s "a check that fires every run
-without changing a decision is a defect in the check". What frame cost
-*should* be is a judgment, and it belongs in the item that asks the
-question.
+not a property of this repository, so a threshold here would fire because of
+the runner rather than the code. `CLAUDE.md` names that failure: "a check
+that fires every run without changing a decision is a defect in the check".
+What frame cost *should* be is a judgment, and it belongs in the item that
+asks the question.
 
 Both configurations, the one-run dashboard and the trunk-and-branch one,
 run at 1x over a short warm-up, so the suite pays a few frames rather than
 the seconds a real measurement takes.
 
-`frame_cost` imports as a bare module because this directory holds no
-`__init__.py`: pytest's default `prepend` import mode puts the first
-package-less directory above a test file on `sys.path`, which is the same
-mechanism the rest of `tests/` is collected under, and running the harness
-as a script puts its own directory there. Adding an `__init__.py` here would
-break both.
+`frame_cost` imports as a bare module because this directory has no
+`__init__.py`. In pytest's default `prepend` import mode, pytest looks upward
+from a test file for the first directory that is not a package, and puts that
+directory on `sys.path`. The rest of `tests/` is collected by the same
+mechanism. Running the harness as a script puts its own directory there.
+Adding an `__init__.py` here would break both.
 """
 
 import math
@@ -57,7 +57,7 @@ _WARM_UP_S = 30.0
 
 _FRAMES = 2
 
-#: Every stage a `FrameSample` carries, including the control.
+#: Every stage that a `FrameSample` records, including the control stage.
 _STAGES = ("advance_s", "present_s", "paint_s", "settled_s")
 
 
@@ -81,10 +81,10 @@ def two_run_measurement() -> Measurement:
 def test_steps_per_frame_is_the_render_interval_at_the_playback_rate() -> None:
     """A frame advances as much simulated time as its real interval claims.
 
-    Stated as the definition rather than as the arithmetic the harness uses,
-    so that a change to either constant has to agree with what the rate
-    means: `multiplier` simulated seconds per real second, over
-    `RENDER_INTERVAL_S` real seconds, in steps of `SIMULATION_STEP_S`.
+    The expected value is written from the definition rather than from the
+    arithmetic the harness uses. So a change to either constant has to agree
+    with what the rate means: `multiplier` simulated seconds per real second,
+    over `RENDER_INTERVAL_S` real seconds, in steps of `SIMULATION_STEP_S`.
     """
 
     for multiplier in (1, 5, 20, 60, 300):
@@ -94,7 +94,7 @@ def test_steps_per_frame_is_the_render_interval_at_the_playback_rate() -> None:
 
 
 def test_the_top_rate_advances_six_hundred_steps_a_frame() -> None:
-    """The number the harness's own docstring and `PL-ZG5J` quote, pinned."""
+    """This pins the number that the harness's own docstring and `PL-ZG5J` quote."""
 
     assert steps_per_frame(DEFAULT_MULTIPLIER) == 600
 
@@ -111,9 +111,9 @@ def test_a_frame_is_a_whole_number_of_simulation_ticks() -> None:
 def test_an_unoffered_playback_rate_is_refused() -> None:
     """The harness measures rates the interface offers, or none.
 
-    Deferred to `app/playback.py` rather than re-checked here: a rate this
-    application cannot play is a cadence nobody sees, so measuring it would
-    produce a real number about no configuration.
+    The check is left to `app/playback.py` rather than repeated here. Nobody
+    sees the cadence of a rate that this application cannot play, so measuring
+    it would produce a real number about no configuration anyone uses.
     """
 
     with pytest.raises(SimulationConfigurationError):
@@ -131,9 +131,9 @@ def test_the_harness_reports_one_sample_per_frame(measurement: Measurement) -> N
 def test_every_stage_is_timed_and_finite(measurement: Measurement) -> None:
     """Each stage produced a real, non-negative duration.
 
-    A stage missing, negative or infinite means the harness stopped
-    measuring what it names - which is the failure this suite exists to
-    catch, and the one a reader of the numbers could not see.
+    A missing, negative or infinite stage means that the harness has stopped
+    measuring what it names. That is the failure this suite exists to catch,
+    and a reader of the numbers could not see it.
     """
 
     for sample in measurement.samples:
@@ -155,7 +155,7 @@ def test_the_frame_total_is_its_three_stages_and_excludes_the_control(
 
 
 def test_the_measurement_records_the_configuration_it_ran(measurement: Measurement) -> None:
-    """What was measured travels with the numbers rather than with whoever ran it."""
+    """The record of what was measured travels with the numbers, not with whoever ran it."""
 
     assert measurement.multiplier == 1
     assert measurement.runs == 1
@@ -176,10 +176,10 @@ def test_the_harness_measures_a_two_run_dashboard(two_run_measurement: Measureme
     """A trunk and its branch on one chart, which is what v0.5.0 draws (`PL-WPDB`).
 
     The run count is read off the dashboard rather than echoed from the
-    request, so this fails if the branch never reached it. That the chart
-    was in view for the paint and that every run advanced its full share of
-    every frame are the harness's own checks, which raise rather than return
-    a measurement, so this fixture is what exercises them.
+    request, so this test fails if the branch never got onto the dashboard.
+    The harness itself checks that the chart was in view for the paint and
+    that every run advanced its full share of every frame. Those checks raise
+    rather than return a measurement, so this fixture is what exercises them.
     """
 
     assert two_run_measurement.runs == 2
@@ -212,7 +212,7 @@ def test_the_report_names_every_stage_and_the_configuration(measurement: Measure
 def test_the_report_names_how_many_runs_were_drawn(
     measurement: Measurement, two_run_measurement: Measurement
 ) -> None:
-    """Two columns measured side by side differ only in this, so the report says it."""
+    """Two columns measured side by side differ only in the run count, so the report states it."""
 
     assert "1 run on the dashboard" in report(measurement)
     assert "2 runs on the dashboard" in report(two_run_measurement)
@@ -231,7 +231,10 @@ def test_a_configuration_that_would_measure_nothing_is_refused(
 
 @pytest.mark.parametrize("runs", [0, MAX_DISPLAYED_RUNS + 1])
 def test_a_run_count_the_dashboard_cannot_draw_is_refused(runs: int) -> None:
-    """Refused by the harness before it builds anything, not by the dashboard after the warm-up."""
+    """The harness refuses the count before it builds anything.
+
+    The dashboard is not left to refuse it after the warm-up.
+    """
 
     with pytest.raises(ValueError, match="a dashboard draws between 1 and"):
         measure(multiplier=1, frames=1, warm_up_s=1.0, runs=runs)

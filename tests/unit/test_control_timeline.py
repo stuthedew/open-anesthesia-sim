@@ -1,4 +1,4 @@
-"""What the recorded control-input timeline becomes on screen."""
+"""Tests of how the recorded control-input timeline is shown on screen."""
 
 import pytest
 
@@ -15,8 +15,9 @@ from anesthesia_sim.app.control_timeline import (
 from anesthesia_sim.app.dashboard_frame import NO_CONTROL_CHANGES_TEXT
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
-#: U+00A0, written out here rather than imported, so the tests below state
-#: independently of the module which character keeps two words together.
+#: U+00A0, the no-break space. It is written out here rather than imported, so
+#: the tests below do not rely on the module to say which character keeps two
+#: words together.
 _NBSP = "\u00a0"
 
 
@@ -110,7 +111,7 @@ def test_one_change_is_one_adjustment_at_a_single_instant() -> None:
 
 
 def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
-    """The endpoints are the person's; the count is the model's.
+    """The endpoints come from the person, and the count comes from the model.
 
     Both are displayed because they are different claims: what the user
     did, and how many settings the run was actually computed under.
@@ -132,11 +133,11 @@ def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
 
 
 def test_two_adjustments_of_one_control_stay_two() -> None:
-    """The grouping follows the recorded number, never the timing.
+    """The grouping follows the recorded adjustment number, never the timing.
 
-    Two turns of one dial are indistinguishable from one turn by any rule
-    read off the entries alone, which is why the controller carries the
-    boundary instead of this module inferring it.
+    No rule that reads only the entries can tell two turns of one dial from one
+    turn. That is why the controller records the boundary, instead of this
+    module inferring it.
     """
 
     timeline = (
@@ -172,12 +173,12 @@ def test_every_control_has_a_display_label() -> None:
 
 
 def test_the_delivered_dial_is_displayed_in_percent_not_as_a_fraction() -> None:
-    """Stored as the percent it was dialled (`PL-NJPB`), read as the page's percent.
+    """The setting is stored as the percent dialled (`PL-NJPB`) and shown as a percent.
 
-    Displayed through the formatter every other concentration on the page
-    goes through, which takes the model's fraction, so the recorded percent is
-    converted on its way in: formatted unconverted, a 2% setting would read
-    "200.00%" beside readouts that read "2.00%".
+    It is displayed through the same formatter as every other concentration on
+    the page. That formatter takes the model's fraction, so the recorded
+    percent is converted before it goes in. Formatted without that conversion,
+    a 2% setting would show "200.00%" beside readouts that show "2.00%".
     """
 
     assert format_control_value(ControlInput.DELIVERED, 2.0) == "2.00%"
@@ -190,14 +191,14 @@ def test_flow_settings_are_displayed_in_the_unit_their_sliders_are() -> None:
 
 
 def test_every_control_has_a_label_and_a_unit() -> None:
-    """`PL-GYH2` removed a member; the three tables must stay in step.
+    """`PL-GYH2` removed a member, and the three tables must stay in step.
 
     `ControlInput`, `CONTROL_INPUT_UNITS` and `CONTROL_INPUT_LABELS` are
-    written separately and on purpose - the unit is the model's and the
-    label is the interface's - so nothing but this holds them to the same
-    set of controls. A member left in one table after being retired from
-    the enum is a displayed line with no unit, or a unit with nothing to
-    put it on.
+    written separately on purpose, because the unit belongs to the model and
+    the label belongs to the interface. So only this test keeps them to the
+    same set of controls. A member left in one table after it was retired from
+    the enum would give a displayed line with no unit, or a unit with nothing
+    to put it on.
     """
 
     assert set(CONTROL_INPUT_LABELS) == set(ControlInput)
@@ -226,7 +227,7 @@ def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
 
 
 def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
-    """Half a comparison is the wrong-unit failure waiting to happen."""
+    """A comparison with a unit on only one side invites a wrong-unit reading."""
 
     timeline = (
         _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
@@ -241,13 +242,13 @@ def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
 
 
 def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
-    """The arrow is the one that bit: U+2192 draws as a replacement box.
+    """The arrow caused the failure: U+2192 draws as a replacement box.
 
-    No test in this repository renders a font, so this cannot check what
-    the client can draw - it pins the characters a rendered frame has
-    confirmed instead. `·`, `–` and `%` were read off a real frame on
-    2026-09-04; `→` was read off the same frame as tofu, which put the
-    direction of the change - the whole point of the line - in front of the
+    No test in this repository renders a font, so this test cannot check what
+    the client can draw. Instead, it pins the characters that a rendered frame
+    has confirmed. `·`, `–` and `%` were seen drawn correctly on a real frame on
+    2026-09-04. On the same frame, `→` drew as tofu, an empty box. So the
+    direction of the change, which is the whole point of the line, reached the
     reader as a missing character.
     """
 
@@ -262,12 +263,12 @@ def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
 
 
 def test_an_unchanged_record_is_grouped_once_rather_than_once_per_frame() -> None:
-    """The whole of what the cache buys: a frame that recorded nothing.
+    """The cache saves work only on a frame that recorded nothing.
 
-    Asserted on the identity of the returned tuple rather than on a call
-    count, because that is the property the view depends on - the same
-    adjustments reaching the panel, the chart marks and the discard warning
-    from one grouping of one record.
+    The test asserts the identity of the returned tuple rather than a call
+    count, because the view depends on that property. The panel, the chart
+    marks and the discard warning must all receive the same adjustments, from
+    one grouping of one record.
     """
 
     grouping = AdjustmentGrouping()
@@ -284,11 +285,11 @@ def test_an_unchanged_record_is_grouped_once_rather_than_once_per_frame() -> Non
 
 
 def test_a_superseded_change_is_regrouped_though_the_record_did_not_grow() -> None:
-    """The reason the key is the record's identity and not its length.
+    """This is why the cache key is the record's identity and not its length.
 
     `SimulationController._record_control_change` replaces the newest entry
     when one control moves twice inside a single simulation step, because
-    the run was integrated only under the value standing when the step ran.
+    the run was integrated only under the value in effect when the step ran.
     The record is then the same length and a different record. A cache
     keyed on length would go on serving the superseded grouping, and the
     panel beside the chart would state a value the run was never computed
@@ -305,7 +306,7 @@ def test_a_superseded_change_is_regrouped_though_the_record_did_not_grow() -> No
 
 
 def test_a_run_that_has_recorded_nothing_needs_no_grouping_at_all() -> None:
-    """The state a fresh view and a reset one are both in."""
+    """A fresh view and a reset view are both in this state."""
 
     grouping = AdjustmentGrouping()
 
@@ -354,7 +355,7 @@ def test_a_multi_setting_line_keeps_its_count_with_the_new_value() -> None:
 
 
 def test_wrapping_changes_no_character_a_reader_sees() -> None:
-    """Three lines, so a change that reached only the first or last shows."""
+    """Three lines are used, so a change to only the first or the last line would show."""
 
     timeline = (
         _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
@@ -371,6 +372,6 @@ def test_wrapping_changes_no_character_a_reader_sees() -> None:
 
 
 def test_a_line_that_records_no_change_is_left_as_it_is() -> None:
-    """The text before any setting has changed is a sentence, free to wrap."""
+    """The text shown before any setting has changed is a sentence, so it may wrap freely."""
 
     assert wrapping_between_parts(NO_CONTROL_CHANGES_TEXT) == NO_CONTROL_CHANGES_TEXT

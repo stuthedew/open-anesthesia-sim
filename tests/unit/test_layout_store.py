@@ -1,13 +1,14 @@
 """Unit tests for `layout/store.py`: the file a reader's Workspaces are saved to.
 
-`PL-SSQW` decided the file (project owner, 2026-09-27, ratified): where it
-lives, that it is written atomically and only on the reader's word, that a
-first run leaves no trace, and what a launch does with a file an older build
-wrote, a newer build wrote, or that is invalid at a version this build reads.
-Every case runs against `tmp_path` with no `QApplication`, and each holds the
-store to saying what it did: a notice where something happened, none where
-nothing did, and saving off exactly where a save would touch a newer build's
-file.
+`PL-SSQW` (project owner, 2026-09-27, ratified) decided how the file behaves.
+It decided where the file lives, and that the file is written atomically and
+only when the reader asks. It decided that a first run leaves no trace. It
+also decided what a launch does with a file that an older build wrote, a file
+that a newer build wrote, and a file that is invalid at a version this build
+reads. Every case runs against `tmp_path` with no `QApplication`. Each case
+checks that the store reports what it did. The store gives a notice where
+something happened and none where nothing did. It turns saving off exactly
+where a save would touch a newer build's file.
 """
 
 import json
@@ -84,7 +85,7 @@ def a_store(directory: Path) -> WorkspaceStore:
 
 
 def saved(directory: Path, workspaces: WorkspaceSet) -> WorkspaceStore:
-    """A store whose directory already holds `workspaces` as the reader's default."""
+    """Return a store whose directory already holds `workspaces` as the reader's default."""
 
     store = a_store(directory)
     store.load(SHIPPED)
@@ -407,7 +408,7 @@ def test_a_file_that_is_not_utf8_is_invalid_and_set_aside(tmp_path: Path) -> Non
 def test_an_unreadable_file_turns_saving_off_and_is_left_as_it_is(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A permission refusal, injected rather than set by mode bits, which root is not bound by."""
+    """The test injects a permission error instead of setting mode bits, which root ignores."""
 
     path = tmp_path / WORKSPACES_FILE_NAME
     text = workspace_set_to_json(MINE)
@@ -439,7 +440,7 @@ def test_an_unreadable_file_turns_saving_off_and_is_left_as_it_is(
 def test_an_unwritable_directory_is_reported_at_save_and_leaves_nothing_behind(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The write refused, injected rather than set by mode bits, which root is not bound by."""
+    """The test injects a refused write instead of setting mode bits, which root ignores."""
 
     store = saved(tmp_path, MINE)
     pending = tmp_path / PENDING_FILE_NAME
@@ -494,7 +495,10 @@ def test_the_pre_migration_file_is_kept_once_at_the_first_save(
 
 
 def test_a_file_name_cannot_name_a_version_or_an_attempt_that_does_not_exist() -> None:
-    """`PL-8JV2`: `kept_file_name(True)` wrote `workspaces.vTrue.json`, and attempt -1 a `--`."""
+    """Before `PL-8JV2`, a version or an attempt that cannot exist still produced a file name.
+
+    `kept_file_name(True)` wrote `workspaces.vTrue.json`, and attempt -1 put a `--` in the name.
+    """
 
     with pytest.raises(TypeError, match="a schema version is an int, not bool"):
         kept_file_name(True)  # type: ignore[arg-type]

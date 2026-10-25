@@ -71,7 +71,10 @@ def _strings(node: ast.expr, constants: dict[str, ast.expr]) -> list[str] | None
 
 
 def _methods(node: ast.ClassDef) -> list[ast.FunctionDef]:
-    """Return the class's own methods, those under an `if` included and nested classes left out."""
+    """Return the class's own methods.
+
+    Methods under an `if` are included, and methods of nested classes are not.
+    """
 
     found = []
     pending: list[ast.stmt] = list(node.body)
@@ -88,7 +91,7 @@ def _methods(node: ast.ClassDef) -> list[ast.FunctionDef]:
 
 
 def guarded_names(source: str) -> dict[str, list[str]]:
-    """Map each class whose `__setattr__` checks the name written to the names it compares.
+    """Return, for each class whose `__setattr__` checks the written name, the names it compares.
 
     Raises:
         ValueError: a guard compares the name written with something that is

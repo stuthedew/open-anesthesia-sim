@@ -1,52 +1,67 @@
-"""Measure this model's elimination, to the end of the supported 24 hours,
-against the mean five-compartment washout curves Yasuda et al. fitted to the
-volunteers the five-minute gate compares against.
+"""Measure this model's elimination against the mean washout curves Yasuda et al. fitted.
+
+Yasuda et al. fitted mean five-compartment washout curves to the same
+volunteers whose five-minute measurements the five-minute gate compares
+against. This module compares the model with those curves to the end of the
+supported 24 hours.
 
 **This module is a measurement recorded beside a gate, and it is not a second
-gate.** `test_published_wash_in_and_elimination.py` compares five minutes of
-elimination against a measured human mean and refuses, in its caveat 4, to
-carry that comparison into the papers' multi-day curves: over the hours this
-module covers the measured washout is carried by a compartment this model does
-not have, so a comparison there measures an omission rather than a parameter.
-That refusal stands. What this module adds is the *size* of the omission, from
-which hour and in which direction, so that a reader of the washout tail has a
-number where the intertissue-diffusion note under `docs/MODEL.md` § "Known
-limitations" could give only a direction (`PL-KK1Q`). Every assertion below is
-a regression band around what this module itself measured, on 2026-09-27 and,
-for the muscle group's variation and the open circuit's modes, on 2026-10-03;
-the reading such a band supports; or a property of the published
-coefficients. None asserts agreement with a human washout, and none may be
-restated as one.
+gate.** The gate, `test_published_wash_in_and_elimination.py`, compares five
+minutes of elimination with a measured human mean. In its caveat 4 it refuses
+to extend that comparison to the papers' multi-day curves. Over the hours this
+module covers, the measured washout is carried by a compartment that this
+model does not have. A comparison over those hours therefore measures an
+omission, not a parameter. That refusal still applies. What this module adds
+is the *size* of the omission, the hour from which it appears, and its
+direction. A reader of the washout tail then has a number, where the
+intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" could
+give only a direction (`PL-KK1Q`).
+
+Every assertion below is one of three kinds. It is a regression band around a
+value this module itself measured, or the reading that such a band supports,
+or a property of the published coefficients. The values were measured on
+2026-09-27, except for the muscle group's variation and the open circuit's
+modes, which were measured on 2026-10-03. No assertion claims agreement with a
+human washout, and none may be restated as one.
 
 **What is compared.** Both papers fit each volunteer's elimination to a sum of
-five exponentials, $`F_A/F_{A0} = \\sum_i A_i e^{-t/\\tau_i}`$, and publish the
-mean and SD of every coefficient (Tables 1 and 2 of each, read at the source
-2026-09-27: *Anesth Analg* 1991;72:316-24 p. 321 through the private corpus's
-text layer, *Anesthesiology* 1991;74:489-98 pp. 494-95 as page images). The
-curve built from the mean coefficients is `PublishedWashoutFit.ratio_at()`, and
-it is compared as published, un-normalised: the amplitudes sum to 0.912-0.937
-rather than 1 at discontinuation, since they are means of per-subject fits, and
-normalising would raise every fitted value, and lower every ratio here, by 7 to
-10%. The model runs the same protocol as the gate - the shipped 30-minute
-wash-in at the reference operating point, `_configured_system()`'s, then the
-vaporizer closed - at the shipped 0.1 s step, sampled once a minute. The
-elimination lasts 23.5 hours. With the 30 minutes of wash-in that makes 24
-hours of case time, which is the supported run length, so the run ends where
-the model's claim ends (`test_the_run_ends_at_the_supported_run_length`).
-Two conditions, exactly the gate's two:
-*shipped*, the rebreathing circuit at 10 L/min, which is the tail the chart
-draws; and *open circuit*, `_discard_circuit_contents()` after every step,
-which no setting of the shipped simulator reaches and which every restatement
-of its numbers owes that sentence. The stated times are the papers' own
-sampling times inside the first day (*Anesth Analg* p. 317: 5, 30, 60, 120,
-240, 400, 600, 800 and 1400 min among them), where the fit passes near a
-measured sample rather than interpolating, plus 1410 min, the run's last
-minute.
+five exponentials, $`F_A/F_{A0} = \\sum_i A_i e^{-t/\\tau_i}`$. Each paper
+publishes the mean and SD of every coefficient in its Tables 1 and 2. Those
+tables were read at the source on 2026-09-27: *Anesth Analg* 1991;72:316-24
+p. 321 through the text layer of the private corpus, and *Anesthesiology*
+1991;74:489-98 pp. 494-95 as page images. `PublishedWashoutFit.ratio_at()`
+builds the curve from the mean coefficients. The curve is compared as
+published, without normalising it. At discontinuation the amplitudes sum to
+0.912-0.937 rather than 1, because they are means of per-subject fits.
+Normalising would raise every fitted value, and lower every ratio here, by 7
+to 10%.
 
-**The result, as model over fit at those times** (2026-09-27, and the
-1410-minute rows 2026-10-17; the four cohorts in the order sevoflurane and
-isoflurane from *Anesth Analg*, desflurane and isoflurane from
-*Anesthesiology*):
+The model runs the same protocol as the gate. It runs the shipped 30-minute
+wash-in at the reference operating point that `_configured_system()` sets up,
+and then closes the vaporizer. It uses the shipped 0.1 s step and is sampled
+once a minute. The elimination lasts 23.5 hours. Together with the 30 minutes
+of wash-in, that makes 24 hours of case time. This is the supported run
+length, so the run ends where the model's claim ends
+(`test_the_run_ends_at_the_supported_run_length`).
+
+The run uses exactly the gate's two conditions:
+
+- *Shipped* is the rebreathing circuit at 10 L/min. It gives the tail that the
+  chart draws.
+- *Open circuit* calls `_discard_circuit_contents()` after every step. No
+  setting of the shipped simulator produces this condition, and every
+  restatement of its numbers must say so.
+
+The stated times are the papers' own sampling times inside the first day,
+where the fit passes near a measured sample rather than interpolating between
+samples. The papers' sampling times include 5, 30, 60, 120, 240, 400, 600, 800
+and 1400 min (*Anesth Analg* p. 317). The run's last minute, 1410 min, is
+added to them.
+
+**The result, as model over fit at those times.** The values were measured on
+2026-09-27, and the 1410-minute rows on 2026-10-17. The four cohorts are, in
+order, sevoflurane and isoflurane from *Anesth Analg*, then desflurane and
+isoflurane from *Anesthesiology*.
 
 | Minutes | Sevo, shipped | Iso, shipped | Des, shipped | Iso 2, shipped |
 | ---: | ---: | ---: | ---: | ---: |
@@ -74,115 +89,137 @@ isoflurane from *Anesth Analg*, desflurane and isoflurane from
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
 | 1410 | 0.82 | 0.72 | 1.41 | 0.75 |
 
-**Read in three stretches, which the crossing hours mark.** In the shipped
-condition the modelled tail crosses the fitted curve four times in the run.
-It sits above it at five minutes, which is the apparatus term the gate
-records; falls below it from 6 to 13 minutes until 0.8 to 2.0 hours, by up to
-15 to 44% around 15 to 25 minutes; runs above it until 3.4 hours for desflurane
-and 6.9 to 8.4 hours for the other three, by 12 to 52% at the widest; runs
-*below* it from there until 15.3 hours for desflurane and 20.7 to 21.8 hours
-for the others, by a third at the widest (0.67, 0.68 and 0.74 at 13 to 14
-hours) and by a half for desflurane (0.51 at 8 hours); and finishes above it,
-by 12 to 24% at 23.5 hours and by a factor of 2.1 for desflurane. With the
-apparatus taken away the tail runs below the fitted curve from the third
-minute for the whole run in two cohorts and for most of it in the other
-two, at a third to a half of it between 8 and 13 hours (0.34 to 0.46). The
-middle stretch is the answer the note asked for: the fourth compartment's term
-is the largest in every fitted curve from 1.8 to 3.1 hours until 20.7 to 29.4
-hours (`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`),
-this model has no such term, and over those hours its tail falls faster than
-the measured mean - later than the third hour in the shipped condition,
-because the rebreathing circuit and the muscle group's slow return hold it
-above the curve until the seventh (with the circuit's return taken away the
-same hours sit at or below it), and from the start with the apparatus gone.
-The model's muscle group returns more slowly than the fitted muscle term: read
-off the curve as the fitted term was, as a mode of the open-circuit system,
-its term is 1.89 to 2.02 times as slow and 0.51 to 0.73 times as large
-(`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`).
-That is what puts the peak of model over fit in hours 2 to 4: with the
-group's coefficient lowered until its isolated time constant is the fitted
-one's, which brings the apparent one to 1.09 to 1.28 times it, six-hour runs
-peak before the second hour in both conditions and every cohort, and the tail
-at four hours is 24 to 60% lower
-(`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
-`docs/MODEL.md` has the numbers). The late excess is the model's fat term,
-1.5 to 2.1 times the fitted fat term's small amplitude (0.028 to 0.080%, with
-SDs of 53 to 94% of the means), and it is still growing when the run ends -
-the ratio rises between minutes 1400 and 1410 in every cohort and in both
-conditions - because the
-fitted curve is still falling on the fourth compartment's time constant while
-the model is already on its fat term's, 1.14 to 1.36 times every fitted fat
-time constant.
+**The crossing hours mark three stretches of the comparison.** In the shipped
+condition, the modelled tail crosses the fitted curve four times in the run.
+At five minutes it sits above the fitted curve, and this excess is the
+apparatus term that the gate records. It falls below the curve at 6 to 13
+minutes and stays below until 0.8 to 2.0 hours. The gap is largest around 15
+to 25 minutes, at up to 15 to 44%. The tail then runs above the curve until
+3.4 hours for desflurane, and until 6.9 to 8.4 hours for the other three
+cohorts, by 12 to 52% at the widest. From there it runs *below* the curve
+until 15.3 hours for desflurane, and until 20.7 to 21.8 hours for the others.
+At the widest it is a third below (0.67, 0.68 and 0.74 at 13 to 14 hours), and
+for desflurane it is a half below (0.51 at 8 hours). It finishes above the
+curve, by 12 to 24% at 23.5 hours and by a factor of 2.1 for desflurane.
 
-**Three things bound how sharply any of that may be read.**
+With the apparatus taken away, the tail runs below the fitted curve from the
+third minute on. It stays below for the whole run in two cohorts, and for most
+of the run in the other two. Between 8 and 13 hours it is a third to a half of
+the fitted value (0.34 to 0.46).
+
+The middle stretch answers the question the note asked. In every fitted
+curve, the fourth compartment's term is the largest from 1.8 to 3.1 hours
+until 20.7 to 29.4 hours
+(`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`).
+This model has no such term, and over those hours its tail falls faster than
+the measured mean. In the shipped condition the faster fall shows only later
+than the third hour, because the rebreathing circuit and the muscle group's
+slow return hold the tail above the curve until the seventh hour. With the
+circuit's return taken away, the tail over those same hours is at or below the
+curve. With the apparatus gone, the faster fall shows from the start.
+
+The model's muscle group returns agent more slowly than the fitted muscle term
+does. Its term can be read off the curve in the same way as the fitted term,
+as a mode of the open-circuit system. Read that way, it is 1.89 to 2.02 times
+as slow and 0.51 to 0.73 times as large
+(`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`).
+This slow return is what puts the peak of model over fit in hours 2 to 4. A
+test lowers the group's tissue:gas coefficient until its isolated time
+constant equals the fitted one, which brings its apparent time constant to
+1.09 to 1.28 times the fitted one. Six-hour runs at that coefficient peak
+before the second hour, in both conditions and every cohort, and the tail at
+four hours is 24 to 60% lower
+(`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
+`docs/MODEL.md` has the numbers).
+
+The late excess is the model's fat term. Its amplitude is 1.5 to 2.1 times the
+fitted fat term's small amplitude, which is 0.028 to 0.080%, with SDs of 53 to
+94% of the means. The excess is still growing when the run ends: the ratio
+rises between minutes 1400 and 1410 in every cohort and in both conditions.
+It grows because the fitted curve is still falling on the fourth
+compartment's time constant, while the model is already falling on its fat
+term's time constant. The model's fat time constant is 1.14 to 1.36 times
+every fitted fat time constant.
+
+**Three things limit how precisely any of that may be interpreted.**
 
 1. *The fitted mean curve is not the measured mean, and where it can be
-   checked it runs high.* At five minutes, the one time both exist, the mean
-   coefficients give 0.194, 0.243, 0.147 and 0.228 against the measured
-   0.157 ± 0.020, 0.223 ± 0.024, 0.14 ± 0.02 and 0.22 ± 0.02: above by 1.84,
-   0.83, 0.33 and 0.39 published SD, or 3.5 to 24%
+   checked it runs high.* At five minutes, the one time at which both exist,
+   the mean coefficients give 0.194, 0.243, 0.147 and 0.228, against the
+   measured 0.157 ± 0.020, 0.223 ± 0.024, 0.14 ± 0.02 and 0.22 ± 0.02. The
+   fitted values are higher by 1.84, 0.83, 0.33 and 0.39 published SD, or by
+   3.5 to 24%
    (`test_the_fitted_mean_curves_run_above_their_own_measured_five_minute_means`).
-   A sum of exponentials built from mean coefficients over-states the mean of
-   the subjects' curves wherever a time constant varies between subjects, and
-   every one of these does, with SDs of 10 to 52% of the means. So every ratio
-   above is, to an extent that is 3.5 to 24% at the one point it can be
-   measured, an understatement of the model against the volunteers' mean: for
-   sevoflurane the open-circuit model sits 0.15 SD below the measured
-   five-minute mean and 20% below the fitted curve at the same instant, and
-   the whole of that 20% is the fit's own. Nothing here corrects for it,
-   because no measured mean exists at the later times to correct against;
-   both papers plot them (Figures 3 and 4), on logarithmic axes no number is
-   taken from.
+   A sum of exponentials built from mean coefficients overstates the mean of
+   the subjects' curves wherever a time constant varies between subjects.
+   Every time constant here varies, with SDs of 10 to 52% of the means. So
+   every ratio above understates the model against the volunteers' mean. At
+   the one point where its size can be measured, the understatement is 3.5 to
+   24%. For sevoflurane, the open-circuit model sits 0.15 SD below the
+   measured five-minute mean, and 20% below the fitted curve at the same
+   instant. The whole of that 20% comes from the fit itself. Nothing here
+   corrects for the bias, because neither paper gives the measured mean at the
+   later times as a number to correct against. Both papers plot those means
+   (Figures 3 and 4), but on logarithmic axes, and no number is taken from
+   those plots.
 2. *The term that carries the measured curve over the middle stretch is as
    uncertain between subjects as it is large.* The fourth compartment's
    amplitude is 0.717 ± 0.800, 1.296 ± 1.237, 0.775 ± 0.482 and 1.125 ± 0.669
-   (×100), SDs of 59 to 112% of the means, so a tail a third to a half below
-   the mean curve over those hours is inside the spread of the volunteers'
-   own curves. The direction and the mechanism are settled - the model has no
-   term there and the open-circuit driver puts its tissue return alone at a
-   third to a half of the mean - and the size is known to about a factor of
-   two and no better.
+   (×100). The SDs are 59 to 112% of the means. So a tail that is a third to a
+   half below the mean curve over those hours lies inside the spread of the
+   volunteers' own curves. The direction and the mechanism are settled. The
+   model has no term there, and the open-circuit driver puts the model's
+   tissue return alone at a third to a half of the mean. The size is known to
+   about a factor of two and no better.
 3. *The published subjects breathed nitrous oxide throughout, and the
-   parameters under test descend from the lineage of the data* - caveats 1
-   and 2 of the gate, which apply here unchanged.
+   parameters under test descend from the lineage of the data.* These are
+   caveats 1 and 2 of the gate, and they apply here unchanged.
 
 **How much of the gap sevoflurane's missing metabolism could account for:
 little, and in the wrong direction over the middle stretch.** This model has
-no metabolism; a human has, and for sevoflurane it is 2 to 5% of the absorbed
-dose (Kharasch 1995, cited under `docs/MODEL.md` § "Supported run length").
-`_metabolise()` below is a test-only first-order sink on the vessel-rich
-group, sited where the papers' own mammillary model sites hepatic elimination
-(*Anesth Analg* p. 318, "the second compartment (vessel-rich group; k20)"),
-run at that paper's fitted sevoflurane rate constant, k20 = 0.0094 min⁻¹
-(Table 3, p. 321; SD 0.0171, so the cohort could not tell it from zero). In
-this model it removes 7.8% of the 30-minute uptake by the end of the run in
-the shipped condition and 7.1% in the open circuit - above Kharasch's range,
-which makes it a bound. It lowers the shipped tail by 4.5% at five minutes
-and by 1.9 to 2.9% from 30 minutes on, the open tail by 5.0% and then 1.3 to
+no metabolism. A human does metabolise the agent, and for sevoflurane the
+metabolised share is 2 to 5% of the absorbed dose (Kharasch 1995, cited under
+`docs/MODEL.md` § "Supported run length"). `_metabolise()` below is a
+test-only first-order sink on the vessel-rich group. It sits where the papers'
+own mammillary model places hepatic elimination (*Anesth Analg* p. 318, "the
+second compartment (vessel-rich group; k20)"). It runs at that paper's fitted
+sevoflurane rate constant, k20 = 0.0094 min⁻¹ (Table 3, p. 321). The SD of
+that constant is 0.0171, so the cohort could not distinguish it from zero.
+
+In this model the sink removes 7.8% of the 30-minute uptake by the end of the
+run in the shipped condition, and 7.1% in the open circuit. Both shares are
+above Kharasch's range, which makes the sink's effect a bound. The sink lowers
+the shipped tail by 4.5% at five minutes and by 1.9 to 2.9% from 30 minutes
+on. It lowers the open-circuit tail by 5.0% at five minutes and then by 1.3 to
 1.8% (`test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent`).
 So where the shipped model runs above the fitted curve, metabolism could
-account for about an eighth of the excess where it is widest - 2.8 of the
-20.4 points at four hours, 3.0 of the 24.0 at 23.5 hours - and where it runs
-below, metabolism widens the gap by the same few percent. The reason is where
-the sink looks: hepatic clearance sees the arterial partial pressure, which through the tail is the
-alveolar one, and never the stores that feed it.
+account for about an eighth of the excess where the excess is widest. That is
+2.8 of the 20.4 points at four hours, and 3.0 of the 24.0 points at 23.5
+hours. Where the model runs below the curve, metabolism widens the gap by the
+same few percent. The reason is what the sink acts on. Hepatic clearance
+depends on the arterial partial pressure, which through the tail equals the
+alveolar partial pressure. It never depends on the tissue stores that feed the
+alveolar partial pressure.
 
-**What a learner sees of it.** The departures above are in $`F_A/F_{A0}`$,
-and at the gate's 1% dial $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an
-atmosphere for sevoflurane, isoflurane and desflurane, so the shipped
-alveolar trace falls below the readout's 0.01 percentage points
-(`docs/MODEL.md` § "Displayed precision") at 2.8, 4.2 and 1.9 hours, before
-the stretch over which it runs below the measured mean, and on the chart's
-linear axis, fixed at 3 MAC, it is a few pixels high well before that. A
-higher dial scales $`F_{A0}`$ with it and keeps the trace above the floor for
-longer - a 6% desflurane dial until about the fifth hour, inside its stretch.
+**What a learner sees of this.** The departures above are in $`F_A/F_{A0}`$.
+At the gate's 1% dial setting, $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an
+atmosphere for sevoflurane, isoflurane and desflurane. So the shipped alveolar
+trace falls below the readout's resolution of 0.01 percentage points
+(`docs/MODEL.md` § "Displayed precision") at 2.8, 4.2 and 1.9 hours. That is
+before the stretch over which the trace runs below the measured mean. On the
+chart's linear axis, which is fixed at 3 MAC, the trace is only a few pixels
+high well before that. A higher dial setting raises $`F_{A0}`$ in proportion,
+and keeps the trace above the readout's resolution for longer. A 6%
+desflurane setting keeps it above until about the fifth hour, which is inside
+desflurane's stretch below the measured mean.
 
-**Sources**, none the authority for a stored value: the two Yasuda papers the
-gate's docstring cites in full, read again at the source 2026-09-27 for the
-coefficients, their SDs, the sampling schedule (*Anesth Analg* p. 317), the
-hybrid and mammillary methods (p. 318) and Table 3 of each (pp. 321 and 495);
-and Kharasch ED, *Biotransformation of sevoflurane*, Anesth Analg
-1995;81(6 Suppl):S27-38, PMID 7486145, for the 2 to 5%.
+**Sources.** None of them is the authority for a stored value. The first two
+are the Yasuda papers that the gate's docstring cites in full. They were read
+again at the source on 2026-09-27 for the coefficients, their SDs, the
+sampling schedule (*Anesth Analg* p. 317), the hybrid and mammillary methods
+(p. 318) and Table 3 of each (pp. 321 and 495). The third is Kharasch ED,
+*Biotransformation of sevoflurane*, Anesth Analg 1995;81(6 Suppl):S27-38,
+PMID 7486145, the source of the 2 to 5%.
 """
 
 from __future__ import annotations
@@ -216,8 +253,8 @@ from anesthesia_sim.core.supported_ranges import maximum_step_count
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# How long the elimination lasts, in the minutes the published coefficients
-# are stated in. The run is 30 minutes of wash-in and then 1410 minutes of
+# How long the elimination lasts, in minutes, the unit that the published
+# coefficients use. The run is 30 minutes of wash-in and then 1410 minutes of
 # elimination, so it ends at 86,400 s of case time. That is the supported run
 # length, which `docs/MODEL.md` § "Supported run length" argues for, so the
 # measurement ends where the claim does
@@ -226,44 +263,45 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # length (`PL-RXW0`).
 ELIMINATION_DURATION_MIN = 1410
 
-# How long a run that varies the muscle group's coefficient eliminates for.
-# Six hours holds the stretch the variation asks about, hours 2 to 4, and the
-# fall after it, in both conditions and every cohort; the whole day would cost
-# four times the steps and read nothing more about that stretch.
+# How long the elimination lasts in a run that varies the muscle group's
+# coefficient. Six hours covers hours 2 to 4, the stretch the variation is
+# about, and the fall after it, in both conditions and every cohort. The whole
+# day would cost four times the steps and show nothing more about that stretch.
 MUSCLE_VARIATION_DURATION_MIN = 360
 
-# Once a minute is fine enough to place a crossing to the tenth of an hour
-# and coarse enough to keep a day of samples small; every step in between
+# Sampling once a minute is fine enough to place a crossing to the tenth of an
+# hour, and coarse enough to keep a day of samples small. Every step in between
 # is still the shipped 0.1 s, so nothing about the model is coarsened.
 SAMPLE_INTERVAL_S = 60.0
 STEPS_PER_SAMPLE = round(SAMPLE_INTERVAL_S / SIMULATION_STEP_S)
 
-# The papers' own sampling times inside the first day (*Anesth Analg* p. 317),
-# so the fitted curve is read where a measured sample constrained it rather
-# than between samples, with the run's last minute, 1410, added for the
-# run-length boundary. The 5-minute entry is the gate's own point and ties this
-# module to it.
+# The papers' own sampling times inside the first day (*Anesth Analg* p. 317).
+# Using them means the fitted curve is evaluated where a measured sample
+# constrained it, not between samples. The run's last minute, 1410, is added
+# for the run-length boundary. The 5-minute entry is the gate's own point and
+# ties this module to the gate.
 STATED_MINUTES = (5, 30, 60, 120, 240, 400, 600, 800, 1400, 1410)
 
 # Yasuda et al.'s fitted rate constant for hepatic elimination of sevoflurane
 # from the vessel-rich group, k20, mean 0.0094 ± 0.0171 min⁻¹ (*Anesth Analg*
-# Table 3, p. 321). Read into `_metabolise()` as the size of the sink, and
-# checked against Kharasch's range through the share of uptake it removes.
+# Table 3, p. 321). It is passed to `_metabolise()` as the sink's rate
+# constant. The share of uptake that the sink removes is checked against
+# Kharasch's range.
 HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN = 0.0094
 
-# The upper end of the 2 to 5% of absorbed sevoflurane Kharasch 1995 finds
-# metabolized. The sink above removes more than this in this model, which is
-# what lets its effect on the tail be read as a bound.
+# The upper end of the 2 to 5% of absorbed sevoflurane that Kharasch 1995 finds
+# is metabolized. In this model the sink above removes more than this share,
+# which is why its effect on the tail can be treated as a bound.
 KHARASCH_UPPER_METABOLISED_SHARE = 0.05
 
 Condition = Literal["shipped", "open circuit"]
 CONDITIONS: tuple[Condition, ...] = ("shipped", "open circuit")
 
-# Regression bands around this module's own measurements, not agreement
-# claims. One percent of the ratio, and a tenth of an hour on a crossing
-# placed to the minute: a parameter change that moves the tail by more fails
-# and has to be re-measured here and in `docs/MODEL.md`, never absorbed by
-# widening the band.
+# Regression bands around this module's own measurements, not claims of
+# agreement. The ratio band is one percent of the ratio. The crossing band is a
+# tenth of an hour, on a crossing placed to the minute. A parameter change that
+# moves the tail by more than that fails. The tail must then be re-measured here
+# and in `docs/MODEL.md`, and the change is never absorbed by widening the band.
 RATIO_REGRESSION_TOLERANCE = 0.01
 CROSSING_TOLERANCE_H = 0.1
 METABOLISED_SHARE_TOLERANCE = 0.002
@@ -276,8 +314,8 @@ class PublishedWashoutFit:
 
     Attributes:
         amplitudes_percent: $`A_i \\times 100`$, Table 1 of the source, in the
-            compartment order the papers give - lungs, vessel-rich group,
-            muscle group, fourth compartment, fat group.
+            papers' compartment order: lungs, vessel-rich group, muscle group,
+            fourth compartment, fat group.
         amplitude_sds_percent: the SDs printed beside them, mean ± SD.
         time_constants_min: $`\\tau_i`$ in minutes, Table 2 of the source.
         time_constant_sds_min: the SDs printed beside those.
@@ -323,9 +361,10 @@ class PublishedWashoutFit:
     def hours_at_which_terms_are_equal(self, first: int, second: int) -> float:
         """When two terms cross: ln(A_i/A_j) / (1/tau_i - 1/tau_j), in hours.
 
-        The same arithmetic the intertissue-diffusion note under
-        `docs/MODEL.md` § "Known limitations" was computed by, so the hours it
-        prints are held here rather than re-derived by hand.
+        This is the same arithmetic that produced the hours in the
+        intertissue-diffusion note under `docs/MODEL.md` § "Known limitations".
+        So this module checks the note's hours with the same arithmetic,
+        rather than leaving them re-derived by hand.
         """
 
         amplitude_ratio = self.amplitudes_percent[first] / self.amplitudes_percent[second]
@@ -393,7 +432,7 @@ MUSCLE_GROUP, FOURTH_COMPARTMENT, FAT_GROUP = 2, 3, 4
 
 @dataclass(frozen=True, slots=True)
 class RecordedComparison:
-    """What this module measured for one cohort in one condition, 2026-09-27.
+    """What this module measured for one cohort in one condition on 2026-09-27.
 
     The entry for the run's last minute, 1410, was measured on 2026-10-17, when
     the run was shortened to end at the supported run length (`PL-RXW0`).
@@ -410,10 +449,10 @@ class RecordedComparison:
     crossing_hours: tuple[float, ...]
 
 
-# Model outputs, not published values, and kept apart from `PUBLISHED_FITS`
-# for the reason the gate keeps its modelled ratios out of its published rows:
-# a measured number sitting among published ones is how a later reader comes
-# to cite a model output as a human measurement.
+# Model outputs, not published values. They are kept apart from
+# `PUBLISHED_FITS` for the same reason that the gate keeps its modelled ratios
+# out of its published rows. When a number measured from the model sits among
+# published ones, a later reader comes to cite it as a human measurement.
 RECORDED_COMPARISONS: dict[tuple[str, Condition], RecordedComparison] = {
     ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedComparison(
         ratios=(1.201, 0.610, 0.808, 1.006, 1.204, 1.023, 0.737, 0.667, 1.225, 1.240),
@@ -449,9 +488,10 @@ RECORDED_COMPARISONS: dict[tuple[str, Condition], RecordedComparison] = {
     ),
 }
 
-# The hours the intertissue-diffusion note prints for the fourth compartment's
-# lead, re-derived here from the coefficients: when its term overtakes the
-# muscle group's, and when the fat group's overtakes it.
+# The hours over which the intertissue-diffusion note says the fourth
+# compartment's term leads, re-derived here from the coefficients. The first
+# hour is when its term overtakes the muscle group's term. The second is when
+# the fat group's term overtakes it.
 RECORDED_FOURTH_COMPARTMENT_LEAD_H: dict[str, tuple[float, float]] = {
     "sevoflurane/Anesth Analg 1991;72:316-24": (3.11, 29.38),
     "isoflurane/Anesth Analg 1991;72:316-24": (2.96, 28.73),
@@ -469,9 +509,10 @@ RECORDED_FIT_ABOVE_MEASUREMENT_AT_FIVE_MINUTES_SD: dict[str, float] = {
 }
 FIVE_MINUTE_DISTANCE_TOLERANCE_SD = 0.02
 
-# The hepatic sink's outputs for sevoflurane: the share of the 30-minute
-# uptake it removes by the end of the run, and how far it lowers F_A/F_A0 at
-# each of `STATED_MINUTES` against the same run without it. The share and the
+# The hepatic sink's outputs for sevoflurane. The first is the share of the
+# 30-minute uptake that the sink removes by the end of the run. The second is
+# how far the sink lowers F_A/F_A0 at each of `STATED_MINUTES`, compared with
+# the same run without the sink. The share and the
 # entry for 1410 minutes were measured on 2026-10-17, when the run was
 # shortened to end at the supported run length (`PL-RXW0`).
 RECORDED_METABOLISED_SHARE: dict[Condition, float] = {"shipped": 0.0779, "open circuit": 0.0714}
@@ -503,9 +544,10 @@ class RecordedMuscleVariation:
             coefficient lowered until its isolated time constant is the fitted
             muscle term's.
         ratio_at_four_hours_at_fitted_time_constant: model over fit at 240 min
-            with that coefficient; the stored one's is in `RECORDED_COMPARISONS`.
-        crossing_hours_at_fitted_time_constant: as `RecordedComparison`'s,
-            over the six hours the varied run lasts.
+            with that coefficient. The ratio on the stored coefficient is in
+            `RECORDED_COMPARISONS`.
+        crossing_hours_at_fitted_time_constant: the crossing hours, as in
+            `RecordedComparison`, over the six hours that the varied run lasts.
     """
 
     rise_as_stored: tuple[float, float]
@@ -514,8 +556,8 @@ class RecordedMuscleVariation:
     crossing_hours_at_fitted_time_constant: tuple[float, ...]
 
 
-# Measured 2026-10-03 (`PL-95NW`). Model outputs, kept apart from
-# `PUBLISHED_FITS` for the reason `RECORDED_COMPARISONS` is.
+# Measured on 2026-10-03 (`PL-95NW`). These are model outputs, kept apart from
+# `PUBLISHED_FITS` for the same reason as `RECORDED_COMPARISONS`.
 RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation] = {
     ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedMuscleVariation(
         rise_as_stored=(4.15, 1.205),
@@ -567,10 +609,11 @@ RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation]
     ),
 }
 
-# The coefficient that gives each cohort's fitted muscle time constant, as a
-# share of the stored one, which is the fitted constant over the stored
-# isolated one; and what the muscle group then holds at discontinuation, as a
-# share of what it holds on the stored coefficient.
+# For each cohort, the coefficient that gives the fitted muscle time constant,
+# as a share of the stored coefficient. That share equals the fitted time
+# constant over the stored isolated one. The second table is the amount the
+# muscle group then holds at discontinuation, as a share of what it holds on
+# the stored coefficient.
 RECORDED_MUSCLE_COEFFICIENT_SHARES: dict[str, float] = {
     "sevoflurane/Anesth Analg 1991;72:316-24": 0.6035,
     "isoflurane/Anesth Analg 1991;72:316-24": 0.6697,
@@ -585,30 +628,34 @@ RECORDED_MUSCLE_STORE_SHARES: dict[str, float] = {
 }
 MUSCLE_STORE_SHARE_TOLERANCE = 0.002
 
-# The fourth hour: one of the papers' own sampling times, and the end of the
-# stretch the reading about the muscle group names.
+# The fourth hour. It is one of the papers' own sampling times, and the end of
+# the stretch, hours 2 to 4, that the reading about the muscle group concerns.
 FOUR_HOURS_MIN = 240
 
-# The states `_open_circuit_system_per_min()` writes an equation for, in its
-# order, which is also the order of `WashoutCurve.fractions_at_discontinuation`.
+# The states that `_open_circuit_system_per_min()` writes an equation for, in
+# that function's order. `WashoutCurve.fractions_at_discontinuation` uses the
+# same order.
 OPEN_CIRCUIT_STATES = ("alveolar", "mixed venous", "vessel-rich group", "muscle group", "fat group")
 
-# How closely the open circuit's modes reproduce the stepped open-circuit run,
-# as a share of the run, at every minute from `RECONSTRUCTION_FROM_MINUTE` on.
-# What separates them is the driver's: `_discard_circuit_contents()` empties
-# the circuit after each 0.1 s step, so within a step the patient re-breathes
-# a little of what it exhaled, and the stepped run lies above the modes by up
-# to 0.08%. Halving the step halved that, 0.052 to 0.026% at five minutes and
-# 0.061 to 0.030% at four hours for sevoflurane (measured once, 2026-10-03,
-# `PL-921Y`). Before the fifth minute the fast terms carry the curve, and the
-# stepped run departs from them by up to 1.6%, at the first.
+# How closely the open circuit's modes must reproduce the stepped open-circuit
+# run, as a share of the run, at every minute from `RECONSTRUCTION_FROM_MINUTE`
+# on. The difference between them comes from the driver.
+# `_discard_circuit_contents()` empties the circuit only after each 0.1 s step,
+# so within a step the patient re-breathes a little of what the patient
+# exhaled. As a result, the stepped run lies above the modes by up to 0.08%.
+# Halving the step halved that difference for sevoflurane: from 0.052 to 0.026%
+# at five minutes, and from 0.061 to 0.030% at four hours (measured once,
+# 2026-10-03, `PL-921Y`). Before the fifth minute the fast terms carry the
+# curve, and the stepped run departs from the modes by up to 1.6%, at the first
+# minute.
 MODE_RECONSTRUCTION_TOLERANCE = 0.0008
 RECONSTRUCTION_FROM_MINUTE = 5
 
-# A band around values the stored parameters fix exactly: eigenvalues of a
-# matrix built from them and a decomposition of one stepped state, rather than
-# a stepped run's samples, so it can be tighter than the curve's 1% and still
-# hold every value `docs/MODEL.md` prints from them at three figures.
+# A band around values that the stored parameters fix exactly. These values are
+# eigenvalues of a matrix built from the parameters and a decomposition of one
+# stepped state, not samples of a stepped run. So the band can be tighter than
+# the curve's 1% and still check every value that `docs/MODEL.md` prints from
+# them, to three figures.
 APPARENT_TERM_TOLERANCE = 0.002
 
 
@@ -616,19 +663,21 @@ APPARENT_TERM_TOLERANCE = 0.002
 class RecordedApparentTerms:
     """One agent's muscle and fat terms as its open-circuit modes give them.
 
-    The model's curve is the same for both isoflurane cohorts, so these are
-    per agent; what differs between those cohorts is the fit.
+    The model's curve is the same for both isoflurane cohorts, so these values
+    are per agent. What differs between those cohorts is the fit.
 
     Attributes:
-        muscle_time_constant_min: the muscle group's mode's time constant, the
-            apparent one, read off the curve as the fitted one was.
+        muscle_time_constant_min: the time constant of the muscle group's
+            mode. This is the apparent time constant, read off the curve in the
+            same way as the fitted one.
         muscle_amplitude_percent: that mode's amplitude, $`A \\times 100`$ of
             F_A0, the papers' unit.
         fat_time_constant_min: the fat group's mode's time constant.
         fat_amplitude_percent: that mode's amplitude, as above.
         isolated_muscle_time_constant_min: the muscle group's time constant
-            with nothing returned to it in arterial blood, the arithmetic
-            `docs/MODEL.md` compared with the fitted one before `PL-921Y`.
+            with no agent returned to it in arterial blood. This is the
+            arithmetic that `docs/MODEL.md` compared with the fitted time
+            constant before `PL-921Y`.
         isolated_fat_time_constant_min: the same for the fat group.
     """
 
@@ -640,8 +689,8 @@ class RecordedApparentTerms:
     isolated_fat_time_constant_min: float
 
 
-# Measured 2026-10-03 (`PL-921Y`). Model outputs, kept apart from
-# `PUBLISHED_FITS` for the reason `RECORDED_COMPARISONS` is.
+# Measured on 2026-10-03 (`PL-921Y`). These are model outputs, kept apart from
+# `PUBLISHED_FITS` for the same reason as `RECORDED_COMPARISONS`.
 RECORDED_APPARENT_TERMS: dict[str, RecordedApparentTerms] = {
     "sevoflurane": RecordedApparentTerms(
         muscle_time_constant_min=154.5,
@@ -669,9 +718,10 @@ RECORDED_APPARENT_TERMS: dict[str, RecordedApparentTerms] = {
     ),
 }
 
-# The muscle group's apparent time constant with the coefficient
+# The muscle group's apparent time constant at the coefficient that
 # `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
-# runs, which makes the isolated one the fitted one's.
+# runs. That coefficient makes the isolated time constant equal to the fitted
+# one.
 RECORDED_APPARENT_MUSCLE_TIME_CONSTANTS_AT_FITTED_ISOLATED_MIN: dict[str, float] = {
     "sevoflurane/Anesth Analg 1991;72:316-24": 93.40,
     "isoflurane/Anesth Analg 1991;72:316-24": 108.4,
@@ -682,33 +732,35 @@ RECORDED_APPARENT_MUSCLE_TIME_CONSTANTS_AT_FITTED_ISOLATED_MIN: dict[str, float]
 
 @dataclass(frozen=True, slots=True)
 class WashoutCurve:
-    """One elimination, sampled once a minute: the whole run unless a run is shorter.
+    """One elimination, sampled once a minute, over the whole run unless the run is shorter.
 
-    A value object rather than the system, for the reason the gate's readings
-    are: `_washout_curve()` is cached, and a returned system would be a shared
-    mutable one. It is also what `washout_curve` hands from one xdist worker to
-    another, as a pickle.
+    It is a value object rather than the system, for the same reason that the
+    gate's readings are. `_washout_curve()` is cached, so a returned system
+    would be shared and mutable. This object is also what `washout_curve`
+    passes from one xdist worker to another, as a pickle.
 
     Attributes:
         muscle_tissue_gas_partition_coefficient: the coefficient the run gave
-            the muscle group in place of the stored one, `None` for the stored.
+            the muscle group in place of the stored one, or `None` when the run
+            used the stored one.
         alveolar_fraction_at_discontinuation: F_A0, the papers' own denominator.
         fractions_at_discontinuation: the alveolar, mixed venous and three
             tissue groups' partial-pressure fractions at discontinuation, in
-            `OPEN_CIRCUIT_STATES`' order: the state `_open_circuit_modes()`
-            decomposes the open circuit's elimination from.
-        ratios_by_minute: F_A/F_A0 at each whole minute of elimination, index
-            0 being discontinuation itself, so `ratios_by_minute[5]` is the
+            `OPEN_CIRCUIT_STATES`' order. This is the state from which
+            `_open_circuit_modes()` decomposes the open circuit's elimination.
+        ratios_by_minute: F_A/F_A0 at each whole minute of elimination, where
+            index 0 is discontinuation itself, so `ratios_by_minute[5]` is the
             gate's five-minute point.
-        agent_taken_up_l: what the patient held at discontinuation plus what
-            the sink had already removed, which is the uptake over the
-            administration; the share below is taken of this.
-        muscle_agent_at_discontinuation_l: what the muscle group alone held at
-            discontinuation, the store its return draws on.
-        agent_metabolised_l: the sink's total by the end of the run, zero
-            without one.
+        agent_taken_up_l: the agent the patient held at discontinuation plus
+            what the sink had already removed. This sum is the uptake over the
+            administration, and the metabolised share below is taken of it.
+        muscle_agent_at_discontinuation_l: the agent that the muscle group
+            alone held at discontinuation, which is the store its return draws
+            on.
+        agent_metabolised_l: the total that the sink removed by the end of the
+            run, or zero without a sink.
         agent_accounting: the model's own conservation check at the end of
-            the run, carried out so a failure can name the totals.
+            the run, kept so that a failed assertion can report the totals.
     """
 
     agent_id: str
@@ -735,23 +787,24 @@ class WashoutCurve:
 class OpenCircuitModes:
     """The open circuit's F_A/F_A0 as the sum of its system's exponential modes.
 
-    $`F_A/F_{A0} = \\sum_k A_k e^{-t/\\tau_k}`$ holds exactly for the five
-    equations `_open_circuit_system_per_min()` writes out, from the state the
-    modes were decomposed from: the form Yasuda et al. fitted to each
-    volunteer's curve, read off the model's rather than fitted to it, so a
-    mode's time constant is an apparent one, as a fitted one is. Sevoflurane's
-    and isoflurane's two fastest modes are a complex-conjugate pair, a damped
-    oscillation that falls e-fold in about a quarter of a minute, so a time
-    constant and an amplitude are complex in general; the pair's imaginary
-    parts cancel in the sum, and the three slower modes are real.
+    The sum $`F_A/F_{A0} = \\sum_k A_k e^{-t/\\tau_k}`$ holds exactly for the
+    five equations that `_open_circuit_system_per_min()` writes out, starting
+    from the state the modes were decomposed from. It is the form that Yasuda
+    et al. fitted to each volunteer's curve. Here it is read off the model's
+    curve rather than fitted to it, so a mode's time constant is an apparent
+    one, as a fitted one is. For sevoflurane and isoflurane, the two fastest
+    modes are a complex-conjugate pair. They form a damped oscillation that
+    falls e-fold in about a quarter of a minute. So in general a time constant
+    and an amplitude are complex. The pair's imaginary parts cancel in the sum,
+    and the three slower modes are real.
 
     Attributes:
         time_constants_min: $`\\tau_k`$, fastest first.
         amplitudes: $`A_k`$ as fractions of F_A0, in the same order. They sum
             to 1, since the decomposition is of the state itself.
-        dominant_states: for each mode, the state in `OPEN_CIRCUIT_STATES` its
-            part of the state at discontinuation is largest in, which is what
-            names a mode for a compartment.
+        dominant_states: for each mode, the state in `OPEN_CIRCUIT_STATES` in
+            which that mode's part of the state at discontinuation is largest.
+            This is what names a mode after a compartment.
     """
 
     time_constants_min: tuple[complex, ...]
@@ -773,22 +826,25 @@ class OpenCircuitModes:
 def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> float:
     """Remove one step's first-order hepatic loss from the vessel-rich group.
 
-    **A test-only sink; no setting of the shipped simulator reaches it, and
-    `docs/MODEL.md` § "Known limitations" records that the model has no
-    metabolism.** It is sited on the vessel-rich group because that is where
-    the papers' own mammillary model sites hepatic elimination - "the second
-    compartment (vessel-rich group; k20)", *Anesth Analg* p. 318 - and the
-    liver is a vessel-rich organ in this model's lumping. Applied after each
-    step, it is an operator split: the loss over the step is taken at the
-    end of it rather than inside the propagator, an error second order in
-    the rate times the step, which is 1.6 × 10⁻⁵ here.
+    **This is a test-only sink. No setting of the shipped simulator uses it,
+    and `docs/MODEL.md` § "Known limitations" records that the model has no
+    metabolism.** The sink acts on the vessel-rich group for two reasons. The
+    papers' own mammillary model places hepatic elimination there ("the second
+    compartment (vessel-rich group; k20)", *Anesth Analg* p. 318). And the
+    liver is a vessel-rich organ in the way this model groups tissues.
 
-    The removed agent goes through `record_external_agent_transfer()` as
-    exhausted, because the validator has no column for a metabolic loss and
-    agent removed and recorded nowhere reads as agent the model lost, which
-    halts the next `advance()` (the same identity `_discard_circuit_contents()`
-    honours). So the exhausted total of a run with this sink includes what it
-    metabolised; the curve keeps its own metabolised total apart.
+    The sink is applied after each step, which makes it an operator split. The
+    loss over the step is taken at the end of the step rather than inside the
+    propagator. The error is second order in the rate times the step, and that
+    product is 1.6 × 10⁻⁵ here.
+
+    The removed agent is recorded through `record_external_agent_transfer()`
+    as exhausted agent, because the validator has no column for a metabolic
+    loss. Agent that is removed and recorded nowhere would count as agent the
+    model lost, and that halts the next `advance()`. `_discard_circuit_contents()`
+    honours the same conservation identity. So the exhausted total of a run with this sink
+    includes what the sink metabolised. The curve keeps its own metabolised
+    total separately.
     """
 
     vessel_rich = system.patient.vessel_rich
@@ -814,26 +870,26 @@ def _washout_curve(
     muscle_tissue_gas_partition_coefficient: float | None = None,
     elimination_duration_min: int = ELIMINATION_DURATION_MIN,
 ) -> WashoutCurve:
-    """Wash in as the gate does, then eliminate in one condition, to the run's end by default.
+    """Wash in as the gate does, then eliminate in one condition, by default to the run's end.
 
-    The wash-in is the shipped one whatever the condition, rebreathing and
-    all, because that limb is inside the published spread at every supported
-    flow and F_A0 is defined at the end of it; the open circuit begins at
-    discontinuation, exactly as `_eliminate_without_rebreathing()` begins it.
-    With no sink the sequence of `advance()` calls is the gate's own through
-    the fifth minute, which
+    The wash-in is the shipped one, rebreathing included, whatever the
+    condition. That limb is inside the published spread at every supported
+    flow, and F_A0 is defined at its end. The open circuit begins at
+    discontinuation, exactly where `_eliminate_without_rebreathing()` begins
+    it. With no sink, the sequence of `advance()` calls is the same as the
+    gate's through the fifth minute, and
     `test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio`
-    holds it to. With one, the sink runs through the administration as well,
-    since a human's does.
+    checks that. With a sink, the sink also runs during the administration,
+    because a human's metabolism does too.
 
-    `muscle_tissue_gas_partition_coefficient` is a coefficient the data files
-    do not hold, for the one question that needs it: whether the muscle
-    group's slow return is what fills hours 2 to 4 (`PL-95NW`). It is applied
-    as `_configured_system()` applies its own override, before any step, where
-    the group's stored amount is zero and no propagator has been built, and
-    through `dataclasses.replace`, whose constructor checks it exactly as it
-    checks a shipped one. The group's blood flow, already
-    set from the cardiac output, is carried over unchanged.
+    `muscle_tissue_gas_partition_coefficient` is a coefficient that the data
+    files do not hold. It exists for the one question that needs it: whether
+    the muscle group's slow return is what fills hours 2 to 4 (`PL-95NW`). It
+    is applied the way `_configured_system()` applies its own override, before
+    any step, while the group's stored amount is zero and no propagator has
+    been built. It goes through `dataclasses.replace`, whose constructor checks
+    the value exactly as it checks a shipped one. The group's blood flow,
+    already set from the cardiac output, is carried over unchanged.
     """
 
     system = _configured_system(agent_id)
@@ -897,11 +953,12 @@ def washout_curve(
 ) -> Callable[..., WashoutCurve]:
     """`_washout_curve()`, computed once per pytest run however many xdist workers read it.
 
-    A curve is 846,000 steps after the wash-in, about 17 s on one core, and
+    A curve takes 846,000 steps after the wash-in, about 17 s on one core.
     `_washout_curve()`'s cache lives in one process, so every xdist worker
-    that ran a test needing a curve used to compute it again: 18 computations
-    of the 8 distinct curves (`PL-F08Y`). Now the first worker to need a
-    curve computes it, and every other worker of the run reads that result.
+    that ran a test needing a curve used to compute it again. That came to 18
+    computations of the 8 distinct curves (`PL-F08Y`). Now the first worker
+    to need a curve computes it, and every other worker in the run reads that
+    result.
     `tests/conftest.py`'s `computed_once` fixture says how.
     """
 
@@ -934,9 +991,9 @@ def washout_curve(
 def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[float, ...]:
     """Every hour at which the model passes through the fitted curve.
 
-    Read from the second minute's sample on, so the first-minute transient -
-    the model's lung term against the fit's - is where the sign starts rather
-    than a crossing of its own.
+    The search starts from the second minute's sample. So the first-minute
+    transient, the model's lung term against the fit's, sets the starting sign
+    rather than counting as a crossing of its own.
     """
 
     hours = []
@@ -953,16 +1010,16 @@ def _muscle_coefficient_at_the_fitted_time_constant(fit: PublishedWashoutFit) ->
     """The muscle tissue:gas coefficient that gives the fitted muscle term's time constant.
 
     The isolated group's time constant is its volume times its tissue:gas
-    coefficient over its blood flow times the blood:gas coefficient, the
-    arithmetic `docs/MODEL.md` compared with the fitted one until `PL-921Y`
-    read the model's term off its curve instead. This solves it for the
-    coefficient, on the reference adult the run is configured from, so the
-    volume, the flow and the blood:gas coefficient stay the stored ones and
-    only the muscle group's solubility moves. The apparent time constant it
-    leaves the group, the one that compares with the fitted, is 1.09 to 1.28
-    times the fitted
-    (`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`),
-    so the variation takes the muscle term most of the way to the fitted one.
+    coefficient, divided by its blood flow times the blood:gas coefficient.
+    `docs/MODEL.md` compared that arithmetic with the fitted time constant
+    until `PL-921Y` read the model's term off its curve instead. This function
+    solves the same equation for the coefficient, on the reference adult that
+    the run is configured from. The volume, the flow and the blood:gas
+    coefficient stay the stored ones, and only the muscle group's solubility
+    changes. The resulting apparent time constant, which is the one to compare
+    with the fitted value, is 1.09 to 1.28 times the fitted value
+    (`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`).
+    So the variation takes the muscle term most of the way to the fitted one.
     """
 
     patient = load_reference_adult_parameters()
@@ -982,11 +1039,12 @@ def _rise_toward_the_fitted_curve(
 ) -> tuple[float, float]:
     """Where model over fit peaks after its early dip, as (hours, ratio).
 
-    Every run here turns the same three times in its first day: model over
-    fit dips inside the first half hour, rises to a peak, and falls to a
-    trough the fat group's return later lifts it out of. This is the peak:
-    the first maximum after the first minimum, read from the second minute
-    on, as `_crossing_hours()` reads, to the minute the curve is sampled at.
+    In every run here, model over fit turns the same three times in the first
+    day. It dips inside the first half hour, rises to a peak, and falls to a
+    trough that the fat group's return later lifts it out of. This function
+    returns the peak, which is the first maximum after the first minimum. It
+    searches from the second minute on, as `_crossing_hours()` does, to the
+    one-minute resolution of the sampling.
     """
 
     ratios = [
@@ -1017,19 +1075,21 @@ def _open_circuit_system_per_min(
 ) -> numpy.ndarray:
     """The open circuit's elimination as $`dF/dt = M F`$, written out from the specification.
 
-    F is the alveolar, mixed venous and three tissue groups' partial-pressure
-    fractions, in `OPEN_CIRCUIT_STATES`' order, at the reference patient's
-    default ventilation and cardiac output, which is `_configured_system()`'s
-    operating point. Each row is the equation `docs/MODEL.md` § "Governing
-    equations" gives for its state, with the inspired fraction held at zero:
-    the limit `_discard_circuit_contents()` approaches by emptying the circuit
-    after every step. Only the parameter loaders are reused, as
-    `test_coupled_dynamics.py`'s `_build_derivative()` reuses them; nothing
-    here reaches the implementation under test, so the stepped run's agreement
+    F holds the partial-pressure fractions of the alveolar gas, the mixed
+    venous blood and the three tissue groups, in `OPEN_CIRCUIT_STATES`' order.
+    M is built at the reference patient's default ventilation and cardiac
+    output, which is `_configured_system()`'s operating point. Each row is the
+    equation that `docs/MODEL.md` § "Governing equations" gives for its state,
+    with the inspired fraction held at zero. That is the limit that
+    `_discard_circuit_contents()` approaches by emptying the circuit after
+    every step. Only the parameter loaders are reused, as
+    `test_coupled_dynamics.py`'s `_build_derivative()` reuses them. Nothing
+    here calls the implementation under test, so the stepped run's agreement
     with these equations' modes is evidence rather than an identity.
 
     `muscle_tissue_gas_partition_coefficient` replaces the stored coefficient
-    as `_washout_curve()`'s does, with the group's blood flow unchanged.
+    in the same way as the argument of that name to `_washout_curve()`, and
+    leaves the group's blood flow unchanged.
     """
 
     agent = load_agent_parameters(agent_id)
@@ -1062,17 +1122,19 @@ def _open_circuit_system_per_min(
 
     system = numpy.zeros((len(OPEN_CIRCUIT_STATES), len(OPEN_CIRCUIT_STATES)))
 
-    # Alveolar gas, breathing nothing in: ventilation out, pulmonary uptake out.
+    # Alveolar gas, with nothing inspired: agent leaves by ventilation and by
+    # pulmonary uptake.
     system[alveolar, alveolar] = (
         -(ventilation_l_min + cardiac_output_l_min * blood_gas) / alveolar_volume_l
     )
     system[alveolar, venous] = cardiac_output_l_min * blood_gas / alveolar_volume_l
 
-    # Venous pool: each group's outflow in, mixed at the cardiac output.
+    # Venous pool: each group's outflow enters it, and the mixed blood leaves at
+    # the cardiac output.
     system[venous, venous] = -cardiac_output_l_min / venous_volume_l
 
-    # Each group, perfusion-limited and driven by arterial blood, which is
-    # alveolar.
+    # Each tissue group is perfusion-limited and driven by arterial blood, whose
+    # partial pressure equals the alveolar one.
     for state, (volume_l, perfusion_fraction, tissue_blood) in enumerate(tissues, start=2):
         blood_flow_l_min = cardiac_output_l_min * perfusion_fraction
         rate_per_min = blood_flow_l_min / (volume_l * tissue_blood)
@@ -1090,9 +1152,9 @@ def _open_circuit_modes(
 ) -> OpenCircuitModes:
     """Decompose the open circuit's elimination into its modes, from one state.
 
-    `numpy.linalg.eig` is LAPACK's general eigensolver, and the state is
-    expanded on the eigenvectors by a linear solve; each mode's amplitude is
-    its eigenvector's alveolar entry times its weight, over F_A0.
+    `numpy.linalg.eig` is LAPACK's general eigensolver. A linear solve expands
+    the state on the eigenvectors. Each mode's amplitude is its eigenvector's
+    alveolar entry times its weight, divided by F_A0.
     """
 
     system = _open_circuit_system_per_min(agent_id, muscle_tissue_gas_partition_coefficient)
@@ -1117,9 +1179,10 @@ def _open_circuit_modes(
 def _isolated_time_constants_min(agent_id: str) -> tuple[float, float]:
     """The muscle and fat groups' time constants with nothing returned to them in arterial blood.
 
-    Each is the group's volume times its tissue:gas coefficient over its blood
-    flow times the blood:gas coefficient, on the reference adult: the
-    arithmetic `_muscle_coefficient_at_the_fitted_time_constant()` inverts.
+    Each is the group's volume times its tissue:gas coefficient, divided by its
+    blood flow times the blood:gas coefficient, on the reference adult.
+    `_muscle_coefficient_at_the_fitted_time_constant()` inverts this
+    arithmetic.
     """
 
     agent = load_agent_parameters(agent_id)
@@ -1145,14 +1208,15 @@ def _isolated_time_constants_min(agent_id: str) -> tuple[float, float]:
 def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
     fit: PublishedWashoutFit, condition: Condition, washout_curve: Callable[..., WashoutCurve]
 ) -> None:
-    """Hold the ratio table and the crossing hours to what was measured.
+    """Check the ratio table and the crossing hours against what was measured.
 
-    The module docstring carries the reading; this pins the numbers it reads
-    from, in both conditions, so that a change to a parameter or to the
-    propagator that moves the tail against the published curves by more than
-    a percent, or moves a crossing by more than a tenth of an hour, fails
-    here and is re-measured rather than silently absorbed. It asserts nothing
-    about agreement: a change that brought every ratio to 1.0 would fail it.
+    The module docstring gives the interpretation, and this test pins the
+    numbers it rests on, in both conditions. A change to a parameter or to the
+    propagator might move the tail against the published curves by more than a
+    percent, or move a crossing by more than a tenth of an hour. Such a change
+    fails here, and the values must be re-measured rather than silently
+    absorbed. The test asserts nothing about agreement: a change that brought
+    every ratio to 1.0 would fail it.
     """
 
     curve = washout_curve(fit.agent_id, condition)
@@ -1186,10 +1250,11 @@ def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
 ) -> None:
     """The fifth minute of this run is the gate's five-minute point.
 
-    Same setup, same discontinuation, same driver for the open circuit, so
-    the ratio at five minutes must agree with the value the gate pins to four
-    decimals. This is what makes the tables above a continuation of the
-    gate's comparison rather than a second protocol that could drift from it.
+    This run has the same setup, the same discontinuation and the same
+    open-circuit driver as the gate. So its ratio at five minutes must agree
+    with the value that the gate pins to four decimals. This agreement makes
+    the module's tables a continuation of the gate's comparison, rather than a
+    second protocol that could drift from it.
     """
 
     pinned = (
@@ -1207,14 +1272,14 @@ def test_the_run_ends_at_the_supported_run_length() -> None:
     """The wash-in and the elimination together take every step the supported run length allows.
 
     `maximum_step_count` is the simulator's own count of the steps that fit
-    inside the supported run length, so the run is held to that count rather
-    than to a number of seconds written here. Fewer steps would end the run,
-    and its last stated minute, short of the boundary the module docstring
-    reads the tail at. More steps would carry the run past the span the model
-    is claimed to represent a patient over. `AgentUptakeSystem.advance` does
-    not refuse such a step by itself, so nothing else here would notice:
-    until 2026-10-17 the elimination lasted 1440 minutes, and the run went 30
-    minutes past the boundary (`PL-RXW0`).
+    inside the supported run length. So the test checks the run against that
+    count, not against a number of seconds written here. Fewer steps would end
+    the run, and its last stated minute, short of the boundary at which the
+    module docstring evaluates the tail. More steps would carry the run past
+    the span over which the model claims to represent a patient.
+    `AgentUptakeSystem.advance` does not refuse such a step by itself, so
+    nothing else here would notice. Until 2026-10-17 the elimination lasted
+    1440 minutes, and the run went 30 minutes past the boundary (`PL-RXW0`).
     """
 
     wash_in_steps = round(WASH_IN_DURATION_S / SIMULATION_STEP_S)
@@ -1237,9 +1302,9 @@ def test_the_published_coefficients_sum_below_one_at_discontinuation(
     """Record that the curves are compared un-normalised, and by how much.
 
     The amplitudes are means of per-subject fits and sum to 0.912 to 0.937,
-    not 1. The module compares the curve as published; this pins the sum so
-    that the 7 to 10% the docstring says normalising would move every ratio
-    by cannot drift from the coefficients.
+    not 1. The module compares the curve as published. The module docstring
+    says that normalising would move every ratio by 7 to 10%. This test pins
+    the sum, so that this figure cannot drift from the coefficients.
     """
 
     assert 0.91 <= fit.value_at_discontinuation <= 0.94, (
@@ -1252,14 +1317,14 @@ def test_the_published_coefficients_sum_below_one_at_discontinuation(
 def test_the_fitted_mean_curves_run_above_their_own_measured_five_minute_means(
     fit: PublishedWashoutFit,
 ) -> None:
-    """Bound the fit against the data at the one time both are published.
+    """Compare the fit with the data at the one time at which both are published.
 
-    This is caveat 1 of the module docstring as a number: the curve built
-    from mean coefficients sits above the measured five-minute mean of the
-    same cohort in every case, by 0.33 to 1.84 published SD. Every ratio in
-    the tables is an understatement of the model against the volunteers'
-    mean to that extent, and the sign is what makes it an understatement
-    rather than an overstatement, so both are pinned.
+    This test states caveat 1 of the module docstring as a number. In every
+    cohort, the curve built from mean coefficients sits above the same
+    cohort's measured five-minute mean, by 0.33 to 1.84 published SD. To that
+    extent, every ratio in the tables understates the model against the
+    volunteers' mean. The sign is what makes it an understatement rather than
+    an overstatement, so the test pins both the sign and the size.
     """
 
     measurement = fit.measurement
@@ -1282,14 +1347,14 @@ def test_the_fitted_mean_curves_run_above_their_own_measured_five_minute_means(
 def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
     fit: PublishedWashoutFit,
 ) -> None:
-    """Hold the hours the intertissue-diffusion note prints to the coefficients.
+    """Check the hours printed in the intertissue-diffusion note against the coefficients.
 
     `docs/MODEL.md` § "Known limitations" says the fourth compartment's term
     is the largest in the measured curve from about 1.8 to 3.1 hours until
-    about 20.7 to 29.4 hours. Those were computed by hand on 2026-09-26; this
-    re-derives them from the published coefficients and checks that the term
-    does lead at every stated time inside the window that lies within the
-    run, so the sentence cannot outlive the arithmetic.
+    about 20.7 to 29.4 hours. Those hours were computed by hand on 2026-09-26.
+    This test re-derives them from the published coefficients. It also checks
+    that the term does lead at every stated time inside the part of the window
+    that lies within the run. So the sentence cannot outlive the arithmetic.
     """
 
     overtakes_muscle_h = fit.hours_at_which_terms_are_equal(MUSCLE_GROUP, FOURTH_COMPARTMENT)
@@ -1321,25 +1386,27 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
 ) -> None:
     """Vary the muscle group's coefficient, to test what fills hours 2 to 4.
 
-    `PL-KK1Q` read the tail's rise toward the fitted curve over hours 2 to 4
-    off the time constants alone: the model's isolated muscle group returns
-    on a constant 1.5 to 1.7 times the fitted muscle term's, an isolated
-    constant against an apparent one, which `PL-921Y` later read like for
-    like at 1.89 to 2.02. This runs the counterfactual instead (`PL-95NW`):
-    the same protocol with the group's tissue:gas coefficient lowered until
-    its isolated time constant is the cohort's fitted one, everything else
-    stored.
+    `PL-KK1Q` inferred the tail's rise toward the fitted curve over hours 2 to
+    4 from the time constants alone. The model's isolated muscle group returns
+    agent with a time constant 1.5 to 1.7 times the fitted muscle term's. That
+    compared an isolated constant with an apparent one. `PL-921Y` later
+    compared like with like and found 1.89 to 2.02. This test runs the
+    counterfactual instead (`PL-95NW`). It uses the same protocol, with the
+    group's tissue:gas coefficient lowered until its isolated time constant
+    equals the cohort's fitted one, and every other parameter at its stored
+    value.
 
-    It checks first that the change moves the rate of return and not the
-    store: the group holds 4 to 10% less at discontinuation, because over a
-    30-minute wash-in it is far from equilibrium and takes up agent about as
-    fast as its blood flow brings it, whatever its capacity. A variation
-    that emptied the store would lower the tail for a reason the reading
-    does not name. Then it holds where the rise peaks on each coefficient,
-    and the four-hour ratio and the crossings on the lowered one, to what
-    was measured on 2026-10-03, and asserts the reading itself: the rise
-    peaks after the second hour as stored and before it at the fitted time
-    constant, and the tail at four hours is lower.
+    It first checks that the change moves the rate of return and not the
+    store. The group holds 4 to 10% less at discontinuation. Over a 30-minute
+    wash-in the group is far from equilibrium, so it takes up agent about as
+    fast as its blood flow brings it, whatever its capacity. A variation that
+    emptied the store would lower the tail for a reason that the reading does
+    not name. The test then checks these values against what was measured on
+    2026-10-03: where the rise peaks on each coefficient, and the four-hour
+    ratio and the crossings on the lowered coefficient. Last, it asserts the
+    reading itself. The rise peaks after the second hour on the stored
+    coefficient and before it at the fitted time constant, and the tail at
+    four hours is lower.
     """
 
     coefficient = _muscle_coefficient_at_the_fitted_time_constant(fit)
@@ -1421,7 +1488,7 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
 def _shortfalls_from_the_stepped_run(
     curve: WashoutCurve, modes: OpenCircuitModes
 ) -> dict[int, float]:
-    """The modes' F_A/F_A0 over the stepped run's, less 1, at each minute from the fifth."""
+    """The modes' F_A/F_A0 divided by the stepped run's, minus 1, at each minute from the fifth."""
 
     return {
         minute: modes.ratio_at(minute) / curve.ratio_at(minute) - 1.0
@@ -1433,29 +1500,29 @@ def _shortfalls_from_the_stepped_run(
 def test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones(
     fit: PublishedWashoutFit, washout_curve: Callable[..., WashoutCurve]
 ) -> None:
-    """Read the model's muscle and fat terms off its own curve, as the fits were read.
+    """Read the model's muscle and fat terms off its own curve, the way the fitted terms were read.
 
-    A fitted time constant is an apparent one, read off the whole washout, and
-    `docs/MODEL.md` compared the fitted muscle and fat constants with the
-    model's isolated ones, which leave out the agent arterial blood brings
-    back to a group during the washout (`PL-921Y`). Like for like is the
-    model's own curve read the same way, which is its open-circuit system's
-    modes.
+    A fitted time constant is an apparent one, read off the whole washout.
+    `docs/MODEL.md` used to compare the fitted muscle and fat constants with
+    the model's isolated ones. The isolated constants leave out the agent that
+    arterial blood brings back to a group during the washout (`PL-921Y`). A
+    like-for-like comparison reads the model's own curve the same way, and
+    that reading gives its open-circuit system's modes.
 
-    It checks first that the modes are the stepped run: decomposed from the
-    state the open-circuit run held at discontinuation, they reproduce it to
-    within `MODE_RECONSTRUCTION_TOLERANCE` at every minute from the fifth,
-    with the run above them, where the driver's re-breathing puts it; and the
-    three slowest are real, the two slowest the muscle and fat groups'. Then
-    it holds
-    both terms, the isolated constants and, at the coefficient
+    It first checks that the modes describe the stepped run. Decomposed from
+    the state that the open-circuit run held at discontinuation, the modes
+    reproduce the run to within `MODE_RECONSTRUCTION_TOLERANCE` at every
+    minute from the fifth on. The run lies above them, where the driver's
+    re-breathing puts it. The three slowest modes are real, and the two
+    slowest belong to the muscle and fat groups. The test then checks three
+    things against what was measured on 2026-10-03: both terms, the isolated
+    constants, and the apparent muscle constant at the coefficient that
     `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
-    runs, the apparent muscle constant, to what was measured on 2026-10-03.
-    Last it asserts the reading `docs/MODEL.md` gives: the muscle term is
-    slower than the fitted one and smaller, and the fat term slower and
-    larger; each isolated constant is shorter than the apparent one; and the
+    runs. Last, it asserts the reading that `docs/MODEL.md` gives. The muscle
+    term is slower and smaller than the fitted one, and the fat term is slower
+    and larger. Each isolated constant is shorter than the apparent one. The
     varied coefficient takes the apparent muscle constant most of the way to
-    the fitted one, not all of it.
+    the fitted one, but not all of the way.
     """
 
     coefficient = _muscle_coefficient_at_the_fitted_time_constant(fit)
@@ -1570,20 +1637,21 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
 ) -> None:
     """Bound what the omitted metabolism could do to the sevoflurane tail.
 
-    The sink runs at Yasuda et al.'s own fitted hepatic rate constant and
-    removes more of the uptake than the top of Kharasch's range, which is
-    what makes its effect a bound rather than an estimate; that share is
-    asserted first, because the bound is worth nothing without it. Then the
-    reduction it makes in F_A/F_A0 at every stated time is held to what was
-    measured - 4.5 to 5.0% at five minutes and under 3% after - against
-    departures from the fitted curve that reach 20 to 50%, which is the
-    module docstring's "little". The model's own conservation identity is
-    checked across the removals too, as it is for the open-circuit discards.
+    The sink runs at Yasuda et al.'s own fitted hepatic rate constant. It
+    removes more of the uptake than the top of Kharasch's range, which makes
+    its effect a bound rather than an estimate. The test asserts that share
+    first, because the bound is worth nothing without it. It then checks the
+    reduction that the sink makes in F_A/F_A0 at every stated time against
+    what was measured. The reduction is 4.5 to 5.0% at five minutes and less
+    than 3% after that, while the departures from the fitted curve reach 20 to
+    50%. That contrast is what the module docstring calls "little". The test
+    also checks the model's own conservation identity across the removals, as
+    it is checked for the open-circuit discards.
     """
 
-    # The sink's curve first: no other test reads it, so the worker
-    # `tests/conftest.py` starts this test on computes it at once
-    # rather than waiting on the curve without it (`PL-4Z5Y`).
+    # Read the sink's curve first. No other test reads it, so the worker that
+    # `tests/conftest.py` starts this test on computes it at once, rather than
+    # waiting for the curve without the sink (`PL-4Z5Y`).
     with_sink = washout_curve("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN)
     without = washout_curve("sevoflurane", condition)
 
@@ -1637,7 +1705,7 @@ class CurveRead(NamedTuple):
 
 
 def _read(*arguments: object) -> CurveRead:
-    """A call's arguments as `_washout_curve()` binds them, its own defaults filled in."""
+    """A call's arguments as `_washout_curve()` binds them, with its defaults filled in."""
 
     bound = inspect.signature(_washout_curve).bind(*arguments)
     bound.apply_defaults()
@@ -1645,11 +1713,11 @@ def _read(*arguments: object) -> CurveRead:
 
 
 #: For each test that reads a curve, the `washout_curve` calls it makes, in
-#: the order it makes them, from the test's own parameters. `tests/conftest.py`
-#: reads it to start each curve at the head of a different xdist worker's first
-#: slice, rather than 522 tests into the first worker's (`PL-4Z5Y`). A call
-#: left out of this table, or out of order, costs speed alone: whichever test
-#: reads a curve first computes it, wherever it runs.
+#: order, built from the test's own parameters. `tests/conftest.py` uses this
+#: table to start each curve at the head of a different xdist worker's first
+#: slice, rather than 522 tests into the first worker's slice (`PL-4Z5Y`). A
+#: call left out of the table, or listed out of order, costs only speed.
+#: Whichever test reads a curve first computes it, wherever that test runs.
 CURVES_READ: dict[Callable[..., None], Callable[..., tuple[CurveRead, ...]]] = {
     test_the_first_24_hours_of_elimination_against_the_published_mean_curves: (
         lambda fit, condition: (_read(fit.agent_id, condition),)

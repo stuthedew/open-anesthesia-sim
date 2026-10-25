@@ -2,13 +2,13 @@
 
 `PL-R1WQ` requires each tag to be a literal written once beside its entry, so
 renaming a class or a title cannot change what a saved layout means. These
-tests pin each tag against the string that a saved file holds. They check that
-every shipped Workspace names only registered kinds. They check the retirement
-table against its two rules: a retired tag is never registered again, and a
-renamed View's new tag is registered. The notice text is checked against
-sentences written out here. Here each entry's factory is checked only for
-being a factory. `tests/integration/test_view_contract.py` builds every
-shipped View from it.
+tests check each tag against the string that a saved file holds. They check
+that every shipped Workspace names only registered kinds. They check the
+retirement table against its two rules: a retired tag is never registered
+again, and a renamed View's new tag is registered. The notice text is checked
+against sentences written out here. These tests check only that each entry's
+factory is callable. `tests/integration/test_view_contract.py` builds every
+shipped View from its factory.
 """
 
 import pytest
@@ -79,7 +79,7 @@ def test_every_shipped_workspace_names_only_registered_kinds() -> None:
         assert layout.unknown_kinds(REGISTERED.keys()) == (), shipped_id
         named |= {area.view for area in layout.areas()}
 
-    # The check above would pass over files that named no View at all.
+    # The check above would also pass if the files named no View at all.
     assert named == {"concentration_chart", "wash_in", "parameter_controls"}
 
 
@@ -99,7 +99,7 @@ def test_every_registered_kind_has_a_factory() -> None:
 
 
 def test_every_registered_kind_declares_a_minimum_a_reader_can_see() -> None:
-    """`PL-K285` Q1: a View that holds nothing yet still needs this size, never none."""
+    """`PL-K285` Q1: a View with nothing in it yet still declares a minimum size, never none."""
 
     assert all(
         entry.minimum.width_px > 0 and entry.minimum.height_px > 0 for entry in REGISTERED.values()
@@ -125,7 +125,7 @@ def test_a_registry_refuses_an_entry_of_another_type() -> None:
 
 
 def test_an_entry_refuses_a_plain_string_kind_and_an_empty_title() -> None:
-    """A plain `str` kind would skip the syntax check `ViewKind` makes."""
+    """A plain `str` kind would skip the syntax check that `ViewKind` makes."""
 
     with pytest.raises(TypeError, match="a View's kind is a ViewKind, not str"):
         RegisteredView("old_view", "Old", _factory)  # type: ignore[arg-type]
@@ -221,7 +221,7 @@ def test_the_agent_accounting_is_the_one_kind_that_must_stay_reachable() -> None
 
 
 def test_a_build_that_does_not_register_a_required_kind_fails() -> None:
-    """The check the module runs on import refuses a registry that dropped the kind."""
+    """The check that the module runs on import rejects a registry that dropped the kind."""
 
     without = registry(RegisteredView(CONCENTRATION_CHART, "Concentrations", _factory))
 
@@ -297,7 +297,7 @@ def test_a_registered_kind_is_offered_nothing_to_rename_to() -> None:
 
 
 def test_the_too_small_notice_names_the_view_and_both_sizes() -> None:
-    """`PL-DB5G` Q3's wording, with the need first and the Area's size second."""
+    """The notice follows `PL-DB5G` Q3: the size needed first, then the Area's size."""
 
     assert too_small_title("Wash-in") == "Too small for Wash-in."
     assert too_small_text(PixelSize(300, 246), PixelSize(212, 97)) == (

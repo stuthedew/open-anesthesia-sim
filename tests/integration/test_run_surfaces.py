@@ -98,10 +98,11 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
-#: The dashboard the test shows, deleted before the next is shown and at the
-#: end of the module, for the reason `test_simulation_view.py`'s
-#: `_SHOWN_VIEWS` gives: a view left to the garbage collector is deleted
-#: whenever a collection happens to run, which is a fatal error.
+#: The dashboard that the current test shows. It is deleted before the next one
+#: is shown, and at the end of the module. `_SHOWN_VIEWS` in
+#: `test_simulation_view.py` gives the reason: a view left to the garbage
+#: collector is deleted whenever a collection happens to run, which is a fatal
+#: error.
 _SHOWN_VIEWS: list[SimulationView] = []
 
 
@@ -145,7 +146,7 @@ def _advance(controller: SimulationController, seconds: float) -> None:
 
 
 def _drawn(panel: AccountingPanel) -> tuple[str, str, str, str]:
-    """What one accounting panel shows: its heading, status, detail and amounts."""
+    """Return what one accounting panel shows: its heading, status, detail and amounts."""
 
     return (
         panel._accounting_heading_text.text(),
@@ -156,7 +157,7 @@ def _drawn(panel: AccountingPanel) -> tuple[str, str, str, str]:
 
 
 def _expected(controller: SimulationController) -> tuple[str, str, str, str]:
-    """What a lone run's accounting panel should show, from the controller's snapshot."""
+    """Return what a lone run's accounting panel should show, from the controller's snapshot."""
 
     shown = accounting(controller.snapshot())
 
@@ -164,10 +165,11 @@ def _expected(controller: SimulationController) -> tuple[str, str, str, str]:
 
 
 def test_two_accounting_panels_of_one_run_both_draw(application: QApplication) -> None:
-    """A second accounting panel shows the run at once, and both follow the next frame.
+    """A second accounting panel shows the run at once, and both panels update on the next frame.
 
-    Before `PL-9LNF` the build method handed back the panel already placed,
-    so a second Area holding it would have taken it out of the first.
+    Before `PL-9LNF`, the build method returned the panel that was already
+    placed. A second Area that held that panel would have taken it out of
+    the first Area.
     """
 
     controller = SimulationController()
@@ -213,7 +215,7 @@ def test_a_drag_on_one_copy_of_the_setting_controls_moves_the_other(
 
 
 def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -> None:
-    """A copy Qt has destroyed is dropped, so the next frame writes only the copies left."""
+    """A copy that Qt has destroyed is dropped, so the next frame updates only the copies left."""
 
     controller = SimulationController()
     controller.start()
@@ -239,7 +241,7 @@ def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -
 def test_each_chart_names_only_the_clipped_traces_its_own_window_shows(
     application: QApplication,
 ) -> None:
-    """The off-scale line belongs to the chart and is written from its window (`PL-L59K`).
+    """Each chart owns its off-scale line, and writes it from its own window (`PL-L59K`).
 
     A sevoflurane dial setting of 8% is 4 MAC, and the plot's ceiling is
     3 MAC. So ten minutes at 8% carries the circuit trace above the plot.

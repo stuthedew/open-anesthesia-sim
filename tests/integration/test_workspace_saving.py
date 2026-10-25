@@ -56,7 +56,7 @@ def _names(workspaces: WorkspaceSet) -> list[str]:
 def _strip(
     workspaces: WorkspaceSet, store: WorkspaceStore | None = None, notice: str | None = None
 ) -> tuple[WorkspaceTabs, list[WorkspaceSet]]:
-    """A strip over `workspaces` whose owner applies each change, and the changes it made."""
+    """Return a strip over `workspaces` whose owner applies each change, and the changes made."""
 
     made: list[WorkspaceSet] = []
 
@@ -72,7 +72,7 @@ def _strip(
 
 
 def _menu_entry(strip: WorkspaceTabs, label: str) -> tuple[bool, str]:
-    """Whether the Layout menu's entry `label` is enabled, and its tooltip."""
+    """Return whether the Layout menu's entry `label` is enabled, and its tooltip."""
 
     strip.layout_menu.fill()
     action = next(a for a in strip.layout_menu.actions() if a.text() == label)
@@ -178,7 +178,7 @@ def test_save_writes_the_whole_set_and_the_next_launch_opens_on_it(
 def test_save_is_unavailable_with_the_stores_reason_in_a_read_only_session(
     application: QApplication, tmp_path: Path
 ) -> None:
-    """A file a newer build wrote turns saving off, and the file is left as it was."""
+    """A file written by a newer build turns saving off, and the file is left as it was."""
 
     document = json.loads(workspace_set_to_json(shipped_workspaces()))
     document["schema_version"] = 999
@@ -205,7 +205,7 @@ def test_save_is_unavailable_with_the_stores_reason_in_a_read_only_session(
 def test_a_save_the_operating_system_refuses_is_reported_under_the_tabs(
     application: QApplication, tmp_path: Path
 ) -> None:
-    """The directory cannot be made, so the save names the path and the session goes on."""
+    """The directory cannot be created, so the save reports the path and the session goes on."""
 
     (tmp_path / "blocker").write_text("not a directory", encoding="utf-8")
     store = WorkspaceStore(tmp_path / "blocker" / "data")
@@ -229,7 +229,10 @@ def test_a_save_the_operating_system_refuses_is_reported_under_the_tabs(
 
 
 def test_restore_puts_back_each_deleted_shipped_workspace_in_the_shipped_order() -> None:
-    """Default and Maintenance deleted around Induction, and the reader's own tab kept current."""
+    """Default and Maintenance, deleted on either side of Induction, return in shipped order.
+
+    The reader's own tab stays the current one.
+    """
 
     shipped = shipped_workspaces()
     mine = shipped.duplicate(1).rename(2, WorkspaceName("Mine"))
@@ -334,7 +337,7 @@ def test_a_shipped_set_that_does_not_read_shows_both_entries_unavailable() -> No
 
 
 def test_the_dashboard_saves_what_the_areas_draw(application: QApplication, tmp_path: Path) -> None:
-    """A dragged layout reaches the file, since the strip saves the dashboard's live set."""
+    """A dragged layout is saved to the file, because the strip saves the dashboard's live set."""
 
     store = WorkspaceStore(tmp_path)
     loaded = store.load(shipped_workspaces())

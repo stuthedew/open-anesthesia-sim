@@ -25,12 +25,12 @@ def test_import() -> None:
 def test_package_ships_a_py_typed_marker() -> None:
     """PEP 561: without this file nothing outside the package sees its types.
 
-    The annotations in `src/` are only visible to a type checker running over
-    other code - `tools/`, a test, an installed consumer - if the package
+    A type checker running over other code, such as `tools/`, a test or an
+    installed consumer, sees the annotations in `src/` only if the package
     declares itself typed. The marker is an empty file, so nothing else in the
-    suite would notice its removal; this asserts it through the package's own
-    resource loader, which reads it where an importer would rather than where
-    the repository happens to keep it.
+    suite would notice if it were removed. This test checks for it through the
+    package's own resource loader. The loader finds the file where an importer
+    would, rather than where the repository happens to keep it.
     """
     assert files("anesthesia_sim").joinpath("py.typed").is_file()
 
@@ -54,33 +54,33 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
 
     The real widgets are built under the offscreen platform, so the window,
     its title, its central view and the first drawn frame are read back
-    rather than mocked; only the application object is wrapped, so that the
-    event loop `main()` ends in is recorded instead of run (`PL-005`,
+    rather than mocked. Only the application object is wrapped, so that the
+    event loop that `main()` ends in is recorded instead of run (`PL-005`,
     `PL-25KS`). The window is closed and its timers stopped afterwards, so a
     later test's event processing never meets a tick from this one.
 
     **What it opens is a case** (`PL-VKJW`). `BranchedCase` and everything
-    under it had shipped while nothing in `src/` constructed one, so the
-    branching v0.5.0 is named for was unreachable from the entry point the
-    console script runs. This is the assertion that the shipped path builds
-    one, rather than a dashboard that can only be handed a second run by a
-    test.
+    under it had shipped while nothing in `src/` constructed one. So the
+    branching that v0.5.0 is named for could not be reached from the entry
+    point that the console script runs. This test asserts that the shipped
+    path builds a case, rather than a dashboard that only a test can hand a
+    second run.
 
     **And it declares this interface's colours before it builds anything**
     (`PL-KRZW`). Qt's application palette follows the host appearance, so a
-    widget constructed before the declaration is laid out in a dark host's
-    surfaces; `tests/integration/test_dark_appearance.py` holds what the
-    declaration *contains*, and the ordering is the half that belongs to
-    `main()`. It is recorded as a timeline rather than as two separate
-    assertions, because either one alone passes with the call in the wrong
-    place.
+    widget constructed before the declaration is laid out with a dark host's
+    surface colours. `tests/integration/test_dark_appearance.py` checks what
+    the declaration *contains*. The ordering is the half that belongs to
+    `main()`. The order is recorded as a timeline rather than as two separate
+    assertions, because either assertion alone passes with the call in the
+    wrong place.
 
     **And it opens maximized over a sized normal geometry** (`PL-Z4K6`,
-    `PL-005`). The offscreen platform records the state Qt was asked for at
-    once and applies the maximized size only once events are processed, so
-    what is asserted is the flag Qt records and the normal geometry a reader
-    gets back on un-maximizing, never the geometry the platform happens to
-    have produced by the time the assertion runs.
+    `PL-005`). The offscreen platform records the requested state at once, but
+    applies the maximized size only when events are processed. So the test
+    asserts the flag that Qt records and the normal geometry that a reader gets
+    back on un-maximizing. It never asserts the geometry that the platform
+    happens to have produced by the time the assertion runs.
 
     **And it names the application before it asks where the reader's data
     lives, then loads the saved Workspaces from there** (`PL-DWHG`). Qt files

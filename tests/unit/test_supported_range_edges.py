@@ -1,69 +1,79 @@
-"""Each supported-range guard admits only what the functions behind it compute.
+"""Each supported-range guard accepts only values that the functions behind it can compute with.
 
-A guard in `core/supported_ranges.py` or `core/simulation_step.py` stands in
-front of the model's arithmetic, and the defect it exists to stop was found one
-function at a time (`PL-YZ17`, `PL-5F76`, `PL-BPRK`): a guard admitted a value
-the function behind it could not compute with, or refused one by raising a
-Python error rather than the simulator's own. Each was found by somebody trying
-the value after the function had shipped, because each guard's tests reached
-for the edges its author thought of (`PL-V10T`).
+A guard in `core/supported_ranges.py` or `core/simulation_step.py` sits in
+front of the model's arithmetic. The defect that a guard exists to stop was
+found one function at a time (`PL-YZ17`, `PL-5F76`, `PL-BPRK`). A guard
+accepted a value that the function behind it could not compute with, or
+refused a value by raising a Python error rather than the simulator's own
+error. Each defect was found by somebody trying the value after the function
+had shipped, because each guard's tests covered only the edges that its
+author thought of (`PL-V10T`).
 
-So this draws the values instead, for every guard, and checks one property:
-every value a guard refuses, it refuses with the simulator's own error, and
-every value it admits, each function behind it computes with - a finite result,
-or the simulator's own error. An `OverflowError`, a `ValueError`, a
-`ZeroDivisionError` or a non-finite number escaping is what fails it.
+So this module draws the values instead, for every guard, and checks one
+property. Every value that a guard refuses, it refuses with the simulator's
+own error. Every function behind a guard can compute with every value that
+the guard accepts, giving either a finite result or the simulator's own
+error. The test
+fails if an `OverflowError`, a `ValueError`, a `ZeroDivisionError` or a
+non-finite number escapes.
 
-**Found by type rather than listed.** The guards are every `require_supported_*`
-function the two modules define, so a guard added to either is drawn without
-editing this file. Each guard's quantity has one type once it is checked: the
-run's step and its step count, which the guards take as `SimulationStep` and
-`StepCount` (`PL-0GJC`, `PL-CN5S`), and for a quantity a guard takes as a bare
-`float`, the `float` subclass built only through that guard - the three flows
+**Found by type rather than listed.** The guards are every
+`require_supported_*` function that the two modules define, so a guard added
+to either module is drawn without editing this file. Each guard's quantity
+has one type once it is checked. The run's step and its step count have the
+types that the guards take, `SimulationStep` and `StepCount` (`PL-0GJC`,
+`PL-CN5S`). A quantity that a guard takes as a bare `float` has the `float`
+subclass that is built only through that guard. Those are the three flows
 since `PL-0YYV`, and the case instant since `PL-CN5S`. A function is behind a
-guard wherever it takes that type, under any name and on any class, so
-`RunDefinition`'s `opened_at_s` is drawn although its guard names the quantity
-`instant_s`, and a record is drawn through its constructor:
-`UptakeEquationSettings`'s three flows are drawn at their edges, in the record
-a run is built from and the way in `PL-HSFV` went through (`PL-51B7`). A
-constructor counts where it checks or computes - written by hand, or a
-dataclass's with a `__post_init__` or with a `__setattr__` of its own, which
-checks each field as the constructor writes it (`PL-19Y0`) - and not where it
-only stores, as `app/controller.py`'s `ResumePoint` does. An instant a run is only *read* at -
-`state_at` and `segment_at`, which the run's own opening and reach bound - is a
-plain `float` and behind no guard here; and a collection of instants, which a
-function is handed whole, is handed the one in `TYPICAL`.
+guard wherever it takes that type, under any name and on any class. So
+`RunDefinition`'s `opened_at_s` is drawn, although its guard names the
+quantity `instant_s`. A record is drawn through its constructor. So
+`UptakeEquationSettings`'s three flows are drawn at their edges, in the
+record that a run is built from. That record is how flows outside the
+supported ranges reached a run in `PL-HSFV` (`PL-51B7`). A constructor
+counts where it checks or computes. That includes a constructor written by
+hand, and a dataclass's constructor when the dataclass has a `__post_init__`
+or a `__setattr__` of its own, which checks each field as the constructor
+writes it (`PL-19Y0`). A constructor does not count where it only stores,
+as `app/controller.py`'s `ResumePoint` does. An instant at which a run is
+only *read*, as in `state_at` and `segment_at`, is a plain `float` and is
+behind no guard here. The run's own opening and reach bound those instants.
+A function that is handed a collection of instants whole is handed the one
+in `TYPICAL`.
 
 **Every place, every edge.** A function is handed the drawn value where it
-first takes the quantity's type, and where it takes the type again, each edge
-the type admits in turn: a step's span is two instants, and a crossing inside
-it is computed only where they differ.
+first takes the quantity's type. Where it takes the type again, it is handed
+each edge that the type accepts, in turn. For example, a step's span is two
+instants, and a crossing inside the span is computed only where the two
+differ.
 
 **What is kept by hand is how to build what is found, and each part fails by
-name rather than going untested.** `RECEIVERS` builds each class a method is
-found on, and the record a constructor is built from with only its drawn fields
-replaced; `TYPICAL` holds a value for a parameter no guard draws, where a
-function takes one without a default; and `TIED` builds a record whose own
-check ties a drawn field to others, as `UptakeEquationSettings` ties cardiac
-output to the tissue flows that sum to it. A constructor is held to more than
-the rest: nothing else it is handed has moved off a value it accepts, so it
-builds at every value its guard admits, and a record refusing one is named.
-That is what stops a tie nothing here keeps from drawing nothing at all.
+name rather than going untested.** `RECEIVERS` builds each class that a
+method is found on. It also builds the record that a constructor is built
+from, with only its drawn fields replaced. `TYPICAL` holds a value for a
+parameter that no guard draws, where a function takes one without a default.
+`TIED` builds a record whose own check ties a drawn field to other fields, as
+`UptakeEquationSettings` ties cardiac output to the tissue flows that sum to
+it. A constructor is held to a stricter rule than the rest. Nothing else that
+it is handed has moved off a value it accepts, so it must build at every
+value its guard accepts, and a record that refuses one is named. That rule
+stops a tie that `TIED` does not list from silently drawing nothing at all.
 
-**One infinity is the domain's own.** A time constant is infinite where nothing
-flows, which `core/__init__.py` has each compartment return rather than divide
-by zero, and where so little flows that the quotient overflows, `inf` is the
-same answer over any span a run can reach. `INFINITE_WHERE_NOTHING_FLOWS` names
-the properties it may come from; nothing else may compute `inf`, and nothing at
-all `-inf` or `nan`.
+**One infinity is the domain's own.** A time constant is infinite where
+nothing flows. `core/__init__.py` has each compartment return infinity there
+rather than divide by zero. Where so little flows that the quotient
+overflows, `inf` is the same answer over any span that a run can reach.
+`INFINITE_WHERE_NOTHING_FLOWS` names the properties that may compute this infinity.
+Nothing else may compute `inf`, and nothing at all may compute `-inf` or
+`nan`.
 
 **Drawn, and the edges every time.** Hypothesis draws each value across and
-beyond every bound the two modules declare, derandomized, so a red run
-reproduces exactly and the suite stays deterministic. The IEEE 754 edges - the
-infinities, NaN, signed zero, the subnormals, the largest float - each bound and
-its two neighbours, and an integer one digit past what CPython will print
-(`sys.get_int_max_str_digits`), are checked on every run, whatever Hypothesis
-draws.
+beyond every bound that the two modules declare. The draw is derandomized, so
+a failing run reproduces exactly and the suite stays deterministic. Some
+edges are checked on every run, whatever Hypothesis draws. They are the IEEE
+754 edges (the infinities, NaN, signed zero, the subnormals and the largest
+float), each bound and its two neighbours, and an integer one digit longer
+than CPython will print (`sys.get_int_max_str_digits`).
 """
 
 from __future__ import annotations
@@ -132,8 +142,11 @@ def _run_definition() -> RunDefinition:
 
 
 def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquationSettings:
-    """The settings a run is built from at this cardiac output, each tissue's
-    flow its share of it, as the patient's own are (`PatientCompartments`)."""
+    """Return the settings that a run is built from at this cardiac output.
+
+    Each tissue's flow is its share of the output, as the patient's own flows
+    are (`PatientCompartments`).
+    """
 
     system = AgentUptakeSystem.default()
     system.set_cardiac_output(cardiac_output_l_min)
@@ -141,15 +154,17 @@ def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquation
     return system.equation_settings()
 
 
-# A time bookmark has no default, so the one the bookmark classes are built
-# with marks the middle of the span, where a step can reach it from either side.
+# A time bookmark has no default. So the bookmark that the bookmark classes are
+# built with marks the middle of the span, where a step can reach it from
+# either side.
 MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S / 2))
 
-# How to build each class a guard's quantity is found on, and the record a
-# constructor is built from with only its drawn fields replaced: at its
-# defaults where it has them, and a bookmark set holding the one mark, and a
-# crossing naming it, since a crossing names at least one. Kept by hand, and
-# checked: a method found on a class missing here fails the test by name.
+# How to build each class that a guard's quantity is found on, and the record
+# that a constructor is built from, with only its drawn fields replaced. Each
+# is built at its defaults where it has them. The bookmark set holds the one
+# mark, and the crossing names it, because a crossing names at least one mark.
+# This map is kept by hand, and checked: a method found on a class missing
+# here fails the test by name.
 RECEIVERS: Mapping[type, Callable[[], object]] = {
     AgentUptakeSystem: AgentUptakeSystem.default,
     AlveolarCompartment: lambda: AgentUptakeSystem.default().alveoli,
@@ -174,19 +189,20 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     UptakeEquationSettings: lambda: AgentUptakeSystem.default().equation_settings(),
 }
 
-# How to build a record at a drawn value where its own check ties that field to
-# others, so that the field replaced alone would be refused at every value but
-# the one it holds: the tissue flows sum to cardiac output.
+# How to build a record at a drawn value where the record's own check ties
+# that field to other fields. Replacing that field alone would be refused at
+# every value except the one it already holds. Here, the tissue flows must sum
+# to cardiac output.
 TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
     (UptakeEquationSettings, CardiacOutput): _equation_settings_at
 }
 
-# A value for a parameter the guard being drawn does not bound, where a
-# function behind it takes one without a default: the shipped tick, the count
-# of a run that has not stepped and the state it opens at, and a bookmark
-# set's view of a run that has reached no mark, has crossed no height and is
-# neither at its cap nor failed, and the narrowest width the chart's selector
-# offers.
+# A value for each parameter that the guard being drawn does not bound, where
+# a function behind the guard takes one without a default. The values are the
+# shipped tick, the count of a run that has not stepped and the state it opens
+# at, and the narrowest width that the chart's selector offers. The other
+# values give a bookmark set's view of a run that has reached no mark, has
+# crossed no height and is neither at its cap nor failed.
 TYPICAL: Mapping[str, object] = {
     "after": {},
     "before": {},
@@ -201,13 +217,14 @@ TYPICAL: Mapping[str, object] = {
 }
 
 # The properties that may compute `inf`: a time constant where nothing flows,
-# or so little that the quotient overflows. The tissues' and the venous pool's
-# say the same, and are not here because nothing drawn builds one alone.
+# or where so little flows that the quotient overflows. The time constants of
+# the tissues and of the venous pool behave the same way. They are not listed
+# here because nothing drawn builds a tissue or the venous pool on its own.
 INFINITE_WHERE_NOTHING_FLOWS: frozenset[object] = frozenset({BreathingCircuit.time_constant_s})
 
 
 def _without_none(annotation: object) -> object:
-    """`X | None` read as `X`, the optional step a run has before it steps."""
+    """Return `X` for `X | None`, such as the optional step that a run has before it steps."""
 
     members = [member for member in typing.get_args(annotation) if member is not type(None)]
     is_union = (
@@ -219,7 +236,7 @@ def _without_none(annotation: object) -> object:
 
 @cache
 def _parameters(function: Function) -> dict[str, object]:
-    """Each annotated parameter's type, in signature order, `self` excluded.
+    """Return each annotated parameter's type, in signature order, excluding `self`.
 
     A method of a generic class, such as `class _RunCopies[W: QWidget]`, names
     the class's type parameters in its annotations. Those parameters are not
@@ -260,15 +277,16 @@ def _checks_or_computes(owner: type, name: str) -> bool:
 
 
 def _checks_every_write(owner: type) -> bool:
-    """Whether a dataclass's constructor checks through a `__setattr__` of its own.
+    """Return whether a dataclass's constructor checks through a `__setattr__` of its own.
 
     `PL-19Y0` moved five records' checks out of `__post_init__` and into the
-    write, which the constructor makes like any other, and read for a
-    `__post_init__` alone their constructors left the draw with nothing
-    failing: `BreathingCircuit`'s fresh gas flow and `AlveolarCompartment`'s
-    ventilation among them. The `__setattr__` a frozen dataclass is given
-    refuses every write after construction and checks nothing, so it does not
-    count, and a frozen dataclass cannot define its own.
+    write, which the constructor makes like any other write. While this test
+    looked only for a `__post_init__`, those constructors dropped out of the
+    draw and nothing failed. Among the checks lost were `BreathingCircuit`'s
+    fresh gas flow and `AlveolarCompartment`'s ventilation. The `__setattr__`
+    that a frozen dataclass is given refuses every write after construction
+    and checks nothing, so it does not count. A frozen dataclass cannot define
+    its own.
     """
 
     return (
@@ -278,8 +296,11 @@ def _checks_every_write(owner: type) -> bool:
 
 
 def _callables() -> Iterator[tuple[type | None, Function]]:
-    """Every public function in the package, and every public method and
-    every constructor that checks or computes, with the class it is on."""
+    """Yield the public callables in the package, each with the class it is on.
+
+    They are every public function, every public method, and every
+    constructor that checks or computes.
+    """
 
     for module in _modules():
         for name, value in vars(module).items():
@@ -307,9 +328,12 @@ CALLABLES = tuple(_callables())
 
 
 def _built_types() -> dict[str, type]:
-    """The `float` subclass each guarded quantity is built as, by the name its
-    constructor gives it: `FreshGasFlow(fresh_gas_flow_l_min)` names the
-    quantity `require_supported_fresh_gas_flow` bounds (`PL-0YYV`)."""
+    """Return the `float` subclass that each guarded quantity is built as.
+
+    Each subclass is keyed by the name that its constructor gives the
+    quantity. For example, `FreshGasFlow(fresh_gas_flow_l_min)` names the
+    quantity that `require_supported_fresh_gas_flow` bounds (`PL-0YYV`).
+    """
 
     return {
         name: value
@@ -324,11 +348,14 @@ def _built_types() -> dict[str, type]:
 
 
 def _checked_types() -> dict[str, type]:
-    """The type each guarded quantity has once checked: the narrowest any
-    guard gives its name, so the run's step is `SimulationStep` although its
-    own guard, which builds that type, takes a `float`; and for a quantity
-    no guard takes as more than a `float`, the type built through its guard,
-    which is how the three flows and the case instant are found."""
+    """Return the type that each guarded quantity has once it is checked.
+
+    That type is the narrowest type that any guard gives the quantity's name.
+    So the run's step is `SimulationStep`, although its own guard, which
+    builds that type, takes a `float`. A quantity that no guard takes as more
+    than a `float` gets the type that is built through its guard. That is how
+    the three flows and the case instant are found.
+    """
 
     checked: dict[str, type] = {}
     built = _built_types()
@@ -350,8 +377,10 @@ CHECKED = _checked_types()
 
 
 def _behind(guard: Function) -> tuple[tuple[type | None, Function], ...]:
-    """Every function taking a type the guard's quantities are checked as,
-    whatever it names the parameter and whatever class it is on."""
+    """Return every function that takes a type the guard's quantities are checked as.
+
+    The function may give the parameter any name, and may be on any class.
+    """
 
     checked = {CHECKED[name] for name in _parameters(guard)}
 
@@ -409,9 +438,9 @@ def _admitted_step(seconds: float) -> SimulationStep | None:
 
 STEP_EDGES = tuple(step for step in map(_admitted_step, FLOAT_EDGES) if step is not None)
 
-# The finest and the coarsest step, which every edge is stepped at. The step's
-# own neighbours are its guard's edges, and reach every function behind it
-# from there.
+# The finest and the coarsest step, at which every edge is stepped. The step's
+# own neighbours are its guard's edges, and from there they are handed to every
+# function behind the guard.
 EDGE_STEPS = (min(STEP_EDGES), max(STEP_EDGES))
 
 STEPS = st.floats(min_value=MINIMUM_SIMULATION_STEP_S, max_value=MAXIMUM_SIMULATION_STEP_S).map(
@@ -428,8 +457,11 @@ FLOATS = st.one_of(
 
 
 def _spans(step: SimulationStep) -> list[int]:
-    """How many steps reach each bound, which is where a count guard's own
-    bound falls: every count here is a span of steps."""
+    """Return how many steps reach each bound.
+
+    That is where a count guard's own bound falls, because every count here
+    is a span of steps.
+    """
 
     return [math.floor(bound / step) for bound in BOUNDS if bound > 0]
 
@@ -442,11 +474,12 @@ def _admitted_count(count: int) -> StepCount | None:
 
 
 def _count_edges(step: SimulationStep) -> tuple[StepCount, ...]:
-    """The counts a count guard's edges fall on, as `StepCount` admits them.
+    """Return the counts at a count guard's edges, as `StepCount` accepts them.
 
-    The negative edges are offered to the type, which refuses them with the
-    simulator's own error or fails this test, and reach no guard: a count is
-    checked whole and nonnegative once, where it is built (`PL-CN5S`).
+    The negative edges are offered to the type, which must refuse them with
+    the simulator's own error or this test fails. They are never passed to a
+    guard, because a count is checked for being whole and nonnegative once,
+    where it is built (`PL-CN5S`).
     """
 
     edges = {
@@ -500,8 +533,11 @@ def _drawn(annotation: object, step: SimulationStep) -> st.SearchStrategy[object
 
 @cache
 def _pools(guard: Function, step: SimulationStep) -> dict[type, tuple[object, ...]]:
-    """Each of the guard's quantities, every edge its type admits at this step,
-    built as that type: what a place that takes the type again is handed."""
+    """Return, for each of the guard's quantities, every edge its type accepts at this step.
+
+    Each edge is built as the quantity's type. A place that takes the type
+    again is handed these values.
+    """
 
     pools: dict[type, tuple[object, ...]] = {}
 
@@ -536,9 +572,13 @@ def _drawings(
     pools: Mapping[type, tuple[object, ...]],
     step: SimulationStep,
 ) -> Iterator[dict[str, object]]:
-    """Each way to hand `function` what was drawn: the drawn value where it
-    first takes the value's type, every value of the type's pool in turn where
-    it takes the type again, and the run's step wherever it takes a step."""
+    """Yield each way to hand `function` what was drawn.
+
+    The drawn value goes where the function first takes the value's type.
+    Where the function takes the type again, it gets every value of the
+    type's pool in turn. The run's step goes wherever the function takes a
+    step.
+    """
 
     first: dict[str, object] = {}
     again: dict[str, tuple[object, ...]] = {}
@@ -559,9 +599,12 @@ def _drawings(
 
 
 def _arguments(function: Function, drawing: Mapping[str, object]) -> dict[str, object]:
-    """What to call `function` with: what was drawn for it, and otherwise a
-    default, the shipped value `TYPICAL` holds, or the class `RECEIVERS`
-    builds."""
+    """Return the arguments to call `function` with.
+
+    Each argument is what was drawn for it. Otherwise it is the parameter's
+    default, the shipped value that `TYPICAL` holds, or the class that
+    `RECEIVERS` builds.
+    """
 
     annotations = _parameters(function)
     arguments: dict[str, object] = {}
@@ -590,9 +633,13 @@ def _arguments(function: Function, drawing: Mapping[str, object]) -> dict[str, o
 def _build(
     owner: type, function: Function, values: Mapping[type, object], drawing: Mapping[str, object]
 ) -> object:
-    """`owner` built with what was drawn for its constructor: through `TIED`
-    where it ties the drawn field to others, from the record `RECEIVERS` holds
-    with only the drawn fields replaced, or from the constructor's defaults."""
+    """Build `owner` with what was drawn for its constructor.
+
+    The record is built through `TIED` where its check ties the drawn field
+    to other fields. Otherwise it is built from the record that `RECEIVERS`
+    holds, with only the drawn fields replaced, or from the constructor's
+    defaults.
+    """
 
     for drawn, value in values.items():
         if (owner, drawn) in TIED:
@@ -607,8 +654,11 @@ def _build(
 
 
 def _step(built: object, step: SimulationStep) -> None:
-    """Take a step on whatever was just built or set, and read what it reports,
-    which is where a value set rather than computed is computed with."""
+    """Take a step on whatever was just built or set, and read what it reports.
+
+    Stepping and reading the reports is where a value that was set, rather
+    than computed, is used in a computation.
+    """
 
     for owner, function in CALLABLES:
         if owner is type(built) and function.__name__ != "__init__":
@@ -649,8 +699,11 @@ def _computes_with(
     pools: Mapping[type, tuple[object, ...]],
     step: SimulationStep,
 ) -> None:
-    """One function behind a guard, handed what the guard admitted: a finite
-    result or the simulator's own refusal - and a constructor builds."""
+    """Call one function behind a guard with what the guard accepted.
+
+    The function must return a finite result or raise the simulator's own
+    refusal, and a constructor must build.
+    """
 
     for drawing in _drawings(function, values, pools, step):
         with _naming(function.__qualname__, drawing, step):
@@ -684,8 +737,11 @@ def _computes_with(
 
 
 def _check(guard: Function, values: Mapping[str, object], step: SimulationStep) -> None:
-    """The property, for one draw: a refusal is the simulator's own error, and
-    an admitted value is one every function behind the guard computes with."""
+    """Check the property for one draw.
+
+    A refusal must be the simulator's own error, and every function behind
+    the guard must compute with an accepted value.
+    """
 
     with _naming(guard.__name__, values, step):
         try:
@@ -737,11 +793,11 @@ def test_each_guard_admits_only_what_its_functions_compute(guard: Function) -> N
 def test_the_records_that_check_every_write_are_drawn() -> None:
     """A constructor that checks through its record's `__setattr__` is drawn like a `__post_init__`.
 
-    Read for a `__post_init__` alone, the draw lost the five constructors
-    `PL-19Y0` moved into the write and every edge test still passed, so
-    nothing but this says `_checks_every_write` is doing its work (found by
-    `PL-19Y0`'s mutation review). `SimulationState` has checked in its
-    `__setattr__` since `PL-8W1W`.
+    While the draw looked only for a `__post_init__`, it lost the five
+    constructors whose checks `PL-19Y0` moved into the write, and every edge
+    test still passed. So only this test shows that `_checks_every_write` is
+    doing its work (found by `PL-19Y0`'s mutation review). `SimulationState`
+    has checked in its `__setattr__` since `PL-8W1W`.
     """
 
     drawn = {owner for owner, function in CALLABLES if function.__name__ == "__init__"}

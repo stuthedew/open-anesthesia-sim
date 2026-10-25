@@ -143,10 +143,10 @@ class _ThirdView(_TestView):
 # The tests draw a View kind of their own, so they register it themselves.
 _REGISTERED = registry(RegisteredView(_VIEW, "Test view", _TestView))
 
-# A container this size leaves 800 px for the children of a split of two, once
-# the 8 px handle is taken out, so a fraction reads straight off as pixels. A
-# quarter of it is wider than an Area's header, which an Area is never drawn
-# narrower than (`PL-K285`).
+# A container of this size leaves 800 px for the children of a split of two,
+# once the 8 px handle is taken out, so a fraction converts directly to pixels.
+# A quarter of 800 px is wider than an Area's header, and an Area is never
+# drawn narrower than its header (`PL-K285`).
 _SIDE_PX = 800 + AREA_HANDLE_WIDTH
 
 
@@ -184,7 +184,7 @@ def _forget_the_views() -> Iterator[None]:
 
 @pytest.fixture
 def shown(application: QApplication) -> Iterator[list[AreaLayout]]:
-    """Every container a test shows, closed after it."""
+    """Collect every container that a test shows, and close each one after the test."""
 
     containers: list[AreaLayout] = []
     yield containers
@@ -212,7 +212,7 @@ def _show(
 
 
 def _splitters(container: AreaLayout) -> dict[tuple[int, ...], QSplitter]:
-    """Each splitter the container holds, by the path of the split it draws."""
+    """Return each splitter in the container, keyed by the path of the split it draws."""
 
     return {splitter.path: splitter for splitter in container.findChildren(QSplitter)}  # type: ignore[attr-defined]
 
@@ -236,7 +236,7 @@ def _drag(application: QApplication, splitter: QSplitter, index: int, by_px: int
 
 
 def _content(widget: QWidget) -> QWidget:
-    """What the Area `widget` draws shows under its header: its View or its notice."""
+    """Return what the Area `widget` shows under its header: its View or its notice."""
 
     assert isinstance(widget, AreaFrame), f"{widget!r} is not an Area's frame"
 
@@ -282,7 +282,7 @@ def test_each_split_is_a_splitter_and_each_area_its_view(
 def test_every_handle_is_live_and_no_area_can_be_dragged_to_nothing(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """The handles v0.4.26 built inert are enabled, the width `PL-RQT1` set, with split cursors."""
+    """The handles v0.4.26 built inert are enabled, at `PL-RQT1`'s width, with split cursors."""
 
     model = _layout(_column((0.5, 0.5), _row((0.5, 0.5), _area(1), _area(2)), _area(3)), 4)
     splitters = _splitters(_show(application, shown, model))
@@ -373,8 +373,8 @@ def test_a_drag_moves_every_handle_on_the_dragged_line(
     """Two rows stacked, each split at the middle: dragging the top border moves the bottom one.
 
     The two borders are one line, as they are one edge in Blender, so the
-    model moves both (`PL-5HSG`) and the bottom splitter's widgets follow the
-    model though nobody dragged that splitter.
+    model moves both (`PL-5HSG`). The bottom splitter's widgets follow the
+    model, even though nobody dragged that splitter.
     """
 
     model = _layout(
@@ -458,8 +458,9 @@ def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turn
     with it. Area 4 lies between that border and the next one, at 0.8 of
     the window. A drag of 300 px to the right would carry the line to 0.875,
     past 0.8. So the line stops where Area 4 is as narrow as Qt would draw
-    it: the least size its frame is held at, plus the handle width the
-    adapter allows for, short of 0.8 of the container's width.
+    it. That point is short of 0.8 of the container's width by the minimum
+    size set on Area 4's frame plus the handle width that the adapter allows
+    for.
     """
 
     container = _show(application, shown, _PAST_A_NEIGHBOUR)
@@ -624,7 +625,7 @@ def test_a_swap_moves_each_view_to_the_other_area(
 def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Joining Area 2 into Area 1 leaves one View; the other is taken out and deleted."""
+    """Joining Area 2 into Area 1 leaves one View, and the other View is taken out and deleted."""
 
     container = _show(application, shown, _layout(_row((0.5, 0.5), _area(1), _area(2)), 3))
     kept, removed = _BUILT
@@ -656,7 +657,7 @@ _NOTICE_BODY = (
 
 
 def _texts(widget: QWidget) -> list[str]:
-    """Every string `widget` and its descendants show, in the order they were built."""
+    """Return every string that `widget` and its descendants show, in the order they were built."""
 
     return [label.text() for label in widget.findChildren(QLabel) if label.isVisible()]
 
@@ -784,8 +785,8 @@ def test_a_handle_draws_nothing_at_rest_and_lights_its_whole_line_under_the_poin
 _OTHER = ViewKind("other_view")
 _THIRD = ViewKind("third_view")
 
-# Three kinds, so the chooser's order and its one checked entry are told apart
-# from an order or a check that only happens to match.
+# Three kinds, so that a correct order in the chooser, and its one checked
+# entry, can be told apart from an order or a check that only happens to match.
 _THREE = registry(
     RegisteredView(_VIEW, "Test view", _TestView),
     RegisteredView(_OTHER, "Other view", _OtherView),
@@ -955,8 +956,9 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
     """A factory that raises, or builds no View, leaves its Area saying so and the rest drawn.
 
     A widget that cannot be refreshed would leave its Area showing a stale
-    picture. A raise from the chooser's menu would be lost, and it left the
-    layout half built: the Area's old View moved into a frame never shown.
+    picture. An exception raised from the chooser's menu would be lost, and
+    such an exception used to leave the layout half built: the Area's old View
+    had moved into a frame that was never shown.
     """
 
     cases = (
@@ -999,7 +1001,7 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
 def _frames(
     windows: tuple[ChartTimeBase | None, ...],
 ) -> tuple[dict[ChartTimeBase | None, ChartFrame], SimulationSnapshot, CompartmentSelection]:
-    """A frame for each of `windows`, from one unstarted run, as the dashboard assembles them."""
+    """Return a frame for each of `windows` from one unstarted run, as the dashboard does."""
 
     controller = SimulationController()
     snapshot = controller.snapshot()
@@ -1049,7 +1051,10 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 def test_a_view_asking_for_a_window_with_no_frame_is_refused(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A View and the frames disagreeing raises, which halts every run, rather than draw another."""
+    """A View asking for a window that has no frame raises, rather than drawing another frame.
+
+    The exception halts every run.
+    """
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
@@ -1232,7 +1237,7 @@ def test_the_choosers_arrow_sits_to_the_right_of_its_title(
 
 
 def _opened_by(application: QApplication, menu: QMenu, target: QWidget, send: QEvent) -> bool:
-    """Whether sending `send` to `target` opens `menu`, which is closed again after."""
+    """Return whether sending `send` to `target` opens `menu`, and close the menu afterwards."""
 
     assert not menu.isVisible()
     QApplication.sendEvent(target, send)
@@ -1353,7 +1358,7 @@ def test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand(
 
 
 def _settings(container: AreaLayout) -> dict[int, int]:
-    """Each Area's `_TestView` setting, by Area id, in reading order."""
+    """Return each Area's `_TestView` setting, keyed by Area id, in reading order."""
 
     shown: dict[int, int] = {}
 
@@ -1399,7 +1404,10 @@ def test_the_new_half_of_a_split_starts_from_a_copy_of_the_cut_views_state(
 def test_a_split_is_refused_where_a_half_could_not_hold_its_header(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-30L5` Q2: below the header row and one line of a notice, a half is refused."""
+    """`PL-30L5` Q2: a split is refused where a half could not hold its header.
+
+    A half is too small when it is less than the header row plus one line of a notice.
+    """
 
     container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 40))
     stacked = _operation(container, 1, SPLIT_STACKED_LABEL)
@@ -1436,7 +1444,7 @@ def test_the_drawn_menu_disables_each_unavailable_entry_and_says_why(
     menu = container.frame(AreaId(1)).menu
     assert menu is not None
     menu.fill()
-    # The Resize submenu, before Close Area, is `test_layout_keyboard.py`'s.
+    # The Resize submenu, which comes before Close Area, is tested in `test_layout_keyboard.py`.
     top = {action.text(): action for action in menu.actions() if action.text() != RESIZE_LABEL}
 
     assert list(top) == [
@@ -1546,7 +1554,7 @@ def test_a_header_control_starts_after_the_corner_zone(
 def test_a_corner_drag_inside_its_area_previews_the_split_and_makes_it_on_release(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A sideways drag cuts left and right through the pointer; nothing changes until release."""
+    """A sideways drag cuts left and right at the pointer, and nothing changes until release."""
 
     container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
     before = container.model
@@ -1583,7 +1591,10 @@ def test_a_downward_corner_drag_previews_a_cut_into_top_and_bottom(
 def test_a_split_too_close_to_an_edge_is_previewed_refused_and_release_does_nothing(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-30L5` Q2: below the header and a line of text, the line turns WARNING."""
+    """`PL-30L5` Q2: a split too close to an edge turns the preview line WARNING.
+
+    A split is too close when a half would be smaller than the header and a line of text.
+    """
 
     container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
     before = container.model
@@ -1646,7 +1657,7 @@ def test_a_join_the_layout_cannot_make_is_previewed_refused_and_release_does_not
 def test_escape_cancels_a_corner_drag_and_changes_nothing(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Driven through the zone itself, with the mouse and the keyboard."""
+    """The test drives the drag through the zone itself, with the mouse and the keyboard."""
 
     container = _show(application, shown, LayoutModel.single_area(_VIEW), size=(800, 600))
     before = container.model
@@ -1792,14 +1803,15 @@ class _BigView(_TestView):
     """The View of `_BIG`, whose registry entry declares a minimum of 300 by 200 px."""
 
 
-# The test View and one that declares a minimum, so a test can tell an Area
-# held at its View's need from one held only at its header.
+# The test View and one that declares a minimum size, so that a test can tell
+# an Area kept at the size its View needs from one kept only at the size of
+# its header.
 _SIZED = registry(
     RegisteredView(_VIEW, "Test view", _TestView),
     RegisteredView(_BIG, "Big view", _BigView, minimum=PixelSize(300, 200)),
 )
 
-# Under its header, a View is drawn below the header row and the 1 px rule.
+# A View is drawn below its header row and the 1 px rule beneath that row.
 _CHROME_PX = 27
 
 
@@ -1817,7 +1829,7 @@ def _show_sized(
 
 @pytest.fixture
 def hosts(application: QApplication) -> Iterator[list[QWidget]]:
-    """Every host a test shows a container in, closed after it."""
+    """Collect every host that a test shows a container in, and close each one after the test."""
 
     shown_hosts: list[QWidget] = []
     yield shown_hosts
@@ -1832,9 +1844,9 @@ def hosts(application: QApplication) -> Iterator[list[QWidget]]:
 def _host_sized(
     application: QApplication, hosts: list[QWidget], model: LayoutModel, size: tuple[int, int]
 ) -> tuple[QWidget, AreaLayout]:
-    """Show `model` filling a window held at `size`, as a screen too small for it holds one.
+    """Show `model` filling a window fixed at `size`, as on a screen too small for the layout.
 
-    The window cannot grow to the layout's least size, so the layout is
+    The window cannot grow to the layout's minimum size, so the layout is
     given less than its Areas need.
     """
 
@@ -1905,7 +1917,11 @@ def test_a_split_into_halves_too_small_shows_the_size_the_view_needs_and_nothing
 def test_the_notice_restates_the_size_as_the_area_grows_and_clears_once_it_is_enough(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
-    """At 560 px each half is 276; at 608 px each is the 300 the View needs, and draws it."""
+    """The notice restates each half's width as it grows, and clears at the 300 px the View needs.
+
+    With the window 560 px wide, each half is 276 px. At 608 px, each half is
+    300 px and draws the View.
+    """
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
     host, container = _host_sized(application, hosts, model, (500, 600))
@@ -1976,7 +1992,7 @@ def test_a_view_chosen_for_an_area_too_small_for_it_is_shown_as_too_small(
 def test_a_neighbour_gives_way_to_hold_a_chosen_view_at_its_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Where the neighbour can give the room and keep its header, it does, and the model stays."""
+    """A neighbour that can give the room and keep its header does so, and the model stays."""
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_sized(application, shown, model, (_SIDE_PX, 600))
@@ -2056,7 +2072,7 @@ def test_a_layout_in_a_scrolling_page_makes_the_page_the_size_its_areas_need(
 def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-K285` Q4: Qt's minimum is the model's, so the window cannot be made smaller.
+    """`PL-K285` Q4: Qt's minimum size is the model's, so the window cannot be made smaller.
 
     Two Big views side by side need 300 + 8 + 300 px across. Each Big view
     needs 200 px and the 27 px header and rule, so the column needs two of
@@ -2082,7 +2098,7 @@ def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
 def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_small(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
-    """A host that cannot give the room is still told how much would draw every View."""
+    """A host that cannot give the room is still told how much room would draw every View."""
 
     model = _layout(_row((0.5, 0.5), Area(AreaId(1), _BIG), Area(AreaId(2), _BIG)), 3)
     _, container = _host_sized(application, hosts, model, (500, 600))

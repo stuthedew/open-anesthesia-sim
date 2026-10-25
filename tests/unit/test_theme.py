@@ -23,11 +23,11 @@ def _contrast_ratio(first: str, second: str) -> float:
 
 
 def test_agent_colors_match_iso_5360_2016_table_2() -> None:
-    """Lock the reviewed mapping; a wrong agent color is worse than no color.
+    """Pin the reviewed agent colors, because a wrong agent color is worse than no color.
 
-    Verified against ISO 5360:2016 Table 2 directly. The Munsell notation is
-    the standard's original value (Table 2 footnote c); the Pantone reference
-    is ISO's own nearest sample of it.
+    The values were checked directly against ISO 5360:2016 Table 2. The Munsell
+    notation is the standard's original value (Table 2 footnote c). The Pantone
+    reference is the nearest sample of that color that ISO itself gives.
     """
 
     assert AGENT_COLOR_SCHEMES == {
@@ -57,7 +57,7 @@ def test_agent_colors_match_iso_5360_2016_table_2() -> None:
 
 @pytest.mark.parametrize("scheme", AGENT_COLOR_SCHEMES.values())
 def test_every_agent_color_records_both_standard_references(scheme: AgentColorScheme) -> None:
-    """Provenance must survive; an uncited fill cannot be re-verified later."""
+    """Each agent color keeps its source, because a fill with no source cannot be checked later."""
 
     assert scheme.standard_color_name
     assert scheme.standard_color_munsell

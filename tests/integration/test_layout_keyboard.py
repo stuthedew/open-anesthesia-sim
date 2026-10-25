@@ -78,8 +78,8 @@ from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, W
 _VIEW = ViewKind("test_view")
 _REQUESTS = ViewRequests(lambda _time_base: None, lambda _quantity, _shown: None)
 
-# A container this size leaves 800 px for the children of a split of two once
-# the handle is taken out, so a step reads straight off as pixels.
+# A container of this size leaves 800 px for the two children of a split, once
+# the handle's width is taken out. So a step can be read directly as pixels.
 _SIDE_PX = 800 + AREA_HANDLE_WIDTH
 
 
@@ -135,7 +135,7 @@ def application() -> Iterator[QApplication]:
 
 @pytest.fixture
 def shown(application: QApplication) -> Iterator[list[QWidget]]:
-    """Every window a test shows, closed after it."""
+    """Collect every window that a test shows, and close each one after the test."""
 
     windows: list[QWidget] = []
     yield windows
@@ -183,7 +183,7 @@ def _dashboard(
 
 
 def _handle(container: AreaLayout, handle: Handle) -> _AreaHandle:
-    """The widget drawing `handle`, found through the splitters rather than the adapter."""
+    """Return the widget that draws `handle`, found through the splitters, not the adapter."""
 
     splitters = [
         splitter
@@ -314,7 +314,7 @@ def _choose_in_tab_menu(
 
 
 def _entry(view: SimulationView, area_id: AreaId, group: str) -> str:
-    """The label of the first available entry of `group` in the Area's menu."""
+    """Return the label of the first available entry of `group` in the Area's menu."""
 
     return next(
         operation.label
@@ -375,7 +375,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     QTest.keyClick(strip.add_button, Qt.Key.Key_PageUp, Qt.KeyboardModifier.ControlModifier)
     assert view.workspaces.active == order[0]
     # A shortcut consumes its key press, and QTest then leaves Ctrl held in
-    # the application's modifier state, so Ctrl is let go here by hand.
+    # the application's modifier state. So the test releases Ctrl here by hand.
     QTest.keyClick(strip.add_button, Qt.Key.Key_Control)
     _choose_in_tab_menu(application, view, (NEXT_WORKSPACE_LABEL,))
     _choose_in_tab_menu(application, view, (NEXT_WORKSPACE_LABEL,))
@@ -536,7 +536,10 @@ def test_the_layout_menu_lists_every_workspace_in_tab_order_with_the_current_che
 def test_next_and_previous_workspace_follow_the_tabs_and_wrap_round(
     application: QApplication,
 ) -> None:
-    """Shipped tabs first, then the reader's own; past either end comes the other, as in Blender."""
+    """Shipped tabs come first, then the reader's own, and each end wraps to the other.
+
+    Blender's workspace tabs wrap the same way.
+    """
 
     workspaces = shipped_workspaces().duplicate(0).activate(0)
     order = display_order(workspaces)
@@ -559,7 +562,7 @@ def test_next_and_previous_workspace_follow_the_tabs_and_wrap_round(
 def test_next_workspace_during_a_rename_takes_the_typed_name_before_it_switches(
     application: QApplication,
 ) -> None:
-    """Ctrl+PgDown reaches the window while a name is being typed, and kept the name from it."""
+    """Ctrl+PgDown reaches the window while a name is being typed, and the typed name is kept."""
 
     workspaces = shipped_workspaces().duplicate(0).activate(0)
     order = display_order(workspaces)
@@ -583,7 +586,7 @@ def test_next_workspace_during_a_rename_takes_the_typed_name_before_it_switches(
 def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """Three openings leave the submenus of one, not three, in each menu written on opening."""
+    """After three openings, a menu rebuilt on opening holds one opening's submenus, not three."""
 
     strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
     container = _container(
@@ -651,7 +654,7 @@ def test_the_strip_holds_no_layout_button_and_a_right_click_beside_the_tabs_open
 def test_an_arrow_key_moves_a_focused_border_one_step_and_escape_puts_it_back(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """In a row of two at 400 px each, Right makes it 420 and 380, and Left goes back."""
+    """In a row of two Areas at 400 px each, Right makes them 420 and 380, and Left goes back."""
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _container(application, shown, model)
@@ -670,7 +673,7 @@ def test_an_arrow_key_moves_a_focused_border_one_step_and_escape_puts_it_back(
     QTest.keyClick(border, Qt.Key.Key_Left)
     assert border.owner.sizes() == [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
 
-    # Up and Down move a border between Areas stacked, not this one.
+    # Up and Down move a border between stacked Areas, not this one.
     QTest.keyClick(border, Qt.Key.Key_Down)
     assert border.owner.sizes() == [400 + AREA_KEYBOARD_STEP, 400 - AREA_KEYBOARD_STEP]
 
@@ -683,7 +686,7 @@ def test_an_arrow_key_moves_a_focused_border_one_step_and_escape_puts_it_back(
 def test_shift_moves_a_focused_border_alone_and_without_it_its_whole_line_moves(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """Two columns side by side, each cut at half its height, have one horizontal line."""
+    """Two columns side by side, each split at half its height, share one horizontal line."""
 
     model = _layout(
         _row(
@@ -801,7 +804,7 @@ def test_the_controls_area_has_its_least_width_from_the_first_frame(
 def test_a_focused_border_keeps_its_starting_layout_while_another_window_is_active(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """The window losing and regaining the focus does not move where Escape returns to."""
+    """Losing and regaining the window focus does not change the layout that Escape restores."""
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _container(application, shown, model)

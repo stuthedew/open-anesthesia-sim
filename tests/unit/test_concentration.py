@@ -1,20 +1,20 @@
-"""The two checked forms a concentration is written in, and the one crossing
-between them.
+"""Tests of the two checked forms of a concentration, and of the conversion between them.
 
-`core/concentration.py` states the rule; this is what holds it. `Fraction` and
-`Percent` are checked against their ranges when they are built, so the edges
-of each range are pinned here once, on the constructor, rather than at each
-place a value is held (`PL-4R3W`).
+`core/concentration.py` states the rule, and these tests enforce it. A
+"crossing" below is one of the two functions that convert between the forms.
+`Fraction` and `Percent` are checked against their ranges when they are
+built. So the edges of each range are pinned here once, on the constructor,
+rather than at each place that stores a value (`PL-4R3W`).
 
-Several tests below hand a value of the wrong type to a parameter `mypy` would
-refuse it for, which needs a word about the mechanism: `tests/` is outside
-`[tool.mypy] files`, so a `# type: ignore` here is not checked by the gate — it
-is checked by `tools/ignore_check.py`, which runs mypy over this tree with
-`warn_unused_ignores` on and reports a directive that has stopped being
-necessary. So a directive below going inert is a failing `make check`, and
-that is the assertion that `mypy` still refuses the call. What the call does at
-run time is the test's own assertion: since `PL-4R3W` each of them is refused
-there too (`PL-WVSK`).
+Several tests below pass a value of the wrong type to a parameter, in a call
+that `mypy` would reject. The mechanism needs explaining. `tests/` is outside
+`[tool.mypy] files`, so the mypy gate does not check a `# type: ignore` here.
+Instead `tools/ignore_check.py` checks it. That tool runs mypy over this tree
+with `warn_unused_ignores` on, and reports any directive that is no longer
+needed. So if a directive below stops having an effect, `make check` fails,
+and that failure is the assertion that `mypy` still rejects the call. The
+test's own assertion covers what the call does at run time. Since `PL-4R3W`,
+each of these calls is refused at run time too (`PL-WVSK`).
 """
 
 import copy
@@ -55,11 +55,12 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# Sevoflurane's vaporizer maximum, in the percent its dial reads. Since
-# `PL-NJPB` the dial is set in percent, so a missing conversion runs the other
-# way: a fraction mistaken for a percent is a hundred times too small and lands
-# between 0% and 1%, under this maximum and under every shipped agent's, so
-# `BreathingCircuit._require_deliverable` refuses none of them.
+# This is sevoflurane's vaporizer maximum, in the percent that its dial reads.
+# Since `PL-NJPB` the dial is set in percent, so a missing conversion now goes
+# the other way. A fraction mistaken for a percent is a hundred times too small
+# and lands between 0% and 1%. That is less than this maximum and less than
+# every shipped agent's maximum, so `BreathingCircuit._require_deliverable`
+# refuses none of these mistaken values.
 SEVOFLURANE_MAXIMUM_PERCENT = Percent(8.0)
 
 
@@ -67,7 +68,7 @@ SEVOFLURANE_MAXIMUM_PERCENT = Percent(8.0)
     ("percent", "fraction"), [(0.0, 0.0), (2.0, 0.02), (8.0, 0.08), (18.0, 0.18), (100.0, 1.0)]
 )
 def test_the_two_forms_convert_both_ways(percent: float, fraction: float) -> None:
-    """The dial readings the three shipped agents actually use, and both ends."""
+    """The cases are the dial readings the three shipped agents use, and both ends of the range."""
 
     assert fraction_from_percent(Percent(percent)) == pytest.approx(fraction)
     assert percent_from_fraction(Fraction(fraction)) == pytest.approx(percent)
@@ -80,7 +81,7 @@ def test_the_factor_is_a_hundred_and_is_written_once() -> None:
 
 @pytest.mark.parametrize("value", [0.0, 5e-324, 0.02, nextafter(1.0, 0.0), 1.0])
 def test_a_fraction_from_0_through_1_is_the_number_it_was_built_from(value: float) -> None:
-    """Both ends are fractions, and so is the closest float to each, unrounded."""
+    """Both ends are fractions, as is the nearest float inside each end, and none is rounded."""
 
     fraction = Fraction(value)
 
@@ -92,11 +93,11 @@ def test_a_fraction_from_0_through_1_is_the_number_it_was_built_from(value: floa
     "value", [nextafter(0.0, -1.0), -0.001, nextafter(1.0, inf), 1.001, inf, -inf, nan]
 )
 def test_a_fraction_outside_0_to_1_cannot_be_built(value: float) -> None:
-    """The one place a fraction's range is checked, at each edge and past it.
+    """The constructor is the one place that checks a fraction's range, at each edge and beyond.
 
     The two `nextafter` values are the first floats outside the range. Before
-    `PL-4R3W` this was `require_fraction` in `core/validation.py`, called at each
-    of the twelve places a value entered.
+    `PL-4R3W` this check was `require_fraction` in `core/validation.py`, which
+    was called at each of the twelve places where a value entered.
     """
 
     with pytest.raises(SimulationConfigurationError, match=r"is outside 0 to 1"):
@@ -109,19 +110,21 @@ def test_a_fraction_outside_0_to_1_cannot_be_built(value: float) -> None:
 def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
     concentration: type[float], name: str
 ) -> None:
-    """Built from an int or a float and nothing else, with no sign at zero (`PL-LLMN`).
+    """A concentration is built only from an int or a float, with no sign at zero (`PL-LLMN`).
 
-    The same holes the flows had, kept consistent with them on purpose so one
-    rule settles all: `Fraction(True)` was a fraction of 1.0 and
-    `Percent(Decimal('2.5'))` was admitted, where a slip is a plausible
-    concentration; a string was refused in `math.isfinite`'s words and a
-    signalling NaN escaped as its `ValueError`; and `Fraction(-0.0)` held
-    minus zero, which `format_percent` printed as `-0.00%`. Each is now a
-    `TypeError` naming the value under the name it was built with, before any
-    comparison reads it, and minus zero is held as the zero it is. An `int`
-    past the float range is compared exactly and refused against the range,
-    one too long to print named by how long it is, where `math.isfinite`
-    raised `OverflowError` and the message itself raised `ValueError`.
+    The concentrations had the same gaps as the flows. They are kept
+    consistent with the flows on purpose, so that one rule covers all of them.
+    `Fraction(True)` was a fraction of 1.0, and `Percent(Decimal('2.5'))` was
+    accepted, although a slip like that gives a plausible concentration. A
+    string was refused in `math.isfinite`'s words, and a signalling NaN escaped
+    as that function's `ValueError`. `Fraction(-0.0)` stored minus zero, which
+    `format_percent` printed as `-0.00%`. Each of these is now a `TypeError`
+    that names the value under the name it was built with, before any
+    comparison uses it. Minus zero is stored as the zero it is. An `int`
+    beyond the float range is compared exactly and refused against the range,
+    and one too long to print is named by how long it is. Before, `math.isfinite`
+    raised `OverflowError` for such an `int`, and building the message itself
+    raised `ValueError`.
     """
 
     for value in (True, numpy.True_, Decimal("2.5"), Decimal("sNaN"), "0.5"):
@@ -163,17 +166,17 @@ def test_a_concentration_refuses_what_is_not_a_number_and_holds_negative_zero_as
 def test_a_crossing_refuses_what_is_not_a_number_before_converting_it(
     crossing: Callable[[Any], float], name: str, form: type[float]
 ) -> None:
-    """`True` times a hundred is 100.0, a percent the range admits (`PL-LLMN`).
+    """`True` times a hundred is 100.0, which is a percent inside the range (`PL-LLMN`).
 
-    Each crossing does its arithmetic before a constructor sees the result, so
-    a `bool` came through as a held value - `format_percent(True)` printed
-    `100.00%` - and a `str` or a `Decimal` was refused as Python's unsupported
-    operand. `PL-LLMN` put the constructors' own number rule ahead of the
-    arithmetic; since `PL-1DP1` each crossing asks the wider question every
-    place a concentration is held asks, whether the value was built as the form
-    at all, so each of these is refused in `require_percent`'s or
-    `require_fraction`'s words, before any arithmetic, and the constructor it
-    names refuses it again as not a number.
+    Each crossing does its arithmetic before a constructor sees the result. So
+    a `bool` came through as a stored value, and `format_percent(True)` printed
+    `100.00%`. A `str` or a `Decimal` was refused only as an unsupported
+    operand, in Python's words. `PL-LLMN` put the constructors' own number rule
+    ahead of the arithmetic. Since `PL-1DP1`, each crossing asks the wider
+    question that every place storing a concentration asks: was the value
+    built as that form at all? So each of these values is refused in the words
+    of `require_percent` or `require_fraction`, before any arithmetic. The
+    constructor that the message names would refuse it again, as not a number.
     """
 
     for value in (True, numpy.True_, Decimal("50"), "50"):
@@ -189,14 +192,15 @@ def test_a_crossing_refuses_what_is_not_a_number_before_converting_it(
 
 
 def test_a_refused_fraction_is_named_as_it_was_built() -> None:
-    """A fraction a rounding past 1 is refused under the name it was given.
+    """A fraction one rounding step above 1 is refused under the name it was given.
 
-    The regression for the refusal moving out of each compartment's setter and
-    into the constructor (`PL-4R3W`). A setter used to name the compartment in
-    the refusal (`PL-SPN6`); the constructor now runs first, so unless the
-    caller names the fraction it builds, the halted-run notice cannot say which
-    of the five compartments and the circuit refused. `1.0000000000000002` is
-    `nextafter(1.0, inf)`, the value a 100% dial's exact path rounds towards.
+    This is the regression test for moving the refusal out of each
+    compartment's setter and into the constructor (`PL-4R3W`). A setter used to
+    name the compartment in the refusal (`PL-SPN6`). The constructor now runs
+    first. So unless the caller names the fraction it builds, the notice for a
+    halted run cannot say which of the five compartments or the circuit refused
+    it. `1.0000000000000002` is `nextafter(1.0, inf)`, the value that a 100%
+    dial's exact path rounds towards.
     """
 
     with pytest.raises(
@@ -238,10 +242,10 @@ def test_a_refused_percent_is_named_as_it_was_built() -> None:
 
 
 def test_a_refused_dial_setting_is_pinned_whole() -> None:
-    """The whole sentence the "Setting refused" banner shows for a dial past 100%.
+    """Pin the whole sentence that the "Setting refused" banner shows for a dial above 100%.
 
-    The test above anchors only the start of the message, so the range and
-    the section it cites could change unseen (`PL-79PK`).
+    The test above anchors only the start of the message, so the range and the
+    cited section could change without any test noticing (`PL-79PK`).
     """
 
     with pytest.raises(SimulationConfigurationError) as refusal:
@@ -254,12 +258,12 @@ def test_a_refused_dial_setting_is_pinned_whole() -> None:
 
 
 def test_a_refused_compartment_fraction_is_pinned_whole() -> None:
-    """The whole sentence a halt shows when a compartment's fraction leaves 0 to 1.
+    """Pin the whole sentence that a halt shows when a compartment's fraction leaves 0 to 1.
 
     A step, a snapshot and a chart frame each build a compartment's fraction
     under the compartment's name, and the "Simulation stopped" banner prints
-    the refusal word for word. The tests of those paths anchor only its start
-    (`PL-79PK`).
+    the refusal message word for word. The tests of those paths anchor only the
+    start of the message (`PL-79PK`).
     """
 
     with pytest.raises(SimulationConfigurationError) as refusal:
@@ -272,12 +276,13 @@ def test_a_refused_compartment_fraction_is_pinned_whole() -> None:
 
 
 def test_neither_type_can_be_built_from_the_other() -> None:
-    """Rebuilding a concentration as the other type is the conversion missed.
+    """Rebuilding a concentration as the other type is a missed conversion.
 
-    `mypy` passes both calls, because each type is a `float` and the other's
-    constructor takes one, so the constructor is what refuses them, with the
-    advice `require_fraction` and `require_percent` give: convert, since a
-    rebuild keeps the number and changes what it means a hundredfold.
+    `mypy` accepts both calls, because each type is a `float` and the other
+    type's constructor takes a `float`. So the constructor is what refuses
+    them. It gives the same advice that `require_fraction` and
+    `require_percent` give, which is to convert. A rebuild keeps the number but
+    changes its meaning a hundredfold.
     """
 
     with pytest.raises(
@@ -298,15 +303,16 @@ def test_neither_type_can_be_built_from_the_other() -> None:
 def test_neither_conversion_takes_the_form_it_converts_to() -> None:
     """A value already in the form a crossing returns is refused before the arithmetic runs.
 
-    `fraction_from_percent(Fraction(0.5))` was a `Fraction` of 0.005 and
-    `percent_from_fraction(Percent(0.5))` a `Percent` of 50.0 - a 0.5% dial
-    shown as 50% - because each crossing did its arithmetic first and the
-    constructor then saw a plain `float` inside its range (`PL-SWD1`). The
-    directives are `mypy`'s refusal of both calls; the `TypeError` is the
-    run-time one, and it says to use the value as it is rather than to convert
-    it, since the remedy the constructors give, convert, is the error here. A
-    value of each crossing's own form converts as before, and the display
-    formatter built on the display crossing refuses with it.
+    `fraction_from_percent(Fraction(0.5))` used to return a `Fraction` of
+    0.005. `percent_from_fraction(Percent(0.5))` returned a `Percent` of 50.0,
+    so a 0.5% dial was shown as 50%. Each crossing did its arithmetic first,
+    and the constructor then saw a plain `float` inside its range (`PL-SWD1`).
+    The directives record that `mypy` rejects both calls. The `TypeError` is
+    the run-time refusal. Its message says to use the value as it is rather
+    than to convert it, because converting, the remedy that the constructors
+    suggest, is the mistake here. A value in each crossing's own input form
+    converts as before. The display formatter, which is built on the display
+    crossing, refuses the same value that crossing refuses.
     """
 
     with pytest.raises(TypeError) as to_the_model_form:
@@ -349,21 +355,23 @@ def test_neither_conversion_takes_the_form_it_converts_to() -> None:
 def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument(
     other: object,
 ) -> None:
-    """Named as the quantity it was built as, and not told to rebuild or to convert.
+    """The refusal names the quantity the value was built as, with no advice to rebuild or convert.
 
     A `SimulationStep(0.05)` arriving where a fraction belongs, or a
-    `FreshGasFlow(2.0)` where the dial does, is a swapped argument and not the
-    missed conversion the two types refuse in each other. Until `PL-CX2C`
-    `require_fraction` and `require_percent` knew only each other, so each
-    told the caller to build the type from the value - a concentration of
-    0.05 from a step, a dial at 2% from a flow - which every later check
-    admits. Every checked quantity is one record (`core/checked_number.py`),
-    so the refusal names the type the value was built as and prescribes
-    nothing, where a concentration is held, at the constructor and, since
-    `PL-SWD1`, at the two crossings alike: `fraction_from_percent(FreshGasFlow(2.0))`
-    was a `Fraction` of 0.02 and `percent_from_fraction(CaseInstant(0.5))` a
-    `Percent` of 50.0, the arithmetic having run on the number before the
-    constructor saw a plain `float`.
+    `FreshGasFlow(2.0)` arriving where the dial setting belongs, is a swapped
+    argument. It is not the missed conversion that each concentration type
+    refuses in the other. Until `PL-CX2C`, `require_fraction` and
+    `require_percent` knew only about each other. So each told the caller to
+    build its type from the value: a concentration of 0.05 from a step, or a
+    dial at 2% from a flow. Every later check accepts such a value. All checked
+    quantities are now handled by one module (`core/checked_number.py`). So the
+    refusal names the type that the value was built as, and prescribes nothing.
+    It does so wherever a concentration is stored: at the constructor and,
+    since `PL-SWD1`, at the two crossings as well. Before that,
+    `fraction_from_percent(FreshGasFlow(2.0))` returned a `Fraction` of 0.02,
+    and `percent_from_fraction(CaseInstant(0.5))` returned a `Percent` of 50.0.
+    The arithmetic had run on the number before the constructor saw a plain
+    `float`.
     """
 
     with pytest.raises(TypeError) as as_a_fraction:
@@ -403,11 +411,12 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
 
 
 def test_a_count_too_long_to_print_is_named_where_a_concentration_is_held() -> None:
-    """`require_fraction` and `require_percent` print through `shown`, as the constructors do.
+    """`require_fraction` and `require_percent` format a value with `shown`, as constructors do.
 
-    Until `PL-CX2C` each printed with `repr`, so a bare `int` past the digits
-    CPython prints raised `ValueError` while the `TypeError` was being
-    written, the escape `PL-5F76` closed for the count.
+    Until `PL-CX2C` each formatted the value with `repr`. So a bare `int` with
+    more digits than CPython will print raised `ValueError` while the
+    `TypeError` message was being built. `PL-5F76` had closed the same escape
+    for the count.
     """
 
     named = f"<more than {sys.get_int_max_str_digits():,} digits>"
@@ -423,12 +432,13 @@ def test_a_count_too_long_to_print_is_named_where_a_concentration_is_held() -> N
 
 
 def test_neither_conversion_can_refuse_a_value_of_its_own_type() -> None:
-    """Each crossing builds the checked type, and no value of the other refuses it.
+    """Each crossing builds the checked type, and no valid value of the other type is refused.
 
-    Division and multiplication round monotonically and 100 maps exactly to 1,
-    so a percent from 0 through 100 gives a fraction from 0 through 1 and back.
-    Pinned over every 0.001% step of the range and both ends' neighbours,
-    because the claim is about rounding, which only a sweep tests.
+    Division and multiplication round monotonically, and 100 maps exactly to 1.
+    So a percent from 0 through 100 gives a fraction from 0 through 1, and the
+    fraction converts back to a valid percent. The test pins this over every
+    0.001% step of the range and the nearest float inside each end, because the
+    claim is about rounding, and only a sweep tests rounding.
     """
 
     percents = [step / 1000 for step in range(100_001)]
@@ -444,11 +454,11 @@ def test_neither_conversion_can_refuse_a_value_of_its_own_type() -> None:
 
 
 def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
-    """A computed value carries no proof, so it is built into the type again.
+    """A computed value carries no proof of its range, so it must be built into the type again.
 
-    That is the module docstring's first limit, and why `AgentUptakeSystem`
-    builds each fraction a step computes as a `Fraction` before any
-    compartment holds it.
+    That is the first limit that the concentration module's docstring states.
+    It is also why `AgentUptakeSystem` builds each fraction that a step
+    computes as a `Fraction` before any compartment stores it.
     """
 
     fraction = Fraction(0.5)
@@ -463,11 +473,11 @@ def test_arithmetic_on_a_concentration_is_a_plain_float() -> None:
 def test_a_copied_or_pickled_concentration_is_still_checked() -> None:
     """A `Fraction` or `Percent` copied for a branch, or saved, is still of its own type.
 
-    A copy, a deep copy and a pickle each rebuild through the constructor
-    rather than around it. The next test checks that a pickle edited outside
-    the range is refused when it is loaded.
-    `tests/unit/test_checked_number.py` checks it for every checked type at
-    every pickle protocol (`PL-5D1Z`).
+    A copy, a deep copy and a pickle each rebuild the value through the
+    constructor rather than bypassing it. The next test checks that a pickle
+    edited outside the range is refused when it is loaded.
+    `tests/unit/test_checked_number.py` checks the same behaviour for every
+    checked type at every pickle protocol (`PL-5D1Z`).
     """
 
     for value in (Fraction(0.02), Percent(8.0)):
@@ -488,9 +498,9 @@ def test_a_pickle_edited_past_the_range_is_refused_when_it_is_loaded(
 ) -> None:
     """Loading a pickle at the default protocol runs the constructor's check.
 
-    The saved value is overwritten in the bytes, as a file edited by hand would
-    be, so a load that went around the constructor would hand back the type
-    holding a value outside its range.
+    The test overwrites the saved value in the pickled bytes, as a hand edit of
+    a file would. A load that bypassed the constructor would then return the
+    type holding a value outside its range.
     """
 
     pickled = pickle.dumps(saved)
@@ -503,13 +513,14 @@ def test_a_pickle_edited_past_the_range_is_refused_when_it_is_loaded(
 
 
 def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
-    """The missing conversion the types exist for, refused by `mypy` and at run time.
+    """The missing conversion that the types exist to catch is refused by `mypy` and at run time.
 
-    `0.08` is sevoflurane's full dial, 8%, written as a fraction. Passed as a
-    percent it would be 0.08% — a hundredfold error, the vaporizer all but off
-    rather than at its maximum — and nothing after this would refuse it: it is
-    under the vaporizer maximum. The directive is `mypy`'s refusal; the
-    `TypeError` is the run-time one `PL-4R3W` added, and it says to convert.
+    `0.08` is sevoflurane's full dial setting, 8%, written as a fraction.
+    Passed as a percent, it would be 0.08%. That is a hundredfold error, with
+    the vaporizer almost off rather than at its maximum. Nothing after this
+    point would refuse it, because it is less than the vaporizer maximum. The
+    directive records that `mypy` rejects the call. The `TypeError` is the
+    run-time refusal that `PL-4R3W` added, and its message says to convert.
     """
 
     circuit = BreathingCircuit(
@@ -526,7 +537,7 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
 
 
 def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
-    """The same missing conversion in the other direction, a hundred times too large."""
+    """The same missing conversion the other way round makes a value a hundred times too large."""
 
     circuit = BreathingCircuit(
         circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
@@ -542,12 +553,12 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
 
 
 def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
-    """The divisor of every MAC multiple shown, a hundred times too small.
+    """A MAC given as a fraction shrinks the divisor of every displayed MAC multiple a hundredfold.
 
-    Sevoflurane's MAC is 2%, and as a fraction it is 0.02: held as the
-    percent, it would put 1 MAC at "100.00 ×MAC". The agent's parameters
-    refuse it when they are built, which `dataclasses.replace` does, so a
-    MAC edited in a test or a notebook meets the check a file's MAC meets.
+    Sevoflurane's MAC is 2%, which is 0.02 as a fraction. Stored as the
+    percent, 0.02 would show 1 MAC as "100.00 ×MAC". The agent's parameters
+    refuse it when they are built, and `dataclasses.replace` builds them. So a
+    MAC edited in a test or a notebook meets the same check as a MAC in a file.
     """
 
     sevoflurane = load_sevoflurane_parameters()
@@ -560,7 +571,7 @@ def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
 
 @pytest.mark.parametrize("value", [nextafter(0.0, 1.0), 1.2, 2.0, 6.0, 100.0])
 def test_a_mac_above_zero_is_the_number_it_was_built_from(value: float) -> None:
-    """A `MacPercent` is a `Percent` above zero, and holds the number as given."""
+    """A `MacPercent` is a `Percent` above zero, and stores the number as given."""
 
     built = MacPercent(value)
 
@@ -570,11 +581,11 @@ def test_a_mac_above_zero_is_the_number_it_was_built_from(value: float) -> None:
 
 
 def test_a_mac_of_zero_is_refused_where_it_is_built_and_pinned_whole() -> None:
-    """Every MAC multiple shown divides by the MAC, so a zero is refused once, when built.
+    """Every displayed MAC multiple divides by the MAC, so a zero MAC is refused once, when built.
 
     `PL-F9TC` moved this refusal here from the five formatters that divided
     by a MAC and from `AgentParameters`. The message names the value as the
-    type holds it, so an `int` zero and minus zero are both named 0.0.
+    type stores it, so an `int` zero and minus zero both appear as 0.0.
     """
 
     for zero in (0.0, -0.0, 0):
@@ -614,11 +625,12 @@ def test_only_a_mac_built_as_one_passes_where_a_mac_is_required() -> None:
 
 
 def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
-    """The module docstring's third limit, pinned so it cannot be read as more.
+    """Pin the concentration module's third limit, so no one takes the types to cover more.
 
     A percent built from a fraction's *value* is a valid percent, so the type
-    cannot refuse it and the vaporizer maximum passes it. Only the dial's
-    writers each passing a value already in percent stands against it.
+    cannot refuse it, and the vaporizer maximum accepts it. The only
+    protection is that every code path that writes the dial passes a value
+    already in percent.
     """
 
     circuit = BreathingCircuit(
@@ -631,14 +643,15 @@ def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
 
 
 def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
-    """A value nobody built is refused before anything moves, at every entry point.
+    """A value not built as a checked type is refused at every entry point, before anything changes.
 
-    `mypy` refuses a bare `float` at each of these in `src/`, but it does not
-    read `tests/`, and it passes a value typed `Any`. This is the runtime half:
-    a `TypeError`, because passing the wrong type is a programming error rather
-    than a setting the simulator rejected (`core/exceptions.py`). Every value is
-    inside its range, so what is refused is the type and nothing else, and each
-    refusal names the value it was handed in as.
+    `mypy` rejects a bare `float` at each of these entry points in `src/`. But
+    it does not check `tests/`, and it accepts a value typed `Any`. This test
+    covers the run-time half. The refusal is a `TypeError`, because passing the
+    wrong type is a programming error rather than a setting the simulator
+    rejected (`core/exceptions.py`). Every value is inside its range, so only
+    the type is refused. Each refusal names the value and the parameter that it
+    was passed as.
     """
 
     system = AgentUptakeSystem.default()
@@ -718,15 +731,16 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
 
 def test_fraction_from_percent_refuses_a_bare_float() -> None:
-    """A number nobody built carries no form, so the crossing cannot convert it (`PL-1DP1`).
+    """A bare number carries no form, so the crossing cannot convert it (`PL-1DP1`).
 
-    `fraction_from_percent(50.0)` was a `Fraction` of 0.5 while every place a
-    percent is held had refused the same 50.0 since `PL-4R3W`, so the crossing
-    was where a number of unknown form still entered. The refusal is
-    `require_percent`'s, in its words, naming the constructor to build where
-    the form is known, and nothing is converted. `mypy` refuses the call in
-    `src/`, which the directive asserts; the `TypeError` is the run-time half,
-    for a caller it does not read. A value built as the form converts as before.
+    `fraction_from_percent(50.0)` used to return a `Fraction` of 0.5. Every
+    place that stores a percent had refused the same 50.0 since `PL-4R3W`, so
+    the crossing was the one place where a number of unknown form could still
+    enter. The refusal now comes from `require_percent`, in its words. It names
+    the constructor to call where the form is known, and nothing is converted.
+    `mypy` rejects the call in `src/`, which the directive asserts. The
+    `TypeError` is the run-time half, for a caller that `mypy` does not check.
+    A value built as that form converts as before.
     """
 
     with pytest.raises(TypeError) as refused:
@@ -753,14 +767,15 @@ def test_fraction_from_percent_refuses_a_bare_float() -> None:
 
 
 def test_percent_from_fraction_refuses_a_bare_float() -> None:
-    """The display direction, where a 0.5 could be a fraction or a 0.5% dial (`PL-1DP1`).
+    """In the display direction, a bare 0.5 could be a fraction or a 0.5% dial (`PL-1DP1`).
 
-    `percent_from_fraction(0.5)` was a `Percent` of 50.0 and `format_percent(0.5)`
-    printed `50.00%`, whichever the 0.5 was: the number carries no form to tell
-    them apart, which is why it cannot be converted rather than a reason to
-    take it as given, as `PL-4R3W` had chosen. Refused as `require_fraction`
-    refuses a bare float wherever a fraction is held, and the formatter built
-    on the crossing refuses with it, so nothing is printed.
+    `percent_from_fraction(0.5)` used to return a `Percent` of 50.0, and
+    `format_percent(0.5)` printed `50.00%`, whichever the 0.5 was. The number
+    carries no form that tells the two apart. `PL-4R3W` had chosen to take that
+    as a reason to accept the number as given, but it is the reason the number
+    cannot be converted. The crossing now refuses it as `require_fraction`
+    refuses a bare float wherever a fraction is stored. The formatter built on
+    the crossing refuses it too, so nothing is printed.
     """
 
     with pytest.raises(TypeError) as refused:
@@ -783,11 +798,12 @@ def test_percent_from_fraction_refuses_a_bare_float() -> None:
 
 
 def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_it_is_set() -> None:
-    """The two refusals a dial meets, each in its own place.
+    """A dial setting meets two refusals, each in its own place.
 
-    A percent's range is the constructor's, so `Percent(150.0)` never reaches
-    the circuit; the vaporizer maximum is a relation the circuit holds, so it is
-    the circuit that refuses 50% against 8% (`PL-BBMG`). Neither moves the dial.
+    The constructor checks a percent's range, so `Percent(150.0)` never
+    reaches the circuit. The vaporizer maximum is a relation that the circuit
+    enforces, so the circuit is what refuses 50% against a maximum of 8%
+    (`PL-BBMG`). Neither refusal moves the dial.
     """
 
     circuit = BreathingCircuit(
@@ -813,9 +829,9 @@ def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
 
     When the opening setting was built from the agent's `MacPercent` itself,
     it passed a MAC check until the learner first moved the dial. So a dial
-    setting handed to a formatter in place of the MAC drew a correct-looking
-    1.00 ×MAC at run open, and failed only later, mid-run (`PL-F9TC`, blind
-    review). The expected MACs are the values in the shipped data files,
+    setting passed to a formatter in place of the MAC showed a correct-looking
+    1.00 ×MAC when the run opened, and failed only later, mid-run (`PL-F9TC`,
+    blind review). The expected MACs are the values in the shipped data files,
     typed out here by hand.
     """
     dial = AgentUptakeSystem.for_agent(agent).circuit.delivered_concentration_percent

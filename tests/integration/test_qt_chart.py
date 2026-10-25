@@ -1,16 +1,16 @@
-"""The pyqtgraph chart, drawn headless against a real run.
+"""Tests of the pyqtgraph chart, drawn headless against a real run.
 
-`app/qt_chart.py` moves pyqtgraph items to match a `ChartFrame`; these
-tests read the items back, and the painted pixels, and hold both against
-the frame and against the run's own snapshot. They render under the
-`offscreen` platform plugin `tests/conftest.py` selects, which is what lets
-a session in the web container see a chart change at all (`PL-2QMK`).
+`app/qt_chart.py` moves pyqtgraph items to match a `ChartFrame`. These tests
+read the items back, and the painted pixels, and check both against the frame
+and against the run's own snapshot. They render under the `offscreen`
+platform plugin that `tests/conftest.py` selects. That plugin is what lets a
+session in the web container see a chart change at all (`PL-2QMK`).
 
-What is asserted is chosen for durability rather than pixel-exactness: which
-curve carries which compartment, where a reference stands, that the ruling
-sits under the data, that a hover says what the frame says. A pixel snapshot
-would be brittle across Qt versions and font stacks and would hold nothing
-a reader interprets.
+The assertions are chosen to be durable rather than exact to the pixel. They
+check which curve carries which compartment, where a reference line is drawn,
+that the gridlines sit under the data, and that a hover says what the frame
+says. A pixel snapshot would break across Qt versions and font stacks, and
+would check nothing that a reader interprets.
 """
 
 import gc
@@ -99,9 +99,9 @@ from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
-# The identities a dashboard gives the first runs it places, in order, which
-# render as "Run 1", "Run 2" and "Run 3". A run is named from its identity
-# rather than from where it is drawn (`PL-7Z84`).
+# These are the identities that a dashboard gives the first runs it places, in
+# order. They render as "Run 1", "Run 2" and "Run 3". A run is named from its
+# identity rather than from where it is drawn (`PL-7Z84`).
 TEST_SESSION = SessionToken("0" * 32)
 RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
 FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
@@ -125,7 +125,7 @@ def _advance(controller: SimulationController, seconds: float) -> None:
 def _run_with_a_dial_change(
     agent_id: str = "sevoflurane", *, switched_from: str | None = None
 ) -> SimulationController:
-    """Ten minutes at 1 MAC, then a dial change, then ten more: a mark and a kink.
+    """Return a run of ten minutes at 1 MAC, a dial change, and ten more, for a mark and a kink.
 
     With `switched_from`, the controller first runs one minute of that agent
     and is then switched to `agent_id`. The run is then the one the switch
@@ -190,7 +190,7 @@ def _shown(application: QApplication, chart: ConcentrationChart | WashInChart, h
 
 
 def _pixels_along(chart, y_value: float, frame: ChartFrame) -> Counter[str]:
-    """The colours painted along one horizontal line of the plot, three rows deep."""
+    """Count the colours painted along one horizontal line of the plot, three rows deep."""
 
     image = chart.painted()
     left_x, y = chart.plot_pixel(frame.start_s, y_value)
@@ -228,8 +228,8 @@ def test_each_curve_is_drawn_from_its_own_compartment_and_ends_at_the_readout(
 
         assert times == pytest.approx(frame.runs[0].times_s)
         assert percents == pytest.approx(frame.runs[0].percents(quantity))
-        # The end-to-end binding: the curve's newest point is the number the
-        # readout row prints beneath it, for every compartment.
+        # This is the end-to-end link: for every compartment, the curve's newest
+        # point is the number that the readout row prints beneath it.
         assert percents[-1] == pytest.approx(readouts[quantity] * 100.0, abs=1e-6)
 
 
@@ -332,11 +332,11 @@ def test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it(
 ) -> None:
     """Each run is switched into its agent, and the chart draws that agent's own references.
 
-    The first two assertions hold the chart to the snapshot it was drawn from.
-    They cannot see a band that a switch left at the previous agent's values,
-    because the snapshot holds the same wrong values. So the last two take the
-    expected values from the agent's own data file and work out the band's
-    edges here (`PL-JPS2`).
+    The first two assertions check the chart against the snapshot it was drawn
+    from. They cannot detect a band that a switch left at the previous agent's
+    values, because the snapshot stores the same wrong values. So the last two
+    take the expected values from the agent's own data file and work out the
+    band's edges here (`PL-JPS2`).
     """
 
     chart = _shown(application, ConcentrationChart(), 480)
@@ -371,9 +371,9 @@ def test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it(
 def test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneath(
     application: QApplication,
 ) -> None:
-    """A rendering check: the 1 MAC line is visible on the gridline it stands on.
+    """This rendering check shows that the 1 MAC line is visible on the gridline it lies on.
 
-    pyqtgraph's own grid paints over the plot and erased it (2026-09-14).
+    pyqtgraph's own grid paints over the plot, and it erased the line (2026-09-14).
     """
 
     controller = _run_with_a_dial_change()
@@ -392,7 +392,7 @@ def test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneat
 
 
 def _antialiased(counts: Counter[str]) -> set[str]:
-    """Colours that appear on only a few pixels: a trace crossing the row."""
+    """Return the colours that appear on only a few pixels, such as a trace crossing the row."""
 
     return {colour for colour, count in counts.items() if count < 40}
 
@@ -416,9 +416,10 @@ def test_a_recorded_change_is_marked_on_both_plots_at_its_own_time(
 def test_the_plot_reports_the_width_a_frame_is_drawn_for(application: QApplication) -> None:
     """`PL-GS3R`: the width the chart reports is the width its time axis actually spans.
 
-    So a frame assembled for it divides the axis into at least that many
-    intervals, and the twelve-hour base is drawn at a chord of one pixel
-    rather than the 290 s a fixed budget of 150 columns ruled.
+    So a frame assembled for that width divides the axis into at least that
+    many intervals. The twelve-hour time base is then drawn with a chord of
+    one pixel, rather than the 290 s chord that a fixed budget of 150 columns
+    gave.
     """
 
     controller = _run_with_a_dial_change()
@@ -457,7 +458,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
     assert chart.control_mark_times(0)[0] == pytest.approx(crowded[3].started_at_s)
     assert frame.runs[0].undrawn_control_marks == 3
 
-    # A quieter frame parks what the crowded one used.
+    # A quieter frame hides the pooled marks that the crowded frame used.
     chart.draw(_frame(controller))
     assert chart.control_mark_times(0) == (pytest.approx(600.0),)
 
@@ -482,7 +483,8 @@ def test_the_wash_in_trace_ends_on_the_equilibrium_line_with_a_terminus_dot(
     assert WASH_IN_EQUILIBRIUM_RATIO < last_ratio <= WASH_IN_TERMINUS_CEILING
     assert chart.terminus_points(0) == (pytest.approx((last_time, last_ratio)),)
 
-    # Still climbing: no terminus, and the dot from the frame before is gone.
+    # A run that is still climbing has no terminus, and the dot from the
+    # previous frame is gone.
     chart.draw(_frame(_run_with_a_dial_change()))
     assert chart.terminus_points(0) == ()
     assert len(chart.drawn_stretches(0)) == 1
@@ -513,13 +515,14 @@ def test_the_hover_reports_the_drawn_state_through_the_formatters(
 
 
 def _fat_lines(readout: str) -> list[str]:
-    """The fat values a box reports, normalised across the readout's two forms.
+    """Return the fat values that a hover box reports, normalised across the readout's two forms.
 
-    Where every reading is of one compartment the box names it once, as a
-    heading; where the readings span compartments each value line opens with
-    its own. Both say the same thing about fat, and this is what lets a test
-    assert that a hand movement left fat alone while the box gained a line for
-    a compartment that came into reach.
+    When every reading is of one compartment, the box names that compartment
+    once, as a heading. When the readings span compartments, each value line
+    starts with its own compartment. Both forms say the same thing about fat.
+    This function lets a test assert that a hand movement left the fat values
+    unchanged while the box gained a line for a compartment that came into
+    reach.
     """
 
     lines = readout.splitlines()
@@ -534,14 +537,16 @@ def _fat_lines(readout: str) -> list[str]:
 def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     application: QApplication,
 ) -> None:
-    """`PL-JVHL`, end to end from a branched run to the rendered readout.
+    """End-to-end test of `PL-JVHL`, from a branched run to the rendered readout.
 
-    The case the rule was decided from: a trunk held at its dialled setting
-    and a branch forked at 10 min with the vaporizer turned off, and the fat
-    traces those two leave - which the percent axis, fixed at 3 MAC
-    (`CHART_AXIS_TOP_MAC`), compresses to within a pixel or two of one another. A pointer on
-    either run's fat point is answered for both, each value under its own
-    run's name, and a pointer two pixels away is answered identically.
+    This is the case that the rule was decided from. A trunk stays at its
+    dialled setting, and a branch forks at 10 min with the vaporizer turned
+    off. The percent axis, fixed at 3 MAC (`CHART_AXIS_TOP_MAC`), compresses
+    the two runs' fat traces to within a pixel or two of each other. A pointer
+    on either run's fat point gets a readout for both runs, each value under
+    its own run's name. A pointer two pixels lower gets the identical readout.
+    A pointer two pixels higher gets the same fat values, plus a line for a
+    compartment that has come within reach.
     """
 
     trunk = _run_with_a_dial_change()
@@ -559,9 +564,10 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     assert frame.visible == shown, "the cap must leave fat drawn for this to test anything"
 
     first, second = frame.runs
-    # Each run's own last drawn column. They are not the same column - a
-    # branch opens at its fork and draws its own control events - but both
-    # runs have reached the same instant, which is where they are compared.
+    # Take each run's own last drawn column. They are not the same column,
+    # because a branch opens at its fork and draws its own control events. But
+    # both runs have reached the same instant, and that is where they are
+    # compared.
     time_s = first.times_s[-1]
     assert second.times_s[-1] == time_s
     on_trunk = first.percents(RecordedQuantity.FAT)[-1]
@@ -571,10 +577,10 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     _, floor_row = chart.plot_pixel(time_s, 0.0)
     _, ceiling_row = chart.plot_pixel(time_s, frame.axis_top_percent)
     percent_per_pixel = frame.axis_top_percent / abs(floor_row - ceiling_row)
-    # Two different stored concentrations, inside one hover radius of each
-    # other - here inside a single pixel, which is the contention the item
-    # measured and why the retired rule was settled by arithmetic no reader
-    # could see.
+    # The two stored concentrations differ, but lie inside one hover radius of
+    # each other. Here they are inside a single pixel. That is the contention
+    # the item measured, and the reason the retired rule was settled by
+    # arithmetic that no reader could see.
     assert on_trunk != on_branch
     assert abs(trunk_row - branch_row) < HOVER_RADIUS_PIXELS
 
@@ -594,16 +600,17 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     assert [line.split("\u00b7")[0].strip() for line in lines[2:]] == [first.label, second.label]
     assert lines[2] != lines[3], "the two runs must read differently for this to matter"
 
-    # Two pixels of hand movement, which is what used to swap the answer. Down
-    # the axis nothing changes at all.
+    # Two pixels of hand movement used to swap the readout. Moving down the
+    # axis changes nothing at all.
     assert chart.readout_at(time_s, on_trunk - 2.0 * percent_per_pixel) == readout
 
-    # Up it the box gains a line, because `PL-0RZ0` made every compartment in
-    # reach answer too and the branch's alveolar trace - its vaporizer off for
-    # ten minutes by this instant - has washed down to within the radius of
-    # fat. That is the compression `PL-QYBW` names, now displayed rather than
-    # resolved by arithmetic the reader cannot see. What the box says about fat
-    # is unchanged, which is the property `PL-JVHL` put here.
+    # Moving up the axis, the box gains a line. `PL-0RZ0` made the readout
+    # include every compartment within reach. By this instant the branch's
+    # vaporizer has been off for ten minutes, so its alveolar trace has washed
+    # down to within the hover radius of fat. That is the compression that
+    # `PL-QYBW` names, now displayed rather than resolved by arithmetic the
+    # reader cannot see. What the box says about fat is unchanged, which is the
+    # property that `PL-JVHL` added this test for.
     above = chart.readout_at(time_s, on_trunk + 2.0 * percent_per_pixel)
 
     assert above is not None
@@ -626,8 +633,8 @@ def test_the_references_answer_no_hover_and_clear_space_answers_none(
     chart = _shown(application, ConcentrationChart(), 480)
     chart.draw(frame)
     run = frame.runs[0]
-    # Halfway between two drawn columns, on the 1 MAC line: the reference is
-    # under the pointer and no drawn point is.
+    # Halfway between two drawn columns, on the 1 MAC line, the reference line
+    # is under the pointer and no drawn point is.
     between = (run.times_s[10] + run.times_s[11]) / 2.0
 
     assert chart.readout_at(between, frame.one_mac_percent) is None
@@ -646,8 +653,8 @@ def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -
     )
 
 
-# Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
-# pointer position before answering it.
+# This is sixty times the hover's own cooldown of 1/60 s, which is the longest
+# the hover holds a pointer position before responding to it.
 _HOVER_DELIVERY_MS = 1000
 
 # How long the moving-pointer case keeps the pointer moving: twelve cooldowns.
@@ -657,10 +664,10 @@ _SWEEP_MS = 200
 def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
     """Move the pointer onto one pixel of the chart, as the platform delivers a move.
 
-    To the widget under that pixel rather than through `QTest.mouseMove`,
-    which moves the platform cursor: the offscreen platform gives that move to
-    a window it finds at the screen position, and a chart an earlier test left
-    shown can stand there first.
+    The move is sent to the widget under that pixel rather than through
+    `QTest.mouseMove`, which moves the platform cursor. The offscreen platform
+    gives that cursor move to a window it finds at the screen position, and a
+    chart that an earlier test left shown may be there first.
     """
 
     under = chart.childAt(pixel)
@@ -679,10 +686,10 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -> None:
     """Run the event loop until the hover says `text` or `_HOVER_DELIVERY_MS` has passed.
 
-    The way `QTRY_COMPARE` waits: a move inside the hover's cooldown is
-    answered when the cooldown ends, from a timer rather than inside the move,
-    and the caller asserts what the hover then says. No `draw` follows, which
-    is what a paused run is.
+    It waits the way `QTRY_COMPARE` does. A move inside the hover's cooldown
+    is handled when the cooldown ends, from a timer rather than inside the
+    move, and the caller asserts what the hover then says. No `draw` follows,
+    which is how a paused run behaves.
     """
 
     deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
@@ -692,17 +699,18 @@ def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -
 
 
 def test_the_hover_answers_the_point_under_the_pointer(application: QApplication) -> None:
-    """`PL-TCR5`: a real pointer move is answered for where the pointer is, run paused.
+    """`PL-TCR5`: with the run paused, a real pointer move shows the readout at the pointer.
 
-    `readout_at` calls the lookup directly, so it could not see either way
-    this went wrong. A second slot on the scene's signal answered before the
-    proxy had stored the position: the first move answered nothing, each later
-    one the point under the move before, and with the run paused no `draw`
-    followed to correct it. And pyqtgraph's scene drops a move that follows
-    the last one it passed on by under 10 ms, so a fast pointer's last move
-    went unanswered. Reading every move instead, through `pg.SignalProxy`,
-    starved: that restarts its timer on every move, so a pointer that kept
-    moving went unanswered until it stopped.
+    `readout_at` calls the lookup directly, so it could not detect either way
+    this went wrong. First, a second slot on the scene's signal responded
+    before the proxy had stored the position. So the first move showed
+    nothing, and each later move showed the point under the move before it.
+    With the run paused, no `draw` followed to correct it. Second,
+    pyqtgraph's scene drops a move that comes less than 10 ms after the last
+    move it passed on, so a fast pointer's last move got no response. Reading
+    every move instead, through `pg.SignalProxy`, starved the hover. That
+    proxy restarts its timer on every move, so a pointer that kept moving got
+    no response until it stopped.
     """
 
     controller = _run_with_a_dial_change()
@@ -715,9 +723,9 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     # settled before a pixel is read off it.
     application.processEvents()
     run = frame.runs[0]
-    # The circuit trace stands more than 30 px clear of the other five at all
-    # three instants, so each point is answered for itself alone, and the
-    # instants differ, so the readouts do too.
+    # At all three instants, the circuit trace is more than 30 px away from the
+    # other five traces, so each readout shows that point alone. The instants
+    # differ, so the readouts differ too.
     count = len(run.times_s)
     earlier, third, later = count // 4, 3 * count // 5, 3 * count // 4
 
@@ -735,24 +743,24 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 
         assert chart.hover_text() == answer(index)
 
-    # Two moves with nothing between them, as a fast pointer's last two often
-    # are: the hover answers where the pointer stopped.
+    # Send two moves with nothing between them, as a fast pointer's last two
+    # moves often are. The hover shows the point where the pointer stopped.
     _move_pointer(chart, pixel(earlier))
     _move_pointer(chart, pixel(third))
     _wait_for_hover(chart, answer(third))
 
     assert chart.hover_text() == answer(third)
 
-    # Off the plot, over the axis, the box goes rather than keeping the last
-    # point's answer.
+    # Off the plot, over the axis, the box disappears rather than keeping the
+    # last point's readout.
     _move_pointer(chart, QPoint(1, 1))
     _wait_for_hover(chart, None)
 
     assert chart.hover_text() is None
 
-    # A pointer that keeps moving, moves sent back to back with the event
-    # loop run between them, is answered while it moves and not only once it
-    # stops: about one answer a cooldown.
+    # A pointer that keeps moving gets readouts while it moves, not only once
+    # it stops: about one readout per cooldown. The moves are sent back to
+    # back, with the event loop run between them.
     answered: set[str] = set()
     sweep = QDeadlineTimer(_SWEEP_MS)
     index = earlier
@@ -769,7 +777,7 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 
     assert len(answered) >= 3, f"a moving pointer was answered {len(answered)} times"
 
-    # The wash-in plot hangs its hover on the same mechanism.
+    # The wash-in plot builds its hover on the same mechanism.
     wash_in = _shown(application, WashInChart(), 300)
     wash_in.draw(frame)
     application.processEvents()
@@ -788,8 +796,8 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 def _leave(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
     """Take the pointer off the chart from over one pixel, as the platform reports it.
 
-    A `Leave` to the widget under that pixel and no move, which is all a
-    pointer leaving a widget sends it.
+    It sends a `Leave` to the widget under that pixel and no move, because a
+    `Leave` is all that a pointer leaving a widget sends it.
     """
 
     QApplication.sendEvent(chart.childAt(pixel), QEvent(QEvent.Type.Leave))
@@ -798,11 +806,12 @@ def _leave(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
 def _two_points(
     chart: ConcentrationChart | WashInChart, frame: ChartFrame
 ) -> tuple[QPoint, QPoint]:
-    """Two pixels of the chart over drawn points of the frame's run, answered differently.
+    """Return two chart pixels over drawn points of the frame's run, with different readouts.
 
-    On the compartment chart, the circuit trace where
+    On the compartment chart, the points are on the circuit trace, where
     `test_the_hover_answers_the_point_under_the_pointer` finds it clear of the
-    other five; on the wash-in plot, two points of the first stretch.
+    other five traces. On the wash-in plot, they are two points of the first
+    stretch.
     """
 
     run = frame.runs[0]
@@ -829,14 +838,15 @@ def _two_points(
 def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back(
     application: QApplication,
 ) -> None:
-    """`PL-LTKL`: the box goes with the pointer, on both plots, and stays gone.
+    """`PL-LTKL`: on both plots, the box disappears when the pointer leaves, and stays hidden.
 
-    A pointer leaving the plot sends it no move, only a `Leave`, and the box
-    was hidden by moves alone. So it stayed up at the last point, and each
-    later frame answered that point again - while the run played, for a new
-    instant each frame, so a modelled value climbed with the run for a pointer
-    that had gone. A move still waiting out the cooldown when the pointer
-    leaves goes with it, or the cooldown's end would put the box back up.
+    A pointer leaving the plot sends it no move, only a `Leave`, and only a
+    move used to hide the box. So the box stayed up at the last point, and
+    each later frame showed that point again. While the run played, each frame
+    showed a new instant, so a modelled value climbed with the run for a
+    pointer that had gone. A move still waiting out the cooldown when the
+    pointer leaves is discarded too. Otherwise the end of the cooldown would
+    show the box again.
     """
 
     controller = _run_with_a_dial_change()
@@ -866,8 +876,8 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
 
         assert chart.hover_text() is None
 
-    # Past the longest a held move waits to be answered, neither box has come
-    # back up.
+    # After the longest time that a held move waits for a response, neither
+    # box has come back.
     shown: set[str] = set()
     held = QDeadlineTimer(_HOVER_DELIVERY_MS)
 
@@ -877,7 +887,8 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
 
     assert not shown
 
-    # Nor does a following frame, the run having played on.
+    # A following frame does not bring a box back either, after the run has
+    # played on.
     _advance(controller, 30.0)
     following = _frame(controller)
 
@@ -888,8 +899,8 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
 
     application.processEvents()
 
-    # A pointer that comes back is answered again: leaving did not withdraw
-    # the hover.
+    # A pointer that comes back gets a readout again, so leaving did not
+    # switch the hover off.
     for chart in charts:
         back, _ = _two_points(chart, following)
         _move_pointer(chart, back)
@@ -900,13 +911,14 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
 def test_a_chart_let_go_is_freed_at_once_rather_than_by_the_collector(
     application: QApplication,
 ) -> None:
-    """`PL-TCR5`: a chart nothing holds any more is freed when its last reference goes.
+    """`PL-TCR5`: a chart that nothing references any more is freed when its last reference goes.
 
-    Its hover once held the chart's own method to call back, a reference
-    cycle, so a chart let go was freed only when the cycle collector next ran
-    - which can be in the middle of that chart's own paint, and in CI was: a
-    segmentation fault in `QPainter::resetTransform`. The collector is off
-    here, so only the reference count can free it.
+    Its hover once stored the chart's own method as a callback, which made a
+    reference cycle. So a released chart was freed only when the cycle
+    collector next ran. That can happen in the middle of the chart's own
+    paint, and in CI it did, as a segmentation fault in
+    `QPainter::resetTransform`. The collector is off in this test, so only the
+    reference count can free the chart.
     """
 
     controller = _run_with_a_dial_change()
@@ -980,7 +992,7 @@ def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern(application: QAp
         if style.dash_pattern is None:
             assert pen.dashPattern() == []
         else:
-            # Qt states a pattern in pen widths; the table states it in pixels.
+            # Qt states a dash pattern in pen widths, and the table states it in pixels.
             assert pen.dashPattern() == pytest.approx(
                 [length / style.stroke_width for length in style.dash_pattern]
             )
@@ -989,15 +1001,16 @@ def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern(application: QAp
 def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application: QApplication,
 ) -> None:
-    """A legend teaching one mark for a chart drawing another misreads it.
+    """A legend that shows one mark while the chart draws another leads the reader to misread it.
 
-    The swatch is how a reader learns which mark means what, so a swatch
-    ruled on its upper edge only would carry the same line-not-band reading
-    `PL-90Y6` removed from the chart, and would carry it into every glance at
-    the plot afterwards. Held twice: on the pen and brush the swatch says it
-    paints with, and on the pixels it painted - the top and bottom rows in
-    the edge colour, and the rows between in the fill at its opacity over
-    the widget's own ground.
+    The swatch is how a reader learns which mark means what. A swatch with a
+    line on its upper edge only would bring back the line-not-band reading
+    that `PL-90Y6` removed from the chart, and the reader would carry it into
+    every later glance at the plot. The test checks the swatch twice. It checks
+    the pen and brush that the swatch says it paints with. It also checks the
+    pixels it painted: the top and bottom rows in the edge colour, and the
+    rows between them in the fill colour at its opacity over the widget's own
+    background.
     """
 
     legend = TraceLegend()
@@ -1010,7 +1023,7 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
     assert mark.edge_pen.dashPattern() == []
     assert mark.fill.color().name() == MAC_AWAKE_BAND_COLOR.lower()
-    # QColor holds an alpha at sixteen bits, so the opacity comes back at that grain.
+    # QColor stores alpha in sixteen bits, so the opacity comes back at that resolution.
     assert mark.fill.color().alphaF() == pytest.approx(MAC_AWAKE_BAND_FILL_OPACITY, abs=1 / 65535)
 
     swatch = legend.band_swatch
@@ -1037,11 +1050,11 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
 
 
 def test_the_legend_is_the_visibility_control(application: QApplication) -> None:
-    """A click is a request, and the boxes show the owner's answer to it (`PL-VN6M`).
+    """A click is a request, and the boxes show the owner's response to it (`PL-VN6M`).
 
-    The test stands where `SimulationView` stands: it holds the selection,
-    applies each request to it, and hands the result back. What the legend
-    shows after every click is the selection the owner holds.
+    The test takes the place of `SimulationView`. It stores the selection,
+    applies each request to it, and passes the result back. After every click,
+    the legend shows the selection that the owner stores.
     """
 
     legend = TraceLegend()
@@ -1069,7 +1082,7 @@ def test_the_legend_is_the_visibility_control(application: QApplication) -> None
 
 
 def _box(legend: TraceLegend, quantity: RecordedQuantity) -> QCheckBox:
-    """The box a reader clicks for one compartment, found by the name it is announced by."""
+    """Return the box a reader clicks for one compartment, found by its accessible name."""
 
     from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
 
@@ -1081,12 +1094,12 @@ def _box(legend: TraceLegend, quantity: RecordedQuantity) -> QCheckBox:
 def test_a_click_nobody_answers_leaves_the_legend_showing_what_it_was_handed(
     application: QApplication,
 ) -> None:
-    """The boxes hold no state of their own, so a request nobody answers changes nothing.
+    """The boxes store no state of their own, so a request that nobody handles changes nothing.
 
-    A legend whose owner is gone, or has not yet connected, is the case
-    where a box left as the reader clicked it would name a curve no frame
-    draws. The click is still sent, once; the box, its swatch and its words
-    go back to the selection last shown.
+    This matters for a legend whose owner is gone, or has not yet connected.
+    There, a box left as the reader clicked it would name a curve that no
+    frame draws. The click is still sent, once. The box, its swatch and its
+    words return to the selection last shown.
     """
 
     legend = TraceLegend()
@@ -1107,12 +1120,13 @@ def test_a_click_nobody_answers_leaves_the_legend_showing_what_it_was_handed(
 def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
     application: QApplication,
 ) -> None:
-    """`PL-B1R9`: the owner's own change is not echoed back to it as a reader's.
+    """`PL-B1R9`: the owner's own change is not sent back to it as if a reader had made it.
 
-    A selection the owner hands down - a click it answered, or a second run
-    holding the selection to the cap - owes its frame to the owner. Echoed
-    back as a request, the cap's reduction drew a frame from a run set half
-    told it had grown, and the fork that caused it then drew its own.
+    A selection that the owner passes down is the owner's to draw a frame
+    for. It may come from a click the owner handled, or from a second run that
+    limits the selection to the cap. When it was echoed back as a request, the
+    cap's reduction drew a frame from a set of runs only half updated for the
+    new run. The fork that caused the reduction then drew its own frame.
     """
 
     legend = TraceLegend()
@@ -1134,8 +1148,8 @@ def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
     assert len(legend.compared_marks) == len(reduced.shown) * reduced.run_count
     assert legend._compared_caption.isHidden() is False
 
-    # The key of a compartment the cap took off says so in both channels that
-    # are not colour, so it cannot be read as a curve on the plot.
+    # The legend key of a compartment that the cap removed shows the removal in
+    # both channels other than colour, so it cannot be read as a curve on the plot.
     fat = _box(legend, RecordedQuantity.FAT)
 
     assert not fat.isChecked()
@@ -1151,7 +1165,7 @@ def test_a_selection_handed_to_the_legend_is_shown_and_requests_nothing(
 
 
 def _legend_rows(legend: QWidget) -> list[FlowLayout]:
-    """The legend's rows, top to bottom, each a wrapping row."""
+    """Return the legend's rows, top to bottom, each one a wrapping row."""
 
     layout = legend.layout()
     assert layout is not None
@@ -1175,8 +1189,8 @@ def _entries_inside(legend: QWidget, rows: list[FlowLayout]) -> None:
             widget = item.widget()
 
             # A hidden entry is not laid out and keeps whatever geometry it
-            # was built with, so it is not a thing that can be outside the
-            # legend. `FlowLayout._laid_items` is what skips it.
+            # was built with, so it cannot be outside the legend.
+            # `FlowLayout._laid_items` is what skips it.
             if widget is not None and widget.isHidden():
                 continue
 
@@ -1189,18 +1203,18 @@ def _entries_inside(legend: QWidget, rows: list[FlowLayout]) -> None:
 def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a_wide_one(
     application: QApplication,
 ) -> None:
-    """The six compartment entries reflow rather than holding the chart column to their sum.
+    """The six compartment entries wrap rather than forcing the chart column to their total width.
 
-    The Flet legend rows wrapped; on one unbreakable line the compartments
-    row alone held the chart column to 1220 px and pushed the sidebar off a
-    1400 px window. The caption stays first and the entries follow it.
+    The Flet legend rows wrapped. On one unbreakable line, the compartments
+    row alone forced the chart column to 1220 px wide and pushed the sidebar
+    off a 1400 px window. The caption stays first and the entries follow it.
     """
 
     legend = TraceLegend()
     compartments, compared, references, record = _legend_rows(legend)
     one_line = compartments.minimumSize().height()
 
-    # The per-run row stands down entirely while one run is drawn, where the
+    # The per-run row is hidden entirely while one run is drawn, because the
     # compartment row above already names every drawn curve completely.
     assert compared.count() > 0
     assert legend.compared_marks == ()
@@ -1262,10 +1276,10 @@ def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
 ) -> None:
     """The wash-in row says what the wash-in plot draws, in the pens it draws it with.
 
-    The trace at its own stroke width and solid, the equilibrium line in its
-    wide dash, the control mark upright in its fine dash: each swatch is the
-    plot's pen, so the legend cannot describe a line the plot does not draw
-    (`PL-THXF`), and the words carry the line style too.
+    The trace is solid at its own stroke width, the equilibrium line is in its
+    wide dash, and the control mark is upright in its fine dash. Each swatch
+    uses the plot's own pen, so the legend cannot describe a line that the
+    plot does not draw (`PL-THXF`). The words state the line style too.
     """
 
     legend = WashInLegend()
@@ -1280,9 +1294,9 @@ def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
         EQUILIBRIUM_LEGEND_LABEL,
         CONTROL_MARK_LEGEND_LABEL,
     ]
-    # `isVisible` rather than `isHidden`: the per-run and fork entries are
-    # hidden by their wrapper, and a label inside a hidden parent carries no
-    # hidden flag of its own.
+    # This uses `isVisible` rather than `isHidden`. The per-run and fork
+    # entries are hidden by their wrapper, and a label inside a hidden parent
+    # has no hidden flag of its own.
     assert {label.text() for label in legend.findChildren(QLabel) if label.isVisible()} == {
         WASH_IN_TRACE_LEGEND_LABEL,
         EQUILIBRIUM_LEGEND_LABEL,
@@ -1314,9 +1328,10 @@ def test_every_compartment_box_carries_the_name_assistive_technology_announces(
 ) -> None:
     """The Flet legend's semantics label survives the port as the box's accessible name.
 
-    The words beside a box describe the line ("Circuit (solid)"); what a
-    screen reader should announce is the act the box performs, which is the
-    string the Flet build carried and the port must not lose (`PL-25KS`).
+    The words beside a box describe the line ("Circuit (solid)"). A screen
+    reader should instead announce the action that the box performs. That is
+    the string the Flet build carried, and the port must not lose it
+    (`PL-25KS`).
     """
 
     from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
@@ -1332,7 +1347,7 @@ def test_every_compartment_box_carries_the_name_assistive_technology_announces(
 
 
 def _dashes_px(pen) -> list[float]:
-    """A pen's dash pattern back in display pixels.
+    """Return a pen's dash pattern converted back to display pixels.
 
     Qt states a dash pattern in units of the pen's width, so widening a pen
     changes the numbers it reports while drawing the same dashes. The
@@ -1349,17 +1364,18 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 ) -> None:
     """`PL-8PSW`: the whole encoding, on a real fork, on both plots and in both legends.
 
-    Four claims, and each is one a misread would make clinical. The
-    compartment keeps line style and colour exactly as the single-run chart
-    draws them, so no channel means two things either side of the mode
-    change. The run is on line width, at two levels, with the *first* run
-    the wider - the two curves coincide exactly before the fork
-    (`PL-Z3W6`), so the narrower one has to be the one drawn on top or one
-    run is invisible over that stretch. Every drawn curve's legend entry
-    names both its compartment and its run, because `docs/MODEL.md`
-    § "Minimum displayed outputs" requires the run to be named in text and
-    colour is already spent. And the fork itself is marked, since it is the
-    one instant the two runs stop being the same run.
+    The test checks four claims, and a misreading of any one of them would be
+    a clinical error. First, the compartment keeps its line style and colour
+    exactly as the single-run chart draws them, so no channel means two
+    different things on either side of the mode change. Second, the run is
+    shown by line width, at two levels, with the *first* run the wider. The
+    two curves coincide exactly before the fork (`PL-Z3W6`), so the narrower
+    one has to be drawn on top, or one run is invisible over that stretch.
+    Third, every drawn curve's legend entry names both its compartment and
+    its run, because `docs/MODEL.md` § "Minimum displayed outputs" requires
+    the run to be named in text, and colour is already used for the
+    compartment. Fourth, the fork itself is marked, since it is the one
+    instant at which the two runs stop being the same run.
     """
 
     trunk = _run_with_a_dial_change()
@@ -1381,7 +1397,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     legend.show_selection(INITIAL_COMPARTMENT_SELECTION.with_run_count(len(frame.runs)))
     wash_in_legend.show_run_names(tuple(run.label for run in frame.runs))
 
-    # The cap: two compartments, which is what leaves the width free at all.
+    # The cap allows two compartments, which is what leaves line width free to show the run.
     assert len(frame.runs) == 2
     assert len(frame.visible) == COMPARED_COMPARTMENT_CAP
 
@@ -1397,23 +1413,24 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
         assert _dashes_px(first) == pytest.approx(_dashes_px(second))
         assert _dashes_px(second) == pytest.approx(list(style.dash_pattern or []))
 
-        # The run is the width, and only the first run's moved.
+        # The run is shown by width, and only the first run's width changed.
         assert second.widthF() == style.stroke_width
         assert first.widthF() == style.stroke_width + COMPARED_RUN_WIDTH_STEP
         assert first.widthF() != second.widthF()
 
-    # The same channel on the wash-in plot, which draws one trace per run in
-    # one colour and would otherwise put two identical curves on one axis.
+    # The wash-in plot uses the same channel. It draws one trace per run in one
+    # colour, so it would otherwise put two identical curves on one axis.
     assert wash_in.drawn_pen(1).widthF() == WASH_IN_STROKE_WIDTH
     assert wash_in.drawn_pen(0).widthF() == WASH_IN_STROKE_WIDTH + COMPARED_RUN_WIDTH_STEP
 
-    # The fork is marked, on the run that opened at it and on neither other.
+    # The fork is marked on the run that opened at it, and on no other.
     assert chart.branch_point_time(0) is None
     assert chart.branch_point_time(1) == pytest.approx(600.0)
     assert wash_in.branch_point_time(1) == pytest.approx(600.0)
 
-    # Every drawn curve is named by both dimensions, in the pen it is drawn
-    # with, so the legend cannot describe a line the plot is not drawing.
+    # Every drawn curve has a legend entry that names both its compartment and
+    # its run, drawn in the curve's own pen, so the legend cannot describe a
+    # line the plot is not drawing.
     marks = legend.compared_marks
 
     assert len(marks) == len(frame.visible) * len(frame.runs)

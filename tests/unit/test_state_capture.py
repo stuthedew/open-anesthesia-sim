@@ -1,36 +1,36 @@
-"""What `capture_state()` covers, checked against the compartments themselves.
+"""Check what `capture_state()` covers, against the compartments themselves.
 
 PL-026 made `AgentUptakeSystem.advance()` transactional by capturing every
 dynamic value before the step and restoring it on failure. `docs/
 WORKING_NOTES.md` records the one real risk in that design: a snapshot that
-silently stops covering everything. A field added to a compartment later,
-with no matching line in its `capture_state()`, would leave a partial
-restore that looks like a complete one - and unlike the failure it exists to
-prevent, that one is invisible, because the values it leaves behind are the
-ones the failed step wrote.
+silently stops covering everything. Suppose a field is added to a compartment
+later, with no matching line in its `capture_state()`. A restore would then be
+partial but look complete. Unlike the failure that the restore exists to
+prevent, this failure is invisible, because the values it leaves behind are
+the ones the failed step wrote.
 
-Nothing about the model can decide whether a new field is trajectory or
-setting; a person has to. So these tests make the decision *unavoidable*
-rather than trying to make it automatically. Every field of every
-compartment is classified in the table below, and three things are checked
-against it:
+Nothing about the model can decide whether a new field is trajectory or a
+setting. A person has to decide. So these tests make the decision
+*unavoidable* rather than trying to make it automatically. Every field of
+every compartment is classified in the table below, and three things are
+checked against it:
 
 1. the classification covers the compartment exactly, so a new field of any
    kind fails here until it is classified;
 2. `restore_state()` restores exactly the fields classified as run state;
    and
-3. `reset()` clears exactly those same fields, which is the cross-check -
-   a new dynamic field wired into `reset()`, as it must be for Reset to
-   work, but not into `capture_state()`, fails on this one.
+3. `reset()` clears exactly those same fields, which is the cross-check. A
+   new dynamic field that is wired into `reset()`, as it must be for Reset to
+   work, but not into `capture_state()` fails this check.
 
 The perturbation below writes fields directly rather than through their
-setters, deliberately: what is being measured is which fields a method
-writes, and most fields have no setter. The write itself refuses whatever
-the field's constructor would refuse (`PL-LBQY`, `PL-19Y0`), so each value
-written is one the field accepts: a checked type is built as its type again -
-a flow one litre a minute up, a percent or a fraction halved - and a plain
-number is halved, which the agent each compartment below is built holding
-leaves room for.
+setters. That is deliberate: what is being measured is which fields a method
+writes, and most fields have no setter. The write itself refuses whatever the
+field's constructor would refuse (`PL-LBQY`, `PL-19Y0`). So each value written
+must be one that the field accepts. A value of a checked type is built as that
+type again: a flow is raised by one litre a minute, and a percent or a
+fraction is halved. A plain number is halved too, and each compartment below
+is built holding little enough agent to leave room for that.
 """
 
 from collections.abc import Callable
@@ -73,12 +73,12 @@ class _Compartment:
 
 
 def _breathing_circuit() -> BreathingCircuit:
-    """Built with a machine range declared, unlike every shipped profile.
+    """Build a circuit with a machine range declared, unlike every shipped profile.
 
-    `None` is what `data/machines/reference_circle_system.json` records, and a
-    `None` here would make the perturbation below untestable - there is no
-    second value of `NoneType` to write. Declaring one costs nothing and
-    measures more: the field is a setting, so a rollback that restored it
+    `data/machines/reference_circle_system.json` records `None` for the range.
+    A `None` here would make the perturbation below untestable, because there
+    is no second value of `NoneType` to write. Declaring a range costs nothing
+    and measures more. The field is a setting, so a rollback that restored it
     would swap the machine under a run in progress (`PL-8PS6`).
     """
 
@@ -165,9 +165,9 @@ COMPARTMENTS = (
     _Compartment(
         label="AgentSimulationValidator",
         build=_agent_simulation_validator,
-        # `initial_agent_l` is run state rather than a setting: it anchors
-        # the current accounting period, and `reset()` - which is what
-        # clears run state everywhere else in `core/` - is what writes it.
+        # `initial_agent_l` is run state rather than a setting. It anchors the
+        # current accounting period, and `reset()` writes it. Everywhere else
+        # in `core/`, `reset()` is what clears run state.
         run_state_fields=frozenset({"initial_agent_l", "delivered_agent_l", "exhausted_agent_l"}),
         setting_fields=frozenset(),
     ),
@@ -175,24 +175,25 @@ COMPARTMENTS = (
 
 
 def _perturb(value: object) -> object:
-    """Return a value guaranteed to differ from the one given, which its field accepts."""
+    """Return a value that its field accepts and that is sure to differ from the one given."""
 
     if isinstance(value, str):
         return f"{value} (perturbed)"
 
     if isinstance(value, (FreshGasFlow, AlveolarVentilation, CardiacOutput)):
-        # Arithmetic on a flow is a plain float, which the field refuses at
-        # the write, so the perturbed flow is built as its type again.
+        # Arithmetic on a flow gives a plain float, which the field refuses at
+        # the write. So the perturbed flow is built as its type again.
         return type(value)(value + 1.0)
 
     if isinstance(value, (Percent, Fraction)):
-        # Halved rather than raised: a fraction has no room above 1, and a
-        # vaporizer maximum of 100% none above 100. A dial of zero moves to
-        # 1%, under the halved maximum written after it.
+        # The value is halved rather than raised. A fraction has no room above
+        # 1, and a vaporizer maximum of 100% has no room above 100. A dial of
+        # zero moves to 1%, which is less than the halved maximum written
+        # after it.
         return type(value)(value / 2.0 if value else 1.0)
 
     if isinstance(value, float):
-        # Halved for the same reason: a perfusion fraction has no room above 1.
+        # A plain float is halved for the same reason: a perfusion fraction has no room above 1.
         return value / 2.0 if value else 1.0
 
     if isinstance(value, DeliverableFreshGasFlowRange):
@@ -204,7 +205,7 @@ def _perturb(value: object) -> object:
 
 
 def _perturb_every_field(compartment: Any) -> dict[str, object]:
-    """Write a different value into every field; return what was written."""
+    """Write a different value into every field, and return the values written."""
 
     perturbed: dict[str, object] = {}
 
@@ -215,8 +216,9 @@ def _perturb_every_field(compartment: Any) -> dict[str, object]:
         assert replacement != original, compartment_field.name
 
         if compartment_field.name == "perfusion_fraction":
-            # A tissue's fraction can be written only once, when the group is
-            # built (`PL-Z0HN`), so the changed value is written past that guard.
+            # A tissue's perfusion fraction can be written only once, when the
+            # group is built (`PL-Z0HN`). So the changed value is written in a
+            # way that bypasses that guard.
             object.__setattr__(compartment, compartment_field.name, replacement)
         else:
             setattr(compartment, compartment_field.name, replacement)
@@ -228,9 +230,9 @@ def _perturb_every_field(compartment: Any) -> dict[str, object]:
 def _fields_restored_to_their_original_value(compartment: Any) -> frozenset[str]:
     """Return the fields a capture-then-restore round trip brings back.
 
-    Measured against the value the compartment started with rather than
-    against "was written at all", so that a `capture_state()` recording a
-    constant instead of reading the field fails here.
+    Each field is compared with the value the compartment started with, not
+    with "was written at all". So a `capture_state()` that records a constant
+    instead of reading the field fails here.
     """
 
     state = compartment.capture_state()
@@ -248,7 +250,7 @@ def _fields_restored_to_their_original_value(compartment: Any) -> frozenset[str]
 
 
 def _fields_written_back_by(compartment: Any, recover: Callable[[], None]) -> frozenset[str]:
-    """Return the fields `recover()` writes, of those perturbed first."""
+    """Perturb every field, then return the fields that `recover()` overwrites."""
 
     perturbed = _perturb_every_field(compartment)
     recover()
@@ -262,8 +264,8 @@ def _fields_written_back_by(compartment: Any, recover: Callable[[], None]) -> fr
 def test_every_compartment_field_is_classified(compartment: _Compartment) -> None:
     """A field that is neither run state nor a setting fails here first.
 
-    This is the test that makes the other two mean something: they compare
-    behavior against the table, and this one holds the table to the code.
+    This is the test that gives the other two their meaning. They compare
+    behavior against the table, and this one checks the table against the code.
     """
 
     declared = {compartment_field.name for compartment_field in fields(compartment.build())}
@@ -285,12 +287,12 @@ def test_capture_and_restore_cover_exactly_the_run_state(compartment: _Compartme
 
 @pytest.mark.parametrize("compartment", COMPARTMENTS, ids=lambda case: case.label)
 def test_reset_clears_exactly_what_capture_state_captures(compartment: _Compartment) -> None:
-    """The cross-check on the two lists that have to agree.
+    """Cross-check the two lists that have to agree.
 
-    `reset()` and `capture_state()` are written independently and answer the
-    same question - which values carry the run rather than describe the
-    model - so they are each other's audit. A dynamic field added to one and
-    not the other is what this catches.
+    `reset()` and `capture_state()` are written independently, and they answer
+    the same question: which values carry the run rather than describe the
+    model. So each one audits the other. This test catches a dynamic field that
+    was added to one and not the other.
     """
 
     built = compartment.build()
@@ -301,7 +303,7 @@ def test_reset_clears_exactly_what_capture_state_captures(compartment: _Compartm
 
 
 def _capturable_field_names(composite: Any) -> frozenset[str]:
-    """Names of a composite's fields that are themselves capturable."""
+    """Return the names of a composite's fields that are themselves capturable."""
 
     return frozenset(
         composite_field.name
@@ -311,7 +313,7 @@ def _capturable_field_names(composite: Any) -> frozenset[str]:
 
 
 def test_the_patient_state_covers_every_patient_compartment() -> None:
-    """A fourth tissue group would have to be captured to be added."""
+    """A fourth tissue group could not be added without also being captured."""
 
     patient = AgentUptakeSystem.for_agent("sevoflurane").patient
 
@@ -324,9 +326,9 @@ def test_the_patient_state_covers_every_patient_compartment() -> None:
     }
     assert {f.name for f in fields(PatientCompartmentsState)} == _capturable_field_names(patient)
 
-    # Cardiac output is the one field left out, and deliberately: it is a
-    # setting the user owns, and every tissue blood flow is derived from it,
-    # so restoring it would undo a change the run had accepted.
+    # Cardiac output is the one field left out, deliberately. It is a setting
+    # that the user owns, and every tissue blood flow is derived from it. So
+    # restoring it would undo a change that the run had accepted.
     assert "cardiac_output_l_min" not in {f.name for f in fields(PatientCompartmentsState)}
 
 
@@ -334,16 +336,16 @@ DERIVED_SYSTEM_FIELDS = frozenset({"_propagator", "_propagator_key"})
 """The system's fields that carry no trajectory and are deliberately not captured.
 
 Both belong to the cached propagator, which is a function of the settings
-alone: the settings are what a step never writes and a rollback never
-restores, so the cache is still correct for whatever a rollback leaves. They
+alone. A step never writes the settings, and a rollback never restores them,
+so the cache is still correct for whatever state a rollback leaves. The fields
 are named here rather than filtered out by a rule, so that adding a field is
-still a test failure that has to be answered - the guard below only means
+still a test failure that someone has to resolve. The guard below only means
 something if a genuinely dynamic field cannot join this set by accident.
 """
 
 
 def test_the_system_state_covers_every_part_of_the_system() -> None:
-    """Same guard one level up, where a sixth compartment would be added."""
+    """Apply the same guard one level up, where a sixth compartment would be added."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     field_names = {f.name for f in fields(system)}
@@ -359,11 +361,11 @@ def test_the_system_state_covers_every_part_of_the_system() -> None:
 def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
     """A rollback leaves the cache alone, because it cannot invalidate it.
 
-    The exemption above is only safe if it is true, and what makes it true is
-    that a propagator depends on settings rather than on the trajectory.
-    Capture a state, change nothing but the trajectory, restore, and the same
-    propagator must still be the right one - which shows up as the next step
-    producing exactly what it produced the first time.
+    The exemption above is safe only if it is true. What makes it true is that a
+    propagator depends on settings rather than on the trajectory. Capture a
+    state, change nothing but the trajectory, and restore. The same propagator
+    must then still be the right one, which shows up as the next step producing
+    exactly what it produced the first time.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -384,10 +386,10 @@ def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
 def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     """Rollback runs while a failure is already being handled.
 
-    It restores by direct field assignment for that reason, and the
-    behavior worth pinning is the consequence: a state captured from a real
-    run restores onto a system whose settings have since moved, without
-    consulting a guard that could reject it.
+    For that reason it restores by direct field assignment. The behavior worth
+    pinning is the consequence. A state captured from a real run restores onto
+    a system whose settings have since moved, without consulting a guard that
+    could reject it.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -414,22 +416,22 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
 
 
 # `PL-R460`: the propagator cache is keyed on a raw tuple of floats rather than
-# on `UptakeEquationSettings`, because building the settings object cost 7.2 us
-# of a 33 us step to answer a question whose answer is "no" on all but a few
-# steps of a run. The key is only safe while it stays a bijection of the
-# settings, and the failure if it stops being one is the one this file exists
-# for: silent, and invisible in the values it leaves behind. A setting with no
-# entry in the key would be changed, the key would not move, and the run would
-# keep propagating with the matrix for the old setting.
+# on `UptakeEquationSettings`. Building the settings object cost 7.2 us of a
+# 33 us step, to answer a question whose answer is "no" on all but a few steps
+# of a run. The key is safe only while it stays a bijection of the settings. If
+# it stops being one, the failure is the kind this file exists for: silent, and
+# invisible in the values it leaves behind. A setting with no entry in the key
+# could change without the key moving, and the run would keep propagating with
+# the matrix for the old setting.
 
 
 def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
     """One key entry per settings field, counted rather than trusted.
 
-    `tissues` expands to its groups instead of contributing one entry, and
-    `TissueGroupEquationSettings.name` contributes none because
-    `build_system_matrix()` never reads it - hence a `- 1` on each. Adding a
-    field to either settings class without an entry in
+    `tissues` expands to its groups instead of contributing one entry.
+    `TissueGroupEquationSettings.name` contributes none, because
+    `build_system_matrix()` never reads it. Hence the `- 1` in each count.
+    Adding a field to either settings class without an entry in
     `_propagator_cache_key()` fails here.
     """
 
@@ -478,13 +480,13 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
 def test_moving_any_setting_moves_the_propagator_cache_key(
     move: Callable[[AgentUptakeSystem], None], description: str
 ) -> None:
-    """The property the counting test above cannot establish.
+    """Check the property that the counting test above cannot establish.
 
-    Each case is written straight onto the compartment where no setter exists,
-    which is the path that has no guard of its own and the one the key exists
-    to catch: `_propagator_for()` compares values rather than trusting a setter
-    to invalidate, so a setting reached around the control surface must move
-    the key just the same.
+    Where no setter exists, the case writes straight onto the compartment. That
+    path has no guard of its own, and it is the one the key exists to catch.
+    `_propagator_for()` compares values rather than trusting a setter to
+    invalidate the cache. So a setting changed around the control surface must
+    move the key just the same.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -496,7 +498,7 @@ def test_moving_any_setting_moves_the_propagator_cache_key(
 
 
 def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
-    """End to end: the key change reaches the propagator, not just the tuple.
+    """Check end to end that the key change affects the propagator, not just the tuple.
 
     Two systems stepped under the same final ventilation must agree, whether
     that ventilation was set before the first step or after it. If the cache

@@ -8,13 +8,13 @@ a drag or a file edit. Every Area's header carries a View chooser listing
 every registered kind, so one choice in any Area is that route (`PL-50PZ`).
 
 None of the three shipped Workspaces names the accounting View (`PL-KXTL`), so
-the chooser is its only route in the shipped set, and these tests are what
-guard it. Each loads a Workspace's layout into a real dashboard, checks the
+in the shipped set the chooser is the only route to it, and these tests guard
+that route. Each loads a Workspace's layout into a real dashboard, checks the
 accounting is not on screen, chooses it in one Area by triggering the
 chooser's menu entry, and checks its five amounts are then on screen in that
 Area. "On screen" here is Qt's `isVisible` on the label under a shown window,
-until `PL-904Y`'s predicate replaces it. The amounts' own values are held by
-the accounting panel's tests; these hold only that the reader can reach them.
+until `PL-904Y`'s predicate replaces it. The accounting panel's tests check the
+amounts' values. These tests check only that the reader can reach them.
 """
 
 from collections.abc import Iterator
@@ -30,7 +30,7 @@ from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import SHIPPED_WORKSPACE_IDS, shipped_workspace
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 
-# The chooser's entry for the accounting View, as a reader reads it.
+# The text of the chooser's entry for the accounting View, as the reader sees it.
 _ACCOUNTING_ENTRY = "Agent accounting"
 
 # The first word of each of the accounting panel's five lines: the four
@@ -39,8 +39,8 @@ _AMOUNT_LINES = ("Delivered: ", "Exhausted: ", "Stored: ", "Unaccounted: ", "Abs
 
 _WINDOW_PX = (1366, 900)
 
-# A Workspace naming no accounting View and none of the shipped ones' layouts:
-# two charts side by side.
+# A Workspace with two charts side by side. It names no accounting View, and
+# its layout is not one of the shipped Workspaces' layouts.
 _TWO_CHARTS = LayoutModel(
     (
         Window(
@@ -83,7 +83,7 @@ def dashboard(application: QApplication) -> Iterator[SimulationView]:
 
 
 def _amount_labels(view: SimulationView) -> list[QLabel]:
-    """The labels showing the accounting's five amounts, hidden ones included."""
+    """Return the labels that show the accounting's five amounts, including hidden ones."""
 
     return [label for label in view.findChildren(QLabel) if _is_amounts(label.text())]
 
@@ -103,7 +103,7 @@ def _on_screen(widget: QWidget) -> bool:
 def _choose_accounting(
     application: QApplication, view: SimulationView, area_id: AreaId
 ) -> AreaFrame:
-    """Pick the accounting entry in `area_id`'s chooser, as a reader does; its frame after."""
+    """Pick the accounting entry in `area_id`'s chooser as a reader does, then return its frame."""
 
     chooser = view.layout_container.frame(area_id).chooser
     menu = chooser.menu()
@@ -150,7 +150,7 @@ def test_the_accounting_can_be_brought_on_screen_in_any_area_of_any_workspace(
 def test_the_dashboard_still_draws_a_frame_once_the_charts_have_left_the_screen(
     application: QApplication, dashboard: SimulationView
 ) -> None:
-    """Choosing the accounting in the chart's Area leaves no run halted by a chart off screen."""
+    """Choosing the accounting in the chart's Area does not halt a run whose chart is off screen."""
 
     _choose_accounting(application, dashboard, AreaId(1))
     dashboard.present(False)

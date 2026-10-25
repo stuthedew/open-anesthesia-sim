@@ -1,9 +1,10 @@
 """The shape of the core's exception hierarchy, as a contract.
 
-These are not tests of behavior so much as of a design decision the rest
-of the codebase depends on: `app/` catches `AnesthesiaSimulationError` to
-decide whether a run is still trustworthy, and that only works if every
-core failure is inside the hierarchy and nothing else is.
+These tests check a design decision more than a behavior, and the rest of
+the codebase depends on that decision. `app/` catches
+`AnesthesiaSimulationError` to decide whether a run is still trustworthy.
+That works only if every core failure is inside the hierarchy and nothing
+else is.
 """
 
 import pytest
@@ -54,13 +55,13 @@ def test_numerical_failures_are_execution_failures() -> None:
 def test_core_errors_are_not_value_errors() -> None:
     """Inheriting from `ValueError` was the rejected alternative design.
 
-    Two reasons it stays rejected, both regressions this test would catch:
-    a caller could no longer separate a simulation failure from an
-    ordinary `ValueError` raised by a library or a bug, and Pydantic
-    treats a `ValueError` raised inside a validator as a validation
-    failure, so `core/parameters.py` would silently absorb a project
-    exception into a `ValidationError` instead of letting it reach the
-    caller as itself.
+    It stays rejected for two reasons, and this test would catch a regression
+    on either. First, a caller could no longer tell a simulation failure from
+    an ordinary `ValueError` raised by a library or a bug. Second, Pydantic
+    treats a `ValueError` raised inside a validator as a validation failure.
+    `core/parameters.py` would then silently turn a project exception into a
+    `ValidationError`, instead of letting the caller receive the original
+    exception.
     """
 
     assert not issubclass(AnesthesiaSimulationError, ValueError)
@@ -75,16 +76,17 @@ def test_core_errors_are_not_value_errors() -> None:
 
 
 def test_reaching_the_supported_domain_stops_the_run_but_is_not_a_failure() -> None:
-    """`SimulationDomainLimitError` sits under the branch that stops a run.
+    """`SimulationDomainLimitError` is a subclass of the branch that stops a run.
 
-    Both halves matter, and they pull in opposite directions. It must be a
-    `SimulationExecutionError` so that a caller which knows only the base
-    classes stops the run - the safe default, since continuing past the
-    supported domain is what `PL-Y5WR` exists to prevent. And it must be
-    distinguishable, because the interface decides from the type whether to
-    tell a reader the simulator broke, and saying so about a model that
-    stopped exactly where `docs/MODEL.md` says it must is a misreading of a
-    correct result (`docs/MODEL.md`, "Supported run length").
+    Two requirements apply, and they pull in opposite directions. First, the
+    error must be a `SimulationExecutionError`, so that a caller which knows
+    only the base classes stops the run. That is the safe default, because
+    `PL-Y5WR` exists to prevent a run from continuing past the supported
+    domain. Second, the error must be distinguishable from the other
+    execution errors. The interface decides from the type whether to tell a
+    reader that the simulator broke. Saying so about a model that stopped
+    exactly where `docs/MODEL.md` says it must would misreport a correct
+    result (`docs/MODEL.md`, "Supported run length").
     """
 
     assert issubclass(SimulationDomainLimitError, SimulationExecutionError)

@@ -1,26 +1,26 @@
 """Verification of the closed-form run against the stepped run it replaces.
 
-The run definition's claim is that a run needs no samples: the settings it was computed
-under determine every state it passed through, so a value can be recovered
-rather than recalled. What that has to be checked against is the stepped path
-itself, because the two are meant to describe the same run - so the central
-tests here drive `AgentUptakeSystem` step by step, build a run definition from exactly
-the same setting changes at exactly the same instants, and compare.
+The run definition claims that a run needs no stored samples. The settings that a run was
+computed under determine every state it passed through, so a value can be recomputed
+rather than recalled. That claim has to be checked against the stepped path itself,
+because the two are meant to describe the same run. So the central tests here drive
+`AgentUptakeSystem` step by step, build a run definition from exactly the same setting
+changes at exactly the same instants, and compare the two.
 
-The tolerances are measured rather than chosen, and they are stated as
-absolute differences in a fraction of one atmosphere because that is the
-quantity displayed. Measured 2026-09-07 over a 600 s sevoflurane run with two
-setting changes, against a run whose largest fraction reaches 0.0316:
+The tolerances were measured, not chosen. They are stated as absolute differences in a
+fraction of one atmosphere, because that is the quantity displayed. They were measured on
+2026-09-07 over a 600 s sevoflurane run with two setting changes, in which the largest
+fraction reaches 0.0316:
 
     canonical (`state_at`) against the stepped run    1.8e-14
     display   (`evaluate`) against the stepped run    3.7e-15
 
-Both are eleven orders below the 1e-4 the two-decimal percent readout can
-show, so neither path can move a displayed digit. The difference between the
-two paths is composition order rather than method error, and `docs/MODEL.md`
-§ "The canonical evaluation rule" states which of them a stored value may come
-from. `tests/reference/test_canonical_evaluation.py` holds that guarantee; what
-is tested here is that the display path is refused where the rule says it is.
+Both are eleven orders of magnitude below 1e-4, the smallest change that the two-decimal
+percent readout can show, so neither path can change a displayed digit. The two paths differ
+because they compose the same operations in a different order, not because of method error.
+`docs/MODEL.md` § "The canonical evaluation rule" states which of the two paths a stored value
+may come from. `tests/reference/test_canonical_evaluation.py` tests that rule. The tests
+here check that the display path is refused where the rule says it must be.
 """
 
 from bisect import bisect_right
@@ -83,19 +83,20 @@ WORST_CANONICAL_DIFFERENCE = 5e-14
 WORST_DISPLAY_DIFFERENCE = 5e-14
 """Absolute agreement required with the stepped run, in a fraction of 1 atm.
 
-Both measured at or below 1.8e-14; see the module docstring. Rounded up to one
-figure so an ordinary floating-point wobble does not fail the suite, and left
-far below the 1e-4 a readout can show so a real divergence still does.
+Both differences were measured at or below 1.8e-14, as the module docstring records. Each
+limit is rounded up to one significant figure, so that an ordinary floating-point wobble does
+not fail the suite. Each is still far below the 1e-4 that a readout can show, so a real
+divergence still fails it.
 """
 
 
-# The end of a shared guard's refusal, which names the refused value and why
-# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+# The end of a shared guard's refusal message, which names the refused value and the reason
+# (`PL-T137`). The guard's own tests check each reason. The tests here check the field name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
 
 
 def _compartments(system: AgentUptakeSystem) -> tuple[float, ...]:
-    """The six compartment fractions the run records, in state order."""
+    """Return the six compartment fractions that the run records, in state order."""
 
     return (
         system.circuit.inspired_partial_pressure_fraction,
@@ -110,10 +111,10 @@ def _stepped_run(
 ) -> tuple[AgentUptakeSystem, RunDefinition, dict[float, tuple[float, ...]]]:
     """Step a run and build the run definition of the same run, returning both and the samples.
 
-    The changes are applied to the system and recorded on the run definition at the
-    same instant and in the same order the app layer does it: the setter
-    first, so the core has accepted the value, then the run definition, which reads the
-    settings back out of the compartments rather than taking the argument.
+    Each change is applied to the system and recorded on the run definition at the same
+    instant, and in the same order, as the app layer does it. The setter runs first, so that
+    the core has accepted the value. The run definition records the change next, and it reads
+    the settings back out of the compartments rather than taking the argument.
     """
 
     if changes is None:
@@ -146,9 +147,9 @@ def _stepped_run(
 def test_evaluate_matches_a_stepped_run() -> None:
     """A window's states are the ones the stepped run actually reached.
 
-    The whole claim of the run definition in one test: a run that recorded nothing
-    answers for every instant a run that recorded everything passed through,
-    across two setting changes and to within a difference no display can show.
+    This one test checks the whole claim of the run definition. A run that recorded nothing
+    returns a state for every instant that a run recording everything passed through. It
+    does so across two setting changes, and to within a difference that no display can show.
     """
 
     _, definition, stepped = _stepped_run()
@@ -164,7 +165,7 @@ def test_evaluate_matches_a_stepped_run() -> None:
 
 
 def test_state_at_matches_a_stepped_run() -> None:
-    """The canonical path answers the same run, at instants of its own choosing."""
+    """The canonical path returns the same run's states, at whatever instants it is asked for."""
 
     _, definition, stepped = _stepped_run()
 
@@ -179,10 +180,10 @@ def test_state_at_matches_a_stepped_run() -> None:
 def test_the_canonical_path_answers_bit_identically_twice() -> None:
     """Two canonical evaluations of one definition at one instant agree exactly.
 
-    Not to a tolerance: the same sequence of operations on the same values.
-    This is the property a keyframe, an export and a fork's starting state
-    rest on, and `PL-P1Z3` is what states it in `docs/MODEL.md` and gates it
-    against the display path.
+    The test uses no tolerance, because both evaluations perform the same sequence of
+    operations on the same values. A keyframe, an export and a fork's starting state all rely
+    on this property. `PL-P1Z3` states the property in `docs/MODEL.md` and keeps the display
+    path from being used where the property is required.
     """
 
     _, definition, _ = _stepped_run(steps=900)
@@ -196,10 +197,10 @@ def test_the_canonical_path_answers_bit_identically_twice() -> None:
 def test_the_accumulated_agent_matches_the_run_s_own_accounting() -> None:
     """Delivered and exhausted agent come back as running totals, not per-segment ones.
 
-    The two accumulator rows have no diagonal entry, so a propagator maps each
-    to itself with coefficient one and a cumulative total carried through is
-    the same arithmetic as one restarted every segment. This is what lets the
-    closed form answer the mass balance at any instant without stepping to it.
+    The two accumulator rows have no diagonal entry, so a propagator maps each accumulator to
+    itself with a coefficient of one. Carrying a cumulative total through every segment is
+    therefore the same arithmetic as restarting the total in each segment. This is what lets
+    the closed form compute the mass balance at any instant without stepping to it.
     """
 
     system, definition, _ = _stepped_run()
@@ -214,14 +215,14 @@ def test_the_accumulated_agent_matches_the_run_s_own_accounting() -> None:
 def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPatch) -> None:
     """Frame cost follows the window, not the run's length.
 
-    The claim `PL-T691` exists for, tested structurally rather than by the
-    clock: a matrix exponential is what a window pays per segment it covers,
-    so counting them says whether the run's other 1 498 segments were touched.
-    A timing assertion would say the same thing and fail on a busy machine.
+    `PL-T691` exists to make this claim true. The test checks it structurally rather than
+    with a clock. A window pays for matrix exponentials in each segment it covers, so
+    counting the exponentials shows whether the run's other 1 498 segments were touched. A
+    timing assertion would check the same thing, but it would fail on a busy machine.
 
-    The run fills the supported run length rather than a longer one, since a
-    reach past it is refused (`PL-8H2R`); what the claim needs is many
-    segments behind the window, not any particular length.
+    The run fills the supported run length and no more, because a run that reaches past
+    that length is refused (`PL-8H2R`). The claim needs many segments behind the window, not
+    any particular length.
     """
 
     exponentials = 0
@@ -251,11 +252,11 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(run_definition, "matrix_exponential", counting_exponential)
     definition.evaluate(total_s - 100.0, total_s, 600)
 
-    # This run changes a setting every 57.6 s, so the last 100 s covers three
-    # segments at most, and a segment costs two propagators - one for the
-    # offset from its keyframe to its first column, one for the column
-    # spacing. An implementation that walked the run instead of the window
-    # would be building on the order of the 1 501 segments behind it.
+    # This run changes a setting every 57.6 s, so the last 100 s covers at most three
+    # segments. Each segment costs two propagators: one for the offset from its keyframe
+    # to its first column, and one for the column spacing. An implementation that walked
+    # the whole run instead of the window would touch on the order of the 1 501 segments
+    # behind it.
     assert exponentials <= 6
     assert exponentials < len(definition.segments) / 100
 
@@ -274,10 +275,10 @@ def test_a_run_under_unchanged_settings_is_one_segment() -> None:
 
 
 def test_two_changes_at_one_instant_are_one_segment() -> None:
-    """Two controls moved between one step and the next open one stretch, not two.
+    """Two controls moved between the same two steps open one new segment, not two.
 
-    The run was computed under whatever stood when the step ran, so a
-    zero-length segment would describe a stretch the model never integrated.
+    The run was computed under whatever settings applied when the step ran, so a
+    zero-length segment would describe a stretch of time that the model never integrated.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -297,7 +298,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
 
 
 def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
-    """A fresh system under the four live controls a recorded segment holds."""
+    """Return a fresh system set to the four live controls that a recorded segment stores."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     system.set_fresh_gas_flow(settings.fresh_gas_flow_l_min)
@@ -319,15 +320,14 @@ def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
 def test_a_recorded_setting_round_trips_to_what_was_set(
     control: str, maximum_l_min: float, flow_type: type[float]
 ) -> None:
-    """A segment holds each flow as it was set, and so rebuilds the settings it ran under.
+    """A segment stores each flow as it was set, so it rebuilds the settings it ran under.
 
-    `PL-SM5V`. Segments held flows in litres per second, and multiplying back
-    by sixty rebuilt different settings for 7 of the 101 cardiac outputs on
-    this grid - 1.9, 3.8, 3.9 and 7.6 to 7.9 L/min - because each tissue's
-    flow is cardiac output times its perfusion fraction, formed in litres per
-    minute before the division. Every setting on a 0.1 L/min grid across the
-    supported range is checked, for each of the three flow controls, and each
-    one that fails is named.
+    `PL-SM5V`. Segments used to store flows in litres per second. Multiplying them back by
+    sixty rebuilt different settings for 7 of the 101 cardiac outputs on this grid:
+    1.9, 3.8, 3.9 and 7.6 to 7.9 L/min. The cause was that each tissue's flow is cardiac
+    output times its perfusion fraction, formed in litres per minute before the division.
+    The test checks every setting on a 0.1 L/min grid across the supported range, for each
+    of the three flow controls, and names each setting that fails.
     """
 
     set_control = getattr(AgentUptakeSystem, f"set_{control}")
@@ -364,21 +364,21 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
 ) -> None:
     """Neither way into a run can be handed a record whose flow is outside its range.
 
-    `PL-HSFV`, reproduced 2026-10-04: the settings a system holds, rebuilt with
-    `replace` to a cardiac output of 1000 L/min with the tissue flows scaled
-    to sum to it, opened a run and was recorded as a change to one, and the
-    run answered with finite, plausible fractions - because the record checked
-    only that sum, and the range guards ran only in the compartments, which a
-    run built from a record never calls. The same for a fresh gas flow of
-    500 L/min and an alveolar ventilation of 200 L/min.
+    `PL-HSFV`, reproduced 2026-10-04. The settings that a system holds were rebuilt with
+    `replace` to a cardiac output of 1000 L/min, with the tissue flows scaled to sum to it.
+    That record opened a run, and it was also recorded as a change to a run. The run
+    returned finite, plausible fractions. The cause was that the record checked only the sum
+    of the flows, and the range guards ran only in the compartments, which a run built from
+    a record never calls. The same was true for a fresh gas flow of 500 L/min and an
+    alveolar ventilation of 200 L/min.
 
-    Each flow field now takes a type only its guard builds (`PL-0YYV`), so the
-    record cannot exist: built as its type, the flow is refused in the guard's
-    words before `replace` runs; handed in as a bare float, it is refused by
-    the record itself. Neither `RunDefinition(...)` nor `record_change` is
-    entered, since its argument is refused first; the two calls stand as the
-    entry points the reproduction went through. The run keeps the segments it
-    had either way, and checks nothing of its own.
+    Each flow field now takes a type that only its guard builds (`PL-0YYV`), so such a
+    record cannot exist. A flow built as its type is refused by the guard, in the guard's
+    own words, before `replace` runs. A flow handed in as a bare float is refused by the
+    record itself. Neither `RunDefinition(...)` nor `record_change` is entered, because its
+    argument is refused first. The two calls remain in the test as the entry points that the
+    reproduction went through. Either way, the run keeps the segments it had, and the run
+    checks nothing of its own.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -427,20 +427,19 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
 def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() -> None:
     """Neither way into a run can be handed a record whose dial the vaporizer cannot deliver.
 
-    `PL-BBMG`, reproduced 2026-10-04: the settings a sevoflurane system holds,
-    rebuilt with `replace` to a 20% dial against the agent's 8% maximum, opened
-    a run and was recorded as a change to one, and the run answered an alveolar
-    fraction of 0.033306 at 60 s - because the record held no maximum and
-    bounded the dial at 100%, and the circuit that refuses the dial is never
-    built on this path.
+    `PL-BBMG`, reproduced 2026-10-04. The settings that a sevoflurane system holds were
+    rebuilt with `replace` to a 20% dial setting, against the agent's 8% maximum. That
+    record opened a run, and it was also recorded as a change to a run. The run returned an
+    alveolar fraction of 0.033306 at 60 s. The cause was that the record stored no maximum
+    and bounded the dial only at 100%, and the circuit that refuses the dial is never built
+    on this path.
 
-    The record now carries the maximum its dial was set under, read off the
-    circuit, and refuses a dial above it in the circuit's own sentence before
-    `replace` returns, so neither `RunDefinition(...)` nor `record_change` is
-    entered; the two calls stand as the entry points the reproduction went
-    through. The maximum itself opens a run and records a change, and the
-    first percent past it is refused at both. The run keeps the segments it
-    had either way.
+    The record now carries the maximum that its dial was set under, read from the circuit.
+    It refuses a dial above that maximum, with the circuit's own message, before `replace`
+    returns. So neither `RunDefinition(...)` nor `record_change` is entered. The two calls
+    remain in the test as the entry points that the reproduction went through. A dial at the
+    maximum itself opens a run and records a change, and the first percent above the maximum
+    is refused by both. Either way, the run keeps the segments it had.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -487,15 +486,14 @@ def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() 
 
 
 def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> None:
-    """A segment holds the vaporizer setting as the percent dialled, at every dial position.
+    """A segment stores the vaporizer setting as the percent dialled, at every dial position.
 
-    `PL-NJPB`. Segments held the fraction the interface divided the dial's
-    percent by, and a fraction times a hundred misses the percent it came from
-    for 126 of the 801 positions a 0 to 8% dial makes at 0.01% steps - 0.23%
-    first, and 0.9% reading back as 0.9000000000000001 - so the setting could
-    not be recovered as dialled. Every position of sevoflurane's dial is
-    checked, formed as `dashboard_frame.slider_value` forms it, and each one
-    that fails is named.
+    `PL-NJPB`. Segments used to store a fraction, which the interface formed by dividing the
+    dial's percent by a hundred. A fraction times a hundred misses the percent it came from
+    for 126 of the 801 positions that a 0 to 8% dial makes in 0.01% steps. The first is
+    0.23%, and 0.9% reads back as 0.9000000000000001. So the setting could not be recovered
+    as dialled. The test checks every position of sevoflurane's dial, formed the way
+    `dashboard_frame.slider_value` forms it, and names each position that fails.
     """
 
     circuit = AgentUptakeSystem.for_agent("sevoflurane").circuit
@@ -521,7 +519,7 @@ def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> No
 
 
 def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
-    """A recorded change opens its segment where the run had got to, and nowhere else."""
+    """A recorded change opens its segment at the instant the run had reached, and nowhere else."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -536,7 +534,7 @@ def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
 
 
 def test_the_run_starts_where_the_system_does() -> None:
-    """A definition opened from a system's state answers that state at zero."""
+    """A definition opened from a system's state returns that state at time zero."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -548,7 +546,7 @@ def test_the_run_starts_where_the_system_does() -> None:
 
 
 def test_advancing_to_the_time_already_reached_changes_nothing() -> None:
-    """Two steps' worth of bookkeeping at one instant is not an error."""
+    """Advancing twice to the same instant is not an error."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -593,11 +591,11 @@ def test_a_window_opening_on_a_keyframe_needs_no_propagation() -> None:
 
 
 def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
-    """A window whose columns straddle a whole segment still reads the right one.
+    """A window whose columns straddle a whole segment still uses the right segment.
 
-    A walk that assumed one segment per column would hand the column after the
-    gap the skipped segment's settings, and draw a stretch of the run under
-    settings it was never computed under.
+    A walk that assumed one segment per column would give the column after the gap the
+    skipped segment's settings. It would then draw a stretch of the run under settings that
+    the run was never computed under.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -626,12 +624,12 @@ def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
 
 
 def test_a_run_definition_refuses_a_display_state_as_its_opening_state() -> None:
-    """A fork opening from a drawing value is the failure the wrapper exists to stop.
+    """A fork that opens from a drawn value is the failure that the wrapper exists to stop.
 
-    `RunDefinition.__init__` is the canonical sink a display value is likeliest to
-    reach by accident, because a fork's opening state and a drawn column are
-    the same nine numbers in the same order. The refusal is what makes them
-    different things rather than the same thing described differently.
+    `RunDefinition.__init__` is the canonical sink that a display value is most likely to
+    reach by accident. A fork's opening state and a drawn column are the same nine numbers in
+    the same order. Refusing the display value is what makes the two different things, rather
+    than the same thing described differently.
     """
 
     _, definition, _ = _stepped_run(steps=100)
@@ -643,11 +641,11 @@ def test_a_run_definition_refuses_a_display_state_as_its_opening_state() -> None
 
 
 def test_a_display_state_is_not_a_state_vector() -> None:
-    """The structural half of the guarantee, which is what protects a sink that has no check.
+    """This tests the structural half of the guarantee, which protects a sink that has no check.
 
-    A tuple subclass would have satisfied every test above while flowing
-    silently into an exporter or a save format that indexes a state and asks
-    nothing. What stops that is the value not being a sequence at all.
+    A tuple subclass would have passed every test above, while flowing silently into an
+    exporter or a save format that indexes a state and checks nothing. What prevents that is
+    that a display state is not a sequence at all.
     """
 
     _, definition, _ = _stepped_run(steps=100)
@@ -675,7 +673,7 @@ def test_a_run_definition_refuses_a_non_finite_state() -> None:
 
 
 def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
-    """The forcing terms are read against this entry, so it is not a free value."""
+    """The forcing terms are multiplied by this entry, so its value must be one and is not free."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     state = list(system.state_vector())
@@ -687,14 +685,14 @@ def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
 
 @pytest.mark.parametrize("opened_at_s", [nan, inf, -inf, -1.0])
 def test_an_opening_no_case_reaches_cannot_be_built(opened_at_s: float) -> None:
-    """Refused where the instant is built, before any run can open at it (`PL-CN5S`).
+    """The instant is refused where it is built, before any run can open at it (`PL-CN5S`).
 
-    The opening is the instant every later answer is measured from: a
-    definition opened at a non-finite one would propagate over a non-finite
-    interval and hand back a state of `nan`, which no bounds check downstream
-    can distinguish from a run that genuinely reached one. And the case's axis
-    starts at induction, so no run on it opens before zero. `CaseInstant`
-    refuses both in the supported run length's own words.
+    Every later result is measured from the opening instant. A definition opened at a
+    non-finite instant would propagate over a non-finite interval and return a state of
+    `nan`. No bounds check downstream could tell that state apart from a run that genuinely
+    reached such a state. The case's time axis also starts at induction, so no run on it
+    opens before zero. `CaseInstant` refuses both kinds of value, in the words of the
+    supported run length.
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
@@ -705,11 +703,11 @@ def test_an_opening_no_case_reaches_cannot_be_built(opened_at_s: float) -> None:
 def test_a_run_definition_refuses_an_opening_not_built_as_a_case_instant(
     opened_at_s: float,
 ) -> None:
-    """Whatever its value, because nothing has checked it (`PL-CN5S`).
+    """The opening is refused whatever its value, because nothing has checked it (`PL-CN5S`).
 
-    `mypy` refuses a bare `float` here; this is the half it cannot reach - a
-    test, a notebook, a value typed `Any`. Refused before the definition
-    exists, alongside the state vector and for the same reason: the opening
+    `mypy` refuses a bare `float` here. This test covers the callers that a type checker
+    cannot check: a test, a notebook, or a value typed `Any`. The opening is refused before
+    the definition exists, alongside the state vector and for the same reason. The opening
     is half of what the run is measured from.
     """
 
@@ -724,11 +722,11 @@ def test_a_run_definition_refuses_an_opening_not_built_as_a_case_instant(
 
 
 def test_a_run_may_open_at_the_end_of_the_supported_run_length() -> None:
-    """The span is closed, so a run may open standing on its far end (`PL-73ZN`).
+    """The span is closed, so a run may open exactly at its far end (`PL-73ZN`).
 
-    A branch taken where its trunk stopped at the limit opens exactly there;
-    refusing the instant would refuse that branch. It opens with no time left
-    to run, which is the parent's span being spent rather than an error.
+    A branch taken where its trunk stopped at the limit opens exactly there, so refusing
+    that instant would refuse the branch. The branch opens with no time left to run. That
+    means the parent's span is used up, which is not an error.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -747,14 +745,14 @@ def test_a_run_may_open_at_the_end_of_the_supported_run_length() -> None:
     [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1],
 )
 def test_opening_past_the_supported_envelope_cannot_be_built(opened_at_s: float) -> None:
-    """Refused where the opening is built, not at the first step after it (`PL-73ZN`).
+    """The opening is refused where it is built, not at the first step after it (`PL-73ZN`).
 
-    The opening is the origin of every instant a branch reports, so one past
-    the envelope would carry it into every value read from the run. The edge
-    is the declared constant itself: the next float past it is refused. The
-    message names the value exactly and the envelope it is outside of. Since
-    `PL-CN5S` the refusal is the `CaseInstant` the opening is built as, so no
-    definition is ever handed one.
+    The opening is the origin of every instant that a branch reports, so an opening past the
+    envelope would carry the error into every value read from the run. The edge is the
+    declared constant itself, and the next float past it is refused. The message names the
+    exact value and the envelope that it is outside. Since `PL-CN5S`, the refusal comes from
+    the `CaseInstant` that the opening is built as, so no definition is ever given such an
+    opening.
     """
 
     with pytest.raises(SimulationConfigurationError, match="supported run length") as raised:
@@ -778,8 +776,8 @@ def test_a_run_refuses_to_go_backwards() -> None:
 def test_a_keyframe_refuses_an_instant_not_built_as_a_case_instant() -> None:
     """A keyframe stores its instant, so it checks the type where it is built (`PL-CN5S`).
 
-    A definition builds every keyframe it holds from an opening or a reach it
-    has already checked; this is the way in for anything else.
+    A definition builds every keyframe it holds from an opening or a reach that it has
+    already checked. This test covers the way in for any other caller.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -789,7 +787,7 @@ def test_a_keyframe_refuses_an_instant_not_built_as_a_case_instant() -> None:
 
 
 def test_a_non_finite_reach_cannot_be_built() -> None:
-    """So no run can be moved to one (`PL-CN5S`)."""
+    """A non-finite reach is refused when built, so no run can be moved to one (`PL-CN5S`)."""
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
         CaseInstant(inf)
@@ -797,7 +795,7 @@ def test_a_non_finite_reach_cannot_be_built() -> None:
 
 @pytest.mark.parametrize("instant_s", [30.0, inf])
 def test_a_run_refuses_a_reach_not_built_as_a_case_instant(instant_s: float) -> None:
-    """Whatever its value, and before the reach moves (`PL-CN5S`)."""
+    """The reach is refused whatever its value, and before the reach moves (`PL-CN5S`)."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -812,7 +810,7 @@ def test_a_run_refuses_a_reach_not_built_as_a_case_instant(instant_s: float) -> 
 
 
 def test_a_run_may_reach_the_end_of_the_supported_run_length() -> None:
-    """The reach's bound is the opening's and closed like it: a run may reach the far end."""
+    """The reach has the same closed bound as the opening, so a run may reach the far end."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -829,13 +827,13 @@ def test_a_run_may_reach_the_end_of_the_supported_run_length() -> None:
     [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1],
 )
 def test_a_reach_past_the_supported_run_length_cannot_be_built(instant_s: float) -> None:
-    """So the run cannot be moved past the span, or evaluated there.
+    """A reach past the span cannot be built, so the run cannot be moved or evaluated there.
 
-    Until `PL-8H2R` the reach was unguarded, because at a step whose
-    quotient rounded up the last step a run took landed a float past the
-    span, and a bound here would have refused it. The count now stops on
-    the last step inside, so the reach carries the opening's bound: since
-    `PL-CN5S`, the `CaseInstant` it is moved to, refused when it is built.
+    Until `PL-8H2R` the reach was unguarded. At a step size whose quotient rounded up, the
+    last step that a run took landed on a float just past the span, and a bound here would
+    have refused it. The step count now stops on the last step inside the span, so the reach
+    carries the opening's bound. Since `PL-CN5S`, that bound is enforced by the `CaseInstant`
+    that the reach is moved to, which is refused when it is built.
     """
 
     with pytest.raises(SimulationConfigurationError, match="supported run length") as raised:
@@ -846,12 +844,12 @@ def test_a_reach_past_the_supported_run_length_cannot_be_built(instant_s: float)
 
 @pytest.mark.parametrize("simulation_step_s", [0.1, 768 / 1_000_000 * 100, 0.02304])
 def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: float) -> None:
-    """The reach follows the step count to its limit at every step, never past it.
+    """The reach follows the step count to its limit at every step size, never past it.
 
-    The application moves the reach to each step's `elapsed_s`, so the guard
-    on it must accept the last step `SimulationState` allows - at
-    `768 / 1_000_000 * 100` s that step stood at 86400.00000000001 s before
-    `PL-8H2R`, and this guard would have refused it after it had been taken.
+    The application moves the reach to each step's `elapsed_s`, so the guard on the reach
+    must accept the last step that `SimulationState` allows. At a step of
+    `768 / 1_000_000 * 100` s, that last step stood at 86400.00000000001 s before `PL-8H2R`,
+    and this guard would have refused it after the step had been taken.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -890,12 +888,12 @@ def test_a_run_definition_has_no_state_before_the_run_began() -> None:
 
 
 def _opening_after_zero() -> RunDefinition:
-    """A definition opening at 600 s, which is the shape a branch forked there carries.
+    """Return a definition that opens at 600 s, as a branch forked at that instant does.
 
-    Built through the public constructor since `PL-ZMRT`: the run opens on the
-    case's own axis at 600 s and records a change at 900 s, so the guards below
-    are exercised against the arrangement `SimulationController` actually
-    builds rather than against a synthesized one.
+    Since `PL-ZMRT` it is built through the public constructor. The run opens on the case's
+    own time axis at 600 s and records a change at 900 s. So the guards below are exercised
+    against the arrangement that `SimulationController` actually builds, not against a
+    synthesized one.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -914,15 +912,14 @@ def _opening_after_zero() -> RunDefinition:
 
 
 def test_a_run_definition_reports_the_instant_it_opens_at() -> None:
-    """The one place a definition's own opening is named, and it is not the reach.
+    """This is the one place where a definition's own opening is named, and it is not the reach.
 
-    Read directly rather than through a caller, because since `PL-B8MK` the
-    app layer has one of its own: a branch's *beginning* is its fork, which a
-    bookmark fork puts after the keyframe its definition opens at, so
-    `SimulationController.began_at_s` is what clips a drawn axis and this is
-    what says where the definition may be evaluated from. The two were one
-    number until a bookmark became forkable, and a test reaching this through
-    the app layer could not tell them apart.
+    The test reads the opening directly rather than through a caller, because since `PL-B8MK` the
+    app layer has its own instant for where a branch begins. A branch's *beginning* is its fork, and
+    a bookmark fork puts that fork after the keyframe that its definition opens at. So
+    `SimulationController.began_at_s` is what clips a drawn axis, and the opening tested here says
+    where the definition may be evaluated from. The two were one number until a bookmark became
+    forkable, and a test that reached the opening through the app layer could not tell them apart.
     """
 
     trunk_shaped = RunDefinition(
@@ -935,8 +932,8 @@ def test_a_run_definition_reports_the_instant_it_opens_at() -> None:
 
     branch_shaped = _opening_after_zero()
 
-    # It is the first segment's own instant, and recording changes and
-    # advancing the reach past them leaves it where it was.
+    # The opening is the first segment's own instant. Recording changes, and advancing the
+    # reach past them, leaves the opening where it was.
     assert branch_shaped.opened_at_s == 600.0
     assert branch_shaped.segments[0].opening.instant_s == 600.0
     assert branch_shaped.reached_s == 1200.0
@@ -945,16 +942,15 @@ def test_a_run_definition_reports_the_instant_it_opens_at() -> None:
 def test_a_run_definition_that_opens_after_zero_refuses_the_span_before_it() -> None:
     """The lower bound is the run's own opening, never the literal zero.
 
-    What a bound fixed at zero admits is not a wrong refusal but a silent
-    wrong answer. `_segment_index_at` answers `-1` for an instant before the
-    first opening, Python reads that as the *last* segment, and `_propagator`
-    returns `None` for the non-positive interval that follows - so the caller
-    is handed that segment's keyframe as the state at an instant the run did
-    not exist for. Measured on this definition before the guard:
-    `state_at(0.0)`, `state_at(100.0)` and `state_at(599.9)` all returned the
-    same 0.005664 alveolar fraction rather than refusing, and
-    `evaluate_anchored(0.0, 500.0, 100.0)` drew a varying curve across a span
-    the run had no state for.
+    A bound fixed at zero would not cause a wrong refusal. It would cause a silent wrong
+    result. `_segment_index_at` returns `-1` for an instant before the first opening, and
+    Python treats that index as the *last* segment. `_propagator` then returns `None` for
+    the non-positive interval that follows. So the caller is given that segment's keyframe
+    as the state at an instant when the run did not exist. This was measured on this
+    definition before the guard existed. `state_at(0.0)`, `state_at(100.0)` and
+    `state_at(599.9)` all returned the same 0.005664 alveolar fraction instead of refusing.
+    `evaluate_anchored(0.0, 500.0, 100.0)` drew a varying curve across a span that the run
+    had no state for.
     """
 
     definition = _opening_after_zero()
@@ -971,7 +967,7 @@ def test_a_run_definition_that_opens_after_zero_refuses_the_span_before_it() -> 
 
 
 def test_a_run_definition_answers_at_its_own_opening() -> None:
-    """The bound admits the opening itself, which is where the run's first keyframe is."""
+    """The bound accepts the opening itself, which is the instant of the run's first keyframe."""
 
     definition = _opening_after_zero()
 
@@ -979,15 +975,15 @@ def test_a_run_definition_answers_at_its_own_opening() -> None:
 
 
 def test_a_run_definition_is_under_no_settings_before_it_opens() -> None:
-    """The second of the two guards, which only a direct call can reach.
+    """This tests the second of the two guards, which only a direct call can reach.
 
-    `_require_within_run` refuses the instant on every public path, so this
-    one can never fire through `state_at`, `evaluate` or `evaluate_anchored`
-    while that bound is right. It is here because the two protect against the
-    same silent answer by different means: the bound says the run has no state
-    there, and this says the search found no segment. A future caller reaching
-    the walk without the bound - `_canonical_state_at` is already one, by
-    design - meets a refusal rather than the last segment's keyframe.
+    `_require_within_run` refuses the instant on every public path. So this guard can never
+    fire through `state_at`, `evaluate` or `evaluate_anchored` while that bound is correct.
+    The test exists because the two guards protect against the same silent wrong result by
+    different means. The bound says that the run has no state at that instant, and this
+    guard says that the segment search found no segment. A future caller that reaches the
+    search without the bound meets a refusal rather than the last segment's keyframe.
+    `_canonical_state_at` is already such a caller, by design.
     """
 
     definition = _opening_after_zero()
@@ -997,7 +993,7 @@ def test_a_run_definition_is_under_no_settings_before_it_opens() -> None:
 
 
 def test_a_run_definition_refuses_to_predict_past_the_run() -> None:
-    """Answering past the run would return a prediction indistinguishable from it."""
+    """A state past the run would be a prediction that could not be told apart from the run."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -1049,7 +1045,7 @@ def test_a_sampled_window_pairs_each_state_with_one_instant() -> None:
 
 
 def test_a_segment_carries_the_state_its_settings_start_from() -> None:
-    """The pairing `RunSegment` exists for, read back off a recorded run."""
+    """A recorded run gives back the pairing that `RunSegment` exists to hold."""
 
     _, definition, _ = _stepped_run(steps=600)
     segment = definition.segments[1]
@@ -1064,10 +1060,10 @@ def test_a_segment_carries_the_state_its_settings_start_from() -> None:
 def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
     """A dial moved and moved back between two steps describes no change at all.
 
-    The stretch it opened is dropped rather than left standing with the
-    settings it started from, which would put a keyframe in the run definition for an
-    instant the run passed through unremarkably. The interface's own control
-    timeline drops the matching entry for the same reason.
+    The stretch that the change opened is dropped, rather than kept with the settings it
+    started from. Keeping it would put a keyframe in the run definition for an instant that
+    the run passed through with nothing of note. The interface's own control timeline drops
+    the matching entry for the same reason.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1088,19 +1084,18 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
 
 
 def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch() -> None:
-    """Undoing a change drops only the stretch that change opened.
+    """Undoing a change drops only the stretch that the change opened.
 
-    The docstring's rule is that when a second change at an instant already
-    opened returns to the previous stretch's settings, "the stretch goes
-    entirely". The stretch is the one opened at that instant, and no earlier
-    one. This run has three stretches before the undo. With two, the wrong
-    slice `segments[:1]` keeps the same list as the right one,
-    `segments[:-1]`, and every earlier test of this branch used two
-    (`PL-ZH1F`).
+    The docstring of `record_change` gives the rule. When a second change, at an instant that
+    already opened a stretch, returns to the previous stretch's settings, "the stretch goes
+    entirely". That stretch is the one opened at that instant, and no earlier one. This run
+    has three stretches before the undo. With only two, the wrong slice `segments[:1]` keeps
+    the same list as the right one, `segments[:-1]`, and every earlier test of this branch
+    used two (`PL-ZH1F`).
 
-    Neither expected value is read from the definition under test. The
-    stretches are literals, and the state is a second definition that was
-    never given the 5% change.
+    Neither expected value is read from the definition under test. The stretches are
+    literals, and the expected state comes from a second definition that was never given
+    the 5% change.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1136,11 +1131,11 @@ def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch() -> None:
 
 
 def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
-    """There is no earlier stretch to fold the opening one back into.
+    """There is no earlier stretch to fold the opening stretch back into.
 
-    The run's first segment opens at zero and carries the settings the run
-    began under, so a change recorded at zero replaces those settings rather
-    than dropping a stretch that nothing precedes.
+    The run's first segment opens at zero and carries the settings that the run began
+    under. So a change recorded at zero replaces those settings, rather than dropping a
+    stretch that nothing comes before.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1157,14 +1152,13 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 def test_recording_a_change_copies_no_segment_already_recorded() -> None:
     """Each accepted change adds one segment and leaves every earlier one as it was.
 
-    The record grows by what the change adds and by nothing else. It holds
-    references, so a change copies at most one pointer per segment and never
-    a keyframe: `PL-7TXJ` measured on 2026-09-27 that a segment holds about
-    900 bytes, 408 of them its keyframe, and that the tuple rebuilt on each
-    change copies an 8-byte reference to it. Checked by identity rather than by
-    equality, because an equal copy of a keyframe is exactly what this rules
-    out; a segment is frozen, so the same segment carries the same keyframe.
-    Three hundred changes is the count over which `PL-1PSX` measured this
+    The record grows by what the change adds and by nothing else. It stores references, so
+    a change copies at most one pointer per segment and never copies a keyframe. `PL-7TXJ`
+    measured on 2026-09-27 that a segment takes about 900 bytes, 408 of them for its
+    keyframe, and that the tuple rebuilt on each change copies an 8-byte reference to it.
+    The test checks identity rather than equality, because an equal copy of a keyframe is
+    exactly what the test rules out. A segment is frozen, so the same segment carries the
+    same keyframe. Three hundred changes is the count over which `PL-1PSX` measured this
     record and the control timeline growing one-for-one.
     """
 
@@ -1185,15 +1179,15 @@ def test_recording_a_change_copies_no_segment_already_recorded() -> None:
 
 
 def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
-    """`segments` hands out the run as it stood, whatever the run records next.
+    """`segments` returns the run as it stood, whatever the run records next.
 
-    What lets a caller read the run without being able to advance it, and
-    what `tests/integration/test_simulation_view.py` relies on when it
-    compares `run_segments` before and after an action: a view that followed
-    the run would make that comparison pass whatever the action did. Every
-    kind of change `record_change` can make is exercised, since each touches
-    the record differently - replacing the open segment at the instant it
-    opened, dropping it on a dial-back, and appending after it.
+    This lets a caller read the run without being able to advance it.
+    `tests/integration/test_simulation_view.py` relies on it when it compares
+    `run_segments` before and after an action. A view that followed the run would make that
+    comparison pass whatever the action did. The test exercises every kind of change that
+    `record_change` can make, because each one changes the record differently. A change can
+    replace the open segment at the instant it opened, drop that segment on a dial-back, or
+    append a new segment after it.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1220,8 +1214,8 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
 def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:
     """The grid is measured from the case's zero, not from the window's left edge.
 
-    This is what makes a following window reuse its column times, and it is
-    the property `evaluate` deliberately does not have.
+    This is what lets a following window reuse its column times. `evaluate` deliberately
+    does not have this property.
     """
 
     _, definition, _ = _stepped_run()
@@ -1240,22 +1234,22 @@ def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:
 def test_a_following_window_reuses_every_column_time_but_its_edge() -> None:
     """A frame moves one point rather than all of them.
 
-    `PL-Q197` measured every drawn point moving on every frame as what
-    saturated the client. Anchoring the evaluation times to the run is that
-    fix applied to the closed-form path, so a window advancing by less than
-    the spacing keeps every interior column it had.
+    `PL-Q197` measured that every drawn point moving on every frame was what saturated the
+    client. Anchoring the evaluation times to the run applies that fix to the closed-form
+    path. So a window that advances by less than the spacing keeps every interior column it
+    had.
     """
 
     _, definition, _ = _stepped_run()
     spacing_s = 4.0
-    # Neither edge is a multiple of the spacing, which is the ordinary case:
-    # the right edge is whatever instant the run has reached this frame.
+    # Neither edge is a multiple of the spacing, which is the ordinary case. The right edge
+    # is whatever instant the run has reached in this frame.
     before = set(definition.evaluate_anchored(0.0, 401.0, spacing_s).times_s)
     after = set(definition.evaluate_anchored(0.0, 402.0, spacing_s).times_s)
 
-    # Only the moving right-hand bound leaves, and only it arrives; every
-    # interior column keeps the instant it had, so its drawn point does not
-    # move and the client is not sent it.
+    # Only the old right-hand bound leaves, and only the new one arrives. Every interior
+    # column keeps the instant it had, so its drawn point does not move and the client is
+    # not sent it.
     assert before - after == {401.0}
     assert after - before == {402.0}
 
@@ -1263,14 +1257,14 @@ def test_a_following_window_reuses_every_column_time_but_its_edge() -> None:
 def test_every_control_event_inside_the_window_is_a_column() -> None:
     """The drawn chart reproduces every control change.
 
-    A grid alone steps over a dial change, and the trajectory's only sharp
-    features are at events, so a window that misses one draws a straight
-    line through the single instant a reader is looking for.
+    A grid alone steps over a dial change. The trajectory's only sharp features are at
+    events, so a window that misses one draws a straight line through the single instant
+    that a reader is looking for.
     """
 
     _, definition, _ = _stepped_run()
-    # A spacing far wider than the gap between the two recorded changes, so
-    # no grid column could land on either by luck.
+    # The spacing is far wider than the gap between the two recorded changes, so no grid
+    # column could land on either change by luck.
     window = definition.evaluate_anchored(0.0, 600.0, 250.0)
     events = {
         segment.opening.instant_s
@@ -1283,7 +1277,7 @@ def test_every_control_event_inside_the_window_is_a_column() -> None:
 
 
 def test_an_event_column_is_its_own_keyframe_exactly() -> None:
-    """An event column is read, not propagated: no interval, no error, no cost."""
+    """An event column is read, not propagated, so it carries no interval, error or cost."""
 
     _, definition, _ = _stepped_run()
     window = definition.evaluate_anchored(0.0, 600.0, 250.0)
@@ -1329,7 +1323,7 @@ def test_an_anchored_window_of_no_width_is_one_column() -> None:
 
 @pytest.mark.parametrize("spacing_s", [0.0, -1.0, float("inf"), float("nan")])
 def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s: float) -> None:
-    """A column spacing is a positive, finite interval or it is not one."""
+    """A column spacing must be a positive, finite interval."""
 
     _, definition, _ = _stepped_run(steps=100)
 
@@ -1341,7 +1335,7 @@ def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s:
 
 
 def test_an_anchored_window_refuses_a_spacing_that_is_not_a_number() -> None:
-    """`True` is the 1 it is to Python, and a spacing of `True` seconds is not one asked for."""
+    """Python treats `True` as 1, but a spacing of `True` seconds is not what a caller meant."""
 
     _, definition, _ = _stepped_run(steps=100)
 
@@ -1353,9 +1347,9 @@ def test_an_anchored_window_refuses_a_spacing_that_is_not_a_number() -> None:
 def test_an_anchored_window_refuses_a_spacing_too_fine_to_count(spacing_s: float) -> None:
     """A spacing whose grid cannot be counted is refused by name (`PL-YZ17`).
 
-    `_anchored_columns` takes `int(stop_s // spacing_s)`, which is infinite
-    here, so `int()` raised a bare `OverflowError`, outside the simulator's
-    own exceptions.
+    `_anchored_columns` takes `int(stop_s // spacing_s)`. That quotient is infinite here,
+    so `int()` raised a bare `OverflowError`, which is not one of the simulator's own
+    exceptions.
     """
 
     _, definition, _ = _stepped_run(steps=100)
@@ -1369,12 +1363,11 @@ def test_an_anchored_window_refuses_a_spacing_too_fine_to_count(spacing_s: float
 def test_an_anchored_window_draws_a_spacing_finer_than_the_smallest_step_exactly() -> None:
     """A spacing below `MINIMUM_SIMULATION_STEP_S` is accepted, and on purpose.
 
-    The floor exists because a run chains its step without limit, so the
-    rounding in each step's change accumulates over the run. A grid chains
-    its spacing at most once per column, so it cannot: every column here
-    still lands on the run's own state to the display tolerance. Flooring
-    the spacing would refuse narrow axes the controller draws today
-    (`PL-YZ17`).
+    The minimum step exists because a run chains its step without limit, so the rounding in
+    each step's change accumulates over the run. A grid chains its spacing at most once per
+    column, so its rounding cannot accumulate. Every column here still lands on the run's
+    own state to within the display tolerance. Applying the same minimum to the spacing
+    would refuse narrow axes that the controller draws today (`PL-YZ17`).
     """
 
     _, definition, _ = _stepped_run(steps=100)
@@ -1404,11 +1397,11 @@ def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
 
 """Keeping the chart's propagators from one frame to the next (`PL-CNCF`).
 
-A frame asks `evaluate_anchored` for nearly every propagator the frame before
-used, so it keeps them. The claim has three parts and they are tested apart:
-that a window drawn from kept propagators is the window drawn with nothing
-kept, bit for bit; that they are kept at all - without that, the first passes
-on a store that keeps nothing; and that no canonical answer reads them.
+A frame asks `evaluate_anchored` for nearly every propagator that the frame before it used,
+so the run definition keeps them. The claim has three parts, and they are tested
+separately. First, a window drawn from kept propagators is bit for bit the window drawn
+with nothing kept. Second, the propagators are kept at all. Without that second test, the
+first would pass on a store that keeps nothing. Third, no canonical result reads them.
 """
 
 CHART_SPACING_S = 900.0 / 1068
@@ -1416,14 +1409,14 @@ CHART_SPACING_S = 900.0 / 1068
 
 WINDOW_OPENING_S = 1100.0
 WINDOW_CLOSING_S = 2000.0
-"""A 15-minute window ending at the run's reach, holding both its changes."""
+"""A 15-minute window that ends at the run's reach and contains both of the run's changes."""
 
 
 def _a_run_with_two_changes_in_view() -> tuple[AgentUptakeSystem, RunDefinition]:
-    """A sevoflurane run reaching 2000 s, changed at 1300 s and 1600 s.
+    """Return a sevoflurane run that reaches 2000 s, with changes at 1300 s and 1600 s.
 
-    The system comes back too, so a test can record a further change the way
-    the app layer does: the setter first, then the settings it now holds.
+    The system is returned too, so that a test can record a further change the way the app
+    layer does: the setter first, then the settings that the system now holds.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1438,15 +1431,15 @@ def _a_run_with_two_changes_in_view() -> tuple[AgentUptakeSystem, RunDefinition]
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S))
 
-    # A change to a setting already in force records nothing, so a value equal
-    # to the agent's default would leave a stretch fewer than the tests count.
+    # A change to a setting already in force records nothing. So a value equal to the
+    # agent's default would leave one stretch fewer than the tests count on.
     assert len(definition.segments) == 3
 
     return system, definition
 
 
 def _afresh(definition: RunDefinition) -> RunDefinition:
-    """The same run rebuilt from its own segments, so it holds nothing a window kept."""
+    """Return the same run rebuilt from its own segments, so it holds nothing a window kept."""
 
     first, *rest = definition.segments
     twin = RunDefinition(first.settings, first.opening.state, opened_at_s=first.opening.instant_s)
@@ -1463,17 +1456,18 @@ def _afresh(definition: RunDefinition) -> RunDefinition:
 
 
 def _bits(window: SampledWindow) -> list[tuple[str, ...]]:
-    """Every drawn value as its exact bits, so that even a zero's sign is compared."""
+    """Return every drawn value as its exact bits, so that even the sign of a zero is compared."""
 
     return [tuple(value.hex() for value in state.values) for state in window.states]
 
 
 class _NothingKept:
-    """`run_definition._WindowPropagators` with no reuse: each propagator formed where asked.
+    """A stand-in for `run_definition._WindowPropagators` that forms each propagator afresh.
 
-    The reference a kept store is held to. Drawn through the same code with
-    reuse in place, a store that answered for the wrong stretch would agree
-    with itself, and so with a reference that kept the same way.
+    This is the reference that a store of kept propagators is compared against. If the
+    reference were drawn through the same code with reuse in place, a store that returned
+    the propagator for the wrong stretch would agree with itself. It would then also agree
+    with a reference that kept propagators the same way.
     """
 
     def __init__(self, kept: object) -> None:
@@ -1490,7 +1484,7 @@ def _drawn_with_nothing_kept(
     stop_s: float,
     spacing_s: float,
 ) -> SampledWindow:
-    """The window as the same run, rebuilt, draws it with every propagator formed afresh."""
+    """Return the window that a rebuilt copy of the run draws, forming every propagator afresh."""
 
     twin = _afresh(definition)
 
@@ -1505,12 +1499,12 @@ def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh(
 ) -> None:
     """Keeping propagators across frames moves no drawn value by so much as a bit.
 
-    Frame after frame of a window following the run, its left edge passing a
-    grid column every few frames, through a change, which brings into view a
-    stretch nothing was kept for, and a new time base, whose spacing is one no
-    propagator was kept for. Each frame is compared with the same run drawn
-    with nothing kept, so a propagator kept under the wrong key - the wrong
-    stretch's, or the wrong interval's - shows as a drawn value that moved.
+    The test draws frame after frame of a window that follows the run. The window's left edge passes
+    a grid column every few frames. The run records a change along the way, which brings into view a
+    stretch that nothing was kept for. The window also switches to a new time base, whose spacing is
+    one that no propagator was kept for. Each frame is compared with the same run drawn with nothing
+    kept. So a propagator kept under the wrong key, either the wrong stretch's or the wrong
+    interval's, shows up as a drawn value that moved.
     """
 
     system, definition = _a_run_with_two_changes_in_view()
@@ -1558,9 +1552,9 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
 ) -> None:
     """The propagators are kept, so the test above is not passing on a store that keeps nothing.
 
-    Counted rather than timed, as `test_a_window_reads_only_the_segments_it_covers`
-    counts: which matrix exponentials a frame forms is the claim, and a clock
-    would say the same thing less reliably.
+    The test counts exponentials rather than timing them, as
+    `test_a_window_reads_only_the_segments_it_covers` does. The claim is about which matrix
+    exponentials a frame forms, and a clock would check the same thing less reliably.
     """
 
     _, definition = _a_run_with_two_changes_in_view()
@@ -1568,8 +1562,8 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
 
     definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
 
-    # Three stretches in view, two propagators each - the offset to its first
-    # grid column and the spacing - and one for each bound.
+    # Three stretches are in view, with two propagators each: the offset to the stretch's
+    # first grid column, and the spacing. There is also one propagator for each bound.
     assert len(formed) == 3 * 2 + 2
 
     formed.clear()
@@ -1577,9 +1571,9 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
 
     assert formed == []
 
-    # A frame later, following the run: only the two bounds have moved. The
-    # window's left edge stays short of its next grid column, so the offset
-    # to the first column it draws in that stretch is the one already kept.
+    # One frame later, with the window following the run, only the two bounds have moved.
+    # The window's left edge stays short of its next grid column, so the offset to the first
+    # column that it draws in that stretch is the one already kept.
     first_column = int(WINDOW_OPENING_S // CHART_SPACING_S) + 1
 
     assert WINDOW_OPENING_S + 0.2 < first_column * CHART_SPACING_S < WINDOW_OPENING_S + 0.6
@@ -1591,9 +1585,9 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
         [WINDOW_CLOSING_S + 0.2 - 1600.0, WINDOW_OPENING_S + 0.2]
     )
 
-    # Once the left edge passes that column, the stretch it opens in starts
-    # at the next one, so that stretch's offset is formed too - the most a
-    # following frame forms with no stretch newly in view.
+    # Once the left edge passes that column, the stretch that the window opens in starts at
+    # the next column, so that stretch's offset is formed too. That is the most a following
+    # frame forms when no stretch is newly in view.
     formed.clear()
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 0.6))
     definition.evaluate_anchored(WINDOW_OPENING_S + 0.6, WINDOW_CLOSING_S + 0.6, CHART_SPACING_S)
@@ -1610,10 +1604,10 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
 def test_only_the_last_window_s_propagators_are_kept(monkeypatch: pytest.MonkeyPatch) -> None:
     """What is kept is bounded by one window, rather than grown by every window drawn.
 
-    A window at another spacing and other bounds asks for none of the first
-    window's propagators, so after it the first is formed whole again: the
-    store was replaced, not added to, and a run drawn for hours holds no more
-    than one window's worth.
+    A window at another spacing and with other bounds asks for none of the first window's
+    propagators. So after that window, the first window forms all of its propagators again.
+    This shows that the store was replaced, not added to, and that a run drawn for hours
+    keeps no more than one window's worth.
     """
 
     _, definition = _a_run_with_two_changes_in_view()
@@ -1629,19 +1623,18 @@ def test_only_the_last_window_s_propagators_are_kept(monkeypatch: pytest.MonkeyP
 
 
 class _Untouchable:
-    """A kept store that fails on any read, so a canonical answer consulting it is caught."""
+    """A store that fails on any read, so a canonical result that consults it is caught."""
 
     def __getattribute__(self, name: str) -> object:
         raise AssertionError(f"a canonical answer read `{name}` on the chart's kept propagators")
 
 
 def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`state_at` and the keyframes are taken from the definition alone, whatever a window kept.
+    """`state_at` and the keyframes come from the definition alone, whatever a window kept.
 
-    Comparing answers cannot show this: a kept propagator read under its own
-    key is exact, so a canonical path that consulted the store would agree
-    with one that did not, until a key was wrong. So the store is swapped for
-    one that fails on any read, under any key.
+    Comparing results cannot show this. A kept propagator read under its own key is exact,
+    so a canonical path that consulted the store would agree with one that did not, until a
+    key was wrong. So the test swaps the store for one that fails on any read, under any key.
     """
 
     system, definition = _a_run_with_two_changes_in_view()
@@ -1653,7 +1646,7 @@ def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.Mon
 
     assert [definition.state_at(instant_s) for instant_s in instants] == before
 
-    # A keyframe laid now is the one the run rebuilt from its settings lays.
+    # A keyframe recorded now is the same one that the run, rebuilt from its settings, records.
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 30.0))
     system.set_delivered_concentration_percent(Percent(3.5))
     definition.record_change(system.equation_settings())
@@ -1663,26 +1656,24 @@ def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.Mon
 
 """Why a branch's definition opens at a keyframe, measured rather than asserted (`PL-TFX5`).
 
-No door to a fork restarts a definition at the fork, and `docs/MODEL.md`
-§ "The canonical evaluation rule" says why: restarting from the canonical state
-at an instant the run holds no keyframe for replaces one propagation over an
-interval with two over its halves. A fork between two keyframes opens its
-definition at the earlier one instead (`SimulationController._open_at`), which
-is why `resumed_at`'s refusal of such an instant is about that door's scope
-rather than this arithmetic (`PL-54V0`). That section measures what the
-substitution costs; this measures that it costs anything at all, which is the
-half the construction rests on. Without it nothing would catch a door being
-rebuilt as a restart on the grounds that the difference is too small to matter.
+No way of opening a fork restarts a definition at the fork, and `docs/MODEL.md` § "The canonical
+evaluation rule" says why. Restarting from the canonical state, at an instant for which the run
+holds no keyframe, replaces one propagation over an interval with two propagations over its halves.
+A fork between two keyframes opens its definition at the earlier keyframe instead
+(`SimulationController._open_at`). So when `resumed_at` refuses such an instant, the refusal is
+about the scope of that method, not about this arithmetic (`PL-54V0`). That section measures what
+the substitution costs. The test here measures that it costs anything at all, which is the half that
+the design rests on. Without this test, nothing would catch a way of opening a fork being rebuilt as
+a restart, on the grounds that the difference is too small to matter.
 """
 
-# One hour past a fork at 655.3 s on the two-change sevoflurane run below,
-# pinned as a ceiling rather than as an equality: it is a floating-point
-# composition difference, so a compiler, a platform or an unrelated change in
-# `matrix_exponential` may move it, and what the claim needs is that it is real
-# and this small. The order of magnitude agrees with the 5.3e-13 accumulator
-# figure `docs/MODEL.md` records for the same substitution on a different run;
-# that section is the authority for the size, and this is not a second claim
-# about it.
+# The divergence one hour past a fork at 655.3 s, on the two-change sevoflurane run below.
+# It is pinned as a ceiling rather than as an equality, because it is a floating-point
+# composition difference. A compiler, a platform or an unrelated change in
+# `matrix_exponential` may move it. The claim needs only that the divergence is real and
+# this small. Its order of magnitude agrees with the 5.3e-13 accumulator figure that
+# `docs/MODEL.md` records for the same substitution on a different run. That section is the
+# authority for the size, and this constant is not a second claim about it.
 FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
 
 FORK_S = 655.3
@@ -1690,7 +1681,7 @@ PROBES_S = (700.0, 800.0, 900.0, 1200.0, 1800.0, 3600.0)
 
 
 def _two_change_run() -> RunDefinition:
-    """A sevoflurane run to an hour, carrying two setting changes."""
+    """Return a one-hour sevoflurane run that carries two setting changes."""
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -1713,22 +1704,20 @@ def _worst(left: tuple[float, ...], right: tuple[float, ...]) -> float:
 
 
 def test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run() -> None:
-    """The refusal's reason, as a number.
+    """This test measures the reason for the refusal as a number.
 
-    A branch opened from the canonical state at an instant the run holds no
-    keyframe for reaches that state by one propagation and then continues by a
-    second, where the run answers the same later instant with one propagation
-    over the whole span. The two are the same exact solution rounded
-    differently, which is precisely what `PL-Z3W6`'s element-wise requirement
-    refuses - so this asserts the disagreement is non-zero as well as small,
-    because a test that only bounded it would pass if forking became exact by
-    accident and stop describing anything.
+    A branch opened from the canonical state, at an instant for which the run holds no
+    keyframe, reaches that state by one propagation and then continues by a second. The run
+    computes the state at the same later instant with one propagation over the whole span. The two
+    results are the same exact solution rounded differently, which is precisely what
+    `PL-Z3W6`'s element-wise requirement refuses. So this test asserts that the disagreement
+    is non-zero as well as small. A test that only bounded it would still pass if forking
+    became exact by accident, and it would then stop describing anything.
 
-    Both runs are asked for the same instant in the same float, because the
-    branch opens at the fork on the case's own axis (`PL-ZMRT`). What is left
-    in the measurement is therefore one propagation against two and nothing
-    else, where a branch re-based to its own zero would have carried a frame
-    conversion into the same number.
+    Both runs are asked for the same instant as the same float, because the branch opens at
+    the fork on the case's own time axis (`PL-ZMRT`). So the measurement contains one
+    propagation against two and nothing else. A branch re-based to its own zero would have
+    carried a frame conversion into the same number.
     """
 
     parent = _two_change_run()
@@ -1744,23 +1733,22 @@ def test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run() -> None:
 
 
 def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution() -> None:
-    """`PL-GS3R`'s guarantee, at the one point the pixel argument does not reach.
+    """This checks `PL-GS3R`'s guarantee at the one point where the pixel argument does not apply.
 
-    Between two drawn instants both exact and no more than a pixel of time
-    apart, a *monotone* run and the segment ruled between them cross every
-    level inside the same pixel. Where the run turns between two dial
-    changes - the alveoli and the venous blood keep filling for a moment
-    after the vaporizer is turned down - it can rise above both drawn values
-    inside one interval, and the line falls short of it there. Measured
-    2026-09-14 over the supported envelope, the worst case is this one: a
-    desflurane overpressure induction at the fastest supported settings,
-    turned down at 600 s, drawn at the twelve-hour base on a 1 000 px plot,
-    where the mixed venous trace rises 0.0028 pp above the drawn line at
-    t = 609 s. Held at half the readout's resolution, so a real regression
-    fails and the closed form's floating-point wobble does not. The truth is
-    taken over the 1 800 s after each change, which is where every measured
-    departure sits; beyond it the same run is within 0.0024 pp even at the
-    290 s chord the fixed budget used to draw.
+    Take two drawn instants that are both exact and no more than a pixel of time apart.
+    Between them, a *monotone* run and the straight segment drawn between them cross every
+    level inside the same pixel. Where the run turns between two dial changes, it can rise
+    above both drawn values inside one interval, and the line falls short of it there. The
+    run turns because the alveoli and the venous blood keep filling for a moment after the
+    vaporizer is turned down. The worst case, measured on 2026-09-14 over the supported
+    envelope, is this one. It is a desflurane overpressure induction at the fastest
+    supported settings, turned down at 600 s, and drawn at the twelve-hour time base on a
+    1 000 px plot. There the mixed venous trace rises 0.0028 pp above the drawn line at
+    t = 609 s. The limit is set at half the readout's resolution, so a real regression fails
+    and the closed form's floating-point wobble does not. The true values are taken over the
+    1 800 s after each change, which is where every measured departure lies. Beyond that
+    span, the same run stays within 0.0024 pp, even at the 290 s chord that the fixed budget
+    used to draw.
     """
 
     system = AgentUptakeSystem.for_agent("desflurane")
