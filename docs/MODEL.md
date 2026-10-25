@@ -8104,8 +8104,9 @@ in the header of every Area (`PL-2KXB`).
 
 **A Workspace pins a run by its identity, and an absent pin is stated**
 (`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
-number, and a random token for the session that placed the pin. A run with the same
-number in a later session is therefore a different run. When a pinned run is
+number, and the random token of the session that placed the run, which is
+not the session that saved or pinned it. A run with the same number in a later
+session is therefore a different run. When a pinned run is
 not open, the Workspace's Areas show a named "run not present" state. They
 never show another run in its place, and the simulation is left untouched.
 `Workspace.shown_runs` decides which runs a Workspace's Views show. The tab
