@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-builders
+milestone: v0.6.5
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
 closed: 2026-10-25
