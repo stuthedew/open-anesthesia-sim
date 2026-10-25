@@ -49,6 +49,12 @@ record differs from what its view last wrote (`PL-X7D5`). A frame that cannot
 be drawn halts every run, because an exception raised in the shared drawing
 path cannot be attributed to any one run. No wall clock is read anywhere.
 
+**Every slot passes the halt gate** (`PL-HJKN`). Each method that Qt or a View
+calls back, here and in `RunView`, passes `app/halt_gate.py`'s `halt_gate`.
+A raise inside one of this class's slots halts every run, as a frame that
+cannot be drawn does, because these slots act on the case. A test fails on a
+connected slot that does not pass the gate.
+
 **The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
 that frame. So the legend's boxes name the curves on the plot, even when the
@@ -115,6 +121,7 @@ from anesthesia_sim.app.dashboard_frame import (
     trunk_reset_question,
 )
 from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -706,6 +713,7 @@ class SimulationView(QWidget):
 
         return tuple(run.run_id for run in self._runs)
 
+    @halt_gate
     def _change_workspaces(self, workspaces: WorkspaceSet) -> None:
         """Take the tab strip's new set, and switch the Areas if its current Workspace differs.
 
@@ -904,6 +912,7 @@ class SimulationView(QWidget):
 
         return run
 
+    @halt_gate
     def _handle_case_restarted(self) -> None:
         """Take every branch off the dashboard, because the run they were taken from has ended.
 
@@ -1103,6 +1112,7 @@ class SimulationView(QWidget):
 
     # ----------------------------------------------------------- branching
 
+    @halt_gate
     def _handle_fork(self) -> None:
         """Create a branch at the point the panel is set to, and draw it beside the trunk.
 
@@ -1122,9 +1132,9 @@ class SimulationView(QWidget):
         control is not offered in that state. This check makes the refusal a property
         of the dashboard, rather than of the widget that happens to be hidden.
 
-        The trunk's snapshot is read through `_reference_snapshot_for_a_control`
-        before the case keeps anything. If that read fails, the fork ends with the halt
-        on screen, rather than with a branch that is kept but never drawn (`PL-08SS`).
+        The trunk's snapshot is read before the case keeps anything. If that read fails,
+        the gate halts every run and the fork ends with the halt on screen, rather than
+        with a branch that is kept but never drawn (`PL-08SS`).
         """
 
         case = self._case
@@ -1141,9 +1151,7 @@ class SimulationView(QWidget):
 
             return
 
-        if self._reference_snapshot_for_a_control() is None:
-            return
-
+        self._runs[TRUNK_RUN_INDEX].snapshot()
         point = self._fork_panel.selected_point()
 
         if point is None:
@@ -1166,6 +1174,7 @@ class SimulationView(QWidget):
 
         self._show_branch(branch)
 
+    @halt_gate
     def _handle_here_fork(self) -> None:
         """Create a branch where the trunk is paused, whether or not it stopped on a mark.
 
@@ -1200,8 +1209,7 @@ class SimulationView(QWidget):
 
             return
 
-        if self._reference_snapshot_for_a_control() is None:
-            return
+        self._runs[TRUNK_RUN_INDEX].snapshot()
 
         try:
             branch = case.fork_here()
@@ -1254,11 +1262,13 @@ class SimulationView(QWidget):
             self._areas,
         )
 
+    @halt_gate
     def _release_chart_view(self) -> None:
         """Stop holding the chart in view, because the reader has scrolled the page."""
 
         self._chart_view_owed = False
 
+    @halt_gate
     def _follow_chart(self) -> None:
         """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
@@ -1352,14 +1362,14 @@ class SimulationView(QWidget):
 
     # ---------------------------------------------------------- presenting
 
+    @halt_gate
     def present(self, coalesce: bool) -> None:
         """Draw a frame now, or leave it to the render tick; halt every run if drawing fails.
 
-        This method guards its drawing in the same way as `render_tick`. The
-        discrete actions call this method through a signal. The toolkit
-        prints an exception raised inside a slot, and the exception is
-        otherwise lost.
-        Without the guard, a frame that could not be drawn for a Start or a
+        This method passes the halt gate, as `render_tick` does. The discrete
+        actions call this method through a signal. The toolkit prints an
+        exception raised inside a slot, and the exception is otherwise lost.
+        Without the gate, a frame that could not be drawn for a Start or a
         Reset would leave every run running behind a display that had
         stopped.
 
@@ -1377,12 +1387,9 @@ class SimulationView(QWidget):
             return
 
         self._render_pending = False
+        self._refresh_view()
 
-        try:
-            self._refresh_view()
-        except Exception as error:
-            self._halt_every_run(error)
-
+    @halt_gate
     def render_tick(self) -> None:
         """Draw a frame when one is owed or a run is running, and halt all runs if drawing fails.
 
@@ -1423,11 +1430,7 @@ class SimulationView(QWidget):
             return
 
         self._render_pending = False
-
-        try:
-            self._refresh_view()
-        except Exception as error:
-            self._halt_every_run(error)
+        self._refresh_view()
 
     def _views_owe_a_frame(self) -> bool:
         """Whether a View owes a frame that has not already failed for the same Views.
@@ -1652,6 +1655,7 @@ class SimulationView(QWidget):
             )
         )
 
+    @halt_gate
     def _open_bookmark_dialog(self) -> None:
         """Show the editor, building it the first time it is asked for.
 
@@ -1713,6 +1717,7 @@ class SimulationView(QWidget):
         if self._bookmark_dialog is not None:
             self._bookmark_dialog.notice.set_notice(text)
 
+    @halt_gate
     def _add_time_bookmark(self) -> None:
         """Mark the instant the form describes, on every run."""
 
@@ -1731,20 +1736,21 @@ class SimulationView(QWidget):
         self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark))
         dialog.clear_entry()
 
+    @halt_gate
     def _remove_time_bookmark(self) -> None:
-        """Unmark the selected instant, on every run."""
+        """Unmark the selected instant, on every run.
+
+        The marks are read from the trunk's snapshot. On a trunk whose snapshot
+        refuses, the read raises, and the gate halts every run with the halt on
+        screen (`PL-F2T2`).
+        """
 
         dialog = self._bookmark_dialog
 
         if dialog is None:
             return
 
-        reference = self._reference_snapshot_for_a_control()
-
-        if reference is None:
-            return
-
-        marks = reference.bookmarks.time_bookmarks
+        marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.time_bookmarks
         index = dialog.selected_time_index()
 
         if not 0 <= index < len(marks):
@@ -1755,6 +1761,7 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_time_bookmark(selected))
 
+    @halt_gate
     def _add_mac_target(self) -> None:
         """Mark the height the form describes, on every run."""
 
@@ -1773,20 +1780,19 @@ class SimulationView(QWidget):
         self._apply_to_every_run(lambda run: run.add_mac_target(target))
         dialog.clear_entry()
 
+    @halt_gate
     def _remove_mac_target(self) -> None:
-        """Unmark the selected height, on every run."""
+        """Unmark the selected height, on every run, reading the marks from the trunk's snapshot.
+
+        A refusing snapshot halts every run, as in `_remove_time_bookmark`.
+        """
 
         dialog = self._bookmark_dialog
 
         if dialog is None:
             return
 
-        reference = self._reference_snapshot_for_a_control()
-
-        if reference is None:
-            return
-
-        marks = reference.bookmarks.mac_targets
+        marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.mac_targets
         index = dialog.selected_target_index()
 
         if not 0 <= index < len(marks):
@@ -1797,34 +1803,27 @@ class SimulationView(QWidget):
         selected = marks[index]
         self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
-    def _reference_snapshot_for_a_control(self) -> SimulationSnapshot | None:
-        """Read the reference run's snapshot for a control, and halt every run if the read raises.
+    def halt_for_slot(self, error: Exception) -> None:
+        """Halt every run for an exception that one of this view's slots raised.
 
-        This is the dashboard's counterpart of `RunView._snapshot_for_a_control`. It serves
-        the controls that act on the case rather than on one run: Remove in the marks
-        editor, and both branch controls. Each control's handler runs inside a slot, where
-        the toolkit prints an exception and otherwise loses it. On a run whose snapshot
-        rejects a value (`PL-7DJK`), the read used to raise inside the slot. Then either
-        the press did nothing and nothing on screen said why (`PL-F2T2`), or a branch was
-        kept that was never drawn (`PL-08SS`). The exception belongs to the case rather
-        than to one run, so every run halts, as `present` does for a frame that cannot
-        be drawn.
+        `app/halt_gate.py`'s `halt_gate` calls this method. This view's slots act on
+        the case rather than on one run: the branch controls, the marks editor, the
+        Workspaces and the frame. So the exception belongs to no single run, and every
+        run halts, as it does for a frame that cannot be drawn. On a trunk whose
+        snapshot rejects a value (`PL-7DJK`), a press used to raise inside the slot.
+        Then either the press did nothing and nothing on screen said why (`PL-F2T2`),
+        or a branch was kept that was never drawn (`PL-08SS`).
 
-        The reference run is the first displayed run, which is the trunk. That is how
-        the dashboard is built, and `_refresh_bookmarks` reads the same run for the
-        set of marks.
+        Args:
+            error: The exception that the slot raised.
 
-        Returns:
-            The snapshot, or `None` once every run has been halted for the exception and
-            the halt is on screen.
+        Raises:
+            ValueError: What `_halt_every_run` raises once the halt is shown.
         """
 
-        try:
-            return self._runs[0].snapshot()
-        except Exception as error:
-            self._halt_every_run(error)
-            return None
+        self._halt_every_run(error)
 
+    @halt_gate
     def _handle_frame_request(self) -> None:
         """Draw at once for a View that changed its own drawing setting, such as its window.
 
@@ -1835,6 +1834,7 @@ class SimulationView(QWidget):
 
         self.present(False)
 
+    @halt_gate
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:
         """Handle a reader's click in the legend by changing the selection and drawing at once.
 
