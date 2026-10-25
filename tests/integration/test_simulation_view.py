@@ -2520,18 +2520,18 @@ def test_a_halted_run_shows_the_new_playback_rate(
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """A confirmation answered after the snapshot refuses leads to the halt, not a refusal.
+    """A confirmation answered after the snapshot rejects a value shows the halt, not a refusal.
 
     The question is asked from a snapshot read when the selector was used.
-    By the time the reader answers, the run's snapshot may refuse.
+    By the time the reader answers, the run's snapshot may reject a value.
     `set_agent` carries the settings over from the snapshot. So without the
-    gate, its exception reached `_apply_setting` as a refused setting. It was
-    recorded in `_rejected_setting_notice`, over a run halted for the same
-    reason (`PL-V2HC`, found at review). `_start_new_case` now reads the
-    snapshot first, outside `_apply_setting`, and the dialog's gated slot
-    halts the run for the raise (`PL-HJKN`). The halt is shown,
-    nothing is recorded as refused, the dialog is gone and the run keeps its
-    agent.
+    gate, the exception from `set_agent` reached `_apply_setting` as a refused
+    setting. It was recorded in `_rejected_setting_notice`, even though the run
+    had halted for the same reason (`PL-V2HC`, found at review).
+    `_start_new_case` now reads the snapshot first, outside `_apply_setting`,
+    and the dialog's gated slot halts the run for the exception (`PL-HJKN`).
+    The test checks that the halt is shown, nothing is recorded as refused, the
+    dialog is gone and the run keeps its agent.
     """
 
     controller = _paused_run_with_history()
@@ -7798,10 +7798,11 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
 def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A raise in Pause, which no hand-written `try` guarded, now halts the run through the gate.
+    """An exception in the Pause slot, which no hand-written `try` guarded, now halts the run.
 
-    Before `PL-HJKN`, PySide6 printed the exception and went on, so the run kept reading
-    as running with nothing on screen saying that it had failed.
+    Before `PL-HJKN`, PySide6 printed the exception and went on. The run kept showing
+    that it was running, and nothing on screen said that it had failed. The halt gate
+    now halts it.
     """
 
     controller = SimulationController()

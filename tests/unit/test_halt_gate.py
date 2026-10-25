@@ -1,9 +1,9 @@
-"""The halt gate: a raise inside a gated slot halts the view, and Qt's extra arguments are dropped.
+"""Test that a gated slot's exception halts the view, and that Qt's extra arguments are dropped.
 
-`app/halt_gate.py` loads no toolkit, so these tests call a gated method directly,
+`app/halt_gate.py` imports no GUI toolkit, so these tests call a gated method directly,
 with the arguments that Qt would hand it. The dashboard's own tests drive the gate
 through real slots, and `test_every_slot_that_touches_a_run_passes_the_halt_gate`
-checks that every slot passes it (`PL-HJKN`).
+checks that every slot is wrapped in it (`PL-HJKN`).
 """
 
 from __future__ import annotations

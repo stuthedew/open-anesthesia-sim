@@ -3,11 +3,12 @@
 `PL-B9PY` divided the dashboard into a part that all runs share and a part
 for each run. `SimulationView` is the shared part. It holds what two runs
 cannot each have a copy of: the compartment selection, the time base, the
-Areas and the Views in them, the marks and the branch control. It also holds
-one `RunView` per run, and each `RunView` holds everything else for its run.
-`app/area_layout.py` builds the Views through the View registry, each from
-the View contract's context (`app/view_contract.py`, `PL-TH35`). So this class
-names no View, except to keep the concentration chart in view after a branch.
+Areas (resizable panes) and the Views in them, the marks and the branch
+control. It also holds one `RunView` per run, and each `RunView` holds
+everything else for its run. `app/area_layout.py` builds the Views through the
+View registry, each from the View contract's context (`app/view_contract.py`,
+`PL-TH35`). So this class names no View, except to keep the concentration
+chart in view after a branch.
 
 **The unconditional region is outside the splitters** (`PL-NWTM`). The
 unconditional region holds the values that must be on screen at all times.
@@ -32,28 +33,30 @@ Areas. A switch changes which Views are drawn and never touches a run
 run's name on every Area's header. If the pinned run is not open, every Area
 says so in place of its Views.
 
-**One read, every View, then every run.** `_refresh_view` reads one
-snapshot per run and assembles one `ChartFrame` through `app/chart_frame.py`
-for each time window a View asks for. Each chart's window is its own
-(`PL-L59K`). `_refresh_view` hands each View the frame for its window, and
-only then refreshes each run from the same snapshot. So the readouts, the
-traces and the sentences beside them all show one instant of one run
-(decision D2). Every claim in a caption comes from `app/dashboard_frame.py`.
-This class formats nothing, and it decides nothing that a reader interprets.
+**One snapshot per run feeds every View, and then every run.**
+`_refresh_view` reads one snapshot per run. For each time window that a View
+asks for, it assembles one `ChartFrame` through `app/chart_frame.py`. Each
+chart has its own window (`PL-L59K`). `_refresh_view` hands each View the frame
+for its window, and only then refreshes each run from the same snapshot. So
+the readouts, the traces and the sentences beside them all show one instant of
+one run (decision D2). Every claim in a caption comes from
+`app/dashboard_frame.py`. This class formats nothing, and it decides nothing
+that a reader interprets.
 
-**Two cadences, kept apart** (decision D7). Each run's own timer steps that
-run. This view's render timer draws, but only while a run is running or a
-frame is owed, meaning a redraw is due. A frame is owed after a coalesced
-slider change (`PL-R2YM`), after a change to the run set, or when a run's
-record differs from what its view last wrote (`PL-X7D5`). A frame that cannot
-be drawn halts every run, because an exception raised in the shared drawing
-path cannot be attributed to any one run. No wall clock is read anywhere.
+**Stepping and drawing run on separate timers** (decision D7). Each run's own
+timer steps that run. This view's render timer draws, but only while a run is
+running or a frame is owed, meaning a redraw is due. A frame is owed after a
+coalesced slider change (`PL-R2YM`), after a change to the run set, or when a
+run's record differs from what its view last wrote (`PL-X7D5`). A frame that
+cannot be drawn halts every run, because an exception raised in the shared
+drawing path cannot be attributed to any one run. No wall clock is read
+anywhere.
 
-**Every slot passes the halt gate** (`PL-HJKN`). Each method that Qt or a View
-calls back, here and in `RunView`, passes `app/halt_gate.py`'s `halt_gate`.
-A raise inside one of this class's slots halts every run, as a frame that
-cannot be drawn does, because these slots act on the case. A test fails on a
-connected slot that does not pass the gate.
+**Every slot is wrapped in the halt gate** (`PL-HJKN`). Each method that Qt or
+a View calls back, here and in `RunView`, is wrapped in `halt_gate` from
+`app/halt_gate.py`. An exception raised inside one of this class's slots halts
+every run, as a frame that cannot be drawn does, because these slots act on
+the case. A test fails on a connected slot that is not wrapped in the gate.
 
 **The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
@@ -1117,13 +1120,14 @@ class SimulationView(QWidget):
         """Create a branch at the point the panel is set to, and draw it beside the trunk.
 
         There are three ways to start a branch, and the panel's selector offers two of
-        them. The point that the selector returns decides which one is used. A recorded
-        control event is forked through `BranchedCase.fork_at`, at the event's instant.
-        A mark that the trunk has passed is forked through `fork_at_mark`, with the mark
-        itself (`PL-W4XQ`). So the case works out where a mark's branch opens from the
-        mark, rather than being handed that time as a float. If either call refuses, its
-        reason goes to the notice rather than being swallowed. A press does not prove
-        that what the last frame offered is still there.
+        them. The point that the selector returns decides which one is used. A branch
+        at a recorded control event is made through `BranchedCase.fork_at`, at the
+        event's instant. A branch at a mark that the trunk has passed is made through
+        `fork_at_mark`, which is given the mark itself (`PL-W4XQ`). So the case works
+        out from the mark where the branch opens, rather than being handed the time as
+        a float. A press does not prove that what the last frame offered is still
+        there, so either call may refuse. If one does, its reason goes to the notice
+        rather than being swallowed.
 
         The method refuses to fork while a comparison is already shown. The display is
         capped at two runs, and no run selector exists yet. So a second branch could
@@ -1364,11 +1368,11 @@ class SimulationView(QWidget):
 
     @halt_gate
     def present(self, coalesce: bool) -> None:
-        """Draw a frame now, or leave it to the render tick; halt every run if drawing fails.
+        """Draw a frame now or leave it to the render tick, and halt every run if drawing fails.
 
-        This method passes the halt gate, as `render_tick` does. The discrete
-        actions call this method through a signal. The toolkit prints an
-        exception raised inside a slot, and the exception is otherwise lost.
+        This method is wrapped in the halt gate, as `render_tick` is. Discrete actions,
+        such as Start and Reset, call this method through a signal. The toolkit prints
+        an exception raised inside a slot, and the exception is otherwise lost.
         Without the gate, a frame that could not be drawn for a Start or a
         Reset would leave every run running behind a display that had
         stopped.
@@ -1740,8 +1744,8 @@ class SimulationView(QWidget):
     def _remove_time_bookmark(self) -> None:
         """Unmark the selected instant, on every run.
 
-        The marks are read from the trunk's snapshot. On a trunk whose snapshot
-        refuses, the read raises, and the gate halts every run with the halt on
+        The marks are read from the trunk's snapshot. If the trunk's snapshot rejects
+        a value, the read raises, and the gate halts every run with the halt on
         screen (`PL-F2T2`).
         """
 
@@ -1809,10 +1813,11 @@ class SimulationView(QWidget):
         `app/halt_gate.py`'s `halt_gate` calls this method. This view's slots act on
         the case rather than on one run: the branch controls, the marks editor, the
         Workspaces and the frame. So the exception belongs to no single run, and every
-        run halts, as it does for a frame that cannot be drawn. On a trunk whose
-        snapshot rejects a value (`PL-7DJK`), a press used to raise inside the slot.
-        Then either the press did nothing and nothing on screen said why (`PL-F2T2`),
-        or a branch was kept that was never drawn (`PL-08SS`).
+        run halts, as it does for a frame that cannot be drawn. Before the gate, when
+        the trunk's snapshot rejected a value (`PL-7DJK`), pressing one of these
+        controls raised inside its slot. Then either the press did nothing and nothing
+        on screen said why (`PL-F2T2`), or a branch was kept that was never drawn
+        (`PL-08SS`).
 
         Args:
             error: The exception that the slot raised.
