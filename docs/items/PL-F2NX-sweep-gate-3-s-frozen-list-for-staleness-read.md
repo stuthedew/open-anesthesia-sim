@@ -9,6 +9,7 @@ feature: gate-staleness-sweep
 touches: docs/items, ROADMAP.md
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1794
 payoff: Gate 3 is worked on evidence: entries that no longer reproduce stop being ranked and offered, and briefs say what is actually left.
 verify: grep -qE "^Swept on 20[0-9-]+" docs/items/PL-F2NX-*.md
 ---
