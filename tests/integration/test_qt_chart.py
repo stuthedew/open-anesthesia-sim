@@ -20,7 +20,7 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QMouseEvent, QPalette
+from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPalette, QPen
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
@@ -69,6 +69,7 @@ from anesthesia_sim.app.qt_chart import (
     TraceLegend,
     WashInChart,
     WashInLegend,
+    dashed_pen,
     trace_pen,
 )
 from anesthesia_sim.app.qt_widgets import FlowLayout
@@ -996,6 +997,67 @@ def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern(application: QAp
             assert pen.dashPattern() == pytest.approx(
                 [length / style.stroke_width for length in style.dash_pattern]
             )
+
+
+def _painted_runs(pen: QPen) -> list[int]:
+    """Paint `pen` as a horizontal line and return the on and off run lengths, in pixels.
+
+    The line is painted with antialiasing off on a white image, and the row
+    through its centre is scanned from the line's start, where Qt begins the
+    pattern's first dash.
+    """
+
+    width, height = 600, 20
+    image = QImage(width, height, QImage.Format.Format_RGB32)
+    image.fill(QColor("#ffffff"))
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+    painter.setPen(pen)
+    painter.drawLine(QPointF(0.0, height / 2), QPointF(float(width), height / 2))
+    painter.end()
+
+    row = [image.pixelColor(x, height // 2) != QColor("#ffffff") for x in range(width)]
+
+    runs: list[int] = []
+    current, length = row[0], 0
+    for painted in row:
+        if painted == current:
+            length += 1
+        else:
+            runs.append(length)
+            current, length = painted, 1
+
+    return runs
+
+
+def test_each_dashed_pen_paints_its_dash_pattern(application: QApplication) -> None:
+    """`PL-88MK`: each dash and gap is painted at the length the table gives.
+
+    Qt's default square cap extends every dash by half the pen's width at each
+    end. On the 2-3 px compartment pens that turned a 10/4 pattern into 13 on
+    and 1 off, so the dashed traces looked almost solid. The dash pattern is
+    the only thing that tells some compartments apart for a reader with a
+    colour-vision deficiency. Comparing `dashPattern()` numbers cannot see the
+    cap, so this paints each pen and measures what reached the pixels.
+    """
+
+    pens = [(style.dash_pattern, trace_pen(style)) for style in COMPARTMENT_TRACES]
+    pens.append(
+        (
+            CONTROL_MARK_DASH_PATTERN,
+            dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN),
+        )
+    )
+
+    for pattern, pen in pens:
+        if pattern is None:
+            continue
+        runs = _painted_runs(pen)
+        # Whole periods only: the last run is cut by the image's edge.
+        whole = len(pattern) * ((len(runs) - 1) // len(pattern))
+
+        assert whole >= 2 * len(pattern)
+        assert runs[:whole] == [round(length) for length in pattern] * (whole // len(pattern))
 
 
 def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(

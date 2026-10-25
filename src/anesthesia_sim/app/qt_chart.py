@@ -247,6 +247,13 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
     have a pattern. A pattern copied across without the conversion draws every
     dash too long by a factor of the pen's width, which is what the spike did.
 
+    A dashed pen also gets a flat cap. Qt's default square cap extends every
+    dash by half the pen's width at each end, so a 3 px pen with a 10/4 pattern
+    paints 13 px on and 1 px off, and the dashed compartment traces look almost
+    solid. The dash is the only thing that tells some compartments apart for a
+    reader with a colour-vision deficiency (`PL-88MK`). `pg.mkPen` sets a round
+    cap only on pens wider than 4 px, so it sets no cap on these.
+
     Args:
         color: Hexadecimal line colour.
         stroke_width: Line width in display pixels.
@@ -261,6 +268,7 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
 
     if dash_pattern is not None:
         pen.setDashPattern([length / stroke_width for length in dash_pattern])
+        pen.setCapStyle(Qt.PenCapStyle.FlatCap)
 
     return pen
 
