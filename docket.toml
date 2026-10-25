@@ -835,6 +835,14 @@ instruction_paths = [
   "docs/worker.md",
 ]
 
+# The lane a session given no particular work takes. This is product focus,
+# declared in CLAUDE.md § "What this project is" (project owner, 2026-09-25,
+# ratified, `PL-2866`). The digest's `Top:` line reads it and ranks the
+# product lane alone, because a session reads that line at launch, before the
+# docket skill that routes it has loaded (`PL-2CPD`). Ending the focus removes
+# this key and the CLAUDE.md paragraph together.
+focus = "product"
+
 # Which model and reasoning effort each kind of work uses. This table is the
 # one home for that choice (`PL-0XDM`; project owner, 2026-10-25: "Make things
 # that say which model and effort to use use a single source of truth"). It is

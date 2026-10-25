@@ -688,6 +688,15 @@ during product work against 72 simulator items closed); `PL-RB9W` counts it on
 or after 2026-10-09. Where the root causes go is tested by the trial's own bar
 in `PL-NZC0`, which now carries the fallback if it fails.
 
+**The `focus` key, added 2026-10-25.** The paragraph's last sentence now names
+`docket.toml`'s `focus` key, which points the digest's `Top:` line at the
+product lane (`PL-2CPD`). The key is what the digest reads, and the paragraph
+is the rule a session obeys, so ending the focus has to remove both. The
+sentence is resident because the paragraph it ends is. Nothing is cut: the old
+clause "ending it deletes this paragraph" is kept inside the new sentence, and
+no other resident text says where the focus is recorded. It costs 99
+characters.
+
 ## Rule 14's Projects-thread sentence, added 2026-09-25
 
 Rule 14's `list_sessions` bullet now ends by saying the call lists no Projects
