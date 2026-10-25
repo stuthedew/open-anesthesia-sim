@@ -126,9 +126,9 @@ jobs:
     # them on 2026-09-22 - so a single item can introduce a hang that nothing
     # else here would bound (`PL-FSH9`).
     #
-    # 15 minutes was first sized against the single x64 job's longest run,
-    # 639 s (10m39s) on 2026-10-17. It was re-timed from the parts' own runs on
-    # 2026-10-25 (`PL-ZWQS`). Over 200 successful x64 push runs on `main` from
+    # 15 minutes was sized against the single x64 job's times on 2026-10-17,
+    # whose longest run took 639 s (10m39s). It was re-timed from the parts'
+    # own runs on 2026-10-25 (`PL-ZWQS`). Over 200 successful x64 push runs on `main` from
     # 2026-10-18 to 2026-10-25, the longest part-1 job took 469 s and the
     # longest part-2 job 605 s. Over 130 arm64 pull-request runs, the longest
     # part-2 job took 587 s. One arm64 part-1 job took 773 s, but its steps
