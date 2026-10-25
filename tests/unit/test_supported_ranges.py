@@ -1354,7 +1354,11 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
     machine_range = DeliverableFreshGasFlowRange(
         minimum_l_min=0.5, maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0
     )
-    circuit = BreathingCircuit(deliverable_fresh_gas_flow_range=machine_range)
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        deliverable_fresh_gas_flow_range=machine_range,
+    )
 
     with pytest.raises(SimulationConfigurationError) as below_the_machine:
         circuit.set_fresh_gas_flow(FreshGasFlow(0.2))

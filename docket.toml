@@ -456,6 +456,7 @@ workflow_paths = [
   "bin",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",
+  "tests/unit/test_ast_identity.py",
   "tests/unit/test_branch_id_check.py",
   "tests/unit/test_branch_sweep.py",
   "tests/unit/test_check_support.py",

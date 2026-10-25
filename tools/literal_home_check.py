@@ -117,18 +117,10 @@ SUGGESTED = 3
 #: Every bare literal in the tree when this landed, after `PL-06M7` cleared
 #: its seven `3600`s: file, then `(enclosing scope, value)`, then how many. It
 #: may only shrink. `PL-4X5B` cleared the 29 in `app/`, most of them layout
-#: spacings and grid positions. What is left is in `core/`, where the class
-#: defaults are the second copies `PL-H8QP` describes.
+#: spacings and grid positions. `PL-M85T` cleared the four class defaults in
+#: `core/` that were the second copies `PL-H8QP` describes.
 BASELINE: dict[str, dict[tuple[str, str], int]] = {
-    "src/anesthesia_sim/core/alveolar.py": {
-        ("AlveolarCompartment", "2.5"): 1,
-        ("AlveolarCompartment", "4.0"): 1,
-    },
-    "src/anesthesia_sim/core/circuit.py": {
-        ("BreathingCircuit", "100.0"): 1,
-        ("BreathingCircuit", "6.0"): 1,
-    },
-    "src/anesthesia_sim/core/parameters.py": {("_validate_positive_percent", "100.0"): 1},
+    "src/anesthesia_sim/core/parameters.py": {("_validate_positive_percent", "100.0"): 1}
 }
 
 Number = int | float | complex

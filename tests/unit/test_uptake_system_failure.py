@@ -409,7 +409,11 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     misstate what the bound is about.
     """
 
-    circuit = BreathingCircuit(delivered_concentration_percent=Percent(100.0))
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        delivered_concentration_percent=Percent(100.0),
+    )
     step_s = 60.0
 
     assert step_s > MAXIMUM_SIMULATION_STEP_S

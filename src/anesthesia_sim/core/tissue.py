@@ -15,10 +15,9 @@ from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_st
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
-    require_a_capacity,
+    require_a_capacity_with_room_for_the_agent,
     require_nonnegative_finite,
     require_positive_finite,
-    require_room_for_the_agent_held,
     require_within_the_capacity,
 )
 
@@ -137,21 +136,12 @@ class TissueGroup:
                 require_positive_finite(field, value)
 
                 if hasattr(self, "tissue_gas_partition_coefficient"):
-                    require_a_capacity(
+                    require_a_capacity_with_room_for_the_agent(
                         field,
                         value,
                         value,
                         self.tissue_gas_partition_coefficient,
-                        compartment,
-                        "Tissue compartments",
-                    )
-
-                if hasattr(self, "agent_amount_l"):
-                    require_room_for_the_agent_held(
-                        field,
-                        value,
-                        value * self.tissue_gas_partition_coefficient,
-                        self.agent_amount_l,
+                        getattr(self, "agent_amount_l", None),
                         compartment,
                         "Tissue compartments",
                     )
@@ -173,21 +163,12 @@ class TissueGroup:
                 require_positive_finite(field, value)
             elif name == "tissue_gas_partition_coefficient":
                 require_positive_finite(field, value)
+                held_l = getattr(self, "agent_amount_l", None)
                 # The constructor, a copy and a pickle write the volume
                 # first, so it is always there to multiply.
-                require_a_capacity(
-                    field, value, self.volume_l, value, compartment, "Tissue compartments"
+                require_a_capacity_with_room_for_the_agent(
+                    field, value, self.volume_l, value, held_l, compartment, "Tissue compartments"
                 )
-
-                if hasattr(self, "agent_amount_l"):
-                    require_room_for_the_agent_held(
-                        field,
-                        value,
-                        self.volume_l * value,
-                        self.agent_amount_l,
-                        compartment,
-                        "Tissue compartments",
-                    )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
                 require_within_the_capacity(

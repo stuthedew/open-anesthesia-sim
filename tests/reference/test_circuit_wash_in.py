@@ -11,6 +11,7 @@ from anesthesia_sim.core.supported_ranges import FreshGasFlow
 def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
     delivered_percent = Percent(8.0)
     circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=delivered_percent,
@@ -29,7 +30,11 @@ def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
 
 
 def test_wash_in_is_monotonic_and_never_overshoots() -> None:
-    circuit = BreathingCircuit(delivered_concentration_percent=Percent(8.0))
+    circuit = BreathingCircuit(
+        circuit_volume_l=6.0,
+        max_delivered_concentration_percent=Percent(100.0),
+        delivered_concentration_percent=Percent(8.0),
+    )
     observed_concentrations = [circuit.inspired_partial_pressure_fraction]
 
     for _ in range(1_200):

@@ -78,8 +78,13 @@ sum, so compare the two jobs' pytest steps in a run's log.
 **A pull request that changes only apparatus files skips the costly tests**
 (`PL-STM6`). `--skip-costly` leaves out every test that reads a costly
 computation, by the same `_costly_reads` that the parts and the dealing use.
-`quality.yml` passes it to the second part when `bin/docket ci-scope` answers
-`apparatus`, because no apparatus file is an input to those tests. With them
+`quality.yml` asks for it on the second part when `bin/docket ci-scope`
+answers `apparatus`, because no apparatus file is an input to those tests. It
+asks through `SKIP_COSTLY_TESTS=1`, which only this conftest reads, and not
+through `PYTEST_ADDOPTS`. Every pytest the suite starts in a subprocess
+inherits `PYTEST_ADDOPTS`. The docket tests start pytest in a scratch
+repository that has no `--skip-costly`, so that pytest stopped at exit 4
+on the first apparatus pull request that set it (`#1774`). With them
 gone, `PART_SHARES` stays as it is: the first part's linters already make up
 for most of the gap that leaving them out opens.
 
@@ -103,7 +108,7 @@ import argparse
 import os
 import pickle
 import sys
-from collections.abc import Callable, Collection, Hashable, Sequence
+from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
 from itertools import islice
 from pathlib import Path
 from types import ModuleType
@@ -254,6 +259,17 @@ def _part(text: str) -> tuple[int, int]:
     return int(index), int(parts)
 
 
+#: The environment variable that asks for `--skip-costly`, set to "1". Only this
+#: conftest reads it, so a pytest started in another repository never sees it.
+SKIP_COSTLY_VARIABLE = "SKIP_COSTLY_TESTS"
+
+
+def skip_costly_asked(environ: Mapping[str, str]) -> bool:
+    """Whether the environment asks for `--skip-costly`, which only the value "1" does."""
+
+    return environ.get(SKIP_COSTLY_VARIABLE) == "1"
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add `--part K/N` and `--skip-costly`, the two ways CI narrows a run of the suite."""
 
@@ -266,6 +282,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--skip-costly",
         action="store_true",
+        default=skip_costly_asked(os.environ),
         help="leave out every test that reads a costly computation, as quality.yml does on a "
         "pull request that changes only apparatus files",
     )

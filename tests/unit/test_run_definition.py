@@ -1328,8 +1328,19 @@ def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s:
 
     _, definition, _ = _stepped_run(steps=100)
 
-    with pytest.raises(SimulationConfigurationError):
+    with pytest.raises(
+        SimulationConfigurationError, match="^spacing_s must be positive and finite$"
+    ):
         definition.evaluate_anchored(0.0, 10.0, spacing_s)
+
+
+def test_an_anchored_window_refuses_a_spacing_that_is_not_a_number() -> None:
+    """`True` is the 1 it is to Python, and a spacing of `True` seconds is not one asked for."""
+
+    _, definition, _ = _stepped_run(steps=100)
+
+    with pytest.raises(TypeError, match="^spacing_s of True has type bool"):
+        definition.evaluate_anchored(0.0, 10.0, True)
 
 
 @pytest.mark.parametrize("spacing_s", [5e-324, 1e-310])
