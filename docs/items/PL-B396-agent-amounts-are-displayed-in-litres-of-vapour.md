@@ -1,15 +1,17 @@
 ---
 id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
-priority: P2
+priority: P1
 effort: M
 status: blocked
-classes: ux, docs
+classes: ux, docs, safety, anticipated
 feature: liquid-agent-consumption
-touches: ROADMAP.md, docs/items
-blocked-by: PL-YRLM
+touches: src/anesthesia_sim/app, tests/integration, tests/unit, docs/MODEL.md, docs/ARCHITECTURE.md
+blocked-by: PL-KZ99, PL-0S0V, PL-2881
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list to hold the gate open): planned-milestone item 28's liquid-volume readout, waiting on PL-YRLM, which holds whether a release schedules item 28; none does before v0.6.0
 added: 2026-09-16
+payoff: a learner reads the delivered agent in millilitres of liquid equivalent, the unit they buy and fill a vaporizer in
+verify: grep -q 'ViewKind("agent_cost")' src/anesthesia_sim/app/view_registry.py
 ---
 
 **Problem.** Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
@@ -244,6 +246,7 @@ and why the accounting Editor keeps litres of vapour.
 
 [superseded 2026-09-27: `PL-YRLM` is the stand-in now, and this item waits on it
 for a release]
+[superseded 2026-10-25: item 28 is scoped into v0.7.0]
 **Done when** item 28 is either scoped - at which point the five items above are
 re-pointed at it and this one closes - or explicitly left unscoped with this item
 recorded as the stand-in.
@@ -263,6 +266,7 @@ five. The reason to keep this open is untouched: `PL-0S0V` and `PL-VJZK` are
 both `safety`-classed and both blocked on it, so closing it promotes two
 anticipated safety items into the gate.
 
+[superseded 2026-10-25: `PL-YRLM` closed when v0.7.0 scheduled item 28, and this item now waits on `PL-KZ99`, `PL-0S0V` and `PL-2881`]
 **Blocked on `PL-YRLM` from 2026-09-27 (`PL-18BD`).** The question this item
 held as item 28's stand-in - whether and when a release schedules
 planned-milestone item 28 - moved to `PL-YRLM`, filed off Gate 2's frozen list
@@ -274,3 +278,21 @@ this item and now reach `PL-YRLM` through it, so `wave` counts all four with
 as work Gate 2 can clear. What is left here is the readout the unit decision
 above describes, which is item 28's to build; when a release schedules it, this
 item takes that version in `blocked-by:` in place of `PL-YRLM`.
+
+**Scheduled in v0.7.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 with planned-milestone item 28, agent cost, inside it (project owner, 2026-10-25, ratified, over leaving item 28 unscheduled and deferring this item to Gate 4). `PL-YRLM` closed with that answer. This item is in `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope", so v0.7.0 clears it itself.
+
+**What this item builds now.** The agent cost View: one registered View kind,
+which any Area can hold, showing the delivered agent in millilitres of liquid
+equivalent by default, with litres of vapour as the other unit. The unit is
+named on the value itself, by the rule `PL-2881` writes into `docs/MODEL.md`,
+so a liquid-equivalent figure is never confused with the schematic's vapour
+amounts. The conversion reads `PL-KZ99`'s stored constants, and the precision
+is `PL-0S0V`'s per-unit derivation. The reader's choice of unit is kept in the
+preferences file `PL-93B3` builds. `PL-1P15` adds the cost in money to this
+View afterwards.
+
+**Done when, from 2026-10-25.** A learner can place the agent cost View in any
+Area and read the delivered agent as millilitres of liquid equivalent, labelled
+as liquid equivalent and as modelled. An end-to-end test compares the
+displayed figure with delivered vapour converted by an independently computed
+factor. The `Done when` paragraphs above are superseded by this one.

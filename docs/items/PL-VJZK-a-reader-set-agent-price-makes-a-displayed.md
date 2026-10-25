@@ -1,15 +1,16 @@
 ---
 id: PL-VJZK
 title: A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
-priority: P2
+priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: preferences-store
 touches: docs/MODEL.md, ROADMAP.md
-blocked-by: PL-B396
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - nothing in src/ stores or displays a price, a currency or a cost
 added: 2026-09-16
+payoff: docs/MODEL.md states what a stored price carries and how a cost display shows that the price is the reader's, before any price is built
+verify: grep -qi 'currency' docs/MODEL.md
 ---
 
 **Problem.** A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
@@ -70,3 +71,8 @@ currency, date set, and shipped-default-or-reader's — and what a cost readout
 must show: the third provenance tier, the price and date it was computed at, and
 the modelled consumption figure alongside it. `ROADMAP.md` planned item 28 names
 that requirement rather than leaving it to the session that builds the readout.
+
+**Scheduled in v0.7.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 with planned-milestone item 28, agent cost, inside it (project owner, 2026-10-25, ratified, over leaving item 28 unscheduled and deferring this item to Gate 4). `PL-YRLM` closed with that answer. This item is in `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope", so v0.7.0 clears it itself.
+
+**It no longer waits on `PL-B396`.** This item is a specification in
+`docs/MODEL.md`, and `PL-1P15`, which builds the price, waits on it.
