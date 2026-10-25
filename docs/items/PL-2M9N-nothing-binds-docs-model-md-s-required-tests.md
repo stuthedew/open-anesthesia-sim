@@ -3,12 +3,15 @@ id: PL-2M9N
 title: Nothing binds docs/MODEL.md's 'Required tests' headings to the tests that satisfy them
 priority: P3
 effort: M
-status: ready
+status: done
 classes: test, infra
 feature: model-spec-accuracy
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 added: 2026-09-03
-verify: grep -q 'def check_required_tests' tools/doc_check.py && python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py
+closed: 2026-10-25
+pr: 1819
+payoff: A required test in docs/MODEL.md that names no test now fails make check, so a required test that is never written or is deleted can no longer go unnoticed.
+verify: grep -q 'heading="Required tests"' tools/doc_check.py && grep -q 'def _subsection_members' tools/doc_check.py && grep -q 'def test_a_required_test_subsection_naming_nothing_is_an_error' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `docs/MODEL.md` § "Required tests" carries fifteen `###` headings,
@@ -87,3 +90,32 @@ state. Two stale numbers with it: the section carries **17** `###` headings
 rather than fifteen (`awk '/^## Required tests/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c}' docs/MODEL.md`),
 its "Where" pointer `docs/MODEL.md:923-1308` is now `:2818-3861`, and `PL-GZP6` -
 named here as the two that will not resolve - closed 2026-09-07 in v0.4.9.
+
+**Re-confirmed 2026-10-25.** The brief, as re-scoped on 2026-09-19, still
+held. `BOUND_FAMILIES` held two families, the hazard table and the minimum
+displayed outputs. § "Required tests" now has 18 `###` subsections, counting
+the § "Parameter-recovery test" that `PL-4L6Z` added on this branch. Before
+this pass, 16 of them named no test.
+
+**Done 2026-10-25.** Each of the 16 subsections now ends with a sentence that
+names the tests holding it. Each test was read against its subsection's
+requirement before it was named. Every requirement has a test, so the audit
+found no missing test and filed nothing. `tools/doc_check.py` gains
+`_subsection_members`, the third member shape after the table and the list,
+and `BOUND_FAMILIES` gains § "Required tests". A subsection that names no
+test is an error, as the 2026-09-19 re-scope decided. `check_named_tests`
+already resolves each name, so this pass adds no second resolver.
+
+`tests/unit/test_doc_check.py` gains three tests. One checks the reader's
+boundaries: prose before the first subsection, a deeper heading inside a
+member, a `###` line inside a fence, and a later section's subsections. One
+checks a moved heading. One runs the registered family end to end on a
+subsection that names nothing. The fixture document also gains a conforming
+§ "Required tests", because a registered family with no members is an error.
+Two cases in that file had hard-coded the fixture's line count as 32. They
+now derive it from the fixture, the way an existing test at line 896 already
+did.
+
+The `verify:` command was re-pointed. It asked for a `check_required_tests`
+function, which the 2026-09-19 re-scope replaced with a `BOUND_FAMILIES`
+entry, and it ran `doc_check` and pytest, which a `verify:` command may not.

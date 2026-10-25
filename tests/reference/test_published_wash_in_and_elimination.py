@@ -309,6 +309,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from functools import cache, partial
+from itertools import pairwise
 
 import pytest
 
@@ -861,6 +862,11 @@ PUBLISHED_INSPIRED_PERCENTS = tuple(
 # comparison runs at `FRESH_GAS_FLOW_L_MIN`, the last of them, and the flow
 # sweep runs at all six.
 SWEPT_FRESH_GAS_FLOWS_L_MIN = (1.0, 2.0, 4.0, 6.0, 8.0, 10.0)
+
+# The factors by which `test_a_larger_circuit_can_only_slow_the_elimination`
+# multiplies the stored circuit volume, smallest first. 1.0 is the shipped
+# circuit.
+SWEPT_CIRCUIT_VOLUME_FACTORS = (0.5, 1.0, 1.5, 2.0)
 
 # The stored parameters that a resolving-power case may change, grouped by the
 # record that stores each one. Each name is a field of that record, so
@@ -2331,6 +2337,74 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
         f"{FRESH_GAS_FLOW_L_MIN} L/min fresh gas; this module documents the elimination "
         f"comparison as dominated by rebreathing, and that is no longer measured"
     )
+
+
+@pytest.mark.parametrize("agent_id", AGENT_IDS)
+def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
+    """Check whether a store of agent in the breathing circuit speeds or slows the elimination.
+
+    A circuit-side store is any part of the breathing circuit that holds agent
+    and later returns it to the inspired gas. A circuit wall that dissolves
+    agent is one such store. It takes up agent during the administration and
+    gives it back during the washout. This keeps the inspired fraction higher
+    and slows the fall of the alveolar fraction, so F_A/F_A0 at five minutes
+    rises. Before this test, only the argument above supported that direction
+    (`PL-P1P6`).
+
+    `docs/MODEL.md` uses this direction to rule out circuit-wall absorption as
+    an explanation of the model's residual for sevoflurane and isoflurane. The
+    residual is the gap between the model's result and the published mean.
+    With the shipped circuit, the model already washes both agents out too
+    slowly, so a wall store would move them further from their published
+    means. Desflurane's residual has the opposite sign. With the apparatus
+    removed, the model washes desflurane out too fast, so a wall store would
+    move the result toward the published value. For desflurane, therefore,
+    the direction rules nothing out. Two other things rule out circuit-wall
+    absorption for desflurane instead: a measurement of a real circuit, and
+    the fact that the published apparatus had no circle system (`PL-X9K0`).
+
+    The test runs the published protocol with the circuit volume scaled by
+    each factor in `SWEPT_CIRCUIT_VOLUME_FACTORS`. It asserts that F_A/F_A0 at
+    five minutes rises with each larger circuit. A higher ratio means that the
+    alveolar fraction fell more slowly. The circuit volume stands in for the
+    wall store and is not the wall store itself. Both are circuit-side stores
+    that return agent to the inspired gas after the vaporizer closes. The
+    direction depends on that shared property. This model has no wall term, so
+    the circuit volume is the only circuit-side store that a test can vary.
+
+    On 2026-10-25, F_A/F_A0 at five minutes for each volume factor was:
+
+    | Agent       | 0.5    | 1.0    | 1.5    | 2.0    |
+    | ----------- | ------ | ------ | ------ | ------ |
+    | sevoflurane | 0.2193 | 0.2328 | 0.2486 | 0.2677 |
+    | isoflurane  | 0.3094 | 0.3227 | 0.3374 | 0.3542 |
+    | desflurane  | 0.1484 | 0.1626 | 0.1803 | 0.2023 |
+
+    F_A0 moved by less than 0.3% across the same range. So the rise comes from
+    the slower fall of the alveolar fraction, not from a smaller denominator.
+    Only the direction is asserted. The ratio at the shipped circuit volume is
+    checked against its earlier measured value by
+    `test_five_minute_elimination_ratio_regression_pin`.
+    """
+
+    readings = []
+    for factor in SWEPT_CIRCUIT_VOLUME_FACTORS:
+        change = (
+            None
+            if factor == 1.0
+            else StoredParameterChange(
+                parameter=CIRCUIT_VOLUME_FIELD, factor=factor, label=f"circuit-volume-x{factor:.2f}"
+            )
+        )
+        readings.append((factor, _eliminate(agent_id, change=change)))
+
+    for (smaller_factor, smaller), (larger_factor, larger) in pairwise(readings):
+        assert larger.ratio > smaller.ratio, (
+            f"{agent_id}: F_A/F_A0 at 5 min is {larger.ratio:.4f} with the circuit volume "
+            f"x{larger_factor:.2f} and {smaller.ratio:.4f} with it x{smaller_factor:.2f}; a "
+            f"larger circuit-side store eliminated no more slowly, which `docs/MODEL.md` "
+            f"relies on to rule circuit-wall absorption out for sevoflurane and isoflurane"
+        )
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)

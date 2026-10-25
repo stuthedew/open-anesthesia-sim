@@ -1,14 +1,17 @@
 ---
 id: PL-4L6Z
-title: 'Verify the model by making it compute a predictable event: recover a stored parameter from a simulated measurement, as Lerou and Booij recover alveolar volume by simulated helium dilution'
+title: Verify the model by making it compute a predictable event: recover a stored parameter from a simulated measurement, as Lerou and Booij recover alveolar volume by simulated helium dilution
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: model-spec-accuracy
 touches: tests/reference/, docs/MODEL.md
 added: 2026-09-06
-verify: grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/
+closed: 2026-10-25
+pr: 1819
+payoff: The shipped model must now recover its stored alveolar and tissue volumes from simulated measurements, so an equation the specification states wrongly but that conserves agent fails a test.
+verify: grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/ && grep -rq 'def test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value' tests/reference/ && grep -q '### Parameter-recovery test' docs/MODEL.md
 ---
 
 **Problem.** This project's verification rests on comparing the shipped step
@@ -73,3 +76,45 @@ washin - because it needs no new physics; candidates 2 and 3 would want the
 command re-pointed before the work rather than after. Run 2026-09-06 before the
 work: exit 1 in 87 s, with `tests/reference/` passing (the whole suite was
 green in the same session's `make check`, 1995 passed) and the test absent.
+
+**Re-confirmed 2026-10-25.** The brief still held against the tree. No test
+recovered a stored parameter, and `docs/MODEL.md` § "Required tests" named no
+such test. One premise had changed. Candidate 2 no longer needs a second gas,
+because the supported ranges now reach zero fresh gas flow and zero cardiac
+output (`core/supported_ranges.py`). With the circuit closed and the blood flow
+stopped, the agent behaves as an insoluble tracer, which is the role helium
+plays in Lerou and Booij's measurement.
+
+**Done 2026-10-25.** `tests/reference/test_parameter_recovery.py` runs two
+procedures for each of the three agents. The first is Lerou and Booij's
+closed-circuit dilution, which recovers the stored alveolar volume from
+$`V_A = V_C(F_1-F_2)/F_2`$. The second is candidate 1, which recovers each
+tissue group's stored volume from its Fick-principle uptake through the
+opening wash-in. Measured residuals are 6.1e-13 relative for the dilution and
+7.9e-11 for the washin, against bounds of 1e-11 and 1e-9. Both are stated in
+the module. The six cases take about 3 s together. `docs/MODEL.md` §
+"Parameter-recovery test" names both tests. It says which class of error they
+catch that the oracle and the mass-balance test do not: an equation this
+document states wrongly in a way that still conserves agent.
+
+That claim was checked by putting four errors into the shipped code in turn,
+in a scratch script outside the suite. Three conserve agent: a tissue capacity
+formed as $`V_i\lambda_{i:b}`$ with its rate formed to match, muscle and fat
+with their flow fractions swapped, and every flow left in litres per minute.
+The washin test failed on each, and the agent accounting raised on none. The
+fourth, a tissue rate formed with the tissue:gas coefficient while the
+capacity stayed right, does not conserve agent, and the agent accounting
+refused it before the test's assertion was reached. So the brief's "swapped
+compartment" and "units slip" examples hold. An error that loses or creates
+agent is the mass-balance test's to catch rather than this one's. A sign error
+was not tried.
+
+Candidate 3, cardiac output from the Fick relation, was not built. It would
+need the alveolar balance's rate of change, and it checks the same two
+exchange terms that the two tests above already check.
+
+Lerou and Booij's citation was confirmed through PubMed on 2026-10-25 (PMID
+11575385, doi:10.1093/bja/86.1.12), read at the abstract. The private
+reference corpus does not hold the paper. The brief's quotation about
+"designer-induced errors" comes from the 2026-09-06 full-text reading and
+was not re-read.

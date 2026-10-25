@@ -1036,7 +1036,14 @@ where no pull request was ever opened, or exits non-zero where it could not
 ask. `auto_merge_command` is the same boundary for `arm`'s other question
 (`PL-8TPV`): the package appends the pull request's number, and the command
 prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
-where it was never switched on, or exits non-zero where it could not ask. A
+where it was never switched on, or exits non-zero where it could not ask.
+`open_draft_command` is the one forge command that writes (`PL-86DN`): after
+`claim` publishes a claim on a branch with no pull request open, the package
+appends the branch, the default branch's name and a title, and the command
+opens a draft pull request and prints its number, or exits non-zero with the
+reason on stderr. `set --status done` then reads the branch's open pull request
+through `open_pull_requests_command` and writes its number as `pr:` in the same
+write. A
 switch off that no `Auto-merge: off - <why>` trailer on a commit made since
 records as the session's holds the pull request. `prose_count_command` is how
 `arm` counts the long docstrings and comments a simulator change adds that no
