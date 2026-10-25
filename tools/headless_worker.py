@@ -112,11 +112,12 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 import docket.cli as docket_cli  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.vcs import call_git, default_base, read_git  # noqa: E402
+from docket.vcs import REMOTE, call_git, default_base, read_git  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "tools"))
 
 import worker_runs  # noqa: E402
+from open_pull_requests import origin_url  # noqa: E402
 
 #: The model the workers run on (project owner, 2026-10-19, ratified, over
 #: Sonnet 5.5 workers, `PL-80R5`).
@@ -297,7 +298,7 @@ def prompt_for(item: str, branch: str, no_push: bool) -> str:
         "Do not push. This is a trial run: its work is scored and then "
         "discarded, and this clone cannot push."
         if no_push
-        else f"When the item is committed, push with `git push -u origin {branch}`. "
+        else f"When the item is committed, push with `git push -u {REMOTE} {branch}`. "
         "Do not open a pull request."
     )
     return (
@@ -351,7 +352,7 @@ def prepare_clone(origin: str, clone: Path, branch: str, no_push: bool) -> None:
     git_or_refuse(["clone", "--reference", shared, "--dissociate", origin, str(clone)], ROOT)
     git_or_refuse(["checkout", "-b", branch, default_base(clone)], clone)
     if no_push:
-        git_or_refuse(["remote", "set-url", "--push", "origin", NO_PUSH_URL], clone)
+        git_or_refuse(["remote", "set-url", "--push", REMOTE, NO_PUSH_URL], clone)
 
 
 def log_for(clone: Path) -> Path:
@@ -361,7 +362,7 @@ def log_for(clone: Path) -> Path:
 
 def remote_tip(clone: Path, branch: str) -> str | None:
     """The commit the remote's `branch` points at, or `None` where it has none or git failed."""
-    call = call_git(["ls-remote", "--heads", "origin", branch], clone)
+    call = call_git(["ls-remote", "--heads", REMOTE, branch], clone)
     fields = call.answer.split() if call.code == 0 else []
     return fields[0] if fields else None
 
@@ -492,7 +493,7 @@ def commit_record(run: Run, clone: Path, tip: str) -> Run:
     for args in (
         ["add", "--", relative],
         ["commit", "-q", "-m", message, "--", relative],
-        ["push", "-q", "origin", f"HEAD:refs/heads/{run.branch}"],
+        ["push", "-q", REMOTE, f"HEAD:refs/heads/{run.branch}"],
     ):
         # The push goes to GitHub, which can take longer than git's local default.
         call = call_git(args, clone, timeout=CLONE_TIMEOUT_S)
@@ -593,7 +594,9 @@ def main(
         items = choose(delegable_ids(docket), args.item, args.runs)
         level = effort_level()
         efforts = {item: level for item in items}
-        origin = read_git(["remote", "get-url", "origin"], ROOT).strip()
+        origin = origin_url(ROOT)
+        if not origin:
+            raise Refused(f"git could not name {REMOTE}'s URL, so there is nothing to clone.")
         left = args.credit_left
         if args.dry_run:
             chosen = ", ".join(f"{item} at {efforts[item]}" for item in items) or "nothing"

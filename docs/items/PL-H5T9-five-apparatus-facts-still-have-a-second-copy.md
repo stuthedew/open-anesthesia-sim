@@ -3,11 +3,13 @@ id: PL-H5T9
 title: Five apparatus facts still have a second copy under a different name, which tools/fact_home_check.py cannot see: roadmap.SECTION_ID_RE repeats store.CITED_ID_RE, pr_body_check.FRONT_MATTER repeats frontmatter.DELIMITER, fixture_id_check.FENCE_OPENING_RE and markdown._FENCE_OPEN are two grammars for a CommonMark fence, pr_body_check.repo_slug and headless_worker read origin's URL beside open_pull_requests.repo_slug, and the product package's path is spelt in agent_identity_check, glyph_check, literal_home_check, doc_check and import_boundary_check
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: tools/, subprojects/docket/src/docket/
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1762
 payoff: five apparatus facts each have one home, so editing one copy cannot leave another giving the old answer
 verify: ! grep -q '^SECTION_ID_RE = ' subprojects/docket/src/docket/roadmap.py && ! grep -q '^FRONT_MATTER = ' tools/pr_body_check.py && ! grep -q '^def repo_slug' tools/pr_body_check.py && ! grep -q '^FENCE_OPENING_RE = ' tools/fixture_id_check.py
 reenters: PL-40SJ
@@ -28,3 +30,5 @@ reenters: PL-40SJ
 **Checked 2026-10-24 on `main` at `91a98348`.** All five copies are still present: `SECTION_ID_RE = re.compile(ID_PATTERN)` at line 424 of `roadmap.py`, `FRONT_MATTER = "---"` at line 235 of `tools/pr_body_check.py` and its `repo_slug` at line 369, `FENCE_OPENING_RE` at line 228 of `tools/fixture_id_check.py` beside `markdown._FENCE_OPEN` at line 178, `"origin"` spelt in `tools/headless_worker.py`, and `src/anesthesia_sim` spelt in the five named tools.
 
 **Generator check.** An instance of the fact "the value of a named constant, read from its one definition rather than typed again at the use", which `PL-40SJ`'s `misread:` states. `PL-40SJ` closed on 2026-10-03. Recorded as `reenters: PL-40SJ`. `PL-MM3Q` is the check that would make the next copy fail.
+
+**Closed 2026-10-25.** The first four copies now import their homes: `store.CITED_ID_RE`, `frontmatter.DELIMITER`, the new `markdown.fence_opening()` built on `_FENCE_OPEN`, and the new `open_pull_requests.origin_url()`. `tools/product_paths.py` holds the package's paths for every tool, and it reads the package's import name from `docket.arming.PRODUCT_PACKAGE`, which already held it. Docket cannot import `tools/`, so `docket.arming`'s own path tuples still spell the data tree. That copy sits in the same module as the name it repeats. `PL-MM3Q` reported two more copies of `re.compile(ID_PATTERN)`, `checks._ANY_ID` and `duplicates._TITLE_ID`, and both now read `CITED_ID_RE`.

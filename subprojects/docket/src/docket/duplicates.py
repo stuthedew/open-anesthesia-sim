@@ -65,12 +65,11 @@ failure this whole mechanism is downstream of.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from .config import Config
 from .model import Item, covers, is_under, live_recurrences
-from .store import ID_PATTERN, declared_item_file
+from .store import CITED_ID_RE, declared_item_file
 
 #: Tokens carried by so many titles in a work queue that counting them would
 #: measure grammar rather than subject. Deliberately short: a long list starts
@@ -131,9 +130,6 @@ DISPLAY_FLOOR = 0.15
 #: printing more spends a session's attention on ranks the evidence says are
 #: usually wrong.
 LIMIT = 3
-
-#: An id written anywhere in a capture's title, in the grammar `store` exports.
-_TITLE_ID = re.compile(ID_PATTERN)
 
 
 @dataclass(frozen=True)
@@ -243,7 +239,7 @@ def named_items(title: str, paths: tuple[str, ...], items_dir: str) -> frozenset
     capture made on a clean tree can name precisely, and a housekeeping title
     names the item it is about.
     """
-    return frozenset(_TITLE_ID.findall(title)) | declared_items(paths, items_dir)
+    return frozenset(CITED_ID_RE.findall(title)) | declared_items(paths, items_dir)
 
 
 def near_duplicates(

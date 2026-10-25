@@ -349,6 +349,9 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # reason: a line regex had taken a `run:` inside another block for a step.
 import required_checks_check
 
+# The simulator package's location is `product_paths`'s (`PL-H5T9`).
+from product_paths import PACKAGE_DIR
+
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
 # `.claude/worktrees/` is not read as this one and a nested rule is measured
@@ -469,7 +472,7 @@ def roadmap_path(root: Path) -> Path:
 
 REFERENCES = Path("docs/references/README.md")
 
-PACKAGE_ROOT = PurePosixPath("src/anesthesia_sim")
+PACKAGE_ROOT = PurePosixPath(PACKAGE_DIR)
 
 # The subdirectories of the package's `data/` whose JSON files are not
 # parameter files. The shipped Workspaces are layout, which

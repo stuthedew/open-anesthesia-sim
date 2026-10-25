@@ -219,6 +219,50 @@ def test_a_name_defined_in_two_modules_fails_and_an_import_or_alias_does_not(
     assert analyze(tmp_path, baseline=drained).errors == 0
 
 
+def test_a_fact_copied_under_another_name_is_reported(tmp_path: Path) -> None:
+    """`roadmap.SECTION_ID_RE` and `store.CITED_ID_RE` were one compiled pattern
+    under two names, which the name match passed (`PL-MM3Q`)."""
+    _tree(
+        tmp_path,
+        docket__store='import re\n\nID_PATTERN = "PL-"\nCITED_ID_RE = re.compile(ID_PATTERN)\n',
+        docket__roadmap=(
+            "import re\n\nfrom .store import ID_PATTERN\n\nSECTION_ID_RE = re.compile(ID_PATTERN)\n"
+        ),
+    )
+
+    report = analyze(tmp_path, baseline={})
+    printed = format_report(report)
+
+    assert report.errors == 2
+    assert "One call bound under different names in more than one module:" in printed
+    assert (
+        "CITED_ID_RE = SECTION_ID_RE: subprojects/docket/src/docket/roadmap.py:5 "
+        "SECTION_ID_RE, subprojects/docket/src/docket/store.py:4 CITED_ID_RE"
+    ) in printed
+
+    drained = {
+        "subprojects/docket/src/docket/store.py": {("same call", "CITED_ID_RE = SECTION_ID_RE"): 1},
+        "subprojects/docket/src/docket/roadmap.py": {
+            ("same call", "CITED_ID_RE = SECTION_ID_RE"): 1
+        },
+    }
+    assert analyze(tmp_path, baseline=drained).errors == 0
+
+
+def test_two_facts_that_share_a_value_or_a_sentinel_call_are_not_reported(tmp_path: Path) -> None:
+    """A plain constant can mean two things, as `trend.UNPLACED_PATH` and
+    `roadmap.UNPLACED` both hold `"unplaced"`, and each `object()` is a new
+    sentinel, so neither is read as one fact copied (`PL-MM3Q`)."""
+    _tree(
+        tmp_path,
+        docket__trend='UNPLACED_PATH = "unplaced"\nUNREAD = object()\n',
+        docket__roadmap='UNPLACED = "unplaced"\nABSENT = object()\n',
+        tools__other='import re\n\nONE_RE = re.compile("a")\nTWO_RE = re.compile("b")\n',
+    )
+
+    assert analyze(tmp_path, baseline={}).errors == 0
+
+
 def test_a_status_set_tested_by_hand_outside_model_is_refused(tmp_path: Path) -> None:
     """`PL-TSXD`: about 48 sites asked whether an item is open by hand, two ways.
 

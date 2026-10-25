@@ -169,12 +169,13 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from product_paths import APP_DIR
 from workflow_paths_check import tracked_under
 
 ROOT = Path(__file__).resolve().parent.parent
 
 #: Every module under this tree is read; none is named by path (PL-V53R).
-APP = Path("src/anesthesia_sim/app")
+APP = Path(APP_DIR)
 
 #: The single writer of agent colour, and so the definition of the identity
 #: set. Named here rather than inferred: if it is renamed, this check reports

@@ -135,6 +135,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from product_paths import APP_DIR, CORE_DIR, LAYOUT_DIR, PACKAGE, PACKAGE_DIR
 from workflow_paths_check import tracked_under
 
 # isort: split
@@ -167,8 +168,8 @@ class Boundary:
 BOUNDARIES: tuple[Boundary, ...] = (
     Boundary(
         package="pydantic",
-        tree="src/anesthesia_sim",
-        allowed=("src/anesthesia_sim/core/parameters.py",),
+        tree=PACKAGE_DIR,
+        allowed=(f"{CORE_DIR}/parameters.py",),
         why=(
             "the `_...Payload`/public-dataclass pairs in `core/parameters.py` exist so that "
             "the compartments, the controller, the interface and the tests hold plain frozen "
@@ -180,8 +181,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="subprocess",
-        tree="src/anesthesia_sim",
-        allowed=("src/anesthesia_sim/app_metadata.py",),
+        tree=PACKAGE_DIR,
+        allowed=(f"{PACKAGE_DIR}/app_metadata.py",),
         why=(
             "`app_metadata.py` asks git which build is running, so that a header that "
             "would otherwise read the same string for every build between two releases "
@@ -197,7 +198,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="time",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "`CLAUDE.md` requires simulation time to be explicit state and never the wall "
@@ -212,7 +213,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="datetime",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "the same guarantee as `time`, by the other route into it: `datetime.now()` and "
@@ -224,7 +225,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="random",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "an unseeded generator breaks the same guarantee a clock does. `random`'s "
@@ -237,7 +238,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="secrets",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "the same guarantee as `random`, and strictly worse, because the escape `random` "
@@ -250,7 +251,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="uuid",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "both halves of the guarantee, in one import. `uuid4()` is `os.urandom(16)` in a "
@@ -263,7 +264,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="flet",
-        tree="src/anesthesia_sim",
+        tree=PACKAGE_DIR,
         allowed=(),
         why=(
             "the port is complete and nothing under `src/` may import Flet: `PL-25KS` "
@@ -279,7 +280,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="flet_charts",
-        tree="src/anesthesia_sim",
+        tree=PACKAGE_DIR,
         allowed=(),
         why=(
             "the other half of Flet - `flet-charts` is its own distribution with its own "
@@ -292,7 +293,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="PySide6",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             'the toolkit the interface moves to (`ROADMAP.md` § "v0.4.26 - the interface '
@@ -307,7 +308,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="pyqtgraph",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "the plotting library the chart moves to, and a widget library by another "
@@ -318,7 +319,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="numpy",
-        tree="src/anesthesia_sim/core",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             "it arrives under pyqtgraph as the chart's array type, not as the model's. "
@@ -332,8 +333,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
         ),
     ),
     Boundary(
-        package="anesthesia_sim.app",
-        tree="src/anesthesia_sim/core",
+        package=f"{PACKAGE}.app",
+        tree=CORE_DIR,
         allowed=(),
         why=(
             'the layering `docs/ARCHITECTURE.md` § "Layering" draws runs one way: `core/` '
@@ -348,7 +349,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="PySide6",
-        tree="src/anesthesia_sim/layout",
+        tree=LAYOUT_DIR,
         allowed=(),
         why=(
             "`PL-C842` made the layout's source of truth a pure-Python model rather than the "
@@ -362,7 +363,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="pyqtgraph",
-        tree="src/anesthesia_sim/layout",
+        tree=LAYOUT_DIR,
         allowed=(),
         why=(
             "the same rule as `PySide6` above, by the other route into Qt: pyqtgraph imports "
@@ -372,8 +373,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="PySide6.QtWidgets.QSplitter",
-        tree="src/anesthesia_sim",
-        allowed=("src/anesthesia_sim/app/area_layout.py",),
+        tree=PACKAGE_DIR,
+        allowed=(f"{APP_DIR}/area_layout.py",),
         why=(
             "`PL-C842` made the layout model the one record of where each View sits, and a "
             "splitter is the widget that would keep a second one: `QSplitter.saveState()` "
@@ -388,8 +389,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
     ),
     Boundary(
         package="PySide6.QtWidgets.QSplitterHandle",
-        tree="src/anesthesia_sim",
-        allowed=("src/anesthesia_sim/app/area_layout.py",),
+        tree=PACKAGE_DIR,
+        allowed=(f"{APP_DIR}/area_layout.py",),
         why=(
             "a handle is the part of a splitter a reader drags, and the adapter turns each "
             "drag into a change to the layout model (`PL-W9P6`). A handle built anywhere "
@@ -398,8 +399,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
         ),
     ),
     Boundary(
-        package="anesthesia_sim.app",
-        tree="src/anesthesia_sim/layout",
+        package=f"{PACKAGE}.app",
+        tree=LAYOUT_DIR,
         allowed=(),
         why=(
             '`docs/interface-provenance.md` § "Adopted": a View kind is a tag and a registry '
