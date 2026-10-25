@@ -57,12 +57,18 @@ unstarted inside that window (`PL-7TVT`). It costs nothing here -
 `main`, so a push to a branch with no pull request open runs no CI, and the
 squash merge folds the commit away.
 
-**Where the claim's push opens the branch's first pull request, open it as a draft**
-(`draft: true`), because a claim rides it and GitHub will not merge a draft by
-hand or otherwise. `#978` was merged by hand six minutes after it
-opened, with its claimed cut still uncommitted (`PL-H14W`). Mark it ready
-(`draft: false`) in the push that closes or blocks the claimed item, which is
-also the push that arms it under `.claude/skills/pull-request/SKILL.md`.
+**`claim` opens the branch's pull request as a draft once the claim is
+published** (project owner, 2026-10-25, ratified, over keeping the red
+`pr-title` run as the hold, `PL-86DN`). The pull request then has its number
+before the item closes, so `bin/docket set --status done` writes `pr:` in the
+closing commit. Where `claim` says it opened none, open the draft yourself with
+your GitHub tool before any work, as the message says. A draft, because a claim
+rides it and GitHub will not merge a draft by hand or otherwise. `#978` was
+merged by hand six minutes after it opened, with its claimed cut still
+uncommitted (`PL-H14W`). The draft's title is a placeholder. Rewrite the title
+and body, and mark it ready (`draft: false`), in the push that closes or blocks
+the claimed item. That push is also the one that arms it under
+`.claude/skills/pull-request/SKILL.md`.
 
 **A session has two things to remember: `claim` at pickup and for every rider,
 and `bin/docket yield <id>` when it stops without closing.** A rider is a second

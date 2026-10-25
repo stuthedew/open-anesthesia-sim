@@ -279,6 +279,16 @@ class Config:
     #: never switched on, and non-zero where it could not ask. A command, and
     #: empty by default, for `open_pull_requests_command`'s reason.
     auto_merge_command: str = ""
+    #: A command that opens a draft pull request for a branch, which `docket
+    #: claim` runs after it pushes a claim onto a branch with no pull request
+    #: open (`PL-86DN`). The number then exists before the item closes, so
+    #: `docket set --status done` can write it in the closing commit. The
+    #: package appends the branch, the default branch's name and a title. The
+    #: command owes exit 0 and one line holding the new pull request's number,
+    #: and non-zero where it could not open one, with the reason on stderr.
+    #: Empty by default, for `open_pull_requests_command`'s reason: `claim`
+    #: then says that no draft was opened and what the session does instead.
+    open_draft_command: str = ""
     #: A command counting the long docstrings and comments that the branch's
     #: simulator change adds and that no review has covered, which `docket arm`
     #: reads so that a simulator branch waits for close-out step 8's review
@@ -653,6 +663,9 @@ def load(root: Path) -> Config:
         ),
         auto_merge_command=_str(
             section.get("auto_merge_command"), defaults.auto_merge_command, "auto_merge_command"
+        ),
+        open_draft_command=_str(
+            section.get("open_draft_command"), defaults.open_draft_command, "open_draft_command"
         ),
         prose_count_command=_str(
             section.get("prose_count_command"), defaults.prose_count_command, "prose_count_command"

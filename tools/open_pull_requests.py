@@ -34,6 +34,12 @@ where no pull request was ever opened from the branch. The listing is
 `left_behind_check.py`'s too, read through `newest` here: every state, that
 head, that base, newest first.
 
+**`--open-draft BRANCH BASE TITLE` opens a draft pull request and prints its
+number**, for `docket claim` through `open_draft_command` (`PL-86DN`). The
+number then exists before the claimed item closes, so the closing commit can
+carry it. This is the one question here that writes. It exits 1 where it could
+not open one, and prints the reason on stderr for `claim` to pass on.
+
 **The contract is the exit status, and it is the whole point of the script.**
 Exit 0 means the forge was asked and these - possibly none - are the branches
 with something open. Exit 1 means it could not be asked, and stdout is then
@@ -192,6 +198,11 @@ def api_request(
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if data is not None:
+        # The harness proxy refuses a body that does not name its type, with
+        # HTTP 415, where GitHub itself would have read it (measured
+        # 2026-10-25, `PL-86DN`).
+        headers["Content-Type"] = "application/json"
     return urllib.request.Request(url, data=data, headers=headers, method=method)
 
 
@@ -390,6 +401,67 @@ def auto_merge(slug: str, number: int) -> tuple[str, str] | None:
     return latest
 
 
+#: The body of a draft `open_draft` opens. The session that finishes the work
+#: writes the real title and body, as the `pull-request` skill says.
+DRAFT_BODY = (
+    "Opened as a draft by `bin/docket claim` when it pushed the claim, so that the "
+    "pull request's number exists before the item closes and the closing commit "
+    "can carry it (`PL-86DN`). The title and this body are rewritten when the work "
+    "is finished."
+)
+
+
+def open_draft(slug: str, branch: str, base: str, title: str) -> int:
+    """Open a draft pull request from `branch` into `base`, and return its number.
+
+    `bin/docket claim` asks for this through `open_draft_command` when it has
+    pushed a claim onto a branch with no pull request open (`PL-86DN`). The
+    number then exists before the item closes, so `bin/docket set --status
+    done` can write it in the closing commit, and the first `pr-title` run
+    after that commit passes.
+
+    `ListingFailed` says why it could not: no token or a refusal is
+    `NO_PERMISSION`, nothing answering is `NO_NETWORK`, and an answer with no
+    number is `UNREADABLE_ANSWER`. GitHub answers HTTP 422 where a pull request
+    is already open on the branch, and that fails as `UNREADABLE_ANSWER` too.
+    The caller asks only where it found none open, so one that appeared in
+    between is reported rather than taken as this draft.
+    """
+    token = github_token()
+    if not token:
+        raise ListingFailed(NO_PERMISSION, "no GH_TOKEN or GITHUB_TOKEN to ask GitHub with")
+    data = json.dumps(
+        {"title": title, "head": branch, "base": base, "body": DRAFT_BODY, "draft": True}
+    ).encode("utf-8")
+    request = api_request(
+        f"{GITHUB_API}/repos/{slug}/pulls",
+        agent="open_pull_requests",
+        token=token,
+        method="POST",
+        data=data,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT) as response:
+            body = response.read()
+    except urllib.error.HTTPError as error:
+        if error.code in _REFUSAL_CODES:
+            raise ListingFailed(NO_PERMISSION, f"GitHub refused (HTTP {error.code})") from error
+        raise ListingFailed(UNREADABLE_ANSWER, f"GitHub answered HTTP {error.code}") from error
+    except (OSError, http.client.HTTPException) as error:
+        raise ListingFailed(NO_NETWORK, f"GitHub could not be reached ({error})") from error
+    try:
+        payload = json.loads(body)
+    except ValueError as error:
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer was not JSON") from error
+    raw = payload.get("number") if isinstance(payload, dict) else None
+    # Read through `pr_number`, the one builder of a pull request number, as
+    # `newest` reads one.
+    number = pr_number(str(raw)) if isinstance(raw, int) else None
+    if number is None:
+        raise ListingFailed(UNREADABLE_ANSWER, "GitHub's answer named no pull request number")
+    return number
+
+
 def main(argv: Sequence[str] = ()) -> int:
     parser = argparse.ArgumentParser(
         description="Print every open pull request's branch and number, one per line."
@@ -408,8 +480,26 @@ def main(argv: Sequence[str] = ()) -> int:
         help="print `STATE TIME` for the latest switch of auto-merge on pull request NUMBER "
         "instead, `STATE` `on` or `off`, or nothing where it was never switched on",
     )
+    parser.add_argument(
+        "--open-draft",
+        nargs=3,
+        metavar=("BRANCH", "BASE", "TITLE"),
+        help="open a draft pull request from BRANCH into BASE titled TITLE instead, and print "
+        "its number; exit non-zero, naming why on stderr, where it could not",
+    )
     args = parser.parse_args(list(argv))
     slug = repo_slug()
+    if args.open_draft is not None:
+        if not slug:
+            print("origin is not a GitHub repository this can name", file=sys.stderr)
+            return 1
+        branch, base, title = args.open_draft
+        try:
+            print(open_draft(slug, branch, base, title))
+        except ListingFailed as failure:
+            print(failure, file=sys.stderr)
+            return 1
+        return 0
     if args.auto_merge is not None:
         if not slug:
             return 1

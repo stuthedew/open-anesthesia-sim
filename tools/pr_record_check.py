@@ -20,7 +20,10 @@ of the required `pr-title` job, which already checks out both trees and already
 computes what the branch closes, so a merge cannot land between the closure's
 push and the number's: the pull request stays red until the number lands, and
 the closure still travels in the same commit as its work, which is what keeps
-the `PL-D2GW` window shut.
+the `PL-D2GW` window shut. Normally the number lands with the closure, so the
+hold never fires. `bin/docket claim` opens the pull request as a draft, and
+`bin/docket set --status done` writes its number in the closing commit
+(`PL-86DN`).
 
 Only `done` closures are held to it. A drop records no `pr`, as the store's
 released drops never have, and `docket check` asks nothing of one.
