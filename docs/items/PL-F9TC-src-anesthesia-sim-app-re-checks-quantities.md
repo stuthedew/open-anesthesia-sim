@@ -9,6 +9,7 @@ feature: one-source-of-truth
 touches: docs/ARCHITECTURE.md, docs/MODEL.md, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/compartment_selection.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_chart_frame.py, tests/unit/test_checked_number.py, tests/unit/test_compartment_selection.py, tests/unit/test_concentration.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_parameters.py, tests/unit/test_playback.py
 added: 2026-10-19
 closed: 2026-10-25
+pr: 1784
 payoff: the interface and core cannot disagree about which MAC, tick interval, case instant or run count a learner may set
 verify: grep -q 'require_positive_finite' src/anesthesia_sim/app/playback.py && grep -q 'displayed_run_count' src/anesthesia_sim/app/simulation_view.py && grep -q 'class MacPercent' src/anesthesia_sim/core/concentration.py
 ---
