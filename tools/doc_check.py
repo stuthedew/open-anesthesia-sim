@@ -2834,9 +2834,12 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     where a source writes "l/min"; each number of a list joined by slashes,
     such as "6/33/14.5 L"; and a symbol given a number in a math span, such
     as $`V_A = 2.5`$ L, by `MATH_FIGURE_RE` (`PL-2T6S`). It does not read any
-    other number in a math span, a span split across two lines, or a figure
-    in a code span. A restatement written in one of those forms is not
-    checked.
+    other number in a math span, or a figure in a code span. A restatement
+    written in one of those forms is not checked. It reads a line at a time,
+    so a math span split across two lines gives it no figure. That form never
+    passes, though: the split span renders as literal text, and
+    `check_math_delimiters` refuses it until it is joined onto one line, where
+    this check reads its figure (`PL-P0RG`).
     """
     homes = stored_values(root)
     for document in PROVENANCE_DOCUMENTS:
