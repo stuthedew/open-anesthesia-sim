@@ -1,0 +1,5 @@
+time	session	guard	rule
+2026-10-25T21:37:59.527735+00:00	b19ed333-85e4-5e39-a218-18f5674920ac	gate-status-guard	status-swallowed
+2026-10-25T21:38:19.789010+00:00	b19ed333-85e4-5e39-a218-18f5674920ac	gate-status-guard	status-swallowed
+2026-10-25T21:41:01.919084+00:00	b19ed333-85e4-5e39-a218-18f5674920ac	gate-status-guard	status-swallowed
+2026-10-25T21:47:46.318440+00:00	b19ed333-85e4-5e39-a218-18f5674920ac	gate-status-guard	arm-piped
