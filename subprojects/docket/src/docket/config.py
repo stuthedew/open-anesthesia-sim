@@ -295,6 +295,13 @@ class Config:
     #: one line holding a whole number, and non-zero where it could not count,
     #: which holds the pull request. Empty by default, which turns the hold off.
     blind_count_command: str = ""
+    #: A command `docket record N` runs once it has written the number on a
+    #: branch, so a project can copy its own records into the tree with the
+    #: commit that carries the number (`PL-SG93`). The package appends
+    #: nothing and prints what the command prints. A command that fails is
+    #: reported and does not undo the number. Empty by default, which runs
+    #: nothing.
+    record_command: str = ""
     #: A command that mutates the lines a branch changed and says which mutants
     #: the tests did not catch, which `docket verify` runs once per run as an
     #: integrity check (`PL-CZXN`). The package appends the base it audits
@@ -632,6 +639,9 @@ def load(root: Path) -> Config:
         ),
         blind_count_command=_str(
             section.get("blind_count_command"), defaults.blind_count_command, "blind_count_command"
+        ),
+        record_command=_str(
+            section.get("record_command"), defaults.record_command, "record_command"
         ),
         mutation_command=_str(
             section.get("mutation_command"), defaults.mutation_command, "mutation_command"

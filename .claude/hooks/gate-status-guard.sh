@@ -598,14 +598,8 @@ ARM_TRUNCATED = (
 )
 if any(runs_arm(segment) and output_piped(index) for index, segment in enumerate(segments)):
     sys.stdout.write(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": ARM_TRUNCATED,
-                }
-            }
+        hook_input.deny(
+            "gate-status-guard", "arm-piped", ARM_TRUNCATED, os.environ.get("PAYLOAD", "")
         )
     )
     sys.exit(0)
@@ -796,14 +790,6 @@ reason = (
     "short is the largest adherence lever this project has."
 )
 sys.stdout.write(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        }
-    )
+    hook_input.deny("gate-status-guard", "status-swallowed", reason, os.environ.get("PAYLOAD", ""))
 )
 ' 2>/dev/null || exit 0

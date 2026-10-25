@@ -224,14 +224,8 @@ reason = (
     "`/usr/bin/python3.11 -m compileall src/`."
 )
 sys.stdout.write(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        }
+    hook_input.deny(
+        "floor-interpreter-guard", "floor-interpreter", reason, os.environ.get("PAYLOAD", "")
     )
 )
 ' 2>/dev/null || exit 0

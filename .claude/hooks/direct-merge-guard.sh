@@ -62,8 +62,11 @@ payload=$(cat)
 
 # Exits 0 having printed a refusal, or having printed nothing to let the call
 # through to the ordinary permission flow.
-PAYLOAD="$payload" python3 -c '
+PAYLOAD="$payload" HOOKS="$(dirname "${BASH_SOURCE[0]}")" python3 -c '
 import json, os, sys, urllib.parse, urllib.request
+
+sys.path.insert(0, os.environ["HOOKS"])
+import hook_input
 
 API = os.environ.get("DIRECT_MERGE_GUARD_API") or "https://api.github.com"
 ROUTE = (
@@ -75,13 +78,9 @@ ROUTE = (
 )
 
 
-def refuse(why):
-    decision = {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": "Refused: " + why + "\n\n" + ROUTE,
-    }
-    sys.stdout.write(json.dumps({"hookSpecificOutput": decision}))
+def refuse(rule, why):
+    reason = "Refused: " + why + "\n\n" + ROUTE
+    sys.stdout.write(hook_input.deny("direct-merge-guard", rule, reason, os.environ["PAYLOAD"]))
     sys.exit(0)
 
 
@@ -111,6 +110,7 @@ try:
     owner, repo, number = str(call["owner"]), str(call["repo"]), int(call["pullNumber"])
 except (KeyError, TypeError, ValueError):
     refuse(
+        "unreadable-call",
         "the call names no pull request this hook can read, so it cannot ask GitHub "
         "whether the base branch holds the merge to its required checks."
     )
@@ -123,11 +123,13 @@ try:
     level = (branch["protection"].get("required_status_checks") or {}).get("enforcement_level")
 except (OSError, LookupError, TypeError, ValueError, AttributeError) as error:
     refuse(
+        "no-answer",
         "GitHub did not answer whether the base branch of " + named + " holds an admin to "
         "its required checks (" + str(error) + "), and a session merges as the owner, an admin."
     )
 if level != "everyone":
     refuse(
+        "admins-unbound",
         "the GitHub record for `" + base + "` reads `enforcement_level: " + str(level) + "`, "
         "not `everyone`, so its required checks and up-to-date rule do not bind an admin, and "
         "a session merges as the owner, an admin: a merge landing between a read and this call "

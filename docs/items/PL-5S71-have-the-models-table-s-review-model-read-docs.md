@@ -1,6 +1,6 @@
 ---
 id: PL-5S71
-title: Have Fable 5.1 read docs/MODEL.md against src/anesthesia_sim/data/ once through the Message Batches API, on the API credits, for statements that contradict a stored value, each other, or a cited unit, and file each confirmed finding: a strongest-model second reading of the clinical specification that no session's budget has covered
+title: Have the models table's review model read docs/MODEL.md against src/anesthesia_sim/data/ once through the Message Batches API, on the API credits, for statements that contradict a stored value, each other, or a cited unit, and file each confirmed finding: a strongest-model second reading of the clinical specification that no session's budget has covered
 priority: P2
 effort: M
 status: ready
@@ -75,19 +75,22 @@ It files each confirmed finding as its own item, classed `science` or
 that opens `**Findings checked, <date>.**`, which is what this item's
 `verify:` looks for, and then closes this item.
 
-**Model, 2026-10-25.** The project owner refused the Fable 5.1 run: "Nothing
-should be using fable anymore unless I specifically say" (project owner,
-2026-10-25). So the title's "Fable 5.1" is no longer the plan, and nothing
-here may name Fable's model id. `PL-0XDM` (one table for which model and
-effort each kind of work uses) moved the choice into `docket.toml`'s
+**Model, 2026-10-25.** The project owner first refused the Fable 5.1 run:
+"Nothing should be using fable anymore unless I specifically say" (project
+owner, 2026-10-25). He then corrected that reading. Fable was the example of a
+stale model named outside one home, not a ban: "It was more about having a
+single source of truth (fable just being an example of a stale model)"
+(project owner, 2026-10-25, `PL-J9VC`). `PL-0XDM` (one table for which model
+and effort each kind of work uses) moved the choice into `docket.toml`'s
 `[models]` table, and `tools/model_doc_review.py` now reads the model, its
-effort and its list price from there. Today that is Opus 5.5 at `high`, the
-table's default, at a batch price of half its $4 and $20 list price per million
-input and output tokens. Whether to run the reading on Opus 5.5 or drop this
-item was put to the owner on 2026-10-25.
+effort and its list price from there as the role `review`. Today that is
+Opus 5.5 at `high`, the table's default, at a batch price of half its $4 and
+$20 list price per million input and output tokens. The cost bound was $27.05
+on 2026-10-25.
 
-**Recommendation:** run it on Opus 5.5. The reading is the only full pass of
-the clinical specification against the stored values, and Opus 5.5 has the 1M
-context that the one-request-per-section design needs. Its cost bound is lower
-than Fable's was, because its list price is lower: $27.05 on 2026-10-25,
-against $66.91 for Fable 5.1.
+**Decision** (project owner, 2026-10-25, ratified, over dropping the item):
+run the reading once on the model the table chooses for `review`. The reading
+is the only full pass of the clinical specification against the stored
+values. What is left is the owner's run on his Mac, as `docs/maintainer.md`
+§ "Have a strong model read the model document against the data, once" lays
+out, and then a session checking and filing each finding.
