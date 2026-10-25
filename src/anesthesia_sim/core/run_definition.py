@@ -897,9 +897,9 @@ class RunDefinition:
         different for a run that opens anywhere else. Reading the bound from
         the segments keeps the refusal correct for both kinds of run, without
         the caller saying which kind it holds. A bound left at zero would
-        admit the whole span before such a run existed. `_segment_index_at`
-        refuses an instant in that span too, so this check is the first of two
-        guards rather than the only one.
+        accept every instant in the span before such a run existed.
+        `_segment_index_at` rejects an instant in that span too, so this check
+        is the first of two guards rather than the only one.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, precedes

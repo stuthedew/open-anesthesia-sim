@@ -252,7 +252,8 @@ class AgentUptakeSystem:
         in one exact propagation, but it then writes the result into the
         compartments one at a time. A fraction's guard can reject a value after
         earlier compartments have already been written. The accounting check
-        runs only after every compartment and the validator have been written.
+        runs last, after every compartment has been written and the step's
+        delivered and exhausted agent have been recorded in the validator.
         So this method captures every dynamic value first. It restores those
         values on any exit that is not a completed step, which leaves the
         system bit-identical to what it was on entry.

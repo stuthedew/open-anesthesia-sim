@@ -267,8 +267,8 @@ def format_control_value(control: ControlInput, value: float) -> str:
         # This is the only control whose recorded value is a concentration
         # rather than a flow, and naming the type here asserts that.
         # `ControlChange.previous_value` and `ControlChange.new_value` are
-        # the same two fields for all four controls, so they cannot carry
-        # the distinction themselves.
+        # the same two fields for all four controls, so the fields cannot
+        # carry the distinction themselves.
         return format_percent(fraction_from_percent(Percent(value)))
 
     return format_flow(value)

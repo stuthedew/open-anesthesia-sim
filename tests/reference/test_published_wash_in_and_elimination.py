@@ -85,20 +85,20 @@ times the alveolar fraction. At the highest supported flow that factor is
 five minutes.
 
 The published protocols did not rebreathe. Neither abstract states the
-breathing system, so this was first an inference. Both papers report mixed
-expired concentrations, and both report the volume of agent recovered during
-elimination against the volume taken up. Neither quantity can be measured
-without collecting the whole expirate instead of returning it to the subject.
-The project owner supplied both full texts, which were first read on
-2026-09-13. Their methods sections support the inference: the agents were
-given through a non-rebreathing circuit (*Anesth Analg* 1991;72:316-24, page
-317; *Anesthesiology* 1991;74:489-98, page 490). The methods state that circuit
-for the 30-minute administration. Together with the whole-expirate collection
-above, it puts the elimination at an inspired fraction at or near zero, and
-this model cannot be set to that fraction at any supported flow. Neither paper
-is in PubMed Central or in this repository.
-`docs/references/yasuda-1991-figure-2-wash-in.md` records the protocol facts,
-from a second reading of those pages on 2026-10-18.
+breathing system, so the absence of rebreathing was at first only an
+inference. Both papers report mixed expired concentrations. Both also report
+the volume of agent recovered during elimination against the volume taken up.
+Neither quantity can be measured without collecting the whole expirate instead
+of returning it to the subject. The project owner supplied both full texts,
+which were first read on 2026-09-13. Their methods sections support the
+inference: the agents were given through a non-rebreathing circuit (*Anesth
+Analg* 1991;72:316-24, page 317; *Anesthesiology* 1991;74:489-98, page 490).
+The methods state that circuit for the 30-minute administration. That circuit
+and the whole-expirate collection together imply that the elimination ran at
+an inspired fraction at or near zero. This model cannot be set to that
+fraction at any supported flow. Neither paper is in PubMed Central or in this
+repository. `docs/references/yasuda-1991-figure-2-wash-in.md` records the
+protocol facts from a second reading of those pages on 2026-10-18.
 
 The table below was measured on 2026-09-06 and re-measured on 2026-09-07, in
 each cohort's own standard deviations. Both model columns use the shipped

@@ -1720,7 +1720,7 @@ class TimeBaseSelector(QComboBox):
 
 
 class TraceLegend(QWidget):
-    """The chart's four legend rows, of which the compartment row is also a control.
+    """This widget shows the chart's four legend rows, and its compartment row is also a control.
 
     The rows are the compartments, the compared runs, the references and the
     run record. The compared-runs row is empty, and takes no height, when a
