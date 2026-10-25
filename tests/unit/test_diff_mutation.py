@@ -32,6 +32,7 @@ from diff_mutation import (
     branch_change,
     changed_rows,
     compare_tests,
+    core_imports,
     counts,
     deselected,
     edited_rows,
@@ -819,7 +820,7 @@ def runs(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Runs:
         return stubbed.base if tree.name == "base" else stubbed.branch
 
     shown = "@@ -1,1 +1,1 @@\n-    return unit\n+    return None\n"
-    monkeypatch.setattr(diff_mutation, "_display_statuses", display_statuses)
+    monkeypatch.setattr(diff_mutation, "_compared_statuses", display_statuses)
     monkeypatch.setattr(diff_mutation, "_clean_run", lambda tree, tests: stubbed.clean)
     monkeypatch.setattr(diff_mutation, "_mutmut", lambda root, *a, log=None: _completed(shown))
     return stubbed
@@ -861,6 +862,115 @@ def test_a_branch_that_weakens_a_display_test_is_refused(repo: Path, runs: Runs)
         "    +    return None"
     ]
     assert found["undecided"] == []
+
+
+#: A unit test of two `core/` modules, imported in two ways, which names a
+#: third module only in a comment: dosing.
+CORE_TEST = """\
+from anesthesia_sim.core import exceptions
+from anesthesia_sim.core.concentration import to_percent
+
+
+def test_percent():
+    assert to_percent(0.5) == 50.0
+    assert to_percent(0.01) == 1.0
+"""
+#: The line `test_percent` loses on the weakening branch below.
+CORE_ASSERTION = "    assert to_percent(0.01) == 1.0\n"
+CORE_MUTANT = "anesthesia_sim.core.concentration.x_to_percent__mutmut_1"
+
+
+def _weakened_core(repo: Path) -> Change:
+    """The branch's change once it drops an assertion from `CORE_TEST`, with core mutated."""
+    _git(repo, "checkout", "-q", "main")
+    table = TABLE_TOML.replace('"src/pkg/core/*"', '"src/pkg/core/*", "src/anesthesia_sim/core/*"')
+    _write(repo, "pyproject.toml", table)
+    for module in ("__init__", "concentration", "exceptions", "dosing"):
+        _write(repo, f"src/anesthesia_sim/core/{module}.py", "def to_percent(x):\n    return x\n")
+    _write(repo, "tests/unit/test_c.py", CORE_TEST)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "core test")
+    _git(repo, "checkout", "-q", "work")
+    _git(repo, "merge", "-q", "--ff-only", "main")
+    _write(repo, "tests/unit/test_c.py", CORE_TEST.replace(CORE_ASSERTION, ""))
+    return branch_change(repo, "main", mutmut_table(repo))
+
+
+def test_a_branch_that_weakens_a_core_test_is_refused(repo: Path, runs: Runs) -> None:
+    runs.base = {CORE_MUTANT: "killed"}
+    runs.branch = {CORE_MUTANT: "survived"}
+    change = _weakened_core(repo)
+
+    found = verdict(repo, change, {}, compare_tests(repo, change, mutmut_table(repo)))
+
+    # The base run takes the display mutants and those of the core modules the
+    # test imports, and not those of dosing, which it does not import. The
+    # package's own pattern takes only its own functions, not every submodule's.
+    assert runs.asked[0][:3] == (
+        "base",
+        [
+            "anesthesia_sim.app.*",
+            "anesthesia_sim.core.x_*",
+            "anesthesia_sim.core.xǁ*",
+            "anesthesia_sim.core.concentration.x_*",
+            "anesthesia_sim.core.concentration.xǁ*",
+            "anesthesia_sim.core.exceptions.x_*",
+            "anesthesia_sim.core.exceptions.xǁ*",
+        ],
+        ["tests/unit/test_c.py::test_percent"],
+    )
+    assert not any(
+        fnmatch.fnmatch("anesthesia_sim.core.dosing.x_to_percent__mutmut_1", pattern)
+        for pattern in runs.asked[0][1]
+    )
+    assert found["uncaught"] == [
+        f"tests/unit/test_c.py: {CORE_MUTANT} - caught by the base version, survived on this "
+        "branch's version\n"
+        "    -    return unit\n"
+        "    +    return None"
+    ]
+
+
+def test_a_branch_whose_changed_core_test_still_catches_every_mutant_passes(
+    repo: Path, runs: Runs
+) -> None:
+    runs.base = runs.branch = {CORE_MUTANT: "killed"}
+
+    compared = compare_tests(repo, _weakened_core(repo), mutmut_table(repo))
+
+    assert compared.uncaught == compared.undecided == []
+    assert compared.notes[-1].startswith(
+        "Compared: 1 mutants of anesthesia_sim.app and of anesthesia_sim.core, "
+        "anesthesia_sim.core.concentration, anesthesia_sim.core.exceptions that the base "
+        "version of tests/unit/test_c.py catches"
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "names"),
+    [
+        (
+            "from anesthesia_sim.core.dosing import dose\n",
+            {"anesthesia_sim.core.dosing", "anesthesia_sim.core.dosing.dose"},
+        ),
+        (
+            "from anesthesia_sim.core import dosing, Fraction\n",
+            {"anesthesia_sim.core", "anesthesia_sim.core.dosing", "anesthesia_sim.core.Fraction"},
+        ),
+        ("import anesthesia_sim.core.dosing as d\n", {"anesthesia_sim.core.dosing"}),
+        # An import inside a test function counts too.
+        (
+            "def test_x():\n    from anesthesia_sim.core import dosing\n",
+            {"anesthesia_sim.core", "anesthesia_sim.core.dosing"},
+        ),
+        # A module outside core, a relative import, and a module whose name
+        # only begins with the package's name are not core modules.
+        ("from anesthesia_sim.app import formatting\nfrom . import core\n", set()),
+        ("import anesthesia_sim.core_extra\nfrom anesthesia_sim.core_extra import x\n", set()),
+    ],
+)
+def test_core_imports_are_the_core_modules_a_test_file_names(source: str, names: set[str]) -> None:
+    assert core_imports(source) == names
 
 
 def test_a_branch_whose_changed_test_still_catches_every_mutant_passes(

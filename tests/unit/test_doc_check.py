@@ -1085,6 +1085,70 @@ def test_a_figure_in_another_spelling_of_its_unit_is_asked_about(
     assert "equals core/thing.py STEP_S = 0.1" in _untied(root)[0]
 
 
+@pytest.mark.parametrize(
+    ("prose", "shown"),
+    [
+        ("The pools hold 0.3/0.5/0.7 L.", "0.5 L"),
+        ("The ratios are 0.4/0.5.", "0.5"),
+        ("The pool holds 0.5 l.", "0.5 l"),
+        ("The pool is $`V_P = 0.5`$ L.", "0.5 L"),
+        ("The pool is $`V_P = 0.5\\ \\mathrm{L}`$.", "0.5 L"),
+        ("The pools hold 0.3 / 0.5 / 0.7 L.", "0.5 L"),
+        ("The pool is $`V_P \\approx 0.5`$ L.", "0.5 L"),
+        ("The pool is $`V_P = 0.5\\,\\text{L}`$.", "0.5 L"),
+        ("The pool is $`V_P = 0.5~\\mathrm{L}`$.", "0.5 L"),
+        ("The pool is $`V_P = 0.5\\%`$.", "0.5 %"),
+        ("The pool is $`V_P = 0.5\\ \\mathrm{L\\,min^{-1}}`$.", "0.5 L/min"),
+        ("The pools are $`V_P = 0.5\\ \\mathrm{L},\\ V_Q = 9`$.", "0.5 L"),
+        ("The rate is 0.5/min.", "0.5"),
+    ],
+    ids=[
+        "slash-list-with-unit",
+        "slash-list-bare",
+        "lower-case-unit",
+        "math-then-unit",
+        "math-unit",
+        "slash-list-spaced",
+        "math-approx",
+        "math-text-unit",
+        "math-tilde",
+        "math-percent",
+        "math-compound-unit",
+        "math-first-of-two",
+        "per-word",
+    ],
+)
+def test_a_figure_in_a_list_a_lower_case_unit_or_a_math_span_is_asked_about(
+    tmp_path: Path, prose: str, shown: str
+) -> None:
+    """`PL-JS6P`'s second blind review found restatements in three forms the
+    check did not read (`PL-2T6S`)."""
+    constants = "POOL_L = 0.5\nPOOL_PERCENT = 0.5\nPOOL_L_MIN = 0.5\nPOOL_RATIO = 0.5\n"
+    root = _with_constants(_repo(tmp_path, model=_model_with(prose)), constants)
+
+    untied = _untied(root)
+    assert len(untied) == 1
+    assert f"{shown} equals " in untied[0]
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "The error is $`0.5\\times10^{-12}`$ L at worst.",  # a coefficient, not given to a symbol
+        "It scales as $`M^{0.5}`$ L.",  # an exponent
+        "The DOI is 10.1016/0.5x.",  # part of an identifier
+        "It is $`y = 0.5 \\cdot x`$ L.",  # a coefficient after the equals sign
+    ],
+    ids=["coefficient", "exponent", "identifier", "coefficient-after-equals"],
+)
+def test_a_number_inside_an_equation_is_not_asked_about(tmp_path: Path, prose: str) -> None:
+    """Most numbers in a math span are exponents and coefficients, and reading
+    them would ask about every one that coincides with a stored value (`PL-2T6S`)."""
+    root = _with_constants(_repo(tmp_path, model=_model_with(prose)), "POOL_L = 0.5\n")
+
+    assert _untied(root) == []
+
+
 def test_a_not_restated_marker_reads_the_spelling_its_paragraph_uses(tmp_path: Path) -> None:
     root = _with_step(
         _repo(

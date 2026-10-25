@@ -2127,6 +2127,7 @@ fired at 12 s for isoflurane, 25 s for sevoflurane and 50 s for desflurane.
 Those steps are two orders of magnitude above the bound, and they depend on
 the agent by a factor of four. That is why the guard was never the domain
 check. None of these figures describes what ships.
+<!-- not-restated: 0.1 s -->
 
 **The capacity guard remains, and it now reports a state the model cannot
 enter.** Where a step drives an amount out of range,
@@ -2678,6 +2679,7 @@ ventilation of 4 l/min stays a coincidence, because Mapleson gives a formula,
 not a figure.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 **Three of this file's stored values also appear in those tables.** The
 paragraph after next settles where each one came from, rather than leaving it
@@ -2685,6 +2687,8 @@ as a resemblance. The three are alveolar ventilation of 4 l/min, a functional
 residual capacity of 2.5 l in reference 20's table only, and a skeletal muscle
 tissue volume of 33 litres. **No stored value changes because of any of it.**
 <!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 
 Mapleson 1963 turns out to be one of the four, but that does not rehabilitate
 the lineage that was removed. The removed claim was that Mapleson's papers were
@@ -2844,7 +2848,7 @@ any number. The table that does give numbers, Appendix B page 168, has a
 `Blood` row of 5.00 L and nothing at 1.0. On that evidence, this section said
 until 2026-09-15 that none of the four sources ever cited for the value
 contained it.
-<!-- not-restated: 70 kg, 2.5 L, 4 L/min, 5 L/min -->
+<!-- not-restated: 70 kg, 2.5 L, 4 L/min, 5 L/min, 6 L, 33 L, 14.5 L -->
 
 **It is in the Workbook, one appendix further on.** Appendix C's `GASMAN.INI`
 listing, on page 172, reads `[Volumes] … VEN=1.0`. The v0.1.0 note's sentence
@@ -2856,7 +2860,7 @@ borrowed**. It named Appendix E, but the numbers were read off Appendix C, and
 every value in that sentence, including 1.0 L, is on that page. `PL-XTMB` and
 `PL-3YZW` quote Appendix B and Appendix E and never Appendix C. Whether that
 page was among those supplied on 2026-09-06 and went unread is not recorded.
-<!-- not-restated: 0.76 -->
+<!-- not-restated: 0.76, 0.18, 0.06 -->
 
 **None of this promotes the value or argues for restoring it.** `VEN=1.0` is a
 program default, tier 3. Davis and Mapleson's 1222 ml is tier 2 and is the same
@@ -3053,14 +3057,20 @@ figure only to a value that the marker names, in that value's unit. So a
 marker for the 6 L circuit does not clear desflurane's 6% MAC in the same
 paragraph. The check recognizes a unit written as a word, such as "seconds".
 It also recognizes a time in milliseconds, minutes or hours, which it converts
-to seconds. It does not recognize figures in math, figures in a list joined by
-slashes, or figures with a unit spelled in lower case, such as "l/min". A
-marker under a list covers the whole list, because a marker cannot be placed
+to seconds. It recognizes a unit spelled in lower case, such as "l/min". In a
+list joined by slashes, such as "6/33/14.5 L", it reads each number with the
+list's unit. In math, it reads a symbol given a number with `=` or `\approx`,
+such as $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends
+the span or comes before a comma, a semicolon or `\quad`. It reads no other
+number in math, because most numbers in an equation are exponents and
+coefficients that only happen to equal a stored value. It also does not read a
+math span that is split across two lines. A marker under a list covers the
+whole list, because a marker cannot be placed
 inside a list item. A `not-restated:` marker fails if it lists a figure that
 its paragraph no longer contains. So the declaration cannot outlive its
 sentence. A number that equals no stored value, such as a flow-sweep point or
 a worked example, needs no marker.
-<!-- not-restated: 6 L, 6 % -->
+<!-- not-restated: 6 L, 6 %, 33 L, 14.5 L, 2.5 L -->
 
 | Parameter | Selected value | Unit | Source (data file · key path) |
 | --- | ---: | --- | --- |
