@@ -23,12 +23,14 @@ from 2026-09-30 (`PL-NXRJ`). Nothing in the repository can read the
 instructions, so no check can catch the split; the routing is what prevents
 it.
 
-**What the instructions keep** is the trial's own coordination and nothing
-else: the Goal, the Order and its pause, the thread caps and which model each
-thread runs, where threads post and record - the review summary in the project
-chat, one line on a merge, the project's shared folder - and one line saying every
-other rule is the repository's. `PL-PDVF` carries the cut-down text as written
-on 2026-10-03 and the table of where each rule went.
+**What the instructions keep** is the project's own state and nothing else:
+the Goal, the Order and its pause, the compaction rule, and a pointer to
+`.claude/skills/docket/modes/coordinator.md`. That mode file holds the
+coordination rules: the thread caps and which model each thread runs, what
+every brief says, where threads post and record, merging and releases (project
+owner, 2026-10-25, ratified, over keeping them in Project settings,
+`PL-NZC0`). `PL-PDVF` carries the cut-down text as written on 2026-10-03 and
+the table of where each rule went.
 
 **When you give a rule for sessions in the Project, it goes to the repository
 in the same sitting.** Say it to the coordinator, which starts a thread that
