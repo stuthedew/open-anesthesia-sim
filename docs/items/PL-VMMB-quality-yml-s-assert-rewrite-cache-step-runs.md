@@ -3,12 +3,13 @@ id: PL-VMMB
 title: quality.yml's assert-rewrite cache step runs one share per core, and a share that holds no test module makes pytest exit 5 and fails the job: with 183 modules split by CRC-32 that is negligible on 4 cores but likely past about 40, so a larger runner would fail CI for no fault in the code (found closing PL-GQCQ)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: ci-cost
 touches: conftest.py, tests/unit/test_bytecode_guard.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
+closed: 2026-10-25
 payoff: moving CI to a runner with dozens of cores cannot fail the assert-rewrite cache step because one core's share of test modules came out empty
 verify: grep -q 'def test_a_share_that_collects_no_test_module_exits_cleanly' tests/unit/test_bytecode_guard.py
 ---
