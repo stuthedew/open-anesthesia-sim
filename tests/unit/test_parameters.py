@@ -671,21 +671,22 @@ def test_rejects_unknown_key_inside_a_tissue_group() -> None:
 
 
 def test_every_payload_model_documents_why_it_exists() -> None:
-    """The pair looks like duplication until something says it is not (PL-007).
+    """Every payload model must say why it exists, or its pair looks like duplication (PL-007).
 
     Each `_...Payload` is paired with a public dataclass that does not depend
-    on Pydantic, and the design is correct. The pairing keeps the validation
+    on Pydantic. This design is correct. The pairing keeps the validation
     library out of the rest of `core/`. The two shapes also differ: the
     payload mirrors the file's nesting, and the public type is flat. A reader
     who does not find that written down is liable to "simplify" the pair
     away. That would couple the compartments to Pydantic and let the JSON
     layout dictate the type that the simulation reads.
 
-    The test walks the subclasses rather than listing them, for the same
-    reason as the strictness test that follows. A payload model added later
-    should arrive documented by default, not because someone remembered.
-    This test does not check what the docstring *says*, which cannot be
-    checked. It checks only that the docstring exists.
+    The test walks the subclasses of `_StrictPayload` rather than listing
+    them, as the strictness test that follows does. A payload model added
+    later is then checked automatically, so its docstring does not depend on
+    someone remembering to add the model to a list. This test does not check
+    what the docstring *says*, because that cannot be checked. It checks only
+    that the docstring exists.
     """
 
     strict_base = parameters_module._StrictPayload
@@ -700,12 +701,12 @@ def test_every_payload_model_documents_why_it_exists() -> None:
 
 
 def test_every_payload_model_forbids_unknown_keys() -> None:
-    """Payload models added later must be strict too, not only today's.
+    """Every payload model must reject unknown keys, including models added later.
 
     Inheriting `_StrictPayload` is what makes a new payload model strict by
     default. This test walks the subclass tree, so it catches a model that
-    opts back out, or one declared against `BaseModel` directly. Such a model
-    is caught here rather than by a data file loading wrongly in use.
+    opts back out, or one declared against `BaseModel` directly. The test
+    catches such a model here, before a data file loads wrongly in real use.
     """
 
     # Reaching for the private base is the point: it is the guard under test.
