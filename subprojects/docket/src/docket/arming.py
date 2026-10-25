@@ -566,7 +566,7 @@ READ_LIST = (
 #: here and not on every simulator change (project owner, 2026-10-24, ratified,
 #: over two passes on every simulator pull request and over one pass
 #: everywhere, `PL-TDV9`).
-SECOND_PASS_PATHS = ("src/anesthesia_sim/core/", "src/anesthesia_sim/data/", MODEL_DOC)
+SECOND_PASS_PATHS = ("src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md")
 
 
 def imports_product(tree: ast.Module) -> bool:
