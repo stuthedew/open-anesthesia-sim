@@ -3,11 +3,12 @@ id: PL-PNGQ
 title: str.isdigit() accepts superscript and other Unicode digits that int() then refuses with ValueError, and about 15 apparatus sites read a whole number as isdigit() then int() (arming.py behind and count, vcs.py counts, doc_check's stated count): one reader of an ASCII whole number would read them alike (found building PL-N4FP)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/, subprojects/docket/tests/, tests/unit/, .claude/rules/apparatus-standard.md
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a count read from git or GitHub is parsed by one function that refuses a non-ASCII digit, instead of fifteen hand copies that crash on one
 verify: grep -rqE 'def test_[a-z_]*superscript' subprojects/docket/tests tests/unit
 reenters: PL-N4FP
