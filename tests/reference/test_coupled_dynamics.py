@@ -475,9 +475,10 @@ SHIPPED_STEP_S = 0.1
 # 99.88% of it was the oracle's error. Across the trajectories that set the
 # tolerance, the oracle's share ran from 86% to 99.8%. Each halving of the oracle
 # step divides the oracle's term by about 2^4, which is the signature of RK4
-# truncation rather than of rounding. The gate's reported maximum over the worst
-# trajectory falls through 7.7377e-13, 4.7351e-14, 1.3906e-14, 1.2490e-14 at
-# 0.05, 0.025, 0.0125 and 0.00625 s. It stops falling at 0.0125 s because nothing
+# truncation rather than of rounding. The gate's reported maximum on the
+# ventilator start, which reported the largest figure under the 0.05 s oracle,
+# falls through 7.7377e-13, 4.7351e-14, 1.3906e-14, 1.2490e-14 at 0.05, 0.025,
+# 0.0125 and 0.00625 s. It stops falling at 0.0125 s because nothing
 # of the oracle's error is left to remove: what remains is the shipped step's own
 # rounding. That knee is what sets this constant. 0.025 s was measured and
 # rejected, because the oracle still contributes about two thirds of the number
