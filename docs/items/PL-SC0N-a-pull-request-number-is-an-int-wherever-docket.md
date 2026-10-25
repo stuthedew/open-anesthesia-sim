@@ -3,11 +3,12 @@ id: PL-SC0N
 title: A pull request number is an int wherever docket and tools hold one, so a number parsed by hand reaches NewestPullRequest, SubjectPullRequest, Remote.frozen or pr_body_check.recovered unrefused; a PullRequestNumber type that only model.pr_number produces would make mypy refuse it (found building PL-N4FP)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: one-source-of-truth
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/, tools/
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a hand-parsed number can no longer reach a pull request reader, because mypy refuses any int that model.pr_number did not build
 verify: grep -qF 'PullRequestNumber' subprojects/docket/src/docket/model.py
 ---
