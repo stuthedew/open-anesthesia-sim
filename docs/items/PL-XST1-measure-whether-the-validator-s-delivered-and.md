@@ -28,3 +28,5 @@ verify: grep -rq 'def test_the_running_agent_totals_stay_within_a_tenth_of_the_a
 **Generator check.** A member of the `floating-point-domain` feature, split from `PL-58D7`, the generator head.
 
 **Outcome (2026-10-25).** Measured with the real `AgentUptakeSystem` over four full 24 h runs at the 1 ms step, desflurane at 18% and 10 L/min. With plain `+=`, each total drifted up to 1.0e-9 from an exactly rounded sum, and at the reference adult's ventilation and cardiac output the accounting residual reached 9.77e-10 at 18.96 h, within 2.4% of the halt threshold. The margin was far below ten times, so both totals now use Kahan compensated summation. Each total then stays within 1e-16 of the exact sum, and the residual left, the model's own, is 3.73e-11 at 24 h. `docs/MODEL.md` § "Mass-balance identity" has the table, and `test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_tolerance` pins the totals within Kahan's bound against an exact sum.
+
+The close-out audit's mutation check found 7 survivors on lines this branch did not change, the field names in the two input refusals of `record_external_agent_transfer`. They are filed as `PL-B3YV`.
