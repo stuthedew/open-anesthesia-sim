@@ -7557,10 +7557,10 @@ def _own_method(node: ast.expr, view_class: type) -> str | None:
     return node.attr
 
 
-#: The calls that take a slot as a positional argument after the first, as
-#: `QTimer.singleShot(msec, slot)`, `QShortcut(key, parent, slot)` and
-#: `QMenu.addAction(text, slot)` do. The check judges those arguments as it judges a
-#: slot passed to `.connect` (blind review of `PL-HJKN`).
+#: This set names the calls that take a slot as a positional argument after the first one,
+#: as `QTimer.singleShot(msec, slot)`, `QShortcut(key, parent, slot)` and
+#: `QMenu.addAction(text, slot)` do. The check treats those arguments as it treats a slot
+#: passed to `.connect` (coverage review of `PL-HJKN`).
 _CALLS_THAT_TAKE_A_SLOT: Final = frozenset({"singleShot", "callLater", "addAction", "QShortcut"})
 
 
@@ -7568,8 +7568,9 @@ _CALLS_THAT_TAKE_A_SLOT: Final = frozenset({"singleShot", "callLater", "addActio
 def _qt_signal_names() -> frozenset[str]:
     """Return the name of every signal that a class in QtCore, QtGui or QtWidgets declares.
 
-    PySide6 connects a signal that is named as a keyword argument of a constructor, as in
-    `QPushButton("Pause", clicked=slot)`. So such a keyword argument passes on a slot.
+    PySide6 lets a constructor connect a signal. A keyword argument named after the signal
+    connects that signal to the argument's value, as in `QPushButton("Pause", clicked=slot)`.
+    So a keyword argument with a signal's name passes a slot.
     """
 
     return frozenset(
@@ -7607,19 +7608,21 @@ def _callback_bypass(
     """Return why `callback` bypasses the halt gate, or None if it does not.
 
     `position` says how the call takes `callback`. It is "connect" for the argument of
-    `.connect`, "slot" for an argument that `_CALLS_THAT_TAKE_A_SLOT` or a signal keyword
-    takes as a slot, and "argument" for any other argument. `run_at_once` is True when
-    the call is to one of the view's own methods, which runs the callback inside the
-    calling slot.
+    `.connect`. It is "slot" for a positional argument after the first of a call named in
+    `_CALLS_THAT_TAKE_A_SLOT`, and for the value of a keyword argument named after a signal.
+    It is "argument" for any other argument. `run_at_once` is True when the call is to one
+    of the view's own methods. Such a method runs the callback at once, inside the slot
+    that makes the call.
 
     A method of the view passes the gate when it is gated, in any position. A lambda or a
-    local function bypasses the gate in every position, unless the view's own method runs
-    it at once. In a slot position, every other callback bypasses the gate too. That
-    includes a slot of another object such as `run.controller.pause`, and a slot reached
-    through an attribute of the view such as `self.controller.pause`. In a slot position
-    other than `.connect`, a name, a constant, a call or one of the view's own attributes
-    is a value, such as the parent widget that `QShortcut` takes. Any other argument is a
-    value, not a callback, so this function returns None for it.
+    local function bypasses the gate in every position, unless one of the view's own methods
+    runs it at once. In the "connect" and "slot" positions, every other callback bypasses
+    the gate too. That includes a slot of another object, such as `run.controller.pause`,
+    and a slot reached through an attribute of the view, such as `self.controller.pause`.
+    In the "slot" position, though, a name, a constant, a call or one of the view's own
+    attributes is a value and not a callback. An example is the parent widget that
+    `QShortcut` takes. In the "argument" position, anything else is a value too. This
+    function returns None for a value.
     """
 
     method = _own_method(callback, view_class)
@@ -7701,12 +7704,12 @@ def _halt_gate_bypasses(
     """Find each call in `view_class`'s source whose callback bypasses the halt gate.
 
     The source holds every connection the class makes, including the ones it makes when it
-    later builds a dialog. A `partial` in a slot position is judged by the method that it
+    later builds a dialog. A `partial` in a slot position is treated as the method that it
     wraps. A method that overrides one of Qt's own, such as `keyPressEvent`, is called by
-    Qt directly, so it must pass the gate too. `exemptions` is keyed by the class's name and
-    the callback's source text, or `def <name>` for such a method. A callback listed there
-    is not reported as a bypass, but its entry is reported as stale when the callback passes
-    the gate.
+    Qt directly, so it must pass the gate too. Each key in `exemptions` pairs the class's
+    name with the callback's source text, or with `def <name>` for such a method. A callback
+    listed there is not reported as a bypass, but its entry is reported as stale when the
+    callback passes the gate.
 
     The check reads only the class's own source. It cannot see a slot that a function
     outside the class connects, or a callback held in a variable before it is passed on.
@@ -7897,10 +7900,11 @@ def test_the_halt_gate_check_finds_each_way_around_the_gate() -> None:
     """The check reports each callback in `_ViewWiredAroundTheGate` that bypasses the gate.
 
     The expected list below was written by hand from that class's source. Four kinds of
-    callback pass: a gated method in any position, a `partial` of a gated method, a gated
-    override of a Qt method, and a lambda or a local function that one of the view's own
-    methods runs at once. An exempt callback is not reported while it bypasses the gate.
-    Once the gate covers it, its entry is reported as stale (blind review of `PL-HJKN`).
+    callback pass the gate. They are a gated method in any position, a `partial` of a gated
+    method, a gated override of a Qt method, and a lambda or a local function that one of
+    the view's own methods runs at once. An exempt callback is not reported while it
+    bypasses the gate. Once the gate covers it, its entry is reported as stale (blind
+    review of `PL-HJKN`).
     """
 
     reading = _halt_gate_bypasses(_ViewWiredAroundTheGate, {})

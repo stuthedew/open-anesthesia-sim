@@ -93,8 +93,9 @@ def test_a_keyword_reaches_the_slot() -> None:
 def test_a_keyword_only_parameter_takes_no_signal_argument() -> None:
     """A signal's second argument is dropped, rather than filling a keyword-only parameter.
 
-    Counting the keyword-only `coalesce` as a place for a positional argument would pass
-    9 to a slot that takes one, which raises `TypeError` (coverage review of `PL-HJKN`).
+    Counting the keyword-only `coalesce` as a parameter that a positional argument can fill
+    would pass 9 to a slot that takes only one positional argument. That call raises
+    `TypeError` (coverage review of `PL-HJKN`).
     """
 
     view = _View()

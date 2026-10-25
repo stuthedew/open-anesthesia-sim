@@ -3,16 +3,18 @@ id: PL-HJKN
 title: Each slot that reads or changes a run is put behind the halt gate by hand, so a slot that reads a refusing snapshot outside it raises out of the slot with no halt stated: six members from 2026-09-02 to 2026-10-12, four in two days
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, refactor
 feature: defect-review-2026-10
 touches: src/anesthesia_sim/app/halt_gate.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py, tests/unit/test_halt_gate.py, docs/ARCHITECTURE.md, docs/MODEL.md
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1831
 payoff: a slot added later that reads a run outside the halt gate fails a test, so a refusing snapshot never escapes a slot with the run still reading Paused
 verify: grep -q 'def test_every_slot_that_touches_a_run_passes_the_halt_gate' tests/integration/test_simulation_view.py
 root-cause-of: PL-YK2V, PL-7DJK, PL-V2HC, PL-08SS, PL-F2T2, PL-M3M2
-generator: live - four members on 2026-10-11 and 2026-10-12, the last closed 2026-10-19, and no test or type makes a new slot pass the halt gate
+generator: spent - every slot of RunView and SimulationView passes halt_gate, and test_every_slot_that_touches_a_run_passes_the_halt_gate fails on a new callback, signal keyword or Qt override that bypasses it
 misread: Which slots that read or change a run must pass the halt gate
 ---
 
