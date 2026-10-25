@@ -3,7 +3,7 @@ id: PL-SG93
 title: The Bash guard hooks account for 74 defects across 100 items, but nothing records what they block, so their cost cannot be weighed against what they prevent
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: infra
 feature: defect-review-2026-10
 touches: .claude/hooks
@@ -66,3 +66,5 @@ that produces the count this item exists for, and its cost is small and paid
 once. The choice is the owner's because it is a new mechanism in the workflow
 lane. Stuart's request to complete the workflow items lifts the generator pause
 for it.
+
+**Decided, 2026-10-25.** The local log, copied into a tracked file when a pull request is recorded (project owner, 2026-10-25, ratified, over recording the inability and deciding from defect cost alone). Stuart's words: "Agree with Recs except for 3", where 3 was `PL-5S71`'s run.

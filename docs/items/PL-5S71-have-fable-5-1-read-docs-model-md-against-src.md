@@ -33,7 +33,8 @@ choosing the split).
 
 **Route.** A standard-library script under `tools/` builds one batch request
 per section and submits it to the Message Batches endpoint,
-`/v1/messages/batches`, with the model `claude-fable-5-1`. The owner runs it on
+`/v1/messages/batches`, with the model `docket.toml`'s `[models]` table chooses
+for the role `review`. The owner runs it on
 their machine, because the API key and the credits are there, as with
 `tools/headless_worker.py` (`PL-80R5`). A session then reads the returned
 findings, confirms each against the file and the cited source, and files each
@@ -53,17 +54,17 @@ v0.6.0 until the owner runs a credit job on their machine, which no part of
 that release depends on (triage, 2026-10-19).
 
 **Built, 2026-10-25.** `tools/model_doc_review.py` builds the batch and
-`tests/unit/test_model_doc_review.py` tests how. Fable 5.1's context is 1M
+`tests/unit/test_model_doc_review.py` tests how. The model's context is 1M
 tokens, so the split the brief inferred is not needed: each of the 25 requests
 carries the whole document and all eight data files, about 215,000 tokens,
 behind one prompt-cache marker, and asks about one `##` section. That way a
 contradiction between two sections can be found, which a request carrying only
 its own section would miss. The model returns JSON with three kinds of finding:
-`data`, `internal` and `unit`. The cost bound on 2026-10-25 was $66.91. That
+`data`, `internal` and `unit`. The cost bound at Fable 5.1's prices, on 2026-10-25, was $66.91. That
 bound assumes no cache hit and every request using all 48,000 of its output
 tokens. A request after the first that reads the cache pays a fortieth of the
 input price, so the bill should be much lower. `docs/maintainer.md` § "Have
-Fable 5.1 read the model document against the data, once" has the owner's
+a strong model read the model document against the data, once" has the owner's
 four steps.
 
 What remains is the owner's run and the check. Until the findings file comes
@@ -73,3 +74,20 @@ It files each confirmed finding as its own item, classed `science` or
 `safety`. It records each unconfirmed finding here, with the reason, in a paragraph
 that opens `**Findings checked, <date>.**`, which is what this item's
 `verify:` looks for, and then closes this item.
+
+**Model, 2026-10-25.** The project owner refused the Fable 5.1 run: "Nothing
+should be using fable anymore unless I specifically say" (project owner,
+2026-10-25). So the title's "Fable 5.1" is no longer the plan, and nothing
+here may name Fable's model id. `PL-0XDM` (one table for which model and
+effort each kind of work uses) moved the choice into `docket.toml`'s
+`[models]` table, and `tools/model_doc_review.py` now reads the model, its
+effort and its list price from there. Today that is Opus 5.5 at `high`, the
+table's default, at a batch price of half its $4 and $20 list price per million
+input and output tokens. Whether to run the reading on Opus 5.5 or drop this
+item was put to the owner on 2026-10-25.
+
+**Recommendation:** run it on Opus 5.5. The reading is the only full pass of
+the clinical specification against the stored values, and Opus 5.5 has the 1M
+context that the one-request-per-section design needs. Its cost bound is lower
+than Fable's was, because its list price is lower: $27.05 on 2026-10-25,
+against $66.91 for Fable 5.1.

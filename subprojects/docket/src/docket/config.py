@@ -13,7 +13,9 @@ from dataclasses import dataclass, field, fields
 from datetime import date
 from pathlib import Path, PurePosixPath
 
+from . import model_choice
 from .model import SAFETY_CLASSES, ModelEvidence, parse_model_evidence
+from .model_choice import ModelTable
 
 CONFIG_NAME = "docket.toml"
 #: The model review's evidence table, beside `docket.toml`. Its own file
@@ -395,6 +397,11 @@ class Config:
     #: Empty where the file is absent or holds no entry, and then nothing a
     #: session sees changes (`PL-3R6L`).
     model_evidence: tuple[ModelEvidence, ...] = ()
+    #: The `[models]` table: which model and effort each kind of work uses
+    #: (`PL-0XDM`). A table of its own beside `[docket]` rather than a setting
+    #: in it, because tools outside this package read it too. `None` where the
+    #: file has no such table, and then `next` and `show` name no model.
+    models: ModelTable | None = None
     extra: dict[str, object] = field(default_factory=dict)
 
     def vocabulary(self) -> frozenset[str]:
@@ -480,10 +487,11 @@ def _int(value: object, fallback: int, name: str) -> int:
     raise ValueError(f"{name}: {value!r} is not a whole number")
 
 
-#: The keys `load` reads, which are the fields of `Config` but `extra` and
-#: `model_evidence`: a project sets the first in code, and the second comes
-#: from `MODEL_EVIDENCE_NAME`, never from `docket.toml`.
-SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra", "model_evidence"}
+#: The keys `load` reads, which are the fields of `Config` but `extra`,
+#: `model_evidence` and `models`. A project sets `extra` in code. The evidence
+#: comes from `MODEL_EVIDENCE_NAME`, and `models` from its own `[models]` table
+#: rather than from `[docket]`.
+SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra", "model_evidence", "models"}
 
 
 def load_model_evidence(root: Path) -> tuple[ModelEvidence, ...]:
@@ -509,6 +517,12 @@ def load(root: Path) -> Config:
     with path.open("rb") as handle:
         data = tomllib.load(handle)
     section = data.get("docket", data)
+    tables = data.get(model_choice.MODELS_TABLE)
+    if section is data:
+        section = {key: value for key, value in data.items() if key != model_choice.MODELS_TABLE}
+    if tables is not None and not isinstance(tables, dict):
+        raise ValueError(f"{CONFIG_NAME}: [{model_choice.MODELS_TABLE}] must be a table")
+    models = None if tables is None else model_choice.parse(tables, CONFIG_NAME)
     # A misspelt key would otherwise leave its setting at the default while the
     # file reads as though it were set (`PL-HTHC`).
     unknown = sorted(set(section) - SETTINGS)
@@ -634,4 +648,5 @@ def load(root: Path) -> Config:
             section.get("version_policy"), defaults.version_policy, "version_policy"
         ),
         model_evidence=evidence,
+        models=models,
     )
