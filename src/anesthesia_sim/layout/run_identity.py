@@ -1,11 +1,12 @@
-"""What a run is called by, independently of where it is drawn.
+"""How a run is identified, independently of where it is drawn.
 
-`PL-7Z84`: a run used to be named by its position in the dashboard's drawing
-order, so "the second run" named whichever run stood second. A Workspace that
-pins a run (`PL-WV9K` Q6) would then point at whatever run took that place,
-and show it as the run it remembers. That is the correct number under the
-wrong patient context, which `docs/MODEL.md` § "What this list requires once
-the layout is the reader's" treats as a display failure.
+A run used to be named by its position in the dashboard's drawing order, so
+"the second run" meant whichever run was second at the time (`PL-7Z84`). A
+Workspace that pins a run (`PL-WV9K` Q6) would then point at whatever run took
+that place, and show it as the run it remembers. The reader would see the
+correct number under the wrong patient context, which `docs/MODEL.md` § "What
+this list requires once the layout is the reader's" treats as a display
+failure.
 
 **A `RunId` is a session and a number.** The session is the application
 session that minted the identity, a random token drawn once when that session
@@ -15,14 +16,15 @@ same is a different run, and a branch taken after an earlier one was dropped
 gets a new number rather than the dropped branch's. The number is also what
 the run is called on screen: `dashboard_frame.run_label` renders it.
 
-**A run keeps its identity for as long as it holds its place on screen**: the
-trunk from the dashboard's construction, and a branch from the fork that
-opened it until it is dropped. Its own Reset and a change of agent begin a new
-run definition in that place, after the confirmation `docs/MODEL.md` §
-"Agent-change behavior" requires, and keep the identity.
+**A run keeps its identity for as long as it keeps its place on screen.** The
+trunk keeps it from the dashboard's construction onward. A branch keeps it from
+the fork that opened it until the branch is dropped. A Reset of the run, or a
+change of agent, begins a new run definition in the same place, after the
+confirmation that `docs/MODEL.md` § "Agent-change behavior" requires. The run
+keeps its identity through both.
 
-`RunIdentities` is the one object in this package that changes: it is the
-session's counter. Everything else here is a value.
+`RunIdentities` is the one object in this package whose state changes, because
+it is the session's counter. Everything else here is an immutable value.
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ _SESSION_TOKEN: Final = re.compile(r"[0-9a-f]{32}")
 
 
 class SessionToken(str):
-    """The application session a run identity was minted in, built only through its check.
+    """The token of the application session that minted a run identity, checked when built.
 
     Raises:
         TypeError: the token is not a `str`.
@@ -65,7 +67,7 @@ class SessionToken(str):
 
     @classmethod
     def drawn(cls) -> SessionToken:
-        """A new token, drawn at random, for a session starting now."""
+        """Return a new random token for a session that starts now."""
 
         return cls(uuid.uuid4().hex)
 
@@ -102,8 +104,9 @@ class RunIdentities:
     """The identities one application session gives its runs, in the order it places them.
 
     Args:
-        session: The session's token. A new random one where none is given;
-            a test passes its own so its identities are known in advance.
+        session: The session's token. When none is given, a new random token
+            is drawn. A test passes its own token so that it knows the
+            identities in advance.
 
     Raises:
         TypeError: `session` is neither `None` nor a `SessionToken`.
@@ -123,7 +126,7 @@ class RunIdentities:
         return self._session
 
     def mint(self) -> RunId:
-        """The identity for the next run this session places, numbered one past the last."""
+        """Return the identity for the next run this session places, one more than the last."""
 
         self._last += 1
 

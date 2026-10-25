@@ -89,10 +89,11 @@ each Area's size from this widget's size. Each Area's frame is held at the size
 it was given, so a border drag stops before a neighbour gets less than it needs.
 This widget's minimum size hint is the sum of every Area's need. So a host that
 can grow, as the dashboard's scrolling page does, always gives every View its
-size. Where the host cannot grow, the Areas that the latest change did not leave
-in place give way before the Areas that it did. An Area that gives way shrinks
-to its header and shows the size its View needs beside the size it has. It
-stays that way until a later change can give it the size it needs.
+size. Where the host cannot grow, the Areas that the latest change moved or
+gave a different View give way first. The Areas that it left in place with the
+same View give way last. An Area that gives way shrinks to its header and
+shows the size its View needs beside the size it has. It stays that way until
+a later change can give it the size it needs.
 
 **What is not here yet.** The Workspace tab strip is left to `PL-2KXB`. Only
 the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
@@ -243,9 +244,9 @@ _HEADER_RULE_PX: Final = 1
 _HEADER_MARGIN_PX: Final = AREA_CORNER_ZONE
 
 # The Area menu and its entries (`PL-MS34` Q2, `PL-2KXB`). The wording is a
-# placeholder until the visual pass, planned-milestone item 33. A split names
-# where the two halves lie, since "horizontal" and "vertical" are read both
-# ways.
+# placeholder until the visual pass, planned-milestone item 33. A split's label
+# names where the two halves lie, because readers take "horizontal" and
+# "vertical" in both senses.
 AREA_MENU_LABEL: Final = "Area"
 SPLIT_SIDE_BY_SIDE_LABEL: Final = "Split left and right"
 SPLIT_STACKED_LABEL: Final = "Split top and bottom"
@@ -304,9 +305,9 @@ class AreaOperation:
         label: The entry's text.
         group: The submenu holding the entry, `JOIN_WITH_LABEL` or
             `SWAP_WITH_LABEL`, or None for the menu itself.
-        result: The layout choosing the entry makes, or None where it is
-            unavailable.
-        refusal: Why it is unavailable, or "" where it is available.
+        result: The layout that choosing the entry would make, or None if the
+            entry is unavailable.
+        refusal: Why the entry is unavailable, or "" if it is available.
     """
 
     label: str
@@ -338,16 +339,16 @@ class AreaBorder:
 
 @dataclass(frozen=True, slots=True)
 class SplitPreview:
-    """A corner drag inside its own Area: where the cut would fall, and the layout it makes.
+    """The preview of a corner drag inside its own Area: where the cut falls, and its layout.
 
     Attributes:
         area_id: The Area being split.
         orientation: `ROW` for a cut into left and right, `COLUMN` for top
             and bottom.
         at: Where the cut falls, as a fraction of the Area across the cut.
-        result: The layout releasing the drag makes, or None where a part
-            would be too small to hold its header, in which case the line is
-            drawn in WARNING and releasing changes nothing.
+        result: The layout that releasing the drag would make, or None if a
+            part would be too small to hold its header. In that case the line
+            is drawn in WARNING, and releasing the drag changes nothing.
     """
 
     area_id: AreaId
@@ -358,13 +359,14 @@ class SplitPreview:
 
 @dataclass(frozen=True, slots=True)
 class JoinPreview:
-    """A corner drag into a neighbour: the Area that keeps its View, the one that closes.
+    """The preview of a corner drag into a neighbour: which Area keeps its View, which closes.
 
     Attributes:
         keep: The Area the drag started in, which takes the other's place.
         remove: The Area under the pointer, which closes.
-        result: The layout releasing the drag makes, or None where the two
-            cannot be joined, in which case releasing changes nothing.
+        result: The layout that releasing the drag would make, or None if the
+            two Areas cannot be joined. In that case, releasing the drag
+            changes nothing.
     """
 
     keep: AreaId
@@ -483,7 +485,8 @@ class AreaLayout(QWidget):
         self._pin: tuple[str | None, bool] = (None, False)
         self._settling = False
         self._least: PixelSize | None = None
-        # The needs the last settle used, so a frame that changes one settles again.
+        # Each Area's need as of the last settle. When a frame's need changes, the
+        # Areas settle again.
         self._needs: dict[AreaId, PixelSize] = {}
         self._build(frozenset())
 
@@ -537,8 +540,8 @@ class AreaLayout(QWidget):
         A View can build, show or hide widgets while it draws. The setting
         controls build their per-run copies on their first frame, and a chart
         shows and hides its per-run lines. These changes post layout requests.
-        Qt updates a widget's minimum size only when it handles those requests,
-        and otherwise it handles them on the next passes of the event loop. So
+        Qt updates a widget's minimum size only when it handles those requests.
+        Left alone, Qt would handle them on the next passes of the event loop. So
         this method handles the requests first (`_handle_layout_requests`). The
         needs that it reads afterwards are then the ones those passes would read.
 
@@ -604,7 +607,7 @@ class AreaLayout(QWidget):
         )
 
     def frame(self, area_id: AreaId) -> AreaFrame:
-        """The widget drawing the Area `area_id`: its header, and its View or notice under it.
+        """Return the widget that draws the Area `area_id`, with its header and its View or notice.
 
         Raises:
             KeyError: the layout drawn now holds no Area `area_id`.
@@ -627,9 +630,9 @@ class AreaLayout(QWidget):
         self._apply(self._model.set_view(area_id, view))
 
     def operations(self, area_id: AreaId) -> tuple[AreaOperation, ...]:
-        """The entries of the Area `area_id`'s menu, each with the layout it would make.
+        """Return the entries of the Area `area_id`'s menu, each with the layout it would make.
 
-        In order: the two splits, a join with each neighbour, a swap with
+        The entries come in this order: the two splits, a join with each neighbour, a swap with
         every other Area, and Close Area. A split falls halfway across the
         Area, and the new half shows the same kind of View, built from a copy of
         the source View's state. "Join with" lists every
@@ -675,7 +678,7 @@ class AreaLayout(QWidget):
         return tuple(entries)
 
     def perform(self, operation: AreaOperation) -> None:
-        """Draw the layout an available menu entry makes, as choosing it does.
+        """Draw the layout that an available menu entry makes, as choosing the entry does.
 
         Raises:
             ValueError: `operation` is unavailable.
@@ -732,7 +735,7 @@ class AreaLayout(QWidget):
         return widget
 
     def _apply(self, moved: LayoutModel) -> None:
-        """Draw `moved` and say so, unless it is the layout drawn now."""
+        """Draw `moved` and emit `layout_changed`, unless `moved` is the layout drawn now."""
 
         if moved == self._model:
             return
@@ -744,10 +747,11 @@ class AreaLayout(QWidget):
         self.layout_changed.emit(moved)
 
     def _unmoved(self, moved: LayoutModel) -> frozenset[AreaId]:
-        """The Areas drawn now that `moved` leaves with the same View in the same place.
+        """Return the Areas drawn now that `moved` leaves in the same place with the same View.
 
-        `settle` lets these go to their floors last, so an Area the reader did
-        not touch keeps its View when the change cannot fit (`PL-K285`).
+        When the new layout cannot give every Area its View's size, `settle`
+        shrinks these Areas to their smallest size last. So an Area that the
+        reader did not touch keeps its View (`PL-K285`).
         """
 
         held = {area.id: area.view for area in moved.areas()}
@@ -788,16 +792,18 @@ class AreaLayout(QWidget):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
-        # Until it is shown, this widget's size is not the one it is drawn
-        # at, so which Areas are too small is first decided here.
+        # Until this widget is shown, its size is not the size it is drawn at.
+        # So this is the first point at which it decides which Areas are too
+        # small.
         self._settle(self._drawn)
 
     def minimum_extent(self) -> PixelSize:
-        """The least size at which every Area draws its View: their needs, added up.
+        """Return the least size at which every Area draws its View: the sum of their needs.
 
-        It is this widget's minimum size hint, so a host that can grow never
-        gives it less (`PL-K285` Q2). A host that cannot is given what it
-        can, and the Areas it cannot hold show that they are too small.
+        This size is the widget's minimum size hint, so a host that can grow
+        never gives the widget less (`PL-K285` Q2). A host that cannot grow
+        gives the widget what it can, and each Area that does not fit shows
+        that it is too small.
         """
 
         least = self._least
@@ -830,13 +836,13 @@ class AreaLayout(QWidget):
         self._show_preview(None)
 
     def corner_moved(self, at: QPoint) -> None:
-        """Preview what releasing the corner drag at `at`, on the screen, would do."""
+        """Preview what releasing the corner drag at the screen position `at` would do."""
 
         if self._corner_drag is not None:
             self._show_preview(self._preview_at(*self._corner_drag, at))
 
     def corner_released(self, at: QPoint) -> None:
-        """Make the split or join the drag previews at `at`, where it can be made."""
+        """Make the change that the drag previews at `at`, if that change can be made."""
 
         if self._corner_drag is None:
             return
@@ -917,7 +923,11 @@ class AreaLayout(QWidget):
     def _split_preview(
         self, area_id: AreaId, orientation: Orientation, offset_px: int, extent_px: int
     ) -> SplitPreview:
-        """A cut `offset_px` into an Area `extent_px` long, refused where a part is too small."""
+        """Return the preview of a cut `offset_px` into an Area that is `extent_px` long.
+
+        The preview's result is None if either part would be too small, or if
+        the model refuses the split.
+        """
 
         minimum = _structural_minimum(self._frames[area_id])
         needed = minimum[0] if orientation is Orientation.ROW else minimum[1]
@@ -933,7 +943,7 @@ class AreaLayout(QWidget):
         return SplitPreview(area_id, orientation, at, result)
 
     def _title(self, area_id: AreaId) -> str:
-        """The View an Area shows, by its registry title, or by its tag where none is held."""
+        """Name the View an Area shows by its registry title, or by its tag if no entry has it."""
 
         view = self._model.area(area_id).view
         entry = self._registered.get(view)
@@ -943,7 +953,10 @@ class AreaLayout(QWidget):
     def _split_operation(
         self, area_id: AreaId, orientation: Orientation, label: str
     ) -> AreaOperation:
-        """A split of the Area halfway across, refused where a half could not hold its header."""
+        """Return the menu entry that splits the Area halfway across.
+
+        The entry is refused if a half could not hold its header.
+        """
 
         frame = self._frames[area_id]
         minimum = _structural_minimum(frame)
@@ -959,7 +972,11 @@ class AreaLayout(QWidget):
         return _attempt(label, None, partial(_split_layout, self._model, area_id, orientation))
 
     def _close_operation(self, area_id: AreaId, neighbours: tuple[Neighbour, ...]) -> AreaOperation:
-        """Give the Area's place to the first neighbour sharing a whole edge with it."""
+        """Return the Close Area entry, which gives the Area's place to a neighbour.
+
+        The neighbour is the first one that shares a whole edge with the Area
+        and can take its place.
+        """
 
         if len(self._model.areas()) == 1:
             return AreaOperation(CLOSE_AREA_LABEL, None, None, _ONLY_AREA_TEXT)
@@ -1057,14 +1074,15 @@ class AreaLayout(QWidget):
 
         self._model = _drawable(model)
         self._saved = _flattened(states)
-        # The Views go with the splitters `_build` replaces, unsaved.
+        # The Views are deleted with the splitters that `_build` replaces, and
+        # their state is not saved.
         self._views = {}
         self._build(frozenset())
 
     def _build(self, kept: AbstractSet[AreaId]) -> None:
         """Build the splitters for the model and put each Area's View in its place.
 
-        `kept` names the Areas `settle` lets go last where the new layout
+        `kept` names the Areas that `settle` shrinks last when the new layout
         cannot give every Area its View's size.
         """
 
@@ -1076,8 +1094,8 @@ class AreaLayout(QWidget):
         self._frames = {}
         self._splitters = {}
         self._hovered = None
-        # A drag addresses a handle of the splitters being replaced, and so
-        # does the border that had the keyboard focus.
+        # A drag in progress refers to a handle of the splitters being
+        # replaced, and so does the border that has the keyboard focus.
         self._border_drag = None
         self._keyed = None
         self._at_minimum = False
@@ -1097,8 +1115,8 @@ class AreaLayout(QWidget):
             notice.deleteLater()
 
         if previous_root is not None:
-            # The root is an Area's frame or a splitter, never a View, so it
-            # always goes; every View it held that is kept has moved already.
+            # The root is an Area's frame or a splitter, never a View, so it is
+            # always deleted. Every kept View that it held has already moved.
             self._column.removeWidget(previous_root)
             previous_root.setParent(None)
             previous_root.deleteLater()
@@ -1114,7 +1132,7 @@ class AreaLayout(QWidget):
         self.views_changed.emit()
 
     def _widget_for(self, node: Node, path: tuple[int, ...]) -> QWidget:
-        """The widget drawing `node`: its frame for an Area, a splitter for a split."""
+        """Build the widget that draws `node`: a frame for an Area, or a splitter for a split."""
 
         if isinstance(node, Area):
             chooser = ViewChooser(node, self._registered, self.choose_view)
@@ -1139,7 +1157,7 @@ class AreaLayout(QWidget):
         return splitter
 
     def _content_for(self, area: Area) -> QWidget:
-        """What `area` shows under its header: its View, or the notice saying why not."""
+        """Return what `area` shows under its header: its View, or a notice that says why not."""
 
         if area.view not in self._registered:
             offer = rename_offer_text(area.view, self._registered, self._retired)
@@ -1167,8 +1185,8 @@ class AreaLayout(QWidget):
                 view = _checked_view(area.view, self._registered[area.view].factory(context))
             except Exception as error:
                 # The failure stays in this Area, and the other Areas are still
-                # built. Raised out of the chooser's menu, it would be lost and
-                # leave the layout half built.
+                # built. If the error were raised out of the chooser's menu, it
+                # would be lost, and the layout would be left half built.
                 return self._notice(
                     AreaNotice(
                         UNBUILT_VIEW_TITLE, unbuilt_view_text(area.view, error, self._registered)
@@ -1189,15 +1207,16 @@ class AreaLayout(QWidget):
 
         `layout/sizing.py`'s `settle` decides it at this widget's size, so the
         sizes drawn are the ones it worked out (`PL-K285`). Each Area's frame
-        is held at the bound it was given: its need where it draws its View,
-        and its floor where it is too small, which then shows the statement
-        of the size its View needs instead of the View. Before this widget is
-        shown its size is not the one it is drawn at, so every Area keeps its
-        View and is held at its need until then.
+        is held at the bound it was given. An Area that draws its View is held
+        at its need. An Area that is too small is held at its floor, the
+        smallest size that holds its header and one line of a notice. In place
+        of the View, it shows a statement of the size its View needs. Before
+        this widget is shown, its size is not the size it is drawn at. So until
+        then, every Area keeps its View and is held at its need.
 
-        Where the Views' needs add up to a new least size, the host is told,
-        so a host that can grow, such as the dashboard's scrolling page, gives
-        this widget room for every View (`minimumSizeHint`).
+        When the Views' needs add up to a new least size, this method tells the
+        host. So a host that can grow, such as the dashboard's scrolling page,
+        gives this widget room for every View (`minimumSizeHint`).
         """
 
         if self._settling:
@@ -1243,9 +1262,10 @@ class AreaLayout(QWidget):
             self._settling = False
 
     def _need(self, area_id: AreaId) -> PixelSize:
-        """The least size the Area `area_id` draws its View at: the View's need and the header.
+        """Return the least size at which the Area `area_id` draws its View, header included.
 
-        An Area that shows a notice in place of a View needs its floor alone.
+        An Area that shows a notice in place of a View needs only its floor,
+        the smallest size that holds its header and one line of the notice.
         """
 
         frame = self._frames[area_id]
@@ -1258,7 +1278,7 @@ class AreaLayout(QWidget):
         return PixelSize(view.width_px, view.height_px + _chrome_height(frame))
 
     def _view_need(self, area_id: AreaId) -> PixelSize:
-        """The least size the View in `area_id` is drawn at, below the Area's header.
+        """Return the least size at which the View in `area_id` is drawn, below the Area's header.
 
         It is the larger, on each axis, of the minimum the View's registry
         entry declares and the least size Qt would hold the View widget to,
@@ -1272,11 +1292,11 @@ class AreaLayout(QWidget):
         return PixelSize(max(declared.width_px, width), max(declared.height_px, height))
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
-        """Give `splitter`'s children the sizes the last settle worked out for its split."""
+        """Give `splitter`'s children the sizes that the last settle worked out for its split."""
 
         if self._splitters.get(splitter.path) is not splitter:
-            # A splitter the last rebuild replaced, resized while it waits to
-            # be deleted.
+            # The last rebuild replaced this splitter, and it is being resized
+            # while it waits to be deleted.
             return
 
         sizes = None if self._fit is None else self._fit.apportionment.splits.get(splitter.path)
@@ -1290,12 +1310,12 @@ class AreaLayout(QWidget):
         splitter.setSizes(list(sizes))
 
     def border_pressed(self, handle: _AreaHandle, offset_px: int, *, alone: bool) -> None:
-        """Start a drag of the border `handle` draws, pressed `offset_px` into its width.
+        """Start a drag of the border that `handle` draws, pressed `offset_px` into its width.
 
         The drag keeps the layout it started from, so every move is worked
-        out from that layout and Escape can return to it. With `alone`, the
-        reader held Shift and only this border moves, not the rest of its
-        line (`LayoutModel.resize`).
+        out from that layout and Escape can return to it. When `alone` is
+        true, the reader held Shift, and only this border moves, not the rest
+        of its line (`LayoutModel.resize`).
         """
 
         self._border_drag = _BorderDrag(self._handle_of(handle), alone, self._model, offset_px)
@@ -1306,9 +1326,9 @@ class AreaLayout(QWidget):
         self._relight()
 
     def border_moved(self, handle: _AreaHandle, at: QPoint) -> None:
-        """Move the dragged border toward `at`, on the screen, and re-lay out the Areas now.
+        """Move the dragged border toward the screen position `at`, and lay the Areas out again.
 
-        `PL-RQT1` Q3 decided it. The Areas follow the pointer live. The
+        `PL-RQT1` Q3 decided this behaviour. The Areas follow the pointer live. The
         border goes no further than the place where an Area beside a moved
         line reaches the least size it can be drawn at. Past that place the
         border stops and its line turns WARNING. A move the model refuses
@@ -1348,10 +1368,10 @@ class AreaLayout(QWidget):
         self._resized(drag.start)
 
     def border_focused(self, handle: _AreaHandle) -> None:
-        """Start a keyboard resize of the border `handle` draws, from the layout drawn now.
+        """Start a keyboard resize of the border that `handle` draws, from the layout drawn now.
 
-        Escape returns the layout to the one drawn now, as it ends a drag
-        (`border_restored`).
+        Escape returns the layout to the one drawn now, as Escape does during
+        a drag (`border_restored`).
         """
 
         self._keyed = _KeyedBorder(self._handle_of(handle), self._model)
@@ -1359,7 +1379,7 @@ class AreaLayout(QWidget):
         self._relight()
 
     def border_unfocused(self, handle: _AreaHandle) -> None:
-        """End the keyboard resize of the border `handle` draws, leaving the layout as it is."""
+        """End the keyboard resize of the border that `handle` draws, and leave the layout as is."""
 
         keyed = self._keyed
 
@@ -1369,7 +1389,7 @@ class AreaLayout(QWidget):
             self._relight()
 
     def border_stepped(self, handle: _AreaHandle, steps: int, *, alone: bool) -> None:
-        """Move the border that `handle` draws by `steps` keyboard steps, and redo the layout.
+        """Move the border that `handle` draws by `steps` keyboard steps, and lay out the Areas.
 
         A step is `AREA_KEYBOARD_STEP` pixels. A negative count moves the border
         left or up. The border stops where a drag would stop. That is where an
@@ -1386,8 +1406,9 @@ class AreaLayout(QWidget):
             keyed = _KeyedBorder(address, self._model)
 
         self._keyed = _KeyedBorder(address, keyed.start, alone)
-        # A step is drawn pixels of the split being moved, turned into a
-        # fraction of the window as `_position_at` turns a drag's.
+        # A step is measured in drawn pixels of the split being moved. It is
+        # turned into a fraction of the window in the same way that
+        # `_position_at` turns a drag's pointer position into one.
         total = _drawable_px(handle.owner)
 
         if total <= 0:
@@ -1406,7 +1427,7 @@ class AreaLayout(QWidget):
         self._resized(moved)
 
     def border_restored(self, handle: _AreaHandle) -> None:
-        """Return the layout to the one drawn when the border `handle` draws took the focus."""
+        """Return the layout to the one drawn when the border that `handle` draws took the focus."""
 
         keyed = self._keyed
 
@@ -1418,7 +1439,7 @@ class AreaLayout(QWidget):
         self._resized(keyed.start)
 
     def _resized(self, moved: LayoutModel) -> None:
-        """Give the splitters `moved`'s sizes, and say so if it is a new layout.
+        """Give the splitters the sizes in `moved`, and emit `layout_changed` if `moved` is new.
 
         A drag changes only sizes, so the splitters are kept and set again
         rather than rebuilt.
@@ -1433,10 +1454,11 @@ class AreaLayout(QWidget):
             self.layout_changed.emit(moved)
 
     def _handle_of(self, handle: _AreaHandle) -> Handle:
-        """The model's address of the border `handle` draws.
+        """Return the model's address of the border that `handle` draws.
 
-        Qt numbers a splitter's handles from 1, each before the child of the
-        same index, and `Handle.index` counts the gaps from 0.
+        Qt numbers a splitter's handles from 1, and each handle sits before the
+        child of the same index. `Handle.index` counts the gaps between the
+        children from 0.
         """
 
         splitter = handle.owner
@@ -1447,13 +1469,14 @@ class AreaLayout(QWidget):
         return Handle(MAIN_WINDOW, splitter.path, index - 1)
 
     def _position_at(self, handle: _AreaHandle, drag: _BorderDrag, at: QPoint) -> float | None:
-        """Where in the window the dragged border lies with the pointer at `at`, on the screen.
+        """Return where in the window the dragged border lies with the pointer at screen point `at`.
 
         The splitter places a handle's leading edge after the children before
         it and the handles between them. So the share of the split before the
-        border is that edge, less those handles, over the splitter's width
-        less all its handles. The model's span of the split turns the share
-        into a fraction of the window. None when the splitter has no width.
+        border is that edge's offset minus the width of those handles, divided
+        by the splitter's length along its axis minus the width of all its
+        handles. The model's span of the split turns the share into a fraction
+        of the window. The result is None when that length is not positive.
         """
 
         splitter = handle.owner
@@ -1472,7 +1495,7 @@ class AreaLayout(QWidget):
         return low + (high - low) * share
 
     def _farthest(self, drag: _BorderDrag, position: float) -> tuple[LayoutModel, bool]:
-        """The layout with the border as near `position` as it can go, and whether it stopped.
+        """Return the layout with the border as near `position` as it goes, and whether it stopped.
 
         The border moves to `position` when the model allows it and every
         Area still fits (`_fits`). Otherwise the place where it stops lies
@@ -1510,14 +1533,14 @@ class AreaLayout(QWidget):
         return best, True
 
     def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
-        """Whether every Area of `moved` is drawn at least at the least size it can take.
+        """Return whether every Area of `moved` is drawn at no less than its least size.
 
-        An Area's least size is what Qt would hold it to anyway: its frame's
-        minimum size, or its minimum size hint where none is set. Its drawn
-        size is its share of this widget less one handle's width, which
-        never overstates it. An Area that was already smaller than its least
-        size when the drag started, because the window is small, may stay as
-        it was but may not shrink further.
+        An Area's least size is the size Qt would hold it to anyway: its
+        frame's minimum size, or its minimum size hint where none is set. Its
+        drawn size is taken as its share of this widget minus one handle's
+        width. That estimate never overstates the drawn size. An Area that was
+        already smaller than its least size when the drag started, because the
+        window is small, may stay as it was but may not shrink further.
         """
 
         width, height = self.width(), self.height()
@@ -1540,7 +1563,10 @@ class AreaLayout(QWidget):
         return True
 
     def _hover(self, handle: _AreaHandle | None) -> None:
-        """Mark the handles a drag of `handle` would move, or none when the pointer left."""
+        """Highlight the handles that a drag of `handle` would move.
+
+        When the pointer has left the handles, `handle` is None and no handle is highlighted.
+        """
 
         self._hovered = handle
         self._relight()
@@ -1707,7 +1733,7 @@ class AreaMenu(QMenu):
         """Write the menu's entries from the layout drawn now."""
 
         # `QMenu.clear` keeps each submenu as a child of the menu, so the
-        # submenus written at the last opening are deleted here.
+        # submenus built when the menu last opened are deleted here.
         for old in self.findChildren(QMenu, options=Qt.FindChildOption.FindDirectChildrenOnly):
             old.deleteLater()
 
@@ -1736,8 +1762,8 @@ class AreaMenu(QMenu):
 
         for group in (JOIN_WITH_LABEL, SWAP_WITH_LABEL):
             if group not in submenus:
-                # No Area to join with or to swap with: the submenu is shown,
-                # unavailable, rather than left out.
+                # When there is no Area to join with or to swap with, the
+                # submenu is still shown, disabled, rather than left out.
                 empty = self.addMenu(group)
                 empty.setEnabled(False)
                 empty.menuAction().setToolTip(_ONLY_AREA_TEXT)
@@ -1819,9 +1845,9 @@ class AreaFrame(QFrame):
         self.header.setObjectName("areaHeader")
         self.header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.header.setStyleSheet(panel_stylesheet(self.header.objectName()))
-        # The header asks for no width: what an Area needs is its View's
-        # minimum, so a narrow Area clips the title rather than being held
-        # wider than its View needs.
+        # The header asks for no width. An Area needs only its View's minimum
+        # width, so a narrow Area clips the title rather than being held wider
+        # than its View needs.
         self.header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         row = QHBoxLayout(self.header)
         row.setContentsMargins(_HEADER_MARGIN_PX, 0, _HEADER_MARGIN_PX, 0)
@@ -1877,7 +1903,7 @@ class AreaFrame(QFrame):
         self.content.setHidden(self._absent)
 
     def show_too_small(self, title: str, needed: PixelSize) -> None:
-        """Hide the View, and state that it needs `needed` under the header, which it lacks.
+        """Hide the View, and state that it needs `needed` below the header, more than the Area has.
 
         Args:
             title: The View's title, as the chooser names it.
@@ -1961,8 +1987,9 @@ class AreaFrame(QFrame):
     def _show_grips(self, shown: bool) -> None:
         """Draw the corners' grips while the pointer is in this Area, and only then.
 
-        `PL-30L5` Q1 decided it: an Area being handled shows its corners
-        work, and an Area being read shows nothing.
+        `PL-30L5` Q1 decided this. An Area that the reader is handling shows
+        that its corners can be dragged, and an Area that the reader is only
+        reading shows nothing.
         """
 
         for zone in self.corners:
@@ -1972,23 +1999,24 @@ class AreaFrame(QFrame):
 class AreaNotice(QFrame):
     """What an Area shows in place of a View it cannot draw: a title and a body, and nothing else.
 
-    `PL-DB5G` decided one notice for every state in which an Area shows no
-    View, so a reader learns its shape once (project owner, 2026-10-11,
-    ratified). The title is bold, in `WARNING`, and the body is regular, in
-    `INK`, both at `METRIC_NAME_SIZE` and wrapped to the Area's width. They sit
-    at the top left of the panel surface, inset by `PANEL_PADDING`. The notice
-    has no fill colour of its own, no border and no icon, and it never shows a
-    value from a run, since a plausible number in a failure state could be read
-    as a View's. Three states are built so far: an unknown View kind, a View
-    whose factory failed, and an Area too small for its View (`PL-K285`).
+    `PL-DB5G` decided that every state in which an Area shows no View uses
+    the same notice, so a reader learns its look once (project owner,
+    2026-10-11, ratified). The title is bold, in `WARNING`, and the body is
+    regular, in `INK`, both at `METRIC_NAME_SIZE` and wrapped to the Area's
+    width. They sit at the top left of the panel surface, inset by
+    `PANEL_PADDING`. The notice has no fill colour of its own, no border and no
+    icon. It never shows a value from a run, since a plausible number in a
+    failure state could be mistaken for a value that the View drew. Three
+    states are built so far: an unknown View kind, a View whose factory failed,
+    and an Area too small for its View (`PL-K285`).
 
     Args:
         title: The first line.
         body: What happened and what to do.
         parent: The Qt parent.
-        offer_label: The label of a button under the body that puts it right,
-            such as showing a renamed View under its new tag, or None for no
-            button.
+        offer_label: The label of a button under the body that fixes the
+            problem, such as showing a renamed View under its new tag, or None
+            for no button.
 
     Attributes:
         title_label: The title.
@@ -2113,13 +2141,16 @@ class _KeyedBorder:
 
 
 class _AreaSplitter(QSplitter):
-    """One split of the model, drawn: it knows where in the tree it sits, and nothing else."""
+    """The splitter that draws one split of the model.
+
+    It knows its place in the tree, and nothing else.
+    """
 
     def __init__(self, layout: AreaLayout, path: tuple[int, ...], orientation: Qt.Orientation):
         super().__init__(orientation)
         self.layout_owner = layout
         self.path = path
-        # A child dragged to nothing would be an Area that seems to have
+        # A child dragged to zero size would look like an Area that had
         # vanished, and the model holds no Area of zero size.
         self.setChildrenCollapsible(False)
         self.setHandleWidth(AREA_HANDLE_WIDTH)
@@ -2133,7 +2164,10 @@ class _AreaSplitter(QSplitter):
 
 
 def _drawable_px(splitter: QSplitter) -> int:
-    """The length along `splitter`'s axis that its Areas share, in px: its own, less its handles."""
+    """Return the length in px along `splitter`'s axis that its Areas share.
+
+    That length is the splitter's own length minus the width of its handles.
+    """
 
     horizontal = splitter.orientation() == Qt.Orientation.Horizontal
     extent = splitter.width() if horizontal else splitter.height()
@@ -2182,20 +2216,21 @@ class _AreaHandle(QSplitterHandle):
         self._lit = False
         self._warning = False
         self._pressed = False
-        # In the tab order, so the keyboard reaches every border (`PL-M352`).
+        # Put the handle in the tab order, so the keyboard can reach every
+        # border (`PL-M352`).
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setAccessibleName(_BORDER_ACCESSIBLE_NAME)
         self.setAccessibleDescription(_BORDER_ACCESSIBLE_DESCRIPTION)
 
     @property
     def lit(self) -> bool:
-        """Whether the line is drawn: the pointer is over this handle or one on its line."""
+        """Whether the line is drawn, as it is while the pointer is over any handle on its line."""
 
         return self._lit
 
     @property
     def warning(self) -> bool:
-        """Whether the line is drawn in WARNING: a drag of it has stopped at a minimum."""
+        """Whether the line is drawn in WARNING, as it is when a drag has stopped at a minimum."""
 
         return self._warning
 
@@ -2403,7 +2438,8 @@ class _CornerZone(QWidget):
 
         painter = QPainter(self)
         painter.setPen(QPen(QColor(MUTED), AREA_GRIP_STROKE_WIDTH))
-        # Diagonal strokes across the corner, the nearest the shortest.
+        # Draw diagonal strokes across the corner. The stroke nearest the corner
+        # is the shortest.
         for step in range(1, AREA_GRIP_STROKES + 1):
             reach = step * AREA_GRIP_STROKE_LENGTH // 2
             start = QPoint(reach, 0)
@@ -2509,7 +2545,10 @@ def _checked_view(kind: ViewKind, view: object) -> View:
 
 
 def _widget(view: View) -> QWidget:
-    """`view` as the widget it is: `_checked_view` admitted only a `QWidget`."""
+    """Return `view` typed as the widget it is.
+
+    The cast is safe because `_checked_view` admits only a `QWidget`.
+    """
 
     return cast(QWidget, view)
 
@@ -2517,7 +2556,7 @@ def _widget(view: View) -> QWidget:
 def _flattened(
     states: Mapping[AreaId, Mapping[ViewKind, SavedState]],
 ) -> dict[tuple[AreaId, ViewKind], SavedState]:
-    """A Workspace's View states, keyed by Area and kind as the adapter keeps them."""
+    """Return a Workspace's View states, keyed by Area and kind, as the adapter keeps them."""
 
     return {
         (area_id, kind): state for area_id, kinds in states.items() for kind, state in kinds.items()
@@ -2525,7 +2564,7 @@ def _flattened(
 
 
 def _drawable(model: LayoutModel) -> LayoutModel:
-    """`model`, once it is a layout this build can draw.
+    """Return `model` once it is checked to be a layout that this build can draw.
 
     Raises:
         TypeError: `model` is not a `LayoutModel`.
@@ -2547,7 +2586,7 @@ def _drawable(model: LayoutModel) -> LayoutModel:
 
 
 def _shape(node: Node) -> tuple[object, ...]:
-    """What has to match for one tree to be drawn by another's splitters: all but the sizes."""
+    """Return what must match for one tree to be drawn by another's splitters: all but the sizes."""
 
     if isinstance(node, Area):
         return (node.id, node.view)
@@ -2556,7 +2595,7 @@ def _shape(node: Node) -> tuple[object, ...]:
 
 
 def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
-    """The split at `path`, which the adapter built a splitter for from this same tree."""
+    """Return the split at `path`. The adapter built a splitter for it from this same tree."""
 
     node = tree
 
@@ -2573,7 +2612,7 @@ def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
 
 
 def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]) -> AreaOperation:
-    """The entry for an operation the model may refuse, with the layout it makes if it does not."""
+    """Return the entry for an operation that the model may refuse, with its layout if accepted."""
 
     try:
         return AreaOperation(label, group, operation())
@@ -2582,7 +2621,7 @@ def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]
 
 
 def _relative_place(own: Rectangle, other: Rectangle) -> str:
-    """Where `other` lies from `own`, in the words a menu entry uses, from their centres."""
+    """Return where `other` lies from `own`, judged from their centres, in a menu entry's words."""
 
     across = (other.left + other.right) / 2 - (own.left + own.right) / 2
     down = (other.top + other.bottom) / 2 - (own.top + own.bottom) / 2
@@ -2616,10 +2655,10 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
     """The least width and height an Area can be drawn at: its header, and one line of a notice.
 
-    `PL-30L5` Q2 set it. Below it a half could not hold its own header row
-    and the first line of `PL-DB5G`'s notice, so a split is refused there. A
-    half too small for the View it shows is allowed, and that is `PL-K285`'s
-    statement to make.
+    `PL-30L5` Q2 set this minimum. Below it, a half could not hold its own
+    header row and the first line of `PL-DB5G`'s notice, so such a split is
+    refused. A half that is too small for the View it shows is allowed,
+    because the too-small notice of `PL-K285` then tells the reader so.
     """
 
     title_font = QFont(frame.font())
@@ -2634,7 +2673,7 @@ def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
 
 
 def _floor(frame: AreaFrame) -> PixelSize:
-    """The least size an Area too small for its View is held at: `_structural_minimum`."""
+    """Return the size at which an Area too small for its View is held: `_structural_minimum`."""
 
     return PixelSize(*_structural_minimum(frame))
 

@@ -181,52 +181,58 @@ from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.run_identity import RunId
 
 # Adding a built-in agent without a verified identification colour would make
-# the selector silently lose a safety cue (ISO 5360 Table 2, footnote b). Fail
-# at import instead. This concerns presentation metadata only; the agent's
-# scientific parameters stay in their validated data files.
+# the selector silently lose a safety cue (ISO 5360 Table 2, footnote b). So
+# the module fails at import instead. This check concerns presentation
+# metadata only. The agent's scientific parameters stay in their validated
+# data files.
 if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
 
-#: (agent_id, display_name) for every built-in agent, in `AGENT_DATA_FILENAMES`
-#: order, read once from the data files so no display name is restated here.
+#: The (agent_id, display_name) pair for every built-in agent, in
+#: `AGENT_DATA_FILENAMES` order. The pairs are read once from the data files,
+#: so no display name is restated here.
 AVAILABLE_AGENTS: Final[tuple[tuple[str, str], ...]] = tuple(
     (agent_id, load_agent_parameters(agent_id).display_name) for agent_id in AGENT_DATA_FILENAMES
 )
 
-#: The same names keyed by id, for the one lookup that has an agent id and no
-#: snapshot to read the name off: the agent a reader has just selected, which
-#: the controller is not answering for until they confirm it.
+#: The same names keyed by id. They serve the one lookup that has an agent id
+#: and no snapshot to read the name from. That lookup is for the agent that a
+#: reader has just selected, which the controller does not report until the
+#: reader confirms it.
 AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
 
-#: The clock panel's index in the readout row, from the table the row is
-#: built from rather than a literal position.
+#: The clock panel's index in the readout row. It is found from the table that
+#: the row is built from, not written as a literal position.
 _CLOCK_PANEL_INDEX: Final = next(
     index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None
 )
 
-#: The header badge's inset. Narrower than the chip's, which carries two lines
-#: and sits among controls; a bare spacing literal is decision D9's interim.
+#: The header badge's inset. It is narrower than the chip's inset, because the
+#: chip carries two lines and sits among controls. This bare spacing literal
+#: is an interim measure under decision D9.
 _HEADER_BADGE_PADDING: Final = 6
 
-#: Every caption the agent chip can carry under the agent's name, which is
-#: `dashboard_frame.transport`'s set of lock reasons. While two runs are
-#: compared the chip is as wide as the widest of them on one line, so both
-#: runs' chips are one width and the controls after them line up.
+#: Every caption that the agent chip can carry under the agent's name. This
+#: is `dashboard_frame.transport`'s set of lock reasons. While two runs are
+#: compared, the chip is as wide as the widest caption on one line. So both
+#: runs' chips have one width, and the controls after them line up.
 _LOCK_CAPTIONS: Final = (RUNNING_AGENT_LOCK_TEXT, BRANCH_AGENT_LOCK_TEXT, COMPARING_AGENT_LOCK_TEXT)
 
-#: The gap between the agent's name and the lock caption when the chip lays
-#: them on one line while two runs are compared. A bare spacing literal is
-#: decision D9's interim.
+#: The gap between the agent's name and the lock caption, when the chip puts
+#: them on one line while two runs are compared. This bare spacing literal is
+#: an interim measure under decision D9.
 _CHIP_CAPTION_GAP: Final = 8
 
-#: The inset above and below the chip's text and the badge's while two runs
-#: are compared, so neither is taller than the selector beside the chip and
-#: each compared run's line is one control high. A bare spacing literal is
-#: decision D9's interim.
+#: The inset above and below the chip's text and the badge's text while two
+#: runs are compared. With this inset, neither the chip nor the badge is
+#: taller than the selector beside the chip, and each compared run's line is
+#: one control high. This bare spacing literal is an interim measure under
+#: decision D9.
 _FOLDED_VERTICAL_PADDING: Final = 2
 
-#: Object names the agent-coloured surfaces are styled through, so a surface's
-#: stylesheet reaches that frame and not the labels inside it.
+#: The object names through which the agent-coloured surfaces are styled.
+#: They make a surface's stylesheet apply to that frame and not to the labels
+#: inside it.
 _HEADER_BADGE_NAME: Final = "agentHeaderBadge"
 _RUNNING_AGENT_DISPLAY_NAME: Final = "runningAgentDisplay"
 
@@ -304,67 +310,72 @@ class RunView(QWidget):
         self.run_id = run_id
         snapshot = controller.snapshot()
 
-        # Why the last setting change did not take, or None if it did. Held
-        # here rather than in the controller because a refused setting
-        # changes nothing about the simulation, so there is no core state
-        # for it to belong to.
+        # The reason the last setting change did not take effect, or None if
+        # it did. It is held here rather than in the controller, because a
+        # refused setting changes nothing about the simulation. So there is no
+        # core state for it to belong to.
         self._rejected_setting_notice: str | None = None
-        # The way out the banner names while Reset is what the core refused,
-        # or None while Reset is the way out. Held beside the refused setting
-        # for the same reason: the refusal changed nothing in the simulation,
-        # so there is no core state for it to belong to (`PL-M4M0`).
+        # The way out that the banner names when the core refused Reset
+        # itself, or None while Reset is the way out. It is held beside the
+        # refused setting for the same reason. The refusal changed nothing in
+        # the simulation, so there is no core state for it to belong to
+        # (`PL-M4M0`).
         self._refused_reset_notice: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._adjustment_grouping = AdjustmentGrouping()
-        # The agent a reader has asked for and not yet confirmed, and the
-        # dialog asking them. Together they are the state "a destructive
-        # confirmation is open"; `_resolve_new_case` clears the first before
-        # acting, which is what makes answering the dialog idempotent.
+        # The agent that a reader has asked for and not yet confirmed, and the
+        # dialog that asks them. Together they are the state "a destructive
+        # confirmation is open". `_resolve_new_case` clears the agent before
+        # acting, and that makes answering the dialog idempotent.
         self._pending_agent_id: str | None = None
         self._new_case_dialog: NewCaseDialog | None = None
         # What this run's Reset must ask before it discards work in another
-        # run, set by the dashboard on the trunk (`ask_before_reset`), and
-        # the dialog asking it while it is open. `_resolve_reset` clears the
-        # dialog before acting, so the answer is acted on once.
+        # run, and the dialog that asks it while the dialog is open. The
+        # dashboard sets the question on the trunk (`ask_before_reset`).
+        # `_resolve_reset` clears the dialog before acting, so the answer is
+        # acted on once.
         self._reset_question: Callable[[], NewCaseQuestion | None] | None = None
         self._reset_dialog: NewCaseDialog | None = None
-        # Whether a frame has drawn this run, so a coalesced slider change
-        # rewrites this run's own labels at once only once the first frame
-        # has written everything.
+        # Whether a frame has drawn this run yet. A coalesced slider change
+        # rewrites this run's own labels at once, but only after the first
+        # frame has written everything.
         self._presented = False
-        # The run's record as this view last wrote it, by `refresh` or by
-        # `present_halt`; `None` until the first. The dashboard draws a frame
-        # whenever the controller's record differs from it (`owes_a_frame`).
+        # The run's record as this view last wrote it, through `refresh` or
+        # `present_halt`. It is `None` until the first write. The dashboard
+        # draws a frame whenever the controller's record differs from it
+        # (`owes_a_frame`).
         self._written_record: RunRecord | None = None
         # Whether a second run is on the chart. The dashboard writes it
-        # through `set_comparing`, because how many runs are displayed is its
-        # fact and not this view's; it reaches the transport as the third
-        # reason an agent selector may be replaced by the chip.
+        # through `set_comparing`, because how many runs are displayed is the
+        # dashboard's fact and not this view's. The transport uses it as the
+        # third reason that the chip may replace an agent selector.
         self._comparing = False
         # The run whose readout heading also states this run's substance and
-        # 1 MAC, set while this run's readouts are drawn in that run's panels
-        # (`show_readings_of`). Both runs are on one agent, so the one heading
-        # is true of both (`PL-QLZ5`).
+        # 1 MAC. It is set while this run's readouts are drawn in that run's
+        # panels (`show_readings_of`). Both runs use one agent, so the one
+        # heading is true of both (`PL-QLZ5`).
         self._heading_shown_by: RunView | None = None
 
-        # What this run is called, where the chart's legend calls it that.
-        # Its own label rather than a word inside the agent badge, because the
-        # badge carries the ISO 5360 identity pair and `_apply_agent_color_scheme`
-        # is the only writer of it (`.claude/rules/ui-color.md`); a run's name
-        # is not agent identity and must not take an agent's colour. Hidden
-        # while one run is displayed, where nothing is ambiguous and a name
-        # would be standing text saying what the single panel already says.
+        # What this run is called, matching what the chart's legend calls it.
+        # The name has its own label rather than a word inside the agent
+        # badge. The badge carries the ISO 5360 identity pair, and
+        # `_apply_agent_color_scheme` is the only writer of that pair
+        # (`.claude/rules/ui-color.md`). A run's name is not agent identity
+        # and must not take an agent's colour. The label is hidden while one
+        # run is displayed. Then nothing is ambiguous, and a name would be
+        # permanent text repeating what the single panel already says.
         #
-        # `set_run_name` is deliberately not a chart-shaped or run-shaped
-        # method: naming the view in its own header is what every view will
-        # owe an area (`.claude/rules/ui-areas.md`, `PL-TH35`), so it is given
-        # a name the next view could take.
+        # `set_run_name` is deliberately not named for a chart or a run. Every
+        # view will owe an area a name in its own header
+        # (`.claude/rules/ui-areas.md`, `PL-TH35`). So the method has a name
+        # that the next view could use too.
         self._run_name_text = styled_label("", color=INK, bold=True)
         self._run_name_text.setHidden(True)
-        # Kept beside the label because the banner needs it too, and the
-        # banner is written on a path that has no frame to read it from
-        # (`_write_notice`). Reading it back off the widget would make the
-        # attribution depend on a label's text, which is a display detail.
+        # The name is stored beside the label because the banner needs it too.
+        # The banner is written on a path that has no frame to read the name
+        # from (`_write_notice`). Reading the name back from the widget would
+        # make the banner's attribution depend on a label's text, which is a
+        # display detail.
         self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
         emphasised(self._status_text, status_word(snapshot))
@@ -385,8 +396,8 @@ class RunView(QWidget):
         badge.addWidget(self._subtitle_text)
 
         # Every widget whose visibility is written here is built with this
-        # view as its parent: shown parentless, even for the instant before
-        # a layout adopts it, a widget is a top-level window of its own.
+        # view as its parent. A widget shown without a parent is a top-level
+        # window of its own, even for the instant before a layout adopts it.
         self._agent_dropdown = QComboBox(self)
         self._agent_dropdown.setFixedWidth(AGENT_SELECTOR_WIDTH)
 
@@ -403,15 +414,15 @@ class RunView(QWidget):
         self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(snapshot.agent_id))
         self._agent_dropdown.currentIndexChanged.connect(self._handle_agent_change)
 
-        # The running agent's identity, carried by a control that is never
-        # disabled and so never recoloured by the theme; it stands where the
-        # selector stood, at the selector's width, so the transport controls
+        # The running agent's identity. A control that is never disabled
+        # carries it, so the theme never recolours it. The control takes the
+        # selector's place, at the selector's width, so the transport controls
         # beside it do not move when a run starts (`PL-61WW`).
         self._running_agent_text = styled_label(snapshot.agent_display_name, color=INK, bold=True)
-        # Blank until something locks the selector. `_write_transport` is
-        # the only writer of this line and it writes the reason in the same
-        # call that reveals the chip, so the caption a reader sees is always
-        # the lock actually in force rather than whichever came first.
+        # Blank until something locks the selector. `_write_transport` is the
+        # only writer of this line. It writes the reason in the same call that
+        # reveals the chip. So the caption a reader sees is always the lock
+        # actually in force, not whichever lock came first.
         self._running_agent_lock_text = styled_label("", color=INK, size_px=METRIC_QUALIFIER_SIZE)
         self._running_agent_display = QFrame(self)
         self._running_agent_display.setObjectName(_RUNNING_AGENT_DISPLAY_NAME)
@@ -432,8 +443,8 @@ class RunView(QWidget):
         self._pause_button = QPushButton(PAUSE_LABEL)
         self._reset_button = QPushButton(RESET_LABEL)
 
-        # The transport's colours are the interface's rather than the host
-        # appearance's (`PL-DHBX`); `transport_button_stylesheet` carries why.
+        # The transport's colours are the interface's own, not the host
+        # appearance's (`PL-DHBX`). `transport_button_stylesheet` explains why.
         for button in (self._start_button, self._pause_button, self._reset_button):
             button.setStyleSheet(transport_button_stylesheet())
 
@@ -442,9 +453,9 @@ class RunView(QWidget):
         self._pause_button.clicked.connect(self._handle_pause)
         self._reset_button.clicked.connect(self._handle_reset)
 
-        # How fast the run is played: a view control that decides how many
-        # steps a tick takes and never how large a step is. It is never
-        # disabled, and Reset leaves it alone like every other setting.
+        # How fast the run is played. This view control decides how many
+        # steps a tick takes, and never how large a step is. It is never
+        # disabled, and Reset leaves it alone, as it does every other setting.
         self._playback_rate_dropdown = QComboBox()
         self._playback_rate_dropdown.setFixedWidth(PLAYBACK_RATE_SELECTOR_WIDTH)
         self._playback_rate_dropdown.setStyleSheet(selector_stylesheet())
@@ -465,12 +476,13 @@ class RunView(QWidget):
         self._interpretation_text = styled_label(
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
-        # The dial's setting in both units and the divisor of every ×MAC
-        # number in the row, on the heading line above it. Both are in
-        # `docs/MODEL.md`'s per-substance tier, which the dial and the chart's
-        # caption cannot carry once each is a View a reader can close
-        # (`PL-NWTM`). `_write_settings` writes both, from the readout the
-        # dial is written from, so the two cannot disagree.
+        # These labels show the dial's setting in both units, and the divisor
+        # of every ×MAC number in the row. They sit on the heading line above
+        # the row. Both values are in `docs/MODEL.md`'s per-substance tier.
+        # The dial and the chart's caption cannot carry them once each is a
+        # View that a reader can close (`PL-NWTM`). `_write_settings` writes
+        # both, from the readout that the dial is written from, so the two
+        # cannot disagree.
         self._delivered_text = styled_label("", color=INK)
         self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
@@ -488,16 +500,17 @@ class RunView(QWidget):
         )
         self._accounting_panels: list[AccountingPanel] = []
 
-        # The control-change panel's heading. An instance label rather than a
-        # widget built inside `_lay_out_control_record`, because it has to
-        # gain and lose this run's name as the dashboard's run set changes,
-        # and `set_run_name` is the one writer of that name (`PL-C3GS`).
+        # The control-change panel's heading. It is an instance label rather
+        # than a widget built inside `_lay_out_control_record`, because it has
+        # to gain and lose this run's name as the dashboard's set of runs
+        # changes. `set_run_name` is the one writer of that name (`PL-C3GS`).
         self._control_timeline_heading_text = styled_label(
             CONTROL_TIMELINE_HEADING, color=INK, bold=True
         )
 
-        # Wraps, because the record column is narrower than its longest
-        # lines, and only between their parts (`wrapping_between_parts`).
+        # The text wraps, because the record column is narrower than its
+        # longest lines. It wraps only between the parts of a line
+        # (`wrapping_between_parts`).
         self._control_timeline_text = styled_label(
             wrapping_between_parts(timeline_panel(()).entries),
             color=MUTED,
@@ -509,8 +522,9 @@ class RunView(QWidget):
         )
         self._control_timeline_overflow_text.setHidden(True)
 
-        # Laid out once, here, so the build methods hand back the containers
-        # these widgets are already in (`PL-N67T`, `PL-KZR1`).
+        # These sections are laid out once, here, so that the build methods
+        # return the containers these widgets are already in (`PL-N67T`,
+        # `PL-KZR1`).
         self._transport_row = self._lay_out_transport_row()
         self._readout_section = self._lay_out_readout_section()
         self._control_record_panel = self._lay_out_control_record()
@@ -525,10 +539,10 @@ class RunView(QWidget):
     # ------------------------------------------------------------ reading
 
     def snapshot(self) -> SimulationSnapshot:
-        """This run's state at this instant.
+        """Return this run's state at this instant.
 
-        Read by the dashboard once per frame and handed back to `refresh`,
-        so the readouts and the traces of a frame are one instant of one run.
+        The dashboard reads it once per frame and hands it back to `refresh`.
+        So the readouts and the traces of a frame show one instant of one run.
         """
 
         return self.controller.snapshot()
@@ -541,16 +555,16 @@ class RunView(QWidget):
 
     @property
     def owes_a_frame(self) -> bool:
-        """Whether the run holds a record this view has not yet written.
+        """Whether the run holds a record that this view has not yet written.
 
-        True for a run nothing has written yet, and for one that changed
-        without a frame being asked for: one that halted on a mark or arrived
-        at the supported run length inside `step_tick` (`PL-T995`), which
-        changes `is_running` and nothing that asks for a frame. The
-        dashboard's render tick draws while any run owes one, so the screen
-        follows the run without each path that changes it having to ask
-        (`PL-X7D5`). Reading it builds no compartment value
-        (`SimulationController.record`).
+        This is true for a run that nothing has written yet. It is also true
+        for a run that changed while nothing asked for a frame: one that
+        halted on a mark, or reached the supported run length inside
+        `step_tick` (`PL-T995`). Either change alters `is_running` and nothing that asks
+        for a frame. The dashboard's render tick draws while any run owes a
+        frame. So the screen follows the run, and no path that changes the run
+        has to ask for a frame (`PL-X7D5`). Reading this property builds no
+        compartment value (`SimulationController.record`).
         """
 
         return self.controller.record() != self._written_record
@@ -687,14 +701,15 @@ class RunView(QWidget):
         self._write_settings(record)
 
     def _write_notice(self, banner: str | None) -> None:
-        """Write the banner for this run, named while a second run is drawn.
+        """Write the banner for this run, naming the run while a second run is drawn.
 
-        Kept apart from `_write_statement`, its one caller, because the
-        attribution is a rule of its own: `refresh` has a frame and words the
-        banner with `dashboard_frame.notice`, and `present_halt` deliberately
-        has none and words it with `dashboard_frame.halt_notice`, and the
-        run's name comes from `set_run_name` rather than from the frame -
-        `dashboard_frame.compared_run_notice` carries the argument.
+        This method is kept apart from `_write_statement`, its one caller,
+        because naming the run in the banner follows a rule of its own.
+        `refresh` has a frame and words the banner with
+        `dashboard_frame.notice`. `present_halt` deliberately has no frame and
+        words the banner with `dashboard_frame.halt_notice`. On both paths, the
+        run's name comes from `set_run_name` rather than from the frame.
+        `dashboard_frame.compared_run_notice` gives the full argument.
 
         Args:
             banner: The banner's text, or None to show none.
@@ -703,21 +718,24 @@ class RunView(QWidget):
         self._notice_text.set_notice(compared_run_notice(banner, self._run_name))
 
     def _snapshot_for_a_control(self) -> SimulationSnapshot | None:
-        """Read this run's snapshot to answer a control, halting the run where the read refuses.
+        """Read this run's snapshot for a control, and halt the run if the read raises.
 
-        `_handle_agent_change` decides between nothing, a new case and a
-        question from the snapshot, and `_apply_setting` rewrites this run's
-        labels from it after a coalesced change; both run inside a slot,
-        where a raise is printed by the toolkit and otherwise lost
-        (`SimulationView.present` explains). On a run whose own snapshot
-        refuses a value - the halt `PL-7DJK` made visible - the read raised
-        there, so the control accepted the choice and nothing on screen
-        answered it (`PL-V2HC`). The raise is the halt the run is in, or is
-        about to be in: `_halt_run` states it on every run-state widget from
+        Two handlers read the snapshot inside a Qt slot. `_handle_agent_change`
+        uses it to decide whether to do nothing, start a new case or ask a
+        question. `_apply_setting` rewrites this run's labels from it after a
+        coalesced change. Inside a slot, the toolkit prints an exception and
+        otherwise loses it (`SimulationView.present` explains). A run's own
+        snapshot can reject a value, which is the halt that `PL-7DJK` made
+        visible. Before `PL-V2HC`, the read on such a run raised inside the
+        slot. So the control accepted the choice, and nothing on screen
+        responded to it.
+
+        The exception is the halt that the run is in, or is about to be in.
+        `_halt_run` shows that halt on every run-state widget. It works from
         the controller's record, which builds no compartment value
-        (`PL-85LJ`, `PL-X7D5`), and a controller keeps the first
-        reason it was given, so a run already halted for this refusal
-        restates the same halt.
+        (`PL-85LJ`, `PL-X7D5`). A controller keeps the first reason it was
+        given. So a run that is already halted for this rejection shows the
+        same halt again.
 
         Returns:
             The snapshot, or `None` once the run has been halted for the
@@ -789,11 +807,12 @@ class RunView(QWidget):
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.
 
-        Called last by `_write_statement`, with the snapshot a frame drew
-        from or with `SimulationController.record()` where no frame draws:
-        either carries the agent and the four settings, and
+        `_write_statement` calls this method last. It passes either the
+        snapshot that a frame drew from, or `SimulationController.record()`
+        when no frame draws. Both carry the agent and the four settings, and
         `dashboard_frame.setting_readouts` builds the same readouts from
-        both, so a dial reads the same text whichever wrote it (`PL-85LJ`).
+        either. So a dial shows the same text whichever path wrote it
+        (`PL-85LJ`).
 
         Args:
             settings: The agent and the settings in force on the run.
@@ -813,19 +832,21 @@ class RunView(QWidget):
         )
 
     def _transport_lock(self, status: RunStatus) -> Transport:
-        """This run's transport enablement, with both facts `dashboard_frame` cannot read.
+        """Return this run's transport enablement, adding two facts `dashboard_frame` cannot read.
 
-        `opened_from` is read live rather than cached at construction,
-        because a run's kind is the controller's to state and nothing here
-        would learn of a change to it.
+        The two facts are whether this run is a branch and whether runs are
+        being compared. The method reads `opened_from` from the controller
+        each time rather than caching it at construction. Whether a run is a
+        branch is the controller's fact to state, and nothing here would
+        learn of a change to it.
 
         Args:
-            status: The run's status this tick - the snapshot a frame drew
-                from, or the controller's bare status where no frame is
-                involved.
+            status: The run's status this tick. It is either the snapshot that
+                a frame drew from, or the controller's bare status when no
+                frame is involved.
 
         Returns:
-            `dashboard_frame.transport`'s answer for this run.
+            What `dashboard_frame.transport` returns for this run.
         """
 
         return transport(status, is_branch=self._is_branch, comparing=self._comparing)
@@ -837,12 +858,13 @@ class RunView(QWidget):
         return self.controller.opened_from is not None
 
     def set_comparing(self, comparing: bool) -> None:
-        """Say whether a second run is on the chart, and rewrite the transport at once.
+        """Record whether a second run is on the chart, and rewrite the transport at once.
 
-        Called by the dashboard whenever its run set changes, so a selector
-        locked by a fork is locked from the frame the branch appears rather
-        than from the next tick. It also moves the values each run states
-        once into the run's own transport row, or back (`_fold_heading_into_transport`).
+        The dashboard calls this method whenever its set of runs changes. So
+        a selector that a fork locks is locked from the frame on which the
+        branch appears, not from the next tick. The method also moves the
+        values that each run states once into the run's own transport row,
+        or moves them back (`_fold_heading_into_transport`).
 
         Args:
             comparing: Whether more than one run is displayed.
@@ -857,19 +879,20 @@ class RunView(QWidget):
     def _fold_heading_into_transport(self, folded: bool) -> None:
         """Give each compared run one line, or give a lone run its two lines back.
 
-        With two runs compared, each run's transport row and its readout
-        heading line stood one above the other, and the two runs' four lines
-        took the height the concentration chart needs on a 1366 by 700
-        laptop (`PL-JG82`). Folded, a run's transport row also carries its
+        Without folding, each compared run's transport row sits above its
+        readout heading line. The two runs' four lines then take the height
+        that the concentration chart needs on a 1366 by 700 laptop screen
+        (`PL-JG82`). When folded, a run's transport row also carries its
         delivered concentration, which is the one heading value that differs
-        between the runs. The agent chip lays its caption beside the agent's
-        name rather than under it, at one width for every run, and the chip
-        and the badge lose most of their inset above and below. The values
+        between the runs. The agent chip puts its caption beside the agent's
+        name rather than under it, at one width for every run. The chip and
+        the badge lose most of their inset above and below. The values that
         the runs share stay on the first run's heading line, above the paired
-        readouts: the substance, the interpretation line, the agent's 1 MAC
-        and the version-and-model badge. `add_run` refuses a run on another
-        agent, and a branch's MAC is checked against its trunk's when it is
-        opened, so one statement of each is true of both runs (`PL-QLZ5`).
+        readouts. They are the substance, the interpretation line, the
+        agent's 1 MAC and the version-and-model badge. `add_run` refuses a run
+        on another agent, and a branch's MAC is checked against its trunk's
+        MAC when the branch is opened. So one statement of each shared value
+        is true of both runs (`PL-QLZ5`).
 
         Args:
             folded: Whether to fold, which is whether more than one run is displayed.
@@ -908,10 +931,11 @@ class RunView(QWidget):
         )
 
     def _one_line_chip_width(self) -> int:
-        """The chip's width with the widest agent name and the widest caption on one line.
+        """Return the chip's width with the widest agent name and widest caption on one line.
 
-        Measured from the two labels' own fonts, so every compared run's chip
-        is one width whichever agent it runs and whichever caption it carries.
+        The width is measured from the two labels' own fonts. So every
+        compared run's chip has one width, whichever agent it runs and
+        whichever caption it carries.
         """
 
         name = QFontMetrics(self._running_agent_text.font())
@@ -924,11 +948,12 @@ class RunView(QWidget):
         return 2 * RUNNING_AGENT_DISPLAY_PADDING + widest_name + _CHIP_CAPTION_GAP + widest_caption
 
     def _write_transport(self, lock: Transport) -> None:
-        """Write the transport's enablement and which of the selector and the chip is shown.
+        """Write the transport's enablement, and show either the selector or the chip.
 
-        The selector is written `setDisabled` beside `setHidden` with the
-        same operand, which is what `tools/agent_identity_check.py` holds
-        the identity set to: it draws nothing while it cannot be used.
+        The selector's `setDisabled` call sits beside a `setHidden` call with
+        the same operand, so the selector draws nothing while it cannot be
+        used. `tools/agent_identity_check.py` requires that pairing of every
+        control in the identity set.
 
         Args:
             lock: `dashboard_frame.transport`'s result for this snapshot.
@@ -945,11 +970,12 @@ class RunView(QWidget):
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Write the agent's ISO 5360 pair to the six controls that carry it, and to nothing else.
 
-        The single writer of agent colour. Written on every tick, whether or
-        not each control is on screen, so the chip revealed on the next
-        state change is already the running agent's colour. One
-        `setStyleSheet` per control, so `tools/agent_identity_check.py` can
-        read the identity set off this method.
+        This method is the single writer of agent colour. It writes on every
+        tick, whether or not each control is on screen. So the chip that the
+        next state change reveals already has the running agent's colour. It
+        makes one `setStyleSheet` call per control, so that
+        `tools/agent_identity_check.py` can read the identity set from this
+        method.
 
         Args:
             agent_id: The running agent, from this tick's snapshot.
@@ -1034,9 +1060,9 @@ class RunView(QWidget):
     def _handle_adjustment_start(self) -> None:
         """Close any open adjustment, so the changes that follow are a new act.
 
-        Not through `_apply_setting`: it records nothing and changes no
-        state. Without it two drags of one dial are one adjustment on the
-        record.
+        This handler does not go through `_apply_setting`, because it records
+        nothing and changes no state. Without it, two drags of one dial would
+        be one adjustment on the record.
         """
 
         self.controller.begin_control_adjustment()
@@ -1052,10 +1078,10 @@ class RunView(QWidget):
         }
         handlers[control](value)
 
-    # Each dial's value is built into its checked type inside the call
-    # `_apply_setting` makes, so a value the model refuses is refused there
-    # and reported as the refused setting it is, exactly as the vaporizer
-    # dial's `Percent` is below (`PL-0YYV`).
+    # Each dial's value is built into its checked type inside the call that
+    # `_apply_setting` makes. So a value that the model refuses is refused
+    # inside that call, and is reported as a refused setting. The vaporizer
+    # dial's `Percent` below works the same way (`PL-0YYV`).
 
     def _handle_fresh_gas_flow_change(self, flow_l_min: float) -> None:
         self._apply_setting(
@@ -1084,7 +1110,7 @@ class RunView(QWidget):
     # ----------------------------------------------------------- transport
 
     def _handle_start(self) -> None:
-        """Start the run; a start the controller refuses becomes a notice."""
+        """Start the run, and show a notice if the controller refuses the start."""
 
         self._apply_setting(self.controller.start)
 
@@ -1109,12 +1135,12 @@ class RunView(QWidget):
         self._reset_question = question
 
     def _handle_reset(self) -> None:
-        """Answer a press of Reset: start over at once, or ask first.
+        """Respond to a press of Reset by starting over at once, or by asking first.
 
-        It asks only where the dashboard says this Reset would discard work
-        in another run (`ask_before_reset`). Starting this run over needs no
-        question: pressing its own Reset is the request to discard it
-        (`docs/MODEL.md` § "Agent-change behavior").
+        It asks only when the dashboard says that this Reset would discard
+        work in another run (`ask_before_reset`). Starting this run over needs
+        no question, because pressing its own Reset is the request to discard
+        it (`docs/MODEL.md` § "Agent-change behavior").
         """
 
         question = None if self._reset_question is None else self._reset_question()
@@ -1125,7 +1151,8 @@ class RunView(QWidget):
 
         dialog = NewCaseDialog(question, self)
         dialog.finished.connect(self._handle_reset_finished)
-        # Deleted once answered, for the reason the new-case dialog is.
+        # The dialog is deleted once answered, for the same reason as the
+        # new-case dialog.
         dialog.finished.connect(dialog.deleteLater)
         self._reset_dialog = dialog
         dialog.open()
@@ -1163,8 +1190,8 @@ class RunView(QWidget):
         """Act on the answer to the Reset question once, however many times it is reported.
 
         Args:
-            confirmed: True to start the case over and discard the branches;
-                False to keep every run as it stands.
+            confirmed: True to start the case over and discard the branches.
+                False to keep every run as it is.
         """
 
         if self._reset_dialog is None:
@@ -1179,26 +1206,27 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     def _reset_now(self) -> None:
-        """Start over: clears the run and a standing refusal, and leaves the playback rate alone.
+        """Start over, clearing the run and any refusal in effect, but not the playback rate.
 
-        `case_restarted` is emitted before the frame is asked for, so the
-        dashboard has already dropped any branch of the run that just ended
-        by the time the frame is assembled - a branch drawn beside a trunk
-        standing back at induction would be two curves asserting one case
-        while no longer being one.
+        `case_restarted` is emitted before the frame is asked for. So by the
+        time the frame is assembled, the dashboard has already dropped any
+        branch of the run that just ended. A branch drawn beside a trunk that
+        is back at induction would be two curves claiming to show one case
+        when they no longer do.
 
-        **A Reset the core refuses halts the run instead.**
-        `SimulationController.reset()` refuses before it clears anything,
-        for a settings record the next step would be refused on too, so the
-        run is left exactly as it was and is stopped through the failed-step
-        path - the refusal recorded, the status word, the transport and the
-        banner stating it. Reset is the door the banner names otherwise, so
-        its way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says no setting
-        can repair the refusal (`PL-01GY`). Every raise
-        halts, as a step's does: a `SimulationConfigurationError` here is
-        not a refused setting, because the run it leaves is one that cannot
-        be cleared (`PL-M4M0`). `case_restarted` is not emitted, since no
-        case restarted; the frame is asked for, as after any halt.
+        **A Reset that the core refuses halts the run instead.**
+        `SimulationController.reset()` refuses before it clears anything. It
+        refuses when the settings record is one on which the next step would
+        also be refused. So the run is left exactly as it was, and it is
+        stopped through the failed-step path. That path records the refusal,
+        and the status word, the transport and the banner state it. In any
+        other halt, the banner names Reset as the way out. For this halt, the
+        way out is `REFUSED_RESET_WAY_OUT_TEXT`, which says that no setting
+        can repair the refusal (`PL-01GY`). Every exception halts the run, as
+        an exception from a step does. A `SimulationConfigurationError` here
+        is not a refused setting, because the run it leaves cannot be cleared
+        (`PL-M4M0`). `case_restarted` is not emitted, since no case restarted.
+        The frame is asked for, as after any halt.
         """
 
         try:
@@ -1215,13 +1243,13 @@ class RunView(QWidget):
     def _halt_refused_reset(self, error: BaseException) -> None:
         """Halt the run for a Reset the core refused, with the banner naming the repair.
 
-        The exit is settled before the halt records the refusal, because
-        which wording it takes depends on what the banner's reason will be:
-        a controller keeps the first reason it was given, so on a run that
-        had already failed for something else the banner's reason stays that
-        failure's and the refusal has to be stated by the exit itself, and
-        `refused_reset_exit` tells that run from one this same refusal
-        stopped on an earlier press (`PL-M4M0`).
+        The exit text is chosen before the halt records the refusal, because
+        its wording depends on what the banner's reason will be. A controller
+        keeps the first reason it was given. So on a run that had already
+        failed for something else, the banner's reason stays that earlier
+        failure, and the exit text itself has to state the refusal.
+        `refused_reset_exit` tells that run apart from a run that this same
+        refusal stopped on an earlier press (`PL-M4M0`).
 
         Args:
             error: What `SimulationController.reset()` raised.
@@ -1233,12 +1261,13 @@ class RunView(QWidget):
         self._halt_run(error)
 
     def _handle_playback_rate_change(self, index: int) -> None:
-        """Take the rate the reader chose; the next tick reads it.
+        """Store the playback rate that the reader chose, for the next tick to read.
 
         Raises:
             SimulationConfigurationError: If the control offers a multiplier
-                `SUPPORTED_PLAYBACK_RATES` does not (`playback_rate_for`) -
-                a divergence between the two tables is a defect to surface.
+                that `SUPPORTED_PLAYBACK_RATES` does not (`playback_rate_for`).
+                A mismatch between the two tables is a defect, and raising
+                makes it visible.
         """
 
         multiplier = self._playback_rate_dropdown.itemData(index)
@@ -1252,20 +1281,22 @@ class RunView(QWidget):
     # ---------------------------------------------------- the new-case flow
 
     def _handle_agent_change(self, index: int) -> None:
-        """Answer a selection: nothing, a new case at once, or a question.
+        """Respond to a selection by doing nothing, starting a new case at once, or asking.
 
-        The same agent is no change. A run that has recorded nothing has
-        nothing to lose and switches at once. Otherwise the selector is
-        reverted to the running agent and the reader is asked, because the
-        switch discards the case (`PL-R3KB`). While that question is open a
-        further selection is reverted and not answered: the open dialog
-        names one agent, and its answer must start that agent and no other
-        (`PL-25KS`). On a run whose snapshot refuses, the selection is
-        answered by the halt that refusal is, restated, and the selector is
-        put back to the agent the controller names, since the snapshot that
-        would name it is what refused (`PL-V2HC`); Reset is the way out the
-        halt banner names, unless a refused Reset has left its own way out
-        standing.
+        Selecting the same agent is no change. A run that has recorded
+        nothing has nothing to lose, so it switches at once. Otherwise the
+        selector is put back to the running agent and the reader is asked,
+        because the switch discards the case (`PL-R3KB`). While that question
+        is open, a further selection is put back and gets no response. The
+        open dialog names one agent, and its answer must start that agent and
+        no other (`PL-25KS`).
+
+        On a run whose snapshot raises, the response to the selection is to
+        show again the halt that the exception represents. The selector is
+        put back to the agent that the controller names, because the snapshot
+        that would name it is what raised (`PL-V2HC`). Reset is the way out
+        that the halt banner names, unless a refused Reset has left its own
+        way out in effect.
         """
 
         agent_id = self._agent_dropdown.itemData(index)
@@ -1293,20 +1324,21 @@ class RunView(QWidget):
         self._confirm_new_case(snapshot, agent_id)
 
     def _show_running_agent(self, agent_id: str) -> None:
-        """Put the selector back on `agent_id`, the agent this run is of, without answering it.
+        """Put the selector back on `agent_id`, this run's agent, without responding to the pick.
 
-        The combo reports the reader's pick as a change before the handler
-        runs, so a pick that is not followed - one made while a question is
-        open, or on a run whose snapshot refuses - leaves the selector naming
-        an agent the run is not of until it is put back. Blocked, so that
-        putting it back is not read as a second pick.
+        The combo box reports the reader's pick as a change before the
+        handler runs. A pick that is not acted on leaves the selector naming
+        an agent that the run is not using, until the selector is put back.
+        Such a pick is one made while a question is open, or on a run whose
+        snapshot raises. Signals are blocked while the selector is put back,
+        so that the change is not read as a second pick.
         """
 
         with QSignalBlocker(self._agent_dropdown):
             self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(agent_id))
 
     def _start_new_case(self, agent_id: str) -> None:
-        """Switch the run to `agent_id` through the setting gate.
+        """Switch the run to `agent_id` through the setting gate, `_apply_setting`.
 
         `SimulationController.set_agent` refuses a branch (`PL-TFX5`), and
         that refusal reaches the reader as a refused-setting notice. It also
@@ -1336,11 +1368,11 @@ class RunView(QWidget):
         self._apply_setting(switch)
 
     def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
-        """Ask before discarding a recorded run, with the selector already reverted.
+        """Ask before discarding a recorded run, with the selector already put back.
 
-        The selector reads the agent that is actually running for as long
-        as the question is open, and the count of changes about to be lost
-        is the same grouping the timeline panel lists.
+        While the question is open, the selector shows the agent that is
+        actually running. The count of changes that would be lost uses the
+        same grouping that the timeline panel lists.
         """
 
         self._pending_agent_id = agent_id
@@ -1351,9 +1383,10 @@ class RunView(QWidget):
         )
         dialog = NewCaseDialog(question, self)
         dialog.finished.connect(self._handle_new_case_finished)
-        # Deleted once answered, or every question asked stays a child of
-        # this view: its title on `interface_strings` and its widgets in
-        # every walk of the tree (`PL-25KS`).
+        # The dialog is deleted once answered. Otherwise every question asked
+        # would stay a child of this view, with its title in
+        # `interface_strings` and its widgets in every walk of the widget
+        # tree (`PL-25KS`).
         dialog.finished.connect(dialog.deleteLater)
         self._new_case_dialog = dialog
         dialog.open()
@@ -1390,14 +1423,14 @@ class RunView(QWidget):
     def _resolve_new_case(self, confirmed: bool) -> None:
         """Act on the reader's answer once, however many times the dialog reports it.
 
-        The pending agent is cleared before anything else, so a second
-        arrival - a dialog reporting its close after the button that closed
-        it - finds nothing to act on and cannot undo a switch that has
+        The pending agent is cleared before anything else. So a second
+        report, such as a dialog reporting its close after the button that
+        closed it, finds nothing to act on. It cannot undo a switch that has
         already started.
 
         Args:
-            confirmed: True to discard the case and start the new one; False
-                to keep it, which rebuilds nothing.
+            confirmed: True to discard the case and start the new one. False
+                to keep the case, which rebuilds nothing.
         """
 
         agent_id = self._pending_agent_id
@@ -1417,17 +1450,19 @@ class RunView(QWidget):
     # ---------------------------------------------------------------- halt
 
     def halt(self, error: BaseException, *, in_frame: bool = False) -> None:
-        """Stop the run for a raise, recording it as the disposition the raise earns.
+        """Stop the run for an exception, and record the disposition that it calls for.
 
-        Draws nothing and writes nothing; `_halt_run` and
-        `SimulationView._halt_every_run` call `present_halt` after halting.
+        This method draws nothing and writes nothing on screen. `_halt_run`
+        and `SimulationView._halt_every_run` call `present_halt` after
+        halting.
 
         Args:
-            error: What was raised.
-            in_frame: True where the raise came from the frame every run is
-                drawn in, rather than from this run's own step or setting. The
-                controller records that as well, and a trunk with that record
-                offers no branch (`SimulationController.record_failed_frame`).
+            error: The exception that was raised.
+            in_frame: True when the exception came from the frame that every
+                run is drawn in, rather than from this run's own step or
+                setting. The controller records that as well, and a trunk with
+                that record offers no branch
+                (`SimulationController.record_failed_frame`).
         """
 
         disposition, reason = halt_disposition(error)
@@ -1441,17 +1476,17 @@ class RunView(QWidget):
             self.controller.fail(reason)
 
     def _halt_run(self, error: BaseException) -> None:
-        """Halt the run, say so from its controller's record, then ask for the frame.
+        """Halt the run, show the halt from its controller's record, then ask for the frame.
 
-        The halt comes first, so a presentation that fails cannot unwind it:
-        `SimulationView.present` answers a frame it cannot draw by halting
-        every run, and a controller keeps the first reason it was given, so
-        this run still reports the raise that stopped it. Its own status
-        word and banner are written before the frame is asked for, so a run
-        whose frame cannot be drawn still says it stopped.
+        The halt comes first, so a presentation that fails cannot undo it.
+        When `SimulationView.present` cannot draw a frame, it halts every run.
+        A controller keeps the first reason it was given, so this run still
+        reports the exception that stopped it. The run's own status word and
+        banner are written before the frame is asked for. So a run whose
+        frame cannot be drawn still says that it stopped.
 
         Args:
-            error: What was raised.
+            error: The exception that was raised.
         """
 
         self.halt(error)
@@ -1463,13 +1498,14 @@ class RunView(QWidget):
     def step_tick(self) -> None:
         """Advance the run by one tick's worth of steps, and never draw.
 
-        Reads the playback rate once and takes that many steps of
-        `SIMULATION_STEP_S` with nothing serviced between them, so a
-        setting changed while the run plays lands on a tick boundary
-        (`PL-NBWP`). A step the core refuses abandons the rest of the burst
-        and halts the run on the last completed step; the slot keeps
-        working afterwards, so Reset can restart it. A late tick costs the
-        run real time and never changes its trajectory: no step is made up.
+        The method reads the playback rate once and takes that many steps of
+        `SIMULATION_STEP_S`, with nothing else serviced between them. So a
+        setting changed while the run plays takes effect on a tick boundary
+        (`PL-NBWP`). A step that the core refuses abandons the rest of the
+        burst and halts the run on the last completed step. The slot keeps
+        working afterwards, so Reset can restart the run. A late tick costs
+        the run real time and never changes its trajectory, because no step
+        is made up.
         """
 
         if not self.controller.is_running:
@@ -1486,12 +1522,12 @@ class RunView(QWidget):
             self._halt_run(error)
 
     def start_simulation_timer(self) -> None:
-        """Start the tick timer; it is never stopped by a failure, only by `stop_timers`."""
+        """Start the tick timer, which only `stop_timers` stops and a failure never does."""
 
         self._step_timer.start()
 
     def stop_timers(self) -> None:
-        """Stop the tick timer; the dashboard's `stop_timers` calls this for every run."""
+        """Stop the tick timer. The dashboard's `stop_timers` calls this for every run."""
 
         self._step_timer.stop()
 
@@ -1500,17 +1536,18 @@ class RunView(QWidget):
     def build_transport_row(self) -> QWidget:
         """This run's agent selector or chip, Start/Pause/Reset, playback rate, status and badge.
 
-        One row per run rather than one for the dashboard: each control
-        reaches a particular controller, and a shared transport would leave
-        a reader unable to say which run a press acted on.
+        There is one row per run rather than one for the dashboard. Each
+        control acts on a particular controller, and a shared transport would
+        leave a reader unable to say which run a press acted on.
         """
 
         return self._transport_row
 
     def _lay_out_transport_row(self) -> QWidget:
-        """Build the transport row around this run's controls; only the constructor calls it.
+        """Build the transport row around this run's controls, once, for the constructor.
 
-        A second call would move the controls out of the row on screen (`PL-KZR1`).
+        Only the constructor calls this method. A second call would move the
+        controls out of the row on screen (`PL-KZR1`).
         """
 
         row = QWidget()
@@ -1528,9 +1565,9 @@ class RunView(QWidget):
         layout.addWidget(self._playback_rate_dropdown)
         layout.addWidget(self._status_text)
         layout.addStretch(1)
-        # The version-and-model badge, at the row's right end beside the run
-        # state it qualifies; the in-page title row it sat in is gone
-        # (`PL-J8K2` Q2).
+        # The version-and-model badge sits at the row's right end, beside the
+        # run state that it qualifies. The in-page title row that it used to
+        # sit in is gone (`PL-J8K2` Q2).
         layout.addWidget(self._agent_header_badge)
 
         return row
@@ -1538,31 +1575,33 @@ class RunView(QWidget):
     def set_run_name(self, name: str | None) -> None:
         """Name this view in its own header, its readouts and both its record panels, or not at all.
 
-        The dashboard decides the name, from `dashboard_frame.run_label` over
-        `run_id`, so that this panel and the chart's legend call one run the same thing -
-        a legend entry reading "Run 2" attributes a curve only if something
-        holding that run's settings also says "Run 2".
+        The dashboard decides the name by applying `dashboard_frame.run_label`
+        to `run_id`. So this panel and the chart's legend call one run by the
+        same name. A legend entry reading "Run 2" identifies a curve only if
+        something that holds that run's settings also says "Run 2".
 
-        **The one writer of this run's name**, which is why the two sidebar
-        headings are written here rather than in `refresh`: what a run is
-        called changes when the dashboard's run set changes and at no other
-        time, and `SimulationView._place_run` renames every run the moment a
-        branch is placed - so the headings are attributed on the frame the
-        branch appears on, before any chart frame is drawn (`PL-C3GS`).
+        **This method is the one writer of this run's name.** That is why the
+        two sidebar headings are written here rather than in `refresh`. What
+        a run is called changes when the dashboard's set of runs changes, and
+        at no other time. `SimulationView._place_run` renames every run the
+        moment a branch is placed. So the headings name the run on the frame
+        on which the branch appears, before any chart frame is drawn
+        (`PL-C3GS`).
 
-        The name is *recorded* here as well as drawn, because the notice
-        banner is named from it too (`_write_notice`): that banner also sits
-        in a column the runs share, and is written on a path with no frame to
-        read a run count off (`PL-TSZM`). It is not written here, unlike the
-        headings, and the difference is that something else already writes
-        it - `refresh` rewrites every banner on the presentation a fork
-        drives, and the Reset that drops a branch clears the notice outright,
-        so a write here would be one no scenario could tell from its absence.
-        Nothing else writes the headings.
+        The name is also *stored* here, as well as drawn, because the notice
+        banner is named from it too (`_write_notice`). That banner also sits
+        in a column that the runs share. It is written on a path that has no
+        frame to read a run count from (`PL-TSZM`). Unlike the headings, the
+        banner is not written here, because something else already writes
+        it. `refresh` rewrites every banner on the presentation that a fork
+        triggers, and the Reset that drops a branch clears the notice
+        outright. So a write here would make no difference that any scenario
+        could detect. Nothing else writes the headings.
 
         Args:
-            name: What to call it, or `None` for no name - which is what a
-                lone run gets, having nothing to be told apart from.
+            name: What to call the view, or `None` for no name. A lone run
+                gets `None`, because there is no other run to tell it apart
+                from.
         """
 
         self._run_name = name
@@ -1583,10 +1622,10 @@ class RunView(QWidget):
         return self._notice_text
 
     def build_readout_section(self) -> QWidget:
-        """The substance heading with the interpretation line beside it, then the readouts.
+        """Return the substance heading with the interpretation line beside it, then the readouts.
 
-        The heading says whose concentrations the seven panels under it are
-        (`PL-TCD1`); the interpretation line sits on the same row, once,
+        The heading says whose concentrations the seven panels under it show
+        (`PL-TCD1`). The interpretation line sits on the same row, once,
         beside the values it qualifies (`PL-2K1R`). The delivered
         concentration and the agent's 1 MAC close the same row (`PL-NWTM`).
         """
@@ -1594,14 +1633,15 @@ class RunView(QWidget):
         return self._readout_section
 
     def show_readings_of(self, other: RunView) -> tuple[QWidget, ...]:
-        """Carry `other`'s readouts in this run's panels, one block for both runs.
+        """Show `other`'s readouts in this run's panels, as one block for both runs.
 
         `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
-        under one compartment name, so comparing them is one row's reading
-        rather than two rows' (`PL-F2YS`). `other` keeps writing its own
-        values; only where they are drawn changes. Its own row is hidden, and
-        this run's heading line states its substance and 1 MAC, so nothing
-        in its readout section is left for the dashboard to show (`PL-QLZ5`).
+        under one compartment name. So comparing them means reading one row
+        rather than two (`PL-F2YS`). `other` keeps writing its own values, and
+        only the place where they are drawn changes. The other run's own row
+        is hidden, and this run's heading line states the other run's
+        substance and 1 MAC. So nothing in the other run's readout section is
+        left for the dashboard to show (`PL-QLZ5`).
 
         Args:
             other: The run being compared with this one.
@@ -1617,9 +1657,10 @@ class RunView(QWidget):
         return moved
 
     def _lay_out_readout_section(self) -> QWidget:
-        """Build the section around this run's heading and readouts; only the constructor calls it.
+        """Build the section around this run's heading and readouts, once, for the constructor.
 
-        A second call would move them out of the section on screen (`PL-KZR1`).
+        Only the constructor calls this method. A second call would move the
+        heading and readouts out of the section on screen (`PL-KZR1`).
         """
 
         section = QWidget()
@@ -1716,9 +1757,10 @@ class RunView(QWidget):
         return widgets
 
     def _lay_out_control_record(self) -> QWidget:
-        """Build the control-change panel; only the constructor calls it.
+        """Build the control-change panel, once, for the constructor.
 
-        A second call would move the labels out of the panel on screen (`PL-N67T`).
+        Only the constructor calls this method. A second call would move the
+        labels out of the panel on screen (`PL-N67T`).
         """
 
         timeline_panel_frame = panel_frame("controlTimelinePanel")

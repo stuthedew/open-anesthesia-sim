@@ -1,13 +1,13 @@
-"""How a layout is drawn in whole pixels, and which Areas cannot be given the size their View needs.
+"""How a layout is drawn in whole pixels, and which Areas cannot get the size their View needs.
 
-A layout stores fractions, so a file reads the same on any screen (`PL-HJPY`
-Q5). How small an Area may be is a property of the screen, so it is decided
-here, against an extent in pixels, and never stored in the layout. `PL-K285`
-decided the rules (project owner, 2026-09-27, ratified), and `PL-30L5` Q2
-changed one of them (project owner, 2026-10-11, ratified). This module holds
-them as pure functions of a window's tree, with no toolkit, so a test drives
-them with no `QApplication`. The adapter, `app/area_layout.py`, draws exactly
-the sizes this module gives.
+A layout stores fractions, so a file gives the same layout on any screen
+(`PL-HJPY` Q5). How small an Area may be is a property of the screen, so it is
+decided here, against an extent in pixels, and never stored in the layout.
+`PL-K285` decided the rules (project owner, 2026-09-27, ratified), and
+`PL-30L5` Q2 changed one of them (project owner, 2026-10-11, ratified). This
+module implements them as pure functions of a window's tree, with no toolkit,
+so a test drives them with no `QApplication`. The adapter,
+`app/area_layout.py`, draws exactly the sizes this module gives.
 
 **A View's minimum size is a constraint, not a request** (`PL-K285` Q1). Each
 Area has a *need*: the least size at which its View can be drawn. Where the
@@ -19,8 +19,8 @@ not changed: they are the reader's proportions, and they apply again once the
 extent is large enough.
 
 **An Area that cannot be given its need says so** (`PL-K285` Q2 and Q3,
-`PL-30L5` Q2). That happens where the reader's own operation asks for more
-than the extent holds: a split whose halves are smaller than their View needs,
+`PL-30L5` Q2). That happens when the reader's own operation asks for more room
+than the extent has: a split whose halves are smaller than their View needs,
 a View chosen for an Area too small for it, or a layout opened at a smaller
 size than it was arranged at. Such an Area is *too small*. It is held only at
 its *floor*, the least size at which it can show its header and one line of a
@@ -28,14 +28,15 @@ notice, and the adapter draws `PL-DB5G`'s notice there, stating the size the
 View needs and the size the Area has. The adapter gives its host the sum of
 the needs as its least size (`minimum_extent`), so a host that can grow, such
 as the dashboard's scrolling page, grows instead, and no Area there is too
-small. Nothing is clipped, and nothing is
-collapsed to zero extent, which is what Blender does with
-`RGN_FLAG_TOO_SMALL` (`docs/interface-provenance.md`).
+small. Nothing is clipped, and nothing is collapsed to zero extent. Collapsing
+to zero is what Blender does with `RGN_FLAG_TOO_SMALL`
+(`docs/interface-provenance.md`).
 
 **Which Areas are too small is decided once per change, by `settle`.** Every
-Area is first tried at its need. Where a split cannot hold its children's
-needs, the Areas under it that the latest change did not leave in place are
-let go to their floors first, and the Areas it left in place only after them.
+Area is first tried at its need. When a split cannot fit its children's
+needs, the Areas under it that the latest change did not leave in place drop to
+their floors first. The Areas that the change left in place drop only after
+them.
 So a split's new halves report themselves too small, rather than taking the
 room from an Area the reader did not touch. Then every Area that still has its
 need is drawn, and the rest are too small. A too-small Area is drawn again as
@@ -43,9 +44,10 @@ soon as a later change, such as a border drag or a larger window, can give it
 its need.
 
 **Pixels are apportioned as the adapter's splitters lay them out.** A split of
-`n` children gives up `n - 1` handles of `handle_px` along its axis, and shares
-the rest. Each share is rounded by `pixel_sizes`, which is the one rounding
-the adapter uses, so the sizes here are the sizes on screen.
+`n` children spends `n - 1` handles, each `handle_px` wide, along its axis,
+and shares the rest among its children. Each share is rounded by
+`pixel_sizes`, which is the one rounding that the adapter uses, so the sizes
+here are the sizes on screen.
 """
 
 from __future__ import annotations
@@ -156,8 +158,8 @@ class Fit:
             Area's minimum size to this, so the window's minimum is the sum
             of these bounds rather than of every need.
         drawn: The Areas given their need, which draw their View.
-        too_small: The Areas that are not, in reading order, with the size
-            each needs and has.
+        too_small: The Areas that are not given their need, in reading
+            order, each with the size it needs and the size it has.
     """
 
     apportionment: Apportionment
@@ -169,9 +171,10 @@ class Fit:
 def pixel_sizes(fractions: tuple[float, ...], available: int) -> tuple[int, ...]:
     """Whole-pixel sizes in the proportion of `fractions`, summing to `available`.
 
-    Each size is rounded down, and the pixels that leaves over go one each to
-    the sizes that lost the most, so the sizes sum to `available` exactly and
-    no size is more than a pixel from its share. Ties go to the earlier size.
+    Each size is rounded down. The pixels left over then go, one each, to the
+    sizes that lost the most in rounding. So the sizes sum to `available`
+    exactly, and no size is more than a pixel from its share. Ties go to the
+    earlier size.
     """
 
     exact = [fraction * available for fraction in fractions]
@@ -186,15 +189,15 @@ def pixel_sizes(fractions: tuple[float, ...], available: int) -> tuple[int, ...]
 
 
 def minimum_extent(tree: Node, handle_px: int, bounds: Mapping[AreaId, PixelSize]) -> PixelSize:
-    """The least extent at which every Area of `tree` can be given its bound.
+    """Return the least extent at which every Area of `tree` can be given its bound.
 
     A row needs the sum of its children's widths and its handles, and the
-    tallest of their heights; a column the same with the axes exchanged.
+    tallest of their heights. A column needs the same with the axes exchanged.
 
     Raises:
         TypeError: `handle_px` is not an `int`, or is a `bool`.
         InvalidLayout: `handle_px` is negative.
-        KeyError: `bounds` holds no bound for an Area of `tree`.
+        KeyError: `bounds` has no bound for an Area of `tree`.
     """
 
     _require_handle(handle_px)
@@ -215,9 +218,9 @@ def apportion(
     its fractions, and the split is listed in `unheld`.
 
     Raises:
-        TypeError: `extent` is not a `PixelSize`, or `handle_px` not an `int`.
+        TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
         InvalidLayout: `handle_px` is negative.
-        KeyError: `bounds` holds no bound for an Area of `tree`.
+        KeyError: `bounds` has no bound for an Area of `tree`.
     """
 
     if not isinstance(extent, PixelSize):
@@ -240,8 +243,8 @@ def apportion(
 
         orientation = node.orientation
         count = len(node.children)
-        # Each child is given a pixel at least, as the adapter's splitters
-        # always have been, so no Area is laid out with no extent at all.
+        # Each child is given at least one pixel, as the adapter's splitters
+        # have always done, so that no Area is laid out with no extent at all.
         available = max(size.along(orientation) - handle_px * (count - 1), count)
         across = size.across(orientation)
         least = [_minimum_extent(child, handle_px, bounds) for child in node.children]
@@ -278,16 +281,17 @@ def settle(
 
     `kept` names the Areas that were drawn before the change being settled
     and that the change left with the same View in the same place. Every
-    Area is tried at its need. While some split cannot hold its children's
-    bounds, the first such split's Areas that are not in `kept` are let go to
-    their floors, and where none is left to let go, its Areas in `kept` are.
-    An Area whose floor is more than its need is held at its floor. Every
-    Area that is then given its need is drawn, and every other is too small.
+    Area is first tried at its need. While some split cannot fit its
+    children's bounds, the Areas under the first such split that are not in
+    `kept` drop to their floors. When none of those is left to drop, the
+    split's Areas in `kept` drop instead. An Area whose floor is more than its need is held
+    at its floor. Every Area that is then given its need is drawn, and every
+    other Area is too small.
 
     Raises:
-        TypeError: `extent` is not a `PixelSize`, or `handle_px` not an `int`.
+        TypeError: `extent` is not a `PixelSize`, or `handle_px` is not an `int`.
         InvalidLayout: `handle_px` is negative.
-        KeyError: `needs` or `floors` holds no size for an Area of `tree`.
+        KeyError: `needs` or `floors` has no size for an Area of `tree`.
     """
 
     areas = tuple(areas_in(tree))
@@ -304,9 +308,10 @@ def settle(
         let_go = [area_id for area_id in holding if area_id not in kept] or holding
 
         if not let_go:
-            # Every Area under the split is at its floor already, so the
-            # extent is below what even the floors need. The sizes are the
-            # fractions', and every Area below its need is too small.
+            # Every Area under the split is already at its floor, so the
+            # extent is less than even the floors need. The split's sizes then
+            # follow its fractions alone, and every Area smaller than its need
+            # is too small.
             break
 
         for area_id in let_go:
@@ -329,13 +334,13 @@ def settle(
 def _held_sizes(
     fractions: tuple[float, ...], bounds: tuple[int, ...], available: int
 ) -> tuple[int, ...] | None:
-    """Sizes summing to `available`, each at least its bound, in proportion to `fractions` above it.
+    """Return sizes summing to `available`: each at least its bound, the rest shared by `fractions`.
 
     A child whose proportional share of what is left would be less than its
-    bound is held at its bound, and the others share what remains, until no
-    share is less than its bound. Where none is held, the result is exactly
-    `pixel_sizes(fractions, available)`. Returns None where the bounds sum to
-    more than `available`.
+    bound is held at its bound, and the other children share what remains.
+    This repeats until no share is less than its bound. When no child is held,
+    the result is exactly `pixel_sizes(fractions, available)`. Returns None
+    when the bounds sum to more than `available`.
     """
 
     if sum(bounds) > available:
@@ -374,7 +379,7 @@ def _held_sizes(
         for index, share in zip(loose, shares, strict=True):
             sizes[index] = share
     else:
-        # Every child is held, so the pixels left over above the bounds go
+        # Every child is held, so the pixels left over beyond the bounds go
         # to the children in proportion to their fractions.
         for index, extra in enumerate(pixel_sizes(fractions, free)):
             sizes[index] += extra

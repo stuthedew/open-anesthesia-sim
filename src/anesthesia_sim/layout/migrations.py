@@ -25,7 +25,7 @@ reads version 1 writes `pinned_run` as `null`, because nothing could pin a run
 before there was an identity to pin. The change that raises
 `LAYOUT_SCHEMA_VERSION` adds, in the same commit, the step that reads the
 version before it. When this module loads, `oldest_readable` checks that the
-steps read consecutive versions, ending one below the current version. So a
+steps read consecutive versions, ending one less than the current version. So a
 version raised without its step fails at import, not when a reader launches the
 app.
 
@@ -82,7 +82,7 @@ class SchemaVersion(int):
     Raises:
         TypeError: the value is not an `int`, or is a `bool`, which subclasses
             `int` and would make `True` version 1.
-        InvalidLayout: the value is below 1.
+        InvalidLayout: the value is less than 1.
     """
 
     __slots__ = ()
@@ -97,9 +97,9 @@ class SchemaVersion(int):
         return super().__new__(cls, value)
 
 
-# The version of the serialized form this build writes, and the newest it
-# reads. Raised by the change that alters the shape, together with the
-# `Migration` that reads the version before it.
+# The version of the serialized form that this build writes, and the newest
+# version it reads. The change that alters the shape raises this number. The
+# same change adds the `Migration` that reads the version before it.
 LAYOUT_SCHEMA_VERSION: Final = SchemaVersion(2)
 
 
@@ -114,9 +114,9 @@ class Migration:
     a step can never read a version that does not exist.
 
     Raises:
-        TypeError: a field is not of its declared type; `reads` is not an
-            `int`, or is a `bool`.
-        InvalidLayout: `reads` is below 1, or `lossy` is an empty sentence.
+        TypeError: a field is not of its declared type. This includes
+            `reads` that is not an `int`, or is a `bool`.
+        InvalidLayout: `reads` is less than 1, or `lossy` is an empty sentence.
     """
 
     reads: SchemaVersion
@@ -124,8 +124,8 @@ class Migration:
     lossy: str | None = None
 
     def __post_init__(self) -> None:
-        # A frozen dataclass sets its own field this way. A caller the type
-        # checker does not reach may pass an `int`, and it is checked here.
+        # A frozen dataclass sets its own field this way. A caller that the
+        # type checker does not cover may pass an `int`, so it is checked here.
         object.__setattr__(self, "reads", SchemaVersion(self.reads))
 
         if not callable(self.apply):
@@ -142,7 +142,7 @@ class Migration:
 
 @dataclass(frozen=True, slots=True)
 class Migrated:
-    """A body brought to the current version, and what the reader is told about the way."""
+    """A body migrated to the current version, and the notes that lossy steps give the reader."""
 
     body: dict[str, object]
     lossy: tuple[str, ...]
@@ -152,8 +152,8 @@ def oldest_readable(steps: tuple[Migration, ...], current: SchemaVersion) -> Sch
     """Return the oldest version `steps` can migrate to `current`, and check the chain for gaps.
 
     Raises:
-        InvalidLayout: the chain holds more steps than there are versions before
-            `current`, so its oldest version would be below 1. Or a step reads a
+        InvalidLayout: the chain has more steps than there are versions before
+            `current`, so its oldest version would be less than 1. Or a step reads a
             version out of sequence, so some version between the oldest and
             `current` has no step, or has two.
     """
@@ -173,15 +173,15 @@ def oldest_readable(steps: tuple[Migration, ...], current: SchemaVersion) -> Sch
 
 
 def _unpinned(body: dict[str, object]) -> dict[str, object]:
-    """A version 1 set body as version 2 writes it: every Workspace given `"pinned_run": null`.
+    """Return a version 1 set body as version 2 writes it: each Workspace gets `"pinned_run": null`.
 
-    A Workspace that is not an object, or a `workspaces` that is not a list,
-    is left as it stands, so the reader refuses it and names where it broke.
+    A Workspace that is not an object, or a `workspaces` that is not a list, is returned unchanged,
+    so that the reader rejects it and names where it broke.
 
     Raises:
-        LayoutFormatError: a Workspace already holds `pinned_run`, which
-            version 1 did not have. Kept, it would be read as a pin no build
-            ever wrote.
+        LayoutFormatError: a Workspace already has `pinned_run`, which
+            version 1 did not have. If it were kept, it would be treated as a
+            pin that no build ever wrote.
     """
 
     workspaces = body.get("workspaces")
@@ -204,12 +204,12 @@ def _unpinned(body: dict[str, object]) -> dict[str, object]:
     }
 
 
-# The steps this build applies, in order, each reading the version the one
-# before it writes.
+# The steps that this build applies, in order. Each step reads the version
+# that the step before it writes.
 MIGRATIONS: Final[tuple[Migration, ...]] = (Migration(SchemaVersion(1), _unpinned),)
 
-# The oldest version this build reads: the current one, less a step for each
-# version before it that has one.
+# The oldest version that this build reads. It is the current version, less
+# one for each earlier version that has a step.
 OLDEST_READABLE_VERSION: Final = oldest_readable(MIGRATIONS, LAYOUT_SCHEMA_VERSION)
 
 
@@ -219,16 +219,17 @@ def migrate(
     steps: tuple[Migration, ...] = MIGRATIONS,
     current: SchemaVersion = LAYOUT_SCHEMA_VERSION,
 ) -> Migrated:
-    """`body`, written at `written_at`, as version `current` writes it.
+    """Return `body`, written at version `written_at`, as version `current` would write it.
 
-    `steps` and `current` are this build's unless a test passes its own chain.
+    `steps` and `current` are this build's own, unless a test passes its own
+    chain.
 
     Raises:
-        UnsupportedSchemaVersion: `written_at` is above `current`.
-        LayoutFormatError: `written_at` is below the oldest version `steps`
-            read, so no chain of steps reaches it.
-        InvalidLayout: `steps` has a gap, as `oldest_readable` says, or a step
-            returned something other than a dict.
+        UnsupportedSchemaVersion: `written_at` is greater than `current`.
+        LayoutFormatError: `written_at` is less than the oldest version that
+            `steps` read, so no chain of steps starts from it.
+        InvalidLayout: `steps` has a gap, as `oldest_readable` reports, or a
+            step returned something other than a dict.
     """
 
     oldest = oldest_readable(steps, current)

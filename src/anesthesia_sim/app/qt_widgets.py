@@ -1,39 +1,43 @@
-"""The dashboard's leaf widgets, which move to match `dashboard_frame` and decide nothing.
+"""The dashboard's leaf widgets, which show what `dashboard_frame` gives them and decide nothing.
 
-The toolkit half of everything on the dashboard that is not a plot: a
-readout panel and the row of them, a setting slider, the notice banner, the
-new-case confirmation and the window's opening geometry. Each is written
-from a `dashboard_frame` value - a `Readout`, a `SettingReadout`, a
-`NewCaseQuestion` - and reads nothing from the simulation, formats no number
-and chooses between no two strings, so every claim a reader sees stays where
-`tests/unit/test_dashboard_frame.py` can hold it without a display
-(`PL-25KS`, decision D2). What a widget does own is layout arithmetic: how
-wide a panel must be, how many columns a row gets at a width, where the
-window opens.
+These are the Qt widgets for everything on the dashboard that is not a plot:
+a readout panel and the row of panels, a setting slider, the notice banner,
+the new-case confirmation and the window's opening geometry. Each widget is
+written from a `dashboard_frame` value, such as a `Readout`, a
+`SettingReadout` or a `NewCaseQuestion`. A widget reads nothing from the
+simulation, formats no number and never chooses between two strings. So
+every claim a reader sees stays where `tests/unit/test_dashboard_frame.py`
+can test it without a display (`PL-25KS`, decision D2). What a widget does
+own is layout arithmetic: how wide a panel must be, how many columns a row
+gets at a given width, and where the window opens.
 
 **A readout value never wraps away from its unit** (`PL-3355`). Each of a
-panel's four lines is a `QLabel` without word wrap, and the panel reserves
-its width once, from the font-metric advance of the widest string its
-column can show, so no window width can put "0.13" on one line and "%" on
-the next. The reservation is measured rather than declared; the Flet
-build's fixed guess at the clock's width, `theme.ELAPSED_VALUE_WIDTH`, was
-retired with the port (`PL-25KS`).
+panel's four lines is a `QLabel` without word wrap. The panel reserves its
+width once, from the font-metric advance of the widest string its column
+can show. So no window width can put "0.13" on one line and "%" on the
+next. The reservation is measured rather than declared. The Flet build used
+a fixed guess at the clock's width, `theme.ELAPSED_VALUE_WIDTH`, and that
+guess was retired with the port (`PL-25KS`).
 
 **A slider position is a printed value** (`PL-25KS`, decision D4). The four
-sliders are integer `QSlider`s whose one step is the control's display
-resolution, decoded through `dashboard_frame.slider_value`, so the number
-applied to the model is exactly the number beside the thumb.
+sliders are integer `QSlider`s. One step of a slider is the control's
+display resolution, and a position is decoded through
+`dashboard_frame.slider_value`. So the number applied to the model is
+exactly the number beside the thumb.
 
-**A row that has to wrap wraps here.** Qt ships no wrapping row, and the
-legend rows the Flet build wrapped (`ft.Row(wrap=True)`) held the chart
-column to 1220 px on one unbreakable line of six checkboxes, pushing the
-sidebar off a 1400 px window. `FlowLayout` is the shape of Qt's documented
-Flow Layout example, and `qt_chart` lays every legend row in one.
+**A row that has to wrap wraps here.** Qt ships no wrapping row. The Flet
+build wrapped its legend rows (`ft.Row(wrap=True)`). Laid out without
+wrapping, each of those rows became one unbreakable line of six checkboxes.
+Those lines held the chart column to 1220 px and pushed the sidebar off a
+1400 px window.
+`FlowLayout` follows the shape of Qt's documented Flow Layout example, and
+`qt_chart` lays out every legend row in one.
 
-**Every colour is `app/theme.py`'s**, reaching a widget through a stylesheet
-`app/stylesheets.py` composes over the theme name (decision D10, `PL-Y4YX`),
-so `tools/contrast_check.py`'s palette is the palette drawn. A colour whose
-roles a stylesheet cannot reach is declared on the palette instead, by
+**Every colour comes from `app/theme.py`** (decision D10, `PL-Y4YX`). A
+colour reaches a widget through a stylesheet that `app/stylesheets.py`
+composes from the theme name. So the palette that `tools/contrast_check.py`
+checks is the palette drawn. A colour for a palette role that no stylesheet
+can reach is declared on the palette instead, by
 `declare_interface_colours`.
 """
 
@@ -142,11 +146,12 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
 
-# How much of the screen's available area the window's normal geometry takes
-# (`PL-005`): what a reader gets back on un-maximizing, since the window
-# itself opens maximized (`PL-Z4K6`). A fraction rather than a size, so the
-# same rule gives a window that is fully visible on every display, and never
-# full screen, which hides the window controls on some platforms.
+# The fraction of the screen's available area that the window's normal geometry
+# takes (`PL-005`). The window opens maximized (`PL-Z4K6`), so the normal
+# geometry is what a reader gets back on un-maximizing. It is a fraction rather
+# than a size, so the same rule gives a window that is fully visible on every
+# display. It is never full screen, because full screen hides the window
+# controls on some platforms.
 WINDOW_SCREEN_FRACTION: Final = 0.8
 
 
@@ -163,8 +168,8 @@ def styled_label(
 
     Args:
         text: What the label says.
-        color: A `theme.py` colour name's value; it reaches the label
-            through `foreground_stylesheet`, never as a literal.
+        color: The value of a `theme.py` colour name. It is applied to the
+            label through `foreground_stylesheet`, never as a literal.
         size_px: The theme's pixel size for this line, or None for the
             application default.
         bold: Whether the text is bold.
@@ -193,8 +198,8 @@ def style_label(
 ) -> None:
     """Give a label one of the theme's colours and sizes, as `styled_label` does.
 
-    For a class that is itself a label, which `styled_label` cannot build.
-    The arguments are `styled_label`'s.
+    Use this for a class that is itself a label, which `styled_label` cannot
+    build. The arguments are the same as `styled_label`'s.
     """
 
     label.setStyleSheet(foreground_stylesheet(color))
@@ -241,13 +246,13 @@ def _fix_width_to_entry(selector: QComboBox, entry: str) -> None:
 
 
 #: The palette roles this interface declares, and the `app/theme.py` colour
-#: each is declared as. `Base` and `Text` are an entry's fill and the text
-#: typed into it, a list's rows, and a check box's indicator and its tick;
-#: `Button` and `ButtonText` are a spin box's steppers and their arrows;
-#: `PlaceholderText` is the word standing where a name has not been typed;
-#: `Highlight` and `HighlightedText` are a selected row. `Window` and
-#: `WindowText` are the surface a dialog paints and anything on it that
-#: declares nothing.
+#: declared for each. `Base` and `Text` paint an entry's fill and the text
+#: typed into it, a list's rows, and a check box's indicator and its tick.
+#: `Button` and `ButtonText` paint a spin box's steppers and their arrows.
+#: `PlaceholderText` paints the word shown where no name has been typed yet.
+#: `Highlight` and `HighlightedText` paint a selected row. `Window` and
+#: `WindowText` paint the surface a dialog draws, and anything on it that
+#: declares no colour of its own.
 _DECLARED_ROLES: Final = (
     (QPalette.ColorRole.Window, PANEL),
     (QPalette.ColorRole.WindowText, INK),
@@ -265,117 +270,126 @@ _DECLARED_ROLES: Final = (
 def declare_interface_colours(widget: QWidget) -> None:
     """Draw one widget's palette-painted parts in this interface's colours.
 
-    Every surface this interface draws is declared - a panel, a badge, a
-    button, a slider - and a widget that declares nothing paints from Qt's
-    palette instead, which follows the *host appearance* rather than this
-    interface. `PL-DHBX` was that on the transport buttons' labels. The
-    controls here are the half no stylesheet reaches: an entry's fill, a spin
-    box's stepper, a list's rows and its scroll bar, a check box's indicator
-    and a dialog's own surface are each painted from a palette role, so under
-    a dark host appearance they arrived near-black inside a light dialog
-    (`PL-RKRY`, `PL-7W9N`).
+    This interface declares the colours of every surface it draws, such as a
+    panel, a badge, a button or a slider. A widget that declares nothing
+    paints from Qt's palette instead, and that palette follows the *host
+    appearance* rather than this interface. The transport buttons' labels had
+    that defect (`PL-DHBX`). The controls this function covers are the ones
+    that no stylesheet reaches. An entry's fill, a spin box's stepper, a
+    list's rows and its scroll bar, a check box's indicator and a dialog's own
+    surface are each painted from a palette role. So under a dark host
+    appearance they were drawn near-black inside a light dialog (`PL-RKRY`,
+    `PL-7W9N`).
 
     **A palette rather than a stylesheet, measured rather than assumed.**
     Styling `QAbstractSpinBox` with `setStyleSheet` moves the widget onto
-    `QStyleSheetStyle`, which rendered both spin boxes without their up/down
-    steppers - and the stepper is the only way to change the value with a
-    mouse. A styled `QCheckBox::indicator` loses its tick entirely unless an
-    image is supplied for it, which would leave drawn and hidden identical.
-    Declaring the roles keeps every native sub-control and recolours it.
-    `popup_stylesheet` is the one place the opposite holds, and says why.
+    `QStyleSheetStyle`. That style rendered both spin boxes without their
+    up/down steppers, and the stepper is the only way to change the value
+    with a mouse. A styled `QCheckBox::indicator` loses its tick entirely
+    unless an image is supplied for it, which would make the drawn state and
+    the hidden state look identical. Declaring the roles keeps every native
+    sub-control and only recolours it. `popup_stylesheet` is the one place
+    where the opposite choice applies, and its docstring says why.
 
     **The `Disabled` colour group is left exactly as the platform supplied
-    it**, which is what makes this admissible at all:
-    `.claude/rules/ui-color.md` keeps a disabled colour the platform's with
-    one declared exception - `transport_button_stylesheet`'s MUTED label -
-    and `tools/contrast_check.py` refuses a second. Only the `Active` and
-    `Inactive` groups are written here, from the widget's own palette
-    outwards, so nothing in this interface chooses a disabled colour that no
-    requirement measures. `test_dark_appearance.py` holds it. Nothing this is
-    applied to is disabled today: the whole disabled set is the agent
-    selector, which is hidden by the same expression, and the three
-    transport buttons.
+    it.** That is what makes this function allowed at all.
+    `.claude/rules/ui-color.md` requires a disabled colour to be the
+    platform's, with one declared exception: `transport_button_stylesheet`'s
+    MUTED label. `tools/contrast_check.py` refuses a second exception. This
+    function writes only the `Active` and `Inactive` groups, starting from
+    the widget's own palette. So nothing in this interface chooses a disabled
+    colour that no contrast requirement measures. `test_dark_appearance.py`
+    tests this. Nothing this function is applied to is disabled today. The
+    only controls that are ever disabled are the agent selector, which is
+    hidden by the same expression that disables it, and the three transport
+    buttons.
 
-    The colours are `app/theme.py`'s, and every pair they make is already
-    measured: `tools/contrast_check.py` holds INK on PANEL for the text a
-    reader types and the rows a list states, MUTED on PANEL for the
-    placeholder, and PANEL on PRIMARY for a selected row.
+    The colours come from `app/theme.py`, and the contrast of every pair they
+    make is already measured. `tools/contrast_check.py` checks INK on PANEL
+    for the text a reader types and the rows of a list, MUTED on PANEL for
+    the placeholder, and PANEL on PRIMARY for a selected row.
 
     Args:
-        widget: The widget to declare. Its own palette is the starting
-            point, so a role this interface does not name keeps whatever it
-            already resolved to - and the `Disabled` group keeps all of it.
+        widget: The widget to declare colours for. Its own palette is the
+            starting point. So a role this interface does not name keeps
+            whatever colour it already resolved to, and the `Disabled` group
+            keeps all of its colours.
     """
 
     widget.setPalette(_with_declared_roles(widget.palette()))
 
 
 def declare_application_colours(application: QApplication) -> None:
-    """Draw the chrome no stylesheet and no widget palette reaches in this interface's colours.
+    """Draw the chrome that no stylesheet or widget palette reaches in this interface's colours.
 
-    `declare_interface_colours` declares one widget; this declares the surface
-    everything falls back to. Qt's application palette follows the *host
-    appearance*, so on a machine set to Dark the parts of the window this
-    interface never names arrived dark around a light interface (`PL-KRZW`,
-    the project owner's decision, 2026-09-20, ratified - chosen over leaving
-    the host appearance alone and over growing a second palette for dark
-    support, which would mean re-measuring all 24 contrast requirements and
-    re-picking the six traces against dark surfaces). The reason the light
-    theme is the one declared is the contrast apparatus: every requirement in
-    `tools/contrast_check.py` is measured on PANEL and BACKGROUND, so an
-    interface that renders anything else is measured against surfaces that are
-    not on screen.
+    `declare_interface_colours` declares the colours of one widget. This
+    function declares the palette that every widget falls back to. Qt's
+    application palette follows the *host appearance*. So on a machine set to
+    Dark, the parts of the window that this interface never names were drawn
+    dark around a light interface. Declaring the light palette here is the
+    project owner's decision (`PL-KRZW`, 2026-09-20, ratified). It was chosen
+    over leaving the host appearance alone, and over adding a second palette
+    for dark support. A second palette would mean re-measuring all 24
+    contrast requirements and re-picking the six trace colours against dark
+    surfaces. The light theme is the one declared because of the contrast
+    checks. Every requirement in `tools/contrast_check.py` is measured on
+    PANEL and BACKGROUND. An interface that drew any other surface would be
+    measured against surfaces that are not on screen.
 
-    **A palette rather than `styleHints().setColorScheme`.** Qt 6.8's colour
-    scheme is documented as a hint that "overriding the color scheme is not
-    supported on all platforms", and it was observed being ignored outright on
-    2026-09-20: `styleHints().colorScheme()` still reported `Unknown` after it
-    was set. Nothing may rest on it. An application palette is authoritative
-    at any depth, and it is the only thing that reaches a widget under a
-    stylesheet ancestor - a stylesheet makes everything beneath it resolve
-    from the *application* palette rather than from the styled widget, which
-    is what left a list's scroll bar and three selector popups unreachable
-    from the widget containing them (`PL-0NVN`).
+    **A palette rather than `styleHints().setColorScheme`.** Qt 6.8 documents
+    its colour scheme as a hint, and says that "overriding the color scheme is
+    not supported on all platforms". On 2026-09-20 the hint was observed being
+    ignored outright: `styleHints().colorScheme()` still reported `Unknown`
+    after it was set. So nothing may depend on it. An application palette
+    always takes effect, at any depth. It is also the only thing that reaches
+    a widget below an ancestor that has a stylesheet. A stylesheet makes every
+    widget beneath it take its colours from the *application* palette rather
+    than from the styled widget. That is why a list's scroll bar and three
+    selector popups could not be reached from the widget containing them
+    (`PL-0NVN`).
 
-    **What it covers, measured:** the scroll bar of the page's scroll area
-    went from 94.3% of its pixels darker than mid-grey to 0% under the dark
-    host palette `tests/integration/test_dark_appearance.py` supplies.
+    **What it covers, measured.** Under the dark host palette that
+    `tests/integration/test_dark_appearance.py` supplies, the scroll bar of
+    the page's scroll area went from 94.3% of its pixels darker than mid-grey
+    to 0%.
 
-    **What it does not cover, and why that is the rule rather than a gap:**
-    the `Disabled` colour group is left exactly as the platform supplied it,
-    for the reason `declare_interface_colours` gives, so a disabled control
-    with no colour of its own keeps drawing the host's. Declaring a disabled
-    colour is a decision under `.claude/rules/ui-color.md` rather than a style
-    choice, and this interface has exactly one, measured.
+    **What it does not cover, and why that follows the rule rather than
+    leaving a gap.** The `Disabled` colour group is left exactly as the
+    platform supplied it, for the reason `declare_interface_colours` gives.
+    So a disabled control with no colour of its own keeps drawing the host's
+    colours. Declaring a disabled colour is a decision under
+    `.claude/rules/ui-color.md`, not a style choice. This interface declares
+    exactly one, and it is measured.
 
-    **The per-widget declarations stay.** They are not made redundant by this:
-    a view is built by tests, and could be embedded, without `main()` ever
-    running, and `test_dark_appearance.py` asserts that a widget's own
-    declaration survives a *hostile* application palette - the property that
-    fails if the only declaration is global.
+    **The per-widget declarations stay.** This function does not make them
+    redundant. Tests build a view without `main()` ever running, and a view
+    could be embedded the same way. `test_dark_appearance.py` asserts that a
+    widget's own declaration survives a *hostile* application palette. That
+    test would fail if the only declaration were the global one.
 
     Args:
-        application: The application to declare. Called immediately after it
-            is constructed and before any widget exists, so nothing is built
-            under the host's palette; its current palette is the starting
-            point, so the `Disabled` group and every role not named here keep
-            what the platform supplied.
+        application: The application to declare colours for. Call this
+            immediately after the application is constructed and before any
+            widget exists, so that nothing is built under the host's palette.
+            The application's current palette is the starting point. So the
+            `Disabled` group and every role not named here keep what the
+            platform supplied.
     """
 
     application.setPalette(_with_declared_roles(application.palette()))
 
 
 def _with_declared_roles(existing: QPalette) -> QPalette:
-    """A copy of `existing` carrying this interface's colours in its live groups.
+    """Return a copy of `existing` with this interface's colours in its live groups.
 
-    The single place the `Active`-and-`Inactive`-only guarantee is written, so
-    that the widget declaration and the application declaration cannot drift
-    apart on it. Both of their docstrings say why the `Disabled` group is the
-    platform's.
+    This function is the one place that enforces the rule that only the
+    `Active` and `Inactive` groups are written. So the widget declaration and
+    the application declaration cannot drift apart on that rule. Both of
+    their docstrings say why the `Disabled` group keeps the platform's colours.
 
     Args:
-        existing: The palette to start from. Every role `_DECLARED_ROLES` does
-            not name keeps what it already resolved to.
+        existing: The palette to start from. Every role that `_DECLARED_ROLES`
+            does not name keeps the colour it already resolved to.
 
     Returns:
         The copy. `existing` is not modified.
@@ -393,14 +407,15 @@ def _with_declared_roles(existing: QPalette) -> QPalette:
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 
-    The shape of Qt's documented Flow Layout example: items are laid left to
-    right in the order added, each line as tall as its tallest item, and an
-    item that would overrun the right edge starts the next line. The layout
-    reports its height for a width, so the column above it grows the row as
-    it narrows; it expands in neither direction; and its minimum is its
-    widest single item, so nothing is ever laid outside it. The legend rows
-    use it so that six compartment entries on one line cannot hold the whole
-    chart column to their summed width (`PL-25KS`).
+    It follows the shape of Qt's documented Flow Layout example. Items are
+    laid out left to right in the order they were added. Each line is as tall
+    as its tallest item, and an item that would overrun the right edge starts
+    the next line. The layout reports its height for a given width, so the
+    column above it makes the row taller as the row narrows. The layout
+    expands in neither direction. Its minimum size is just large enough to
+    hold any one of its items, so no item is ever laid out outside it. The
+    legend rows use this layout so that six compartment entries on one line
+    cannot hold the whole chart column to their combined width (`PL-25KS`).
     """
 
     def __init__(
@@ -465,14 +480,14 @@ class FlowLayout(QLayout):
         return size + QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
 
     def _laid_items(self) -> list[QLayoutItem]:
-        """The items this row actually places: everything but a hidden widget.
+        """Return the items this row actually places: every item except a hidden widget.
 
-        A hidden widget is not on screen, so reserving its width would leave
-        a gap in the row and push the entries after it onto a further line
-        for nothing. Qt's own layouts skip one; this row is hand-written and
-        has to do it explicitly. Rows whose entries appear and disappear -
-        the chart legend's per-run entries, which stand down while one run is
-        drawn - depend on it.
+        A hidden widget is not on screen. Reserving its width would leave a
+        gap in the row, and could push the entries after it onto another line
+        for no reason. Qt's own layouts skip a hidden widget. This row is
+        hand-written, so it has to skip one explicitly. Rows whose entries
+        appear and disappear depend on this. An example is the chart legend's
+        per-run entries, which are hidden while only one run is drawn.
         """
 
         return [
@@ -512,28 +527,29 @@ class FlowLayout(QLayout):
 class MetricPanel(QFrame):
     """One readout: its name, its gloss, its value and its second unit.
 
-    Four lines, always present, so every panel in the row is the same
-    shape: a panel with no gloss draws `EMPTY_METRIC_QUALIFIER` and one
-    with no second unit draws `EMPTY_METRIC_SECONDARY_VALUE`, and every
-    reading sits on one baseline (`PL-8M05`). The gloss is smaller than the
-    name and the second unit smaller than the value, because each is the
-    weaker claim of its pair (`theme.METRIC_QUALIFIER_SIZE`,
-    `theme.METRIC_SECONDARY_VALUE_SIZE`).
+    The panel always has four lines, so every panel in the row has the same
+    shape. A panel with no gloss (the short qualifier line under the name)
+    draws `EMPTY_METRIC_QUALIFIER`, and one with no second unit draws
+    `EMPTY_METRIC_SECONDARY_VALUE`. So every reading sits on one baseline
+    (`PL-8M05`). The gloss is smaller than the name, and the second unit is
+    smaller than the value, because each is the weaker claim of its pair
+    (`theme.METRIC_QUALIFIER_SIZE`, `theme.METRIC_SECONDARY_VALUE_SIZE`).
 
-    The panel's minimum width is reserved at construction from the widest
-    string each line can show, measured in that line's font, plus the
-    panel's padding (`PL-3355`). No line wraps, so a layout that offers
-    less than the reservation clips the panel's edge rather than moving a
-    unit onto its own line; and the clock, the one value whose string
-    changes length every tick, cannot shift its panel as components appear
-    and fall away.
+    The panel reserves its minimum width when it is built. The width is the
+    widest string each line can show, measured in that line's font, plus the
+    panel's padding (`PL-3355`). No line wraps. So a layout that offers less
+    than the reservation clips the panel's edge rather than moving a unit
+    onto its own line. The clock is the one value whose string changes length
+    every tick. The reservation also stops the clock from shifting its panel
+    as parts of the time, such as the hours, appear and fall away.
 
-    The value and the second unit form the panel's *reading*, one widget
-    under the name and the gloss. While two runs are compared, the second
-    run's reading joins the first run's panel rather than standing in a
-    second panel of its own, so the readout block grows by a few lines and
-    not by a second row (`docs/MODEL.md` § "Minimum displayed outputs",
-    `PL-F2YS`). Each reading then names its run on a line above its value.
+    The value and the second unit form the panel's *reading*, which is one
+    widget under the name and the gloss. While two runs are compared, the
+    second run's reading joins the first run's panel instead of appearing in
+    a second panel of its own. So the readout block grows by a few lines
+    rather than by a second row (`docs/MODEL.md` § "Minimum displayed
+    outputs", `PL-F2YS`). Each reading then names its run on a line above its
+    value.
 
     Attributes:
         name_label: The modeled quantity, in the model's own terms.
@@ -542,8 +558,8 @@ class MetricPanel(QFrame):
             that `add_reading` can give to another run's panel.
         run_name_label: The run the reading belongs to, hidden while no
             name is set.
-        value_label: The reading with its unit; never wraps.
-        secondary_label: The reading in its second unit; never wraps.
+        value_label: The reading with its unit. It never wraps.
+        secondary_label: The reading in its second unit. It never wraps.
         minimum_value_width_px: The width reserved for the panel: the
             widest of the four lines' advances plus the padding on both
             sides.
@@ -619,7 +635,8 @@ class MetricPanel(QFrame):
 
         Args:
             name: The run's name from `dashboard_frame.run_label`, or `None`
-                for a lone run, which has nothing to be told apart from.
+                for a lone run. A lone run needs no name, because there is no
+                other run to tell it apart from.
         """
 
         self.run_name_label.setText(name or "")
@@ -628,8 +645,8 @@ class MetricPanel(QFrame):
     def add_reading(self, reading: QWidget) -> None:
         """Show another run's reading of the same quantity under this one's.
 
-        The reading stays the other run's widget, written by that run's
-        view, and leaves this panel when it is deleted.
+        The reading is still the other run's widget, and that run's view
+        writes it. The reading leaves this panel when it is deleted.
 
         Args:
             reading: The other panel's `reading`.
@@ -653,28 +670,30 @@ class MetricPanel(QFrame):
 class ReadoutRow(QWidget):
     """The readout panels in a grid whose column count follows the row's width.
 
-    The row reflows rather than squeezing a panel (`PL-8M05`): at each
-    resize `dashboard_frame.readout_columns` says how many panels of the
-    row's own measured reservation, with the grid's own spacing between
-    them, fit the new width, and the grid is re-laid to that count with
-    every column given equal stretch and the same minimum, so no panel is
-    given more of the row than its neighbours and none is laid outside the
-    row. Each column is held to the widest reservation of the panels it
-    holds, so the clock's wide elapsed form does not cost the six
-    compartment columns its width and seven stand across a laptop-wide
-    row. The widths at which the count steps down are therefore the
-    rendering font's rather than a recorded pixel ladder. The row's own
-    minimum is one column's - the widest panel's reservation - rather than
-    the grid's, because a row held at its seven-column minimum by a scroll
-    area or a splitter could never receive the narrower resize that tells
-    it to reflow; each panel keeps its own reservation, so no value wraps
-    at any count (`PL-3355`).
+    The row reflows rather than squeezing a panel (`PL-8M05`). At each
+    resize, `dashboard_frame.readout_columns` returns how many panels fit the
+    new width, given the row's own measured reservations and the grid's own
+    spacing between them. The grid is then laid out again with that many
+    columns. Every column gets equal stretch and a minimum width, so no panel
+    gets more of the row than its neighbours and none is laid out outside the
+    row. Each column's minimum width is the widest reservation among the
+    panels in it. So the clock's wide elapsed form does not cost the six
+    compartment columns its width, and seven columns fit across a
+    laptop-wide row. The widths at which the count steps down therefore come
+    from the rendering font rather than from a recorded table of pixel
+    widths.
+
+    The row's own minimum width is one column's width, which is the widest
+    panel's reservation, rather than the grid's minimum. A row held at its
+    seven-column minimum by a scroll area or a splitter could never receive
+    the narrower resize that tells it to reflow. Each panel keeps its own
+    reservation, so no value wraps at any column count (`PL-3355`).
 
     Attributes:
         panels: One `MetricPanel` per readout, in row order.
         panel_minimum_widths_px: Each panel's own reservation, in row
-            order, so a column count's fit at a width can be checked
-            against them.
+            order, so that whether a column count fits a given width can be
+            checked against them.
         panel_minimum_width_px: The widest of those, which is the row's own
             minimum width.
     """
@@ -690,8 +709,9 @@ class ReadoutRow(QWidget):
 
         Args:
             readouts: The panels' lines as drawn this tick, in row order.
-            reservations: Per panel, the widest value and the widest second
-                line its column can show - `dashboard_frame.READOUT_RESERVATIONS`.
+            reservations: For each panel, the widest value and the widest
+                second line its column can show, from
+                `dashboard_frame.READOUT_RESERVATIONS`.
             parent: The Qt parent.
 
         Raises:
@@ -731,9 +751,9 @@ class ReadoutRow(QWidget):
             readouts: One `Readout` per panel, in row order.
 
         Raises:
-            ValueError: If `readouts` is not one per panel; a row written
-                from the wrong count would leave a panel showing the
-                previous tick beside six showing this one.
+            ValueError: If `readouts` does not hold one readout per panel.
+                A row written from the wrong count would leave a panel
+                showing the previous tick beside six panels showing this one.
         """
 
         if len(readouts) != len(self.panels):
@@ -759,18 +779,18 @@ class ReadoutRow(QWidget):
     def add_readings(self, other: ReadoutRow) -> tuple[QWidget, ...]:
         """Show another run's readings in this row's panels, and hide its row.
 
-        This is how two runs share one readout block: each panel carries
-        both runs' values under one name, each value naming its run, so a
+        This is how two runs share one readout block. Each panel shows both
+        runs' values under one name, and each value names its run. So a
         second run adds three lines to the block rather than a second row of
         seven panels (`PL-F2YS`).
 
         Args:
             other: The second run's row. It is hidden, because its panels no
-                longer hold their readings.
+                longer contain their readings.
 
         Returns:
-            The readings moved, in row order. Deleting them takes them out
-            of this row's panels again.
+            The readings that were moved, in row order. Deleting them takes
+            them out of this row's panels again.
 
         Raises:
             ValueError: If the rows do not name the same quantities in the
@@ -795,7 +815,7 @@ class ReadoutRow(QWidget):
         return tuple(compared.reading for compared in other.panels)
 
     def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """One column wide, and as tall as the grid is at its current count."""
+        """Return a size one column wide, and as tall as the grid at its current column count."""
 
         return QSize(self.panel_minimum_width_px, super().minimumSizeHint().height())
 
@@ -807,14 +827,14 @@ class ReadoutRow(QWidget):
             self._lay_out(columns)
 
     def width_for(self, columns: int) -> int:
-        """The narrowest row that seats the panels `columns` across, at their reservations."""
+        """The narrowest row width that fits the panels `columns` across, at their reservations."""
 
         return ceil(
             readout_row_width(columns, self.panel_minimum_widths_px, self._grid.horizontalSpacing())
         )
 
     def _columns_for(self, width_px: int) -> int:
-        """The rung of the ladder whose panels fit `width_px` at their reservations."""
+        """The largest allowed column count whose panels fit `width_px` at their reservations."""
 
         return readout_columns(
             width_px, self.panel_minimum_widths_px, self._grid.horizontalSpacing()
@@ -823,9 +843,10 @@ class ReadoutRow(QWidget):
     def _lay_out(self, columns: int) -> None:
         """Seat the panels `columns` across, every column with equal stretch.
 
-        A column's minimum is the widest reservation among the panels it
-        holds; the stretch is equal, so any width beyond the minimums is
-        shared equally and the columns are equal wherever there is room.
+        A column's minimum width is the widest reservation among the panels
+        in it. The stretch is equal, so any width beyond the minimums is
+        shared equally, and the columns are equal in width wherever there is
+        room.
         """
 
         while self._grid.takeAt(0) is not None:
@@ -848,34 +869,35 @@ class ParameterSlider(QWidget):
     """One setting: its name, its gloss, an integer slider and the value beside it.
 
     The slider spans `slider_position(minimum)` to `slider_position(maximum)`
-    in steps of one count, and a count is the control's display resolution,
-    so the value it emits and the value printed beside it are one number
-    (`PL-25KS`, decision D4). The value label is the text of the settings in
-    force, written by `set_setting` from the snapshot a frame drew from or,
-    on a halt no frame follows, from the controller's own settings
-    (`PL-85LJ`), so a refused setting, or a drag that halted the run, leaves
-    the control reading what the simulation is actually running at.
+    in steps of one count. One count is the control's display resolution, so
+    the value the slider emits and the value printed beside it are the same
+    number (`PL-25KS`, decision D4). The value label shows the settings in
+    force. `set_setting` writes it from the snapshot that a frame was drawn
+    from. On a halt that no frame follows, it writes the label from the
+    controller's own settings instead (`PL-85LJ`). So after a refused
+    setting, or a drag that halted the run, the control shows what the
+    simulation is actually running at.
 
-    The value label's width only grows: reserved from the text it is first
-    given and widened when a longer one arrives, never narrowed, so the
-    slider beside it does not shorten under a pointer mid-drag as the
-    printed value loses a digit.
+    The value label's width only grows. It is reserved from the first text
+    the label is given, and widened when a longer text arrives, but never
+    narrowed. So the slider beside it does not shorten under the pointer
+    mid-drag when the printed value loses a digit.
 
     Attributes:
         slider: The integer slider.
         name_label: The setting's name.
         qualifier_label: The gloss under the name, hidden where the setting
-            has none: no spacer holds the line open, because the four
-            controls are of unequal height by design (`SettingReadout`),
-            the delivered dial alone carrying a second line for its MAC
+            has none. No spacer keeps the line open, because the four
+            controls have unequal heights by design (`SettingReadout`).
+            Only the delivered dial carries a second line, for its MAC
             multiple.
         value_label: The setting as the snapshot prints it.
         secondary_label: The setting in its second unit, shown only where
-            the setting has one - the delivered dial's MAC line.
+            the setting has one, which is the delivered dial's MAC line.
         adjustment_started: Emitted when the reader presses the thumb, so
             the run can mark one adjustment before the values arrive.
-        value_changed: Emitted with the decoded value each time the slider
-            moves under the reader; never by `set_setting`.
+        value_changed: Emitted with the decoded value each time the reader
+            moves the slider. `set_setting` never emits it.
     """
 
     adjustment_started = Signal()
@@ -963,9 +985,10 @@ class ParameterSlider(QWidget):
 class NoticeLabel(QLabel):
     """The banner above a run's values: a stopped run or a refused setting, or nothing.
 
-    Word-wrapped, bold and in `theme.WARNING`, the one signal this interface
-    has. Hidden rather than blank when there is nothing to say, so an empty
-    line never holds the space a warning would.
+    The banner is word-wrapped, bold and drawn in `theme.WARNING`, which is
+    the one warning colour this interface has. It is hidden rather than blank
+    when there is nothing to say, so an empty line never takes up the space a
+    warning would.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1054,30 +1077,32 @@ def lay_out_question(
 class NewCaseDialog(QDialog):
     """The confirmation asked before a recorded run is discarded for a new agent.
 
-    Destructive first, safe last: the discard button is drawn first and
-    outlined, and the keep button last and filled, and only the keep button
-    is the default, so the press a reader makes without reading - Return,
-    or the trailing action - keeps their case, and Escape or closing the
-    dialog does the same. `accept()` therefore means "discard and start
-    the new case" and `reject()` means "keep"; the run connects to
-    `finished` and reads which. Modal, so the run's controls cannot be
-    reached around a question about that run. Shown with `open()` and
-    never `exec()`, so a test can drive `accept()` and `reject()` itself.
+    The destructive button comes first and the safe button last. The discard
+    button is drawn first and outlined, and the keep button is drawn last and
+    filled. Only the keep button is the default. So the press a reader makes
+    without reading, either Return or the trailing action, keeps their case.
+    Escape or closing the dialog does the same. `accept()` therefore means
+    "discard and start the new case", and `reject()` means "keep". The run
+    connects to `finished` and checks which result arrived. The dialog is
+    modal, so the reader cannot reach the run's controls while a question
+    about that run is open. It is shown with `open()` and never with
+    `exec()`, so a test can call `accept()` and `reject()` itself.
 
-    The surface is `theme.PANEL`, set rather than left to the platform, so
-    the title's INK, the discard line's WARNING and the carry-over line's
-    MUTED stand on the surface `tools/contrast_check.py` measures them
-    against (`PL-R3KB`). It is declared as a palette rather than as a
-    one-rule stylesheet since `PL-RKRY`: a stylesheet on a dialog is what
-    stops everything inside it inheriting the dialog's own colours, so a
-    control added here later would paint the host appearance's however this
-    surface was set.
+    The surface is `theme.PANEL`, set explicitly rather than left to the
+    platform. So the title's INK, the discard line's WARNING and the
+    carry-over line's MUTED are drawn on the surface that
+    `tools/contrast_check.py` measures them against (`PL-R3KB`). Since
+    `PL-RKRY`, the surface is declared as a palette rather than as a
+    one-rule stylesheet. A stylesheet on a dialog stops everything inside it
+    from inheriting the dialog's own colours. So a control added here later
+    would paint in the host appearance's colours, however this surface was
+    set.
 
     Attributes:
         title_label: Names the agent the reader would start.
         body_labels: The three statements, in the order a reader meets
-            them: INK, then the discard warning in bold WARNING, then the
-            carry-over line in MUTED.
+            them: the opening line in INK, then the discard warning in bold
+            WARNING, then the carry-over line in MUTED.
         discard_button: The destructive action; `clicked` runs `accept()`.
         keep_button: The safe action and the default; `clicked` runs
             `reject()`.
@@ -1128,12 +1153,14 @@ class NewCaseDialog(QDialog):
 class MarkRow(QWidget):
     """One mark's row: a bullet, and beside it the row's text, wrapping under itself.
 
-    The bullet has a column of its own because a row can wrap, and a row's
-    continuation can be a whole clause naming a run - `Run 2 reached` - that
-    reads as a row of its own when it starts at the margin every row starts at
-    (`PL-FPY2`). Here a continuation starts under the text, right of the column
-    the next row's bullet stands in, so which mark a standing belongs to is read
-    off its position rather than off its wording.
+    The bullet has a column of its own because a row can wrap. A wrapped row's
+    continuation can be a whole clause that names a run, such as
+    `Run 2 reached`. If the continuation started at the same margin as every
+    row, it would look like a row of its own (`PL-FPY2`). Here a continuation
+    starts under the text, to the right of the column where the next row's
+    bullet sits. A standing is the clause that says whether a run has reached
+    a mark. So a reader can tell which mark a standing belongs to from its
+    position rather than from its wording.
 
     Attributes:
         bullet_label: Where the row starts.
@@ -1156,17 +1183,18 @@ class MarkRow(QWidget):
 class MarkListingLabel(QWidget):
     """One bookmark collection, drawn read-only: a heading and its rows.
 
-    Two of these rather than one widget holding both collections, because the
-    two are listed apart (`PL-LPLD`) and a widget that knew there were exactly
-    two of them could not be placed anywhere a third kind was wanted. It is
-    given a `MarkListing` and decides nothing: whether the rows or the empty
-    line is drawn is settled in `dashboard_frame.MarkListing.empty_line`, where
-    a test can read it without a display.
+    The bookmarks panel uses two of these rather than one widget holding both
+    collections. The two collections are listed apart (`PL-LPLD`), and a
+    widget that knew there were exactly two could not be placed anywhere a
+    third kind was wanted. This widget is given a `MarkListing` and decides
+    nothing. Whether it draws the rows or the empty line is settled in
+    `dashboard_frame.MarkListing.empty_line`, where a test can check it
+    without a display.
 
     Each mark is a `MarkRow` of its own rather than a line in one label, so a
-    row that wraps is told apart from the row below it (`PL-FPY2`). The rows
-    are rewritten in place each tick and only added or removed when the
-    number of marks changes.
+    reader can tell a row that wraps apart from the row below it
+    (`PL-FPY2`). The rows are rewritten in place each tick, and are only
+    added or removed when the number of marks changes.
 
     Attributes:
         heading_label: The collection's name.
@@ -1191,7 +1219,7 @@ class MarkListingLabel(QWidget):
         column.addLayout(self._rows_column)
 
     def set_listing(self, listing: MarkListing) -> None:
-        """Draw `listing`, heading and rows both.
+        """Draw `listing`, both its heading and its rows.
 
         Args:
             listing: One of `dashboard_frame.bookmark_panel`'s two listings.
@@ -1232,9 +1260,10 @@ class MarkListingLabel(QWidget):
 class BookmarksPanel(QWidget):
     """The two collections beside the chart, with the control that opens the editor.
 
-    Read-only. Marks are created and removed in `BookmarkDialog`, so the
-    panel a reader has in front of them while a case runs states what is
-    marked and offers nothing that could change a run by a mis-click.
+    The panel is read-only. Marks are created and removed in
+    `BookmarkDialog`. So the panel in front of the reader while a case runs
+    shows what is marked, and offers nothing that a mis-click could use to
+    change a run.
 
     Attributes:
         times: The marked instants.
@@ -1259,7 +1288,7 @@ class BookmarksPanel(QWidget):
         column.addLayout(actions)
 
     def set_panel(self, panel: BookmarkPanel) -> None:
-        """Draw both collections from one tick's answer, and show them if withdrawn.
+        """Draw both collections from one tick's result, and show them again if withdrawn.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1290,49 +1319,54 @@ class BookmarksPanel(QWidget):
 class ForkPanel(QWidget):
     """Where a learner takes a branch: which point to open it at, and the button.
 
-    Beside the marks rather than inside a `RunView`, for the reason the marks
-    are there: the points it offers are the *case's* - the trunk's keyframes
-    and the marks it has passed - and a control duplicated into each displayed
-    run would give a branch one that can only refuse (`docs/ARCHITECTURE.md`
-    § "Where new code belongs").
+    The panel sits beside the marks rather than inside a `RunView`, for the
+    same reason the marks sit there. The points it offers belong to the
+    *case*: the trunk's keyframes and the marks the trunk has passed. A
+    control copied into each displayed run would give a branch a control that
+    can only refuse (`docs/ARCHITECTURE.md` § "Where new code belongs").
 
-    It decides nothing. Which points are offered, how they are rendered and
-    whether the control is shown at all are settled in
-    `dashboard_frame.fork_offer`, where a test reads them without a display;
-    this writes the answer into widgets. **The panel keeps the `ForkPoint`s it
-    was given, in the selector's order, and answers with one of them**
-    (`selected_point`), so the caller acts on the point it was handed - a
-    keyframe's `CaseInstant`, or a mark itself - rather than on the string a
-    reader sees or on a value read back out of Qt. A selection kept across a
-    rebuilt list is found by `ForkPoint` equality in the new list, never by
-    `findData`: Qt holds a `float` subclass as an opaque Python object, which
-    `findData` matches only by identity, so an equal `CaseInstant` built anew
-    is not found (measured 2026-10-04, PySide6, `PL-CN5S`), and a control
-    event and a mark can stand at one instant, which no lookup by number
-    could tell apart. Each entry still carries its instant as a plain-`float`
-    `userData`, which is how the selector is read from outside, as a test
-    finds an entry by instant; nothing here acts on it.
+    The panel decides nothing. Which points are offered, how they are
+    rendered and whether the control is shown at all are settled in
+    `dashboard_frame.fork_offer`, where a test can check them without a
+    display. This class writes that result into widgets.
 
-    **Refused the way the transport refuses** (`PL-61WW`): `setDisabled`
-    beside `setHidden` with one operand, and the reason standing where the
-    control stood, so a control that cannot be used draws nothing and a
-    reader is never left guessing what a greyed button wanted.
+    **The panel keeps the `ForkPoint`s it was given, in the selector's order,
+    and returns one of them** (`selected_point`). So the caller acts on the
+    point it was handed, either a keyframe's `CaseInstant` or a mark itself.
+    It does not act on the string a reader sees, or on a value read back out
+    of Qt. When the list is rebuilt, a kept selection is found in the new
+    list by `ForkPoint` equality, never by `findData`, for two reasons.
+    First, Qt holds a `float` subclass as an opaque Python object, and
+    `findData` matches that object only by identity. So an equal
+    `CaseInstant` built anew is not found (measured 2026-10-04, PySide6,
+    `PL-CN5S`). Second, a control event and a mark can stand at the same
+    instant, and no lookup by number could tell them apart. Each entry still
+    carries its instant as a plain-`float` `userData`. That is how code
+    outside the panel reads the selector, as when a test finds an entry by
+    its instant. Nothing in this class acts on it.
 
-    **Two lines, because they are two different things.** A lock is a mode
-    the reader can leave, and it is written as an ordinary caption where the
-    control was; a refusal is the case rejecting what was asked for, and it
-    is a `NoticeLabel` like every other refusal on this dashboard. Writing
-    the lock in the notice's colour would spend this interface's one alarm
-    on a state that is working as intended.
+    **The panel refuses in the same way the transport refuses** (`PL-61WW`).
+    It calls `setDisabled` beside `setHidden` with the same operand, and
+    shows the reason where the control was. So a control that cannot be used
+    is not drawn at all, and a reader is never left guessing what a
+    greyed-out button needed.
 
-    **Two controls for three doors, because the doors have two lifetimes**
-    (`PL-TYWQ`, `PL-Y2SL`). The selector's entries - the recorded control
-    events and the marks the trunk has passed - stay until the case itself
-    changes; the here button's instant is the one the paused trunk is standing
-    on and is gone once it starts. It is a row of its own below the
-    selector, and it takes no instant from this panel at all:
-    `BranchedCase.fork_here` forks where the trunk stands, so there is nothing
-    here for a press to name wrongly.
+    **A lock and a refusal get two different lines, because they are two
+    different things.** A lock is a mode the reader can leave, and it is
+    written as an ordinary caption where the control was. A refusal is the
+    case rejecting what was asked for, and it is a `NoticeLabel` like every
+    other refusal on this dashboard. Writing the lock in the notice's colour
+    would spend this interface's one alarm colour on a state that is working
+    as intended.
+
+    **Two controls offer three kinds of branch point, because the points
+    have two lifetimes** (`PL-TYWQ`, `PL-Y2SL`). The selector's entries are
+    the recorded control events and the marks the trunk has passed. They
+    stay until the case itself changes. The here button's instant is the one
+    the paused trunk is standing on, and it is gone once the trunk starts.
+    So the here button has a row of its own below the selector. It takes no
+    instant from this panel at all. `BranchedCase.fork_here` forks where the
+    trunk stands, so a press has no instant that it could name wrongly.
 
     Attributes:
         heading_label: What the section is called.
@@ -1342,8 +1376,9 @@ class ForkPanel(QWidget):
         here_button: Takes the branch where the trunk is paused, and is on
             screen only while `dashboard_frame.fork_offer` offers that.
             `clicked` is connected by the view.
-        lock_text: Why the control is not being offered, where it stood.
-        notice: Why the branch last asked for was refused.
+        lock_text: Why the control is not offered, shown where the control
+            was.
+        notice: Why the last requested branch was refused.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1362,9 +1397,10 @@ class ForkPanel(QWidget):
         )
         self.take_button = QPushButton(TAKE_FORK_LABEL)
         self.take_button.setStyleSheet(outlined_button_stylesheet())
-        # The same outline as the button above, because it is the same kind of
-        # act on the same case; what separates the two is that this one carries
-        # its instant in its own label and is only sometimes there.
+        # This button has the same outline as the button above, because it is
+        # the same kind of act on the same case. It differs in two ways: it
+        # carries its instant in its own label, and it is only sometimes on
+        # screen.
         self.here_button = QPushButton("")
         self.here_button.setStyleSheet(outlined_button_stylesheet())
         self.here_button.setDisabled(True)
@@ -1373,8 +1409,9 @@ class ForkPanel(QWidget):
         self.lock_text.setHidden(True)
         self.notice = NoticeLabel(self)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
-        # The points the selector holds, entry for entry, in its order: what
-        # `selected_point` answers with and what `set_offer` compares against.
+        # The points behind the selector's entries, one per entry, in the
+        # selector's order. `selected_point` returns one of them, and
+        # `set_offer` compares a new offer against them.
         self._offered: tuple[ForkPoint, ...] = ()
 
         column = QVBoxLayout(self)
@@ -1397,12 +1434,13 @@ class ForkPanel(QWidget):
         column.addWidget(self.notice)
 
     def selected_point(self) -> ForkPoint | None:
-        """The point the selector stands on, or None while it stands on none.
+        """Return the point currently selected, or None while nothing is selected.
 
-        The `ForkPoint` the panel was given, read from what it keeps by the
-        selector's index rather than rebuilt from what Qt holds, so a mark
-        comes back as the mark and a keyframe as the `CaseInstant` it was
-        offered as (see this class's docstring).
+        The result is the `ForkPoint` the panel was given. It is looked up by
+        the selector's index in the points the panel keeps, rather than
+        rebuilt from what Qt holds. So a mark comes back as the mark, and a
+        keyframe comes back as the `CaseInstant` it was offered as (see this
+        class's docstring).
         """
 
         index = self.point_selector.currentIndex()
@@ -1412,38 +1450,38 @@ class ForkPanel(QWidget):
     def set_offer(self, offer: ForkOffer) -> None:
         """Draw one tick's offer, keeping the reader's selection where it still exists.
 
-        The entries are rebuilt only when they have changed, because a
-        running trunk adds one on every setting change and every mark its
-        clock reaches, and a selector rebuilt every frame would drop a
-        reader's choice mid-click. The rebuild is made under a
-        `QSignalBlocker` so that repopulating the control cannot be mistaken
-        for a reader operating it.
+        The entries are rebuilt only when they have changed. A running trunk
+        adds an entry at every setting change and at every mark its clock
+        reaches. A selector rebuilt every frame would drop a reader's choice
+        mid-click. The rebuild runs under a `QSignalBlocker`, so that
+        refilling the control cannot be mistaken for a reader operating it.
 
         **A selection whose point is no longer offered is cleared rather than
-        moved, and a cleared one stays clear** (`PL-J12Z`). The point is
-        looked up by equality in the new list and `setCurrentIndex(-1)`
-        leaves nothing selected when it is not there, so `selected_point`
-        answers None and the button says so. Falling back to the first entry
+        moved, and a cleared selection stays clear** (`PL-J12Z`). The point
+        is looked up by equality in the new list. When it is not there,
+        `setCurrentIndex(-1)` leaves nothing selected, so `selected_point`
+        returns None and the button says so. Falling back to the first entry
         would put *induction* under a reader who had chosen a later decision
-        point, and branch there on the next press - a silently substituted
-        default of exactly the kind `CLAUDE.md`'s safety-critical standard
-        refuses, and reachable without a reset: a keyframe collapses when a
-        dial is returned to its previous value at the same instant, which is
-        a learner changing their mind, and a mark leaves when it is unmarked.
-        Qt itself selects the first entry whenever an emptied selector is
-        refilled, which is why the index is set on every rebuild rather than
-        only where a selection survives. The first fill is the one exception,
-        and selects the first entry as a selector does: nobody has chosen
-        yet, so there is no choice to substitute for.
+        point, and the next press would branch there. That would be a
+        silently substituted default, of exactly the kind `CLAUDE.md`'s
+        safety-critical standard refuses. It can happen without a reset. A
+        keyframe collapses when a dial is returned to its previous value at
+        the same instant, which is a learner changing their mind. A mark
+        leaves the list when it is unmarked. Qt itself selects the first
+        entry whenever an emptied selector is refilled. That is why the index
+        is set on every rebuild, not only when a selection survives. The
+        first fill is the one exception, and it selects the first entry as a
+        selector normally does. Nobody has chosen yet, so no choice is being
+        replaced.
 
-        **The here button is shown or hidden whole, never emptied in place.**
-        Its offer has no counterpart to the selection above for a reader to
-        lose, because the button carries its instant in its own label: a
-        frame in which the trunk is going takes the control off the panel
-        rather than leaving a live button labelled for an instant that has
-        gone. It is disabled by the same expression that
-        hides it, which is the pairing `tools/agent_identity_check.py`
-        requires of every control on this dashboard.
+        **The here button is shown or hidden as a whole, never emptied in
+        place.** The button carries its instant in its own label, so there is
+        no selection for a reader to lose, as there is with the selector. In
+        a frame in which the trunk is running, the button is taken off the
+        panel. A live button is never left labelled with an instant that has
+        passed. The button is disabled by the same expression that hides it,
+        which is the pairing `tools/agent_identity_check.py` requires of
+        every control on this dashboard.
 
         Args:
             offer: `dashboard_frame.fork_offer`'s result this tick.
@@ -1477,8 +1515,8 @@ class ForkPanel(QWidget):
         self.take_button.setDisabled(withdrawn)
         self.take_button.setHidden(withdrawn)
         self._point_label.setHidden(withdrawn)
-        # Written before it is shown, so the button is never on screen for one
-        # frame carrying an instant the trunk has already left.
+        # The label is written before the button is shown, so the button is
+        # never on screen for a frame with an instant the trunk has already left.
         self.here_button.setText(offer.here_label)
         self.here_button.setDisabled(not offer.here_offered)
         self.here_button.setHidden(not offer.here_offered)
@@ -1526,51 +1564,54 @@ def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
 class BookmarkDialog(QDialog):
     """Where the two kinds of mark are created, listed and removed.
 
-    One dialog over two mechanisms, which is the shape the reference
-    simulator uses and what `PL-LPLD` was scoped on. Both forms are visible
-    at once and each has its own add button: a tab or a kind selector would
-    make which mechanism is armed a mode, and the two collections differ in
-    their fields rather than in a flavour, so there is nothing for a shared
-    form to hold.
+    One dialog serves both kinds of mark. The reference simulator uses that
+    shape, and `PL-LPLD` was scoped on it. Both forms are visible at once,
+    and each has its own add button. A tab or a kind selector would turn the
+    choice of which kind is being added into a mode. The two collections also
+    have different fields, not the same fields under a different kind, so a
+    shared form would have nothing in common to hold.
 
-    Non-modal, and shown with `open()` rather than `exec()` so a test can
-    drive it. Non-modal deliberately: a run may be playing, and a modal
-    window over a moving chart is a reader locked out of the transport
-    controls by a window about something else.
+    The dialog is non-modal, and it is shown with `open()` rather than
+    `exec()` so that a test can drive it. It is non-modal deliberately. A run
+    may be playing, and a modal window over a moving chart would lock the
+    reader out of the transport controls with a window about something else.
 
-    **The surface is declared as a palette**, which is also what the six
-    input controls are drawn from (`PL-RKRY`). Their fills, the spin boxes'
+    **The surface is declared as a palette**, and the six input controls are
+    drawn from the same palette (`PL-RKRY`). Their fills, the spin boxes'
     steppers, the lists' rows and scrollbars and the compartment popup all
-    paint from palette roles, so under a dark host appearance they arrived
-    near-black inside this light dialog; a one-rule stylesheet on the dialog
-    is what stopped them inheriting it. `declare_interface_colours` carries the
-    reasoning and the roles.
+    paint from palette roles. Under a dark host appearance they were drawn
+    near-black inside this light dialog. A one-rule stylesheet on the dialog
+    was what stopped them inheriting the dialog's colours.
+    `declare_interface_colours` gives the reasoning and the roles.
 
-    **The height a target may be set to is bounded by the running agent**,
-    and the bound is here rather than on `MacTarget` because it is the
-    agent's rather than the mark's. No compartment can exceed the delivered
-    concentration, and the vaporizer's own maximum bounds that, so a target
-    above `max_delivered_concentration_percent / agent_mac_percent` is one no
-    run of this agent could ever cross. Refusing it in the control is
-    `.claude/rules/expert-review.md`'s preference for an interface that
-    prevents the error over one that reports it afterwards - and it moves
-    with the agent, because the two values it is computed from do.
+    **The height a target may be set to is bounded by the running agent.**
+    The bound is here rather than on `MacTarget`, because it belongs to the
+    agent rather than to the mark. No compartment can exceed the delivered
+    concentration, and the vaporizer's own maximum bounds the delivered
+    concentration. So no run of this agent could ever cross a target above
+    `max_delivered_concentration_percent / agent_mac_percent`. Refusing such
+    a target in the control follows `.claude/rules/expert-review.md`'s
+    preference for an interface that prevents an error over one that reports
+    it afterwards. The bound moves with the agent, because the two values it
+    is computed from do.
 
     Attributes:
         instant_spin: The instant to mark, in seconds.
         instant_preview: That instant in the compound form the clock uses, so
-            no reader converts between the entry and the display.
+            that no reader has to convert between the entry and the display.
         time_label_edit: The optional name for a time bookmark.
-        add_time_button: Adds the time bookmark; `clicked` is the view's.
+        add_time_button: Adds the time bookmark. The view connects its
+            `clicked` signal.
         time_list: The marked instants, selectable for removal.
         remove_time_button: Removes the selected instant.
-        compartment_combo: Which compartment a target is read against.
+        compartment_combo: The compartment whose value a target is compared
+            against.
         height_spin: The height, in multiples of the running agent's 1 MAC.
         target_label_edit: The optional name for a target.
         add_target_button: Adds the target.
         target_list: The marked heights, selectable for removal.
         remove_target_button: Removes the selected target.
-        notice: What a refused add says, or hidden when there is nothing.
+        notice: Why an add was refused, hidden when there is nothing to say.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1682,15 +1723,15 @@ class BookmarkDialog(QDialog):
 
         Args:
             maximum_mac: The agent's maximum delivered concentration as a
-                multiple of its own 1 MAC. The floor is one count of the
-                displayed resolution, because a target at zero is one every
-                run stands on before it begins.
+                multiple of its own 1 MAC. The lower bound is one count of
+                the displayed resolution, because every run is already at a
+                target of zero before it begins.
         """
 
         self.height_spin.setRange(MAC_DISPLAY_RESOLUTION_MAC, maximum_mac)
 
     def set_panel(self, panel: BookmarkPanel) -> None:
-        """Redraw both lists from one tick's answer, keeping each selection.
+        """Redraw both lists from one tick's result, keeping each selection.
 
         The rows are the same strings the panel beside the chart draws, from
         the same `dashboard_frame` call, so a reader moving between the two
@@ -1747,9 +1788,9 @@ class BookmarkDialog(QDialog):
         """The time bookmark the form currently describes.
 
         Raises:
-            SimulationConfigurationError: If the entered instant is one
-                `CaseInstant` refuses, which the spin box's own range keeps it
-                from being, or the name is one `TimeBookmark` refuses.
+            SimulationConfigurationError: If `CaseInstant` refuses the
+                entered instant, or `TimeBookmark` refuses the name. The spin
+                box's own range keeps the instant from being refused.
         """
 
         return TimeBookmark(
@@ -1760,8 +1801,8 @@ class BookmarkDialog(QDialog):
         """The MAC target the form currently describes.
 
         Raises:
-            SimulationConfigurationError: If the entered height or name is one
-                `MacTarget` refuses.
+            SimulationConfigurationError: If `MacTarget` refuses the entered
+                height or name.
         """
 
         return MacTarget(
@@ -1773,10 +1814,11 @@ class BookmarkDialog(QDialog):
     def clear_entry(self) -> None:
         """Empty the two name fields, for a mark that has just been added.
 
-        The instant, compartment and height are left where they are: adding
-        a second mark near the first is the common case, and a control that
-        reset itself would make the second entry the longer one.
-        A name is cleared because reusing one would name two marks alike.
+        The instant, compartment and height are left as they are. Adding a
+        second mark near the first is the common case, and a control that
+        reset itself would make the second entry take longer than the first.
+        A name is cleared because reusing it would give two marks the same
+        name.
         """
 
         self.time_label_edit.clear()
@@ -1787,8 +1829,8 @@ def _entered_label(field: QLineEdit) -> str | None:
     """What a name field says, or `None` where the reader left it empty.
 
     An empty field means "list it under its own value" rather than "name it
-    nothing", which is the distinction `bookmarks.TimeBookmark` refuses a
-    blank string in order to keep.
+    nothing". `bookmarks.TimeBookmark` refuses a blank string in order to
+    keep that distinction.
     """
 
     entered = field.text().strip()
@@ -1799,10 +1841,11 @@ def _entered_label(field: QLineEdit) -> str | None:
 def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
     """Rewrite `widget`'s rows, leaving the selected position where it was.
 
-    Qt clears the current row when the model empties, so the index is read
-    back afterwards rather than trusted across the rewrite. A selection that
-    no longer exists - the row a reader has just removed - lands on nothing,
-    which is what a reader expects of a list they have just shortened.
+    Qt clears the current row when the model empties, so the index is saved
+    before the rewrite and set again afterwards, rather than trusted to
+    survive it. When the list no longer has a row at the selected position,
+    such as after a reader removes the last row, nothing is selected. That is
+    what a reader expects of a list they have just shortened.
     """
 
     selected = widget.currentRow()
@@ -1818,17 +1861,17 @@ def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
 def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -> QRect:
     """The normal geometry: a fraction of the available screen, centred, never below its minimum.
 
-    Sized from the screen rather than from a pixel count, so the window is
-    fully visible on every display and never full screen (`PL-005`). The
-    window opens maximized over this geometry (`PL-Z4K6`), so it is what a
-    reader gets back on un-maximizing rather than the size first drawn. A
-    minimum wider or taller than the fraction wins, because a window that
-    cannot show its own content is worse than one that overhangs the
-    screen; it is still centred on the available area.
+    The geometry is sized from the screen rather than from a pixel count, so
+    the window is fully visible on every display and never full screen
+    (`PL-005`). The window opens maximized over this geometry (`PL-Z4K6`). So
+    this geometry is what a reader gets back on un-maximizing, not the size
+    first drawn. A minimum wider or taller than the fraction wins, because a
+    window that cannot show its own content is worse than one that overhangs
+    the screen. The window is still centred on the available area.
 
     Args:
-        available: The screen's available geometry - what is left after
-            the platform's own bars.
+        available: The screen's available geometry, which is what is left
+            after the platform's own bars.
         minimum: The window's minimum size, from its own size hint.
         fraction: How much of `available`'s width and height to take,
             above zero and at most one.
@@ -1837,9 +1880,9 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
         The window's normal frame geometry.
 
     Raises:
-        ValueError: If `fraction` is not above zero and at most one: a
-            zero-sized or larger-than-the-screen window is not a size to
-            open at.
+        ValueError: If `fraction` is not above zero and at most one. A
+            window cannot open at zero size or at a size larger than the
+            screen.
     """
 
     if not 0.0 < fraction <= 1.0:

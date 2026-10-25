@@ -107,17 +107,17 @@ MAIN_WINDOW: Final = 0
 
 @dataclass(frozen=True, slots=True)
 class Handle:
-    """A border between two neighbouring children of one split: what a reader drags.
+    """A border between two neighbouring children of one split, which a reader drags.
 
-    Addressed by where it sits in one layout value: the window, the path of
-    child indices from that window's tree down to the split, and the gap
-    between the split's children - `index` 0 is the border between children 0
-    and 1. A handle is read against the layout it was taken from, and
-    `LayoutModel.handles()` lists that layout's.
+    A handle is addressed by where it sits in one layout value. It names the
+    window, the path of child indices from that window's tree down to the
+    split, and the gap between two of the split's children. `index` 0 is the
+    border between children 0 and 1. A handle has meaning only in the layout
+    it was taken from, and `LayoutModel.handles()` lists that layout's handles.
 
     Raises:
-        TypeError: a field is not an `int`, or is a `bool`, or `path` is not a
-            tuple of them.
+        TypeError: a field is not an `int` or is a `bool`, or `path` is not a
+            tuple of such ints.
         InvalidLayout: a field is negative.
     """
 
@@ -165,11 +165,11 @@ class Side(Enum):
 
 @dataclass(frozen=True, slots=True)
 class Neighbour:
-    """An Area beside another, the side of it that it lies on, and whether they could join.
+    """An Area beside another, the side of the other Area it lies on, and whether they could join.
 
-    `whole_edge` is true where the two share the whole of one edge, so that
-    together they make a rectangle, which is what `join` asks first. A join
-    that `whole_edge` allows can still be refused, as `join` says.
+    `whole_edge` is true when the two share the whole of one edge, so that
+    together they make a rectangle. `join` checks this first. A join that
+    `whole_edge` allows can still be refused, for the reasons `join` gives.
     """
 
     area_id: AreaId
@@ -187,13 +187,13 @@ class _Place:
 
 @dataclass(frozen=True, slots=True)
 class _Segment:
-    """Where a handle lies, in fractions of its window: what `borders()` and `resize()` read.
+    """Where a handle lies, in fractions of its window, as `borders()` and `resize()` use it.
 
-    A row's handles are vertical lines and a column's horizontal ones, so
-    `across` is a row handle's x and a column handle's y, and `start` and
-    `end` run along the line. `low` and `high` are where the handle's split
-    begins and ends along its own axis, which `resize()` lays its children
-    out between.
+    A row's handles are vertical lines, and a column's handles are horizontal
+    lines. So `across` is a row handle's x and a column handle's y, and
+    `start` and `end` are where the line begins and ends. `low` and `high` are
+    where the handle's split begins and ends along its own axis. `resize()`
+    lays out the split's children between them.
     """
 
     orientation: Orientation
@@ -214,7 +214,10 @@ class _Rect:
     bottom: float
 
     def span(self, orientation: Orientation) -> tuple[float, float]:
-        """Where the rectangle begins and ends along the axis a split of `orientation` divides."""
+        """Return where the rectangle starts and ends along `orientation`'s axis.
+
+        That axis is the one that a split of `orientation` divides.
+        """
 
         if orientation is Orientation.ROW:
             return self.left, self.right
@@ -222,7 +225,7 @@ class _Rect:
         return self.top, self.bottom
 
     def with_span(self, orientation: Orientation, low: float, high: float) -> _Rect:
-        """The rectangle with its span along `orientation`'s axis replaced."""
+        """Return the rectangle with its span along `orientation`'s axis replaced."""
 
         if orientation is Orientation.ROW:
             return _Rect(low, self.top, high, self.bottom)
@@ -252,8 +255,8 @@ class LayoutModel:
             deeper than `TREE_DEPTH_MAXIMUM`, and the message gives the split's
             path. Or an Area is no wider or no taller than
             `BORDER_ALIGNMENT_TOLERANCE` of its window, and the message gives the
-            Area's size. Or two Areas share an id. Or `next_area_id` is not above
-            every id in use.
+            Area's size. Or two Areas share an id. Or `next_area_id` is not
+            greater than every id in use.
     """
 
     windows: tuple[Window, ...]
@@ -275,8 +278,9 @@ class LayoutModel:
         if not self.windows:
             raise InvalidLayout("a layout holds at least one window, the main window")
 
-        # Before anything below recurses through a tree, which one too deep
-        # would end in a `RecursionError` rather than in this refusal.
+        # Check the depth before any code below recurses through a tree. A tree
+        # that is too deep would make that code end in a `RecursionError`,
+        # rather than in this refusal.
         for index, window in enumerate(self.windows):
             too_deep = _split_past_depth_maximum(window.tree)
 
@@ -314,7 +318,7 @@ class LayoutModel:
 
     @classmethod
     def single_area(cls, view: ViewKind) -> LayoutModel:
-        """A layout of one window holding one Area, id 1, showing `view`.
+        """Return a layout of one window holding one Area, with id 1, that shows `view`.
 
         Raises:
             TypeError: `view` was not built as a `ViewKind`.
@@ -327,12 +331,12 @@ class LayoutModel:
         return cls((Window(Area(first, view)),), AreaId(first + 1))
 
     def areas(self) -> tuple[Area, ...]:
-        """Every Area: the windows in order, each window's in reading order."""
+        """Return every Area: the windows in order, and each window's Areas in reading order."""
 
         return tuple(area for window in self.windows for area in areas_in(window.tree))
 
     def area(self, area_id: AreaId) -> Area:
-        """The Area holding `area_id`.
+        """Return the Area whose id is `area_id`.
 
         Raises:
             TypeError: `area_id` was not built as an `AreaId`.
@@ -342,7 +346,7 @@ class LayoutModel:
         return self._locate(area_id)[1]
 
     def rectangle(self, area_id: AreaId) -> Rectangle:
-        """Where the Area holding `area_id` lies in its window.
+        """Return where the Area whose id is `area_id` lies in its window.
 
         Raises:
             TypeError: `area_id` was not built as an `AreaId`.
@@ -355,12 +359,13 @@ class LayoutModel:
         return Rectangle(place.window, rect.left, rect.top, rect.right, rect.bottom)
 
     def neighbours(self, area_id: AreaId) -> tuple[Neighbour, ...]:
-        """The Areas whose edge meets an edge of this one for some length, by side.
+        """Return the Areas whose edge meets an edge of this Area for some length, by side.
 
         Two Areas that touch only at a corner are not neighbours. The result
-        is ordered by side - left, above, right, below - and along each side
-        from the top or the left. A menu reads it to list the Areas an Area
-        can be joined with, and to show the ones it cannot (`PL-2KXB`).
+        is ordered by side: left, above, right, then below. Along each side, it
+        is ordered from the top or from the left. A menu uses the result to
+        list the Areas that this Area can be joined with, and to show the ones
+        it cannot be joined with (`PL-2KXB`).
 
         Raises:
             TypeError: `area_id` was not built as an `AreaId`.
@@ -389,7 +394,7 @@ class LayoutModel:
         return tuple(neighbour for _, _, neighbour in sorted(found, key=lambda entry: entry[:2]))
 
     def edges(self, area_id: AreaId) -> tuple[tuple[Side, Handle], ...]:
-        """The border on each side of this Area that has one, ordered left, above, right, below.
+        """Return the border on each side of this Area, ordered left, above, right, below.
 
         A side that lies along the window's edge has no border and is left
         out. The border on a side is the handle nearest the Area in the tree.
@@ -427,7 +432,7 @@ class LayoutModel:
         return tuple((side, found[side]) for side in Side if side in found)
 
     def handles(self) -> tuple[Handle, ...]:
-        """Every handle: the windows in order, each window's splits depth first."""
+        """Return every handle: the windows in order, and each window's splits depth first."""
 
         return tuple(
             handle
@@ -436,33 +441,35 @@ class LayoutModel:
         )
 
     def borders(self, handle: Handle) -> tuple[Handle, ...]:
-        """The border `handle` belongs to: every handle on its line that it connects to.
+        """Return the border that `handle` belongs to: every handle on its line connected to it.
 
-        `PL-3J2P` measured the one thing a splitter tree costs against
-        Blender's screen: where two borders cross, each is one line in Blender
-        and dragging it moves its whole length, and a tree holds at most one of
-        the two as a single handle. The answer it recorded is this query rather
-        than a change of representation - the handles collinear with
-        `handle` and connected to it end to end, found by following them from
-        one to the next as Blender's `screen_geom_select_connected_edge` does
+        `PL-3J2P` measured the one thing that a splitter tree loses compared
+        with Blender's screen. Where two borders cross, each one is a single
+        line in Blender, and dragging it moves its whole length. A tree can
+        store at most one of the two as a single handle. `PL-3J2P` recorded
+        this query as the remedy, rather than a change of representation. The
+        query finds the handles that are collinear with `handle` and connected
+        to it end to end. It follows them from one to the next, as Blender's
+        `screen_geom_select_connected_edge` does
         (`source/blender/editors/screen/screen_geometry.cc`, `blender/blender`
-        `main`, read 2026-10-12), so a drag moves them together. Each handle
-        is compared with the one that reached it rather than with `handle`,
-        so the border is the same set whichever of its handles it is asked
-        from. The result includes `handle` and is ordered along the line, top
-        to bottom or left to right.
+        `main`, read 2026-10-12). A drag then moves them together. Each handle
+        is compared with the handle that reached it, rather than with
+        `handle`. So the border is the same set, whichever of its handles the
+        query starts from. The result includes `handle` and is ordered along
+        the line, from top to bottom or from left to right.
 
-        **It stops at the window's edge**, because each window has its own
+        **The border stops at the window's edge.** Each window has its own
         tree, and two windows' borders can be collinear on a screen and still
         be unrelated (`PL-HJPY` Q4).
 
-        **It reads the line from where the borders are.** Blender follows
-        shared vertices, and its border drag merges none - `area_move_exit` in
-        `screen_ops.cc` removes duplicate edges and leaves the vertices alone -
-        so two edges a drag brings into line stay two until the reader merges
-        them on purpose. Here two borders brought into line, to within
-        `BORDER_ALIGNMENT_TOLERANCE`, are one line from then on, since a tree
-        has no vertices to keep them apart.
+        **The query finds a line's handles by where they lie.** Blender
+        follows shared vertices, and its border drag merges no vertices:
+        `area_move_exit` in `screen_ops.cc` removes duplicate edges and leaves
+        the vertices alone. So in Blender, two edges that a drag brings into
+        line stay two edges until the reader merges them on purpose. Here, two
+        borders brought into line, to within `BORDER_ALIGNMENT_TOLERANCE`, are
+        one line from then on, because a tree has no vertices to keep them
+        apart.
 
         Raises:
             TypeError: `handle` is not a `Handle`.
@@ -494,7 +501,7 @@ class LayoutModel:
     def split(
         self, area_id: AreaId, orientation: Orientation, at: float
     ) -> tuple[LayoutModel, AreaId]:
-        """Cut an Area in two; return the new layout and the new Area's id.
+        """Cut an Area in two, and return the new layout and the new Area's id.
 
         The cut lies at `at`, a fraction of the Area's width for a `ROW` and of
         its height for a `COLUMN`. The Area keeps the part before the cut. A new
@@ -508,8 +515,8 @@ class LayoutModel:
         sizes are first rescaled to sum to one (`_summing_to_one`).
 
         Raises:
-            TypeError: an argument is not of its declared type; `at` is not a
-                `float`.
+            TypeError: an argument is not of its declared type. In particular,
+                `at` must be a `float`, so an `int` is refused.
             NotInLayout: no Area of this layout holds `area_id`.
             LayoutRefused: one of these is true. `at` does not lie strictly
                 between 0 and 1. Or `at` is so close to one end that a part would
@@ -579,8 +586,8 @@ class LayoutModel:
 
             tree = _replaced(tree, place.path, Split(orientation, (at, 1 - at), (source, added)))
 
-        # The layout held no Area this narrow before the cut, so any found is
-        # one of the two parts.
+        # The layout held no Area this narrow before the cut, so any such Area
+        # found now is one of the two parts.
         narrow = _too_narrow(tree)
 
         if narrow is not None:
@@ -597,46 +604,50 @@ class LayoutModel:
     def join(self, keep: AreaId, remove: AreaId) -> LayoutModel:
         """Merge two neighbouring Areas into one: `keep` takes `remove`'s space.
 
-        `keep` keeps its View; `remove` and its View leave the layout, and its
-        id is not handed out again. Two Areas join where they share the whole
-        of one edge, so that together they make a rectangle. Blender's
-        `area_getorientation` (`source/blender/editors/screen/screen_edit.cc`,
-        `blender/blender` `main`, read 2026-10-18) also decides from the two
-        Areas' corners alone, though it accepts part of an edge and trims the
-        rest (`docs/interface-provenance.md`).
+        `keep` keeps its View. `remove` and its View leave the layout, and the
+        id of `remove` is not handed out again. Two Areas can join when they
+        share the whole of one edge, so that together they make a rectangle.
+        Blender's `area_getorientation`
+        (`source/blender/editors/screen/screen_edit.cc`, `blender/blender`
+        `main`, read 2026-10-18) also decides from the two Areas' corners
+        alone, though it accepts part of an edge and trims the rest
+        (`docs/interface-provenance.md`).
 
-        **Whether a join is taken depends on the rectangles alone, never on
-        the order the splits were made in** (`PL-G60V`). Where four Areas meet
-        at a point, two trees hold the same rectangles (`layout/tree.py`), and
-        two Areas that share an edge may sit in different splits. So the join
-        does not look for the pair in one split. It re-slices the region of
-        the lowest split holding both (`_resliced`): it merges the two Areas
-        into one rectangle and divides the region again by straight cuts, the
-        only way a tree divides anything. Every Area keeps its rectangle, and
-        the splits built again take their sizes from where their borders lie.
+        **Whether a join is carried out depends on the rectangles alone, never
+        on the order in which the splits were made** (`PL-G60V`). Where four
+        Areas meet at a point, two different trees can hold the same
+        rectangles (`layout/tree.py`). So two Areas that share an edge may sit
+        in different splits, and the join does not look for the pair in one
+        split. Instead it re-slices the region of the lowest split that holds
+        both (`_resliced`). It merges the two Areas into one rectangle. Then it
+        divides the region again by straight cuts, which are the only way a
+        tree divides anything. Every other Area keeps its rectangle, and the
+        rebuilt splits take their sizes from where their borders lie.
 
-        It tries first with each subtree beside the pair kept whole, so that
-        a join changes no split it need not. A subtree's own border can lie
-        on the only line that divides the region, though, and then the join
-        is tried again from every Area in the region, so that whether it is
-        taken depends on the rectangles alone.
+        On its first try, the join keeps whole each subtree that holds neither
+        Area of the pair, so that it changes no split it does not need to.
+        But a subtree's own border can lie on the only line that divides the
+        region. Then the join is tried again from every Area in the region, so
+        that whether it is carried out still depends on the rectangles alone.
 
-        A result can need one level of splits more than the tree held. Where
-        that passes `TREE_DEPTH_MAXIMUM` inside the lowest split, the region of
-        each split above it is re-sliced in turn, up to the whole window,
-        because cutting a larger region the other way first can fit. So the
-        depth refusal also depends on the rectangles alone.
+        A result can need one more level of splits than the tree had. Where
+        that would exceed `TREE_DEPTH_MAXIMUM` inside the lowest split, the
+        region of each split above it is re-sliced in turn, up to the whole
+        window. Cutting a larger region the other way first can make the
+        result fit. So the refusal for depth also depends on the rectangles
+        alone.
 
         Raises:
             TypeError: an argument was not built as an `AreaId`.
             NotInLayout: no Area of this layout holds one of the ids.
-            LayoutRefused: the two ids are the same; the Areas are in
-                different windows; they do not share the whole of one edge;
-                no straight cut divides the Areas the join would leave, which
-                is `PL-3J2P`'s refusal of what a tree cannot hold, such as the
-                pinwheel; or every tree holding the result, re-sliced from any
-                split up to the whole window, would nest a split deeper than
-                `TREE_DEPTH_MAXIMUM`, which `split` refuses as well.
+            LayoutRefused: one of these is true. The two ids are the same. The
+                Areas are in different windows. They do not share the whole of
+                one edge. No straight cut divides the Areas that the join would
+                leave: this is `PL-3J2P`'s refusal of a layout that a tree
+                cannot hold, such as the pinwheel. Or every tree that could
+                hold the result, re-sliced from any split up to the whole
+                window, would nest a split deeper than `TREE_DEPTH_MAXIMUM`,
+                which `split` also refuses.
         """
 
         kept, _ = self._locate(keep)
@@ -673,10 +684,10 @@ class LayoutModel:
             max(kept_rect.bottom, removed_rect.bottom),
         )
 
-        # A tree too deep for the lowest split's region can fit when a region
-        # higher up is cut first the other way, so each split above is tried
-        # in turn, up to the whole window. Where the lowest region has no
-        # straight cut, none above it has one either.
+        # A result too deep for the lowest split's region can fit when a larger
+        # region higher up is first cut the other way. So each split above is
+        # tried in turn, up to the whole window. Where the lowest region has no
+        # straight cut, no region above it has one either.
         for level in range(len(common), -1, -1):
             path = common[:level]
             holder = _split_at(tree, path)
@@ -778,8 +789,8 @@ class LayoutModel:
         if not math.isfinite(position):
             raise LayoutRefused(f"a border cannot move to {position!r}")
 
-        # The line's handles by the split each divides, since one split can
-        # hold two of them and every one is moved.
+        # The line's handles, grouped by the split that each one divides. One
+        # split can hold two of them, and every one of them is moved.
         moved: dict[tuple[int, ...], set[int]] = {}
 
         for member in (handle,) if alone else _chain(handle, segments):
@@ -798,8 +809,8 @@ class LayoutModel:
         """Exchange where two Areas sit, in one window or across two.
 
         Each Area keeps its id and its View, so whatever is kept per Area id
-        travels with it, as `PL-TH35` Q10 has a swap move each View with its
-        state. The places keep their sizes.
+        moves with it. `PL-TH35` Q10 decided that a swap moves each View with
+        its state. The two places keep their sizes.
 
         Raises:
             TypeError: an argument was not built as an `AreaId`.
@@ -818,7 +829,7 @@ class LayoutModel:
         )
 
     def set_view(self, area_id: AreaId, view: ViewKind) -> LayoutModel:
-        """Show another kind of View in an Area; its id and its place stay.
+        """Show another kind of View in an Area. The Area keeps its id and its place.
 
         Raises:
             TypeError: `area_id` was not built as an `AreaId`, or `view` as a
@@ -836,17 +847,18 @@ class LayoutModel:
         )
 
     def unknown_kinds(self, known: AbstractSet[str]) -> tuple[Area, ...]:
-        """The Areas whose View kind is not in `known`, in the order `areas()` gives.
+        """Return the Areas whose View kind is not in `known`, in the order `areas()` gives.
 
-        The layout holds no list of View kinds (`PL-R1WQ` Q1): the registry's
-        tags are passed in, and a test passes any set it likes. An Area named
-        here is not a malformed layout - the file loads, and the adapter draws
-        that Area's failure state with its tag unchanged, so a later save
-        writes back what was read (`PL-R1WQ` Q2, `PL-SSQW` Q5).
+        The layout keeps no list of View kinds (`PL-R1WQ` Q1). The caller
+        passes in the registry's tags, and a test can pass any set it likes. An
+        Area returned here does not make the layout malformed. The file still
+        loads, and the adapter draws that Area's failure state with its tag
+        unchanged. So a later save writes back what was read (`PL-R1WQ` Q2,
+        `PL-SSQW` Q5).
 
         Raises:
-            TypeError: `known` is not a set - a single tag, being a `str`,
-                would otherwise be read as a set of its letters.
+            TypeError: `known` is not a set. Otherwise a single tag, which is a
+                `str`, would be treated as a set of its letters.
         """
 
         if not isinstance(known, AbstractSet):
@@ -855,7 +867,7 @@ class LayoutModel:
         return tuple(area for area in self.areas() if area.view not in known)
 
     def _locate(self, area_id: AreaId) -> tuple[_Place, Area]:
-        """Where the Area holding `area_id` sits, and the Area.
+        """Return where the Area whose id is `area_id` sits, and the Area itself.
 
         Raises:
             TypeError: `area_id` was not built as an `AreaId`.
@@ -876,7 +888,7 @@ class LayoutModel:
         raise NotInLayout(f"no Area of this layout holds the id {area_id}")
 
     def _segments_of(self, handle: Handle) -> dict[Handle, _Segment]:
-        """Every handle's place in `handle`'s window.
+        """Return the place of every handle in `handle`'s window.
 
         Raises:
             TypeError: `handle` is not a `Handle`.
@@ -919,12 +931,12 @@ def _place_of_parent(place: _Place) -> _Place | None:
 
 
 def _split_past_depth_maximum(tree: Node) -> tuple[int, ...] | None:
-    """The path to the first split, in reading order, deeper than `TREE_DEPTH_MAXIMUM`, or `None`.
+    """Return the path to the first split deeper than `TREE_DEPTH_MAXIMUM`, or `None`.
 
-    Walked with a list rather than by recursion, so a tree built in code too
-    deep to recurse through is refused here rather than by a `RecursionError`,
-    and the walk goes no further down any path than the first split past the
-    maximum.
+    Splits are searched in reading order. The tree is walked with a list
+    rather than by recursion. So a tree built in code that is too deep to
+    recurse through is refused here, rather than by a `RecursionError`. The
+    walk goes no further down any path than the first split past the maximum.
     """
 
     pending: list[tuple[tuple[int, ...], Node]] = [((), tree)]
@@ -944,22 +956,27 @@ def _split_past_depth_maximum(tree: Node) -> tuple[int, ...] | None:
 
 
 def _summing_to_one(sizes: tuple[float, ...]) -> tuple[float, ...]:
-    """`sizes` divided by their exactly rounded sum: what an operation rebuilds a split from.
+    """Return `sizes` divided by their exactly rounded sum, ready to rebuild a split from.
 
-    A split's sizes may miss a sum of one by up to `LAYOUT_SIZE_SUM_TOLERANCE`,
-    and a file this code did not write can hold such sizes, which the reader
-    accepts. Arithmetic on them can carry a sum just inside the tolerance to
-    just outside it, so an operation on a layout the reader accepted would
-    raise `InvalidLayout`: `PL-1FT6`'s review found a join doing so. Divided
-    by their sum first, the sizes miss one by a unit in the last place, the
-    operation's own rounding adds a unit or two, and no operation inherits
-    the last one's error. Where the sum is exactly one the division changes
-    nothing; elsewhere each size moves by at most the tolerance's share of it,
-    which nothing on a screen shows. This is chosen over a reader stricter
-    than the in-memory check, which would refuse to read back a layout held
-    in memory between the two bounds. `join` and `resize` work a split's sizes
-    out afresh from where its borders lie, which sum to one as nearly, and use
-    this only for a split they merge another into (`_flattened`).
+    A split's sizes may differ from a sum of one by up to
+    `LAYOUT_SIZE_SUM_TOLERANCE`. A file that this code did not write can
+    contain such sizes, and the file reader accepts them. Arithmetic on those
+    sizes can carry a sum from just inside the tolerance to just outside it.
+    An operation on a layout that the file reader accepted would then raise
+    `InvalidLayout`, and `PL-1FT6`'s review found a join doing so. Once the
+    sizes are divided by their sum, their sum differs from one by a unit in
+    the last place. The operation's own rounding adds a unit or two, and no
+    operation inherits the previous one's error. Where the sum is exactly
+    one, the division changes nothing. Elsewhere, each size moves by at most
+    the tolerance's share of it, which nothing on a screen shows.
+
+    This approach was chosen over a file reader stricter than the in-memory
+    check. Such a reader would refuse to read back a layout held in memory
+    whose sizes sum to a value between the reader's bound and the in-memory
+    bound. `join` and `resize` work out a split's sizes afresh from where its
+    borders lie, and those sizes come as close to summing to one as this
+    function's result does. They use this function only for a split that they
+    merge another split into (`_flattened`).
     """
 
     total = math.fsum(sizes)
@@ -1044,10 +1061,11 @@ def _dragged(
 
 
 def _squeezed(split: Split, placed: tuple[float, ...]) -> tuple[Node, ...]:
-    """The children of `split` that the borders `placed` leave too narrow, as `_too_narrow` judges.
+    """Return the children of `split` that the borders `placed` leave too narrow.
 
-    `placed` holds one more border than `split` has children, in the window's
-    fractions, so each child lies between a border and the next one.
+    A child is too narrow by the same test that `_too_narrow` applies.
+    `placed` holds one more border than `split` has children, in fractions of
+    the window, so each child lies between a border and the next one.
     """
 
     return tuple(
@@ -1079,7 +1097,7 @@ def _too_narrow(tree: Node) -> tuple[Area, Orientation, float] | None:
 
 
 def _narrow_reason(area: Area, orientation: Orientation, size: float, verb: str = "is") -> str:
-    """Why `_too_narrow`'s finding is refused, in the words a refusal uses."""
+    """Return why the Area that `_too_narrow` found is refused, worded as a refusal message."""
 
     measure = "wide" if orientation is Orientation.ROW else "tall"
 
@@ -1091,7 +1109,7 @@ def _narrow_reason(area: Area, orientation: Orientation, size: float, verb: str 
 
 
 def _fractions(placed: tuple[float, ...]) -> tuple[float, ...]:
-    """The share of the span from the first border to the last that each gap takes."""
+    """Return the share that each gap takes of the span from the first border to the last."""
 
     extent = placed[-1] - placed[0]
 
@@ -1099,7 +1117,7 @@ def _fractions(placed: tuple[float, ...]) -> tuple[float, ...]:
 
 
 def _other(orientation: Orientation) -> Orientation:
-    """The axis across `orientation`'s: a column for a row, a row for a column."""
+    """Return the orientation other than `orientation`: a column for a row, a row for a column."""
 
     return Orientation.COLUMN if orientation is Orientation.ROW else Orientation.ROW
 
@@ -1109,7 +1127,10 @@ def _is_area(node: Node, area_id: AreaId) -> bool:
 
 
 def _common_prefix(first: tuple[int, ...], second: tuple[int, ...]) -> tuple[int, ...]:
-    """The longest path both paths begin with: the lowest split holding the two nodes."""
+    """Return the longest path that both paths begin with.
+
+    That path leads to the lowest split holding both nodes.
+    """
 
     length = 0
 
@@ -1123,7 +1144,7 @@ def _common_prefix(first: tuple[int, ...], second: tuple[int, ...]) -> tuple[int
 
 
 def _rect_at(tree: Node, path: tuple[int, ...]) -> _Rect:
-    """Where the node `path` leads to from `tree` lies in its window.
+    """Return where the node that `path` leads to from `tree` lies in its window.
 
     Raises:
         NotInLayout: the path steps into an Area, or past a split's last child.
@@ -1144,13 +1165,16 @@ def _rect_at(tree: Node, path: tuple[int, ...]) -> _Rect:
 
 
 def _close(first: float, second: float) -> bool:
-    """Whether two edges are one edge, to within `BORDER_ALIGNMENT_TOLERANCE`, as in `borders()`."""
+    """Return whether two edges are one edge, to within `BORDER_ALIGNMENT_TOLERANCE`.
+
+    The test is the same one that `borders()` uses.
+    """
 
     return abs(first - second) <= BORDER_ALIGNMENT_TOLERANCE
 
 
 def _share_a_whole_edge(first: _Rect, second: _Rect) -> bool:
-    """Whether two rectangles meet along the whole of an edge of each, so together they make one."""
+    """Return whether two rectangles meet along a whole edge of each, so together they form one."""
 
     for orientation in Orientation:
         first_low, first_high = first.span(orientation)
@@ -1167,7 +1191,10 @@ def _share_a_whole_edge(first: _Rect, second: _Rect) -> bool:
 
 
 def _side_of(own: _Rect, other: _Rect) -> Side | None:
-    """Which side of `own` the rectangle `other` lies on, where their edges meet for some length."""
+    """Return the side of `own` that the rectangle `other` lies on.
+
+    Return `None` unless their edges meet for some length.
+    """
 
     def overlap(first: tuple[float, float], second: tuple[float, float]) -> bool:
         return min(first[1], second[1]) - max(first[0], second[0]) > BORDER_ALIGNMENT_TOLERANCE
@@ -1193,12 +1220,12 @@ def _side_of(own: _Rect, other: _Rect) -> Side | None:
 def _pieces(
     node: Node, rect: _Rect, joined: AbstractSet[AreaId], *, opened: bool
 ) -> list[tuple[_Rect, Node]]:
-    """What a join re-slices `node`'s region from, each with the rectangle it fills.
+    """Return the pieces a join re-slices `node`'s region from, each with the rectangle it fills.
 
-    With `opened` false, a subtree holding neither Area in `joined` is one
-    piece, kept whole, and a split holding either is opened down to the Areas
-    themselves. With `opened` true, every split is opened, and the pieces are
-    the region's Areas.
+    When `opened` is false, a subtree that holds neither Area in `joined` is
+    one piece and is kept whole. A split that holds either Area is opened into
+    its children, and each child is treated the same way. When `opened` is
+    true, every split is opened, and the pieces are the region's Areas.
     """
 
     if isinstance(node, Area) or not (opened or any(area.id in joined for area in areas_in(node))):
@@ -1221,19 +1248,20 @@ def _pieces(
 def _resliced(
     tree: Node, path: tuple[int, ...], region: _Rect, attempts: tuple[list[tuple[_Rect, Node]], ...]
 ) -> Node:
-    """`tree` with the split at `path`, which fills `region`, divided again among some pieces.
+    """Return `tree` with the split at `path`, which fills `region`, divided again into pieces.
 
-    `attempts` holds the ways to divide the region into pieces, tried in
-    order: the first that gives a tree is taken. For each, the region is cut
-    first along the axis that the split there divides. A join that still
-    allows a cut along that axis therefore keeps it, and the other axis is
-    used only where no such cut exists. Below the first cut the axis is decided:
-    a strip between two cuts cannot be cut again along the same axis, or the
-    cut would have crossed the whole region and been taken already. Where
-    both first cuts give a tree, the first that nests no split past
-    `TREE_DEPTH_MAXIMUM` is taken. A result whose first cut runs along the
-    axis of the split above `path` is merged into that split
-    (`_flattened`), the one form a tree takes (`layout/tree.py`).
+    `attempts` holds the ways to divide the region into pieces. They are tried
+    in order, and the first that gives a tree is taken. For each attempt, the
+    region is first cut along the axis that the split at `path` divides. So a
+    join that still allows a cut along that axis keeps it, and the other axis
+    is used only where no such cut exists. Below the first cut, the axis is
+    fixed. A strip between two cuts cannot be cut again along the same axis,
+    because such a cut would have crossed the whole region and been taken
+    already. Where both first cuts give a tree, the first one that nests no
+    split past `TREE_DEPTH_MAXIMUM` is taken. A result whose first cut runs
+    along the axis of the split above `path` is merged into that split
+    (`_flattened`). The merge keeps the tree in its single form, in which no
+    split has a child split of its own orientation (`layout/tree.py`).
 
     Raises:
         _NoStraightCut: no straight cut divides the pieces of any attempt.
@@ -1246,9 +1274,9 @@ def _resliced(
 
     for pieces, orientation in product(attempts, (holder.orientation, _other(holder.orientation))):
         try:
-            # One level more than the place allows, since a result merged
-            # into the split above takes a level away; the whole tree is
-            # held to the maximum below.
+            # Allow one level more than the place allows, because a result
+            # merged into the split above loses a level. The check below
+            # applies the maximum to the whole tree.
             sliced = _sliced(pieces, region, orientation, TREE_DEPTH_MAXIMUM - len(path) + 1)
         except _NoStraightCut:
             continue
@@ -1272,18 +1300,18 @@ def _resliced(
 def _sliced(
     pieces: list[tuple[_Rect, Node]], region: _Rect, orientation: Orientation, levels: int
 ) -> Node:
-    """`pieces`, which fill `region`, as one tree whose first cuts run along `orientation`'s axis.
+    """Build a tree from `pieces`, which fill `region`, with first cuts along `orientation`'s axis.
 
-    The region is cut along every line that crosses it whole (`_full_cuts`),
-    all at once, since a split never holds one of its own orientation. Each
-    strip between two cuts is then sliced the same way across the other
-    axis. A size is the strip's width divided by the region's, from where
-    the cuts lie.
+    The region is cut along every line that crosses all of it (`_full_cuts`),
+    all at once, because a split never holds a split of its own orientation.
+    Each strip between two cuts is then sliced the same way across the other
+    axis. Each size is the strip's extent along `orientation`'s axis divided
+    by the region's extent along it, measured from where the cuts lie.
 
     Raises:
-        _NoStraightCut: no line along `orientation`'s axis crosses the
-            region whole, or no line across that axis crosses one of the
-            strips between the cuts, and so on down.
+        _NoStraightCut: no line along `orientation`'s axis crosses the whole
+            region, or no line across that axis crosses the whole of one of
+            the strips between the cuts, and so on down.
         _TooDeep: the tree would need more than `levels` levels of splits.
     """
 
@@ -1364,10 +1392,10 @@ def _full_cuts(
 def _flattened(
     orientation: Orientation, sizes: tuple[float, ...], children: tuple[Node, ...]
 ) -> Split:
-    """A split of `children`, with each child split of the same orientation merged into it.
+    """Return a split of `children`, with each child split of the same orientation merged into it.
 
-    A row inside a row is one wider row (`layout/tree.py`), so the inner
-    split's children take its place, each given its share of the place's
+    A row inside a row is one wider row (`layout/tree.py`). So the inner
+    split's children take its place, and each gets its share of that place's
     size. The inner sizes are rescaled to sum to one first
     (`_summing_to_one`), so the merged sizes sum to one as nearly as the
     outer ones do.
@@ -1388,7 +1416,7 @@ def _flattened(
 
 
 def _placed(tree: Node, path: tuple[int, ...], node: Node) -> Node:
-    """`tree` with `node` at `path`, merged into the split above it where it continues that split.
+    """Return `tree` with `node` at `path`, merged into the split above where `node` continues it.
 
     The split above is rescaled to sum to one first (`_summing_to_one`) where
     `node` is merged into it.
@@ -1425,7 +1453,7 @@ def _area_paths(node: Node, path: tuple[int, ...]) -> Iterator[tuple[tuple[int, 
 
 
 def _node_at(tree: Node, path: tuple[int, ...]) -> Node:
-    """The node `path` leads to from `tree`.
+    """Return the node that `path` leads to from `tree`.
 
     Raises:
         NotInLayout: the path steps into an Area, or past a split's last child.
@@ -1443,7 +1471,7 @@ def _node_at(tree: Node, path: tuple[int, ...]) -> Node:
 
 
 def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
-    """The split `path` leads to from `tree`.
+    """Return the split that `path` leads to from `tree`.
 
     Raises:
         NotInLayout: the path leads to an Area, or to no node at all.
@@ -1458,7 +1486,7 @@ def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
 
 
 def _replaced(node: Node, path: tuple[int, ...], replacement: Node) -> Node:
-    """`node`'s tree with the node at `path` replaced, and every split above it rebuilt.
+    """Return `node`'s tree with the node at `path` replaced, and every split above it rebuilt.
 
     Raises:
         NotInLayout: the path steps into an Area.
@@ -1480,7 +1508,7 @@ def _replaced(node: Node, path: tuple[int, ...], replacement: Node) -> Node:
 def _with_sizes(
     node: Node, path: tuple[int, ...], sizes: Mapping[tuple[int, ...], tuple[float, ...]]
 ) -> Node:
-    """`node`'s tree with the split at each path in `sizes` given those sizes."""
+    """Return `node`'s tree, with the split at each path in `sizes` given the sizes stored there."""
 
     if isinstance(node, Area):
         return node
@@ -1493,7 +1521,7 @@ def _with_sizes(
 
 
 def _with_areas(node: Node, areas: Mapping[AreaId, Area]) -> Node:
-    """`node`'s tree with each Area whose id is a key of `areas` replaced by its value."""
+    """Return `node`'s tree, with each Area whose id is a key of `areas` replaced by its value."""
 
     if isinstance(node, Area):
         return areas.get(node.id, node)
@@ -1504,11 +1532,12 @@ def _with_areas(node: Node, areas: Mapping[AreaId, Area]) -> Node:
 
 
 def _boundaries(low: float, high: float, sizes: tuple[float, ...]) -> tuple[float, ...]:
-    """Where a split's children begin and end along its axis: one more boundary than sizes.
+    """Return where a split's children begin and end along its axis: one boundary more than sizes.
 
     Each inner boundary is placed from the exactly rounded sum of the sizes
-    before it, so it does not depend on the order the sizes were added in, and
-    the last is `high` itself rather than a sum that might round short of it.
+    before it, so it does not depend on the order in which the sizes were
+    added. The last boundary is `high` itself, rather than a sum that might
+    round short of it.
     """
 
     extent = high - low
@@ -1518,7 +1547,7 @@ def _boundaries(low: float, high: float, sizes: tuple[float, ...]) -> tuple[floa
 
 
 def _segments(window: int, tree: Node) -> dict[Handle, _Segment]:
-    """Every handle in one window's tree, with where it lies, depth first."""
+    """Return every handle in one window's tree, depth first, with where each one lies."""
 
     segments: dict[Handle, _Segment] = {}
 
@@ -1550,13 +1579,14 @@ def _segments(window: int, tree: Node) -> dict[Handle, _Segment]:
 
 
 def _chain(handle: Handle, segments: Mapping[Handle, _Segment]) -> tuple[Handle, ...]:
-    """The handles on `handle`'s line connected to it end to end, ordered along the line.
+    """Return the handles on `handle`'s line that connect to it end to end, ordered along the line.
 
     Each candidate is compared with the handle that reached it, never with
-    `handle` itself: two handles within the tolerance of each other are on
-    one line whichever is asked from, so the line is the same set from every
-    handle on it, each one up to the tolerance off the one before. Handles of
-    one split share their span along the line and are ordered across it.
+    `handle` itself. Two handles within the tolerance of each other are on one
+    line, whichever of them the search starts from. So the line is the same
+    set from every handle on it, and each handle may lie up to the tolerance
+    away from the one before. Handles of one split share their span along the
+    line, and are ordered across it.
     """
 
     orientation = segments[handle].orientation
@@ -1590,7 +1620,10 @@ def _chain(handle: Handle, segments: Mapping[Handle, _Segment]) -> tuple[Handle,
 
 
 def _describe(*nodes: Node) -> str:
-    """Nodes as a refusal names them: "Area 3", or "Areas 3, 4 and 5" for a split or several."""
+    """Return the nodes as a refusal names them.
+
+    One Area is "Area 3". A split, or several nodes, is "Areas 3, 4 and 5".
+    """
 
     ids = [str(area.id) for node in nodes for area in areas_in(node)]
 

@@ -59,8 +59,8 @@ __all__ = [
 ]
 
 #: The theme colour each status emphasis is drawn in. `dashboard_frame` names
-#: the role so that it declares no colour; this is where the role meets the
-#: palette, and the only place.
+#: only the role, so that it declares no colour. This table is the one place
+#: where each role is given a colour from the palette.
 _EMPHASIS_COLOR: Final[Mapping[Emphasis, str]] = {
     Emphasis.MUTED: MUTED,
     Emphasis.ACCENT: ACCENT_TEXT,
@@ -69,7 +69,11 @@ _EMPHASIS_COLOR: Final[Mapping[Emphasis, str]] = {
 
 
 def panel_frame(object_name: str) -> QFrame:
-    """A PANEL-coloured, rounded frame scoped by name so its children keep their own colours."""
+    """Build a rounded frame in the PANEL colour.
+
+    Its stylesheet is scoped to the frame's object name, so its children keep
+    their own colours.
+    """
 
     frame = QFrame()
     frame.setObjectName(object_name)

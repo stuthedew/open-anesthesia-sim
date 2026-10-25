@@ -1,58 +1,60 @@
-r"""The $`F_A/F_I`$ ratio the uptake literature plots, and where it holds.
+r"""The $`F_A/F_I`$ ratio that the uptake literature plots, and the range where it is valid.
 
-Pure arithmetic over two modelled fractions, independent of Flet and of the
-scientific core. Nothing here reads simulation state, builds a control, or
-formats a string.
+This module is pure arithmetic over two modelled fractions. It is independent
+of Flet and of the scientific core. Nothing here reads simulation state, builds
+a control, or formats a string.
 
-Why it is its own module. `docs/MODEL.md` § "F_A/F_I as a displayed ratio"
-is where the quantity is specified, and this is where that specification
-terminates - the same relationship `app/formatting.py` has to § "Displayed
-precision". The ratio is a clinically meaningful displayed value derived
-from two others, so `CLAUDE.md`'s safety-critical standard requires it to be
-readable, citable and testable without loading the dashboard that draws it.
-`tests/unit/test_wash_in.py` is what pins it.
+The ratio has its own module for this reason. `docs/MODEL.md` § "F_A/F_I as a
+displayed ratio" specifies the quantity, and this module implements that
+specification. `app/formatting.py` has the same relationship to § "Displayed
+precision". The ratio is a clinically meaningful displayed value derived from
+two other values. So `CLAUDE.md`'s safety-critical standard requires that it
+can be read, cited and tested without loading the dashboard that draws it.
+`tests/unit/test_wash_in.py` holds the tests that pin down its behaviour.
 
 **What the numerator and the denominator are.** $`F_A`$ is the modelled
-alveolar fraction and $`F_I`$ the modelled *inspired* fraction, which in
-this model is the breathing-circuit fraction: the identity $`F_C \equiv
-F_I`$ holds because the model contains one ideal, perfectly mixed circuit
-with no dead space and no separate inspiratory and expiratory limbs
-(`docs/MODEL.md` § "Model boundary"). It is not the vaporizer dial, which
-the circuit only approaches over its own time constant. A multi-limb
-breathing system would break the identity, and this ratio with it.
+alveolar fraction. $`F_I`$ is the modelled *inspired* fraction, which in this
+model is the breathing-circuit fraction. The identity $`F_C \equiv
+F_I`$ is true because the model contains one ideal, perfectly mixed circuit. That
+circuit has no dead space and no separate inspiratory and expiratory limbs
+(`docs/MODEL.md` § "Model boundary"). $`F_I`$ is not the vaporizer dial
+setting. The circuit fraction only approaches the dial setting, over the
+circuit's own time constant. A breathing system with several limbs would break
+the identity, and would make this ratio wrong too.
 
-**Two rules bound where the quotient is a number this application will
-show**, and both exist because a plausible-looking number is worse here
-than nothing at all:
+**Two rules decide when the quotient is a number that this application will
+show.** Both rules exist because a plausible-looking number is worse here than
+no number at all.
 
 1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
-   before any agent reaches the circuit - exactly zero at the start of every
-   run, and for the whole of a run whose vaporizer is never opened - so the
-   quotient is $`0/0`$ there. Rather than special-casing that one point, the
-   floor is the smallest inspired concentration the interface itself reports
-   as non-zero, so the ratio is never formed from a denominator the display
-   shows as `0.00%`.
-2. *The quotient must not exceed one.* $`F_A \le F_I`$ is exactly the uptake
-   regime: alveolar gas gives agent up to blood, so the alveolar fraction
-   stays below the inspired one and reaches it only at equilibrium. Above
-   one the tissues are returning agent faster than it is being delivered -
-   elimination, not wash-in - and the number is no longer a wash-in
-   fraction, whatever its arithmetic. Drawing it on a curve whose whole
-   claim is "this is the textbook wash-in graph" would teach a wash-in that
-   went past completion.
+   before any agent reaches the circuit. It is exactly zero at the start of
+   every run, and for the whole of a run in which the vaporizer is never
+   opened. So the quotient there is $`0/0`$. The rule does not treat that one
+   point as a special case. Instead, the minimum denominator is the smallest
+   inspired concentration that the interface itself reports as non-zero. So
+   the ratio is never formed from a denominator that the display shows as
+   `0.00%`.
+2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
+   exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
+   alveolar fraction stays below the inspired fraction and reaches it only at
+   equilibrium. Above one, the tissues are returning agent faster than it is
+   being delivered. That is elimination, not wash-in, and the number is no
+   longer a wash-in fraction, whatever its arithmetic. The curve claims to be
+   the textbook wash-in graph. Drawing such a number on it would teach a
+   wash-in that went past completion.
 
-`WASH_IN_EQUILIBRIUM_RATIO` is the second boundary and is a *modelled*
-value rather than a plotting choice: it is where net uptake stops, which is
-why the chart draws it as a labelled reference and ends the trace on it
-rather than at the top of a frame.
+`WASH_IN_EQUILIBRIUM_RATIO` is the second boundary. It is a *modelled* value,
+not a plotting choice, because it is where net uptake stops. That is why the
+chart draws it as a labelled reference line and ends the trace on it, rather
+than at the top of a frame.
 
-Neither rule invents a value, substitutes a default, or clamps one into
-range: where the ratio is outside its domain, `read_wash_in` returns no
-number to draw and says which rule excluded it, so the interface can state
-the reason rather than draw a number it cannot stand behind. Both answers
-come out of one call for that reason - a caption saying "no agent in the
-circuit yet" beside a trace that is drawing would be the two disagreeing
-about the same instant.
+Neither rule invents a value, substitutes a default, or clamps a value into
+range. Where the ratio is outside its domain, `read_wash_in` returns no number
+to draw and says which rule excluded it. The interface can then state the
+reason instead of drawing a number it cannot stand behind. For the same reason,
+the number and the domain come out of one call. A caption saying "no agent in
+the circuit yet" beside a trace that is still drawing would be two displays
+disagreeing about the same instant.
 """
 
 from dataclasses import dataclass
@@ -72,31 +74,31 @@ __all__ = [
     "wash_in_ratio",
 ]
 
-#: Smallest inspired fraction the ratio may be formed from.
+#: The smallest inspired fraction from which the ratio may be formed.
 #:
-#: Derived rather than chosen, for the reason `formatting.py` derives the MAC
-#: resolution from the percent one: it is
-#: `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` expressed as a fraction, so
-#: re-deriving the displayed resolution moves this with it instead of leaving
-#: a second constant behind to go stale. Rule 1 of the module docstring.
+#: The value is derived rather than chosen, for the same reason that
+#: `formatting.py` derives the MAC resolution from the percent resolution. It
+#: is `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` expressed as a fraction. So a
+#: change to the displayed resolution moves this value with it, and no second
+#: constant is left behind to go stale. This is rule 1 of the module docstring.
 WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
     Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)
 )
 
-#: Where net uptake stops: $`F_A = F_I`$, the wash-in curve's asymptote and
-#: rule 2 of the module docstring. Above it the run is eliminating agent
-#: rather than taking it up.
+#: The ratio at which net uptake stops: $`F_A = F_I`$. It is the wash-in
+#: curve's asymptote and rule 2 of the module docstring. Above this ratio the
+#: run is eliminating agent rather than taking it up.
 WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 
 
 class WashInDomain(StrEnum):
     """Whether $`F_A/F_I`$ is a wash-in fraction, and if not, why not.
 
-    Three outcomes rather than a `None`, because the interface has to say
-    *which* of them a blank stretch of curve is: "no agent has reached the
-    circuit yet" and "the patient is now returning agent" are opposite
-    situations, and a reader told only that the trace stopped would have no
-    way to tell them apart.
+    There are three outcomes rather than a `None`, because the interface has
+    to say *which* outcome a blank stretch of curve stands for. "No agent has
+    reached the circuit yet" and "the patient is now returning agent" are
+    opposite situations. A reader told only that the trace stopped would have
+    no way to tell them apart.
     """
 
     WASH_IN = "wash_in"
@@ -106,19 +108,19 @@ class WashInDomain(StrEnum):
     """The denominator is below `WASH_IN_DENOMINATOR_FLOOR_FRACTION`."""
 
     ELIMINATION = "elimination"
-    """Alveolar exceeds inspired: agent is coming back, not going in."""
+    """The alveolar fraction exceeds the inspired fraction: agent is coming back, not going in."""
 
 
 @dataclass(frozen=True, slots=True)
 class WashInReading:
-    """What one pair of modelled fractions gives the wash-in display.
+    """The wash-in display's reading of one pair of modelled fractions.
 
     Attributes:
         domain: Which of `WashInDomain`'s three cases this pair falls in.
         plotted_ratio: The dimensionless quotient where it is a wash-in
             fraction, and `None` in the other two cases. It is never a
-            clamped or substituted value: outside the domain there is no
-            number to draw, which is the whole point of the pair.
+            clamped or substituted value. Outside the domain there is no
+            number to draw, and saying so is the purpose of the pair.
     """
 
     domain: WashInDomain
@@ -128,18 +130,18 @@ class WashInReading:
 def wash_in_ratio(
     alveolar_partial_pressure_fraction: float, inspired_partial_pressure_fraction: float
 ) -> float | None:
-    """Divide alveolar by inspired, where the denominator supports it.
+    """Divide the alveolar fraction by the inspired fraction, where the denominator allows it.
 
-    The arithmetic alone, with rule 1 of the module docstring and nothing
-    else: the result may exceed one, and a caller plotting it as a wash-in
-    fraction wants `plotted_wash_in_ratio` instead.
+    This function does the arithmetic alone and applies rule 1 of the module
+    docstring and nothing else. So the result may exceed one. A caller that
+    plots it as a wash-in fraction wants `plotted_wash_in_ratio` instead.
 
     Args:
         alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
             atmosphere.
         inspired_partial_pressure_fraction: $`F_I`$, as a fraction of one
             atmosphere. This model's inspired fraction is its circuit
-            fraction; see the module docstring.
+            fraction, as the module docstring explains.
 
     Returns:
         The dimensionless quotient, or `None` when the inspired fraction is
@@ -153,7 +155,7 @@ def wash_in_ratio(
 
 
 def is_wash_in(ratio: float) -> bool:
-    """Whether a computed quotient is inside the uptake regime.
+    """Return whether a computed quotient is inside the uptake regime.
 
     This is the second boundary of the domain that the module docstring
     states, written as a predicate. The chart and `read_wash_in` both use it,
@@ -173,11 +175,11 @@ def is_wash_in(ratio: float) -> bool:
 def read_wash_in(
     alveolar_partial_pressure_fraction: float, inspired_partial_pressure_fraction: float
 ) -> WashInReading:
-    """Read F_A/F_I at one moment: the plottable value, and its domain.
+    """Read F_A/F_I at one moment, returning the value to plot and its domain.
 
-    One call rather than a value function and a domain function, so the
-    trace and the sentence beside it are produced from one evaluation of
-    one rule and cannot come to disagree.
+    This is one call rather than a value function and a domain function. So
+    the trace and the sentence beside it come from one evaluation of one rule,
+    and they cannot come to disagree.
 
     Args:
         alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
