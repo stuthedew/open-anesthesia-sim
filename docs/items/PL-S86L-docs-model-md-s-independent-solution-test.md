@@ -3,11 +3,12 @@ id: PL-S86L
 title: docs/MODEL.md's independent-solution test section (about line 3913) still calls the unperfused load then dial off 'the worst trajectory the four sliders can reach', a ranking from the operator split; under the exact step and the 0.0125 s oracle it reports the least of the five gate trajectories (8.7985e-15 for desflurane against 1.5786e-14 for ordinary use, measured 2026-10-25 for PL-FJMW)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: docs/MODEL.md, tests/reference/test_coupled_dynamics.py
 added: 2026-10-25
+closed: 2026-10-25
 payoff: The coupled model's verification section says which trajectory each gate figure comes from and where in a run the worst disagreement sits, as the exact step measures them today
 verify: ! grep -qF 'four kinds of run' docs/MODEL.md && ! grep -qF 'worst trajectory the four' docs/MODEL.md && ! grep -qF 'always inside a' docs/MODEL.md && ! grep -qF 'same number of steps' docs/MODEL.md && ! grep -qF 'it alone exceeds the previous' docs/MODEL.md && ! grep -qF 'early in the wash-in' tests/reference/test_coupled_dynamics.py && ! grep -qF '6 000 for each of them' tests/reference/test_coupled_dynamics.py && ! grep -qF 'reached at about 306 s' tests/reference/test_coupled_dynamics.py && ! grep -qF 'always inside a' tests/reference/test_coupled_dynamics.py
 ---
@@ -60,3 +61,5 @@ The desflurane column matches `PL-FJMW`'s figures to every digit. Nine of the fi
 | 0.025 s | unperfused load then dial off | 1.5418e-14 at 586.23 s, alveolar | 9.8185e-15 at 599.98 s, alveolar | 3.6915e-14 at 565.80 s, alveolar |
 
 So the end-of-run pattern holds at the shipped step only: two of the nine pairs at each finer step peak in the last 1.5 s. The ventilator start at 0.025 s peaks in the circuit while ventilation is still off, and desflurane's 5.8870e-14 there is the figure the tolerance is set against. At every step the unperfused load peaks in its loading phase. At 416.5 s of that phase, desflurane's mixed-venous, vessel-rich, muscle and fat fractions are exactly 0.0. Three ventilator starts in a row at 0.1 s give 2.4619e-14 for desflurane (at 903.2 s) and 7.4368e-15 for sevoflurane (at 1800.0 s, in muscle). The held corner at 0.025 s, which the step test does not drive, gives 5.4623e-14 for desflurane at 599.0 s. That last figure is the subject of `PL-F67Q`.
+
+**Widened by the blind review, 2026-10-25.** Two blind passes found five more statements with the same cause, and each is fixed on this branch. Three test passages said muscle is never the worst state on a gate trajectory, but sevoflurane's held envelope corner peaks in muscle at 600.0 s. MODEL.md and the comment above `SETTING_CHANGE_SCENARIOS` said the two setting-change trajectories "bracket what a turning run does", but a longer turning run raises the residual. MODEL.md and the tolerance comment said the finer-step test drives "the same trajectories", but it drives three of the five. The retired-test history said the exact-step tolerance "is 6.45 times the worst residual", which was true of the 5e-12 bound of 2026-09-06 and not of today's 4e-13. The `HELD_RUN_ROUNDING_BOUND` comment gave a gate trajectory 6 000 steps, but the unperfused load takes 9 000. Whether the finer-step test should drive all five trajectories is a change to what the test checks, so it is `PL-F67Q`.
