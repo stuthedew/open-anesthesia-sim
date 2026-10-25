@@ -9,6 +9,7 @@ feature: stale-source-claims
 touches: tests/reference/test_coupled_dynamics.py
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1816
 payoff: the coupled-dynamics gate's comments state which trajectories it covers and how large its errors are as they are now
 verify: ! grep -qF 'only gate trajectory that takes any control to its minimum' tests/reference/test_coupled_dynamics.py && ! grep -qF 'app.simulation_view.SIMULATION_STEP_S' tests/reference/test_coupled_dynamics.py && ! grep -qF 'All five run 600 s' tests/reference/test_coupled_dynamics.py && ! grep -qF 'worst trajectory' tests/reference/test_coupled_dynamics.py
 ---
