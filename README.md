@@ -206,6 +206,7 @@ independently right. Beside it,
 elimination, to the end of the supported 24 hours, against the same papers'
 published mean washout curves and records where the modelled tail runs above
 and below them; it asserts nothing about agreement, and `docs/MODEL.md` carries the reading.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 That last point generalizes, and it is why parameter provenance is graded
 rather than merely cited. `docs/MODEL.md` distinguishes a primary measurement

@@ -2155,22 +2155,30 @@ def _marked_scope(lines: Sequence[str], index: int) -> tuple[int, int]:
     """The lines a marker speaks for, as a half-open range of `lines`.
 
     It is the block `_marked_span` finds. Where that block is inside a list or
-    a block quote, the scope reaches back over the whole list or quote. A
-    marker cannot stand inside a list item (`_misplaced_markers`), so a marker
-    under a list is the only way to tie a figure in one of its earlier items
-    (`PL-JS6P`). A paragraph after a list is still a scope of its own, as
-    `PL-JZNV` requires.
+    a block quote, the scope reaches back over the whole list or quote. It
+    stops where a list meets a block quote, so a marker under a list does not
+    speak for a quote above it. A marker cannot stand inside a list item
+    (`_misplaced_markers`), so a marker under a list is the only way to tie a
+    figure in one of its earlier items (`PL-JS6P`). A paragraph after a list
+    is still a scope of its own, as `PL-JZNV` requires.
     """
     start, end = _marked_span(lines, index)
     if start == end:
         return start, end
-    blocks = read_blocks(lines).blocks
+    document = read_blocks(lines)
+    blocks = document.blocks
     position = next(
         (at for at, block in enumerate(blocks) if (block.start, block.end) == (start, end)), None
     )
     if position is None or blocks[position].depth == 0:
         return start, end
-    while position > 0 and blocks[position - 1].depth > 0:
+
+    def container(at: int) -> bool:
+        """Whether the block at `at` is in a list item rather than only in a block quote."""
+        return any(item.start <= blocks[at].start < item.end for item in document.items)
+
+    held_by = container(position)
+    while position > 0 and blocks[position - 1].depth > 0 and container(position - 1) == held_by:
         position -= 1
     return blocks[position].start, end
 
@@ -2360,7 +2368,14 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
             continue
 
         start, end = _marked_scope(lines, index)
-        in_prose = {float(number) for number in NUMBER_RE.findall("\n".join(lines[start:end]))}
+        scope_text = "\n".join(lines[start:end])
+        # A time written in another unit, such as "24 hours", restates the
+        # value in seconds that it converts to (`UNIT_SCALES`).
+        in_prose = {float(number) for number in NUMBER_RE.findall(scope_text)} | {
+            _prose_figure(found.group("number"), found.group("unit"))[0]
+            for found in PROSE_FIGURE_RE.finditer(scope_text)
+            if found.group("unit") in UNIT_SCALES
+        }
 
         for relative, key_path, stated, stored in resolved:
             if stated != stored:
@@ -2396,25 +2411,71 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
 
 #: Each unit a stored value can carry, read from the end of its data key or its
 #: constant's name, and how prose writes that unit. Longer endings come first,
-#: so `_l_min` is read before `_l`.
-UNIT_ENDINGS: tuple[tuple[str, str], ...] = (
+#: so `_l_min` is read before `_l` and `_l_s` before `_s`. A fraction of MAC,
+#: such as `fraction_of_mac`, has no unit: prose writes it as a bare decimal,
+#: as in "0.34 of MAC", so its ending maps to `None`.
+UNIT_ENDINGS: tuple[tuple[str, str | None], ...] = (
     ("_l_min", "L/min"),
+    ("_l_s", "L/s"),
     ("_l", "L"),
     ("_percent", "%"),
     ("_kg", "kg"),
     ("_s", "s"),
+    ("_of_mac", None),
     ("_mac", "MAC"),
 )
+
+#: A unit that prose writes as a word, and the symbol it stands for.
+UNIT_WORDS: dict[str, str] = {
+    "second": "s",
+    "seconds": "s",
+    "liter": "L",
+    "liters": "L",
+    "litre": "L",
+    "litres": "L",
+    "percent": "%",
+}
+
+#: A unit of time that prose writes and no stored value is kept in, with the
+#: unit it converts to and the factor. So "24 hours" is read as 86400 s and
+#: "1 ms" as 0.001 s.
+UNIT_SCALES: dict[str, tuple[str, float]] = {
+    "ms": ("s", 0.001),
+    "min": ("s", 60.0),
+    "minute": ("s", 60.0),
+    "minutes": ("s", 60.0),
+    "h": ("s", 3600.0),
+    "hour": ("s", 3600.0),
+    "hours": ("s", 3600.0),
+}
 
 #: A number in prose and the unit written after it, if any. A digit, letter, dot
 #: or comma on either side means the numeral is part of something else, such as
 #: a version, an identifier or a longer number. A space or a no-break space may
-#: stand between the number and its unit, and `×MAC` is read as `MAC`.
+#: stand between the number and its unit, and `×MAC` is read as `MAC`. A unit
+#: written as a word, such as "seconds", is one of `UNIT_WORDS`.
 PROSE_FIGURE_RE = re.compile(
     r"(?<![\w.,/])(?P<number>\d+(?:\.\d+)?)"
-    r"(?:[ \u00a0]?×?(?P<unit>L/min|L|%|kg|s|MAC)(?![\w/]))?"
+    r"(?:[ \u00a0]?×?(?P<unit>L/min|L/s|L|%|kg|s|MAC|"
+    + "|".join(sorted({*UNIT_WORDS, *UNIT_SCALES}, key=len, reverse=True))
+    + r")(?![\w/]))?"
     r"(?![\w]|[.,]\d)"
 )
+
+
+def _prose_figure(number: str, unit: str | None) -> tuple[float, str | None]:
+    """A figure as prose writes it, in the unit a stored value is kept in.
+
+    A unit written as a word becomes its symbol (`UNIT_WORDS`), and a unit of
+    time no value is stored in is converted to seconds (`UNIT_SCALES`).
+    """
+    if unit is None:
+        return float(number), None
+    if unit in UNIT_SCALES:
+        symbol, factor = UNIT_SCALES[unit]
+        return round(float(number) * factor, 12), symbol
+    return float(number), UNIT_WORDS.get(unit, unit)
+
 
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
 LISTED_FIGURE_RE = re.compile(r"^(?P<number>\d+(?:\.\d+)?)(?:[ \u00a0]?×?(?P<unit>\S+))?$")
@@ -2444,6 +2505,21 @@ def _unit_of(name: str) -> str | None:
     return next((unit for ending, unit in UNIT_ENDINGS if lowered.endswith(ending)), None)
 
 
+def _subscript_names(path: Path) -> set[str]:
+    """The names `path`'s code uses to index into something, as in `state[DELIVERED_AGENT_L]`.
+
+    Such a constant is a position, even when its name ends in the unit of the
+    quantity stored there. `DELIVERED_AGENT_L = 6` is the state vector's
+    seventh entry, which holds litres, and not a volume of 6 L.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return {
+        node.slice.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Name)
+    }
+
+
 def stored_values(root: Path) -> list[StoredValue]:
     """Every number a restatement in prose could repeat, with its unit.
 
@@ -2451,8 +2527,9 @@ def stored_values(root: Path) -> list[StoredValue]:
     module-level constant in the package whose name ends in a unit. A constant
     with no unit in its name is left out: most are layout sizes, counts and
     indices, and matching them would ask a writer about numbers no prose
-    restates. Zero is left out too, because it is in nearly every paragraph
-    and never names a particular value.
+    restates. A constant that its module uses as an index is left out too
+    (`_subscript_names`). Zero is left out, because it is in nearly every
+    paragraph and never names a particular value.
     """
     found: list[StoredValue] = []
     package = root / PACKAGE_ROOT
@@ -2479,13 +2556,20 @@ def stored_values(root: Path) -> list[StoredValue]:
         relative = module.relative_to(package).as_posix()
         try:
             constants = module_constants(module)
+            indices = _subscript_names(module)
         except (SyntaxError, ValueError, *UNREADABLE):
             # The source-docstring check names a module this interpreter cannot
             # read as declined, so it is not passed over in silence.
             continue
         for name, value in constants.items():
             unit = _unit_of(name)
-            if value and unit is not None and not name.startswith("_") and name.isupper():
+            if (
+                value
+                and unit is not None
+                and not name.startswith("_")
+                and name.isupper()
+                and name not in indices
+            ):
                 found.append(StoredValue(relative, name, value, unit))
     return found
 
@@ -2528,16 +2612,47 @@ def _prose_lines(text: str, lines: Sequence[str]) -> list[str]:
     ]
 
 
+@dataclass
+class _MarkerScope:
+    """What the markers under one paragraph, list or block quote say about its figures.
+
+    `homes` holds each `(home, key)` that a `provenance:` marker names, or that
+    a `derived:` marker names as an input. `derived` holds each figure a
+    `derived:` marker states it computed, written as the marker writes it.
+    `listed` holds the figures a `not-restated:` marker lists. `at` is the
+    line of the scope's last marker.
+    """
+
+    start: int
+    end: int
+    at: int
+    homes: set[tuple[str, str]] = field(default_factory=set)
+    derived: set[str] = field(default_factory=set)
+    listed: set[tuple[float, str | None]] = field(default_factory=set)
+
+
+def _named_homes(body: str) -> set[tuple[str, str]]:
+    """Each `(home, key)` that a marker body of `<file> <key> = <value>, ...` names.
+
+    A body this cannot read names nothing here. `_check_prose_markers`
+    reports it as an error.
+    """
+    source = MARKER_SOURCE_RE.match(body)
+    if source is None:
+        return set()
+    named = set()
+    for clause in source.group("assertions").split(","):
+        assertion = ASSERTION_RE.match(clause.strip())
+        if assertion is not None:
+            named.add((source.group("relative"), assertion.group("key")))
+    return named
+
+
 def _marker_ties(
     lines: Sequence[str], fenced: Collection[int], report: Report, document: Path
-) -> list[tuple[int, int, set[float], set[tuple[float, str | None]], int]]:
-    """Each marker's scope, the values it ties there, and the figures it lists.
-
-    Each entry is the scope's first line and one past its last, the values its
-    `provenance:` and `derived:` markers name, the figures its `not-restated:`
-    markers list, and the line of the last of those markers.
-    """
-    scopes: dict[tuple[int, int], tuple[set[float], set[tuple[float, str | None]], int]] = {}
+) -> list[_MarkerScope]:
+    """Each marked scope in `lines`, with what its markers tie and list there."""
+    scopes: dict[tuple[int, int], _MarkerScope] = {}
     openings = _marker_lines(lines)
     for index, line in enumerate(lines):
         if index in fenced or index not in openings:
@@ -2545,8 +2660,9 @@ def _marker_ties(
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
             continue
-        scope = _marked_scope(lines, index)
-        values, listed, _ = scopes.get(scope, (set(), set(), index))
+        start, end = _marked_scope(lines, index)
+        scope = scopes.setdefault((start, end), _MarkerScope(start, end, index))
+        scope.at = index
         kind, body = match.group("kind"), match.group("body")
         if kind == "not-restated":
             for figure in body.split(","):
@@ -2558,14 +2674,34 @@ def _marker_ties(
                         f"{figure.strip()!r} is not one"
                     )
                     continue
-                unit = parsed.group("unit")
-                listed.add((float(parsed.group("number")), unit))
+                scope.listed.add(_prose_figure(parsed.group("number"), parsed.group("unit")))
+        elif kind == "derived":
+            derived = DERIVED_FROM_RE.match(body)
+            if derived is not None:
+                scope.derived.update(NUMBER_RE.findall(derived.group("figure")))
+                scope.homes.update(_named_homes(derived.group("rest")))
         else:
-            values.update(float(number) for number in NUMBER_RE.findall(body))
-        scopes[scope] = (values, listed, index)
-    return [
-        (start, end, values, listed, at) for (start, end), (values, listed, at) in scopes.items()
-    ]
+            scope.homes.update(_named_homes(body))
+    return list(scopes.values())
+
+
+def _named_values(matching: Sequence[StoredValue]) -> str:
+    """Each stored value a figure equals, named by its home, key and value."""
+    named = [f"{home.home} {home.name} = {home.value:g}" for home in matching]
+    return named[0] if len(named) == 1 else "each of " + "; ".join(named)
+
+
+def _marker_body(matching: Sequence[StoredValue]) -> str:
+    """The `provenance:` marker body for a figure's one home, or a placeholder for several.
+
+    A figure that equals several stored values gets no ready-made marker,
+    because pasting one for the first of them would tie the figure to a value
+    the writer may not mean.
+    """
+    if len(matching) == 1:
+        home = matching[0]
+        return f"{home.home} {home.name} = {home.value:g}"
+    return "<home> <key> = <value>"
 
 
 def check_untied_restatements(root: Path, report: Report) -> None:
@@ -2586,8 +2722,19 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     restated number cannot go stale silently, because it is either tied to
     its home or declared not to be a restatement.
 
+    A marker ties a figure only to a value it names. So a `provenance:`
+    marker for the circuit volume, 6 L, does not clear "a MAC of 6 %" in the
+    same paragraph. A `derived:` marker ties its computed figure as the marker
+    writes it, and each input it names.
+
     A `not-restated:` marker that lists a figure no stored value in its scope
     equals is refused too, so a declaration cannot outlive its sentence.
+
+    It reads a figure written as `PROSE_FIGURE_RE` reads one: a number, then
+    one of the unit symbols or words it lists. It does not read a figure in
+    a math span or a code span, a figure in a list joined by slashes such as
+    "6/33/14.5 L", or a unit spelled in another case, such as "l/min". A
+    restatement written in one of those forms is not checked.
     """
     homes = stored_values(root)
     for document in PROVENANCE_DOCUMENTS:
@@ -2606,38 +2753,38 @@ def check_untied_restatements(root: Path, report: Report) -> None:
                 continue
             for found in PROSE_FIGURE_RE.finditer(line):
                 written = found.group("number")
-                figure = (float(written), found.group("unit"))
+                unit = found.group("unit")
+                figure = _prose_figure(written, unit)
                 matching = [home for home in homes if _matches(figure, home, written)]
                 if not matching:
                     continue
-                scope = next((tie for tie in ties if tie[0] <= index < tie[1]), None)
-                if scope is not None and figure[0] in scope[2]:
+                scope = next((tie for tie in ties if tie.start <= index < tie.end), None)
+                if scope is not None and (
+                    written in scope.derived
+                    or any((home.home, home.name) in scope.homes for home in matching)
+                ):
                     continue
-                if scope is not None and figure in scope[3]:
-                    claimed.add((scope[4], figure))
+                if scope is not None and figure in scope.listed:
+                    claimed.add((scope.at, figure))
                     continue
-                home = matching[0]
-                shown = written if figure[1] is None else f"{written} {figure[1]}"
-                others = (
-                    f", or one of {len(matching) - 1} other stored values"
-                    if len(matching) > 1
-                    else ""
-                )
+                shown = written if unit is None else f"{written} {unit}"
                 report.errors.append(
-                    f"{document}:{index + 1}: {shown} equals {home.home} {home.name} = "
-                    f"{home.value:g}{others}, and no marker under its paragraph says what it "
-                    f"is. If it restates that value, add `<!-- provenance: {home.home} "
-                    f"{home.name} = {home.value:g} -->` on a line of its own under the "
-                    f"paragraph. If it only coincides, add `<!-- not-restated: {shown} -->`"
+                    f"{document}:{index + 1}: {shown} equals {_named_values(matching)}, and no "
+                    "marker under its paragraph says what it is. If it restates "
+                    f"{'that value' if len(matching) == 1 else 'one of them'}, add "
+                    f"`<!-- provenance: {_marker_body(matching)} -->` on a line of its own "
+                    "under the paragraph. If it only coincides, add "
+                    f"`<!-- not-restated: {shown} -->`"
                 )
 
-        for _, _, _, listed, at in ties:
-            for figure in sorted(listed, key=lambda pair: (pair[0], pair[1] or "")):
-                if (at, figure) not in claimed:
+        for scope in ties:
+            for figure in sorted(scope.listed, key=lambda pair: (pair[0], pair[1] or "")):
+                if (scope.at, figure) not in claimed:
                     number, unit = figure
                     shown = f"{number:g}" if unit is None else f"{number:g} {unit}"
                     report.errors.append(
-                        f"{document} (line {at + 1}): the `not-restated:` marker lists {shown}, "
+                        f"{document} (line {scope.at + 1}): the `not-restated:` marker lists "
+                        f"{shown}, "
                         "which is not a figure in the paragraph above that equals a stored "
                         "value; remove it from the marker"
                     )
