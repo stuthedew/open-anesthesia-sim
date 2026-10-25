@@ -5480,22 +5480,30 @@ def cmd_arm(args: argparse.Namespace) -> int:
     return verdict.code
 
 
-#: `ci-scope`'s two answers, as the workflow's step output carries them.
+#: `ci-scope`'s three answers, as the workflow's step output carries them.
 SCOPE_ITEMS = "items"
+SCOPE_APPARATUS = "apparatus"
 SCOPE_FULL = "full"
 
 
 def cmd_ci_scope(args: argparse.Namespace) -> int:
-    """Whether this branch changed item files alone, for CI's item-only fast path.
+    """Whether this branch changed item files alone, or apparatus files alone, for CI.
 
     `quality.yml` asks this on a pull request and skips the steps that no item
     file can change when the answer is `items` (`PL-DXD4`). The answer is
     `items` only when every path the branch changed against `--base`,
-    committed or not, lies under the store. Every other reading answers
-    `full`: a path outside the store, a branch that changed nothing, a diff git
-    could not produce, `--no-git`, and a store git cannot address. `full` runs
-    every step, so a reading that cannot show the diff is item files alone
-    takes the answer that skips nothing.
+    committed or not, lies under the store.
+
+    The answer is `apparatus` when every changed path lies under
+    `workflow_paths`, the settings' list of the apparatus's side, and at least
+    one lies outside the store. Then `quality.yml` skips the tests that read a
+    costly computation, which no apparatus file can change (`PL-STM6`).
+
+    Every other reading answers `full`: a path on the product's side, a branch
+    that changed nothing, a diff git could not produce, `--no-git`, and a store
+    git cannot address. `full` runs every step, so a reading that cannot show
+    the diff is item or apparatus files alone takes the answer that skips
+    nothing.
 
     The changed paths are `verify.changed_paths`, the read behind the scoped
     verify replay, against the same base. So the replay and the fast path judge
@@ -5530,11 +5538,18 @@ def _ci_scope(inv: Invocation, base: str) -> tuple[str, str]:
     if not paths:
         return SCOPE_FULL, f"this branch changed nothing against {base}"
     outside = [path for path in paths if not is_under(path, (inv.tracked,))]
+    product = [path for path in outside if not is_under(path, inv.config.workflow_paths)]
+    if product:
+        count = len(product)
+        return SCOPE_FULL, (
+            f"{count} changed path{'' if count == 1 else 's'} outside {inv.tracked} and "
+            f"outside `workflow_paths`, the first {product[0]}"
+        )
     if outside:
         count = len(outside)
-        return SCOPE_FULL, (
-            f"{count} changed path{'' if count == 1 else 's'} outside {inv.tracked}, "
-            f"the first {outside[0]}"
+        return SCOPE_APPARATUS, (
+            f"all {len(paths)} changed paths against {base} are under `workflow_paths`, "
+            f"and {count} of them outside {inv.tracked}, the first {outside[0]}"
         )
     count = len(paths)
     return SCOPE_ITEMS, (
@@ -5943,7 +5958,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     arm_cmd.set_defaults(func=cmd_arm)
     ci_scope_cmd = add(
-        "ci-scope", "whether this branch changed item files alone, for CI's item-only fast path"
+        "ci-scope", "whether this branch changed item files alone, or apparatus files alone, for CI"
     )
     ci_scope_cmd.add_argument(
         "--base",
@@ -5956,7 +5971,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         metavar="PATH",
-        help="also append `scope=items` or `scope=full` to this file, the step-output file "
+        help="also append `scope=items`, `scope=apparatus` or `scope=full` to this file, the "
+        "step-output file "
         "GitHub Actions names in GITHUB_OUTPUT",
     )
     ci_scope_cmd.set_defaults(func=cmd_ci_scope)

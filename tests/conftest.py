@@ -75,6 +75,14 @@ worker handed a controller test waits for the run instead of building it
 again (`PL-ZWQS`). `tools/main_ci_status.py`'s pytest line reads the parts'
 sum, so compare the two jobs' pytest steps in a run's log.
 
+**A pull request that changes only apparatus files skips the costly tests**
+(`PL-STM6`). `--skip-costly` leaves out every test that reads a costly
+computation, by the same `_costly_reads` that the parts and the dealing use.
+`quality.yml` passes it to the second part when `bin/docket ci-scope` answers
+`apparatus`, because no apparatus file is an input to those tests. With them
+gone, `PART_SHARES` stays as it is: the first part's linters already make up
+for most of the gap that leaving them out opens.
+
 **The windows the tests leave open** (`PL-CW51`). Many tests build a dashboard
 and never delete it, so a worker can end its run holding hundreds of windows.
 The interpreter's exit then destroyed them in no particular order. Qt also
@@ -215,6 +223,26 @@ def part[Test: Hashable](
     return chosen
 
 
+def selected[Test: Hashable](
+    tests: Sequence[Test],
+    costly: Collection[Test],
+    chosen: tuple[int, int] | None,
+    *,
+    skip_costly: bool,
+) -> list[Test]:
+    """The tests a run keeps, in their order in `tests`.
+
+    With `skip_costly`, every test in `costly` is left out. With `chosen`, a
+    `(K, N)` pair from `--part`, `part` then picks part K of N from the rest,
+    with the shares `PART_SHARES` names for N parts.
+    """
+
+    kept = [test for test in tests if test not in costly] if skip_costly else list(tests)
+    if chosen is None:
+        return kept
+    return part(kept, costly, *chosen, PART_SHARES.get(chosen[1]))
+
+
 def _part(text: str) -> tuple[int, int]:
     """Parse `--part K/N` into (K, N), refusing a K outside 1 to N."""
 
@@ -227,13 +255,19 @@ def _part(text: str) -> tuple[int, int]:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add `--part K/N`, which runs one of the parts CI splits the suite into."""
+    """Add `--part K/N` and `--skip-costly`, the two ways CI narrows a run of the suite."""
 
     parser.addoption(
         "--part",
         type=_part,
         metavar="K/N",
         help="run only part K of N, as each of quality.yml's two pytest jobs does",
+    )
+    parser.addoption(
+        "--skip-costly",
+        action="store_true",
+        help="leave out every test that reads a costly computation, as quality.yml does on a "
+        "pull request that changes only apparatus files",
     )
 
 
@@ -351,7 +385,11 @@ def pytest_configure_node(node: WorkerController) -> None:
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Keep the part `--part` names, then deal each costly computation to a worker's first slice.
+    """Keep the tests that `--skip-costly` and `--part` select, then deal the costly ones.
+
+    `--skip-costly` leaves out every test that reads a costly computation, and
+    `--part` then picks one part of what is left. Each costly computation that
+    remains is dealt to the head of a worker's first slice.
 
     `trylast`, so that the order dealt is the one every other hook has finished
     with. Every worker runs this on the same collection and gets the same
@@ -362,10 +400,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """
 
     chosen = config.getoption("part")
-    if chosen is not None:
+    skip_costly = config.getoption("skip_costly")
+    if chosen is not None or skip_costly:
         reads, groups = _costly_reads(items)
         costly = set(reads).union(*groups.values())
-        kept = part(items, costly, *chosen, PART_SHARES.get(chosen[1]))
+        kept = selected(items, costly, chosen, skip_costly=skip_costly)
         kept_set = set(kept)
         config.hook.pytest_deselected(items=[item for item in items if item not in kept_set])
         items[:] = kept

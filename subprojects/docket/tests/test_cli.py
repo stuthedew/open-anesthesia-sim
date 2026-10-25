@@ -12176,9 +12176,68 @@ def test_ci_scope_answers_full_for_a_diff_reaching_past_the_store(
     assert _ci_scope(root, output, "--base", "origin/main") == 0
 
     assert capsys.readouterr().out == (
-        f"full - 1 changed path outside docs/items, the first {first_outside}\n"
+        f"full - 1 changed path outside docs/items and outside `workflow_paths`, "
+        f"the first {first_outside}\n"
     )
     assert output.read_text(encoding="utf-8") == "scope=full\n"
+
+
+def _declare_workflow_paths(root: Path, git: Callable[..., str], *paths: str) -> None:
+    """Commit a `docket.toml` on `main` whose `workflow_paths` are `paths`, and branch again."""
+    git("checkout", "-q", "main")
+    listed = ", ".join(f'"{path}"' for path in paths)
+    _commit_file(git, root, "docket.toml", f"[docket]\nworkflow_paths = [{listed}]\n", ARM_T0)
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", "-B", ARM_BRANCH)
+
+
+def test_ci_scope_answers_apparatus_for_a_branch_inside_workflow_paths(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Apparatus files and item files together, all under `workflow_paths`, answer `apparatus`.
+
+    `quality.yml` then skips the tests that read a costly computation, which no
+    apparatus file can change (`PL-STM6`). `tools-extra/run.py` shares the
+    declared `tools`'s spelling up to the slash and is not under it, so a bare
+    string prefix would answer `apparatus` where `full` is right.
+    """
+    root, git = _arm_repo(tmp_path)
+    _declare_workflow_paths(root, git, "docs/items", "tools")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", _item_document("PL-B1B1") + "x\n", ARM_T0)
+    (root / "tools").mkdir()
+    _commit_file(git, root, "tools/check.py", "checked = True\n", ARM_T0)
+    output = tmp_path / "github-output"
+
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+    (root / "tools-extra").mkdir()
+    _commit_file(git, root, "tools-extra/run.py", "ran = True\n", ARM_T0)
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "apparatus - all 2 changed paths against origin/main are under `workflow_paths`, "
+        "and 1 of them outside docs/items, the first tools/check.py",
+        "full - 1 changed path outside docs/items and outside `workflow_paths`, "
+        "the first tools-extra/run.py",
+    ]
+    assert output.read_text(encoding="utf-8") == "scope=apparatus\nscope=full\n"
+
+
+def test_ci_scope_answers_items_before_apparatus(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A branch of item files alone answers `items` though the store is in `workflow_paths`.
+
+    `items` skips more than `apparatus` does, so the narrower answer comes first.
+    """
+    root, git = _arm_repo(tmp_path)
+    _declare_workflow_paths(root, git, "docs/items", "tools")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", _item_document("PL-B1B1") + "x\n", ARM_T0)
+    output = tmp_path / "github-output"
+
+    assert _ci_scope(root, output, "--base", "origin/main") == 0
+
+    assert capsys.readouterr().out.startswith("items - ")
+    assert output.read_text(encoding="utf-8") == "scope=items\n"
 
 
 def test_ci_scope_answers_full_where_it_cannot_show_item_files_alone(
