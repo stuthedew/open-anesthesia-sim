@@ -3,13 +3,15 @@ id: PL-CR81
 title: Projects threads in the v0.7.0 project run without this repository's hooks: no session-start digest and no guard hook fired in one thread on 2026-10-25, although it started inside the checkout with one repository
 priority: P1
 effort: S
-status: ready
+status: blocked
 classes: infra
 feature: projects-trial
-touches: docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
+touches: docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-8Z38-report-to-anthropic-that-projects-threads-on.md, docs/items/PL-876V-until-projects-threads-load-claude-again-pl.md
+blocked-by: PL-8Z38
 added: 2026-10-25
 payoff: every thread in the project runs with the repository's guard hooks and session-start digest again, or the project knows it does not and why
-verify: grep -qE '^\*\*Cause\.' docs/items/PL-CR81-*.md
+verify: grep -qE '^\*\*Probe refused in a thread\.' docs/items/PL-CR81-*.md
+recurrences: 2026-10-25 PL-876V
 ---
 
 **Problem.** Projects threads in the v0.7.0 project run without this repository's hooks: no session-start digest and no guard hook fired in one thread on 2026-10-25, although it started inside the checkout with one repository
@@ -80,3 +82,54 @@ and records here that it was refused.
 
 **Generator check.** An external behaviour nothing in the repository models,
 met once in this project. A one-off unless other threads report the same.
+
+**Cause.** Found on 2026-10-25, about 21:00Z, and not fixed. No change in this
+repository can fix it. The work was done from an ordinary session outside the
+project (`session_01WW87TkT7FA8qoh7zvupQL3`), which read the threads'
+`init` records through `list_events`. A Projects thread no longer reads the
+repository's `.claude/` directory at all, so the missing hooks are one symptom
+of a wider loss. Three comparisons narrowed it:
+
+- **Today's thread reads nothing from `.claude/`.** Its four `init` records
+  from 18:42Z to 18:46Z report `cwd: /home/user/open-anesthesia-sim`. They list
+  none of the repository's four skills: `docket`, `pull-request`,
+  `run-the-app` and `model-review`. No `PreToolUse` hook fired in that window.
+  That includes `owner_ask_guard.py`, which `.claude/settings.json` binds to
+  `mcp__hearthbot__post_message`, and the thread called that tool three times.
+  The hooks that did fire are the harness's own: `UserPromptSubmit`, `Stop`,
+  and `PostToolUse` on hearthbot tools and on Edit. The repository declares no
+  `PostToolUse` hook on Edit.
+- **The tags and the repository list do not separate the two cases.** The
+  2026-09-27 thread that `PL-9DYK` confirmed against
+  (`session_01N7QD5ZmCCj9PX3dUwRPNQ8`) carries the same `hearth-thread`,
+  `config:hearth-thread-own-tools` and `config:static-sysprompt` tags. It has
+  the same origin, one repository and the same working directory. Its `init`
+  lists `docket`, and each Bash call fired three `PreToolUse:Bash` hooks. That
+  thread ran Claude Code 2.1.283. Today's thread runs 2.1.310.
+- **Preloading alone does not cause it.** The ordinary session also runs
+  2.1.310, and its process was started the same way: `/proc` shows `claude
+  --preload /home/claude/.claude/remote/spare.sock`, with
+  `CCR_PRELOAD_CLAUDE=1`. Its entrypoint is `remote_desktop`, not
+  `remote_projects`. It lists all four skills, its `SessionStart` hooks printed
+  the digest, and each Bash call fires the repository's `PreToolUse:Bash`
+  hooks.
+
+What is left is the `remote_projects` entrypoint together with a change in the
+CLI between 2.1.283 and 2.1.310. Today's thread recorded
+`startup_timing.hooks_init_source: "resume"` at its latest worker spawn. That
+suggests, but does not confirm, that a restarted thread worker restores a set of
+hooks and skills captured without the project's settings. The earlier
+suggestion, that a preloaded process reads its settings before the checkout is
+attached, is not confirmed either. The ordinary session's preloaded process
+read them. The thread's earliest `init`, from its first worker at 01:44Z, was
+not read. It would show whether the thread lost `.claude/` on a restart or never
+had it, but reaching it means paging back through thousands of events.
+
+**What this means until it is fixed.** A thread in this project runs with no
+guard hook, no session-start digest and no permission rule from
+`.claude/settings.json`. It also cannot load the `docket`, `pull-request`,
+`run-the-app` or `model-review` skills through the Skill tool, so it has to read
+their files by path. The fix belongs to Anthropic. This item stays blocked until
+the owner reports the defect and a thread started after a fix runs the probe
+above and records here that it was refused, in a paragraph that opens
+`**Probe refused in a thread.**`, which the `verify:` command reads.
