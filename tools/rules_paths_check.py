@@ -134,6 +134,7 @@ LANE_ONLY = (
     "docs/stress-2026-09-25",
     "docs/session-ledger.tsv",
     "docs/ci-runs.tsv",
+    "docs/model-review.md",
     "model-evidence.toml",
     "docs/worker-runs",
     # Configuration, which carries no prose a standard could apply to.
