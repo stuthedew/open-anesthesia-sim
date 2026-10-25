@@ -290,6 +290,11 @@ def docstrings(tree: ast.AST) -> list[ast.Constant]:
     ]
 
 
+#: The suffixes of a Python source file: a module and a type stub. A reader
+#: that applies Python's grammar to a file, its definitions or its quoting,
+#: asks this tuple whether the grammar applies (`PL-H716`).
+SOURCE_SUFFIXES = (".py", ".pyi")
+
 #: The fields of a node that hold a list of statements, where a docstring can stand.
 STATEMENT_LISTS = ("body", "orelse", "finalbody")
 
