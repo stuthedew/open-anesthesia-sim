@@ -93,6 +93,7 @@ import unicodedata
 from collections.abc import Iterator
 from pathlib import Path
 
+from product_paths import APP_DIR, CORE_DIR, DATA_DIR
 from workflow_paths_check import tracked_under
 
 # isort: split
@@ -103,11 +104,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 #: The Python trees whose string literals can reach a reader. `app/` draws
 #: them; `core/` raises the text the view prints verbatim.
-PYTHON_TREES = (Path("src/anesthesia_sim/app"), Path("src/anesthesia_sim/core"))
+PYTHON_TREES = (Path(APP_DIR), Path(CORE_DIR))
 
 #: The data tree, read as JSON rather than parsed: `display_name` reaches the
 #: readouts, and an edit here touches no Python.
-DATA_TREE = Path("src/anesthesia_sim/data")
+DATA_TREE = Path(DATA_DIR)
 
 #: Every non-ASCII character confirmed to render in the client, by code point,
 #: with the evidence for each. A character is added here only after somebody has

@@ -205,6 +205,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_docket_config  # noqa: E402
+from docket.frontmatter import DELIMITER  # noqa: E402
 from docket.model import parse_front_matter, pr_number  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
@@ -212,14 +213,13 @@ from docket.vcs import (  # noqa: E402
     REMOTE,
     call_git,
     default_base,
-    github_slug,
     is_shallow,
     leading_ids,
     resolved,
     subject_pull_request,
 )
 
-from open_pull_requests import GITHUB_API, api_request  # noqa: E402
+from open_pull_requests import GITHUB_API, api_request, repo_slug  # noqa: E402
 
 #: Relative, as a message names a file; `RECOVERY_DIR` is where they are read.
 #: `vcs.RECORDS` is the directory's one spelling (`PL-WCHF`).
@@ -228,11 +228,6 @@ RECOVERY_DIR = ROOT / RECORD_PATH
 #: Seconds one read of the API may take. This script's own bound, and a
 #: different fact from `main_ci_status.TIMEOUT_S`, which bounds a session start.
 READ_TIMEOUT_S = 15
-
-#: Separates the two records inside one recovery file. `---` on its own line is
-#: YAML frontmatter, which is what `docs/items/` uses, so a reader meeting one
-#: of these files already knows the convention.
-FRONT_MATTER = "---"
 
 #: What GitHub appends to a squash body: `Co-authored-by` trailers, after a
 #: `---------` line or directly after a blank one - both shapes are on `main`.
@@ -364,11 +359,6 @@ def missing(ref: str) -> list[tuple[str, int, str]]:
         for sha, pr, subject, body in squash_commits(ref)
         if not body.strip() and pr not in have
     ]
-
-
-def repo_slug() -> str | None:
-    """`owner/repo` from origin's URL, or None if it is not a GitHub remote (`vcs.github_slug`)."""
-    return github_slug(_git("remote", "get-url", REMOTE))
 
 
 def _shallow() -> bool | None:
@@ -610,7 +600,10 @@ def _write(pr: int, header: list[str], body: str) -> Path:
     """Write `docs/pr-bodies/<pr>.md`: front matter, one blank line, the body."""
     RECOVERY_DIR.mkdir(parents=True, exist_ok=True)
     path = RECOVERY_DIR / f"{pr}.md"
-    lines = [FRONT_MATTER, *header, FRONT_MATTER, "", ""]
+    # The header is YAML front matter, as `docs/items/` uses, so a reader meeting
+    # one of these files already knows the convention; `docket.frontmatter`
+    # owns its fence line.
+    lines = [DELIMITER, *header, DELIMITER, "", ""]
     path.write_text("\n".join(lines) + as_recorded(body) + "\n", encoding="utf-8")
     return path
 

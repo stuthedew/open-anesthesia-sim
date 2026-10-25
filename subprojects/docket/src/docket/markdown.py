@@ -282,6 +282,34 @@ def _read(lines: tuple[str, ...]) -> Document:
             unread |= {start}
 
 
+@dataclass(frozen=True)
+class FenceOpening:
+    """A line that opens a fenced code block, as `read` opens one (CommonMark 0.31.2 § 4.5).
+
+    `margin` is the columns of indentation before the fence, which § 4.5 takes
+    off each line inside, and `info` is the first word of its info string,
+    which names the block's language, or "" where it has none.
+    """
+
+    margin: int
+    fence: str
+    info: str
+
+
+def fence_opening(line: str) -> FenceOpening | None:
+    """The fence `line` opens where no container holds it, or None where it opens none.
+
+    The one grammar for a fence's opening line, which `read` also uses, so a
+    tool that asks what a fence's language is reads it the way this module
+    decides where the fence is (`PL-H5T9`).
+    """
+    opening = _FENCE_OPEN.match(line)
+    if opening is None:
+        return None
+    words = line[opening.end() :].split()
+    return FenceOpening(opening.start("fence"), opening["fence"], words[0] if words else "")
+
+
 def statement_lines(
     lines: Sequence[str], kinds: Collection[str] | None = None
 ) -> Iterator[tuple[int, int]]:

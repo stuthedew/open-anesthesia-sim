@@ -314,7 +314,7 @@ def _recording(started: list[str], run: Run) -> object:
 
 @pytest.fixture
 def no_origin(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(headless_worker, "read_git", lambda *a, **k: "origin-url\n")
+    monkeypatch.setattr(headless_worker, "origin_url", lambda *a, **k: "origin-url")
 
 
 def test_the_runner_will_not_start_without_the_credit_left() -> None:
@@ -329,6 +329,16 @@ def test_a_credit_left_that_is_not_a_dollar_amount_is_refused(figure: str) -> No
     with pytest.raises(SystemExit) as refused:
         _main(["--credit-left", figure])
     assert refused.value.code == 2
+
+
+def test_a_checkout_whose_origin_git_cannot_name_is_refused_before_any_run(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With no URL there is nothing to clone, so the batch stops with the reason (`PL-H5T9`)."""
+    monkeypatch.setattr(headless_worker, "origin_url", lambda *a, **k: "")
+    monkeypatch.setattr(headless_worker, "work", lambda *a, **k: pytest.fail("a run started"))
+    assert _main(["--credit-left", "100"]) == 2
+    assert "could not name origin's URL" in capsys.readouterr().err
 
 
 @pytest.mark.usefixtures("no_origin")

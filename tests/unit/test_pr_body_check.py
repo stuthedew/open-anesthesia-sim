@@ -29,7 +29,7 @@ claude.ai footer do to every body must not be, or 654 bodies that match would
 bury the 27 that do not. And a listing that could not be read has to say so,
 because a comparison never made reads exactly like one that found nothing.
 
-`_git`, `fetch_body` and `_get_json` are substituted rather than a repository
+`_git`, `repo_slug`, `fetch_body` and `_get_json` are substituted rather than a repository
 built and the network called, because what is under test is the reading of
 subjects and bodies, not git and not GitHub.
 """
@@ -60,11 +60,10 @@ def _install(monkeypatch: pytest.MonkeyPatch, records: list[tuple[str, str, str]
             return log
         if args[0] == "log":
             return "2026-09-20\n"
-        if args[0] == "remote":
-            return "https://github.com/stuthedew/open-anesthesia-sim.git\n"
         return ""
 
     monkeypatch.setattr(pr_body_check, "_git", fake)
+    monkeypatch.setattr(pr_body_check, "repo_slug", lambda: "stuthedew/open-anesthesia-sim")
 
 
 def test_fires_on_a_squash_commit_whose_body_is_missing(

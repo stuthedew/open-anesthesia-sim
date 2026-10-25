@@ -7,7 +7,10 @@ here before it fails in a brief.
 
 from __future__ import annotations
 
+import pytest
+
 from docket.fences import Block, blocks, fenced_lines, without_fences
+from docket.markdown import FenceOpening, fence_opening
 
 
 def test_a_closed_block_is_its_two_fence_lines_and_everything_between() -> None:
@@ -134,3 +137,24 @@ def test_without_fences_keeps_every_offset_and_line_number() -> None:
     assert blanked.splitlines()[0] == "one"
     assert blanked.splitlines()[4] == "two `x`"
     assert blanked.splitlines()[1:4] == [" " * len(line) for line in text.splitlines()[1:4]]
+
+
+@pytest.mark.parametrize(
+    "line,opening",
+    [
+        ("```bash\n", FenceOpening(0, "```", "bash")),
+        ("  ~~~~ sh title=x\n", FenceOpening(2, "~~~~", "sh")),
+        ("```\n", FenceOpening(0, "```", "")),
+        ("    ```bash\n", None),
+        ("``` `code` ```\n", None),
+    ],
+)
+def test_a_fence_s_opening_line_is_read_by_the_grammar_that_opens_a_block(
+    line: str, opening: FenceOpening | None
+) -> None:
+    """`fixture_id_check` read a fence's language with a pattern of its own (`PL-H5T9`).
+
+    Four columns in is an indented code block, and a backtick opener whose
+    info string holds a backtick is a code span, so neither opens a fence.
+    """
+    assert fence_opening(line) == opening

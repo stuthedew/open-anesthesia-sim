@@ -3,11 +3,13 @@ id: PL-M81V
 title: .claude/hooks/floor-interpreter-guard.sh says pyproject.toml declares requires-python >=3.14,<3.15, but PL-J0P8 widened it to <3.16
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: one-source-of-truth
 touches: .claude/hooks/floor-interpreter-guard.sh
 added: 2026-10-19
+closed: 2026-10-25
+pr: 1760
 payoff: the hook's reason for existing is stated against the Python range the project actually allows
 verify: ! grep -qF '">=3.14,<3.15"' .claude/hooks/floor-interpreter-guard.sh
 reenters: PL-J0P8
