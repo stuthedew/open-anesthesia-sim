@@ -526,7 +526,7 @@ def _control_change(
     adjustment: int,
 ) -> ControlChange:
     return ControlChange(
-        elapsed_s=elapsed_s,
+        elapsed_s=CaseInstant(elapsed_s),
         adjustment=adjustment,
         control=control,
         previous_value=previous_value,

@@ -28,6 +28,8 @@ from anesthesia_sim.app.chart_time_base import (
     tick_times,
     time_base_for_span,
 )
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
 
 
 def test_the_ladder_climbs_and_never_nudges() -> None:
@@ -89,25 +91,25 @@ def test_fitting_a_run_always_contains_it() -> None:
     widest rung rather than at a convenient length.
     """
 
-    instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 500_000.0]
+    instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 86_400.0]
 
-    for newest_sample_s in instants:
-        time_base = fit_to_run(newest_sample_s)
+    for newest_instant_s in instants:
+        time_base = fit_to_run(CaseInstant(newest_instant_s))
         window_start_s, window_stop_s = fitted_window(time_base)
 
         assert window_start_s == 0.0
-        assert window_stop_s >= newest_sample_s
+        assert window_stop_s >= newest_instant_s
 
 
 def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
     """A wider one would draw the run into part of the plot for no reason."""
 
-    assert fit_to_run(0.0).span_s == 60.0
-    assert fit_to_run(60.0).span_s == 60.0
-    assert fit_to_run(60.1).span_s == 120.0
-    assert fit_to_run(900.0).span_s == 900.0
-    assert fit_to_run(3_600.0).span_s == 3_600.0
-    assert fit_to_run(43_200.0).span_s == 43_200.0
+    assert fit_to_run(CaseInstant(0.0)).span_s == 60.0
+    assert fit_to_run(CaseInstant(60.0)).span_s == 60.0
+    assert fit_to_run(CaseInstant(60.1)).span_s == 120.0
+    assert fit_to_run(CaseInstant(900.0)).span_s == 900.0
+    assert fit_to_run(CaseInstant(3_600.0)).span_s == 3_600.0
+    assert fit_to_run(CaseInstant(43_200.0)).span_s == 43_200.0
 
 
 def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
@@ -117,12 +119,14 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     nothing in the design should assume otherwise. Returning the widest rung
     instead would leave "Fit run" quietly showing the most recent twelve
     hours of a longer case, which is the mode asserting something false.
+    The supported run length is 24 h, so the one doubling a case can reach
+    today is from the twelve-hour rung to twenty-four hours.
     """
 
     widest = TIME_BASE_LADDER[-1]
-    beyond = fit_to_run(widest.span_s * 3.0)
+    beyond = fit_to_run(CaseInstant(widest.span_s * 1.5))
 
-    assert beyond.span_s == widest.span_s * 4.0
+    assert beyond.span_s == widest.span_s * 2.0
     # Doubled together, so the wider axis is ruled like every declared rung.
     assert beyond.span_s / beyond.tick_interval_s == widest.span_s / widest.tick_interval_s
 
@@ -137,8 +141,10 @@ def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
     """
 
     for time_base in SELECTABLE_TIME_BASES:
-        for newest_sample_s in (0.0, 1.0, time_base.span_s, time_base.span_s * 10.0):
-            window_start_s, window_stop_s = following_window(time_base, newest_sample_s)
+        for newest_instant_s in (0.0, 1.0, time_base.span_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
+            window_start_s, window_stop_s = following_window(
+                time_base, CaseInstant(newest_instant_s)
+            )
 
             assert window_stop_s - window_start_s == pytest.approx(time_base.span_s)
 
@@ -147,24 +153,24 @@ def test_a_run_shorter_than_the_chosen_width_still_shows_whole() -> None:
     """`PL-SSBP`'s "Done when", and the reason the window does not shrink.
 
     The axis stays its full width with the run occupying the left of it,
-    rather than shrinking to the samples recorded so far.
+    rather than shrinking to the part of the run simulated so far.
     """
 
     time_base = time_base_for_span(900.0)
 
-    for newest_sample_s in (0.0, 10.0, 400.0, 880.0):
-        window_start_s, window_stop_s = following_window(time_base, newest_sample_s)
+    for newest_instant_s in (0.0, 10.0, 400.0, 880.0):
+        window_start_s, window_stop_s = following_window(time_base, CaseInstant(newest_instant_s))
 
         assert window_start_s == 0.0
         assert window_stop_s == 900.0
 
 
 def test_a_chosen_width_follows_the_run_once_it_is_outgrown() -> None:
-    """Past the width the window slides, keeping the newest sample in view."""
+    """Past the width the window slides, keeping the newest instant in view."""
 
     time_base = time_base_for_span(900.0)
     headroom_s = 900.0 * CHART_LIVE_HEADROOM_FRACTION
-    window_start_s, window_stop_s = following_window(time_base, 5_000.0)
+    window_start_s, window_stop_s = following_window(time_base, CaseInstant(5_000.0))
 
     assert window_stop_s == pytest.approx(5_000.0 + headroom_s)
     assert window_start_s == pytest.approx(5_000.0 + headroom_s - 900.0)
@@ -178,7 +184,7 @@ def test_fitting_charges_no_headroom_so_a_run_stays_on_its_own_rung() -> None:
     step before the run reaches that width anyway.
     """
 
-    assert fit_to_run(900.0) is time_base_for_span(900.0)
+    assert fit_to_run(CaseInstant(900.0)) is time_base_for_span(900.0)
 
 
 def test_ticks_stand_at_absolute_times_rather_than_at_the_window_s_edge() -> None:
@@ -200,25 +206,20 @@ def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
 
-@pytest.mark.parametrize("newest_sample_s", [-1.0, -0.001, math.nan, math.inf])
-def test_fitting_refuses_a_sample_time_that_is_not_one(newest_sample_s: float) -> None:
+@pytest.mark.parametrize("newest_instant_s", [-1.0, -0.001, math.nan, math.inf, 86_400.1])
+def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: float) -> None:
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
     displayed value, and the window's width is what every drawn time is read
-    against.
+    against. Both windows take a `CaseInstant`, so an instant before
+    induction, one that is not finite, or one past the supported run length
+    is refused where the instant is built, and neither window checks it
+    again (`PL-9DF9`).
     """
 
-    with pytest.raises(ValueError, match="finite and non-negative"):
-        fit_to_run(newest_sample_s)
-
-
-@pytest.mark.parametrize("newest_sample_s", [-1.0, math.nan, math.inf])
-def test_following_refuses_a_sample_time_that_is_not_one(newest_sample_s: float) -> None:
-    """Same rule on the other window: a bad edge is a failure, not a default."""
-
-    with pytest.raises(ValueError, match="finite and non-negative"):
-        following_window(time_base_for_span(900.0), newest_sample_s)
+    with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
+        CaseInstant(newest_instant_s)
 
 
 @pytest.mark.parametrize("interval_s", [0.0, -60.0, math.nan, math.inf])

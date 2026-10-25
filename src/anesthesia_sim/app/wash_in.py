@@ -156,7 +156,7 @@ def is_wash_in(ratio: float) -> bool:
     """Whether a computed quotient is inside the uptake regime.
 
     The second boundary of the module docstring's domain, as a predicate,
-    so the chart and `read_wash_in` classify a sample by the same rule
+    so the chart and `read_wash_in` classify a quotient by the same rule
     rather than each carrying its own copy of the comparison.
 
     Args:

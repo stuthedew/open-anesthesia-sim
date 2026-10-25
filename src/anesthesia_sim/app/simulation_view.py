@@ -1447,7 +1447,7 @@ class SimulationView(QWidget):
         assembles one frame for each distinct window, sampled for the widest
         plot that asks for it. So no plot draws a chord wider than a pixel
         (`PL-GS3R`). A chord is the straight line drawn between two
-        neighbouring samples. Charts at the same window share one frame,
+        neighbouring drawn columns. Charts at the same window share one frame,
         rather than each having a frame at its own width. The two plots'
         widths differ by about 53 px at every application-window width
         measured. So a frame for each plot would mean two assemblies on every
@@ -1581,12 +1581,13 @@ class SimulationView(QWidget):
         set, and `test_every_displayed_run_carries_the_same_marks` is what
         holds that.
 
-        **Their standings are not, and are read from every run** (`PL-LHBY`,
-        `PL-4KZD`). A standing is computed from the run's own clock, its own
-        opening instant and its own halts, so the runs answer one mark
-        differently as soon as a branch is drawn. Passing every run's
-        standings rather than a chosen run's is what keeps the choice from
-        being made here at all: there is no reference run to pick.
+        **The standings of those marks are not the same on every run, so they
+        are read from every run** (`PL-LHBY`, `PL-4KZD`). A standing is
+        computed from the run's own clock, its own opening instant and its own
+        halts. So once a branch is drawn, the runs can give different
+        standings for the same mark. This method passes every run's standings
+        rather than one run's, so it never has to choose a run: there is no
+        reference run to pick for standings.
 
         The height control keeps reading the reference run, and that read is
         sound where the rows' was not: it is bounded by the *agent's*
@@ -1610,20 +1611,21 @@ class SimulationView(QWidget):
                 of the height control.
 
         Raises:
-            ValueError: If no run is given, which `bookmark_panel` refuses
-                rather than drawing the case's marks under standings nobody
-                answered. Unreachable from here - the constructor refuses an
+            ValueError: If no run is given. `bookmark_panel` refuses that
+                rather than drawing the case's marks with no run's standings
+                beside them. Unreachable from here - the constructor refuses an
                 empty run set and `_handle_case_restarted` truncates to the
                 trunk - so it is the contract rather than a live path.
             SimulationConfigurationError: If a displayed run's standings were
                 computed for a mark set that does not hold one of the
                 reference run's marks. `_apply_to_every_run` writes a mark to
                 every displayed run and `_branch_from` copies the trunk's set
-                at the fork, so the sets agree by construction; reading every
-                run makes that invariant load-bearing, and a divergence now
-                halts the dashboard through `present` rather than quietly
-                drawing the reference run's answer, which is the direction
-                `CLAUDE.md`'s safety-critical standard asks for.
+                at the fork, so the sets agree by construction. Because every
+                run is read, the panel now depends on that invariant. If the
+                sets ever differ, the dashboard halts through `present` rather
+                than quietly drawing the reference run's standings, which is
+                the direction `CLAUDE.md`'s safety-critical standard asks
+                for.
         """
 
         panel = bookmark_panel(

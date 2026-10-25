@@ -89,7 +89,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
@@ -858,6 +858,9 @@ def assemble_chart_frame(
             the frame exists, so a refusal leaves nothing half-drawn and the
             interface halts every run on it (`PL-7DJK`). No supported
             setting reaches either (`core/concentration.py`).
+        TypeError: If the newest run's `elapsed_s` was not built as a
+            `CaseInstant`, so nothing has checked the instant the window is
+            placed from against the supported run length (`PL-9DF9`).
     """
 
     if not runs:
@@ -872,18 +875,19 @@ def assemble_chart_frame(
         )
 
     reference = runs[0].snapshot
-    newest_sample_s = max(run.snapshot.elapsed_s for run in runs)
+    newest_instant_s = max(run.snapshot.elapsed_s for run in runs)
+    require_case_instant("newest_instant_s", newest_instant_s)
 
     # The visible window, and the two modes it can be in. "Fit run" derives
     # the width from the newest instant so the whole case is drawn, pinned at
     # zero; a chosen width is held exactly and follows that instant, so a
     # trace's slope on the plot means the same thing at every moment.
     if time_base is None:
-        base = fit_to_run(newest_sample_s)
+        base = fit_to_run(newest_instant_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
-        start_s, stop_s = following_window(base, newest_sample_s)
+        start_s, stop_s = following_window(base, newest_instant_s)
 
     columns = chart_columns(plot_width_px)
     # The cap is applied here rather than where a reader clicks, so that what
@@ -1034,10 +1038,13 @@ def wash_in_stretches(
     equilibrium reference and ends on it.
 
     **Why the extension has a ceiling.** A run stepped at 0.1 s crosses
-    equilibrium by a hair - measured across every agent and every supported
+    equilibrium by a hair. Measured across every agent and every supported
     alveolar ventilation and cardiac output at the maximum fresh gas flow,
-    the first sample above it reaches 1.00235 - but the ratio is not
-    continuous in general: `BreathingCircuit.set_circuit_volume` conserves
+    the state at the first step above equilibrium reaches 1.00235. That was
+    measured step by step, and a drawn column falls wherever the column
+    spacing puts it, so a column can land on a later state of the run, which
+    the measurement did not cover. The ratio is not continuous in general
+    either: `BreathingCircuit.set_circuit_volume` conserves
     the agent in the circuit while changing the volume it is divided by, so
     a circuit volume doubled between two steps halves F_I and doubles the
     ratio. No interface control does that today, and a rule that holds only
@@ -1046,13 +1053,13 @@ def wash_in_stretches(
     did before: not clamped to the ceiling, not interpolated onto it -
     simply a point outside what this plot can show.
 
-    **A single polyline through every in-domain sample would draw a straight
+    **A single polyline through every in-domain column would draw a straight
     line across the stretch it skipped** - a segment joining two real points
     through values the run never produced, which is the synthesized trace
     this module never creates. A broken line asserts nothing about the gap.
 
-    Computed over the drawn columns rather than maintained as the run
-    records samples (`PL-2FM6`): there are only the columns being drawn, so
+    Computed over the drawn columns rather than kept up to date as the run
+    advances (`PL-2FM6`): there are only the columns being drawn, so
     classifying all of them is proportional to the frame rather than to the
     run, and a boundary can fall only on an instant the chart actually
     plots. Two anchor runs separated by a single extendable column both

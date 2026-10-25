@@ -101,8 +101,8 @@ def _input(controller: SimulationController, *marks_at_s: float, run_index: int 
         tuple(
             ControlAdjustment(
                 ControlInput.DELIVERED,
-                at_s,
-                at_s,
+                CaseInstant(at_s),
+                CaseInstant(at_s),
                 2.0,
                 4.0,
                 CONTROL_INPUT_UNITS[ControlInput.DELIVERED],
@@ -220,6 +220,21 @@ def test_the_frame_refuses_no_runs_and_runs_on_different_agents() -> None:
         )
 
 
+def test_the_frame_refuses_a_newest_instant_not_built_as_one() -> None:
+    """The window is placed from a checked instant, checked once here (`PL-9DF9`).
+
+    `fit_to_run` and `following_window` only compare the instant, so a
+    snapshot carrying a bare number past the supported run length must be
+    refused before either window is formed from it.
+    """
+
+    run = _input(_run(10.0))
+    stale = replace(run, snapshot=replace(run.snapshot, elapsed_s=1e9))
+
+    with pytest.raises(TypeError, match="newest_instant_s of 1000000000.0 was not built as"):
+        assemble_chart_frame([stale], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+
+
 def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
     short, long = _run(60.0), _run(500.0)
     frame = assemble_chart_frame(
@@ -315,7 +330,7 @@ def test_control_marks_are_the_most_recent_that_fit_and_the_rest_are_counted() -
     controller = _run(1200.0)
     inside = tuple(float(at_s) for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 6), 5))
     frame = assemble_chart_frame(
-        [_input(controller, -50.0, *inside, 5000.0)],
+        [_input(controller, *inside, 5000.0)],
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,

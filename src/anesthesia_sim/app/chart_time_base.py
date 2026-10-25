@@ -7,10 +7,10 @@ answers with a width, a pair of axis bounds and a list of tick positions, and
 `app/qt_chart.py` draws them.
 
 **It is a view control and reaches no model state.** Choosing a time base
-changes which part of the recorded run is drawn and nothing else - no step is
-resized, no sample is discarded, no calculation is re-run. A case watched at
-15 minutes and the same case watched at 12 hours are the same run, sample for
-sample, which is what keeps `CLAUDE.md`'s determinism requirement untouched by
+changes which part of the run is drawn and nothing else - no step is resized,
+no state is discarded, no calculation is re-run. A case watched at 15 minutes
+and the same case watched at 12 hours are the same run, step for step, which
+is what keeps `CLAUDE.md`'s determinism requirement untouched by
 anything in this module.
 
 **Why the widths are a fixed ladder rather than a free zoom.** `PL-012`
@@ -47,6 +47,8 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
+from anesthesia_sim.core.supported_ranges import CaseInstant
+
 __all__ = [
     "CHART_LIVE_HEADROOM_FRACTION",
     "FIT_RUN_KEY",
@@ -62,7 +64,7 @@ __all__ = [
     "time_base_for_span",
 ]
 
-# How much of the window is kept clear to the right of the newest sample while
+# How much of the window is kept clear to the right of the newest instant while
 # the window is following the run. Proportional rather than a fixed number of
 # seconds, so the newest point sits the same distance in from the frame's edge
 # at every width - ten seconds of clearance is a fifth of a one-minute axis and
@@ -102,7 +104,7 @@ class ChartTimeBase:
 
     @property
     def live_headroom_s(self) -> float:
-        """Clearance kept to the right of the newest sample while following.
+        """Clearance kept to the right of the newest instant while following.
 
         `following_window` only. Fitting takes none, and that is not an
         oversight: a fitted window is at least as wide as the run by
@@ -139,8 +141,8 @@ SELECTABLE_TIME_BASES: Final = tuple(
 )
 
 
-def fit_to_run(newest_sample_s: float) -> ChartTimeBase:
-    """The narrowest width that shows the case whole, from induction to its newest sample.
+def fit_to_run(newest_instant_s: CaseInstant) -> ChartTimeBase:
+    """The narrowest width that shows the case whole, from induction to its newest instant.
 
     Half of the "Fit run" mode, which is the default; `fitted_window` is the
     other half. `min_x` stays pinned at the case's zero under it, so the
@@ -149,7 +151,7 @@ def fit_to_run(newest_sample_s: float) -> ChartTimeBase:
 
     **It is given an instant, not a length.** The window starts at induction
     rather than at any one run's opening, so its width has to reach the
-    newest sample's instant on the case's axis. On a trunk that is also the
+    newest instant on the case's axis. On a trunk that is also the
     run's length; on a branch it is not. One forked at 900 s and advanced
     60 s stands at 960 s, and a width fitted to its 60 s would end the axis
     before the branch began (`PL-59WB`).
@@ -161,35 +163,26 @@ def fit_to_run(newest_sample_s: float) -> ChartTimeBase:
     ruled like a twelve-hour one.
 
     Args:
-        newest_sample_s: Simulated time of the newest recorded sample on the
-            chart, in seconds on the case's axis: where the furthest-advanced
-            run stands, the value `following_window` is given.
+        newest_instant_s: The instant the furthest-advanced run on the chart
+            stands at, in seconds on the case's axis, which is the value
+            `following_window` is given. A `CaseInstant`, so it is finite and
+            inside the supported run length: `assemble_chart_frame` checks it
+            once where it reads it, and this function only compares it
+            (`PL-9DF9`).
 
     Returns:
         The rung to draw the case against.
-
-    Raises:
-        ValueError: If `newest_sample_s` is negative or not finite. The
-            case's axis begins at induction, so neither is an instant on it;
-            the alternative to raising is an axis drawn against a width
-            nobody can account for, which `CLAUDE.md`'s standard prefers a
-            failure to.
     """
 
-    if not math.isfinite(newest_sample_s) or newest_sample_s < 0.0:
-        raise ValueError(
-            f"newest sample time must be finite and non-negative, got {newest_sample_s!r}"
-        )
-
     for time_base in TIME_BASE_LADDER:
-        if time_base.span_s >= newest_sample_s:
+        if time_base.span_s >= newest_instant_s:
             return time_base
 
     widest = TIME_BASE_LADDER[-1]
     span_s = widest.span_s
     tick_interval_s = widest.tick_interval_s
 
-    while span_s < newest_sample_s:
+    while span_s < newest_instant_s:
         span_s *= 2.0
         tick_interval_s *= 2.0
 
@@ -280,41 +273,36 @@ def fitted_window(time_base: ChartTimeBase) -> tuple[float, float]:
     return 0.0, time_base.span_s
 
 
-def following_window(time_base: ChartTimeBase, newest_sample_s: float) -> tuple[float, float]:
+def following_window(
+    time_base: ChartTimeBase, newest_instant_s: CaseInstant
+) -> tuple[float, float]:
     """The axis bounds a chosen width shows while it follows the run.
 
     The width is exactly `time_base.span_s` at every point of every run,
     which is the property the whole design rests on: a trace's slope on the
     plot is then a fixed multiple of its rate, comparable between two moments
     of one run and between two runs. Early in a run the window does not
-    shrink to the samples recorded so far - it stays its full width with the
+    shrink to the part of the run simulated so far - it stays its full width with the
     run occupying the left of it, so a run shorter than the chosen width
     still shows whole - because shrinking it would make the axis rescale
     continuously, which is the encoding `PL-012` rejected.
 
     Once the run outgrows the width the window slides, keeping the newest
-    sample `time_base.live_headroom_s` in from the right edge. Nothing here
+    instant `time_base.live_headroom_s` in from the right edge. Nothing here
     decides *whether* to follow: this is the live-following case, which is
     the only one the interface currently offers. Panning away from the right
     edge, and saying unmistakably that it has happened, is a separate item.
 
     Args:
         time_base: The rung the reader selected.
-        newest_sample_s: Simulated time of the newest recorded sample.
+        newest_instant_s: The instant the furthest-advanced run stands at, a
+            `CaseInstant` checked where `assemble_chart_frame` reads it.
 
     Returns:
         `(min_x, max_x)` in simulated seconds, exactly `span_s` apart.
-
-    Raises:
-        ValueError: If `newest_sample_s` is negative or not finite.
     """
 
-    if not math.isfinite(newest_sample_s) or newest_sample_s < 0.0:
-        raise ValueError(
-            f"newest sample time must be finite and non-negative, got {newest_sample_s!r}"
-        )
-
-    start_s = max(0.0, newest_sample_s + time_base.live_headroom_s - time_base.span_s)
+    start_s = max(0.0, newest_instant_s + time_base.live_headroom_s - time_base.span_s)
 
     return start_s, start_s + time_base.span_s
 

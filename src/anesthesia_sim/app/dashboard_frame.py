@@ -2420,7 +2420,7 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     """Which of one run's drawn traces are above the top of the plot, if any.
 
     Read from the points the frame drew rather than from the snapshot: the
-    snapshot carries only the newest sample, and a trace that rose above
+    snapshot carries only the newest state, and a trace that rose above
     the axis earlier in the window is still drawn clipped now. Hidden
     traces are skipped, so the notice never points at a trace that is not
     there. A trace is off scale only once it clears the ceiling by more

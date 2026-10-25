@@ -37,6 +37,7 @@ from typing import Final
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
     "CONTROL_INPUT_LABELS",
@@ -76,12 +77,18 @@ CONTROL_INPUT_LABELS: Final[Mapping[ControlInput, str]] = {
 
 @dataclass(frozen=True, slots=True)
 class ControlAdjustment:
-    """One act by the user, however many settings the model saw for it."""
+    """One act by the user, however many settings the model saw for it.
+
+    Raises:
+        TypeError: If `started_at_s` or `ended_at_s` was not built as a
+            `CaseInstant`, so nothing has checked it against the supported
+            run length (`core/supported_ranges.py`, `PL-RCYZ`).
+    """
 
     control: ControlInput
-    started_at_s: float
+    started_at_s: CaseInstant
     """Simulated time the first change of this adjustment took effect."""
-    ended_at_s: float
+    ended_at_s: CaseInstant
     """Simulated time the last one did. Equal to `started_at_s` for a
     single-change adjustment, which is the ordinary case for a keyboard
     press or a click on a slider track."""
@@ -98,6 +105,10 @@ class ControlAdjustment:
     rather than hidden: an adjustment made over eight settings is not the
     same run as one made in a single step, even where the endpoints match.
     """
+
+    def __post_init__(self) -> None:
+        require_case_instant("started_at_s", self.started_at_s)
+        require_case_instant("ended_at_s", self.ended_at_s)
 
 
 def group_adjustments(timeline: Sequence[ControlChange]) -> tuple[ControlAdjustment, ...]:

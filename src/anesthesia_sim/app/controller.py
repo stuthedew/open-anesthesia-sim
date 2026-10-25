@@ -345,7 +345,7 @@ class SimulationSnapshot(RunRecord):
         the first.
 
         Elapsed time and the timeline are read together because either alone
-        misses a case: a run paused at its first sample with the vaporizer
+        misses a case: a run paused at its opening instant with the vaporizer
         already turned has a recorded input and no elapsed time, and a run
         advanced with nothing touched has the reverse.
 
@@ -595,7 +595,7 @@ class SimulationController:
         self._state = SimulationState(uptake_system=uptake_system)
         # One substance: the agent this run is of. `set_agent` comes back
         # through here and builds a new history under the new agent's id,
-        # so a run's recorded substance is always the one its samples were
+        # so a run's recorded substance is always the one its states were
         # produced by.
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(),
@@ -2564,22 +2564,25 @@ class SimulationController:
         guard and the failure. None of these inputs builds a `Fraction`. So this method
         cannot raise for a value that a frame would refuse (`PL-YHR3`).
 
-        **Both of `start`'s refusals are passed, because both end the run's
-        reach** (`PL-N3N5`). A standing says whether a mark can still be
-        reached, and this method is the only thing that knows: the two
-        reasons live here, `supported_limit_reason` and `_failure_reason`,
-        and `start` reads exactly these two to decide that the run cannot be
-        resumed at all. Passing the cap and withholding the failure left
-        every mark on a failed run reading as one the run had not reached
-        *yet*, on a run whose next step would raise as its last one did.
+        **Both reasons `start` refuses for are passed, because each one means
+        the run can go no further** (`PL-N3N5`). A standing says whether a
+        mark can still be reached, and only this controller knows that. The
+        two reasons are kept here, as `supported_limit_reason` and
+        `_failure_reason`, and `start` checks exactly these two to decide that
+        the run cannot be resumed at all. When only the cap was passed and the
+        failure was not, every mark on a failed run read as one the run had
+        not reached *yet*, although its next step would raise as its last one
+        did.
 
-        **What the run did is joined by the steps it opened on and stands on,
-        asked now** (`PL-1ZQ4`, project owner 2026-10-17, ratified). A mark
-        lying inside the step a branch opened on, or the step a stopped run
-        stands on, reads as crossed by that step, against the marks as they
-        stand at this read and not as they stood when the step was taken. So
-        a mark added after the step reads alike on the trunk and on every
-        branch, whichever order the mark and the branch came in.
+        **The marks the run crossed include those crossed by two particular
+        steps, checked against the marks as they are now** (`PL-1ZQ4`,
+        project owner 2026-10-17, ratified). The two steps are the step a
+        branch opened on and, while the run is stopped, the step it stopped
+        on. A mark that lies inside either step reads as crossed by that step.
+        The marks are the ones that exist at this call, not the ones that
+        existed when the step was taken. So a mark added after the step reads
+        the same on the trunk and on every branch, whichever came first, the
+        mark or the branch.
         """
 
         stood_on = self._crossings_stood_on()

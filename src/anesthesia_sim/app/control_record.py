@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+
 __all__ = ["CONTROL_INPUT_UNITS", "ControlChange", "ControlInput"]
 
 
@@ -110,10 +112,16 @@ class ControlChange:
     from the input boundary the interface reports rather than guessed from
     the timing of the entries, so two separate turns of the same dial are
     two adjustments however close together they fall.
+
+    Raises:
+        TypeError: If `elapsed_s` was not built as a `CaseInstant`, so
+            nothing has checked it against the supported run length
+            (`core/supported_ranges.py`, `PL-RCYZ`).
     """
 
-    elapsed_s: float
-    """Simulated time the change took effect, in seconds."""
+    elapsed_s: CaseInstant
+    """Simulated time the change took effect, in seconds. The instant the
+    running state was at, so a `CaseInstant` like every other holder of one."""
     adjustment: int
     """Which user adjustment this change belongs to. See the class docstring."""
     control: ControlInput
@@ -121,3 +129,6 @@ class ControlChange:
     new_value: float
     unit: str
     """The unit both values are in, from `CONTROL_INPUT_UNITS`."""
+
+    def __post_init__(self) -> None:
+        require_case_instant("elapsed_s", self.elapsed_s)

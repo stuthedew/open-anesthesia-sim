@@ -3,12 +3,14 @@ id: PL-RCYZ
 title: ControlChange.elapsed_s, and ControlAdjustment's started_at_s and ended_at_s, are annotated float though every one is taken from a CaseInstant - SimulationState.elapsed_s - so the control record is the one holder of a case instant PL-CN5S left untyped (app/control_record.py and app/control_timeline.py were outside its touches)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: parse-dont-validate
 touches: src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/control_timeline.py, tests/unit/test_control_timeline.py, tests/unit/test_dashboard_frame.py, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-24
+pr: 1766
 payoff: every holder of a case instant carries the checked type, so no recorded control change or adjustment can be stamped with an instant outside the supported run length
 verify: grep -q 'def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one' tests/unit/test_control_timeline.py
 ---
@@ -52,3 +54,5 @@ unchanged, and the four test modules above build the instant as a
 `CaseInstant`. A test in `tests/unit/test_control_timeline.py` named
 `test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one`
 pins it.
+
+**Closed 2026-10-24.** Both records refuse an instant not built as a `CaseInstant` in `__post_init__`, through `require_case_instant`. `test_chart_frame.py`'s control-mark test had drawn a mark at -50 s to show that a mark before the window is left out. No record can hold that instant now, so the mark was removed and the mark at 5 000 s, past the run, still covers a mark outside the window.

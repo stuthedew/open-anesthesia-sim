@@ -572,7 +572,7 @@ class AreaLayout(QWidget):
 
         The caller assembles one frame for each window, sampled at that width.
         So no plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
-        straight line between two neighbouring samples. Views at the same
+        straight line between two neighbouring drawn columns. Views at the same
         window also draw the same instants (`PL-9LNF`). The result is empty
         when no View draws a frame.
         """
