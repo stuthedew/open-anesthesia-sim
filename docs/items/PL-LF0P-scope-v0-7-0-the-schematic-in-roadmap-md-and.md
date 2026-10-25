@@ -35,3 +35,6 @@ its frozen Gate 3 list, its required scope naming queue items, its definition
 of done and its explicit out-of-scope list. The build items exist under
 `feature: schematic`. `bin/docket wave` no longer asks for the scoping beat,
 and `make check` is green.
+
+**Generator check.** None: scoping a milestone is a beat of the cadence, and
+nothing here produces findings of its own.
