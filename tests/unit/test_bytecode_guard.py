@@ -147,11 +147,18 @@ def test_the_makefile_turns_bytecode_writing_off_for_its_recipes() -> None:
 
 
 def _root_conftest() -> ModuleType:
-    """The root `conftest.py`, loaded as a module of its own so its functions can be called."""
+    """The root `conftest.py`, loaded as a module of its own so its functions can be called.
+
+    Loading it runs its guard again, which turns bytecode writing off. In a
+    collection that `--write-assertion-cache` turned it on for, every module
+    collected after this one would then go uncached, so the setting is put back.
+    """
     spec = importlib.util.spec_from_file_location("root_conftest", ROOT_CONFTEST)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    writing_off = sys.dont_write_bytecode
     spec.loader.exec_module(module)
+    sys.dont_write_bytecode = writing_off
     return module
 
 
@@ -228,3 +235,37 @@ def test_the_cache_share_refuses_a_run_that_executes_tests(
     with pytest.raises(pytest.UsageError, match="only with --collect-only"):
         ROOT_HOOKS.write_assertion_cache_if_asked(_config(tmp_path, (1, 4), collect_only=False))
     assert sys.dont_write_bytecode
+
+
+def test_a_share_writes_a_cache_for_each_of_its_modules_after_this_one(tmp_path: Path) -> None:
+    """A real collection writes the rewritten bytecode of a module collected after this file.
+
+    `PYTHONPYCACHEPREFIX` sends every cache to `tmp_path`, so nothing is written
+    into the checkout. This module loads the root `conftest.py` again when it is
+    imported, which re-runs its guard. Before the load restored the setting,
+    every module collected after this one in a share was left uncached (blind
+    review of `PL-GQCQ`).
+    """
+    later = ROOT_CONFTEST.parent / "tests" / "unit" / "test_worksteal_dealing.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--write-assertion-cache",
+            "1/1",
+            __file__,
+            str(later),
+        ],
+        cwd=ROOT_CONFTEST.parent,
+        env={**os.environ, "PYTHONPYCACHEPREFIX": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    cached = {path.name.split(".")[0] for path in tmp_path.rglob("*-pytest-*.pyc")}
+    assert {"test_bytecode_guard", "test_worksteal_dealing"} <= cached, result.stdout

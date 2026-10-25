@@ -363,7 +363,7 @@ jobs:
       # stops it caching. One process per core collects a share of the modules
       # and writes their rewritten bytecode, and the workers then read it. On
       # four cores this step took about 8 s and cut a part's pytest run by about
-      # 27 s. The root `conftest.py` says why this is safe. The step is named so
+      # 33 s. The root `conftest.py` says why this is safe. The step is named so
       # that `tools/main_ci_status.py` does not count it as the suite.
       - name: write the test modules' rewritten bytecode, a share per core
         if: steps.scope.outputs.scope != 'items'

@@ -62,8 +62,8 @@ In CI each part's pytest step starts eight workers on four cores, and each
 worker imports every test module, because `--part` picks tests only after they
 are collected. Measured 2026-10-25 on four idle cores, one collection took
 23.7 s with rewriting and 4.9 s from a written cache. A CI-shaped part 1 took
-168 to 172 s from a fresh tree, and 148 to 152 s when the cache was written
-first, the writing included.
+188 s from a fresh tree, and 164 s when the cache was written first, the 8 s
+that the writing took included.
 
 So `--write-assertion-cache K/N`, given with `--collect-only`, turns bytecode
 writing back on for that process and collects only share K of N of the test
