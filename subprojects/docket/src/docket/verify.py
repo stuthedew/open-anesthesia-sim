@@ -131,6 +131,14 @@ from .vcs import RECORDS
 # reviewer as that guard is. A deselection in `addopts` is configuration: in
 # `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
 # in a `.cfg` or `.ini` file nothing does.
+#
+# The hook is read as its definition, `def pytest_ignore_collect`, because only
+# a definition in a `conftest.py` drops a file. A test that calls the hook to
+# check it drops nothing, and `PL-GQCQ`'s close-out was refused on three such
+# calls, which `--self` cannot waive (`PL-3G9M`). Replayed on 2026-10-25 over
+# `main`'s 2,005 non-merge commits, of 2,122, the bare name matched four added
+# lines, all on `PL-GQCQ`'s branch, and the definition matches one of them, the
+# hook it really added. The space in the entry matches any run of whitespace.
 SUPPRESSIONS = (
     "typing.no_type_check",
     "xfail",
@@ -143,7 +151,7 @@ SUPPRESSIONS = (
     "skipTest",
     "SkipTest",
     "collect_ignore",
-    "pytest_ignore_collect",
+    "def pytest_ignore_collect",
 )
 
 #: The same list as something a line can be matched against, anchored on the
@@ -161,7 +169,8 @@ SUPPRESSIONS = (
 #: which is the thing this looks for rather than a collision with it.
 _SUPPRESSION_RE = re.compile(
     "|".join(
-        (r"\b" if text[0].isalnum() or text[0] == "_" else "") + re.escape(text)
+        (r"\b" if text[0].isalnum() or text[0] == "_" else "")
+        + re.escape(text).replace(r"\ ", r"\s+")
         for text in SUPPRESSIONS
     )
 )

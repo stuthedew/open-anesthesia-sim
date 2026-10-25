@@ -77,7 +77,8 @@ parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
 not in the owner's sessions. A product session that finds one
 while the trial is paused ends its reply with a ready-to-paste prompt for a
 fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
-ends it, and ending it deletes this paragraph.
+ends it. Ending it deletes this paragraph and `docket.toml`'s `focus` key, which
+points the digest's `Top:` line at the product lane (`PL-2CPD`).
 
 ## Working with the project owner
 

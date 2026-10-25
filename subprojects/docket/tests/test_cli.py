@@ -7781,6 +7781,62 @@ def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
     assert "in neither lane" not in out
 
 
+def _focus(items: Path, lane: str) -> None:
+    """Declare a focus beside the boundary `_laned_store` draws."""
+    config = items.parent / "docket.toml"
+    config.write_text(config.read_text(encoding="utf-8") + f'focus = "{lane}"\n', encoding="utf-8")
+
+
+def test_the_digest_leads_with_the_product_pick_under_product_focus(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-2CPD`. Under product focus the unlaned top was a workflow item.
+
+    The `Top:` line is the first pick a session reads at launch, before any
+    skill has loaded, so it names the focus lane's pick and says that it does.
+    The lane line below it is unchanged.
+    """
+    store = _laned_store(tmp_path)
+    _raise_to_p1(store / "PL-W0RK-x.md")
+    _focus(store, "product")
+
+    assert _run("digest", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "  Top, product focus: PL-PR0D Item PL-PR0D" in out
+    assert "Top: " not in out
+    assert "By lane, for a second session: product PL-PR0D (P2), workflow PL-W0RK (P1)" in out
+
+
+def test_the_digest_top_line_ranks_every_lane_without_a_focus(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The control for the test above: the same store, with no focus declared."""
+    store = _laned_store(tmp_path)
+    _raise_to_p1(store / "PL-W0RK-x.md")
+
+    assert _run("digest", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "  Top: PL-W0RK Item PL-W0RK" in out
+    assert "focus" not in out
+
+
+def test_the_digest_says_when_the_focus_lane_has_nothing_to_start(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty focus lane is said, not filled with the other lane's pick."""
+    store = _laned_store(tmp_path)
+    (store / "PL-PR0D-x.md").unlink()
+    _focus(store, "product")
+
+    assert _run("digest", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "  Top, product focus: nothing in the product lane can start" in out
+    assert "Top, product focus: PL-W0RK" not in out
+
+
 # --- reading a closed item's recorded `verify:` from real git ----------------
 #
 # `test_vcs.py` injects git and asserts the narrowing; this asserts the command

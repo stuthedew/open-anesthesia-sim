@@ -269,3 +269,62 @@ def test_a_share_writes_a_cache_for_each_of_its_modules_after_this_one(tmp_path:
     )
     cached = {path.name.split(".")[0] for path in tmp_path.rglob("*-pytest-*.pyc")}
     assert {"test_bytecode_guard", "test_worksteal_dealing"} <= cached, result.stdout
+
+
+def test_a_share_that_collects_no_test_module_exits_cleanly(tmp_path: Path) -> None:
+    """A real collection of a share that holds no module exits 0, where pytest gives 5.
+
+    `tests/benchmarks` holds one test module, so one of two shares holds
+    nothing. That share runs here, and `quality.yml`'s step fails on any share
+    that exits non-zero (`PL-VMMB`). The empty share is found with the root
+    `conftest.py`'s own split, so the test does not depend on which share the
+    module's CRC-32 picks.
+    """
+    root = ROOT_CONFTEST.parent
+    (module,) = (root / "tests" / "benchmarks").glob("test_*.py")
+    (empty,) = (
+        index
+        for index in (1, 2)
+        if ROOT_HOOKS.pytest_ignore_collect(module, _config(root, (index, 2))) is True
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--write-assertion-cache",
+            f"{empty}/2",
+            "tests/benchmarks",
+        ],
+        cwd=root,
+        env={**os.environ, "PYTHONPYCACHEPREFIX": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "no tests collected" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("share", "status", "expected"),
+    [
+        (None, pytest.ExitCode.NO_TESTS_COLLECTED, pytest.ExitCode.NO_TESTS_COLLECTED),
+        ((1, 2), pytest.ExitCode.INTERRUPTED, pytest.ExitCode.INTERRUPTED),
+        ((1, 2), pytest.ExitCode.USAGE_ERROR, pytest.ExitCode.USAGE_ERROR),
+    ],
+)
+def test_only_an_empty_cache_share_has_its_exit_status_changed(
+    tmp_path: Path,
+    share: tuple[int, int] | None,
+    status: pytest.ExitCode,
+    expected: pytest.ExitCode,
+) -> None:
+    """A collection error, a usage error, and a run without the option keep their status."""
+    session = SimpleNamespace(config=_config(tmp_path, share), exitstatus=status)
+    ROOT_HOOKS.pytest_sessionfinish(session, status)
+    assert session.exitstatus == expected

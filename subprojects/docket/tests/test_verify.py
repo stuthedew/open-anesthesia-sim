@@ -505,6 +505,57 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     assert suppression.lines == (marker,)
 
 
+@pytest.mark.parametrize(
+    "call",
+    [
+        "    assert HOOKS.pytest_ignore_collect(tmp_path / 'test_a.py', config) is None",
+        "    ignored = pytest_ignore_collect(\n        tmp_path, config\n    )",
+    ],
+)
+def test_a_call_of_the_collection_hook_is_not_a_suppression(tmp_path: Path, call: str) -> None:
+    """Only a definition of `pytest_ignore_collect` drops a file from collection.
+
+    A test that calls a `conftest.py`'s hook to check it drops nothing, and
+    `PL-GQCQ`'s close-out was refused on three such calls, which `--self`
+    cannot waive (`PL-3G9M`). The second call spans three lines, which the
+    check reads as one logical line.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX test the hook",
+        "tests/test_thing.py",
+        KEPT + f"\n\ndef test_b(tmp_path, config) -> None:\n{call}\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+@pytest.mark.parametrize(
+    "definition",
+    [
+        "def  pytest_ignore_collect(collection_path, config): ...",
+        "class Plugin:\n    def pytest_ignore_collect(self, collection_path, config): ...",
+    ],
+)
+def test_a_definition_of_the_collection_hook_is_still_a_suppression(
+    tmp_path: Path, definition: str
+) -> None:
+    """Narrowing the hook to its definition keeps the definition in every spelling.
+
+    A run of spaces after `def` is still a definition, and so is a method of a
+    plugin class, which pytest registers by the same name.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX add the hook", "tests/conftest.py", KEPT + f"\n\n{definition}\n")
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert any("pytest_ignore_collect" in line for line in suppression.lines)
+
+
 def test_the_suppression_evidence_names_the_lines_it_omits(tmp_path: Path) -> None:
     """Six added suppressions print five and count the sixth (`PL-7NKD`).
 

@@ -1627,6 +1627,13 @@ where no boundary is declared or neither lane has anything startable. The
 spanning count rides the same line: two picks read as the whole queue without
 it.
 
+A project that has declared which lane a session given no particular work
+takes sets `focus` in `docket.toml` to `product` or `workflow`. The `Top:`
+line then ranks that lane alone and reads `Top, product focus:`, since it is
+the first pick a session reads and the one it takes. Where that lane has
+nothing startable, the line says so rather than naming the other lane's work.
+A value that names no lane is refused when the config loads (`PL-2CPD`).
+
 Each pick carries its band and its relation to the gate, and deliberately not
 its title. An id alone cannot tell a `P1` sitting on the debt gate from a `P3`
 the roadmap places nowhere, so an offer worth waving through and one worth
@@ -4267,7 +4274,10 @@ on 2026-09-25, the six flag no added line: `importorskip` has a common
 legitimate use, an optional dependency, and when one arrives a reviewer sees it
 as they see the `bash` guard. A deselection in `addopts` is configuration: in
 `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
-in a `.cfg` or `.ini` file nothing does.
+in a `.cfg` or `.ini` file nothing does. The hook is read as its definition,
+`def pytest_ignore_collect`, since only a definition drops a file. A test that
+calls the hook to check it drops nothing, and three such calls once refused a
+close-out that `--self` could not waive (`PL-3G9M`).
 
 Whether the branch's tests still catch a change is measured by mutation rather
 than read from the diff (`PL-CZXN`; project owner, 2026-10-19, ratified, over
