@@ -31,6 +31,10 @@ from anesthesia_sim.core.parameters import (
     parse_reference_adult_parameters,
 )
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
 
 def _valid_agent_payload() -> dict[str, object]:
     return {
@@ -441,7 +445,7 @@ def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() 
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^max_delivered_concentration_percent must be positive and finite$",
+        match="^max_delivered_concentration_percent must be positive and finite" + REFUSAL_REASON,
     ):
         replace(sevoflurane, max_delivered_concentration_percent=Percent(0.0))
 

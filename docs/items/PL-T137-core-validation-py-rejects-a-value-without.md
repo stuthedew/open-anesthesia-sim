@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: ux, docs
 feature: documentation-standard
-touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py
+touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_parameters.py, tests/unit/test_governing_equations.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_circuit.py, tests/unit/test_tissue.py
 added: 2026-09-05
 closed: 2026-10-24
 pr: 1775
