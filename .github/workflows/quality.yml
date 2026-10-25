@@ -591,21 +591,22 @@ jobs:
         # tests** (`PL-STM6`). `ci-scope` answers `apparatus` when every
         # changed path is under `docket.toml`'s `workflow_paths`. Then
         # `--skip-costly` leaves out the tests that read a 24-hour washout
-        # curve or a controller run, which `tests/conftest.py` names. No
-        # apparatus file is an input to those tests: they read `src/`,
-        # `tests/reference/`, `tests/integration/` and the conftests under
-        # `tests/`, and none of those is under `workflow_paths`. They are the
+        # curve or a controller run, which `tests/conftest.py` names. Their
+        # own inputs are `src/`, `tests/reference/`, `tests/integration/` and
+        # the conftests under `tests/`, and none of those is under
+        # `workflow_paths`. Two apparatus files still reach them: the root
+        # `conftest.py`, which runs inside every test, and this workflow,
+        # which sets the runner image and the step's environment. A change to
+        # either skips them on its pull request, and `main`'s push run, which
+        # runs them, is what catches a break there. They are the
         # 35 tests that took 479 s of the suite's 1,646 s of test time on
         # 2026-10-25. `PYTEST_ADDOPTS` carries the option, so the step's
         # command, which `tools/main_ci_status.py` times by its name, does not
         # change. A push to `main` never asks `ci-scope`, so it runs them all.
         #
-        # Coverage still runs, and `checks` still requires all of `core/`.
-        # Without the costly tests `core/` was still covered in full on
-        # 2026-10-25. If a later change leaves a line of `core/` that only a
-        # costly test reaches, this gate fails on the next apparatus pull
-        # request and names the line. The fix is a unit test that reaches it,
-        # which `core/` should have anyway.
+        # Coverage still runs, but `checks` does not hold it to 100% on this
+        # answer, for the reason its `COSTLY_SKIPPED` comment gives. Without
+        # the costly tests, `core/` was still covered in full on 2026-10-25.
         env:
           PYTHONUNBUFFERED: "1"
           PYTEST_ADDOPTS: ${{ steps.scope.outputs.scope == 'apparatus' && '--skip-costly' || '' }}
@@ -663,8 +664,18 @@ jobs:
     # skipped. Any other pair of answers runs them, including the empty pair a
     # push to `main` gives. Where the parts disagree, `coverage combine` fails
     # on the part whose data is missing.
+    #
+    # `COSTLY_SKIPPED` is `true` when the second part left out the costly
+    # tests (`PL-STM6`). Coverage is still combined and printed then, but not
+    # held to 100%. Such a pull request changes nothing under `src/` and no
+    # simulator test, so it cannot change what `core/` is covered by. A gap it
+    # showed would come from an earlier product change, reached only by a
+    # costly test, and the apparatus pull request could not fix it without
+    # becoming a product one. Every product pull request and every push to
+    # `main` runs the costly tests and holds the full gate.
     env:
       ITEMS_ONLY: ${{ needs.checks-part-1.outputs.scope == 'items' && needs.checks-part-2.outputs.scope == 'items' }}
+      COSTLY_SKIPPED: ${{ needs.checks-part-2.outputs.scope == 'apparatus' }}
 
     steps:
       - name: both parts succeeded
@@ -692,4 +703,7 @@ jobs:
       # `make check`'s threshold, which `tools/doc_check.py`'s
       # `check_coverage_gate` holds to the Makefile's `--cov-fail-under`.
       - run: uv run coverage report --show-missing --fail-under=100
-        if: env.ITEMS_ONLY != 'true'
+        if: env.ITEMS_ONLY != 'true' && env.COSTLY_SKIPPED != 'true'
+      - name: coverage without the costly tests, printed and not held to 100%
+        if: env.COSTLY_SKIPPED == 'true'
+        run: uv run coverage report --show-missing
