@@ -15,7 +15,7 @@ fraction reaches 0.0316:
     canonical (`state_at`) against the stepped run    1.8e-14
     display   (`evaluate`) against the stepped run    3.7e-15
 
-Both are eleven orders of magnitude below 1e-4, the smallest change that the two-decimal
+Both are about ten orders of magnitude below 1e-4, the smallest change that the two-decimal
 percent readout can show, so neither path can change a displayed digit. The two paths differ
 because they compose the same operations in a different order, not because of method error.
 `docs/MODEL.md` § "The canonical evaluation rule" states which of the two paths a stored value
@@ -1667,7 +1667,8 @@ the design rests on. Without this test, nothing would catch a way of opening a f
 a restart, on the grounds that the difference is too small to matter.
 """
 
-# The divergence one hour past a fork at 655.3 s, on the two-change sevoflurane run below.
+# The largest divergence after a fork at 655.3 s, on the two-change sevoflurane run below.
+# It is measured at each instant in `PROBES_S`, from 700 s to the end of the run at 3600 s.
 # It is pinned as a ceiling rather than as an equality, because it is a floating-point
 # composition difference. A compiler, a platform or an unrelated change in
 # `matrix_exponential` may move it. The claim needs only that the divergence is real and
