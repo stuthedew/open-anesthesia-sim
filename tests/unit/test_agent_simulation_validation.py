@@ -350,12 +350,13 @@ def test_the_running_totals_do_not_drift_as_steps_add_up() -> None:
     Until `PL-XST1`, each step's transfer was added to its total with a plain
     `+=`. Each addition could then round by up to half a unit in the last
     place, always in the same direction for a nearly constant transfer. Over a
-    24 h run at the 1 ms step floor that drift used up about a quarter of the
-    relative tolerance, so a correct run could be halted for agent it had not
-    lost. The expected sums are computed exactly, with `Fraction`, rather than
-    by the code under test. The plain sum of the same transfers is computed
-    too. It shows that this sequence makes plain addition drift by many orders
-    of magnitude more than the bound, so a return to plain addition fails.
+    24 h run at the 1 ms step floor, that drift brought a correct run's residual
+    within a few percent of the relative tolerance at which the run is
+    halted (`docs/MODEL.md` § "Mass-balance identity"). The expected sums are
+    computed exactly, with `Fraction`, rather than by the code under test. The
+    plain sum of the same transfers is computed too. It shows that this
+    sequence makes plain addition drift by many orders of magnitude more than
+    the bound, so a return to plain addition fails.
     """
 
     validator = AgentSimulationValidator()

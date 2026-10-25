@@ -113,8 +113,9 @@ class AgentSimulationValidator:
     Each total is kept by compensated summation, with its compensation term
     in a field of its own (`_compensated_sum`, `PL-XST1`). Plain addition let
     rounding build up once per step. Over a 24 h run at the 1 ms step floor it
-    used up a quarter of `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`, as
-    `docs/MODEL.md` § "Mass-balance identity" records.
+    brought a correct run's residual close to
+    `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`, where the run would have been
+    halted. `docs/MODEL.md` § "Mass-balance identity" records the measurement.
     """
 
     initial_agent_l: float = 0.0
