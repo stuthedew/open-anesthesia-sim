@@ -618,7 +618,9 @@ computes it.
 The divisor is held as a `MacPercent` (`core/concentration.py`), a `Percent`
 that refuses zero when it is built. So the quotient is never formed against a
 zero MAC, and every formatter that forms it refuses a divisor that was not
-built as one (`PL-F9TC`).
+built as one (`PL-F9TC`). The type sets no lower bound beyond zero. A MAC far
+below any real agent's would still give multiples too large to read, and the
+shipped MACs are 1.2% to 6.0%.
 
 A concentration fraction must always be finite and satisfy:
 

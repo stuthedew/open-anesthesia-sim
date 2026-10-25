@@ -801,3 +801,25 @@ def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_i
         circuit.set_delivered_concentration_percent(Percent(50.0))
 
     assert circuit.delivered_concentration_percent == 0.0
+
+
+@pytest.mark.parametrize(
+    ("agent", "mac_percent"), [("sevoflurane", 2.0), ("isoflurane", 1.2), ("desflurane", 6.0)]
+)
+def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
+    agent: str, mac_percent: float
+) -> None:
+    """The opening dial is at 1 MAC, but it is a dial setting and not the agent's MAC.
+
+    Built from the agent's `MacPercent` itself, the opening setting passed a
+    MAC check until the learner first moved the dial. So a dial setting handed
+    to a formatter in place of the MAC drew a correct-looking 1.00 ×MAC at run
+    open, and failed only later, mid-run (`PL-F9TC`, blind review). The MACs
+    expected are the shipped data files' values, typed here.
+    """
+    dial = AgentUptakeSystem.for_agent(agent).circuit.delivered_concentration_percent
+
+    assert type(dial) is Percent
+    assert dial == mac_percent
+    with pytest.raises(TypeError, match="was not built as MacPercent"):
+        require_mac_percent("mac_percent", dial)

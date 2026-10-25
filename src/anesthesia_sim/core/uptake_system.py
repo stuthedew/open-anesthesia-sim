@@ -196,7 +196,7 @@ class AgentUptakeSystem:
             circuit=BreathingCircuit(
                 circuit_volume_l=circuit_parameters.circuit_volume_l,
                 fresh_gas_flow_l_min=opening_fresh_gas_flow_l_min,
-                delivered_concentration_percent=agent.mac_percent,
+                delivered_concentration_percent=Percent(agent.mac_percent),
                 max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
                 deliverable_fresh_gas_flow_range=(
                     circuit_parameters.deliverable_fresh_gas_flow_range

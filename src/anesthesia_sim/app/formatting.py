@@ -434,9 +434,9 @@ def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> st
         A one-line statement of the agent's 1 MAC in percent.
 
     Raises:
-        TypeError: `mac_percent` was not built as a `MacPercent`. A zero
-            MAC would print `1 MAC = 0.0%`, and a `MacPercent` refuses zero
-            when it is built (`core/concentration.py`, `PL-F9TC`).
+        TypeError: `mac_percent` was not built as a `MacPercent`, which
+            refuses a zero MAC when it is built (`core/concentration.py`,
+            `PL-F9TC`). A zero MAC would print `1 MAC = 0.0%`.
     """
 
     require_mac_percent("mac_percent", mac_percent)
@@ -587,11 +587,11 @@ def chart_axis_top_percent(mac_percent: MacPercent) -> float:
         Top of the chart's percent axis.
 
     Raises:
-        TypeError: `mac_percent` was not built as a `MacPercent`. A zero
-            MAC would give an axis of zero height, and a chart drawn
-            against one would place every trace somewhere meaningless
-            rather than failing. A `MacPercent` refuses zero when it is
-            built (`core/concentration.py`, `PL-F9TC`).
+        TypeError: `mac_percent` was not built as a `MacPercent`, which
+            refuses a zero MAC when it is built (`core/concentration.py`,
+            `PL-F9TC`). A zero MAC would give an axis of zero height, and a
+            chart drawn against one would place every trace somewhere
+            meaningless rather than failing.
     """
 
     require_mac_percent("mac_percent", mac_percent)

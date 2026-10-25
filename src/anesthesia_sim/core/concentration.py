@@ -239,8 +239,11 @@ class MacPercent(Percent):
 
     The MAC divides every MAC multiple the interface shows, and it is the
     number in the `1 MAC = x%` reference beside the chart. A MAC of zero would
-    make every multiple infinite and the reference read `1 MAC = 0.0%`. So the
-    check that a MAC is above zero is made once, when one of these is built.
+    leave every multiple undefined. So the check that a MAC is above zero is
+    made once, when one of these is built. The check sets no lower bound beyond
+    zero. A MAC far smaller than any real agent's, such as 0.01%, still prints
+    as `1 MAC = 0.0%`, and one near the smallest float makes the multiples
+    overflow. The shipped MACs are 1.2% to 6.0%.
     `AgentParameters` holds the agent's MAC as one, and each formatter in
     `app/formatting.py` that divides by a MAC takes one (`PL-F9TC`). Before
     that, `AgentParameters` refused a zero MAC through `require_positive_finite`,
