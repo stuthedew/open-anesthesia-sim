@@ -5454,6 +5454,11 @@ def test_a_quoted_path_loses_its_quoting_and_a_plain_one_is_kept() -> None:
     assert unquoted_path("b/plain.py") == "b/plain.py"
 
 
+def test_a_backslash_before_digits_that_are_not_octal_is_read_without_raising() -> None:
+    """`PL-PNGQ`: `isdigit` let the non-octal `\\189` reach `int(..., 8)`, which raised."""
+    assert unquoted_path('"a\\189"') == "a189"
+
+
 def test_a_log_listing_is_split_into_each_commit_and_its_fields() -> None:
     """The `-z` shape: the header ended with NUL, one newline, then each field ended with NUL."""
     listing = "\x1eaaa\0\nsrc/caf\u00e9.py\0tools/a\tb.py\0\x1ebbb\0\x1eccc\0\nREADME.md\0"

@@ -207,6 +207,7 @@ from pathlib import Path, PurePosixPath
 
 from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
+from .digits import whole_number
 from .lines import split_lines
 from .python import imports
 from .vcs import (
@@ -1377,9 +1378,10 @@ def arm(
             unread.append(f"a trailer on {name} is not a claim record, so it was not read: {line}")
 
     counted = run(["rev-list", "--count", f"HEAD..{base}"], root).strip()
-    behind = int(counted) if counted.isdigit() else 0
-    if not counted.isdigit():
+    behind = whole_number(counted)
+    if behind is None:
         unread.append(f"git would not count {base}'s commits that {name} lacks")
+        behind = 0
     if run.reason:
         unread.append(run.reason)
 
@@ -1672,14 +1674,14 @@ def _unpulled(root: Path, run: Runner, heads: RemoteHeads | None, name: str, bra
     # where git would not count those, the merge serves either way.
     if own != "0":
         pull = f"merge them with `git pull --no-rebase {REMOTE} {branch}`"
-        if own.isdigit():
+        if whole_number(own) is not None:
             said += f", and {name} has {_counted(own)} that copy lacks"
     return f"{said}, so HEAD is not what its pull request lands; {pull} and ask again"
 
 
 def _counted(count: str) -> str:
     """`1 commit`, `2 commits`, or `commits` where git gave no count."""
-    if not count.isdigit():
+    if whole_number(count) is None:
         return "commits"
     return f"{count} commit" + ("" if count == "1" else "s")
 
