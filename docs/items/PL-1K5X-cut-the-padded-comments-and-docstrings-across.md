@@ -9,6 +9,7 @@ feature: prose-quality
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, src/anesthesia_sim/app, src/anesthesia_sim/layout, src/anesthesia_sim/app_metadata.py, docs/items/PL-21KP-present-tense-flet-claims-survive-the-qt-port.md
 added: 2026-09-05
 closed: 2026-10-25
+pr: 1798
 verify: ! grep -qF 'Mass-balance accounting: verify that a simulation run neither creates nor' src/anesthesia_sim/core/agent_simulation_validation.py && ! grep -qF 'Exception hierarchy for what the layout package refuses.' src/anesthesia_sim/layout/exceptions.py && ! grep -qF 'in place give way before the Areas that it did. An Area that gives way shrinks' src/anesthesia_sim/app/area_layout.py
 not-delegable: readability is judged by a person, and no command separates a trimmed comment from a padded one. A length ceiling would be met by deleting the provenance note this item exists to keep, which is the one outcome it forbids. `touches` reaches `src/anesthesia_sim/core` and `src/anesthesia_sim/data` besides, which delegation may never modify
 ---
