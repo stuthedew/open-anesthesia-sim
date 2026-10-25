@@ -33,6 +33,20 @@ directory is `/home/user/open-anesthesia-sim`, the only checkout under
   thread started inside the checkout running the digest and three
   `PreToolUse:Bash` hooks. That was in the earlier "Ship v0.6.0" project.
 
+**Re-probed 2026-10-25, about 04:25Z, in the same thread after it was compacted
+and its worker restarted.** The probe still printed the pytest version. A
+marker line added by hand to `gate-status-guard.sh` (`PreToolUse` on Bash) and
+then to `docket-branch-guard.sh` (`PostToolUse` on Bash) was never written by
+the next tool call, so neither event runs the repository's hooks; both edits
+were reverted. The thread's Claude process is a preloaded spare, `claude
+--preload /home/claude/.claude/remote/spare.sock`, with `CCR_PRELOAD_CLAUDE=1`
+and `CLAUDE_CODE_ENTRYPOINT=remote_projects` in its environment, and its
+working directory is the checkout. One plausible cause, not confirmed, is that
+the spare process resolves its settings before the checkout is attached, so
+`.claude/settings.json` is never read. `~/.claude/launcher-settings.json` sets
+no `disableAllHooks` or managed-hooks-only key. One `docket-branch-guard.sh`
+process was seen running at 04:20Z, and its origin is unknown.
+
 **Why it matters.** Every thread in this project may be working without the
 guards: no refusal of a piped gate, of a ref prune or of a bare interpreter on
 the 3.14 trees, no push check, and no session-start digest, which carries the

@@ -3,11 +3,13 @@ id: PL-63CB
 title: Add a model-review skill that, on a cadence and after any generator or cluster, joins closed items to the sessions that worked them, scores each by how the work held up, screens every recorded attribute for associations, and brings recommendations with their evidence and n
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: model-evidence
 touches: .claude/skills/model-review, docs/model-review.md, docs/maintainer.md
 added: 2026-10-17
+closed: 2026-10-25
+pr: 1776
 payoff: model and effort are chosen per item type from measured reliability and cost rather than a cautious default, and the owner is handed the recommendations instead of having to ask
 verify: grep -q 'model-review' docs/maintainer.md && grep -q 'pre-registered' .claude/skills/model-review/SKILL.md
 ---
@@ -169,3 +171,11 @@ effort trial registered in the template's form. `docs/maintainer.md` §
 now points at the skill's refresh steps instead of restating them. **What is
 left:** the first review, which refreshes the ledger, scores the closed items
 and writes its findings to the register.
+
+**Done, 2026-10-25.** The first review ran and its findings are in
+`docs/model-review.md` § "Run of 2026-10-25, the first". Effort monitoring is
+not yet adequate: no item worked only at `high` has a closed window until
+2026-11-18, and each group needs 595 items. Its two findings that need work
+are filed under the `model-review` feature: `PL-J7YG` (the rework measure
+marks 69% of items) and `PL-2D1S` (red CI runs per pull request rose from 17%
+to 49% of items in five weeks). The next run is due about 2026-11-25.
