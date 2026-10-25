@@ -8,7 +8,7 @@ classes: safety, anticipated, ux
 feature: anesthesia-machine
 touches: docs/MODEL.md
 blocked-by: PL-TH35, PL-R1WQ, PL-TBMK, PL-4TWW
-deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list to hold the gate open): waits on PL-TBMK and PL-4TWW, a second machine profile and the surface choosing between them, which no release schedules; safety, but not live at 19af95d - one machine profile and no chooser, so no displayed value can be misattributed between machines
+deferred-from: v0.7.0 - deferred to Gate 4 on beat 3's terms (PL-LF0P, following PL-DB64's disposition for the same holding conditions): waits on PL-TBMK and PL-4TWW, a second machine profile and the surface choosing between them, which no release schedules; safety, but not live at 0947408 - one machine profile and no chooser, so no displayed value can be misattributed between machines
 added: 2026-09-02
 payoff: stops a learner reading a numerical difference between two machines as a fact about the brand, when it was produced by one named parameter the interface never showed them
 ---

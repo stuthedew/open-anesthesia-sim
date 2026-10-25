@@ -141,8 +141,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.41 | Completed | **The release where the dashboard opens on the shipped Workspaces with a tab strip to switch between them, and where each run keeps a number that is never given out twice, so a Workspace can pin the run it shows and says so when that run is gone, and where every layout operation can be done from a menu and the keyboard.** Six items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 36 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.40 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/`, whose three Workspaces gain a schema version and an empty pin. `app/` and `layout/` changed because each run is named by an identity that is never reused and a Workspace can pin one (`PL-7Z84`), the dashboard opens on the shipped Workspaces under a tab strip where a reader sets a pin (`PL-2KXB`), each Area border can be moved from the keyboard and a Layout menu switches Workspace (`PL-M352`), and `AreaLayout` refuses a layout of two windows before it builds its widget, which had crashed a test worker on `main` (`PL-H9VT`). `docs/MODEL.md` states the run identity and the pin. **It finishes `owner-attention`**, and closes no generator head. **One is a Gate 2 entry**, `PL-7Z84`, and the gate stands at 239 of 246 cleared, from 238 of 246 at the v0.5.40 tag. `PL-5VTL`, the cut, ships in no release under `PL-KRS6`. | 6 items |
 | v0.5.42 | Completed | **The release where each chart keeps its own time window, so the shipped Induction Workspace opens its concentration chart on the first 15 minutes of the case while the other charts keep theirs.** One item, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed, because a layout the reader arranges is not finished: 37 of the 39 ids in v0.6.0's Required scope are closed. v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored scientific value changed, and no run can differ**: `core/` resolves to `92e04de` at the v0.5.41 tag and here, and `tests/reference/` to `b0c7cb3`, so the trajectories were not re-measured. `data/` moved only in `data/workspaces/induction.json`, which saves its concentration chart at the 15-minute window. `app/` changed because each chart View now saves its own window, the F_A/F_I plot gains the same control, and the off-scale notice, the wash-in state line and the count of unmarked control changes now describe each chart's own window (`PL-L59K`). `docs/MODEL.md` and `README.md` say the window is chosen for each chart. **It finishes no feature**, and closes no generator head. **It is not a Gate 2 entry**, and the gate stands at 239 of 246 cleared, as at the v0.5.41 tag. `PL-9354`, the cut, ships in no release under `PL-KRS6`. | 1 item |
 | v0.6.0 | Completed | **The release where the layout is the reader's: the dashboard is divided into Areas that a reader splits, joins, swaps, resizes and closes, each Area holds any View the build registers, the arrangements are kept as Workspaces that a reader saves and restores, and the values needed to read any number on screen stay in view outside the Areas, with the use disclaimer.** 64 items, and the capability boundary § "Versioning decision" gives a minor number to: all 40 ids in v0.6.0's Required scope are closed. **No equation, parameter or stored scientific value changed, and no run differs**: `core/` moved (`92e04de` to `d482c41`) because its refusals now name the object that refused and reject a capacity that underflows or overflows (`#1676`), and the trajectory comparison against the v0.5.42 tag found every state, halt, readout and hover string identical over 81 cases and three 24-hour runs. `data/` resolves to `bd5d496` at both ends. A learner can now save, restore and reset Workspaces from the Layout menu (`PL-DWHG`), open the Area and Layout menus by right-click and swap two Areas by Ctrl-drag (`PL-R5G4`), and no longer meets an Area too thin to see (`PL-391Y`). The region holding time, run state, agent and concentrations sits above the part of the page that scrolls and the disclaimer sits below it, so neither leaves the window at any height (`PL-NNML`). **It finishes five features**, among them `layout-sliver-areas` and `v0.6.0-done-check`, the check of the Definition of done bullet by bullet that found `PL-NNML`. **Gate 2 is clear**: 241 of its 247 entries are cleared and 6 are deferred, from 239 of 246 at the v0.5.42 tag. `PL-9CS6`, the cut, ships in no release under `PL-KRS6`. | 64 items |
-| v0.6.1 | Completed | **The release where four of `CLAUDE.md`'s procedures moved into the skills that apply them and two rules a check already enforces were retired, so `CLAUDE.md`, which every session loads at launch, is about 10,300 characters shorter, and where pull requests run quality.yml's test parts on the arm64 runner.** Nine items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is not yet scoped, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.0 tag and here, and only `.github/` moved. All nine merged after the v0.6.0 tag. The generator ranking and its pause went to the docket skill's triage mode (`PL-6VJ3`), the pull request procedure to a new `pull-request` skill (`PL-S2NL`), and the spend-reset procedure and the housekeeping rule's detail to the docket skill's start and capture modes (`PL-Z90G`), each leaving one sentence in `CLAUDE.md` that names its moment; `PL-SN2Z` measured that the docket skill starts on the requests that name its moment. **It finishes `skill-routing` and `worker-instructions`**, and closes no generator head. **None is a gate entry**: Gate 3 freezes when v0.7.0 is scoped. `PL-XMCT`, the cut, ships in no release under `PL-KRS6`. | 9 items |
-| v0.6.2 | Completed / current baseline | **The release where the reply hook stops refusing a message that asks the owner for nothing and checks the coordinator's posts too, which finishes the review hold, and where a second copy of a shared fact is classed a defect at triage and two check baselines of such copies are drained.** 16 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is not yet scoped, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.1 tag and here. `src/` moved only in `app/`, where `PL-4X5B` named 29 bare layout literals without changing a value, and rendered the default run pixel-identical before and after. The owner-ask hook (`PL-YGR6`, `PL-YV90`, `PL-646J`, `PL-JLB4`), triage's defect class for a second copy (`PL-ZZ03`), the two drained baselines (`PL-LGDV`, `PL-4X5B`), `verify`'s mutation run on changed lines (`PL-CZXN`), and the effort trial's arm drawn in the session-start hook (`PL-8MZ9`) carry it. **It finishes `review-hold`**, and closes no generator head. **None is a gate entry**: Gate 3 freezes when v0.7.0 is scoped. `PL-Z4T7`, the cut, ships in no release under `PL-KRS6`. | 16 items |
+| v0.6.1 | Completed | **The release where four of `CLAUDE.md`'s procedures moved into the skills that apply them and two rules a check already enforces were retired, so `CLAUDE.md`, which every session loads at launch, is about 10,300 characters shorter, and where pull requests run quality.yml's test parts on the arm64 runner.** Nine items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, was not yet scoped when it was cut, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.0 tag and here, and only `.github/` moved. All nine merged after the v0.6.0 tag. The generator ranking and its pause went to the docket skill's triage mode (`PL-6VJ3`), the pull request procedure to a new `pull-request` skill (`PL-S2NL`), and the spend-reset procedure and the housekeeping rule's detail to the docket skill's start and capture modes (`PL-Z90G`), each leaving one sentence in `CLAUDE.md` that names its moment; `PL-SN2Z` measured that the docket skill starts on the requests that name its moment. **It finishes `skill-routing` and `worker-instructions`**, and closes no generator head. **None is a gate entry**: Gate 3 froze later, when v0.7.0 was scoped. `PL-XMCT`, the cut, ships in no release under `PL-KRS6`. | 9 items |
+| v0.6.2 | Completed / current baseline | **The release where the reply hook stops refusing a message that asks the owner for nothing and checks the coordinator's posts too, which finishes the review hold, and where a second copy of a shared fact is classed a defect at triage and two check baselines of such copies are drained.** 16 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, was not yet scoped when it was cut, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run can differ**: `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.1 tag and here. `src/` moved only in `app/`, where `PL-4X5B` named 29 bare layout literals without changing a value, and rendered the default run pixel-identical before and after. The owner-ask hook (`PL-YGR6`, `PL-YV90`, `PL-646J`, `PL-JLB4`), triage's defect class for a second copy (`PL-ZZ03`), the two drained baselines (`PL-LGDV`, `PL-4X5B`), `verify`'s mutation run on changed lines (`PL-CZXN`), and the effort trial's arm drawn in the session-start hook (`PL-8MZ9`) carry it. **It finishes `review-hold`**, and closes no generator head. **None is a gate entry**: Gate 3 froze later, when v0.7.0 was scoped. `PL-Z4T7`, the cut, ships in no release under `PL-KRS6`. | 16 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -429,8 +429,8 @@ adds no capability and exists to clear the ground they are built on:
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, and item 43 records the count. | — |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
-| 8 | **Gate 3** | Frozen when v0.6.0 ships; its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
-| 9 | **v0.7.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
+| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
+| 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
 | 11 | **v0.8.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16 and `v0.9.0` from then until 2026-09-26, for the same reasons as row 9.) | — |
 | 12+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
@@ -447,10 +447,10 @@ debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6, 8 and 10 carry no version.
 
-Rows 5 and 7 are scoped and have their own sections below, as does the
+Rows 5, 7 and 9 are scoped and have their own sections below, as does the
 `v0.4.26` row above them — v0.5.0 on 2026-09-06, the Qt port on 2026-09-10 and
-moved ahead of row 5 on 2026-09-14, and v0.6.0 on 2026-09-16. Rows 9 and 11
-are the intended order. Each becomes real only when it gets its own goal,
+moved ahead of row 5 on 2026-09-14, v0.6.0 on 2026-09-16, and v0.7.0 on
+2026-10-25. Row 11 is the intended order. Each becomes real only when it gets its own goal,
 required scope, definition of done and out-of-scope list here, per the
 development rules.
 
@@ -6513,6 +6513,410 @@ removed, and this file's history before that change holds their text.
   (`PL-M701`), so the pages can be read now. It is independent of this
   milestone.
 
+## v0.7.0 - the schematic
+
+Planned-milestone item 27, the compartment schematic, with item 28, agent
+cost, beside it. Scoped 2026-10-25 by `PL-LF0P`.
+Two choices went to the project owner. The schematic's containers fill
+to tension, as in Gas Man, are labelled with their amounts, and have a bar
+showing each compartment's share of the agent (project owner, 2026-10-25,
+ratified, over containers drawn to scale and over Gas Man's Picture as it
+is). Item 28 is built here rather than left unscheduled (project owner,
+2026-10-25, ratified, over leaving it out and deferring its four entries to
+Gate 4). The schematic and the agent cost readout are each a View of their
+own, which any Area can hold, as the project owner confirmed in the same
+round. The rest of this section was decided in the scoping round
+without being put to the project owner, because each remaining choice had one
+clearly better option or concerned look, wording or placement, which are
+placeholders while structure and function are being built.
+
+**What Gas Man's Picture shows, read at the source.** The Gas Man Workbook's
+Figure 2-1 (printed p. 11) draws the circuit, the alveoli, arterial blood, the
+vessel-rich group, muscle, fat and venous blood as containers of one width.
+Each one fills "to a height representing partial pressure or tension in that
+compartment" (printed p. 11). Its only amounts are two totals in litres,
+Uptake and Delivered, which a setting turns into money. Appendix E (printed
+p. 188) gives the Picture's purpose as "viewing and manipulating the state of
+an experiment at a given point in its evolution", and says "the compartment
+schematic helps you visualize the relationships between compartment
+tensions". So Gas Man's Picture shows where the tension is. It does not show
+where the agent is, which is the lesson planned-milestone item 27 was written
+for. Item 27 now says so.
+
+**Drawing each container to scale does not rescue it in this model.** A
+container whose width is its capacity holds an amount equal to its filled
+area. That is the relation Mapleson's electric analogue rests on, q = C·v, a
+condenser's charge equal to its capacitance times its voltage (Mapleson WW,
+*J Appl Physiol* 1963;18(1):197-204, https://doi.org/10.1152/jappl.1963.18.1.197,
+read from the private reference corpus, equations 5 and 6). But this model's
+capacities span almost three orders of magnitude. For sevoflurane, fat holds
+493 L of gas equivalent and venous blood 0.79 L, a ratio of about 620. In a
+View 600 px wide, drawn to scale, fat takes about 500 px and the circuit,
+alveoli, venous blood and vessel-rich group take between 1 and 7 px each.
+Isoflurane and desflurane give the same picture. The measurement is
+`AgentUptakeSystem.for_agent` on the shipped parameter files, on 2026-10-25.
+
+### Goal
+
+The interface draws tension and almost nothing else. The concentration chart
+and the readouts give each compartment's partial pressure, in % atm and as a
+MAC multiple. So the slow compartments look empty while they hold most of the
+agent. Measured on this model with sevoflurane held at a 1 MAC dial for the
+reference adult at the shipped defaults:
+
+| At | Muscle: tension, share of stored agent | Fat: tension, share of stored agent |
+| --- | --- | --- |
+| 60 min | 0.50% atm, 49% | 0.03% atm, 20% |
+| 180 min | 1.16% atm, 54% | 0.11% atm, 30% |
+
+Fat's trace sits within a few pixels of zero on the chart for that whole time.
+`PL-H5DV` measured the same pattern for all three agents and the hours fat
+takes to overtake muscle. Stated as they stand on 2026-10-25, four gaps:
+
+- **No surface says where the agent is.** The only amounts on screen are the
+  agent accounting View's delivered, exhausted and stored totals, in litres of
+  vapour. That View is a check that the model conserves mass, which the
+  project owner called "not info the user really needs or cares to see"
+  (2026-09-16, recorded in `PL-B396`).
+- **The amounts exist and are not passed on.** Each compartment in `core/`
+  holds its own `agent_amount_l`. `SimulationSnapshot` in
+  `src/anesthesia_sim/app/controller.py` carries only their total,
+  `stored_agent_l`. Nothing was missing by mistake: `ROADMAP.md` § "Designed
+  for forking" declined per-compartment amounts until a consumer needed them,
+  and this milestone is that consumer.
+- **No View draws how the compartments connect.** The chart puts six traces on
+  one axis. Nothing shows that agent passes from the circuit to the alveoli to
+  the blood and on to each tissue, driven by the difference in tension, which
+  is the relationship Gas Man's Picture exists to show.
+- **Nothing says what the agent cost.** The delivered total appears only in
+  litres of vapour, inside the mass-conservation check. A clinician buys and
+  fills agent as liquid, and the low-flow lesson of planned-milestone item 28
+  is about money.
+
+The end state: a learner places the compartment schematic in any Area. For
+each displayed run it shows the circuit, the alveoli, venous blood and the
+three tissue groups in the order agent reaches them. Each fills to its
+tension on one shared scale, as in Gas Man. Each is labelled with its amount
+of agent vapour, and a bar shows each compartment's share of all the agent the
+run holds, so fat's share grows on screen while its tension stays near zero. A
+second View, the agent cost View, shows the delivered agent in millilitres of
+liquid equivalent, and in money at a price the reader sets.
+Every number on it is the number the rest of the interface gives for the same
+run at the same instant, and it says that it is modelled.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-10-25, the day this milestone was scoped.** v0.6.0 shipped on
+2026-10-20, so the later of the two days § "The debt gate" -> "The cadence"
+names is the scoping day. Every open item that is debt by § "The debt gate"
+below is on this list as the store held it at the cut, `origin/main` at
+`0947408` with this milestone's own items added. That is every item classed `defect`, `safety`, `science`, `refactor`
+or `perf`, or at `needs-decision`. The one open entry of v0.6.0's list that is
+not debt, `PL-5B1N`, is on it too, because a freeze carries every open entry of
+the previous list (`PL-JV5Q`). One item was untriaged at the cut: `PL-HDRN`,
+filed on 2026-10-24 with `PL-TDV9`'s pull request, which asks `bin/docket arm`
+to hold a simulator pull request whose blind review passes never ran. An
+untriaged item carries no class, so the class filter cannot read it. If its
+triage classes it as debt, it joins the second group, as Gate 2's thirteen
+untriaged entries did. How many
+entries are closed is not recorded here, because a count written into a
+document goes stale the next time an item closes. `bin/docket wave` reads the
+list against `docs/items/` and reports it.
+
+**Two groups, and only the second must clear before this milestone's
+implementation begins.** The first is debt that this milestone's own Required
+scope names, which it clears itself, per § "Debt inside the milestone's own
+scope". The second clears first, unless an entry is deferred on § "The
+cadence" beat 3's terms, which its own `deferred-from:` field records. The lane
+each entry is worked in is `bin/docket gate`'s and `bin/docket picks`' to
+print, because a lane written here goes stale (`PL-Z64T`).
+
+**The four entries v0.6.0's gate deferred for item 28 are cleared by this
+milestone instead.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` reached
+this list deferred from v0.6.0, because no release scheduled planned-milestone
+item 28 (`PL-DB64`). This milestone schedules it, so Required scope below
+names all four and they are in the first group. `PL-YRLM`, which held the
+scheduling question, closed with the answer. `PL-B396` is now classed `safety`
+as well, because it builds a displayed unit conversion.
+
+**`PL-WZVZ` and `PL-B4P7` are deferred to Gate 4 on § "The cadence" beat 3's
+terms.** Both wait on machine selection, which no release schedules.
+`PL-WZVZ` waits on `PL-TBMK`, a second machine profile, and on `PL-4TWW`, the
+surface that selects between profiles. `PL-B4P7` waits on `PL-2FZ9`, loading
+a profile by id, and through it on a second profile reaching a run. Neither
+hazard is live, read against the tree at `0947408`.
+`src/anesthesia_sim/data/machines/` holds one profile,
+`reference_circle_system.json`, and nothing in `src/` selects between
+profiles. So no displayed value can be misattributed between machines, and no
+run can open at another machine's flow. Each item's `deferred-from: v0.7.0`
+says so. Gate 2 deferred `PL-WZVZ` for the same holding condition (`PL-DB64`,
+project owner, 2026-09-27, ratified, over keeping it on the list to hold the
+gate open). `PL-B4P7` was captured after Gate 2's freeze and waits on the same
+condition. So the scoping round took the same disposition for both without
+putting it to the owner again.
+
+**`PL-5B1N` clears in this gate.** It is the preview a control draws while it
+is grabbed and not yet released. v0.6.0's gate deferred it to Gate 3
+(`PL-YBFB`) with `blocked-by: v0.7.0`, and that blocker cleared when this
+section was written, so the item is `ready` again and is worked with the rest
+of the second group.
+
+**What this list is not swept for yet.** Beat 3 of the cadence requires a
+staleness pass before any of it is worked, because a `verify:` command tests
+for the fix and never for the fault. The pass is filed as its own item under
+`feature: gate-staleness-sweep`, `PL-F2NX`, and runs against this list
+before implementation of this milestone begins.
+
+**Cleared by v0.7.0 itself - 9 entries**
+
+- PL-RNYV (L) Build the compartment schematic View: the circuit, the alveoli, venous blood and the three tissue groups as containers filled to tension, each labelled with its tension and its amount of agent vapour
+- PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
+- PL-1P15 (M) Show what the delivered agent cost in money, at a price per agent the reader sets, on the agent cost View
+- PL-2881 (M) Specify the compartment schematic in docs/MODEL.md before it is drawn: what a fill height and an amount assert, how a vapour amount and a liquid-equivalent amount name their units, and the precision a compartment's amount is shown at
+- PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
+- PL-KFTM (M) Carry each compartment's modelled agent amount on SimulationSnapshot as one record per compartment, and derive stored_agent_l from those records
+- PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
+- PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
+- PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
+
+**Cleared before v0.7.0 begins unless deferred - 37 entries**
+
+- PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
+- PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
+- PL-B4P7 (M) A run opening at the teaching-default fresh gas flow records nothing saying so, so once a second machine profile can reach a run nothing can label that flow as the project's teaching choice rather than the machine's
+- PL-F9TC (M) src/anesthesia_sim/app/ re-checks quantities that core already owns: formatting.py checks mac_percent > 0 five times, playback.py checks tick_interval_s by hand instead of require_positive_finite, chart_time_base.py restates half the case-instant range twice, and simulation_view.py restates the 1-to-MAX_DISPLAYED_RUNS run count that RunCount holds
+- PL-G84G (M) No check and no one-source-of-truth item covers a text fact restated under src/ (a unit label, a display name): tools/literal_home_check.py reads numbers only and PL-K88Z's inventory surveyed no strings; on 2026-10-24, 112 distinct short string literals sit in two or more modules under src/anesthesia_sim/, 12 of them unit-like
+- PL-HSP8 (M) Returning to a mark opens the branch with a setting the trunk changed at that instant already in force, so the 'on your mark' branch repeats the trunk's own decision, though docs/MODEL.md calls it the branch the halt would have given
+- PL-JS6P (M) Add a doc_check rule that ties each number docs/MODEL.md and README.md restate to its home in a data file or in code, and fails when they disagree
+- PL-M85T (M) Three core class defaults restate data-file values (alveolar gas volume 2.5 L and ventilation 4.0 L/min in alveolar.py, circuit volume 6.0 L in circuit.py), and a fourth, the 100% maximum delivered concentration, matches no agent's vaporizer: decide whether they become required arguments
+- PL-QQGZ (M) CI's quality run grew from a median of about 2 minutes in early September to about 8.7 minutes in the week of 2026-10-12, and its pytest step is 737 s against the 470 s baseline: find what slowed it
+- PL-SC0N (M) A pull request number is an int wherever docket and tools hold one, so a number parsed by hand reaches NewestPullRequest, SubjectPullRequest, Remote.frozen or pr_body_check.recovered unrefused; a PullRequestNumber type that only model.pr_number produces would make mypy refuse it (found building PL-N4FP)
+- PL-WJJ8 (M) On a worker branch, make check's bin/docket check --verify fails the worked item as 'open but its verify: command already passes', because docs/worker.md forbids a worker to set status: done, so a worker that finishes its item correctly can never report the gate green
+- PL-WM5P (M) Extend the run view's single-writer guard (PL-X7D5) to every surface that states run state, so no displayed run state has a second writer
+- PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
+- PL-0KPD (S) Paint cost at the window-following column budget is unmeasured: extrapolating the owner's 6.7 us per drawn point from one 3 204-point reading puts two compared runs on a 3 840 px plot at about 207 ms, past the 200 ms render interval, and only the owner's hardware can measure it (found closing PL-PGZF)
+- PL-44R1 (S) The headless worker host still resolves make to /usr/bin/make (GNU Make 3.81), so make check fails the two GNU make comparison tests in tests/unit/test_makefile_reference.py on every worker run after PL-TSH9 closed, and no worker there can report the gate green
+- PL-5PL5 (S) Parallel builder subagents in one session share one scratchpad folder, so one builder's pull request body was published on another's pull request (#1735) and a builder's verify.log was overwritten; the builder brief names no per-item file prefix
+- PL-6YKY (S) Field guards in core/ match a field's name as a string (circuit.py's __setattr__ tests name == "circuit_volume_l", blood.py and tissue.py test name == "volume_l"), so renaming the field leaves its validation keyed to a name nothing sets any more and the check stops running without an error
+- PL-84G1 (S) core/circuit.py set_circuit_volume checks the stored agent against the circuit volume by hand, with a vaguer message, instead of calling validation.require_room_for_the_agent_held as the alveolar, blood and tissue compartments do
+- PL-88MK (S) dashed_pen leaves Qt's default square cap on 2-3 px pens, so each dash paints one pen width longer and each gap one shorter; three dashed compartment traces look near-solid, and dash is the only channel separating compartments for colour-vision-deficient readers
+- PL-9DF9 (S) fit_to_run and following_window in app/chart_time_base.py each check by hand that newest_sample_s is finite and nonnegative on a bare float, where the one caller hands them the newest run snapshot's elapsed_s, a case instant: the chart time base is a holder of a case instant PL-CN5S left untyped, beside PL-RCYZ's control record (found sweeping PL-ZGYX)
+- PL-9K28 (S) A builder subagent that runs make check in the background ends its turn and is not woken when the command finishes, so the PL-ZZ03 builder stopped twice with tested work unpushed until the parent resumed it; builder briefs do not say to run long checks in the foreground
+- PL-BM6X (S) The branch panel's refusal notice outlives the case it was about: an agent change on the trunk starts a new case without emitting case_restarted, so 'Select an instant to branch at' stays on screen after the switch (reproduced offscreen by PL-K88Z's inventory)
+- PL-CQ1M (S) BreathingCircuit.advance_fresh_gas, formed from the fraction it holds throughout (PL-YT8N), carries a washout residual only to an ulp of that fraction: at forty time constants it reports exactly 0 where the balance leaves 4e-18; the two-regime arrangement core/exponential_approach.py takes forms the result from the equilibrium beyond half a gap and keeps the residual, and the circuit could take the module (found reviewing PL-XWFP)
+- PL-FPLQ (S) tests/integration/test_qt_chart.py::test_the_hover_answers_the_point_under_the_pointer failed in make check under a load average of about 30 on four cores, reading the previous point's hover, and passed alone in 2.9 s: _wait_for_hover gives delivery only _HOVER_DELIVERY_MS = 1000 ms of wall-clock time
+- PL-GH8L (S) Four builder subagents each running the full suite at once drove the container's load average to about 30 on 4 cores, so bin/docket verify --self's make check step hit its fixed 1,800 s limit and gave no answer on three branches
+- PL-GKX6 (S) bin/docket delegable offers an item whose work creates a new tracked file outside every workflow_paths and product_paths entry, while its touches omit docket.toml, so tools/workflow_paths_check.py fails make check and the worker must block (PL-928V, docs/workflow.md)
+- PL-LL9F (S) plan.promotable skips any blocked item that also names a milestone in blocked-by, so closing an item blocker never refuses or names a dependent whose milestone blocker had already cleared: PL-K88Z's closure in #1712 left PL-JS6P, PL-WM5P, PL-VWXL and PL-SH0W (blocked-by v0.6.0, PL-K88Z) at blocked with only a grooming advisory
+- PL-P55M (S) EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE hold a no-break space for a Flet layout fact Qt does not share: under PySide6 6.11.2 an empty label is as tall as one holding U+00A0 (found closing PL-TMSN)
+- PL-P58M (S) A halted run keeps showing the old playback rate on the clock's second line after the playback-rate dropdown changes, because present_halt does not write the readout row and PL-X7D5's guard exempts _readout_row (reproduced offscreen by PL-K88Z's inventory: 5x in the dropdown, 1x real time in the readout)
+- PL-Q3G9 (S) app/dashboard_frame.py's PARAMETER_CONTROLS types the unit L/min for fresh gas flow, alveolar ventilation and cardiac output, which app/control_record.py's CONTROL_INPUT_UNITS already holds, so a change to a control's unit in one leaves the panel label or the recorded unit wrong in the other
+- PL-QG52 (S) BreathingCircuit.restore_state writes back a captured fraction rather than an amount, so a restore after the circuit volume changed creates or destroys agent and the next step fails accounting
+- PL-RCYZ (S) ControlChange.elapsed_s, and ControlAdjustment's started_at_s and ended_at_s, are annotated float though every one is taken from a CaseInstant - SimulationState.elapsed_s - so the control record is the one holder of a case instant PL-CN5S left untyped (app/control_record.py and app/control_timeline.py were outside its touches)
+- PL-VWXL (S) Add pylint's duplicate-code check (R0801) as a ratchet over src/, tools/ and subprojects/docket/, with a baseline that can only shrink
+- PL-W5JR (S) A sent-back headless worker branch hides its item from bin/docket next, and the daily branch sweep keeps it, so only the owner's hand push can release the item: claude/pl-928v-worker after #1733 carried its two commits to main
+- PL-YF16 (S) bin/docket show's session line names the configured model whenever it differs from the served one, and 292 of the ledger's 327 such rows differ only by a [1m] context-window suffix, so the note mostly flags sessions that never switched model and buries the 35 real fallbacks: compare with the suffix removed, or print the context window apart from the model
+- PL-YH6Z (S) The wash-in hover prints the crossing column's F_A/F_I above 1 under the label 'Wash-in F_A/F_I', a value app/wash_in.py classes as elimination and refuses to show as wash-in
+- PL-YHWH (S) core/parameters.py restates three rules that other core modules already own: the perfusion fractions summing to 1 (patient._require_fractions_sum_to_one), MAC within the vaporizer maximum, written twice (validation.require_within_vaporizer_maximum), and run_definition.py checks spacing_s positive and finite by hand instead of require_positive_finite
+
+### Deferred from this gate
+
+An open debt item captured after the cut defers to the next gate unless it is
+classed `safety` or `science`, or an entry on this list waits on it. A capture
+an entry waits on is let in beside the entry, or the entry is deferred with
+it (`PL-D388`). Each deferred item records `deferred-from: v0.7.0 - <why>`,
+written by the triage pass that classes it. `bin/docket check` fails an open
+debt item that this section neither places nor defers, and `bin/docket wave`
+lists the deferrals with each one's state (`PL-WD5Z`).
+
+### Required scope
+
+1. **The specification, before anything is drawn** (queue item `PL-2881`).
+   `docs/MODEL.md` gains a subsection under § "Minimum displayed outputs"
+   saying what the schematic asserts and what it does not. A fill height is
+   the compartment's modelled tension, on the same scale for every container
+   of one run. An amount is the compartment's modelled agent, in the unit
+   § "Agent amount" defines, named as vapour so that nobody reads it as liquid.
+   It sets, once for the whole interface, how a vapour amount and a
+   liquid-equivalent amount name their units. The schematic labels its amounts
+   in millilitres of vapour, and the agent cost View gives millilitres of
+   liquid equivalent. About 183 mL of sevoflurane vapour come from 1 mL of
+   liquid (§ "Agent amount"), so neither may show a bare "mL". It says what the
+   share bar shows: each compartment's amount as a share of all the agent the
+   run holds, circuit included. The subsection derives the displayed precision of a
+   per-compartment amount in § "Displayed precision". It does not inherit
+   `AGENT_VOLUME_DISPLAY_DECIMALS`, which was derived for the three totals:
+   at that resolution of 0.1 L, venous blood and the alveoli read 0.0 L
+   for a whole hour at 1 MAC. It adds a row to the hazard table in
+   § "Reasonably foreseeable misuse, and the hazards the presentation carries"
+   for a height read as an amount, and one
+   for a vapour amount read as liquid. It records why no container is drawn
+   for arterial blood: this model gives arterial blood no amount of its own,
+   because $`F_a \equiv F_A`$ (§ "Blood compartments"). A container drawn
+   for it would show agent the model does not hold.
+
+2. **Each compartment's amount on the snapshot** (queue item `PL-KFTM`).
+   `SimulationSnapshot` carries the six compartments' amounts beside their
+   tensions, read from each compartment's `agent_amount_l` in `core/`. They
+   travel as one record per compartment rather than as six more flat floats,
+   so that v0.8.0 keys the same record by substance instead of adding
+   fields. `stored_agent_l` becomes their sum read from that record, not a
+   second reading of the same state. No equation changes: `core/` already
+   computes every amount, and this only passes the amounts on. A test
+   compares each amount at stated instants with an oracle independent of
+   `core/`, as `.claude/rules/test-oracles.md` requires.
+
+3. **The schematic View** (queue item `PL-RNYV`). One registered View kind,
+   built against the View contract (`src/anesthesia_sim/app/view_contract.py`) like every other
+   View, so any Area can hold it and compare mode draws one schematic per
+   displayed run. It draws the circuit, the alveoli, venous blood and the
+   vessel-rich group, muscle and fat as containers in the order agent reaches
+   them, joined as the circulation joins them. Each container fills to its
+   tension and is labelled with its name, its tension and its amount.
+   It shows the run's current instant, like the readouts, and redraws on
+   every frame they redraw on, so it never shows a state the run has left.
+   It declares the least size it can be read at, and its colours are the
+   compartment trace colours `app/theme.py` already holds, so the
+   compartments mean the same thing on the chart and here.
+
+4. **The share bar** (queue item `PL-S79P`). One bar on the schematic,
+   divided by compartment, each segment as long as that compartment's share
+   of all the agent the run holds, and each named in text. Containers that
+   fill to tension show fat nearly empty while it holds a fifth of the stored
+   agent at one hour. Position on a common scale is read more accurately than
+   area (Cleveland WS, McGill R, *J Am Stat Assoc* 1984;79(387):531-554,
+   https://doi.org/10.1080/01621459.1984.10478080), so the bar carries the
+   amount, which containers drawn to scale cannot in this model.
+
+5. **A shipped Workspace that places it** (queue item `PL-PR1W`).
+   The schematic is reachable from every Workspace through the View chooser
+   already. One shipped Workspace places it beside the concentration chart,
+   so a learner meets tension over time and where the agent is now side by
+   side without having to build that layout first. Which Workspace is a
+   placeholder decision.
+
+6. **The constants a liquid figure is derived from** (queue item `PL-KZ99`).
+   Each agent's molar mass, and its liquid density with the density's
+   measurement temperature and source, stored in the agent's parameter file.
+   The vapour-to-liquid factor is derived from them in one place and checked
+   against Biro's and Gas Man's published constants.
+
+7. **The precision of each unit** (queue item `PL-0S0V`). `docs/MODEL.md`
+   § "Displayed precision" derives a precision per quantity and per unit,
+   because a unit the reader chooses makes precision depend on both.
+
+8. **The agent cost View** (queue item `PL-B396`). A View of its own, which
+   any Area can hold. It shows the delivered agent in millilitres of liquid
+   equivalent by default, and in litres of vapour if the reader chooses, with
+   the unit named on the value. The basis is the delivered agent, not the
+   exhausted agent, as item 28 records (`PL-H4N8`). The agent accounting View
+   keeps litres of vapour, because it is a check that the model conserves
+   mass.
+
+9. **What a reader's price carries** (queue item `PL-VJZK`). `docs/MODEL.md`
+   states that a stored price carries its currency and the date it was set,
+   and how a cost display shows that the price is the reader's rather than an
+   authoritative figure.
+
+10. **A preferences file** (queue item `PL-93B3`). The price and the cost
+    View's unit belong to the reader, not to a layout. So they are kept in a
+    versioned preferences file separate from the Workspaces, as `PL-MQHN`
+    decided. Nothing in `src/` stores a preference yet.
+
+11. **The cost in money** (queue item `PL-1P15`). The agent cost View shows
+    the delivered agent's cost at a price per agent the reader sets. The
+    project ships no price, because a shipped price goes stale and differs by
+    institution. With no price set, the View says so instead of showing a
+    cost.
+
+### Definition of done
+
+- A learner can put the compartment schematic in any Area from its View
+  chooser, in every Workspace, and one shipped Workspace places it.
+- For each displayed run it shows the circuit, the alveoli, venous blood and
+  the three tissue groups in the order agent reaches them, and no container
+  for arterial blood.
+- Each container fills to that compartment's modelled tension, on one scale
+  for every container of the run, and is labelled with its tension and its
+  amount, the amount named as vapour.
+  A bar shows each compartment's share of the agent the run holds, each
+  segment named in text, and the shares add up to the whole.
+- Every number it shows is the number the rest of the interface gives for the
+  same run at the same instant. A test asserts that each tension equals the
+  readout's, and that the amounts add up to the agent accounting View's stored
+  total.
+- An end-to-end test runs patient inputs through the model to the drawn
+  labels, and compares each amount at stated instants with an oracle
+  independent of `core/`.
+- It never shows a state the run has left: a test drives a reset, an agent
+  change, a branch, a return to a mark and compare mode on and off, and checks
+  after each that every label matches the snapshot.
+- It says on its face that its values are modelled, and its amounts are given
+  at the precision `docs/MODEL.md` § "Displayed precision" derives for them.
+- `tools/contrast_check.py` covers every colour it draws, and each container
+  is named in text, so no compartment is told apart by colour alone.
+- Nothing a learner could do on v0.6.0 is lost, checked against v0.6.0's own
+  definition of done.
+- A learner can place the agent cost View in any Area and read the delivered
+  agent in millilitres of liquid equivalent or in litres of vapour, with the
+  unit named on the value. Once they set a price, it shows the cost with the
+  price's currency and date. An end-to-end test checks the liquid figure
+  against an independently computed conversion, and the cost against that
+  figure times the price.
+- The price and the unit survive a restart, in a preferences file separate
+  from every Workspace.
+- `make check` is green, and `docs/MODEL.md`, `docs/ARCHITECTURE.md` and
+  `README.md` describe the interface that exists.
+
+### Explicitly out of scope for v0.7.0
+
+- **Controls on the schematic - not yet, rather than never.** Gas Man lets the
+  reader set the vaporizer, fresh gas flow, ventilation and cardiac output, and
+  inject liquid, from the Picture itself. Here the settings stay in the
+  parameter controls View, so each setting keeps one control for now. A
+  control on the schematic would be a second way into the same setting, which
+  wants its own design round.
+- **Liquid injection and the circuit flush.** Gas Man draws both buttons on
+  its Picture. Each is a new input to the model (planned-milestone item 4 is
+  direct injection), not a display.
+- **The flows drawn as gauges.** Gas Man's lower half draws fresh gas flow,
+  alveolar ventilation and cardiac output as bars. The parameter controls
+  View already states all three, and drawing them again belongs with the
+  controls above.
+- **Containers drawn to scale.** The measurement above shows four of six
+  containers between 1 and 7 px wide in a 600 px View, so a filled area cannot
+  carry the amount here. The share bar carries the amount
+  instead.
+- **More than one agent on one schematic.** Gas Man keeps one Picture per
+  agent. This model holds one substance at a time until v0.8.0, which will key
+  the per-compartment record by substance.
+- **Showing a past instant.** The schematic shows the run's current instant,
+  as the readouts do. Drawing it at an instant picked on the chart waits on
+  a way to scrub a run, which no release schedules.
+- **The View catalogue** - planned-milestone item 36. This milestone adds the
+  schematic View and the agent cost View. It does not decide which of today's surfaces
+  become Views, so `PL-L6QR`, which waits on item 36, now waits on v0.8.0
+  instead.
+- **The visual pass** - planned-milestone item 33, on the `v0.6.x` track.
+  The schematic's look is a placeholder until then.
+- **Any change to the governing equations or parameters.** Every amount the
+  schematic draws is computed already.
+  The only change under `src/anesthesia_sim/data/` is the two constants per
+  agent that Required scope entry 6 stores, which only the agent cost View
+  reads.
+- **A shipped price, or a price list.** A price goes stale and differs by
+  institution, so the reader sets it, as Required scope entry 11 says.
+- **Carbon dioxide equivalent.** The unit decision behind entry 8 lists it as
+  a candidate unit with the same shape as money: a stored factor per agent, from a source that can
+  go stale. No source has been read for it, and it waits for a decision of
+  its own.
+- **The rest of a preferences workflow.** Required scope entry 10 builds the
+  file and what this milestone stores in it. Save, Revert and Load Factory Preferences
+  (`PL-GL5X`) are not part of it.
+- **Uptake as a headline figure.** Gas Man pairs Uptake with Delivered, and
+  `PL-DWHV` records that this model computes uptake and shows it nowhere. That
+  is a display of its own, not part of the cost.
+
 ## Development rules for scientific milestones
 
 - Define equations, units, assumptions, and reference cases before changing the
@@ -7477,10 +7881,18 @@ specified.
     part of the saved scenario rather than session-local, so item 12 can
     branch from them.
 
-27. Add a schematic compartment view alongside the graph - the interactive
-    "Picture" of the Gas Man reference simulator, in which the machine,
-    circuit, lungs and tissue groups are drawn to scale and fill as agent
-    enters them. This teaches something the graph structurally cannot: the
+27. Add a schematic compartment view alongside the graph, after the
+    interactive "Picture" of the Gas Man reference simulator. Gas Man draws
+    the circuit, the alveoli and the blood and tissue groups as containers of
+    one width, each filled "to a height representing partial pressure or
+    tension in that compartment" (Gas Man Workbook, Figure 2-1, printed
+    p. 11). So its Picture shows where the tension is. Until 2026-10-25 this
+    entry said the containers were drawn to scale and filled with agent,
+    which the Workbook does not say. This view adds what Gas Man leaves out:
+    each container's amount, and a bar showing each compartment's share of
+    the agent. **Scheduled in v0.7.0** (project owner, 2026-10-25, ratified,
+    over containers drawn to scale and over Gas Man's Picture as it is), and
+    § "v0.7.0 - the schematic" has the scope. This teaches something the graph structurally cannot: the
     graph plots partial pressure, so fat reads near zero for hours while
     holding a large and growing share of the agent. Measured in this model at
     a 1 MAC dial, fat holds a fifth of the stored agent at one hour and a
@@ -7499,6 +7911,9 @@ specified.
     application has the numbers for and does not draw. Depends on nothing;
     kept out of the v0.4.0 scope because it is an addition rather than a
     prerequisite.
+    **Scheduled in v0.7.0** (project owner, 2026-10-25, ratified, over
+    leaving it unscheduled and deferring its four entries to Gate 4), and
+    § "v0.7.0 - the schematic" has the scope.
 
     *That sentence read "the exhausted-agent amount" until 2026-09-19, and
     that is the wrong quantity* (`PL-H4N8`).

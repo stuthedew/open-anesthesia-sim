@@ -8,7 +8,7 @@ classes: safety, anticipated, ux
 feature: machine-profile-framework
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/circuit.py
 blocked-by: PL-2FZ9
-deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21); safety, but anticipated and blocked behind PL-2FZ9, which is what makes it live, so the carve-out for a concern whose feature does not exist yet applies
+deferred-from: v0.7.0 - deferred to Gate 4 on beat 3's terms (PL-LF0P, following PL-DB64's disposition for the same holding condition): waits on PL-2FZ9 and through it on a second machine profile reaching a run, which no release schedules; safety, but not live at 0947408 - one machine profile, so no run can open at another machine's flow
 added: 2026-09-27
 ---
 
