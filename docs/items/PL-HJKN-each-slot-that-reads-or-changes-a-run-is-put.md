@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, refactor
 feature: defect-review-2026-10
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/halt_gate.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 payoff: a slot added later that reads a run outside the halt gate fails a test, so a refusing snapshot never escapes a slot with the run still reading Paused
@@ -36,3 +36,9 @@ misread: Which slots that read or change a run must pass the halt gate
 **Done when.** Every slot that reads or changes a run passes through one gate by construction, and a test that enumerates the view's connected slots fails on any that bypasses it.
 
 **Generator check.** This item is the head. The members' own safety findings were filed and placed by their own triage, so this item's work is the structure, not a re-fix.
+
+**Design, 2026-10-25.** One decorator, `halt_gate` in a new `app/halt_gate.py`, wraps every slot of `RunView` and `SimulationView`. It runs the slot and, on any `Exception`, calls the view's `halt_for_slot(error)`: `RunView` halts its own run (`_halt_run`), and `SimulationView` halts every run (`_halt_every_run`). An exception raised by the halt itself still escapes after the halt is shown, as `PL-TLH4` decided. The wrapper passes a slot only as many signal arguments as the slot takes, because PySide6 6.11.2 hands a `*args` wrapper every argument of the signal (measured: a zero-argument slot on `rangeChanged` got two). It marks the function, so a test can ask whether a method is gated.
+
+The hand gates then go, because the decorator does what each did: `_snapshot_for_a_control`, `_reference_snapshot_for_a_control`, the `try` in `present`, `render_tick` and `step_tick`, and `_apply_setting`'s generic branch and its `PL-M3M2` branch. `_apply_setting` keeps its `SimulationConfigurationError` branch, which is a refusal and not a halt. `_start_new_case` keeps its snapshot read before `set_agent`, so a refusing snapshot is a halt and not a refused setting (`PL-V2HC`). An exception does not cross a PySide6 `emit` (measured: the slot's raise is printed and `emit` returns), so `case_restarted` and `presentation_requested` need the gate on their receivers too.
+
+`test_every_slot_that_touches_a_run_passes_the_halt_gate` parses both modules. Every `.connect` argument must be a gated method of the view, a `partial` of one, or another object's own slot that names no `self` (`dialog.deleteLater`). Every method of the view handed uncalled to any other call must be gated, or be listed in the test's exemptions with its reason: `_trunk_reset_question` and `_open_runs` return a value, and the two `HaltRestatement` restatements run inside the halt path. An exemption that no longer matches fails too. A lambda handed out as a callback is not enumerated, so the test refuses a lambda passed to `.connect`.
