@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: ci-cost
+milestone: v0.6.7
 touches: conftest.py, tests/unit/test_bytecode_guard.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25

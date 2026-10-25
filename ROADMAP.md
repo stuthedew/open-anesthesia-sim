@@ -147,7 +147,7 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.6.4 | Completed | **The release where `core/` reads each input check from the one rule that owns it and requires four defaults that restated a data file, where each agent's MAC is built once as a checked type, and where each displayed unit and each run-state surface in the interface has one writer.** 32 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run differs**: `core/` moved (`d482c41` to `c5e1538`) because its input checks now each have one home (`#1772`), its refusals name the refused value (`#1775`) and each MAC is a `MacPercent` (`#1784`), and the trajectory comparison against the v0.6.3 tag found every state, readout and hover string bit-identical over 81 cases and three 24-hour runs, the snapshot's MAC differing only in its type. `data/` resolves to `bd5d496` at both ends. An agent change now clears the branch panel's refusal notice, and a halted run shows the current playback rate (`PL-BM6X`, `PL-P58M`). Three items merged inside the v0.6.3 tag's span and are described here (`PL-LF0P`, `PL-YRLM`, `PL-SC0N`). **It finishes six features**, among them `parse-dont-validate` and `documentation-standard`, and closes four generator heads, all spent (`PL-CMJ5`, `PL-GTH6`, `PL-R0BJ`, `PL-VDWT`). **Sixteen are Gate 3 entries**, and the gate stands at 18 of 46 cleared, from 3 of 46 at the v0.6.3 tag. `PL-21GJ`, the cut, ships in no release under `PL-KRS6`. | 32 items |
 | v0.6.5 | Completed | **The release where the headless worker runner refuses a host whose `bash` or `make` is older than `make check` needs, and where the docket skill tells builder subagents in one container to keep their own scratch files, run long commands in the foreground and leave the full suite to the parent.** Four items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md`, `README.md` and `.github/` resolve to the same trees at the v0.6.4 tag and here. `tools/headless_worker.py` refuses a run before any spend when `bash` is older than 5.2 or `make` is not GNU make 4 or later, so a worker on a host still running GNU Make 3.81 stops with a reason instead of failing `make check` (`PL-44R1`). The docket skill's picking mode gives three rules for builder subagents sharing one container: a scratch subfolder named for each item, long commands in the foreground, and one full suite at a time, run by the parent (`PL-5PL5`, `PL-9K28`, `PL-GH8L`). **It finishes `parallel-builders`**, and closes no generator head. **All four are Gate 3 entries**, and the gate stands at 22 of 46 cleared, from 18 of 46 at the v0.6.4 tag. `PL-Z7DZ`, the cut, ships in no release under `PL-KRS6`. | 4 items |
 | v0.6.6 | Completed | **The release where a test that copies a supported-range limit is found by a monthly check that moves each limit and reruns the suite, where `docs/MODEL.md`'s figures for the supported run length are held to the constant they come from, where the choice of model and effort for each kind of work is read from one table in `docket.toml`, and where Gate 3's frozen list was swept for staleness.** Seven items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/` and `README.md` resolve to the same trees at the v0.6.5 tag and here. `docs/MODEL.md` moved only by four `derived:` markers, HTML comments that no reader sees, which tie its step-count figures to `MAXIMUM_ELAPSED_SIMULATION_TIME_S` and `MINIMUM_SIMULATION_STEP_S`. A new monthly `restated-constants` job in `drift.yml` moves each limit in `core/supported_ranges.py` and names each test that fails without reading the limit by name (`PL-0Z0F`), and `tools/doc_check.py` reads a number grouped with spaces as one number (`PL-NH53`). The `[models]` table and its one reader, `docket.model_choice`, decide which model and effort `bin/docket next`, the headless worker and the model-document review use (`PL-0XDM`), and the table no longer excludes any model, since Fable was only the example of a stale model named outside one home (`PL-J9VC`). The sweep of Gate 3's 24 open entries dropped none and corrected six records (`PL-F2NX`), and `CLAUDE.md` now says to wait on a long run only as a tracked background task with a scheduled check-in (`PL-D1FD`). `docs/ARCHITECTURE.md`, `docs/maintainer.md` and `docs/apparatus.md` are rewritten in plain English with no fact dropped (`PL-TPS7`). **It finishes `one-home-for-constants` and `gate-staleness-sweep`**, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 22 of 46 cleared, as at the v0.6.5 tag. `PL-2FHP`, the cut, ships in no release under `PL-KRS6`. | 7 items |
-| v0.6.7 | Completed / current baseline | **The release where a headless worker's branch that a review sent back no longer hides its item, where a worker's `make check` stays green on the item it has correctly finished, where each CI test part writes the test modules' assert-rewrite cache once instead of in every worker, and where the session-start digest's `Top:` line under product focus names product work.** Five items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at the v0.6.6 tag and here. `tools/branch_sweep.py` reads a worker branch whose latest run was reviewed `sent-back` as settled, so `bin/docket next` offers its item again (`PL-W5JR`), and `bin/docket check` treats the worker's own item's passing `verify:` as an advisory for the reviewer rather than an error (`PL-WJJ8`). A new step in both parts of `quality.yml` collects the test modules once per core before pytest runs, which cut a CI-shaped part 1 from 188 s to 163.5 s (`PL-GQCQ`). A `focus` key in `docket.toml` ranks the digest's `Top:` line in the product lane (`PL-2CPD`), and the Projects coordinator's rules moved into a docket skill mode (`PL-NZC0`, `#1799`, inside the v0.6.6 tag's span). **It finishes `workflow-stress-2026-09`**, and closes no generator head. **Two are Gate 3 entries**, `PL-W5JR` and `PL-WJJ8`, and the gate stands at 24 of 46 cleared, from 22 of 46 at the v0.6.6 tag. `PL-LSN3`, the cut, ships in no release under `PL-KRS6`. | 5 items |
+| v0.6.7 | Completed / current baseline | **The release where a headless worker's branch that a review sent back no longer hides its item, where a worker's `make check` stays green on the item it has correctly finished, where each CI test part writes the test modules' assert-rewrite cache once instead of in every worker, where the session-start digest's `Top:` line under product focus names product work, and where every docstring and comment under `src/` is rewritten in plain English.** Eight items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No executable statement changed, and no run can differ**: `src/` moved only in its docstrings and comments, which `PL-1K5X` (`#1798`) rewrote in plain English, and with every docstring removed the code of each of its files is identical at the v0.6.6 tag and here. `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at both ends. `tools/branch_sweep.py` reads a worker branch whose latest run was reviewed `sent-back` as settled, so `bin/docket next` offers its item again (`PL-W5JR`), and `bin/docket check` treats the worker's own item's passing `verify:` as an advisory for the reviewer rather than an error (`PL-WJJ8`). A new step in both parts of `quality.yml` collects the test modules once per core before pytest runs, which cut a CI-shaped part 1 from 188 s to 163.5 s (`PL-GQCQ`), and `PL-VMMB` keeps a share that holds no test module from failing the job. `bin/docket verify` no longer counts a call of `pytest_ignore_collect` as an added suppression (`PL-3G9M`). A `focus` key in `docket.toml` ranks the digest's `Top:` line in the product lane (`PL-2CPD`), and the Projects coordinator's rules moved into a docket skill mode (`PL-NZC0`, `#1799`, inside the v0.6.6 tag's span). **It finishes `verify-false-reject` and `workflow-stress-2026-09`**, and closes no generator head. **Two are Gate 3 entries**, `PL-W5JR` and `PL-WJJ8`, and the gate stands at 24 of 46 cleared, from 22 of 46 at the v0.6.6 tag. `PL-LSN3`, the cut, ships in no release under `PL-KRS6`. | 8 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -257,29 +257,47 @@ sevoflurane build as v0.0.3 is superseded by this roadmap.
 v0.6.7 is the release where a headless worker's branch that a review sent
 back no longer hides its item, and where a worker's `make check` stays green
 on the item it has correctly finished. It is also the release where each CI
-test part writes the test modules' assert-rewrite cache once, and where the
-session-start digest's `Top:` line under product focus names product work.
-The release has 5 items, and it is a patch on both halves of § "Versioning
-decision"'s test. No capability boundary is crossed. The next milestone,
-v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are
-given to milestone sections. Two of the five items, `PL-W5JR` and `PL-WJJ8`,
-are on Gate 3's frozen list, which stands at 24 of 46 cleared, from 22 of 46
-at the v0.6.6 tag.
+test part writes the test modules' assert-rewrite cache once, where the
+session-start digest's `Top:` line under product focus names product work,
+and where every docstring and comment under `src/` is rewritten in plain
+English. The release has 8 items, and it is a patch on both halves of
+§ "Versioning decision"'s test. No capability boundary is crossed. The next
+milestone, v0.7.0, the schematic, is scoped and not built, and v0.7.0 and
+v0.8.0 are given to milestone sections. Two of the eight items, `PL-W5JR` and
+`PL-WJJ8`, are on Gate 3's frozen list, which stands at 24 of 46 cleared, from
+22 of 46 at the v0.6.6 tag.
 
-**Nothing in `src/` changed, and no run can differ:**
+**No executable statement changed, and no run can differ:**
 
 | Tree | v0.6.6 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `b1f4b46` | `b1f4b46` | nothing |
+| `src/` | `b1f4b46` | `7be0bb4` | docstrings and comments in 64 of its 76 files |
+| `src/anesthesia_sim/core/` | `c5e1538` | `5e150fb` | docstrings and comments |
+| `src/anesthesia_sim/data/` | `bd5d496` | `2a85cd0` | docstrings in its five `__init__.py` files; every data file is unchanged |
 | `tests/reference/` | `74227d6` | `74227d6` | nothing |
 | `docs/MODEL.md` | `c15ffed` | `c15ffed` | nothing |
 | `README.md` | `7db4f10` | `7db4f10` | nothing |
 | `.github/` | `c4c4845` | `bac62df` | a cache step in both test parts of `quality.yml` |
 
-`src/` resolves to the same tree at the v0.6.6 tag and here, so this cut did
-not run `tools/ast_identity.py` or measure the trajectories. The test changes
-are in `conftest.py`, `tests/conftest.py` and tests under `tests/unit/`, and
-none of them changes what a test asserts about the simulator.
+`src/` moved because `PL-1K5X` (`#1798`) rewrote every docstring and `#`
+comment under it in plain English. `uv run python tools/ast_identity.py
+v0.6.6 HEAD src` exits 1 and names 19 files as changed, but each of them
+differs only in an attribute docstring: a bare string statement after an
+assignment, which Python evaluates and discards. With every bare string
+statement removed, the syntax trees of all 19 files are identical at the
+v0.6.6 tag and here, and the other 45 files that moved already compare
+equal apart from docstrings. `PL-6GP9` records that the tool strips only the
+first string of each body. So the trajectories were not measured again. A
+docstring records units and provenance, so the cut also compared the unit
+words and numbers in each changed file under `core/` and `data/` with the
+v0.6.6 tag, and read each passage where they differ. None states a different
+unit or value. `#1798`'s second blind review found one docstring, on
+`BreathingCircuit.time_constant_s`, that gave the quotient
+`circuit_volume_l / fresh_gas_flow_l_min` as seconds. The quotient is in
+minutes, and the docstring now says that the method converts it to seconds.
+The same pull request filed the wrong statements its review found under the
+`stale-source-claims` feature (`PL-756M`, `PL-DP7B`, `PL-0Z35`) rather than
+fixing them, because the rewrite changed no fact.
 
 **A sent-back worker branch.** When a review sends a headless worker's run
 back, its record commits are carried to a branch of their own, with new
@@ -309,7 +327,13 @@ rewriting. A new step in both parts of `quality.yml` now runs one
 pytest step, and the workers read what it wrote. The root `conftest.py`
 refuses the option without `--collect-only`, so no process that runs a test
 writes bytecode, and `make check` does not use it. A CI-shaped part 1 took
-188 s from a fresh tree, and 163.5 s with the step (`PL-GQCQ`).
+188 s from a fresh tree, and 163.5 s with the step (`PL-GQCQ`). Two false
+failures that the step brought were fixed after it merged. A share that holds
+no test module made pytest exit 5 and failed the job, which a runner with
+about 40 or more cores would meet (`PL-VMMB`). And `bin/docket verify`
+counted a call of `pytest_ignore_collect` as an added suppression, although
+only a definition of the hook or a `collect_ignore` assignment drops a file
+from collection (`PL-3G9M`).
 
 **The digest under product focus.** The session-start digest's `Top:` line
 named the top of the whole queue, so a product session that took it could be
@@ -322,15 +346,16 @@ Project settings into `.claude/skills/docket/modes/coordinator.md`. Its pull
 request, `#1799`, merged before the v0.6.6 tag landed, so it is inside that
 tag's span, and v0.6.6's notes now point here.
 
-The release finishes one feature, `workflow-stress-2026-09`, and closes no
-generator head. It advances `worker-runs`, `ci-cost` and `projects-trial`.
-The release item is `PL-LSN3`, whose `resource: release-train` keeps it out
-of every later release. Every closure carried its `pr:` number before the
-cut, so every bullet cites its pull request. `bin/docket release` reported
-again that apparatus inflow missed a prediction pre-registered in `PL-04KR`.
-From 2026-10-12 to 2026-10-18, 30 new apparatus paths arrived over 107
-filings, which is 0.28 a filing against a ceiling of 0.13, so the apparatus
-surface is still growing. `bin/docket inflow` has the table.
+The release finishes two features, `verify-false-reject` and
+`workflow-stress-2026-09`, and closes no generator head. It advances
+`worker-runs`, `ci-cost`, `projects-trial` and `prose-quality`. The release
+item is `PL-LSN3`, whose `resource: release-train` keeps it out of every
+later release. Every closure carried its `pr:` number before the cut, so
+every bullet cites its pull request. `bin/docket release` reported again that
+apparatus inflow missed a prediction pre-registered in `PL-04KR`. From
+2026-10-12 to 2026-10-18, 30 new apparatus paths arrived over 107 filings,
+which is 0.28 a filing against a ceiling of 0.13, so the apparatus surface is
+still growing. `bin/docket inflow` has the table.
 
 As before, anything that merges on `main` after this cut is written and before
 its pull request lands ships inside the v0.6.7 tag. It is described in the
