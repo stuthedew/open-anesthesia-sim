@@ -3,11 +3,13 @@ id: PL-5PL5
 title: Parallel builder subagents in one session share one scratchpad folder, so one builder's pull request body was published on another's pull request (#1735) and a builder's verify.log was overwritten; the builder brief names no per-item file prefix
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-builders
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1789
 payoff: builders running side by side in one session can no longer publish each other's pull request bodies or overwrite each other's verify logs
 verify: grep -qiF 'scratchpad' .claude/skills/docket/modes/picking.md
 ---
@@ -23,3 +25,5 @@ verify: grep -qiF 'scratchpad' .claude/skills/docket/modes/picking.md
 **Reproduced 2026-10-24.** `grep -ciE 'scratchpad|foreground|cores|load average' .claude/skills/docket/modes/picking.md` prints 0. The batch section says nothing about files that builders share.
 
 **Generator check.** The fact that was misread is what parallel builder subagents in one container share: one scratch folder, the same cores, and a turn that ends while a background command is still running. No head's `misread:` states it. These are three different hazards, each found once, and a checked-in procedure would carry the fixes but would not have prevented the first discovery of each. So this is one group of three, not a generator.
+
+**Done, 2026-10-25.** `.claude/skills/docket/modes/picking.md` § "Mode: work several items at once" now ends with three rules a parent writes into every builder's brief: a scratch subfolder named after the item id, long commands in the foreground, and one full suite at a time, run by the parent.
