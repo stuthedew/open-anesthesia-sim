@@ -10,6 +10,7 @@ touches: docs/items, docs/maintainer.md, docs/apparatus.md, subprojects/docket/R
 deferred-from: v0.7.0 - captured after the freeze, from the owner's correction of PL-0XDM on 2026-10-25
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1792
 payoff: the model table carries no Fable rule the owner never asked for, and an open item naming a stale model is still refused
 verify: ! grep -q excluded subprojects/docket/src/docket/model_choice.py && ! grep -q 'which \[models\] excludes' tools/model_home_check.py && grep -q 'single source of truth for which model' docs/items/PL-0XDM-keep-which-model-and-effort-each-kind-of-work.md
 ---
