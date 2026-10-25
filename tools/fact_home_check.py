@@ -39,7 +39,13 @@ Three rules over every tracked Python file under `tools/`,
    trailing slash: `doc_check.MODEL = Path("docs/MODEL.md")` sat beside
    `product_paths.MODEL_DOC` under another name, and so did two spellings
    each of `tests` and `src` (`PL-S08Z`). A path inside a tuple or an
-   f-string is not read.
+   f-string is not read. A plain string bound under two names in two files
+   is a finding as well, unless `DISTINCT_WORDS` lists every name that binds
+   it, with the reason they are different facts. `tools/worker_runs.py`
+   spelled `"claude/"` beside `docket.claims.AGENT_BRANCH_PREFIX`, and no
+   other rule compared them (`PL-3PKN`). The syntax cannot tell one fact
+   from two that share a word, so the table records that decision, and an
+   entry the tree no longer matches fails, as a baseline entry does.
 3. **A predicate one module answers is not written again by hand.**
    `PREDICATES` names each one with its home, one entry per predicate, and
    the visitor decides its hand form. A membership test (`in` or `not in`)
@@ -270,6 +276,52 @@ DEFINITION = "definition"
 SAME_CALL = "same call"
 #: Rule 2's name for one repository path bound under two names, in a finding and a baseline key.
 SAME_PATH = "same path"
+#: Rule 2's name for one plain string bound under two names, in a finding and a baseline key.
+SAME_STRING = "same string"
+
+#: Each string that more than one module binds under different names because
+#: the names are different facts that share a word. The value is every name
+#: that binds the string, without a leading underscore, and the reason. A new
+#: name binding one of these strings, or a listed name that no longer binds
+#: it, is a finding (`PL-3PKN`). Measured on 2026-10-25, these were the only
+#: such strings, apart from the one copy that `PL-3PKN` removed.
+DISTINCT_WORDS: dict[str, tuple[frozenset[str], str]] = {
+    "\u2014": (
+        frozenset({"STEP_SEPARATOR", "EM_DASH"}),
+        "the roadmap's separator between a version and its title, and the cell "
+        "`docs/MODEL.md` writes for a symbol the code does not materialize",
+    ),
+    "code": (
+        frozenset({"CODE", "SIM_CODE"}),
+        "a Markdown token's kind, and the simulator-code share of the churn trend",
+    ),
+    "behind": (
+        frozenset({"BEHIND", "COPY_BEHIND"}),
+        "one of `arm`'s answers, and where a copy of a file stands against another",
+    ),
+    "landed": (
+        frozenset({"ALREADY_MERGED", "BY_LANDING", "LANDED"}),
+        "`arm`'s answer for a merged branch, the route that ended a claim, and a "
+        "branch's disposition",
+    ),
+    "closed": (
+        frozenset({"BY_CLOSED", "PULL_CLOSED"}),
+        "the route that ended a claim on a closed item, and a pull request's state",
+    ),
+    "unplaced": (
+        frozenset({"LANE_UNPLACED", "UNPLACED", "UNPLACED_PATH"}),
+        "an item no lane places, an id no milestone places, and a path neither "
+        "half of the tree places",
+    ),
+    "apparatus": (
+        frozenset({"SCOPE_APPARATUS", "APPARATUS"}),
+        "one of `ci-scope`'s answers, and the apparatus share of the churn trend",
+    ),
+    "unreadable": (
+        frozenset({"CHURN_UNREADABLE", "UNREADABLE_ANSWER"}),
+        "why the churn trend has no figure, and why a pull request listing failed",
+    ),
+}
 
 #: Names rule 2 does not count, each with its reason.
 EXEMPT_NAMES: dict[str, str] = {
@@ -327,6 +379,9 @@ class Definition:
     #: string or a constructor's one string argument; empty otherwise. Whether
     #: it names a path in the tree is decided against the tree (`PL-S08Z`).
     spelled: str = ""
+    #: The string the value is, where it is a plain string constant; empty
+    #: otherwise (`PL-3PKN`).
+    text: str = ""
 
     @property
     def shared(self) -> str:
@@ -578,11 +633,17 @@ def read_module(source: str, path: str) -> Module:
             continue  # an alias of a name defined elsewhere is an import, not a definition
         call = _shared_call(statement.value)
         spelled = _spelled_path(statement.value)
+        value = statement.value
+        text = (
+            value.value if isinstance(value, ast.Constant) and isinstance(value.value, str) else ""
+        )
         targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
         for target in targets:
             if isinstance(target, ast.Name) and NAME_RE.match(target.id):
                 if target.id.lstrip("_") not in EXEMPT_NAMES:
-                    definitions.append(Definition(path, statement.lineno, target.id, call, spelled))
+                    definitions.append(
+                        Definition(path, statement.lineno, target.id, call, spelled, text)
+                    )
     return Module(tuple(visitor.found), tuple(definitions))
 
 
@@ -604,10 +665,24 @@ class Report:
     #: Every binding of each repository path that two files make under
     #: different names, keyed the same way (`PL-S08Z`).
     same_path: Mapping[str, tuple[Definition, ...]] = field(default_factory=dict)
+    #: Every binding of each plain string that two files make under different
+    #: names and `DISTINCT_WORDS` does not excuse, keyed the same way (`PL-3PKN`).
+    same_string: Mapping[str, tuple[Definition, ...]] = field(default_factory=dict)
+    #: Each `DISTINCT_WORDS` entry that lists a name the tree no longer binds
+    #: the string under: the string, the names the entry lists, and the names
+    #: the tree binds it under. A name the entry does not list is a finding of
+    #: `same_string` instead.
+    stale_words: tuple[tuple[str, frozenset[str], frozenset[str]], ...] = ()
 
     @property
     def errors(self) -> int:
-        return len(self.overflows) + len(self.stale) + len(self.unparsed) + (self.scanned == 0)
+        return (
+            len(self.overflows)
+            + len(self.stale)
+            + len(self.unparsed)
+            + len(self.stale_words)
+            + (self.scanned == 0)
+        )
 
 
 def sources(root: Path) -> Iterator[str]:
@@ -621,8 +696,15 @@ def _home(rule: str) -> Home | None:
     return next((home for home in (*HOMES, *PREDICATES) if home.rule == rule), None)
 
 
-def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = BASELINE) -> Report:
-    """Evaluate every rule against the source on disk."""
+def analyze(
+    root: Path,
+    baseline: Mapping[str, Mapping[tuple[str, str], int]] = BASELINE,
+    distinct: Mapping[str, tuple[frozenset[str], str]] = DISTINCT_WORDS,
+) -> Report:
+    """Evaluate every rule against the source on disk.
+
+    `distinct` stands in for `DISTINCT_WORDS`, so a test can name its own table.
+    """
     found: dict[str, Counter[tuple[str, str]]] = defaultdict(Counter)
     sites: dict[tuple[str, tuple[str, str]], list[Site]] = defaultdict(list)
     definitions: list[Definition] = []
@@ -684,6 +766,26 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
     same_path = one_value(
         SAME_PATH, lambda definition: definition.spelled if definition.spelled in in_tree else ""
     )
+    names_of: dict[str, set[str]] = defaultdict(set)
+    for definition in definitions:
+        if definition.text:
+            names_of[definition.text].add(definition.shared)
+
+    def unexcused(definition: Definition) -> str:
+        """The string a definition binds, unless a path rule reads it or the table excuses it."""
+        if not definition.text or definition.spelled in in_tree:
+            return ""
+        listed = distinct.get(definition.text)
+        if listed is not None and listed[0] == names_of[definition.text]:
+            return ""
+        return definition.text
+
+    same_string = one_value(SAME_STRING, unexcused)
+    stale_words = tuple(
+        (word, names, frozenset(names_of.get(word, ())))
+        for word, (names, _) in sorted(distinct.items())
+        if not names <= names_of.get(word, set())
+    )
 
     over = overflows(sorted(sites.items()), baseline)
     stale = stale_entries(root, baseline, found, {path for path, _ in unparsed})
@@ -698,6 +800,8 @@ def analyze(root: Path, baseline: Mapping[str, Mapping[tuple[str, str], int]] = 
         defined=defined,
         same_call=same_call,
         same_path=same_path,
+        same_string=same_string,
+        stale_words=stale_words,
     )
 
 
@@ -782,6 +886,27 @@ def format_report(report: Report) -> str:
             "`docket.arming` or `tools/product_paths.py`, and import it everywhere else; "
             "the baseline does not grow."
         )
+
+    if by_rule.get(SAME_STRING):
+        lines.append("")
+        lines.append("One string bound under different names in more than one module:")
+        for name, entries in report.same_string.items():
+            where = ", ".join(f"{d.path}:{d.line} {d.name}" for d in entries)
+            lines.append(f"  {name}: {where}")
+        lines.append(
+            "  Where it is one fact, keep one binding and import it everywhere else. Where "
+            "the names are different facts that share a word, list every name in "
+            "`DISTINCT_WORDS` with the reason; the baseline does not grow."
+        )
+
+    if report.stale_words:
+        lines.append("")
+        lines.append("A `DISTINCT_WORDS` entry the tree no longer matches:")
+        for word, names, bound_names in report.stale_words:
+            bound = ", ".join(sorted(bound_names)) or "no module-level name"
+            listed = ", ".join(sorted(names))
+            lines.append(f"  {word!r}: listed under {listed}; the tree binds it as {bound}")
+        lines.append("  Make the entry name what the tree binds, or remove it.")
 
     lines.extend(stale_lines(report.stale, lambda key: f"{key[0]} in {key[1]}"))
 

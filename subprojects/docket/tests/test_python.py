@@ -14,7 +14,15 @@ from collections.abc import Callable, Iterator
 import pytest
 
 from docket.arming import imports_product
-from docket.python import UNTOKENIZABLE, docstrings, imports, places, read_logical_lines, refusal
+from docket.python import (
+    UNTOKENIZABLE,
+    docstrings,
+    imports,
+    places,
+    read_logical_lines,
+    refusal,
+    without_docstrings,
+)
 
 
 def test_an_error_token_is_a_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -138,3 +146,27 @@ def test_a_literal_importlib_name_is_an_import_to_arming_and_the_boundary_check(
     assert not imports_product(computed)
     assert imports_product(ast.parse("from anesthesia_sim.core import patient\n"))
     assert not imports_product(ast.parse('"""import anesthesia_sim"""\nimport os\n'))
+
+
+def test_without_docstrings_removes_every_docstring_and_keeps_every_value() -> None:
+    """`PL-6GP9`: the one removal `fixture_id_check` and `ast_identity` both read.
+
+    An attribute docstring and a string in an `else` go, and a string a
+    statement uses stays, since it is a value rather than documentation.
+    """
+    tree = ast.parse(
+        '"""The module."""\n'
+        "LIMIT = 3\n"
+        '"""The attribute."""\n'
+        'NAME = "a value"\n'
+        "if LIMIT:\n"
+        "    pass\n"
+        "else:\n"
+        '    "a note in the else"\n'
+    )
+
+    stripped = without_docstrings(tree)
+
+    assert stripped is tree
+    assert docstrings(stripped) == []
+    assert ast.unparse(stripped) == "LIMIT = 3\nNAME = 'a value'\nif LIMIT:\n    pass"
