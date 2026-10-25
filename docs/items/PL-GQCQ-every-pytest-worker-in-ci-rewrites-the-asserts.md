@@ -10,6 +10,7 @@ touches: conftest.py, tests/conftest.py, .github/workflows/quality.yml, tests/un
 deferred-from: v0.7.0 - filed after the gate froze; a P3 CI cost of about 25 s a part, which waits for PL-ZWQS's rebalance to settle first
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1797
 payoff: each CI test part finishes about 25 s sooner, on every pull request and push
 verify: grep -qE '^\*\*Measured\.' docs/items/PL-GQCQ-*.md
 ---
