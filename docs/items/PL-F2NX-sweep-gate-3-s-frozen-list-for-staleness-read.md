@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: gate-staleness-sweep
+milestone: v0.6.6
 touches: docs/items, ROADMAP.md
 added: 2026-10-25
 closed: 2026-10-25

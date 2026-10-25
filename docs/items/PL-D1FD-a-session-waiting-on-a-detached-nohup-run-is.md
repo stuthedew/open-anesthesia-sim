@@ -4,6 +4,7 @@ title: A session waiting on a detached nohup run is never woken when it ends or 
 priority: P2
 effort: S
 status: done
+milestone: v0.6.6
 touches: CLAUDE.md
 added: 2026-10-25
 closed: 2026-10-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: one-source-of-truth
+milestone: v0.6.6
 touches: docs/items, docs/maintainer.md, docs/apparatus.md, subprojects/docket/README.md, subprojects/docket/src/docket/model_choice.py, subprojects/docket/tests/test_model_choice.py, tools/model_home_check.py, tools/model_doc_review.py, tests/unit/test_model_home_check.py, tests/unit/test_model_doc_review.py, docket.toml
 deferred-from: v0.7.0 - captured after the freeze, from the owner's correction of PL-0XDM on 2026-10-25
 added: 2026-10-25
