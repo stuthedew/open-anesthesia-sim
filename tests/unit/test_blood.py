@@ -18,6 +18,11 @@ The pool stores no flow since `PL-HQF5`, so each closed form takes it.
 """
 
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
+
 def _build_venous_blood() -> VenousBloodCompartment:
     return VenousBloodCompartment(volume_l=1.0, blood_gas_partition_coefficient=0.65)
 
@@ -49,14 +54,14 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "volume_l",
             0.0,
             SimulationConfigurationError,
-            "^venous volume_l must be positive and finite$",
+            "^venous volume_l must be positive and finite" + REFUSAL_REASON,
             id="zero-volume",
         ),
         pytest.param(
             "volume_l",
             nan,
             SimulationConfigurationError,
-            "^venous volume_l must be positive and finite$",
+            "^venous volume_l must be positive and finite" + REFUSAL_REASON,
             id="nan-volume",
         ),
         pytest.param(
@@ -73,7 +78,7 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "blood_gas_partition_coefficient",
             -0.65,
             SimulationConfigurationError,
-            "^venous blood_gas_partition_coefficient must be positive and finite$",
+            "^venous blood_gas_partition_coefficient must be positive and finite" + REFUSAL_REASON,
             id="negative-blood-gas-coefficient",
         ),
         pytest.param(
@@ -105,14 +110,14 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             "agent_amount_l",
             -0.1,
             SimulationConfigurationError,
-            "^venous agent_amount_l must be nonnegative and finite$",
+            "^venous agent_amount_l must be nonnegative and finite" + REFUSAL_REASON,
             id="negative-amount",
         ),
         pytest.param(
             "agent_amount_l",
             nan,
             SimulationConfigurationError,
-            "^venous agent_amount_l must be nonnegative and finite$",
+            "^venous agent_amount_l must be nonnegative and finite" + REFUSAL_REASON,
             id="nan-amount",
         ),
         pytest.param(
@@ -219,13 +224,13 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^venous blood_flow_l_min must be nonnegative and finite$",
+        match="^venous blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
     ):
         venous.time_constant_s(blood_flow_l_min)
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^venous blood_flow_l_min must be nonnegative and finite$",
+        match="^venous blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
     ):
         venous.advance(
             tissue_return_partial_pressure_fraction=Fraction(1.0),

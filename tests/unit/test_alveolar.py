@@ -22,6 +22,10 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
 
 def test_rejects_agent_amount_above_alveolar_capacity() -> None:
     with pytest.raises(
@@ -97,28 +101,28 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
             "gas_volume_l",
             0.0,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="zero-volume",
         ),
         pytest.param(
             "gas_volume_l",
             -1.0,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="negative-volume",
         ),
         pytest.param(
             "gas_volume_l",
             inf,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="infinite-volume",
         ),
         pytest.param(
             "gas_volume_l",
             nan,
             SimulationConfigurationError,
-            "^gas_volume_l must be positive and finite$",
+            "^gas_volume_l must be positive and finite" + REFUSAL_REASON,
             id="nan-volume",
         ),
         pytest.param(

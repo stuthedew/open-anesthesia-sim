@@ -3,12 +3,14 @@ id: PL-HXKC
 title: Eight of the twenty-three public functions in src/ that raise say nothing about the failure in their docstring, including all three shared guards in core/validation.py
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: documentation-standard
 touches: src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py
 added: 2026-09-05
-verify: uv run python -c 'import ast,pathlib,sys; sys.exit(any(not any(w in (ast.get_docstring(f) or "").lower() for w in ("raise","reject","refus")) for p in pathlib.Path("src").rglob("*.py") for f in ast.walk(ast.parse(p.read_text())) if isinstance(f,ast.FunctionDef) and not f.name.startswith("_") and any(isinstance(n,ast.Raise) for n in ast.walk(f))))'
+closed: 2026-10-24
+pr: 1775
+verify: uv run python -c 'import ast,pathlib,sys; fs=lambda t:[n for n in t.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]+[m for c in t.body if isinstance(c,ast.ClassDef) and not c.name.startswith("_") for m in fs(c)]; sys.exit(any(not any(w in (ast.get_docstring(f) or "").lower() for w in ("raise","reject","refus")) for p in pathlib.Path("src").rglob("*.py") for f in fs(ast.parse(p.read_bytes())) if not f.name.startswith("_") and any(isinstance(n,ast.Raise) for n in ast.walk(f))))'
 ---
 
 **Problem.** Lee 2018 rule 7 asks that a documented function name its inputs
@@ -80,3 +82,5 @@ was not re-derived, and belongs to whoever takes this item.
 name now in `core/concentration.py` is a different check - whether a value was
 built as a `Fraction`, not its range - and its docstring names the `TypeError`
 it raises.
+
+**Closed 2026-10-24.** By this date seven of the eight functions this brief named already stated their failures, through other items' rewrites. The last was `load_agent_parameters` in `core/parameters.py`, which now has an Args, Returns and Raises docstring. The original `verify:` walked every function, nested ones included, and so failed on the nested `visit` inside `layout/model.py`, whose enclosing function states what the pair raises. The verify now walks the same public set that `PL-GZPX`'s doc_check rule reads: top-level functions and the methods of public classes.

@@ -3,11 +3,13 @@ id: PL-T137
 title: core/validation.py rejects a value without naming it, where core/supported_ranges.py names the value, the supported range and where the range comes from
 priority: P2
 effort: S
-status: ready
+status: done
 classes: ux, docs
 feature: documentation-standard
-touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py
+touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_parameters.py, tests/unit/test_governing_equations.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_circuit.py, tests/unit/test_tissue.py, tests/unit/test_run_definition.py
 added: 2026-09-05
+closed: 2026-10-24
+pr: 1775
 verify: grep -q 'def test_a_rejected_value_appears_in_the_message' tests/unit/test_validation.py && uv run pytest tests/unit/test_validation.py
 ---
 
@@ -48,3 +50,5 @@ refusal there already carries the value in the shape this item asks for -
 `alveolar partial_pressure_fraction of 1.0000000000000002 is outside 0 to 1,
 the range a fraction of one atmosphere takes (docs/MODEL.md, "Concentrations")`.
 What is left here is `require_positive_finite` and `require_nonnegative_finite`.
+
+**Closed 2026-10-24.** `require_positive_finite` and `require_nonnegative_finite` now name the refused value through `shown`, and say whether it is not finite or out of range, since the two want different fixes. `test_a_rejected_value_appears_in_the_message` in `tests/unit/test_validation.py` pins both guards' messages for a negative value, zero, negative zero, NaN and the infinities.

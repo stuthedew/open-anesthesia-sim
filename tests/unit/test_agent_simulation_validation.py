@@ -64,6 +64,11 @@ RELATIVE_BRANCH_DELIVERED_L = 1.0
 ABSOLUTE_BRANCH_DELIVERED_L = 1e-6
 
 
+# The end of a shared guard's refusal, which names the refused value and why
+# (`PL-T137`). The guard's own tests pin each reason; these pin the field.
+REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
+
 def _period_short_by(
     delivered_agent_l: float, residual_l: float
 ) -> tuple[AgentSimulationValidator, AgentSimulationValidationResult]:
@@ -208,13 +213,22 @@ def test_reset_clears_recorded_external_agent() -> None:
     ("value", "error", "message"),
     [
         pytest.param(
-            -0.1, SimulationConfigurationError, " must be nonnegative and finite$", id="negative"
+            -0.1,
+            SimulationConfigurationError,
+            " must be nonnegative and finite" + REFUSAL_REASON,
+            id="negative",
         ),
         pytest.param(
-            nan, SimulationConfigurationError, " must be nonnegative and finite$", id="nan"
+            nan,
+            SimulationConfigurationError,
+            " must be nonnegative and finite" + REFUSAL_REASON,
+            id="nan",
         ),
         pytest.param(
-            inf, SimulationConfigurationError, " must be nonnegative and finite$", id="infinite"
+            inf,
+            SimulationConfigurationError,
+            " must be nonnegative and finite" + REFUSAL_REASON,
+            id="infinite",
         ),
         pytest.param("1", TypeError, " of '1' has type str", id="str"),
         pytest.param(True, TypeError, " of True has type bool", id="bool"),
@@ -255,7 +269,8 @@ def test_a_total_that_overflows_is_refused_where_it_is_written() -> None:
     validator.record_external_agent_transfer(delivered_agent_l=1.7e308, exhausted_agent_l=0.0)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^delivered_agent_l must be nonnegative and finite$"
+        SimulationConfigurationError,
+        match="^delivered_agent_l must be nonnegative and finite" + REFUSAL_REASON,
     ):
         validator.record_external_agent_transfer(delivered_agent_l=1.7e308, exhausted_agent_l=0.0)
 
@@ -274,7 +289,7 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
     validator = AgentSimulationValidator(
         initial_agent_l=0.31, delivered_agent_l=0.79, exhausted_agent_l=0.17
     )
-    refused = "^exhausted_agent_l must be nonnegative and finite$"
+    refused = "^exhausted_agent_l must be nonnegative and finite" + REFUSAL_REASON
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         replace(validator, exhausted_agent_l=-0.17)
@@ -304,7 +319,8 @@ def test_a_refused_reset_changes_nothing(initial_agent_l: float) -> None:
     held = astuple(validator)
 
     with pytest.raises(
-        SimulationConfigurationError, match="^initial_agent_l must be nonnegative and finite$"
+        SimulationConfigurationError,
+        match="^initial_agent_l must be nonnegative and finite" + REFUSAL_REASON,
     ):
         validator.reset(initial_agent_l)
 
