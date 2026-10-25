@@ -272,7 +272,8 @@ class RunView(QWidget):
             asks for a frame now. `SimulationView.present` handles the signal
             (`PL-R2YM`).
         case_restarted: Emitted when this run has started over from
-            induction. On a trunk run, that starts a new case, so every branch
+            induction, after a Reset or an accepted change of agent. On a
+            trunk run, that starts a new case, so every branch
             taken from the old run no longer compares with anything. The
             dashboard acts on the signal, because this view does not know
             which other runs are on screen.
@@ -625,6 +626,13 @@ class RunView(QWidget):
         the run on every widget that a frame would. A widget added to the
         statement is written on both paths or on neither.
 
+        The playback line under the clock is written here as well. It sits in
+        the readout row, which `refresh` writes from the snapshot and a halt
+        does not write, but it states the run's playback rate rather than a
+        compartment value. Before `PL-P58M` only the readout row wrote it, so
+        a rate chosen on a halted run reached the dropdown and not the clock.
+        On `refresh` the row writes the same text first, from the same rate.
+
         Both paths write in one order. The agent colour comes first, before
         anything that shows it. The dials come last, because
         `setting_readouts` can raise for a control that can offer no setting.
@@ -671,6 +679,7 @@ class RunView(QWidget):
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
+        self._playback_rate_text.setText(format_playback_rate(self._playback_rate.multiplier))
         self._write_notice(statement.banner)
         self._write_settings(record)
 
@@ -1279,12 +1288,23 @@ class RunView(QWidget):
         recorded as refused (`PL-V2HC`). The confirmation path arrives here
         with a snapshot read when the question was asked, which a halt in
         the meantime outdates.
+
+        **An accepted switch emits `case_restarted`**, as Reset does, because
+        it too starts a new case. The signal goes out inside the setting
+        call, after `set_agent` has returned and before the frame is asked
+        for, so the dashboard drops what answered to the old case before it
+        draws: a branch refusal on the branch panel included (`PL-BM6X`). A
+        refused switch changes nothing and emits nothing.
         """
 
         if self._snapshot_for_a_control() is None:
             return
 
-        self._apply_setting(lambda: self.controller.set_agent(agent_id))
+        def switch() -> None:
+            self.controller.set_agent(agent_id)
+            self.case_restarted.emit()
+
+        self._apply_setting(switch)
 
     def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
         """Ask before discarding a recorded run, with the selector already reverted.

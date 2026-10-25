@@ -2302,7 +2302,9 @@ FRAME_WIDGETS: dict[str, str] = {
     "_readout_row": (
         "the readouts and the clock they were read with, from the compartment "
         "values of the snapshot a frame drew from. The clock stays with its "
-        "readouts, so no row pairs one instant's clock with another's values."
+        "readouts, so no row pairs one instant's clock with another's values. "
+        "The playback line under the clock is run state, and the test below "
+        "compares it on its own (`PL-P58M`)."
     ),
     "_accounting_panels[0]._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "
@@ -2424,6 +2426,10 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
+    # The playback line is in `_readout_row`, which `FRAME_WIDGETS` exempts,
+    # so it is compared on its own below (`PL-P58M`).
+    run._playback_rate_dropdown.setCurrentIndex(run._playback_rate_dropdown.findData(5))
+    halted_playback_line = run._playback_rate_text.text()
     attributes = _widget_attributes(run)
     named = {id(widget) for widget in attributes.values()}
     halted = {name: _stated(widget, named) for name, widget in attributes.items()}
@@ -2449,6 +2455,35 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     )
     assert halted_banner == halt_notice(controller.record())
     assert run._notice_text.notice() == notice(controller.snapshot(), None)
+    assert halted_playback_line == run._playback_rate_text.text() == format_playback_rate(5)
+
+
+def test_a_halted_run_shows_the_new_playback_rate(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-P58M`: a halted run states one playback rate, the one the reader just chose.
+
+    The clock's second line is in the readout row, which a halt does not
+    write, because its readouts are compartment values only a frame can
+    state. Until `PL-P58M` a rate chosen on a halted run reached the dropdown
+    and not the clock, so the screen showed 5x in one place and 1x in the
+    other.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+
+    assert controller.has_failed is True
+    assert run._playback_rate_text.text() == format_playback_rate(1)
+
+    dropdown = run._playback_rate_dropdown
+    dropdown.setCurrentIndex(dropdown.findData(5))
+
+    assert dropdown.currentText() == format_playback_rate(5)
+    assert run._playback_rate_text.text() == format_playback_rate(5)
 
 
 def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
@@ -7757,6 +7792,44 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
 
     assert len(view.runs) == 1
     assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplication) -> None:
+    """`PL-BM6X`: a notice about the case before an agent change goes with that case.
+
+    An agent change on the trunk starts a new case, as Reset does. Until
+    `PL-BM6X` only Reset told the dashboard so, and the branch panel went on
+    saying "Select an instant to branch at" about a case no longer on screen.
+    Both ways of changing the agent are checked: a run that has recorded
+    something asks first, and one that has recorded nothing switches at once.
+    """
+
+    view = _case_view(application, _branched_case())
+    trunk = view.runs[0]
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+    _select_agent(trunk, "desflurane")
+    dialog = trunk._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+
+    assert trunk.controller.agent_id == "desflurane"
+    assert view._fork_panel.notice.notice() is None
+
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert trunk.controller.snapshot().has_recorded_run is False
+
+    _select_agent(trunk, "isoflurane")
+
+    assert trunk._new_case_dialog is None
+    assert trunk.controller.agent_id == "isoflurane"
+    assert view._fork_panel.notice.notice() is None
 
 
 def test_a_branch_shows_the_agent_chip_in_place_of_the_selector(application: QApplication) -> None:
