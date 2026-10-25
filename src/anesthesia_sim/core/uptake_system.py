@@ -388,8 +388,8 @@ class AgentUptakeSystem:
         be built is not worth continuing. The same record is rejected on every later
         step, and by anything else that builds it, a Reset included. Restated as a step
         that could not be completed, the failure reaches the caller as the halt that it
-        is. The message names the two flows in the litres per minute in which they were
-        set (`PL-M4M0`).
+        is. The message gives the tissues' total flow and the cardiac output, both in
+        litres per minute, the unit in which the cardiac output was set (`PL-M4M0`).
 
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so
