@@ -9,6 +9,7 @@ feature: defect-review-2026-10
 touches: docs/items
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1783
 payoff: the audit records that a run's opening instant was one mechanism behind three defects
 verify: grep -qE '^generator: spent' docs/items/PL-VDWT-*.md
 root-cause-of: PL-3LZB, PL-59WB, PL-7TBQ

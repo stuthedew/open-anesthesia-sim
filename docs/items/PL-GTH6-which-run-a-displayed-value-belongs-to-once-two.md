@@ -9,6 +9,7 @@ feature: defect-review-2026-10
 touches: docs/items
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1783
 payoff: the audit records that run attribution was one mechanism behind eight defects, so a ninth is recognised as a recurrence
 verify: grep -qE '^generator: spent' docs/items/PL-GTH6-*.md
 root-cause-of: PL-1XPX, PL-25DD, PL-MN4J, PL-JVHL, PL-4KZD, PL-LHBY, PL-TSZM, PL-C3GS

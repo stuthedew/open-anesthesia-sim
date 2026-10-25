@@ -9,6 +9,7 @@ feature: defect-review-2026-10
 touches: docs/items
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1783
 payoff: the audit records that the reference window's budget was one mechanism behind four defects
 verify: grep -qE '^generator: spent' docs/items/PL-R0BJ-*.md
 root-cause-of: PL-F2YS, PL-JG82, PL-QLZ5, PL-NNML

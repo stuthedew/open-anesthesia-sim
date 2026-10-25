@@ -9,6 +9,7 @@ feature: defect-review-2026-10
 touches: docs/items
 added: 2026-10-25
 closed: 2026-10-25
+pr: 1783
 payoff: the audit records that dependent test oracles were one mechanism behind four defects, and which rule ended it
 verify: grep -qE '^generator: spent' docs/items/PL-CMJ5-*.md
 root-cause-of: PL-H8QP, PL-H1JH, PL-JPS2, PL-QJXS
