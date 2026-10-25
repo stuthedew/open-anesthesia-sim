@@ -27,7 +27,8 @@ can be moved only to a count and a step that the simulator has checked. Writes
 come from the constructor, from `advance()` and `reset()`, and from a direct
 assignment that bypasses them. `mypy --strict` rejects such an assignment in
 `src/`, but a test, a notebook or a value typed `Any` can still make one
-(`PL-8W1W`).
+(`PL-8W1W`). The uptake system whose steps the clock counts is written once,
+when the state is built, and a later write is refused (`PL-N7MM`).
 
 The class deliberately re-exports nothing. `circuit`, `alveoli` and `patient`
 used to be properties here as well as attributes of the system. That gave
@@ -152,11 +153,19 @@ class SimulationState:
             a time through `__setattr__`. For a class with a `__dict__`, they
             would update the `__dict__` directly and bypass `__setattr__`.
 
-            Beyond the types, the pair is the only thing a write checks. A
-            checked count inside the run length, or a checked step, is written
-            whoever writes it. The rule that a run keeps the step size of its
-            first step is a relation between a step offered and the step
-            stored, and it stays the job of `advance()`.
+            Beyond the types, the pair is the only thing a write of either
+            field checks. A checked count inside the run length, or a checked
+            step, is written whoever writes it. The rule that a run keeps the
+            step size of its first step is a relation between a step offered
+            and the step stored, and it stays the job of `advance()`.
+
+            The uptake system is written once, when the state is built. The
+            count and the step say how far that system has been advanced. A
+            system written in its place would leave the clock counting steps
+            the new system never took, and nothing could check that. Nothing in
+            `src/` replaces it, so a later write is refused (`PL-N7MM`). The
+            constructor, a copy and a pickle write it onto a state that has
+            none yet, so those writes are accepted.
 
             Raises:
                 TypeError: `name` is `step_count` and `value` was not built as
@@ -168,10 +177,18 @@ class SimulationState:
                     zero with no step to multiply it by, or the pair would put the
                     run past the supported run length,
                     `core/supported_ranges.py`'s
-                    `require_supported_step_count`.
+                    `require_supported_step_count`. Or `name` is
+                    `uptake_system` and the state already has one.
             """
 
-            if name == "step_count":
+            if name == "uptake_system":
+                if hasattr(self, name):
+                    raise SimulationConfigurationError(
+                        "the run's uptake system cannot be replaced once the run's state is "
+                        "built, because the step count says how far that system has been "
+                        "advanced: build a new state for the new system"
+                    )
+            elif name == "step_count":
                 require_step_count(value)
 
                 if hasattr(self, "simulation_step_s"):
@@ -183,6 +200,23 @@ class SimulationState:
                 _require_a_run_could_stand_at(self.step_count, value)
 
             super().__setattr__(name, value)
+
+        def __delattr__(self, name: str) -> None:
+            """Refuse to delete any field.
+
+            The checks above treat a field the state does not have yet as one
+            the constructor is writing. A field deleted and written again would
+            bypass them. No field of a built state is ever meant to be absent,
+            so every deletion is refused.
+
+            Raises:
+                SimulationConfigurationError: always.
+            """
+
+            raise SimulationConfigurationError(
+                f"the run's {name} cannot be deleted, because a value written after it "
+                "would bypass the checks made when the state is built: build a new state"
+            )
 
     @property
     def elapsed_s(self) -> CaseInstant:

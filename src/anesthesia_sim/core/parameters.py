@@ -660,6 +660,12 @@ class _StrictPayload(BaseModel):
     misspelling that *removes* a required key is already caught as a missing
     field. Forbidding unknown keys catches the other half.
 
+    **Frozen.** Several payloads check a rule across their fields, such as
+    the tissue perfusion fractions summing to 1. Pydantic runs those checks
+    when the payload is built and, by default, not when a field is written
+    afterwards. A payload is read once and never written, so a later write is
+    refused outright rather than checked (`PL-N7MM`).
+
     Every payload model below inherits from this class rather than setting
     `model_config` itself. A model added later is therefore strict by
     default, rather than only if someone remembers. Two tests in
@@ -678,7 +684,7 @@ class _StrictPayload(BaseModel):
     describes (PL-Y0RZ).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class _SourcePayload(_StrictPayload):

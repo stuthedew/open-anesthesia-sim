@@ -6575,6 +6575,21 @@ instants are `ControlChange.elapsed_s` and an adjustment's start and end. They
 are still annotated `float`, though each is taken from a `CaseInstant`
 (`PL-RCYZ`).
 
+**The system the count belongs to, and the system's parts, are written once**
+(`PL-N7MM`). The count says how far one uptake system has been advanced. So
+the state's `uptake_system` is written when the state is built, and a later
+write is refused with a `SimulationConfigurationError`. The system's four
+parts are written once for the same kind of reason. They are its circuit, its
+alveoli, its patient and its accounting validator. The accounting anchor
+counts the agent those parts held when the system was built. A part written
+in later would leave the anchor counting agent the system no longer holds,
+and the next step's accounting check would halt the run and blame the
+numerics. A different part means a different system, so a new one is built.
+`tests/unit/test_record_writes.py` walks every class in `core/`. It fails on a
+field of a mutable record that neither refuses a later write nor checks the
+write against the record's rule, unless the field's entry says why no rule
+ties it to another field.
+
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting. It is refused when a caller
 offers a value outside its interval. A run length is a property of how far the

@@ -19,6 +19,7 @@ lungs, and would be wrong by a large factor on an accounting quantity (PL-006).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
@@ -58,6 +59,9 @@ from anesthesia_sim.core.patient import PatientCompartments, PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.validation import require_nonnegative_finite
+
+_PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
+"""The fields of `AgentUptakeSystem` that hold its parts, each written once, when it is built."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,7 +132,77 @@ class AgentUptakeSystem:
     """
 
     def __post_init__(self) -> None:
+        """Anchor the agent accounting to what the parts hold when the system is built.
+
+        The accounting identity compares the agent the parts store with the
+        anchor set here, plus what has been delivered and less what has been
+        exhausted since. So the anchor is a statement about these parts.
+        `__setattr__` refuses a part written onto the built system, which keeps
+        the anchor true for the system's whole life (`PL-N7MM`).
+        """
+
         self.agent_simulation_validator.reset(initial_agent_l=self.total_stored_agent_l)
+
+    if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
+        # Hidden from `mypy` on purpose, as `AlveolarCompartment.__setattr__`
+        # is. When a class defines `__setattr__`, `mypy` lets code assign any
+        # attribute name, typed by the method's `value` parameter. So with this
+        # guard visible, a misspelt field written in `src/` would pass
+        # `--strict` and fail at run time against the slots. With the guard
+        # hidden, `mypy` checks the dataclass's fields and their types as
+        # before. Its lines are checked by their tests rather than by `mypy`
+        # (`PL-LBQY`).
+
+        def __setattr__(self, name: str, value: object) -> None:
+            """Write a field, refusing a part written onto a system that already has one.
+
+            The system's parts are its circuit, its alveoli, its patient and
+            its accounting validator. Each is written once, when the system is
+            built. A part written later would replace a store of agent that
+            the accounting anchor counted. The anchor would then describe parts
+            the system no longer holds. The next step's accounting check would
+            halt the run and blame the numerics for what was a swapped part
+            (`reset`'s docstring describes the same failure). Nothing in `src/`
+            replaces a part, so the write is refused outright rather than
+            re-anchored. A different part means a different system: build a
+            new one (`PL-N7MM`).
+
+            The constructor, a copy and a pickle write each part onto a system
+            that has none yet, so those writes are accepted. The cached
+            propagator and its key are not parts. `_propagator_for` writes them
+            at any step, and they are keyed by the settings they were built
+            from.
+
+            Raises:
+                SimulationConfigurationError: `name` names a part, and the
+                    system already has that part. Nothing is written.
+            """
+
+            if name in _PART_FIELDS and hasattr(self, name):
+                raise SimulationConfigurationError(
+                    f"the system's {name} cannot be replaced once the system is built, "
+                    "because its agent accounting is anchored to the agent its parts held "
+                    "when it was built: build a new system from the new part"
+                )
+
+            super().__setattr__(name, value)
+
+        def __delattr__(self, name: str) -> None:
+            """Refuse to delete any field.
+
+            The check above applies only to a system that already has the part.
+            A part deleted and written again would bypass it. No field of a
+            built system is ever meant to be absent, so every deletion is
+            refused.
+
+            Raises:
+                SimulationConfigurationError: always.
+            """
+
+            raise SimulationConfigurationError(
+                f"the system's {name} cannot be deleted, because a value written after it "
+                "would bypass the checks made when the system is built: build a new system"
+            )
 
     @classmethod
     def default(cls) -> AgentUptakeSystem:
