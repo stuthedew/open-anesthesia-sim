@@ -3,12 +3,13 @@ id: PL-3G9M
 title: docket verify's no-suppression check counts a call of a function named pytest_ignore_collect as an added suppression, so a test that calls a conftest's hook refuses the close-out audit: three of PL-GQCQ's four refused lines were such calls, and only a definition of the hook or a collect_ignore assignment drops a file from collection
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-10-25
+closed: 2026-10-25
 payoff: a test that calls a conftest's collection hook no longer holds its pull request for the owner's read, since verify counts only a definition of the hook
 verify: grep -q 'def test_a_call_of_the_collection_hook_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 reenters: PL-G21K

@@ -4263,7 +4263,10 @@ on 2026-09-25, the six flag no added line: `importorskip` has a common
 legitimate use, an optional dependency, and when one arrives a reviewer sees it
 as they see the `bash` guard. A deselection in `addopts` is configuration: in
 `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
-in a `.cfg` or `.ini` file nothing does.
+in a `.cfg` or `.ini` file nothing does. The hook is read as its definition,
+`def pytest_ignore_collect`, since only a definition drops a file. A test that
+calls the hook to check it drops nothing, and three such calls once refused a
+close-out that `--self` could not waive (`PL-3G9M`).
 
 Whether the branch's tests still catch a change is measured by mutation rather
 than read from the diff (`PL-CZXN`; project owner, 2026-10-19, ratified, over
