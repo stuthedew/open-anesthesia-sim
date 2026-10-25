@@ -3,11 +3,12 @@ id: PL-9K28
 title: A builder subagent that runs make check in the background ends its turn and is not woken when the command finishes, so the PL-ZZ03 builder stopped twice with tested work unpushed until the parent resumed it; builder briefs do not say to run long checks in the foreground
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-builders
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a builder's tested work is pushed when its checks finish, instead of waiting unpushed until the parent session notices and resumes it
 verify: grep -qiF 'foreground' .claude/skills/docket/modes/picking.md
 ---
@@ -23,3 +24,5 @@ verify: grep -qiF 'foreground' .claude/skills/docket/modes/picking.md
 **Reproduced 2026-10-24.** `grep -ciE 'scratchpad|foreground|cores|load average' .claude/skills/docket/modes/picking.md` prints 0.
 
 **Generator check.** This is one of the three hazards grouped in `PL-5PL5`, and it is not a generator for the reason that item gives.
+
+**Done, 2026-10-25.** `.claude/skills/docket/modes/picking.md` § "Mode: work several items at once" now ends with three rules a parent writes into every builder's brief: a scratch subfolder named after the item id, long commands in the foreground, and one full suite at a time, run by the parent.
