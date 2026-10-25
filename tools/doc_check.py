@@ -8976,8 +8976,9 @@ def check_raising_docstrings(root: Path, report: Report) -> None:
     as not checked, as the citation check lists it, and `make check` runs
     the same check under `uv run python`, where every file parses.
     """
-    package = root / PACKAGE_ROOT
-    for path in sorted(package.rglob("*.py")):
+    for path in sorted(_walk(root, PACKAGE_ROOT)):
+        if path.suffix != ".py":
+            continue
         relative = path.relative_to(root)
         # Parsed as bytes, as `_quoting_sources` parses them, so a byte-order
         # mark or a coding cookie is honoured rather than declined.
