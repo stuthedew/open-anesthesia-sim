@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-evidence
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/sessions.py, subprojects/docket/tests/test_sessions.py, subprojects/docket/README.md
 added: 2026-10-24
 closed: 2026-10-25

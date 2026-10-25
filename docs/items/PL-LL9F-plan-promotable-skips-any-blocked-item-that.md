@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: blocked-means-blocked
+milestone: v0.6.3
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-10-24
 closed: 2026-10-25

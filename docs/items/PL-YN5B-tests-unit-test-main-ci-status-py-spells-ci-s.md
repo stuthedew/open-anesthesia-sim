@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: one-source-of-truth
+milestone: v0.6.3
 touches: tests/unit/test_main_ci_status.py
 added: 2026-10-19
 closed: 2026-10-25
