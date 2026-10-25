@@ -24,9 +24,9 @@ verify: ! grep -qF 'plotted_wash_in_ratio' src/anesthesia_sim/app/wash_in.py && 
 
 **Regression test, 2026-10-25.**
 `test_a_window_refusing_the_wash_in_ratio_names_a_method_that_forms_it` in
-`tests/unit/test_chart_frame.py` checks that every name the refusal puts in
+`tests/unit/test_run_series.py` checks that every name the refusal puts in
 backticks is a method of `DrawnWindow`. Run against `origin/main`'s
-`app/run_series.py` with `uv run pytest -q tests/unit/test_chart_frame.py -k
+`app/run_series.py` with `uv run pytest -q tests/unit/test_run_series.py -k
 names_a_method`, it fails with this assertion message:
 
 ```text
