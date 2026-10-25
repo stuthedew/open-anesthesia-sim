@@ -8,6 +8,7 @@ feature: ci-cost
 touches: .github/workflows/quality.yml, tools/main_ci_status.py, tests/conftest.py, tests/integration/test_controller.py, tests/reference/test_late_washout_against_published_fits.py, tests/unit/test_worksteal_dealing.py
 added: 2026-10-17
 closed: 2026-10-25
+pr: 1773
 payoff: a slow runner's quality run takes about 6 minutes instead of about 8, and its timeouts and drift baseline match what the split jobs take
 not-delegable: the end state is a measurement of CI runs on GitHub, which no local command can take
 ---
