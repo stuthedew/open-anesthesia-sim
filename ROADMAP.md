@@ -6662,11 +6662,13 @@ is grabbed and not yet released. v0.6.0's gate deferred it to Gate 3
 section was written, so the item is `ready` again and is worked with the rest
 of the second group.
 
-**What this list is not swept for yet.** Beat 3 of the cadence requires a
-staleness pass before any of it is worked, because a `verify:` command tests
-for the fix and never for the fault. The pass is filed as its own item under
-`feature: gate-staleness-sweep`, `PL-F2NX`, and runs against this list
-before implementation of this milestone begins.
+**Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
+requires that pass before any of the list is worked, because a `verify:`
+command tests for the fix and never for the fault. Each of the 24 entries then
+open was read against the tree, and none had a problem that no longer
+reproduces, so none was dropped. Three briefs asked for more than is left, one
+entry waited on less than its record said, and two waited on more. Each entry's
+brief carries its dated verdict, and `PL-F2NX`'s brief has the tally.
 
 **Cleared by v0.7.0 itself - 9 entries**
 

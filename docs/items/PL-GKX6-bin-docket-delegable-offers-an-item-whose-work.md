@@ -34,3 +34,5 @@ case.
 **Done when.** `Item.delegability` withholds an item whose `touches` names a path that neither `workflow_paths` nor `product_paths` places, with a reason saying that placing it needs `docket.toml`, and `subprojects/docket/tests/test_model.py` has `test_an_item_touching_an_unplaced_path_is_not_delegable`.
 
 **Generator check.** A one-off. The fact is which list places a path, and `tools/workflow_paths_check.py` already reads it; `delegability` is a reader that never asked. No head's `misread:` states that fact, and no other open item misreads it.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `Item.delegability` still takes only `protected_paths` and `gate_paths`, and the named test does not exist.

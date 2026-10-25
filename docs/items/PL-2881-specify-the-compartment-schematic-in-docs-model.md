@@ -52,3 +52,5 @@ own.
 
 **Done when.** `docs/MODEL.md` carries the subsection with every point above,
 `tools/doc_check.py` is green, and the three build items cite it.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true, with one figure to correct when the subsection is written.** `docs/MODEL.md` has no schematic subsection yet, and each section this brief cites exists. "Read 0.0 L" is not what the readout prints: `format_agent_volume` shows an amount below its resolution as "<0.1 L". And it holds for sevoflurane and isoflurane only. From the stored 2.5 L alveolar gas volume, desflurane's alveoli at 1 MAC (6%) hold about 0.15 L, which prints as 0.1 or 0.2 L. The conclusion is unchanged: a compartment's amount must not inherit `AGENT_VOLUME_DISPLAY_DECIMALS`. Entry 1 of v0.7.0's Required scope in `ROADMAP.md` repeats the figure.

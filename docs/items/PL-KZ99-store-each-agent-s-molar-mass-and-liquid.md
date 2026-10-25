@@ -46,8 +46,8 @@ same spirit as the existing published-reference tests.
 
 **Shape of the work.** Two new fields per entry under
 `src/anesthesia_sim/data/agents/`, each with its `sources` entry and its
-measurement temperature; `schema_version` 2 → 3 and the migration that implies
-in `core/parameters.py`; the conversion itself in `core/`, pure and unit-
+measurement temperature; `schema_version` 3 → 4 in the three files and in
+`AGENT_SCHEMA_VERSIONS` in `core/parameters.py`; the conversion itself in `core/`, pure and unit-
 explicit, never in a UI callback. It waited on `PL-S6WW` (done 2026-09-17): the
 conversion cannot be written until the gas volumes' reference temperature is on
 record, because that temperature is one of its two inputs.
@@ -146,3 +146,5 @@ its liquid density with the density's measurement temperature and source. The
 vapour-to-liquid factor is derived from them in one place, and a reference test
 checks it against Biro's and Gas Man's published constants within their
 stated rounding.
+
+**Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still needed, and smaller than the brief says.** No agent file stores a molar mass or a liquid density, and nothing under `src/` converts vapour to liquid. Two things changed. The agent files are already at `schema_version` 3, and `AGENT_SCHEMA_VERSIONS` reads minimum 3, current 3, so the bump is 3 to 4, corrected above. `SupportedSchemaVersions` upcasts nothing, so there is no migration to write. And `docs/MODEL.md` § "Agent amount" already carries the densities, molar masses and derived factors (`PL-S6WW`). What is left is the stored fields with their sources, the conversion in `core/` and the reference test, after which that section's table restates the stored values beside their citation. The sevoflurane molar mass differs between this brief (200.053 g/mol) and that table (200.055). The difference is in the third decimal and depends on the atomic weights used, so take the figure from the source the data file cites.
