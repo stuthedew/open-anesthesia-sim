@@ -2325,28 +2325,42 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
 def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
     """Pin the direction in which a circuit-side store of agent moves the elimination.
 
-    `docs/MODEL.md` rules circuit-wall absorption out as a cause of
-    desflurane's elimination residual partly by its direction. A wall that
-    takes up agent during the administration gives it back during the
-    washout. That holds the inspired fraction up and slows the alveolar fall,
-    and the residual is the model washing out too *fast*. Until this test,
-    that direction rested on the argument alone (`PL-P1P6`).
+    A circuit wall that dissolves agent is one such store. It takes up agent
+    during the administration and gives it back during the washout. That holds
+    the inspired fraction up and slows the fall of the alveolar fraction, so
+    the five-minute F_A/F_A0 rises. Until this test, that direction rested on
+    the argument alone (`PL-P1P6`).
 
-    The test runs the published protocol at each factor in
-    `SWEPT_CIRCUIT_VOLUME_FACTORS` and asserts that the five-minute F_A/F_A0
-    rises with each larger circuit. A higher ratio means that the alveolar
-    fraction fell more slowly. The circuit volume stands in for the wall store
-    and is not the wall store itself. Both are a circuit-side capacity that
-    returns agent to the inspired gas after the vaporizer closes, and the
-    argument rests on that shared property. This model has no wall term, so
-    the volume is the only circuit-side store that a test can vary.
+    `docs/MODEL.md` uses the direction to rule circuit-wall absorption out for
+    sevoflurane and isoflurane. Through the shipped circuit, the model already
+    washes both out too slowly, so a wall store would move them further from
+    their published means. Desflurane's residual has the opposite sign: with
+    the apparatus removed, the model washes it out too fast. A wall store would
+    move that comparison toward the published value. So for desflurane the
+    direction rules nothing out. A measurement of a real circuit and the
+    published apparatus, which had no circle system, strike the candidate
+    instead (`PL-X9K0`).
 
-    On 2026-10-25, at factors of 0.5, 1.0, 1.5 and 2.0, the ratio was 0.2193,
-    0.2328, 0.2486 and 0.2677 for sevoflurane, 0.3094, 0.3227, 0.3374 and
-    0.3542 for isoflurane, and 0.1484, 0.1626, 0.1803 and 0.2023 for
-    desflurane. F_A0 moved by less than 0.3% across the same range, so the
-    rise comes from the slower fall and not from a smaller denominator. Only
-    the direction is asserted. The ratio at the shipped volume is pinned by
+    The test runs the published protocol with the circuit volume scaled by
+    each factor in `SWEPT_CIRCUIT_VOLUME_FACTORS`. It asserts that F_A/F_A0 at
+    five minutes rises with each larger circuit. A higher ratio means that the
+    alveolar fraction fell more slowly. The circuit volume stands in for the
+    wall store and is not the wall store itself. Both are circuit-side stores
+    that return agent to the inspired gas after the vaporizer closes, and the
+    direction rests on that shared property. This model has no wall term, so
+    the circuit volume is the only circuit-side store that a test can vary.
+
+    On 2026-10-25, the five-minute ratio at each factor was:
+
+    | Agent       | 0.5    | 1.0    | 1.5    | 2.0    |
+    | ----------- | ------ | ------ | ------ | ------ |
+    | sevoflurane | 0.2193 | 0.2328 | 0.2486 | 0.2677 |
+    | isoflurane  | 0.3094 | 0.3227 | 0.3374 | 0.3542 |
+    | desflurane  | 0.1484 | 0.1626 | 0.1803 | 0.2023 |
+
+    F_A0 moved by less than 0.3% across the same range, so the rise comes from
+    the slower fall and not from a smaller denominator. Only the direction is
+    asserted. The ratio at the shipped volume is pinned by
     `test_five_minute_elimination_ratio_regression_pin`.
     """
 
@@ -2366,7 +2380,7 @@ def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
             f"{agent_id}: F_A/F_A0 at 5 min is {larger.ratio:.4f} with the circuit volume "
             f"x{larger_factor:.2f} and {smaller.ratio:.4f} with it x{smaller_factor:.2f}; a "
             f"larger circuit-side store eliminated no more slowly, which `docs/MODEL.md` "
-            f"relies on to rule circuit-wall absorption out of desflurane's residual"
+            f"relies on to rule circuit-wall absorption out for sevoflurane and isoflurane"
         )
 
 

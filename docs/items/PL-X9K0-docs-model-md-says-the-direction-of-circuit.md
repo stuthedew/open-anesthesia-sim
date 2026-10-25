@@ -1,10 +1,17 @@
 ---
 id: PL-X9K0
 title: docs/MODEL.md says the direction of circuit-wall absorption rules it out as a cause of desflurane's too-fast elimination, but a store that slows the washout and that the model lacks would move the model toward the published 0.140, so the direction alone rules nothing out
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: science
 feature: model-spec-accuracy
+touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-10-25
-payoff: docs/MODEL.md no longer teaches that a store which slows the washout cannot explain a model that washes desflurane out too fast, and it says the measured circuit, not the direction, rules circuit-wall absorption out.
+closed: 2026-10-25
+pr: 1819
+payoff: docs/MODEL.md no longer teaches that a store which slows the washout cannot explain a model that washes desflurane out too fast, and it names the measured circuit and the published apparatus as what rules circuit-wall absorption out.
+verify: grep -q 'The direction does not rule it out, because a store that this model leaves' docs/MODEL.md && grep -q 'PL-X9K0' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** `docs/MODEL.md` § "Desflurane's residual, and why the parameter
@@ -59,3 +66,15 @@ and the sevoflurane and isoflurane bullet agree with it. The test's docstring
 and failure message say which argument the direction supports: the one for
 sevoflurane and isoflurane, which the shipped circuit already washes out too
 slowly.
+
+**Done 2026-10-25.** The direction paragraph now says that a store this model
+leaves out would move the comparison toward the published value, as the
+sixth row's rebreathing does. It names the two grounds that strike the
+candidate instead: Targ, Yasuda and Eger's measurement of a real circuit, and
+the published apparatus, which had no circle system. The wall row's cell now
+reads "the right direction, as in the sixth row". The sevoflurane and
+isoflurane bullet says the direction rules the candidate out there because the
+departure it would explain is the model washing out too slowly. The test's
+docstring and failure message say the direction supports the sevoflurane and
+isoflurane ruling and not the desflurane one. No number changed, and the
+section's conclusion, that the residual's cause is not identified, still holds.

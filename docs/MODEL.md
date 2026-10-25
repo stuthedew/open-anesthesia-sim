@@ -4416,7 +4416,7 @@ gives, for each, what it proposed and what ruled it out.
 | Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
 | The published apparatus's own dead space, sourced — 50 ml re-inspired each breath, which in this model is a ventilation decrement rather than an $`F_I`$ | more than the wash-in rows will bear | at the largest admissible decrement desflurane is still −1.48 SD while both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
 | End-tidal sampling bias in a lung with ventilation-perfusion dispersion — a correction to the *published* value rather than to this model | a bias upward at both ends, growing as solubility falls | the one human measurement of that gradient has it larger for *more* soluble agents and negative through an elimination, so it moves the published value down and deepens the residual — struck below |
-| Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | nothing it can supply: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
+| Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | the right direction, as in the sixth row: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
 
 <!-- not-restated: 2.1 -->
 
@@ -4629,18 +4629,24 @@ model's inert circuit is the assumption that this measurement most nearly
 supports. The candidate is struck on evidence rather than on argument.
 <!-- not-restated: 5 L/min -->
 
-**The direction rules it out independently, and that half needed no
-measurement.** A wall that dissolves agent during a 30-minute administration
-gives the agent back during the washout. That keeps the circuit fraction high,
-and therefore the inspired fraction too, which *slows* the alveolar fall.
-Desflurane's residual is this model washing out too **fast**. A mechanism that
-can only slow a washout cannot produce that residual. So no amount of wall
-absorption would have helped, whatever the measurement had said. This model
-has no wall term, so a test cannot vary one. The circuit volume is the one
+**The direction does not rule it out, because a store that this model leaves
+out would move the comparison toward the published value** (`PL-X9K0`). A wall
+that dissolves agent during a 30-minute administration gives the agent back
+during the washout. That keeps the circuit fraction high, and therefore the
+inspired fraction too, which *slows* the alveolar fall. Desflurane's residual
+is this model washing out too **fast**, with the apparatus removed. A wall in
+the published apparatus would have raised the published ratio above what an
+inert apparatus gives, and that is the residual's sign. The sixth row of the
+table above shows the same direction for rebreathing, which also returns agent
+to the inspired gas. So the direction is no argument against the candidate
+for desflurane. Two other grounds strike it: the measurement above, and the
+published apparatus, which had no circle system (the bullet on sevoflurane and
+isoflurane below). This model has no wall term, so a test cannot vary one. The circuit volume is the one
 circuit-side store it has, and
 `test_a_larger_circuit_can_only_slow_the_elimination` pins the direction on
 it (`PL-P1P6`). For every agent, the five-minute $`F_A/F_{A0}`$ rises at each
-step from half to twice the stored circuit volume.
+step from half to twice the stored circuit volume. That direction is what
+rules the candidate out for sevoflurane and isoflurane, below.
 
 **The same study finds that a real circuit measurably retards sevoflurane and
 isoflurane. That is a limitation of this simulator, but it is not a candidate
@@ -4667,12 +4673,13 @@ But the finding does not bear on the residual.
   sevoflurane to −0.15 SD and isoflurane to +0.66 SD. Wall absorption is a
   *further* store that returns agent to the circuit during the washout. Adding
   it would keep $`F_I`$ high for longer and push both rows further above their
-  means, not toward them. This is the same directional argument that strikes
-  the candidate for desflurane, applied to the two agents for which wall
-  absorption is strongest. The published cohorts also breathed from a
-  non-rebreathing apparatus, in which the potent agents' inspired fraction is
-  zero by construction. So no circle-system wall effect is present in the
-  published number at all.
+  means, not toward them. The direction rules the candidate out for these two
+  agents because the departure it would explain is the model washing out too
+  slowly, the opposite of desflurane's residual. They are also the two agents
+  for which wall absorption is strongest. The published cohorts also breathed
+  from a non-rebreathing apparatus, in which the potent agents' inspired
+  fraction is zero by construction. So no circle-system wall effect is present
+  in the published number at all.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
