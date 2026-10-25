@@ -394,8 +394,9 @@ ITEMS = Path(__file__).resolve().parents[2] / "docs" / "items"
 def _open_items_named(text: str) -> list[str]:
     """Return the queue items that `text` names and that are still open.
 
-    A `GAP` entry stays true only while its item is open. When the item is
-    closed, the test fails until the entry is changed to the kind of write the
+    A `GAP` entry says that nothing checks a field's rule yet, and it names the open item
+    that will add the check. The entry is accurate only while that item is open. Once the
+    item is closed, the test fails until the entry is changed to the kind of write that the
     item built.
     """
 
