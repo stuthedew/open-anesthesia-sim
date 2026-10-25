@@ -75,8 +75,11 @@ two kinds of source:
 
 Attribution for the documentation goes to the Blender Documentation Team and
 the Blender Developer Documentation Team respectively, with a link. Both
-licence statements were re-confirmed on 2026-09-16, by the weaker of the two
-routes below — a search engine rather than the pages themselves.
+licence statements were first confirmed on 2026-09-16 through a search engine.
+On 2026-10-25 they were read at the licence pages themselves, listed under
+§ "Pages read on 2026-10-25". Each page grants CC-BY-SA 4.0 "or any later
+version", and excludes logos, trademarks, icons, source code and Python
+scripts from that licence.
 
 Blender's own Copyright Rules handbook draws the same line from the other side:
 it bars copyrighted elements of other software from entering Blender, while
@@ -128,23 +131,19 @@ first-hand evidence and the strongest thing in this document.
 from Blender's own shipped startup data rather than from screenshots in the
 Manual. See that section for how.
 
-**The prose: reached only through a search engine, and that is a real
-weakness.** When this section was written, on 2026-09-15, every `blender.org`
-host — `developer.blender.org`, `docs.blender.org`, `www.blender.org`,
-`archive.blender.org`, `projects.blender.org` — was refused by this
-environment's egress proxy, as was `web.archive.org`, so the Manual and the
-Developer Documentation could not be opened. That no longer holds for
-`blender.org`: each of those five hosts answered a probe on 2026-09-26, while
-`web.archive.org` was still refused (`PL-M701`), and `PL-PV5Q` is the
-re-reading that closes the gap. What the "stated rationale" section below
-reports therefore rests on search-engine summaries of those pages, which
+**The prose: first reached only through a search engine, then read at the
+pages.** When the stated-rationale section was written, on 2026-09-15, every
+`blender.org` host was refused by this environment's egress proxy, so the
+Manual and the Developer Documentation could not be opened. That section
+therefore first rested on search-engine summaries, which
 `.claude/rules/citing-sources.md` warns is the thing likeliest to be mistaken
-for a reading. **Every claim in
-that section carries its grade**, and a claim graded thin or second-hand should
-be re-checked against the page itself by any session that can reach it. Where
-the honest answer was that Blender does not appear to state something, that is
-what is recorded, rather than a confident summary assembled from general
-knowledge.
+for a reading. The `blender.org` hosts answered a probe on 2026-09-26
+(`PL-M701`). On 2026-10-25, `PL-PV5Q` re-read every claim in that section
+against its primary page, downloaded whole and read as text. The re-read
+corrected three claims and left two marked as unconfirmed. § "Pages read on
+2026-10-25" lists the pages. Where the honest answer was that Blender does not
+appear to state something, that is still what is recorded, rather than a
+confident summary assembled from general knowledge.
 
 ### What a later design thread owes this study
 
@@ -166,10 +165,12 @@ or Views, in a Project or not:
   and the source at https://raw.githubusercontent.com/blender/blender/main/
   followed by the file's path, and cite the page, or the file and the
   function, in the item the design is recorded in.
-- **Re-check a claim before a design rests on it.** § "What the code cannot
-  answer: Blender's stated reasoning" was written from search summaries and
-  grades each claim; before a design rests on one, read Blender's own page for
-  it and record what the page said.
+- **Cite a claim at the strength its page gives it.** § "What the code cannot
+  answer: Blender's stated reasoning" was re-read against Blender's own pages
+  on 2026-10-25, and names the page behind each claim. A claim it marks as
+  unconfirmed is not a basis for a design until a page is found for it. Where
+  a design rests on a page this file does not list, read that page and record
+  what it said.
 - **A recorded divergence or refusal stands unless the owner reopens it.** A
   thread that thinks Blender's behaviour is the better one puts the case to
   the owner with a recommendation and builds nothing on it meanwhile. The
@@ -581,16 +582,16 @@ expressive than Blender's representation**, not merely differently organised.
 
 ## What the code cannot answer: Blender's stated reasoning
 
-**Evidence warning, and it applies to this whole section.** None of the pages
-below could be opened when it was written, on 2026-09-15; every `blender.org`
-host and `web.archive.org` were refused by this environment's egress proxy.
-What follows rests on search-engine summaries of those pages. The `blender.org`
-hosts answered a probe on 2026-09-26 (`PL-M701`), so the pages can be read now,
-and `PL-PV5Q` is that re-reading; `web.archive.org` was still refused at the
-CONNECT on 2026-10-06 (`PL-CLW5`). Where a claim could be checked against the source
-it was, and that is marked. Everything else should be re-read at the page
-itself by any session that can reach one. Where the honest answer was that
-Blender does not appear to say something, that is recorded as the finding.
+**How this section was checked.** It was first written on 2026-09-15 from
+search-engine summaries, because the egress proxy then refused every
+`blender.org` host. On 2026-10-25, under `PL-PV5Q`, each claim was
+read against the primary pages rather than search summaries. The pages were
+downloaded whole with `curl` and read as text, not through a tool that
+summarizes them. Each claim below names the page
+it rests on, and § "Pages read on 2026-10-25" at the end of this section gives
+their addresses. The re-read corrected three claims, strengthened three, and
+left two marked as unconfirmed. The section's main finding held: Blender's
+reason for non-overlap is not this project's reason.
 
 ### Blender's reason for non-overlapping is not this project's reason
 
@@ -602,29 +603,37 @@ standard treats as a safety failure. It would be convenient if Blender's own
 rationale were the same, because then the precedent would carry the argument.
 **It is not.**
 
-Blender's Human Interface Guidelines name **Non-Overlapping**, **Non-Blocking**
-and **Non-Modal** as three separate paradigms with three separate reasons —
-which is itself worth knowing, because the three are often treated as one idea.
-Non-overlapping is a *window-management and visibility* argument: the interface
-should let you see the relevant options and tools at a glance, without pushing
-or dragging editors around. Non-blocking is about not being locked out of the
-rest of the application by a requester. Non-modal is select-then-act, with an
-operator's settings adjustable after it has run.
+The Design Paradigms page of Blender's Human Interface Guidelines lists eight
+paradigms. The first three are **Non-Overlapping**, **Non-Blocking** and
+**Non-Modal**, and each has its own reason. That is worth knowing, because the
+three are often treated as one idea. Non-overlapping is a *visibility and
+window-management* argument. A user should see the relevant options and tools
+at a glance, without pushing or dragging windows around, so Blender defaults
+to a subdivided window. Non-blocking means that no tool or option locks the
+user out of the rest of the application. Blender does not pop up a request
+that must be filled in before something runs. Where something does block, such
+as a render, the page asks that this be shown clearly and that the user can
+leave it at once. Non-modal is described in § "There is no mode-awareness
+doctrine to borrow", because the first version of this section described it
+wrongly.
 
-An attribution caveat, because the search route cannot settle it: the most
-pointed phrasing of the non-overlapping rationale — freeing artists from moving
-windows around *and from covering up content* — appears to come from a 2008
-Blender Conference paper rather than from the guidelines page itself. The
-substance is consistent across both, but a session that can open the pages
-should confirm which document says what before quoting either.
+The phrase about freeing artists from *covering up content* is not on the
+guidelines page. It comes from William Reynish's paper for the 2008 Blender
+Conference, "The Evolution of Blender's User Interface". The paper lists it
+among Blender's original design decisions and credits that list to
+blender.org. Its stated reason is efficiency: time an artist spends managing
+windows is time not spent on the work. So both documents give reasons of
+visibility and efficiency, and neither gives a reason of information
+integrity.
 
-One further qualifier, and it cuts the same way. Blender states non-overlap as
-a **default with acknowledged exceptions**, not as an invariant: the same
-guidelines page names multiple windows and screens as legitimate, and cases —
-multi-monitor work, render output — where an overlap is the better answer. A
-project citing Blender as precedent for an absolute no-occlusion rule is citing
-it for more than it says. What this project refuses is narrower and firmer than
-Blender's default, which is the right way round but is *our* rule.
+One further qualifier, and it cuts the same way. The guidelines page states
+non-overlap as a **default**, not as an invariant. The same paragraph says that
+Blender also supports several windows and screens, and names their uses:
+multi-monitor setups, animated windows, render output, and individual cases
+where an overlap helps. A project citing Blender as precedent for an absolute
+no-occlusion rule is citing it for more than it says. What this project
+refuses is narrower and firmer than Blender's default, which is the right way
+round but is *our* rule.
 
 So Blender is good evidence that **tiling is workable and pleasant at scale**,
 and no evidence at all for the information-integrity claim. This project's
@@ -634,10 +643,12 @@ different argument that reaches a similar-looking conclusion.
 
 ### "Non-overlapping" is narrower than it sounds, and the source proves it
 
-Nothing reachable states a general principle for which elements may overlap an
-editor and which may not; the line has to be inferred from practice. But the
-practice is clear, and one part of it corrects a mistaken reading this project
-was at risk of carrying.
+No page read states a general principle for which elements may overlap an
+editor and which may not. The guidelines name regions as the third level of
+subdivision, inside an editor, and say nothing about whether a region may
+float. So the line has to be inferred from practice. But the practice is
+clear, and one part of it corrects a mistaken reading this project was at risk
+of carrying.
 
 **Blender's non-overlap guarantee is about areas, not about everything.**
 Verified in the source rather than inferred: `RGN_TYPE_HUD` and
@@ -653,7 +664,8 @@ What does *not* overlap is one **area** over another. Menus, popovers, tooltips
 and pie menus overlap freely; so do temporary top-level windows, and those are a
 named category rather than an accident — `WM_window_is_temp_screen`
 (`source/blender/windowmanager/WM_api.hh`) is a public predicate for them, and
-Preferences, the file manager and the render window are its members.
+Preferences, the file manager and the render window are its members. The
+Developer Documentation's Window page names the same three.
 
 The line this project needs is therefore **not** inherited from Blender and has
 to be drawn here. The useful part of the precedent is the shape: a small,
@@ -662,89 +674,210 @@ them, rather than a case-by-case judgement per widget.
 
 ### Header, sidebar, toolbar and footer are keyed to scope of effect
 
-The source defines roughly sixteen region roles and no guidance. What the HIG
-offers is closer to a set of **defaults than to a decision procedure**, and the
-idea organising them is **scope of effect rather than frequency of use**:
-display options — what you are looking at — go in the header; options affecting
-several tools or the editor's own behaviour go to the right of the header or
-into tool settings, optionally behind an options popover; interactive
-gizmo-driven tools go in the toolbar; grouped object- and editor-level settings
-go in the sidebar, under a discipline that prefers reusing an existing tab to
-adding one.
+The source defines roughly sixteen region roles and no guidance. The
+guidelines' "Anatomy of an Editor" page offers **defaults rather than a
+decision procedure**, and what organises them is mostly **scope of effect**:
 
-One piece of Blender's own reasoning here is worth more to this project than the
-placement rules, and it emerged from the design discussion that moved the tool
-settings strip below the header rather than above it. The argument was
-**information hierarchy**, not aesthetics: the header carries the controls that
-define the working context — the mode, most of all — and tools are interpreted
-*relative to* that context, so the context-defining strip must sit above the
-tool strip rather than beneath it. That is a real principle and it transfers
-directly. Anything that says *what the numbers on screen are about* — which run,
-which patient, which model — outranks and sits above anything that acts on
-them.
+- A switch between an editor's modes goes at the left of the header, just
+  after the editor-type switcher.
+- The data the editor works on, such as the image in the image editor, is
+  chosen in the centre of the header.
+- Display options, which change what you are looking at, go on the right of
+  the header.
+- Options that affect several tools or the editor's own behaviour go on the
+  right of the header or in the tool settings region, perhaps behind an options
+  popover.
 
-Two gaps worth recording rather than papering over. Nothing reachable gives the
-**main region** a role definition at all — it is simply what is left. And there
-is no prohibition list for headers; the only stated pressure is limited
-horizontal width, answered with pulldowns and popovers rather than with a rule
-about what may not go there. A project whose required values must never be in a
+The Manual's Regions page adds the other two. The toolbar, on the left, holds a
+set of interactive tools. The sidebar, on the right, holds panels of settings
+for the objects in the editor and for the editor itself. The guidelines' Sidebar
+Tabs page asks for as few tabs as possible, and for an existing tab to be
+reused rather than a new one added. The first version of this section called
+the toolbar's tools "gizmo-driven". No page read says that, so the word is
+withdrawn. Frequency of use is not absent either. The Layouts page asks for the
+most important and most used widgets to be the easiest to reach, but it applies
+that within a panel, not to the choice of region.
+
+One piece of Blender's reasoning here is worth more to this project than the
+placement rules. Until Blender 3.0, an editor's tool settings strip sat above
+its header. Blender task T91536, filed by Francesco Siddi in 2021, proposed
+swapping them. Its argument is **information hierarchy**, not looks. The header
+holds the controls that define the working context, the mode most of all, and
+tools often depend on the mode, so the header belongs on the higher level. The
+swap shipped in Blender 3.0 as commit `4cf4bb2664`, which the 3.0
+user-interface release notes list. The commit message itself gives a narrower,
+practical reason: the header then always sits next to the window edge. The
+principle transfers directly. Anything that says *what the numbers on screen
+are about*, such as which run, which patient or which model, outranks anything
+that acts on them, and sits above it.
+
+Two gaps worth recording rather than papering over. First, the **main region**
+has only a thin definition. The Manual's Regions page says that at least one
+region is always visible, calls it the main region and the most prominent part
+of the editor, and says its purpose differs by editor. The guidelines' Main
+Region heading has no text under it. The first version of this section said the
+main region had no role at all, which was too strong. Its one stated property
+matters here: it is the only region that Blender keeps visible. Every other
+region, the header included, can be hidden from its context menu. Second, there
+is no list of what may not go in a header. The guidelines do say that every
+regular editor has a header, because the header is how users tell the editors
+on screen apart, and that a default layout should hide it only in rare,
+well-reasoned cases. The pressure they name is limited width, met with
+dropdowns and popovers. A project whose required values must never be in a
 hideable region will not find that rule in Blender.
 
 ### Workspace and Screen are two concepts because one was doing two jobs
 
-The clearest and best-evidenced of the rationale findings. Before 2.8, screen
-layouts were being used as whole-task presets *and* as arrangements of areas.
-The 2.8 interface work separated them: a **WorkSpace** became a task-level ID
-data-block, and a **bScreen** was demoted to the geometry of areas in one
-window — renamed "layout" in the interface.
+The clearest and best-evidenced of the rationale findings. The write-up of the
+Blender 2.8 user-interface workshop, archived on the 2015 Blender wiki, says
+that the screen layouts of earlier versions mixed workflow settings with layout
+settings, and that the two should be separated. Workspaces were the answer: a
+workspace is set up for one task, such as modelling or animation. The 2.80
+release notes describe what shipped. A workspace provides a screen layout for a
+task, workspaces appear as tabs at the top of the window, and a workspace can
+be appended from another `.blend` file. The Developer Documentation's Screen
+page describes the level below. A `bScreen` holds the arrangement of areas and
+regions in one window, each screen records which window it belongs to, and a
+workspace reaches its screen through a `WorkSpaceLayout`. The first version of
+this section also said that the interface renamed the screen "layout". No page
+read on 2026-10-25 says so, and that detail is unconfirmed.
 
-A workspace therefore carries more than an arrangement: an object mode it
-switches to on activation, an optional pinned scene, and an optional
-per-workspace add-on filter. It holds *several* layouts because a screen is
-bound to a single window, and because maximizing an area or opening a temporary
-window creates an extra hidden screen; per-window and temporary layouts
-accumulate under the one workspace.
+A workspace therefore carries more than an arrangement. The Manual's
+Workspaces page lists its settings: a mode it switches to when activated, an
+optional pinned scene, and an optional add-on filter. Current versions add two
+settings for the video sequencer. A workspace can also hold *several* screens.
+The Screen page gives one reason: a window shows one screen at a time, and
+Maximize Area creates a second screen holding only the maximized editor, which
+is closed afterwards to reveal the first. The first version of this section
+also said that opening a temporary window adds a hidden screen. No page read
+says so, and that claim is unconfirmed.
 
 That is directly applicable here. Item 34 already wants a workspace to pin which
 **run** it shows, which is the analogue of pin-scene. The two-level split is
 what makes that possible: if a workspace were only a layout, there would be
 nowhere to put it.
 
+The re-read adds one qualifier. The workshop write-up first put the active
+scene on the **window**, not on the workspace or the layout. Its reason was
+that switching layouts was also switching scenes, and it says that interface
+and data should be kept separate. Pin Scene, which shipped later, is a setting
+the Manual describes as taking effect when the user enables it. So Blender's
+precedent for a workspace pinning its data is an opt-in exception to its own
+separation rule, not its default. That changes no decision here, because
+`PL-7Z84` records why a workspace pins a run. A design that leans on the
+pin-scene analogy should cite it at that strength.
+
 ### There is no mode-awareness doctrine to borrow
 
 Worth stating because the absence is the answer, and because this project's
-safety standard needs exactly such a doctrine.
+safety standard needs exactly such a doctrine. The re-read found more than the
+first version of this section did, but the conclusion holds.
 
-Blender's **Non-Modal** paradigm turns out to be primarily about *not blocking*
-— no requester that must be completed before a tool runs, settings shown in
-non-blocking regions, operator settings adjustable after the fact — plus a
-secondary noun-then-verb claim. It is explicitly not a claim that Blender has no
-interaction modes; the guidelines concede that Blender's complexity makes some
-editing modes inevitable and mitigate them by scoping them.
+**Non-Modal was described wrongly here before.** The first version said that
+Blender's Non-Modal paradigm was mainly about not blocking. The guidelines say
+otherwise. Non-Modal asks that input stay consistent and predictable, so that
+common mouse and keyboard methods do not change meaning on the fly. The page
+then admits that Blender's complexity makes some modes unavoidable, and sorts
+them into three kinds:
 
-What is absent is any doctrine about **mode awareness** — keeping the current
-mode visible, or what to do about a mode that is hard to notice. Blender has
-strong mode-awareness devices in practice (the mode selector in the header, a
-different keymap, different shading), but nothing reachable presents them as a
-deliberate answer to the hazard of an unnoticed mode. So this project's
-requirement — that a reader can never be wrong about what state the application
-is in or what context a displayed value belongs to — has no Blender precedent to
-lean on, and is ours to design.
+- editing modes, such as mesh editing or posing, which are now a state of the
+  object rather than of the editor or of the whole application;
+- sticky modes, which stay active without input and are used only by the
+  transform tools;
+- temporary modes, which end as soon as the user stops acting.
+
+Select-then-operate and adjusting an operation after it has run are separate
+paradigms on the same page. That is where the first version's description of
+Non-Modal belonged.
+
+**Blender does name the hazard.** Reynish's 2008 paper grounds non-modality in
+Jef Raskin's argument from *The Humane Interface*: a person cannot attend to
+the system's state and to the task at the same time, so a gesture meant for one
+mode gets made in another. The 2.8 workshop write-up names a related hazard.
+Users become disoriented when they switch layout or workspace, because the new
+editors keep views of their own and look different. Its proposed fix was views
+that pinned editors share. And the guidelines' "Anatomy of an Editor" page says
+that editors are in effect modes, so each must be clearly distinguishable from
+the others, and names the header as what helps users tell them apart.
+
+**What is absent is the doctrine.** Blender's answer to mode errors is to
+remove modes or narrow their scope, not to keep the current mode visible. The
+guidelines have a page titled "Modal Interfaces". When it was read on
+2026-10-25, its only content was the heading "Preventing Mode Errors vs.
+Consistency". Blender has strong mode-awareness devices in practice: the mode
+selector in the header, a different keymap, and different shading. But no page
+read presents them as a deliberate answer to the hazard of an unnoticed mode.
+So this project's requirement has no Blender doctrine to lean on, and is ours
+to design. That requirement is that a reader can never be wrong about what
+state the application is in, or about what context a displayed value belongs
+to. The one rule that transfers is the guidelines' insistence that the header,
+which tells editors apart, stays visible except in rare, well-reasoned cases.
 
 ### Where Blender says the model does not apply
 
-Mostly Blender documents its exceptions as behaviour rather than as reasoned
-boundaries. The temporary windows are named and detectable but explained by what
-they do rather than by why they are exempt.
+Blender mostly documents its exceptions as behaviour rather than as reasoned
+boundaries. The temporary windows are named and detectable. The Developer
+Documentation's Window page gives one consequence of being temporary: these
+windows are not restored when a file is loaded. The guidelines call them
+"irregular editors", along with the global top bar and status bar. They also
+say that an editor of that kind becomes a regular editor, under the usual
+rules, when it is opened in the split layout instead.
 
-The one place the model is clearly said not to carry is Blender's own
-tablet and touch work, which names a single full-screen window, small screen
-area, and the absence of a mouse and keyboard as constraints calling for
-task-oriented, lower-density interfaces. That is an admission by implication
-that the desktop area model is a desktop model. This project's interface is a
-desktop application and so sits inside that boundary — but it is the boundary,
-and a later session considering a tablet build should treat item 34's model as
-out of scope there rather than as something to shrink.
+The one place Blender says plainly that the model does not carry is its tablet
+work. Dalai Felinto's post "Beyond Mouse & Keyboard" on the Blender Developers
+Blog, dated 24 July 2025, lists the constraints of a standalone tablet: a
+single full-screen window, little screen space, and no keyboard or mouse by
+default. It calls for more task-oriented interfaces with lower information
+density. Its mockups run Blender in a single area, with temporary context shown
+in floating regions. The post says this partly contrasts with the
+non-overlapping paradigm, and calls it a good compromise. So the desktop area
+model is a desktop model by Blender's own account, and not only by
+implication, as the first version of this section had it. This project's
+interface is a desktop application and so sits inside that boundary. A later
+session considering a tablet build should treat item 34's model as out of scope
+there, rather than as something to shrink.
+
+### Pages read on 2026-10-25
+
+Each page was downloaded whole with `curl` through this environment's proxy
+and read as text. On 2026-10-25, `projects.blender.org` refused to serve its
+pages to a client that does not run JavaScript, so task T91536 and commit
+`4cf4bb2664` were read through that forge's public API, at
+https://projects.blender.org/api/v1/repos/blender/blender/.
+
+- Human Interface Guidelines, Design Paradigms:
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/paradigms/
+- Human Interface Guidelines, Anatomy of an Editor:
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/editors/
+- Human Interface Guidelines, Layouts:
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/layouts/
+- Human Interface Guidelines, Sidebar Tabs:
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/sidebar_tabs/
+- Human Interface Guidelines, Modal Interfaces:
+  https://developer.blender.org/docs/features/interface/human_interface_guidelines/modal_interfaces/
+- Developer Documentation, Screen:
+  https://developer.blender.org/docs/features/interface/screen/
+- Developer Documentation, Window:
+  https://developer.blender.org/docs/features/interface/window/
+- Blender Manual, Workspaces:
+  https://docs.blender.org/manual/en/latest/interface/window_system/workspaces.html
+- Blender Manual, Regions:
+  https://docs.blender.org/manual/en/latest/interface/window_system/regions.html
+- Blender 2.80 release notes, User Interface:
+  https://developer.blender.org/docs/release_notes/2.80/ui/
+- Blender 3.0 release notes, User Interface:
+  https://developer.blender.org/docs/release_notes/3.0/user_interface/
+- Task T91536, "Swap Tool Settings and Headers in Editors", and commit
+  `4cf4bb2664`: https://projects.blender.org/blender/blender/issues/91536 and
+  https://projects.blender.org/blender/blender/commit/4cf4bb2664ebe145dac9715bbbfcc2b96f5ff175
+- Blender 2.8 user-interface workshop write-up:
+  https://archive.blender.org/wiki/2015/index.php/Dev:2.8/UI/Workshop_Writeup/
+- Reynish W. "The Evolution of Blender's User Interface." Blender Conference,
+  2008: https://download.blender.org/documentation/bc2008/evolution_of_blenders_ui.pdf
+- Felinto D. "Beyond Mouse & Keyboard." Blender Developers Blog, 24 July 2025:
+  https://code.blender.org/2025/07/beyond-mouse-keyboard/
+- The two licence pages: https://developer.blender.org/docs/license/ and
+  https://docs.blender.org/manual/en/latest/copyright.html
 
 ## What this project adopts, diverges from, and refuses
 
