@@ -3321,6 +3321,85 @@ the `AgentParameters` properties in `core/parameters.py`. The data file does
 not store them a second time. The tissue-blood partition-coefficient tests in
 `tests/unit/test_parameters.py` guard this derivation.
 
+**The division is the literature's own operation, and one published table
+reproduces its results** (`PL-H536`). Eger and Saidman state the operation in
+these words: "a tissue/blood partition coefficient for a given anesthetic is
+calculated by dividing a tissue/gas partition coefficient by the blood/gas
+partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
+computed their own tissue:blood table the same way, as the next subsection
+records. Both papers were read in full text from the private reference corpus,
+and Eger and Saidman's p. 1023 was read for this paragraph on 2026-10-25. The
+full citation of Eger and Saidman is in § "Known limitations".
+
+Baker and Farmery's 2011 review publishes the results as well as the
+operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
+for the vessel-rich, muscle and fat groups. The set that matches is the one in
+brackets, which the table's footnote d attributes to Eger and Shafer.
+Desflurane has only that set. The table was read in full text from the private
+reference corpus on 2026-10-25 (`PL-VPF8`). Every figure matched the ones the
+session that filed `PL-H536` had recorded from an earlier copy on 2026-09-03.
+In each cell the first figure is this document's derived row and the second is
+Baker's bracketed figure:
+
+| | vessel-rich | muscle | fat |
+| --- | ---: | ---: | ---: |
+| sevoflurane | 1.6923 vs 1.69 | 3.6923 vs 3.69 | 52.3077 vs 52.3 |
+| isoflurane | 1.6154 vs 1.62 | 3.4615 vs 3.46 | 53.8462 vs 53.8 |
+| desflurane | 1.2857 vs 1.29 | 2.3095 vs 2.31 | 30.9524 vs 30.9 |
+
+<!-- derived: 1.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 3.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 52.3077 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 1.6154 from data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 3.4615 from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 53.8462 from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 1.2857 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 2.3095 from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+Baker's bracketed blood:gas values are the three that the agent files store:
+0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the
+nine tissue:blood figures are the derived value rounded to Baker's printed
+precision. Desflurane's fat coefficient is the exception. 30.9524 rounds to
+31.0, and Baker prints 30.9. The difference is 0.05, or 0.17%, in the last
+printed digit. That is too small to come from a different operation, and Baker
+does not say how the figures were rounded.
+<!-- not-restated: 0.05 -->
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+**The agreement checks the transformation, not the coefficients.** It shows
+that the stored tissue:gas values, divided by the stored blood:gas values,
+give the coefficients as the literature publishes them. That confirms the
+operation and its arithmetic. It is not a second measurement. Baker attributes
+the bracketed set to Eger and Shafer's 2005 tutorial, which ran its
+simulations in Gas Man, according to its abstract. The stored tissue:gas
+values are Gas Man's figures for Yasuda, Targ and Eger's measurements, and the
+stored blood:gas values are De Wolf et al.'s. In all seven cells where Gas
+Man's figure differs from Yasuda's mean, Baker's bracketed figure follows Gas
+Man's.
+Isoflurane fat is the clearest: 53.8 is 70.0 divided by 1.3, where Yasuda's
+64.2 would give 49.4. So the match is one parameter set divided twice, not two
+sources agreeing. Eger and Shafer's paper is not held here, so which of the two
+took its figures from the other has not been read.
+A reader should take the table as evidence that the division is the right
+operation, and not as evidence that the coefficients are right. § "Known
+limitations" says how far other laboratories' coefficients differ from these.
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+
+**Baker's other set is not a check on the division.** Its plain figures are
+"Data from Fiserova-Bergerova and Diaz (26)", a 1986 paper. They come with
+their own blood:gas values, 0.6 for sevoflurane and 1.4 for isoflurane, and
+they differ from the derived rows by far more than rounding. § "Known
+limitations" gives the differences. The citations of Baker and Farmery 2011,
+Eger and Shafer 2005 and Fiserova-Bergerova and Diaz 1986 were checked in
+PubMed on 2026-10-25 (PMIDs 23737195, 16115976 and 3721592). Only Baker and
+Farmery was read in full text. `docs/references/README.md` has its full
+citation.
+
 ### v0.2.0: isoflurane and desflurane
 
 Isoflurane and desflurane use the same governing equations and compartment
@@ -3708,22 +3787,42 @@ $$
 
 using compatible time and flow units.
 
+Held by `test_circuit_matches_analytic_wash_in` and
+`test_wash_in_is_monotonic_and_never_overshoots` in
+`tests/reference/test_circuit_wash_in.py`, and for the washout by
+`test_zero_delivered_concentration_washes_out_circuit` in
+`tests/unit/test_circuit.py`.
+
 ### Zero-agent test
 
 If all initial stores are zero and $`F_D=0`$, then every stored amount and
 concentration must remain zero.
 
+Held by `test_no_delivered_agent_keeps_every_store_zero` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Zero-ventilation test
 
 If $`\dot V_A=0`$, the circuit may wash in, but the patient compartments must receive no new agent through ventilation.
+
+Held by `test_zero_ventilation_prevents_patient_delivery` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Zero-cardiac-output test
 
 If $`Q=0`$, alveolar gas may change through ventilation, but arterial blood, venous blood, and tissue stores must not change through perfusion.
 
+Held by `test_zero_cardiac_output_prevents_patient_uptake` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Zero-tissue-flow test
 
 For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$.
+
+Held by `test_a_zero_tissue_flow_leaves_that_group_alone` in
+`tests/unit/test_governing_equations.py`, which checks the coupled system's
+matrix, and by `test_zero_flow_preserves_tissue_state` in
+`tests/unit/test_tissue.py`.
 
 ### Equilibrium test
 
@@ -3731,13 +3830,23 @@ If all connected compartments have the same partial-pressure-equivalent
 fraction, with $`F_I=F_A=F_a=F_v`$ and every tissue group at the same value,
 then all internal transfer rates must be zero.
 
+Held by `test_equilibrium_produces_no_net_internal_transfer`, for sevoflurane
+in `tests/reference/test_sevo_patient.py` and for isoflurane and desflurane in
+`tests/reference/test_multi_agent.py`.
+
 ### Directional ventilation test
 
 With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_I`$.
 
+Held by `test_higher_ventilation_increases_early_alveolar_fraction` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Directional solubility test
 
 In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_I`$.
+
+Held by `test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Directional tissue-capacity test
 
@@ -3748,6 +3857,9 @@ $$
 \frac{V_i\lambda_{i:b}}{Q_i}
 $$
 
+Held by `test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant` in
+`tests/unit/test_tissue.py`.
+
 ### Washout test
 
 After loading the compartments, setting $`F_D=0`$ must produce finite,
@@ -3756,6 +3868,9 @@ nonnegative washout without spontaneous increases in total system mass.
 Individual tissue concentrations may rise for a time through redistribution.
 The test must therefore not require every compartment to decrease
 monotonically.
+
+Held by `test_washout_never_increases_total_system_mass` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Step-refinement test
 
@@ -3825,6 +3940,10 @@ correctness. A wrong transfer rate is exactly as independent of the step as a
 right one, so it passes here. The § "Independent-solution test" below is the
 test that asks whether the solution is the right one at all.
 
+Held by `test_step_refinement_converges`, for the three halvings, and by
+`test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
+minimum step. Both are in `tests/reference/test_sevo_patient.py`.
+
 ### Independent-solution test
 
 The coupled six-state solution must be checked against an integration of the
@@ -3833,6 +3952,9 @@ governing equations that shares no solver with the implementation
 parameter files and nothing else from the package under test. A comparison
 against code derived from the implementation is a tautology, not a
 verification. So the test enforces that restriction on its own imports.
+`test_exact_step_matches_the_independent_solution_everywhere` holds the
+comparison. `test_oracle_imports_no_solver_from_core` and
+`test_oracle_bodies_call_no_solver_from_core` hold the restriction.
 
 The comparison covers every shipped agent, and its tolerance is **absolute**:
 
@@ -4359,7 +4481,7 @@ gives, for each, what it proposed and what ruled it out.
 | Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
 | The published apparatus's own dead space, sourced — 50 ml re-inspired each breath, which in this model is a ventilation decrement rather than an $`F_I`$ | more than the wash-in rows will bear | at the largest admissible decrement desflurane is still −1.48 SD while both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
 | End-tidal sampling bias in a lung with ventilation-perfusion dispersion — a correction to the *published* value rather than to this model | a bias upward at both ends, growing as solubility falls | the one human measurement of that gradient has it larger for *more* soluble agents and negative through an elimination, so it moves the published value down and deepens the residual — struck below |
-| Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | nothing it can supply: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
+| Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | the right direction, as in the sixth row: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
 
 <!-- not-restated: 2.1 -->
 
@@ -4572,13 +4694,24 @@ model's inert circuit is the assumption that this measurement most nearly
 supports. The candidate is struck on evidence rather than on argument.
 <!-- not-restated: 5 L/min -->
 
-**The direction rules it out independently, and that half needed no
-measurement.** A wall that dissolves agent during a 30-minute administration
-gives the agent back during the washout. That keeps the circuit fraction high,
-and therefore the inspired fraction too, which *slows* the alveolar fall.
-Desflurane's residual is this model washing out too **fast**. A mechanism that
-can only slow a washout cannot produce that residual. So no amount of wall
-absorption would have helped, whatever the measurement had said.
+**The direction does not rule it out, because a store that this model leaves
+out would move the comparison toward the published value** (`PL-X9K0`). A wall
+that dissolves agent during a 30-minute administration gives the agent back
+during the washout. That keeps the circuit fraction high, and therefore the
+inspired fraction too, which *slows* the alveolar fall. Desflurane's residual
+is this model washing out too **fast**, with the apparatus removed. A wall in
+the published apparatus would have raised the published ratio above what an
+inert apparatus gives, and that is the residual's sign. The sixth row of the
+table above shows the same direction for rebreathing, which also returns agent
+to the inspired gas. So the direction is no argument against the candidate
+for desflurane. Two other grounds strike it: the measurement above, and the
+published apparatus, which had no circle system (the bullet on sevoflurane and
+isoflurane below). This model has no wall term, so a test cannot vary one. The circuit volume is the one
+circuit-side store it has, and
+`test_a_larger_circuit_can_only_slow_the_elimination` pins the direction on
+it (`PL-P1P6`). For every agent, the five-minute $`F_A/F_{A0}`$ rises at each
+step from half to twice the stored circuit volume. That direction is what
+rules the candidate out for sevoflurane and isoflurane, below.
 
 **The same study finds that a real circuit measurably retards sevoflurane and
 isoflurane. That is a limitation of this simulator, but it is not a candidate
@@ -4605,12 +4738,13 @@ But the finding does not bear on the residual.
   sevoflurane to −0.15 SD and isoflurane to +0.66 SD. Wall absorption is a
   *further* store that returns agent to the circuit during the washout. Adding
   it would keep $`F_I`$ high for longer and push both rows further above their
-  means, not toward them. This is the same directional argument that strikes
-  the candidate for desflurane, applied to the two agents for which wall
-  absorption is strongest. The published cohorts also breathed from a
-  non-rebreathing apparatus, in which the potent agents' inspired fraction is
-  zero by construction. So no circle-system wall effect is present in the
-  published number at all.
+  means, not toward them. The direction rules the candidate out for these two
+  agents because the departure it would explain is the model washing out too
+  slowly, the opposite of desflurane's residual. They are also the two agents
+  for which wall absorption is strongest. The published cohorts also breathed
+  from a non-rebreathing apparatus, in which the potent agents' inspired
+  fraction is zero by construction. So no circle-system wall effect is present
+  in the published number at all.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
@@ -5291,6 +5425,11 @@ $$
 
 using the release tolerances documented above.
 
+Held by `test_long_wash_in_and_washout_validate_agent_simulation` in
+`tests/reference/test_sevo_patient.py`, and for isoflurane and desflurane by
+`test_wash_in_and_washout_validates_agent_simulation` in
+`tests/reference/test_multi_agent.py`.
+
 ### Closed-form agreement test
 
 A run driven through its own controls must give identical results from the
@@ -5313,7 +5452,9 @@ The required agreement is far tighter than the two-decimal percent set under
 § "Displayed precision", and far looser than floating-point noise. So a real
 divergence fails and a rounding difference does not.
 `tests/unit/test_run_definition.py` checks `state_at` and `evaluate` against a
-run stepped alongside its definition, and records the figures measured.
+run stepped alongside its definition, and records the figures measured. Its
+`test_evaluate_matches_a_stepped_run` and `test_state_at_matches_a_stepped_run`
+make that comparison on one run that crosses two setting changes.
 `tests/unit/test_resume_at.py` and `tests/integration/test_controller.py` apply
 the same comparison in two more cases. One is a system started at a keyframe
 and stepped from there. The other is a branch compared against its parent.
@@ -5325,6 +5466,58 @@ described one run. The record of samples is gone. The comparison against the
 stepped system now carries the claim, because the stepped solver is the
 independently written solution of the same equations that the closed form is
 checked against.
+
+### Parameter-recovery test
+
+The model must return a stored parameter when it is run through a measurement
+procedure whose result that parameter fixes. Each procedure is derived from a
+physical law, not from the equations in this document. Lerou and Booij used
+this device to check their own system model. They simulated the closed-circuit
+helium dilution measurement of alveolar volume (Lerou JG, Booij LH.
+Model-based administration of inhalation anaesthesia. 1. Developing a system
+model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385,
+retrieved from PubMed and read at the abstract 2026-10-25).
+
+**It catches a class of error that the other verification tests cannot.** The
+§ "Independent-solution test" integrates the equations that this document
+states. If this document states an equation wrongly, the oracle reproduces the
+error and agrees with the code. The § "Mass-balance test" catches an error
+only when agent is lost or created. Suppose this document had written the
+tissue capacity as $`V_i\lambda_{i:b}`$, leaving out the blood:gas factor, and
+formed the tissue's rate to match. Agent would still be conserved, and the
+oracle would agree with the code. A tissue volume measured by the Fick
+principle would come back divided by $`\lambda_{b:g}`$.
+
+`tests/reference/test_parameter_recovery.py` runs two procedures for each of
+the three agents.
+
+- `test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value`
+  is Lerou and Booij's procedure. The circuit fills while ventilation is
+  stopped. The circuit is then closed by setting the fresh gas flow to zero,
+  and the lungs are ventilated from it with the cardiac output at zero. With
+  no blood flow, the agent behaves as an insoluble tracer, which is the role
+  helium plays in the real measurement. Conservation then gives
+  $`V_A = V_C(F_1-F_2)/F_2`$, where $`F_1`$ is the circuit's fraction when it
+  is closed and $`F_2`$ is the fraction that the circuit and lungs share once
+  they have mixed.
+- `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`
+  integrates each tissue group's uptake through the opening wash-in by the
+  Fick principle, $`\dot U_i = Q_i\lambda_{b:g}(F_a-F_i)`$. It divides the
+  total by $`\lambda_{i:g}F_i`$ at the end of the run, which is the agent that
+  one litre of the tissue holds at its own fraction.
+
+Each recovered value must equal the stored one to within a relative tolerance
+at the level of rounding. The test module states each tolerance beside the
+residual it measured.
+
+The zero fresh gas flow is not the closed-circuit technique that § "Breathing
+circuit" says this model does not represent. That technique needs fresh gas
+matched to the patient's uptake. This procedure has no fresh gas and, at zero
+cardiac output, no uptake.
+
+Like the other verification tests, these check that the equations are the ones
+intended. They cannot show that a stored value is right, because each
+procedure recovers whatever value the data files hold.
 
 ### Deterministic replay test
 
@@ -5357,6 +5550,11 @@ tested as one. The test uses the rates that the interface actually offers, not
 invented burst sizes. So a rate added to that ladder is covered on the day it
 is added.
 
+Held by `test_identical_runs_produce_identical_snapshots_and_history`,
+`test_a_run_records_the_same_history_however_the_ticks_fell` and
+`test_the_recorded_history_is_identical_at_every_playback_rate` in
+`tests/integration/test_sevo_controller.py`.
+
 ### Canonical evaluation test
 
 A run that is queried while it is built must give the same result as the same
@@ -5381,6 +5579,14 @@ this document prints. The compartment fractions and the cumulative
 accumulators have separate bounds because their displays resolve four orders
 of magnitude apart. A single bound covering both would have to be the looser
 one.
+
+All of these are in `tests/reference/test_canonical_evaluation.py`.
+`test_querying_a_run_does_not_change_what_it_answers` and
+`test_querying_a_run_does_not_change_the_keyframes_it_stores` hold the first
+property. `test_a_fork_opening_from_a_keyframe_reproduces_its_parent` holds
+the branch. `test_a_display_value_cannot_open_a_run_definition` holds the
+refusal, and `test_the_display_path_stays_within_its_measured_separation`
+holds the bounds.
 
 ## Runtime controls
 
@@ -10628,6 +10834,10 @@ This model does not model:
 - lung tissue and pulmonary blood. No compartment represents either, and
   together they are a store worth about a fifth of every agent's fast pool
   (the note below this list sizes it);
+- a vessel-poor tissue group. Bone, cartilage, ligament, tendon and the other
+  tissues with little or no blood flow have no compartment, and none of the
+  three tissue groups stands for them. The note below this list gives the
+  reason, which is the one the field gives;
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added
   in v0.2.0; see § "Parameter provenance");
 - nitrous oxide;
@@ -10654,6 +10864,11 @@ This model does not model:
   into fat lying against it. This is a route between two tissues, not the
   blood-to-tissue limitation above. The note below this list measures what it
   leaves out of the fat compartment;
+- uncertainty in the tissue:gas partition coefficients. Each is carried as
+  an exact value. The stored values are Gas Man's, which differ from the one
+  laboratory's means behind them by up to 9%. Other laboratories report values
+  for the same tissue that differ by up to 150%, and the note below this list
+  says which tissues that reaches;
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -10716,6 +10931,42 @@ them against the other candidate explanations of one specific disagreement,
 and a second copy here would be a second thing to keep true. This list carries
 the magnitude, because a reader sizing what the model leaves out should not
 have to find it inside an argument about one agent.
+
+**The vessel-poor group is left out because it takes up almost no agent, and
+Eger's own model leaves it out for that reason** (`PL-NX4H`). Eger grouped the
+body's tissues into four groups by their capacity and their blood flow:
+vessel-rich, muscle, fat and vessel-poor. His later five-compartment model
+keeps the first three. It deletes the vessel-poor group "because its
+contribution to uptake is considered insignificant", and adds a lung
+compartment and an intertissue-diffusion compartment instead. That is
+Carpenter et al. 1986, as Hendrickx and De Wolf report it on p. 163. Eger and
+Saidman's review gives the physiological reason. The group is "made up of
+ligaments, tendons, cartilage, bone, and other avascular tissues", and it
+"does not contribute to uptake because of its minimal or absent perfusion"
+(p. 1023). Gas Man, the reference implementation, also carries exactly three
+tissue groups, in the Workbook's Model Parameters table on p. 168.
+
+So the three groups here are Eger's five-compartment model without its lung
+and intertissue-diffusion compartments, and the bullets on lung tissue and on
+intertissue diffusion record those two omissions. The three groups hold 6.0,
+33.0 and 14.5 L, which is 53.5 L in a 70 kg reference patient. Read that total
+as the sum of three compartments, not as a statement of body composition. The
+rest of the body, the vessel-poor tissues among it, is not a store that this
+model fills or empties.
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
+<!-- provenance: data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5 -->
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+<!-- derived: 53.5 L from data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6, tissue_groups.muscle.volume_l = 33, tissue_groups.fat.volume_l = 14.5 -->
+
+Nothing in this project measures what the omission costs. The case that it is
+small is the perfusion argument above: a tissue that receives almost no blood
+receives almost no agent over the length of any case this simulator teaches.
+Hendrickx and De Wolf's p. 163 and Eger and Saidman's p. 1023 were read in
+full text from the private reference corpus on 2026-10-25. Carpenter et al.'s
+full text has not been read here, so the deletion is attributed to them only as
+Hendrickx and De Wolf report it. The intertissue-diffusion note below gives the
+full citation of all four sources.
 
 **The circuit's own walls absorb agent, and the model's circuit is inert.**
 `BreathingCircuit` solves an ideal, well-mixed volume whose walls do nothing.
@@ -11184,6 +11435,82 @@ value:
   private reference corpus on 2026-09-26, and Hendrickx and De Wolf's
   pp. 165-66 were read again on 2026-09-27. Both are tier 3, and
   `docs/references/README.md` carries their entries.
+
+**The tissue:gas coefficients rest on one laboratory's means, and other
+laboratories disagree with them by up to 150% in some tissues** (`PL-H536`).
+The stored values are Gas Man's. They differ from Yasuda, Targ and Eger's
+means in seven of the nine cells, by up to 9% in isoflurane's fat coefficient,
+70.0 against 64.2 (§ "Parameter provenance" has the table).
+Hendrickx and De Wolf state the general case: "Tissue solubilities vary up to
+150% between authors (Yasuda et al. 1989), and the tissue homogenates used to
+determine these coefficients may not represent in vivo conditions" (p. 165).
+The 150% is not spread evenly across the tissues this model uses. Yasuda, Targ
+and Eger, whose measurements the agent files' values rest on, compare their
+own values with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
+sevoflurane, isoflurane and halothane were similar to theirs for brain and for
+fat, except halothane's fat coefficient, which was 65% greater. They were 115%
+to 150% greater for kidney and 10% to 30% less for muscle. Those values are
+Fiserova-Bergerova, Tichy and Di Carlo 1984, Yasuda's ref 8. Lowe's isoflurane
+values were 50% to 75% greater. The authors could not explain the
+differences.
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+
+A third published set agrees less well (`PL-VPF8`). Baker and Farmery's 2011
+review prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986
+beside the set that matches this model (Table 2, p. 572). On the tissue:blood
+scale, that set puts sevoflurane's fat coefficient at 71.7, 37% above this
+model's 52.3. It puts isoflurane's muscle coefficient at 1.71, 51% below this
+model's 3.46. Its vessel-rich figures are 28% above this model's for both
+agents. The set's own blood:gas values, 0.6 for sevoflurane and 1.4 for
+isoflurane, move these gaps in opposite directions for the two agents. So the
+tissue:gas scale, which is what the agent files store, gives a fairer
+comparison. On that scale the set's sevoflurane fat coefficient is 26% above
+this model's and its isoflurane muscle coefficient 47% below. Its vessel-rich
+coefficient is 18% above for sevoflurane and 38% above for isoflurane. The set
+may not be a measurement.
+According to its PubMed abstract, the 1986 paper measured coefficients only
+for water-soluble solvents such as acetone and the alcohols. It then fitted
+equations that predict any substance's tissue coefficients from its blood:gas
+and fat:gas values. Baker does not say which of the anesthetic figures were
+measured and which predicted. The set has no desflurane values.
+<!-- not-restated: 18 % -->
+
+So for sevoflurane and isoflurane, Yasuda's brain and fat values, which this
+model's vessel-rich and fat groups store as Gas Man's figures, were reproduced
+by one other laboratory, in 1984. The 1986 set does not reproduce them, and it
+may be a prediction rather than a measurement. Yasuda, Targ and Eger make no such comparison for
+desflurane. The 150% is the kidney, which this
+model does not parameterise on its own (§ "Parameter provenance" records that
+the vessel-rich group is Yasuda's brain value). Muscle is where the model's
+coefficient is least certain, on two counts. The other laboratories disagree
+with it in both directions. Fiserova-Bergerova's two sets put muscle lower.
+Lowe's isoflurane values were 50% to 75% greater than Yasuda's, and Yasuda
+does not break that difference down by tissue. Yasuda's own muscle
+measurements also spread the most. Their
+standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03), 45% for
+isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35), against 17% to
+19% for fat. Eger and Saidman's Table 1 makes the same point from the
+literature as a whole. Their best figure for sevoflurane muscle is 1.7, with
+1.1 to 2.4 as the range across the studies they cite (p. 1022), where the
+agent file stores 2.4. A muscle group's time constant is proportional to its
+tissue:gas coefficient. So taking 1.7 in place of 2.4 would shorten the
+sevoflurane muscle time constant by 29%. That is the size of change a
+coefficient's provenance can make to the intermediate part of every wash-in
+and washout curve this simulator draws.
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
+<!-- derived: 29% from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
+<!-- not-restated: 1.1 -->
+
+This is a limit on what the model can claim rather than a defect to fix.
+Every stored coefficient lies within one standard deviation of its cited
+measurement. A learner should read the muscle and fat traces as one
+well-measured parameter set, and not as the only set the literature
+supports. Yasuda, Targ and Eger's p. 373, Eger and
+Saidman's Table 1 and Baker and Farmery's Table 2 were read in full text from
+the private reference corpus on 2026-10-25, and Hendrickx and De Wolf's p. 165
+on the same day. Fiserova-Bergerova and Diaz 1986 was read as its PubMed
+abstract only (PMID 3721592), and the 1984 paper not at all. The Yasuda, Targ
+and Eger citation is in § "Parameter provenance".
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
