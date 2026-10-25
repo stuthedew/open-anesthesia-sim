@@ -474,10 +474,45 @@ def _path_with(tmp_path: Path, scripts: dict[str, str]) -> str:
     return str(tmp_path)
 
 
+#: Fakes of every tool `check_tools` reads, each new enough to pass.
+CURRENT_TOOLS = {
+    "claude": "exit 0",
+    "uv": "exit 0",
+    "python3": "exit 0",
+    "bash": "echo 5.3.3'(1)-release'",
+    "make": "echo 'GNU Make 4.4.1'",
+}
+
+
 def test_a_python3_older_than_the_tools_floor_is_refused_before_any_spend(tmp_path: Path) -> None:
     """Xcode's 3.9 was first on the owner's PATH, and bin/docket cannot run under it."""
-    path = _path_with(tmp_path, {"claude": "exit 0", "uv": "exit 0", "python3": "exit 1"})
+    path = _path_with(tmp_path, CURRENT_TOOLS | {"python3": "exit 1"})
     with pytest.raises(Refused, match="older than Python 3.11"):
+        check_tools({"PATH": path})
+
+
+def test_current_tools_pass_the_check(tmp_path: Path) -> None:
+    check_tools({"PATH": _path_with(tmp_path, CURRENT_TOOLS)})
+
+
+def test_an_old_make_on_path_is_refused_before_any_spend(tmp_path: Path) -> None:
+    """Apple's GNU Make 3.81 was still first on the worker's PATH after `PL-TSH9` (`PL-44R1`)."""
+    path = _path_with(tmp_path, CURRENT_TOOLS | {"make": "echo 'GNU Make 3.81'"})
+    with pytest.raises(Refused, match=r"GNU make 3\.81, older than the GNU make 4\.0") as refused:
+        check_tools({"PATH": path})
+    assert "docs/maintainer.md" in str(refused.value)
+
+
+def test_an_old_bash_on_path_is_refused_before_any_spend(tmp_path: Path) -> None:
+    """macOS ships bash 3.2, which the shell reader's comparison tests cannot run on."""
+    path = _path_with(tmp_path, CURRENT_TOOLS | {"bash": "echo 3.2.57'(1)-release'"})
+    with pytest.raises(Refused, match=r"bash 3\.2, older than the bash 5\.2"):
+        check_tools({"PATH": path})
+
+
+def test_a_make_that_is_not_gnu_make_is_refused(tmp_path: Path) -> None:
+    path = _path_with(tmp_path, CURRENT_TOOLS | {"make": "echo 'bmake 20240711'"})
+    with pytest.raises(Refused, match="printed no GNU make version"):
         check_tools({"PATH": path})
 
 

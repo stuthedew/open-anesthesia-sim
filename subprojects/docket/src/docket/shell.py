@@ -55,6 +55,11 @@ loads.
 
 from .digits import whole_number
 
+#: The oldest bash whose grammar this lexer reads, as major and minor version.
+#: Its tests compare it with the bash on `PATH`, and the headless worker refuses
+#: a run on a host whose bash is older, before it spends credit (`PL-44R1`).
+BASH_FLOOR = (5, 2)
+
 #: What a word may hold outside quotes with the shell doing nothing to it. `*`
 #: and `?` are the exception, admitted in a path to read, where they choose
 #: files - item files are named after a title that can change, so

@@ -3,11 +3,13 @@ id: PL-44R1
 title: The headless worker host still resolves make to /usr/bin/make (GNU Make 3.81), so make check fails the two GNU make comparison tests in tests/unit/test_makefile_reference.py on every worker run after PL-TSH9 closed, and no worker there can report the gate green
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: worker-runs
-touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
+touches: tools/headless_worker.py, tests/unit/test_headless_worker.py, tools/doc_check.py, tests/unit/test_makefile_reference.py, subprojects/docket/src/docket/shell.py, subprojects/docket/tests/test_shell.py, docs/apparatus.md, docs/maintainer.md
 added: 2026-10-20
+closed: 2026-10-25
+pr: 1788
 payoff: a worker run on a host with an old make or bash is refused before it spends credit, instead of reporting a red gate it cannot explain
 verify: grep -q 'def test_an_old_make_on_path_is_refused_before_any_spend' tests/unit/test_headless_worker.py
 reenters: PL-TSH9
@@ -22,3 +24,5 @@ Observed 2026-10-20 by the headless worker on `PL-70M6`. `make check` exited 2. 
 **Done when.** `check_tools` refuses a run, before any spend, when the `make` or `bash` on the run's `PATH` is older than the versions `docs/maintainer.md` names (GNU Make 4, bash 5.2), and the refusal names that section. `tests/unit/test_headless_worker.py` has `test_an_old_make_on_path_is_refused_before_any_spend`.
 
 **Generator check.** A re-entry of `PL-TSH9` (the owner's Mac failing 90 tests on old bash and make), which closed on 2026-10-19 with a documentation fix. The misread fact is which `make` the worker's `PATH` runs. Its fix told the owner how to install the new one but gave the runner no way to notice the old one, so the same failure returned on the next run.
+
+**Done, 2026-10-25.** `check_tools` now also requires `bash` and `make` on the run's `PATH`, and refuses the run before any spend when either prints a version older than its floor, or prints none. The refusal names `docs/maintainer.md` § "Spend the monthly API credit on delegable items". The floors are not restated in the runner: `docket.shell.BASH_FLOOR` (5.2) belongs with the lexer that reads bash 5.2's grammar, and `doc_check.GNU_MAKE_FLOOR` (4.0) with the Makefile readers. The two comparison tests that failed on the worker host now read the same constants, so the floor the tests need and the floor the runner checks cannot drift apart. A make that is not GNU make is refused too, since the comparison tests assert GNU make.
