@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.7
 touches: subprojects/docket/src/docket/arming.py, tools/product_paths.py, tools/doc_check.py, tools/import_boundary_check.py, tools/new_prose.py, tools/restated_constants.py, tools/workflow_paths_check.py, tools/fact_home_check.py, tests/unit/test_fact_home_check.py, docs/apparatus.md
 added: 2026-10-25
 closed: 2026-10-25

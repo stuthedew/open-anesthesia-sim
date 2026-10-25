@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: projects-trial
+milestone: v0.6.7
 touches: docs/items, .claude/skills/docket/modes/coordinator.md, .claude/skills/docket/SKILL.md, docs/maintainer.md
 deferred-from: v0.7.0 - the Projects trial's verdict, which waits on the owner; no v0.7.0 feature reads it
 added: 2026-09-19
