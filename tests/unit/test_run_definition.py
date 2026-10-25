@@ -48,6 +48,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential
 from anesthesia_sim.core.run_definition import (
+    MAXIMUM_WINDOW_COLUMNS,
     DisplayState,
     Keyframe,
     RunDefinition,
@@ -95,6 +96,27 @@ divergence still fails it.
 # The end of a shared guard's refusal message, which names the refused value and the reason
 # (`PL-T137`). The guard's own tests check each reason. The tests here check the field name.
 REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
+
+DOCUMENTED_MAXIMUM_WINDOW_COLUMNS = 100_000
+"""The bound on one window's columns, as `PL-06LS` states it, written out here.
+
+The tests below drive the code to this value and one past it. They take the number from
+the item rather than from `MAXIMUM_WINDOW_COLUMNS`, so a changed constant fails a test
+rather than moving the boundary the tests check.
+"""
+
+EIGHT_K_PLOT_COLUMNS = 7_681
+"""The columns `chart_columns` asks for on a plot 7 680 logical pixels wide.
+
+There is one column per pixel boundary, so one more column than the width in pixels.
+"""
+
+GRID_SPACING_POWER_OF_TWO_S = 2.0**-13
+"""A column spacing of 2^-13 s, about 0.12 ms, whose multiples are exact in binary.
+
+With this spacing, `n * spacing` and `stop_s // spacing` are exact for every count the tests
+use, so a window holds exactly the number of grid columns the test states.
+"""
 
 
 def _compartments(system: AgentUptakeSystem) -> tuple[float, ...]:
@@ -1039,6 +1061,51 @@ def test_a_window_refuses_to_reach_past_the_run() -> None:
         definition.evaluate(10.0, 30.1, 5)
 
 
+def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plot() -> None:
+    """The bound is the number the item states, and a full-width 8K plot is far inside it."""
+
+    assert MAXIMUM_WINDOW_COLUMNS == DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
+    assert EIGHT_K_PLOT_COLUMNS * 10 < DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
+
+
+@pytest.mark.parametrize("columns", [5.0, True, "5", None])
+def test_a_window_refuses_a_column_count_that_is_not_an_int(columns: object) -> None:
+    """A count must be a whole `int`, so a float or `True` is refused by name (`PL-06LS`).
+
+    Before the fix, a float reached `range()` and failed there with a message that did not
+    name `columns`, and `True` was taken as one column.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+
+    with pytest.raises(
+        TypeError, match=f"^columns of .* has type {type(columns).__name__}, not int"
+    ):
+        definition.evaluate(0.0, 0.0, columns)  # type: ignore[arg-type]
+
+
+def test_evaluate_refuses_more_samples_than_its_bound() -> None:
+    """One column past the bound is refused by name, and the bound itself is drawn (`PL-06LS`)."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+    definition.advance_to(CaseInstant(30.0))
+
+    with pytest.raises(SimulationConfigurationError, match="one call may ask for$") as raised:
+        definition.evaluate(0.0, 30.0, DOCUMENTED_MAXIMUM_WINDOW_COLUMNS + 1)
+
+    assert f"{DOCUMENTED_MAXIMUM_WINDOW_COLUMNS + 1} columns" in str(raised.value)
+
+    window = definition.evaluate(0.0, 30.0, DOCUMENTED_MAXIMUM_WINDOW_COLUMNS)
+
+    assert len(window.times_s) == DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
+
+
 def test_a_sampled_window_pairs_each_state_with_one_instant() -> None:
     """Times and states of different lengths would draw a trace off its own axis."""
 
@@ -1360,6 +1427,44 @@ def test_an_anchored_window_refuses_a_spacing_too_fine_to_count(spacing_s: float
         definition.evaluate_anchored(6.0, 7.0, spacing_s)
 
     assert f"{spacing_s} s" in str(raised.value)
+
+
+def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
+    """A grid of one column past the bound is refused, and the bound itself is drawn (`PL-06LS`).
+
+    The window opens at zero and closes on a grid multiple, so its columns are the multiples
+    1 to `count`, with the opening bound as one more column and the closing bound on the last
+    multiple. Before the fix, the call looped once per column with no limit.
+    """
+
+    _, definition, _ = _stepped_run(steps=200)
+    count = DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
+
+    with pytest.raises(SimulationConfigurationError, match="one call may ask for$") as raised:
+        definition.evaluate_anchored(
+            0.0, (count + 1) * GRID_SPACING_POWER_OF_TWO_S, GRID_SPACING_POWER_OF_TWO_S
+        )
+
+    assert f"{count + 1} grid columns" in str(raised.value)
+
+    window = definition.evaluate_anchored(
+        0.0, count * GRID_SPACING_POWER_OF_TWO_S, GRID_SPACING_POWER_OF_TWO_S
+    )
+
+    assert len(window.times_s) == count + 1
+
+
+def test_an_anchored_window_refuses_a_spacing_that_would_never_finish() -> None:
+    """A spacing of 1e-300 s over one second is about 1e300 columns, and is refused at once.
+
+    The quotient `stop_s / spacing_s` is finite, so the `PL-YZ17` refusal does not apply.
+    Before `PL-06LS`, this call looped once per column and never returned.
+    """
+
+    _, definition, _ = _stepped_run(steps=100)
+
+    with pytest.raises(SimulationConfigurationError, match="one call may ask for$"):
+        definition.evaluate_anchored(6.0, 7.0, 1e-300)
 
 
 def test_an_anchored_window_draws_a_spacing_finer_than_the_smallest_step_exactly() -> None:
