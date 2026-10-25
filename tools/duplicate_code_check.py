@@ -14,8 +14,9 @@ in the change that removes a copy and never stays above what the tree holds.
 It is keyed by the pair rather than by line numbers, so an edit that only
 moves a block does not fail.
 
-pylint's own settings decide what counts as a copy: four or more similar
-lines, with comments, docstrings, imports and signatures ignored. Whether two
+pylint's settings, written out in `PYLINT_ARGS`, decide what counts as a
+copy: four or more similar lines, with comments, docstrings, imports and
+signatures ignored. Whether two
 similar blocks are one rule or two that happen to look alike stays a judgment.
 Where they are two, the remedy is to say so in the code until they no longer
 match, not to raise the baseline.
@@ -27,11 +28,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from itertools import combinations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,8 +42,26 @@ ROOT = Path(__file__).resolve().parent.parent
 #: The trees pylint reads: the simulator, the tools and docket.
 PYLINT_TREES = ("src", "tools", "subprojects/docket/src")
 
-#: The pylint arguments that leave only the duplicate-code check running.
-PYLINT_ARGS = ("--disable=all", "--enable=duplicate-code", "--output-format=json")
+#: The pylint arguments that leave only the duplicate-code check running, with
+#: its settings written out and no rc file read. pylint otherwise reads
+#: `PYLINTRC` or a `~/.pylintrc`, so one contributor's settings would change the
+#: count for the same tree. `syntax-error` stays on, so a module pylint cannot
+#: parse fails the run rather than dropping out of the comparison.
+PYLINT_ARGS = (
+    f"--rcfile={os.devnull}",
+    "--disable=all",
+    "--enable=duplicate-code,syntax-error",
+    "--output-format=json",
+    "--min-similarity-lines=4",
+    "--ignore-comments=y",
+    "--ignore-docstrings=y",
+    "--ignore-imports=y",
+    "--ignore-signatures=y",
+)
+
+#: The bits of pylint's exit status that mean it could not read a module: 1 for
+#: a fatal message and 2 for an error.
+_UNREAD_STATUS = 1 | 2
 
 #: Blocks pylint reports for each pair of modules, as the tree stood when the
 #: check landed. The one entry is `PL-VWXL`'s last: the venous pool and a
@@ -57,8 +78,12 @@ _SPAN_RE = re.compile(r"^==(?P<module>[\w.]+):\[(?P<start>\d+):(?P<end>\d+)\]$",
 def pairs(messages: Sequence[Mapping[str, object]]) -> Counter[tuple[str, str]]:
     """Count the `R0801` blocks in pylint's JSON output by the pair of modules they join.
 
+    pylint reports a block found in three or more modules as one message with
+    one span per module. Each pair of those modules then counts one block, so a
+    rule written in three places is reported for every pair that shares it.
+
     Raises:
-        ValueError: a duplicate-code message names other than two modules,
+        ValueError: a duplicate-code message names fewer than two modules,
             so this cannot say which pair it joins.
     """
 
@@ -70,10 +95,10 @@ def pairs(messages: Sequence[Mapping[str, object]]) -> Counter[tuple[str, str]]:
 
         modules = sorted({span["module"] for span in _SPAN_RE.finditer(str(message["message"]))})
 
-        if len(modules) != 2:
-            raise ValueError(f"a duplicate-code message names {modules}, not two modules")
+        if len(modules) < 2:
+            raise ValueError(f"a duplicate-code message names {modules}, not two or more modules")
 
-        found[(modules[0], modules[1])] += 1
+        found.update(combinations(modules, 2))
 
     return found
 
@@ -82,7 +107,9 @@ def run_pylint(root: Path) -> list[dict[str, object]]:
     """Return pylint's messages for `PYLINT_TREES` under `root`.
 
     Raises:
-        RuntimeError: pylint did not run, or printed something other than JSON.
+        RuntimeError: pylint did not run, printed something other than JSON, or
+            could not read a module, which would otherwise drop that module from
+            the comparison without a word.
     """
 
     done = subprocess.run(
@@ -102,6 +129,15 @@ def run_pylint(root: Path) -> list[dict[str, object]]:
 
     if not isinstance(messages, list):
         raise RuntimeError(f"pylint printed {type(messages).__name__}, not a list of messages")
+
+    unread = [m for m in messages if m.get("type") in ("fatal", "error")]
+
+    if unread or done.returncode & _UNREAD_STATUS:
+        named = "; ".join(f"{m.get('path')}: {m.get('message')}" for m in unread)
+        raise RuntimeError(
+            f"pylint exited {done.returncode} and could not read every module: "
+            f"{named or done.stderr.strip()}"
+        )
 
     return messages
 

@@ -57,8 +57,40 @@ def test_messages_other_than_duplicate_code_are_not_counted() -> None:
 
 
 def test_a_duplicate_code_message_naming_one_module_is_refused_rather_than_skipped() -> None:
-    with pytest.raises(ValueError, match="not two modules"):
+    with pytest.raises(ValueError, match="not two or more modules"):
         pairs([_message("a:[1:9]", "a:[20:28]")])
+
+
+def test_a_block_in_three_modules_counts_once_for_each_pair_of_them() -> None:
+    found = pairs([_message("c:[1:9]", "a:[3:11]", "b:[5:13]")])
+
+    assert dict(found) == {("a", "b"): 1, ("a", "c"): 1, ("b", "c"): 1}
+
+
+def test_a_module_pylint_cannot_parse_fails_the_run_rather_than_dropping_out(
+    tmp_path: Path,
+) -> None:
+    for tree in ("src", "tools", "subprojects/docket/src"):
+        (tmp_path / tree).mkdir(parents=True)
+    (tmp_path / "src" / "first.py").write_text(SHARED, encoding="utf-8")
+    (tmp_path / "src" / "broken.py").write_text("def f(:\n", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="src/broken.py"):
+        run_pylint(tmp_path)
+
+
+def test_a_pylintrc_in_the_environment_does_not_change_the_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for tree in ("src", "tools", "subprojects/docket/src"):
+        (tmp_path / tree).mkdir(parents=True)
+    (tmp_path / "src" / "first.py").write_text(SHARED, encoding="utf-8")
+    (tmp_path / "src" / "second.py").write_text(SHARED, encoding="utf-8")
+    rc = tmp_path / "pylintrc"
+    rc.write_text("[SIMILARITIES]\nmin-similarity-lines=50\n", encoding="utf-8")
+    monkeypatch.setenv("PYLINTRC", str(rc))
+
+    assert dict(pairs(run_pylint(tmp_path))) == {("first", "second"): 1}
 
 
 def test_a_count_below_the_baseline_asks_for_the_baseline_to_be_lowered() -> None:

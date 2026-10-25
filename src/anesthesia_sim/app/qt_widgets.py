@@ -1001,16 +1001,16 @@ def lay_out_question(
     """Build a modal question that asks before something is discarded or changed.
 
     `NewCaseDialog` and `WorkspaceQuestionDialog` are both laid out this way.
-    The title comes first, then the `body` labels at the dialog's fixed width.
-    The two buttons follow, destructive first and safe last. The action is
-    outlined and never the default. The keep button is filled and is the
-    default, so Return keeps everything as it was, as Escape and closing the
-    dialog do. The action's `clicked` runs `accept()` and the keep button's
-    runs `reject()`.
+    The title comes first. The `body` labels follow it, each at the dialog's fixed width.
+    The two buttons come last, with the destructive button first and the safe button last.
+    The action button is outlined and is never the default. The keep button is filled
+    and is the default. So pressing Return keeps everything as it was. Pressing Escape
+    or closing the dialog does the same. The action button's `clicked` signal runs
+    `accept()`, and the keep button's `clicked` signal runs `reject()`.
 
     Args:
-        dialog: The dialog to build. Its surface is declared as
-            `declare_interface_colours` declares it.
+        dialog: The dialog to build. This function calls `declare_interface_colours`
+            on it, which declares the dialog's surface.
         title: The question, shown as the window title and as the first label.
         body: The statements under the title, in reading order.
         action_label: The destructive action's text.
