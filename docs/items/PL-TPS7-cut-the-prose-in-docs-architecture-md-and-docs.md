@@ -9,6 +9,7 @@ feature: prose-quality
 touches: docs/ARCHITECTURE.md, docs/apparatus.md, docs/maintainer.md
 added: 2026-09-05
 closed: 2026-10-25
+pr: 1796
 verify: ! grep -qF 'It is a map for contributors, not a scientific specification — for the' docs/ARCHITECTURE.md && ! grep -qF 'session cannot act on still costs every session the context to read it.' docs/maintainer.md && ! grep -qF 'exist so agent sessions can be productive, rather than the simulator they' docs/apparatus.md
 not-delegable: readability is judged by a person, and no command separates trimmed prose from padded prose. A line-count ceiling would be met by deleting a statement to reach a number, and `doc_check.py check` passes today
 ---
