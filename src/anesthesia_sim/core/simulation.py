@@ -189,14 +189,7 @@ class SimulationState:
                     Or `name` is `uptake_system` and the state already has one.
             """
 
-            if name == "uptake_system":
-                if hasattr(self, name):
-                    raise SimulationConfigurationError(
-                        "the run's uptake system cannot be replaced once the run's state is "
-                        "built, because the step count says how far that system has been "
-                        "advanced: build a new state for the new system"
-                    )
-            elif name == "step_count":
+            if name == "step_count":
                 require_step_count(value)
 
                 if hasattr(self, "simulation_step_s"):
@@ -206,6 +199,12 @@ class SimulationState:
                     require_simulation_step(value)
 
                 _require_a_run_could_stand_at(self.step_count, value)
+            elif name == "uptake_system" and hasattr(self, name):
+                raise SimulationConfigurationError(
+                    "the run's uptake system cannot be replaced once the run's state is "
+                    "built, because the step count says how far that system has been "
+                    "advanced: build a new state for the new system"
+                )
 
             super().__setattr__(name, value)
 
