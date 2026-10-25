@@ -21,11 +21,11 @@ rule.
 **`--verdict` also compares each changed simulator unit test with its base
 version.** A mutant of the code cannot show that a branch weakened a test,
 because the test is what changed. So `compare_tests` runs the mutants of the
-display modules under `app/` against the base version of each changed test
-and against the branch's version. A mutant that only the base version catches
-goes into the same `uncaught` list (project owner, 2026-10-24, ratified, over
-leaving those tests unmeasured, `PL-7FPD`). `compare_tests` says what it
-leaves out.
+display modules under `app/`, and of each `core/` module the test imports by
+name, against the base version of each changed test and against the branch's
+version. A mutant that only the base version catches goes into the same
+`uncaught` list (project owner, 2026-10-24, ratified, over leaving those tests
+unmeasured, `PL-7FPD` and `PL-H57W`). `compare_tests` says what it leaves out.
 
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
@@ -159,12 +159,15 @@ NO_MUTANTS = (
 )
 #: How many names a note lists before it counts the rest.
 NOTE_NAMES = 5
-#: The package whose mutants measure a changed test. A test of what the
-#: interface displays exists to catch a fault in the display code, so only
-#: these mutants run against the two versions of a changed test, which keeps
-#: both runs to minutes (`PL-7FPD`). A test of `core/` on a branch that changes
-#: no `core/` function stays unmeasured (`PL-H57W`).
+#: The package whose mutants measure every changed test. A test of what the
+#: interface displays exists to catch a fault in the display code, so all of
+#: these mutants run against the two versions of a changed test (`PL-7FPD`).
 DISPLAY_PACKAGE = f"{PACKAGE}.app"
+#: The package whose mutants measure a changed test only where it imports the
+#: module by name. A test that builds a run reaches most of `core/`, and all of
+#: those mutants would take 9 to 16 minutes for each version of the test, so
+#: only the modules the test names run (`PL-H57W`).
+CORE_PACKAGE = f"{PACKAGE}.core"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
@@ -799,33 +802,63 @@ def _clean_run(tree: Path, tests: Sequence[str]) -> int | None:
     return done.returncode
 
 
-def _display_statuses(
+def core_imports(source: str) -> set[str]:
+    """The names under `CORE_PACKAGE` that the test file `source` imports, as dotted modules.
+
+    `from anesthesia_sim.core.dosing import x` names `anesthesia_sim.core.dosing`,
+    and so does `from anesthesia_sim.core import dosing` or `import
+    anesthesia_sim.core.dosing`. An import inside a function counts too. A name
+    that is not a module, such as a class that the package exports, matches no
+    mutated file, so the caller drops it.
+    """
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            module = node.module
+            if module == CORE_PACKAGE or module.startswith(f"{CORE_PACKAGE}."):
+                names.add(module)
+                names.update(f"{module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(
+                alias.name for alias in node.names if alias.name.startswith(f"{CORE_PACKAGE}.")
+            )
+    return names
+
+
+def _compared_statuses(
     tree: Path,
     patterns: Sequence[str],
     tests: Sequence[str],
     table: Mapping[str, object],
     files: Sequence[str],
 ) -> dict[str, str]:
-    """Run mutmut in `tree` on `patterns` against `tests`, and settle its display mutants.
+    """Run mutmut in `tree` on `patterns` against `tests`, and settle the mutants of `files`.
 
-    `files` are the display modules, read from the checkout, since a copied
-    tree holds the same source and is not a checkout.
+    `files` are the compared modules, read from the checkout, since a copied
+    tree holds the same source and is not a checkout. A mutant of any other
+    module is left out.
     """
     code, log = run(tree, patterns, table, tests)
     if code:
         raise Refusal(f"mutmut exited {code} in {tree}. The end of {log}:\n{_tail(log)}")
-    prefix = f"{DISPLAY_PACKAGE}."
-    found = {name: status for name, status in statuses(tree).items() if name.startswith(prefix)}
+    modules = {module_name(path) for path in files}
+    found = {
+        name: status
+        for name, status in statuses(tree).items()
+        if name.rpartition(".")[0] in modules
+    }
     return settle(tree, found, recorded_exit_codes(tree, files))
 
 
 def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Compared:
-    """The display mutants that a changed test's base version kills and the branch's version misses.
+    """The mutants that a changed test's base version kills and the branch's version misses.
 
     A mutant of the code cannot show that a branch weakened a test, because
     the test is what changed. So the two versions of each changed simulator
-    unit test run against the same mutants of `DISPLAY_PACKAGE`, both on the
-    branch's source, and a mutant has the same name in both runs.
+    unit test run against the same mutants, both on the branch's source, and
+    a mutant has the same name in both runs. The mutants are those of
+    `DISPLAY_PACKAGE`, and of each module of `CORE_PACKAGE` that either
+    version of a compared file imports by name, by `core_imports`.
 
     Each run happens in a copy of the tree, so the main run's `mutants/` is
     left alone. In the base copy, every file the branch changed under `tests/`
@@ -839,7 +872,9 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
     is named in a note and not compared, because the branch changed what the
     test checks. A test outside `tests/unit/` is named in a note too. The
     project owner chose this check on 2026-10-24 (ratified, over leaving these
-    tests unmeasured, `PL-7FPD`).
+    tests unmeasured, `PL-7FPD`), and its core modules the same day (ratified,
+    over leaving core unit tests unmeasured and over comparing every mutant a
+    changed test reaches, `PL-H57W`).
     """
     compared = Compared()
     unit_tests = [path for path in change.tests if path.startswith(f"{UNIT_TESTS}/")]
@@ -859,23 +894,26 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
         path: read_git(["show", f"{change.fork}:{path}"], root) for path in listed_paths(listing)
     }
     selections: list[tuple[str, tuple[str, ...]]] = []
+    imported: dict[str, set[str]] = {}
     for path in unit_tests:
         if path not in base:
             continue
         here = root / path
         branch = here.read_text(encoding="utf-8") if here.is_file() else None
+        imported[path] = core_imports(base[path]) | core_imports(branch or "")
         patch = "" if branch is None else read_git(["diff", "-U0", change.fork, "--", path], root)
         # A test the table deselects never runs under mutmut, and a selection
         # of nothing but such tests would collect none.
         selection = base_selection(path, base[path], branch, patch)
         selections.append((path, tuple(t for t in selection if t not in deselected(table))))
     on_branch = [path for path in unit_tests if (root / path).is_file()]
-    displays = [
+    mutated = [
         name
         for source in _strings(table, "source_paths")
         for name in working_files(root, source)
-        if is_mutated(name, table) and module_name(name).startswith(f"{DISPLAY_PACKAGE}.")
+        if is_mutated(name, table)
     ]
+    displays = [name for name in mutated if module_name(name).startswith(f"{DISPLAY_PACKAGE}.")]
     with tempfile.TemporaryDirectory(prefix="diff_mutation_") as scratch:
         base_tree, branch_tree = Path(scratch, "base"), Path(scratch, "branch")
         copy_tree(root, base_tree, table)
@@ -901,22 +939,34 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
             files.append(path)
         if not tests:
             return compared
+        named = set().union(*(imported[path] for path in files))
+        cores = [name for name in mutated if module_name(name) in named]
+        modules = [module_name(name) for name in cores]
+        # A module's own mutants are `x_` and `xǁ` names. `module.*` would also
+        # take every submodule's when the module is a package such as
+        # `anesthesia_sim.core` itself.
+        patterns = [
+            f"{DISPLAY_PACKAGE}.*",
+            *(pattern for module in modules for pattern in (f"{module}.x_*", f"{module}.xǁ*")),
+        ]
+        scope = DISPLAY_PACKAGE + (f" and of {_listed(modules)}" if modules else "")
+        compared_files = [*displays, *cores]
         caught = sorted(
             name
-            for name, status in _display_statuses(
-                base_tree, [f"{DISPLAY_PACKAGE}.*"], tests, table, displays
+            for name, status in _compared_statuses(
+                base_tree, patterns, tests, table, compared_files
             ).items()
             if status in CAUGHT
         )
         if not caught:
             compared.notes.append(
                 f"Compared: the base version of {_listed(files)} catches no mutant of "
-                f"{DISPLAY_PACKAGE}, so the branch's version has nothing to keep catching."
+                f"{scope}, so the branch's version has nothing to keep catching."
             )
             return compared
         if on_branch:
             copy_tree(root, branch_tree, table)
-            after = _display_statuses(branch_tree, caught, on_branch, table, displays)
+            after = _compared_statuses(branch_tree, caught, on_branch, table, compared_files)
         else:
             after = {}
         shown_in = branch_tree if on_branch else base_tree
@@ -934,10 +984,11 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
             )
             (compared.uncaught if status in MISSED else compared.undecided).append(entry)
     compared.notes.append(
-        f"Compared: {len(caught)} mutants of {DISPLAY_PACKAGE} that the base version of "
+        f"Compared: {len(caught)} mutants of {scope} that the base version of "
         f"{_listed(files)} catches, run against this branch's version of "
         f"{_listed(on_branch) or 'no file, since it deleted them'}. Whether a changed test "
-        "still catches a fault elsewhere, such as in anesthesia_sim.core, is not measured."
+        f"still catches a fault elsewhere, such as in a module of {CORE_PACKAGE} that it "
+        "does not import by name, is not measured."
     )
     return compared
 

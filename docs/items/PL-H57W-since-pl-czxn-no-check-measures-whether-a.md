@@ -3,11 +3,12 @@ id: PL-H57W
 title: Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 priority: P1
 effort: L
-status: ready
+status: done
 classes: defect, safety
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.toml
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md
 blocked-by: PL-7FPD
 added: 2026-10-24
+closed: 2026-10-25
 payoff: a branch that loosens a core unit test, such as a wider tolerance on a concentration, is refused before it merges, as a loosened display test already is
 verify: grep -q 'def test_a_branch_that_weakens_a_core_test_is_refused' tests/unit/test_diff_mutation.py
 reenters: PL-CZXN
@@ -28,6 +29,21 @@ Split from `PL-7FPD` while triaging it on 2026-10-24. `PL-7FPD`'s problem covers
 **Answered 2026-10-24: yes, scoped as recommended** (project owner, 2026-10-24, ratified, over leaving core unit tests unmeasured as `PL-CZXN`'s 2026-10-19 decision did, and over comparing every mutant a changed test reaches). The comparison covers only the mutants in the core modules that the changed test file imports by name. Its scoped cost is measured on `tests/unit/test_formatting.py` and the two `#1572` dashboard tests before it is built, and it is built after `PL-7FPD`, whose comparison of base and branch mutants it reuses.
 
 **Done when.** `docket verify` refuses a branch that changes a core unit test so that a mutant in a core module the test imports by name, which the test's base version kills, survives the branch's version. It passes a branch whose changed test still kills every such mutant. `tests/unit/test_diff_mutation.py` has `test_a_branch_that_weakens_a_core_test_is_refused`, and the brief records the scoped cost measured on the files named above.
+
+**Measured 2026-10-25, before building, on four cores that no other session shared** (load average about 4.5, from this session's own runs). Each run selected only the named tests, in a copy of the tree, as `compare_tests` does for the base version.
+
+| Tests | Mutants run | Mutants the tests reached | Time |
+| --- | --- | --- | ---: |
+| all of `tests/unit/test_formatting.py` | the `app/` modules and the 5 `core/` modules it imports | 862 | 219 s |
+| the same | every mutant | 1,893 | 493 s |
+| the two tests `#1572` changed in `tests/unit/test_dashboard_frame.py` | the `app/` modules and the 8 `core/` modules the file imports | 1,386 | 325 s |
+| the same | every mutant | 1,962 | 415 s |
+
+So scoping by import cuts the base run by 55% for `test_formatting.py` and by 22% for the dashboard tests, whose file imports 8 of the 21 files under `core/`, all of which mutmut mutates. The branch run takes only the mutants the base run caught, so it costs less than the base run. A changed core test therefore adds about two to four minutes to each version of its file, on top of the display comparison's two. That is the cost the owner accepted on 2026-10-24.
+
+**What was done.** `tools/diff_mutation.py` has `core_imports`, which lists the modules under `anesthesia_sim.core` that a test file names in `from anesthesia_sim.core.x import ...`, `from anesthesia_sim.core import x` or `import anesthesia_sim.core.x`, inside a function or not. `compare_tests` takes the union of those modules over the base and branch versions of each compared file, keeps the ones mutmut mutates, and runs their mutants beside the display modules' in both runs. Each module's pattern takes only its own functions' mutants, so a file that imports from the package `anesthesia_sim.core` itself does not bring in every submodule. A mutant that the base version kills and the branch's version misses refuses the branch as a display mutant does. `tests/unit/test_diff_mutation.py` has `test_a_branch_that_weakens_a_core_test_is_refused`, its passing counterpart, and a test of `core_imports`. `docs/mutation-testing.md` says what the check now reads and what stays unmeasured: a fault the test catches only through a `core/` module it does not import by name.
+
+**Measured end to end on 2026-10-25.** A message was added to the second assertion of `tests/unit/test_concentration.py::test_the_two_forms_convert_both_ways`, which keeps every assertion, and `tools/diff_mutation.py --verdict` was run against `origin/main`. The base version of that test caught 10 mutants of `app/` and of the 7 `core/` modules the file imports, the branch's version still caught all 10, and the verdict passed in 133 s for both runs. The refusing direction is covered by `test_a_branch_that_weakens_a_core_test_is_refused`, which stubs mutmut, because this session's permission check refused the edit that deletes a real assertion.
 
 **Generator check.** An instance of `PL-4W2L`'s fact, "whether a branch's diff weakens its tests", reached through `PL-CZXN`, which closed on 2026-10-24, like `PL-7FPD`. Recorded as `reenters: PL-CZXN`.
 
