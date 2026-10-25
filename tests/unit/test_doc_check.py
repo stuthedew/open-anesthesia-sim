@@ -1131,6 +1131,15 @@ def test_a_figure_in_a_list_a_lower_case_unit_or_a_math_span_is_asked_about(
     assert f"{shown} equals " in untied[0]
 
 
+def test_python_source_is_named_by_docket_s_suffixes() -> None:
+    """`PL-H716`: the removed-definition reader spelled `(".py", ".pyi")` beside
+    `docket.verify`'s copy, so it reads `docket.python.SOURCE_SUFFIXES` now."""
+    from docket.python import SOURCE_SUFFIXES
+
+    assert doc_check.SOURCE_SUFFIXES is SOURCE_SUFFIXES
+    assert not hasattr(doc_check, "PYTHON_SUFFIXES")
+
+
 def test_a_math_span_split_across_two_lines_is_refused_before_its_figure_is_read(
     tmp_path: Path,
 ) -> None:

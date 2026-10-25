@@ -25,6 +25,7 @@ import docket.verify as verify_module
 from docket.config import Config
 from docket.grep import Wrap
 from docket.model import Item, parse_item
+from docket.python import SOURCE_SUFFIXES
 from docket.store import insert_field, replace_field
 from docket.verify import (
     CONFIGURATION_READERS,
@@ -739,6 +740,17 @@ def test_each_file_the_suppression_check_reads_has_a_reader_that_reads_it_whole(
     read none of its lines (`PL-PNZB`).
     """
     assert set(SUPPRESSION_BEARING_SUFFIXES) == {*QUOTING_SUFFIXES, *CONFIGURATION_READERS}
+
+
+def test_the_python_source_suffixes_are_read_from_their_one_home() -> None:
+    """`PL-H716`: `verify` and `tools/doc_check.py` each spelled `(".py", ".pyi")`.
+
+    Which files are Python source is one fact, so both read
+    `python.SOURCE_SUFFIXES`, and a suffix added there reaches every reader.
+    """
+    assert QUOTING_SUFFIXES is SOURCE_SUFFIXES
+    assert SUPPRESSION_BEARING_SUFFIXES[: len(SOURCE_SUFFIXES)] == SOURCE_SUFFIXES
+    assert SOURCE_SUFFIXES == (".py", ".pyi")
 
 
 def test_a_type_ignore_is_not_a_suppression(tmp_path: Path) -> None:
