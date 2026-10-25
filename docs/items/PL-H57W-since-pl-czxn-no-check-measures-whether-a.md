@@ -5,6 +5,7 @@ priority: P1
 effort: L
 status: done
 classes: defect, safety
+milestone: v0.6.8
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md
 blocked-by: PL-7FPD
 added: 2026-10-24

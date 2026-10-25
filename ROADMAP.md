@@ -148,7 +148,8 @@ rule above applies.
 | v0.6.4 | Completed | **The release where `core/` reads each input check from the one rule that owns it and requires four defaults that restated a data file, where each agent's MAC is built once as a checked type, and where each displayed unit and each run-state surface in the interface has one writer.** 32 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No equation, parameter or stored value changed, and no run differs**: `core/` moved (`d482c41` to `c5e1538`) because its input checks now each have one home (`#1772`), its refusals name the refused value (`#1775`) and each MAC is a `MacPercent` (`#1784`), and the trajectory comparison against the v0.6.3 tag found every state, readout and hover string bit-identical over 81 cases and three 24-hour runs, the snapshot's MAC differing only in its type. `data/` resolves to `bd5d496` at both ends. An agent change now clears the branch panel's refusal notice, and a halted run shows the current playback rate (`PL-BM6X`, `PL-P58M`). Three items merged inside the v0.6.3 tag's span and are described here (`PL-LF0P`, `PL-YRLM`, `PL-SC0N`). **It finishes six features**, among them `parse-dont-validate` and `documentation-standard`, and closes four generator heads, all spent (`PL-CMJ5`, `PL-GTH6`, `PL-R0BJ`, `PL-VDWT`). **Sixteen are Gate 3 entries**, and the gate stands at 18 of 46 cleared, from 3 of 46 at the v0.6.3 tag. `PL-21GJ`, the cut, ships in no release under `PL-KRS6`. | 32 items |
 | v0.6.5 | Completed | **The release where the headless worker runner refuses a host whose `bash` or `make` is older than `make check` needs, and where the docket skill tells builder subagents in one container to keep their own scratch files, run long commands in the foreground and leave the full suite to the parent.** Four items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/`, `docs/MODEL.md`, `README.md` and `.github/` resolve to the same trees at the v0.6.4 tag and here. `tools/headless_worker.py` refuses a run before any spend when `bash` is older than 5.2 or `make` is not GNU make 4 or later, so a worker on a host still running GNU Make 3.81 stops with a reason instead of failing `make check` (`PL-44R1`). The docket skill's picking mode gives three rules for builder subagents sharing one container: a scratch subfolder named for each item, long commands in the foreground, and one full suite at a time, run by the parent (`PL-5PL5`, `PL-9K28`, `PL-GH8L`). **It finishes `parallel-builders`**, and closes no generator head. **All four are Gate 3 entries**, and the gate stands at 22 of 46 cleared, from 18 of 46 at the v0.6.4 tag. `PL-Z7DZ`, the cut, ships in no release under `PL-KRS6`. | 4 items |
 | v0.6.6 | Completed | **The release where a test that copies a supported-range limit is found by a monthly check that moves each limit and reruns the suite, where `docs/MODEL.md`'s figures for the supported run length are held to the constant they come from, where the choice of model and effort for each kind of work is read from one table in `docket.toml`, and where Gate 3's frozen list was swept for staleness.** Seven items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/`, `tests/reference/` and `README.md` resolve to the same trees at the v0.6.5 tag and here. `docs/MODEL.md` moved only by four `derived:` markers, HTML comments that no reader sees, which tie its step-count figures to `MAXIMUM_ELAPSED_SIMULATION_TIME_S` and `MINIMUM_SIMULATION_STEP_S`. A new monthly `restated-constants` job in `drift.yml` moves each limit in `core/supported_ranges.py` and names each test that fails without reading the limit by name (`PL-0Z0F`), and `tools/doc_check.py` reads a number grouped with spaces as one number (`PL-NH53`). The `[models]` table and its one reader, `docket.model_choice`, decide which model and effort `bin/docket next`, the headless worker and the model-document review use (`PL-0XDM`), and the table no longer excludes any model, since Fable was only the example of a stale model named outside one home (`PL-J9VC`). The sweep of Gate 3's 24 open entries dropped none and corrected six records (`PL-F2NX`), and `CLAUDE.md` now says to wait on a long run only as a tracked background task with a scheduled check-in (`PL-D1FD`). `docs/ARCHITECTURE.md`, `docs/maintainer.md` and `docs/apparatus.md` are rewritten in plain English with no fact dropped (`PL-TPS7`). **It finishes `one-home-for-constants` and `gate-staleness-sweep`**, and closes no generator head. **None is a Gate 3 entry**, and the gate stands at 22 of 46 cleared, as at the v0.6.5 tag. `PL-2FHP`, the cut, ships in no release under `PL-KRS6`. | 7 items |
-| v0.6.7 | Completed / current baseline | **The release where a headless worker's branch that a review sent back no longer hides its item, where a worker's `make check` stays green on the item it has correctly finished, where each CI test part writes the test modules' assert-rewrite cache once instead of in every worker, where the session-start digest's `Top:` line under product focus names product work, where every docstring and comment under `src/` is rewritten in plain English, and where `tools/fact_home_check.py` refuses one repository path bound under two names.** Eleven items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No executable statement changed, and no run can differ**: `src/` moved only in its docstrings and comments, which `PL-1K5X` (`#1798`) rewrote in plain English, and with every docstring removed the code of each of its files is identical at the v0.6.6 tag and here. `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at both ends. `tools/branch_sweep.py` reads a worker branch whose latest run was reviewed `sent-back` as settled, so `bin/docket next` offers its item again (`PL-W5JR`), and `bin/docket check` treats the worker's own item's passing `verify:` as an advisory for the reviewer rather than an error (`PL-WJJ8`). A new step in both parts of `quality.yml` collects the test modules once per core before pytest runs, which cut a CI-shaped part 1 from 188 s to 163.5 s (`PL-GQCQ`), and `PL-VMMB` keeps a share that holds no test module from failing the job. `bin/docket verify` no longer counts a call of `pytest_ignore_collect` as an added suppression (`PL-3G9M`). `tools/fact_home_check.py` refuses a repository path bound under two names in two apparatus modules, and its seven copies now read their homes (`PL-S08Z`). The pull request email guard writes its refusals to the guards' log (`PL-HHKC`), and `bin/docket check` reads a shipped milestone in `blocked-by` as cleared (`PL-YL5R`). A `focus` key in `docket.toml` ranks the digest's `Top:` line in the product lane (`PL-2CPD`), and the Projects coordinator's rules moved into a docket skill mode (`PL-NZC0`, `#1799`, inside the v0.6.6 tag's span). **It finishes `verify-false-reject` and `workflow-stress-2026-09`**, and closes no generator head. **Two are Gate 3 entries**, `PL-W5JR` and `PL-WJJ8`, and the gate stands at 24 of 46 cleared, from 22 of 46 at the v0.6.6 tag. `PL-LSN3`, the cut, ships in no release under `PL-KRS6`. | 11 items |
+| v0.6.7 | Completed | **The release where a headless worker's branch that a review sent back no longer hides its item, where a worker's `make check` stays green on the item it has correctly finished, where each CI test part writes the test modules' assert-rewrite cache once instead of in every worker, where the session-start digest's `Top:` line under product focus names product work, where every docstring and comment under `src/` is rewritten in plain English, and where `tools/fact_home_check.py` refuses one repository path bound under two names.** Eleven items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **No executable statement changed, and no run can differ**: `src/` moved only in its docstrings and comments, which `PL-1K5X` (`#1798`) rewrote in plain English, and with every docstring removed the code of each of its files is identical at the v0.6.6 tag and here. `tests/reference/`, `docs/MODEL.md` and `README.md` resolve to the same trees at both ends. `tools/branch_sweep.py` reads a worker branch whose latest run was reviewed `sent-back` as settled, so `bin/docket next` offers its item again (`PL-W5JR`), and `bin/docket check` treats the worker's own item's passing `verify:` as an advisory for the reviewer rather than an error (`PL-WJJ8`). A new step in both parts of `quality.yml` collects the test modules once per core before pytest runs, which cut a CI-shaped part 1 from 188 s to 163.5 s (`PL-GQCQ`), and `PL-VMMB` keeps a share that holds no test module from failing the job. `bin/docket verify` no longer counts a call of `pytest_ignore_collect` as an added suppression (`PL-3G9M`). `tools/fact_home_check.py` refuses a repository path bound under two names in two apparatus modules, and its seven copies now read their homes (`PL-S08Z`). The pull request email guard writes its refusals to the guards' log (`PL-HHKC`), and `bin/docket check` reads a shipped milestone in `blocked-by` as cleared (`PL-YL5R`). A `focus` key in `docket.toml` ranks the digest's `Top:` line in the product lane (`PL-2CPD`), and the Projects coordinator's rules moved into a docket skill mode (`PL-NZC0`, `#1799`, inside the v0.6.6 tag's span). **It finishes `verify-false-reject` and `workflow-stress-2026-09`**, and closes no generator head. **Two are Gate 3 entries**, `PL-W5JR` and `PL-WJJ8`, and the gate stands at 24 of 46 cleared, from 22 of 46 at the v0.6.6 tag. `PL-LSN3`, the cut, ships in no release under `PL-KRS6`. | 11 items |
+| v0.6.8 | Completed / current baseline | **The release where `docs/MODEL.md`, `ROADMAP.md` and every docstring and comment in the simulator tests are rewritten in plain English with no equation, unit, number or test changed, where `tools/fact_home_check.py` refuses a plain string copied under a second name, where the untied-restatement check reads slash-joined lists, lower-case units and figures in math spans, and where `bin/docket verify` runs a core module's mutants against a changed core unit test.** 15 items, and a patch on both halves of § "Versioning decision"'s test. No capability boundary is crossed: v0.7.0, the schematic, is scoped and not built, and v0.7.0 and v0.8.0 are given to milestone sections. **Nothing in `src/` changed, and no run can differ**: `src/` resolves to `7be0bb4` at the v0.6.7 tag and here. `tests/reference/` moved only in its docstrings and comments, and `tools/ast_identity.py` finds no code moved in any of its 10 files. `docs/MODEL.md` moved because `PL-BZR4` (`#1808`) rewrote its prose, keeping every equation, unit, number, marker, section heading and citation. `PL-FDMJ` and `PL-WL5L` (`#1805`) rewrote the simulator tests' prose, `PL-K7N7` (`#1822`) rewrote `ROADMAP.md`'s, and three test docstrings that stated wrong figures were corrected (`PL-FJMW`, `PL-KM19`, `PL-KYVR`). One source of truth carries five defects (`PL-3PKN`, `PL-6GP9`, `PL-H716`, `PL-2T6S`, `PL-P0RG`), `PL-H57W` closes a gap in `verify`'s mutation check, `PL-J7YG` ranks the model review on fixes that did not hold, and `PL-PV5Q` re-reads `docs/interface-provenance.md`'s Blender rationale against Blender's own pages. **It finishes `one-source-of-truth` and `prose-quality`**, and closes no generator head. **One is a Gate 3 entry**, `PL-H57W`, and with `PL-QX2G` and `PL-YT3T` added to the list by `#1820` the gate stands at 25 of 48 cleared, from 24 of 46 at the v0.6.7 tag. `PL-43Z5`, the cut, ships in no release under `PL-KRS6`. | 15 items |
 
 **Tags.** Every version that the table above marks Completed carries an
 annotated tag. This section deliberately does not restate which versions those
@@ -264,121 +265,84 @@ checkout will produce it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.6.7
+## Current baseline: v0.6.8
 
-v0.6.7 is the release where a headless worker's branch that a review sent
-back no longer hides its item, and where a worker's `make check` stays green
-on the item it has correctly finished. It is also the release where each CI
-test part writes the test modules' assert-rewrite cache once, where the
-session-start digest's `Top:` line under product focus names product work,
-and where every docstring and comment under `src/` is rewritten in plain
-English. The release has 11 items, and it is a patch on both halves of
-§ "Versioning decision"'s test. No capability boundary is crossed. The next
-milestone, v0.7.0, the schematic, is scoped and not built, and v0.7.0 and
-v0.8.0 are given to milestone sections. Two of the eleven items, `PL-W5JR` and
-`PL-WJJ8`, are on Gate 3's frozen list, which stands at 24 of 46 cleared, from
-22 of 46 at the v0.6.6 tag.
+v0.6.8 is the release where `docs/MODEL.md`, `ROADMAP.md` and every
+docstring and comment in the simulator tests are rewritten in plain English,
+with no equation, unit, number or test changed. It is also the release where
+`tools/fact_home_check.py` refuses a plain string copied under a second name,
+where the untied-restatement check reads three more ways of writing a stored
+value, and where `bin/docket verify` runs a core module's mutants against a
+changed core unit test. The release has 15 items, and it is a patch on both
+halves of § "Versioning decision"'s test. No capability boundary is crossed.
+The next milestone, v0.7.0, the schematic, is scoped and not built, and
+v0.7.0 and v0.8.0 are given to milestone sections. One of the fifteen items,
+`PL-H57W`, is on Gate 3's frozen list. `#1820` added `PL-QX2G` and `PL-YT3T`
+to that list when it split `PL-58D7`, so the gate stands at 25 of 48 cleared,
+from 24 of 46 at the v0.6.7 tag.
 
-**No executable statement changed, and no run can differ:**
+**Nothing in `src/` changed, and no run can differ:**
 
-| Tree | v0.6.6 tag | This cut | What moved |
+| Tree | v0.6.7 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `b1f4b46` | `7be0bb4` | docstrings and comments in 64 of its 76 files |
-| `src/anesthesia_sim/core/` | `c5e1538` | `5e150fb` | docstrings and comments |
-| `src/anesthesia_sim/data/` | `bd5d496` | `2a85cd0` | docstrings in its five `__init__.py` files; every data file is unchanged |
-| `tests/reference/` | `74227d6` | `74227d6` | nothing |
-| `docs/MODEL.md` | `c15ffed` | `c15ffed` | nothing |
+| `src/` | `7be0bb4` | `7be0bb4` | nothing |
+| `src/anesthesia_sim/core/` | `5e150fb` | `5e150fb` | nothing |
+| `src/anesthesia_sim/data/` | `2a85cd0` | `2a85cd0` | nothing |
+| `tests/reference/` | `74227d6` | `4ef9963` | docstrings and comments in its 10 files |
+| `docs/MODEL.md` | `c15ffed` | `c70bc53` | its prose, with every equation, unit, number, marker and citation kept |
 | `README.md` | `7db4f10` | `7db4f10` | nothing |
-| `.github/` | `c4c4845` | `bac62df` | a cache step in both test parts of `quality.yml` |
+| `.github/` | `bac62df` | `bac62df` | nothing |
 
-`src/` moved because `PL-1K5X` (`#1798`) rewrote every docstring and `#`
-comment under it in plain English. `uv run python tools/ast_identity.py
-v0.6.6 HEAD src` exits 1 and names 19 files as changed, but each of them
-differs only in an attribute docstring: a bare string statement after an
-assignment, which Python evaluates and discards. With every bare string
-statement removed, the syntax trees of all 19 files are identical at the
-v0.6.6 tag and here, and the other 45 files that moved already compare
-equal apart from docstrings. `PL-6GP9` records that the tool strips only the
-first string of each body. So the trajectories were not measured again. A
-docstring records units and provenance, so the cut also compared the unit
-words and numbers in each changed file under `core/` and `data/` with the
-v0.6.6 tag, and read each passage where they differ. None states a different
-unit or value. `#1798`'s second blind review found one docstring, on
-`BreathingCircuit.time_constant_s`, that gave the quotient
-`circuit_volume_l / fresh_gas_flow_l_min` as seconds. The quotient is in
-minutes, and the docstring now says that the method converts it to seconds.
-The same pull request filed the wrong statements its review found under the
-`stale-source-claims` feature (`PL-756M`, `PL-DP7B`, `PL-0Z35`) rather than
-fixing them, because the rewrite changed no fact.
+Because `src/` resolves to the same tree at both ends, the trajectories were
+not measured again. `uv run python tools/ast_identity.py v0.6.7 HEAD tests`
+finds no code moved in any simulator test file. The four test files it names
+as changed are the apparatus tests of `tools/ast_identity.py`,
+`tools/diff_mutation.py`, `tools/doc_check.py` and `tools/fact_home_check.py`,
+which the defects below changed.
 
-**A sent-back worker branch.** When a review sends a headless worker's run
-back, its record commits are carried to a branch of their own, with new
-shas. `tools/branch_sweep.py` then read the old worker branch as holding
-unfinished work, and kept it. While the branch was kept, `bin/docket next`
-hid the item as in flight until the owner deleted the branch by hand.
-`tools/worker_runs.py` now returns each worker branch whose latest run record
-was reviewed `sent-back`, and the sweep archives such a branch when nothing
-was pushed to it after the review. An open pull request, the only copy of an
-item and the grace period still keep a branch (`PL-W5JR`).
+**Plain English in the model document, the roadmap and the tests.**
+`PL-BZR4` (`#1808`) rewrote `docs/MODEL.md` for a careful newcomer. A script
+confirmed that every code span, item id, URL, number and section reference
+survived, and that all 333 markers are unchanged. Two blind review passes and
+three full comparison rounds then found 20 changes of meaning between them,
+and all were fixed before it merged. `PL-FDMJ` (`#1805`) rewrote every
+docstring and `#` comment in the 76 simulator test files, and with it
+`PL-WL5L` corrected one docstring that said the circuit refuses a flow range
+narrower than one dial step, where it refuses only an empty overlap.
+`PL-K7N7` (`#1822`) rewrote `ROADMAP.md`'s prose and left every table,
+heading, gate entry and count untouched, so `bin/docket wave` and `bin/docket
+gate` print the same output before and after. Three test docstrings that the
+rewrite's reviews found stating wrong figures are corrected: the coupled
+dynamics gate's quoted errors and its claims about the worst trajectory
+(`PL-FJMW`), two payload-model counts (`PL-KM19`), and the margins of the
+controller test's shared-column bound (`PL-KYVR`). `PL-PV5Q` re-read the
+stated-rationale section of `docs/interface-provenance.md` against Blender's
+own pages, where it had rested on search-engine summaries.
 
-**A worker's own finished item.** `bin/docket check --verify` refuses an open
-item whose `verify:` command already passes. On a worker branch that is the
-finished work, and `docs/worker.md` forbids the worker to close the item, so
-every correctly finished delegated item turned `make check` red.
-`tools/headless_worker.py` now names the worker's item in
-`DOCKET_WORKER_ITEM`, and `bin/docket check` reports that one item's passing
-command as an advisory for the reviewer. Any other open item whose command
-passes is still an error (`PL-WJJ8`).
+**One source of truth.** `tools/worker_runs.py` spelled the agent branch
+prefix beside `docket.claims.AGENT_BRANCH_PREFIX`, and
+`tools/fact_home_check.py` now refuses a plain string bound under two names in
+two modules (`PL-3PKN`). `tools/ast_identity.py` strips every bare string
+statement, so an attribute docstring no longer reads as code (`PL-6GP9`), and
+the suffixes of a Python source file now live once in
+`docket.python.SOURCE_SUFFIXES` (`PL-H716`). The untied-restatement check
+reads a slash-joined list such as 6/33/14.5 L, a lower-case unit such as
+l/min, and a symbol given a number in a math span (`PL-2T6S`), including a
+math span that hard wrapping splits across two lines (`PL-P0RG`).
 
-**The assert-rewrite cache in CI.** Every CI test part starts eight pytest
-workers, and each worker imports every test module, because `--part` picks
-tests only after collection. The bytecode guard (`PL-0MLZ`) stopped pytest
-caching its rewritten asserts, so all eight workers repeated about 14.5 s of
-rewriting. A new step in both parts of `quality.yml` now runs one
-`pytest --collect-only --write-assertion-cache K/N` per core before the
-pytest step, and the workers read what it wrote. The root `conftest.py`
-refuses the option without `--collect-only`, so no process that runs a test
-writes bytecode, and `make check` does not use it. A CI-shaped part 1 took
-188 s from a fresh tree, and 163.5 s with the step (`PL-GQCQ`). Two false
-failures that the step brought were fixed after it merged. A share that holds
-no test module made pytest exit 5 and failed the job, which a runner with
-about 40 or more cores would meet (`PL-VMMB`). And `bin/docket verify`
-counted a call of `pytest_ignore_collect` as an added suppression, although
-only a definition of the hook or a `collect_ignore` assignment drops a file
-from collection (`PL-3G9M`).
+**Two checks of the workflow.** A branch that loosened a core unit test
+passed `bin/docket verify` whenever it changed no core function, because
+`tools/diff_mutation.py` compared only the display modules' mutants. It now
+adds the mutants of each core module that the changed test imports
+(`PL-H57W`). The model review ranked settings on any later item citing a
+closed one, which marked 69% of closed items. It now counts only the
+`reenters:` and `recurrences:` records that triage writes, which mark 4.5%
+(`PL-J7YG`).
 
-**One home for each repository path, and two more defects.**
-`tools/doc_check.py` spelled `docs/MODEL.md`'s path a third time, under a
-name that `tools/fact_home_check.py` did not compare with
-`product_paths.MODEL_DOC`. The check now also refuses one repository path
-bound under two names in two apparatus modules. A path counts only when it
-names a tracked file or a directory above one. It found seven copies on
-`main`, for `tests/`, `docs/MODEL.md` and `src/`, and each now reads its home
-(`PL-S08Z`). The pull request email guard refused through its own deny
-message, so it wrote no line to the guards' refusal log that `PL-SG93` counts.
-It now refuses through `hook_input.deny`, and a test fails any other hook
-that writes its own decision (`PL-HHKC`). `bin/docket check` read three items
-whose `blocked-by` named v0.6.0 as still waiting on it after v0.6.0 shipped.
-The gate's blocker walks now treat a released version as resolved, and
-`bin/docket check` gives an advisory for an open item whose `blocked-by`
-still names a shipped milestone (`PL-YL5R`).
-
-**The digest under product focus.** The session-start digest's `Top:` line
-named the top of the whole queue, so a product session that took it could be
-handed apparatus work. `docket.toml` now carries a `focus` key, set to
-`product`, which `docket.config` refuses when it names no lane. The digest
-ranks `Top:` in that lane alone and labels it `Top, product focus:`, and
-`CLAUDE.md` says that ending the focus removes the key as well as its
-paragraph (`PL-2CPD`). `PL-NZC0` moved the Projects coordinator's rules from
-Project settings into `.claude/skills/docket/modes/coordinator.md`. Its pull
-request, `#1799`, merged before the v0.6.6 tag landed, so it is inside that
-tag's span, and v0.6.6's notes now point here.
-
-The release finishes two features, `verify-false-reject` and
-`workflow-stress-2026-09`, and closes no generator head. It advances
-`worker-runs`, `ci-cost`, `projects-trial`, `prose-quality`,
-`one-source-of-truth` and `defect-review-2026-10`. The release
-item is `PL-LSN3`, whose `resource: release-train` keeps it out of every
+The release finishes two features, `one-source-of-truth` and
+`prose-quality`, and closes no generator head. It advances
+`stale-source-claims`, `model-review` and `interface-areas`. The release
+item is `PL-43Z5`, whose `resource: release-train` keeps it out of every
 later release. Every closure carried its `pr:` number before the cut, so
 every bullet cites its pull request. `bin/docket release` reported again that
 apparatus inflow missed a prediction pre-registered in `PL-04KR`. From
@@ -387,8 +351,8 @@ which is 0.28 a filing against a ceiling of 0.13, so the apparatus surface is
 still growing. `bin/docket inflow` has the table.
 
 As before, anything that merges on `main` after this cut is written and before
-its pull request lands ships inside the v0.6.7 tag. It is described in the
-next release, and v0.6.7's notes take a pointer to it at that release's cut.
+its pull request lands ships inside the v0.6.8 tag. It is described in the
+next release, and v0.6.8's notes take a pointer to it at that release's cut.
 
 ## The plan
 
@@ -7093,7 +7057,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 39 entries**
+**Cleared before v0.7.0 begins unless deferred - 71 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -7109,6 +7073,14 @@ brief has the tally.
 - PL-WJJ8 (M) On a worker branch, make check's bin/docket check --verify fails the worked item as 'open but its verify: command already passes', because docs/worker.md forbids a worker to set status: done, so a worker that finishes its item correctly can never report the gate green
 - PL-WM5P (M) Extend the run view's single-writer guard (PL-X7D5) to every surface that states run state, so no displayed run state has a second writer
 - PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
+- PL-3B34 (M) A dial moved on a halted run, whether failed or stopped at the 24-hour supported run length, is applied to the core and recorded as a control change at the halt instant, so the settings readouts and the control-change record show a setting that no step ever ran under beside concentrations computed under the previous one, while the banner says the values shown are the last completed step
+- PL-97WX (M) Dragging an Area border converts the pointer to a fraction linearly across the split while the splitters draw settle's held sizes, so a 1 px nudge of a held border rewrites the stored fraction (0.7 to about 0.626 in one case) and emits layout_changed though nothing moves, and the border then sticks for tens of pixels
+- PL-K5BS (M) Resetting a branch after the learner changed a setting keeps the new setting, clears the branch's control timeline and writes the setting over the fork's opening stretch, so the branch runs under settings that neither its control record nor its `opened_from` provenance states, and the `_open_at` docstring's claim that the definition "always opens at the parent's stretch, under the parent's settings" is false at a control-event fork
+- PL-MLPT (M) docs/MODEL.md and core/supported_ranges.py argue the 24-hour supported run length with two claims that do not hold: that it sits near the outer edge of the measured 0.35-to-9.5 MAC-hour range, when a run at 1 MAC reaches about 24 MAC-hours at the cap, and that the fat time constant bounds it from below, when 24 hours is about 0.6 of that time constant
+- PL-N559 (M) At zero cardiac output and high fresh gas flow, the exact propagator settles with the alveolar fraction a few units in the last place above the inspired fraction and the dial, so read_wash_in classes the steady state as elimination and the wash-in plot tells the learner the patient is returning agent while nothing changed
+- PL-QBQX (M) A run that halts on a mark still shows the status word "Paused", the same word as the learner's own Pause, and the only sign that a mark stopped it, the "Branch here: …, stopped on your mark" label, is withdrawn while two runs are compared, so a halt during a comparison, or a second halt on a MAC target whose row already reads "reached", looks like a pause nobody made
+- PL-QZ7Z (M) layout/sizing.settle lets go every Area under the first unheld split at once, and that split is always the root, so a window a few pixels short of the Views' needs blanks every View, including ones that would still fit if one Area gave way
+- PL-TNYP (M) A branch taken at a keyframe opens with the trunk's change at that instant already applied, but the offer is labelled only "1m", the branch's record says no setting changed, and a later edit to the trunk at the same instant erases the trunk's only record of the change the branch runs under
 - PL-0KPD (S) Paint cost at the window-following column budget is unmeasured: extrapolating the owner's 6.7 us per drawn point from one 3 204-point reading puts two compared runs on a 3 840 px plot at about 207 ms, past the 200 ms render interval, and only the owner's hardware can measure it (found closing PL-PGZF)
 - PL-44R1 (S) The headless worker host still resolves make to /usr/bin/make (GNU Make 3.81), so make check fails the two GNU make comparison tests in tests/unit/test_makefile_reference.py on every worker run after PL-TSH9 closed, and no worker there can report the gate green
 - PL-5PL5 (S) Parallel builder subagents in one session share one scratchpad folder, so one builder's pull request body was published on another's pull request (#1735) and a builder's verify.log was overwritten; the builder brief names no per-item file prefix
@@ -7134,6 +7106,30 @@ brief has the tally.
 - PL-YH6Z (S) The wash-in hover prints the crossing column's F_A/F_I above 1 under the label 'Wash-in F_A/F_I', a value app/wash_in.py classes as elimination and refuses to show as wash-in
 - PL-YHWH (S) core/parameters.py restates three rules that other core modules already own: the perfusion fractions summing to 1 (patient._require_fractions_sum_to_one), MAC within the vaporizer maximum, written twice (validation.require_within_vaporizer_maximum), and run_definition.py checks spacing_s positive and finite by hand instead of require_positive_finite
 - PL-YT3T (S) A compartment's own step has a floor and no ceiling, so BreathingCircuit.advance_fresh_gas at a step near 1e308 s, or at a circuit volume near 1e-310 L, overflows the time constants elapsed to inf and returns an exhaust of inf or nan without checking it
+- PL-02CD (S) The MAC-awake band's docstring in app/formatting.py and the Chortkoff 1995 source note in desflurane.json both say that importing Chortkoff's absolute 2.60% would teach a later wake-up, but a band drawn too high is crossed sooner during washout and teaches an earlier one, as docs/MODEL.md says
+- PL-0WFJ (S) The guard every run opening shares, require_canonical_state, checks a state's length, finiteness and unit entry but no physical range, so a RunDefinition opened from a state with an alveolar fraction of -0.3 and a fat fraction of 1.7 accepts it and returns negative and above-one fractions from state_at and evaluate_anchored without any error, while the live system refuses the same state
+- PL-39KH (S) docs/MODEL.md's MAC-awake section calls its benchmark a 3-hour 1 MAC sevoflurane case, but the default 2% dial at 4 L/min brings alveolar and vessel-rich only to 1.69% (0.84 MAC) in 3 hours, and it blames the vessel-rich trace's failure to reach the 1 MAC line on a short case, when ongoing uptake keeps every trace below the line however long the case
+- PL-5RPD (S) docs/MODEL.md says two runs at different step sizes are two roundings of the same solution, but a step holds each setting for its whole length, so a control change lands at a different instant on each step grid and two runs with any setting change follow different trajectories by more than rounding
+- PL-6RJ0 (S) The "1 MAC sevoflurane = 2.0%" line is written on a different path from the readout cards whose ×MAC values it divides: a halt after an agent change writes the new agent's 1 MAC above cards still holding the old agent's multiples, and a raise from setting_readouts would leave the old 1 MAC above freshly written cards
+- PL-9SL5 (S) RunDefinition.evaluate spaces its columns as start_s plus a multiple of the spacing and never pins the last one, so about one window in forty returns a final instant one rounding unit past stop_s, and past the run's reach when stop_s is the reach, which the method says it refuses
+- PL-C9XP (S) AreaLayout's minimum size hint is the sum of the Views' needs, while settle and each frame hold an Area at the larger of need and floor, so where a header floor is wider than a View's need the scrolling page grows too little and a neighbouring View shows "Too small" (568 px hint against a 585 px requirement in one case)
+- PL-DQL9 (S) The uptake matrix takes the pulmonary blood:gas coefficient from the venous pool and each tissue's rate from that tissue's own blood:gas coefficient, and nothing requires the four to agree, so a mismatch makes the matrix create agent and halts the run as an AgentSimulationValidationError that blames the numerics for an inconsistent parameter set
+- PL-GCGX (S) docs/MODEL.md says every way of misreading the MAC-awake band runs toward an earlier wake-up, but the band also inherits the Gas Man MAC divisor, which puts sevoflurane's band 11% above the primary literature and desflurane's 9% below it, and the sevoflurane and isoflurane mac_reference_basis record no base MAC
+- PL-HF4B (S) After an agent-accounting failure halts a run, the rollback restores the previous step's passing validator, so the accounting panel reads "Valid" and "The simulation still accounts for all delivered agent" directly under a banner saying accounting validation failed, and the banner quotes the failed step's delivered and stored totals beside the panel's different restored ones
+- PL-KDZW (S) When SimulationView._place_run refuses a run for a missing unconditional value, the run's transport row, banner, readouts and record are already in the shared layouts and stay there, so a refused branch from add_run leaves frozen widgets that no slot will ever refresh or remove
+- PL-KHXB (S) The banner shown when a run reaches the 24-hour supported run length, and the core's refusal message, tell the learner that beyond it the model's omitted metabolism and its fat perfusion dominate the trace, for every agent, though docs/MODEL.md says nothing breaks at hour 25 and only sevoflurane is metabolized enough to matter
+- PL-M8F6 (S) docs/MODEL.md § "Halting on a marked crossing" says the concentration displayed beside a halt is the height the learner marked, but the run halts on the first step at or past the height, so a circuit target of 0.10 ×MAC halts showing 0.11 ×MAC on 13 of 59 targets tried, and a learner reads a correct halt as a detection fault
+- PL-NRR6 (S) A branch can be taken at the keyframe where the paused trunk stands, but the trunk can still replace or delete that keyframe with another setting change at the same instant, after which the branch's `opened_from` names a stretch the trunk never ran and `trunk.resumed_at` refuses the instant the branch opened at
+- PL-PM67 (S) docs/MODEL.md says the fractions cannot leave their physical range and no parameter set can trigger the capacity guard, and core/exceptions.py says no step can raise SimulationNumericalError, but the Metzler argument proves only the lower bound, and rounding carries a fraction just above 1 from a saturated state
+- PL-S11T (S) A frozen `UptakeEquationSettings` restored by unpickling is rebuilt through `__setstate__`, so its `__post_init__` never runs: a saved record whose state holds cardiac output as a bare 1000.0 and fresh gas flow as NaN loads with no error, and `RunDefinition` accepts it and advances, although `PL-5D1Z` closed the same hole for the flow values themselves
+- PL-T5NJ (S) The chart hover labels each drawn column with its instant rounded to 0.1 s but prints the state at the column's exact instant, so early in a high-flow induction it pairs a value with an instant at which the model held a different displayed value, such as desflurane's circuit 2.70% shown at "6s" where the state at 6.0 s is 2.68%
+- PL-TPBH (S) While the trunk-Reset question (or a Workspace question) is open, the run behind it keeps stepping at the selected rate, and the window-modal dialog blocks the Pause button, so at 300× a learner who reads the question for ten seconds watches fifty simulated minutes pass that they cannot stop
+- PL-VHQX (S) A branch forked on, or reset onto, the 24 h supported run length shows the limit banner's "Reset to start a new run.", and `start()` says "reset it to start a new run", but Reset returns that branch to the same 24:00:00 fork, so the only way out the screen names leads straight back
+- PL-WRVX (S) mac_awake_band_percent checks only that the band's lower edge is positive, so a negative standard deviation returns the band upper edge first, an infinite fraction returns (inf, inf), and a band reaching past 1 MAC is accepted, though its docstring promises lower first and a refusal of an undrawable band
+- PL-X4X2 (S) The playback-rate line under the clock reads "300× real time" while the run is paused, reset or halted, but `docs/MODEL.md` § "Minimum displayed outputs" still defines that line as the rate at which simulated time is advancing, which contradicts § "Interface boundary"'s statement that the label states the setting
+- PL-XV0D (S) A run's halt record, bookmark_halt, is filtered by instant when a mark is removed rather than re-derived from the current marks as the standings are since PL-1ZQ4, so a branch reset after a mark was removed and re-added names the removed mark and its old label, and a trunk halted on a mark loses "stopped on your mark" from its Branch here button once the same mark is removed and added back, although its row still reads passed
+- PL-Y65Q (S) An Area too small for its View is held at a floor of header, rule, padding and one line, so its notice gets about 31 px: the body that states the size the View needs and the size the Area has gets 0 px of the 119-153 px it needs, and even the "Too small for ..." title gets 0 px
+- PL-YDRT (S) docs/MODEL.md and the Katoh 1993 source notes for sevoflurane and isoflurane say Katoh measured the brain concentration at awakening directly, but the paper's own title says the cerebral concentration was predicted, so a modelled estimate is recorded as a tier 1 direct measurement
 
 ### Deferred from this gate
 

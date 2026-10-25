@@ -93,6 +93,16 @@ the two confounders below, so only these are worth a decision.
    red-run association with a model, an effort level or an origin. Filed to
    find what drives the rise.
 
+   **Answered 2026-10-25 by `PL-2D1S`: the rise is two checks that fail by
+   design.** Both landed in week 39 as steps of the required `pr-title` job.
+   One fails a pull request until its closed items record its number, and the
+   other, retired a day later, until its body was written into the tree.
+   Together they made 195 of the 335 red runs on these pull requests since
+   2026-09-21. Without them, the share with a red run was 12%, 11%, 22%, 10%
+   and 22% in weeks 39 to 43, against 18%, 23% and 17% in weeks 36 to 38.
+   `PL-SW87` keeps them out of this measure, and `PL-86DN` asks whether to
+   remove the one still running.
+
 **What nobody asked.**
 
 - Projects threads did a third of the work. 716 of 2,113 closed items had a

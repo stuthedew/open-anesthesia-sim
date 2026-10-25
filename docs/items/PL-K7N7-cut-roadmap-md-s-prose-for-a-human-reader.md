@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.8
 touches: ROADMAP.md
 added: 2026-09-05
 closed: 2026-10-25
