@@ -100,6 +100,8 @@ FAMILY_TEST = "test_the_demo_says_it_is_a_demo"
 #: between the two families would rewrite both and make each hazard-table
 #: test assert about a second error it never meant to raise.
 LIST_FAMILY_TEST = "test_the_demo_shows_the_time_it_is_at"
+#: The subsection-shaped family's test, a third name for the same reason.
+SUBSECTION_FAMILY_TEST = "test_the_demo_store_stays_empty"
 
 FAT_KEY = "tissue_gas_partition_coefficients.fat"
 ROW = "| {} | {} | dimensionless | `data/agents/demo.json` · `{}` |"
@@ -150,6 +152,15 @@ MODEL = "\n".join(
         f"- the demo value (`{LIST_FAMILY_TEST}`);",
         "- the time the demo value was read at",
         f"  (`{LIST_FAMILY_TEST}`).",
+        "",
+        # The third shape, for the same reason again: each requirement under
+        # "## Required tests" is a subsection, and the family errors on a
+        # heading it cannot find.
+        "## Required tests",
+        "",
+        "### Empty-store test",
+        "",
+        f"The demo store must stay empty. Held by `{SUBSECTION_FAMILY_TEST}`.",
         "",
     ]
 )
@@ -265,7 +276,8 @@ def _repo(
         suite.mkdir(parents=True, exist_ok=True)
         (suite / "test_family.py").write_text(
             f"def {FAMILY_TEST}() -> None:\n    pass\n\n\n"
-            f"def {LIST_FAMILY_TEST}() -> None:\n    pass\n",
+            f"def {LIST_FAMILY_TEST}() -> None:\n    pass\n\n\n"
+            f"def {SUBSECTION_FAMILY_TEST}() -> None:\n    pass\n",
             encoding="utf-8",
         )
     return root
@@ -7550,6 +7562,95 @@ def test_a_list_shaped_family_whose_heading_has_moved_reads_no_members() -> None
     assert list(doc_check._list_members(LIST_FAMILY_DOCUMENT, _list_family(level=3))) == []
 
 
+#: The subsection shape, laid out as § "Required tests" is. It carries the
+#: parts a reader could get wrong: prose before the first subsection, a deeper
+#: heading inside a member, a `###` line inside a fence, and a later section
+#: with subsections of its own.
+SUBSECTION_FAMILY_DOCUMENT = "\n".join(
+    [
+        "# Model",
+        "",
+        "## Required tests",
+        "",
+        "Prose before the first subsection, which is not a member.",
+        "",
+        "### First test",
+        "",
+        "Held by `test_first`.",
+        "",
+        "#### A note inside the first",
+        "",
+        "Held also by `test_first_note`.",
+        "",
+        "### Second test",
+        "",
+        "```text",
+        "### not a heading, inside a fence",
+        "```",
+        "",
+        "### Third test",
+        "",
+        "Names nothing.",
+        "",
+        "## Runtime controls",
+        "",
+        "### A subsection of another section",
+        "",
+    ]
+)
+
+
+def _subsection_family(heading: str = "Required tests") -> doc_check.BoundFamily:
+    """A subsection-shaped family over `SUBSECTION_FAMILY_DOCUMENT`, built here
+    for the reason `_list_family` gives."""
+    return doc_check.BoundFamily(
+        document=doc_check.MODEL,
+        heading=heading,
+        level=2,
+        kind=doc_check.TEST_ENTITY,
+        members=doc_check._subsection_members,
+        promise="every subsection names the test that holds it",
+    )
+
+
+def test_a_subsection_shaped_family_reads_one_member_per_subsection() -> None:
+    """A member runs to the next subsection, and the family to the next section.
+
+    A deeper heading belongs to the subsection that holds it, so a test named
+    under it is named by that member. A `###` line inside a fence opens nothing.
+    """
+    members = list(doc_check._subsection_members(SUBSECTION_FAMILY_DOCUMENT, _subsection_family()))
+
+    assert [line for line, _ in members] == [7, 15, 21]
+    assert "`test_first_note`" in members[0][1]
+    assert "inside a fence" in members[1][1]
+    assert all("Prose before" not in member for _, member in members)
+    assert all("another section" not in member for _, member in members)
+
+
+def test_a_subsection_shaped_family_whose_heading_has_moved_reads_no_members() -> None:
+    """Which `check_bound_families` reports as an error, as for the list shape."""
+    family = _subsection_family("Moved")
+
+    assert list(doc_check._subsection_members(SUBSECTION_FAMILY_DOCUMENT, family)) == []
+
+
+def test_a_required_test_subsection_naming_nothing_is_an_error(tmp_path: Path) -> None:
+    """The registered family fails a subsection that names no test.
+
+    This is the failure `PL-2M9N` was filed for: a required test that was never
+    written, or was deleted, while the section kept reading as before.
+    """
+    model = MODEL.replace(f"Held by `{SUBSECTION_FAMILY_TEST}`.", "Held by nothing.")
+    line = MODEL.split("\n").index("### Empty-store test") + 1
+
+    errors = [e for e in _errors(_repo(tmp_path, model=model)) if '"Required tests"' in e]
+
+    assert len(errors) == 1
+    assert errors[0].startswith(f'docs/MODEL.md:{line}: § "Required tests" promises that')
+    assert "this member names no test" in errors[0]
+
+
 def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
 
@@ -9635,7 +9736,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     # Markers are syntax, read a line at a time, so a split one is refused.
     "markers, a provenance marker split across lines": (
         _provenance_marker_split,
-        [SPLIT_MARKER_ERROR.format("docs/MODEL.md:32", "provenance")],
+        [SPLIT_MARKER_ERROR.format(f"docs/MODEL.md:{MODEL.count(chr(10)) + 3}", "provenance")],
     ),
     "markers, an absent marker split across lines": (
         _absent_marker_split,
@@ -9644,7 +9745,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     # A comment read as the HTML block it is (`PL-GT0J`).
     "markers, a marker whose comment opens on the line above: provenance": (
         lambda tmp_path: _marker_opened_above(tmp_path, "provenance"),
-        [SPLIT_MARKER_ERROR.format("docs/MODEL.md:32", "provenance")],
+        [SPLIT_MARKER_ERROR.format(f"docs/MODEL.md:{MODEL.count(chr(10)) + 3}", "provenance")],
     ),
     "markers, a marker whose comment opens on the line above: absent": (
         lambda tmp_path: _marker_opened_above(tmp_path, "absent"),

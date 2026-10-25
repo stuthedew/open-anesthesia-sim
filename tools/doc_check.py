@@ -3934,14 +3934,47 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
             return
 
 
+def _subsection_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each subsection one level below the family's heading, heading and body.
+
+    The third member shape. It arrived with § "Required tests", where each
+    requirement is a `###` subsection rather than a row or a bullet
+    (`PL-2M9N`). A member runs from its heading to the next heading at its own
+    depth or shallower, so a deeper heading inside it is part of it. Prose
+    between the family's heading and its first subsection belongs to no
+    member. The family ends at the next heading at its own depth or shallower.
+
+    The headings are the ones `markdown` reads, so a `#` line inside a fence
+    opens no subsection, for the reason `_list_members` gives (`PL-0Y7J`).
+    """
+    lines = split_lines(text)
+    found = read_headings(lines)
+    opening = next(
+        (
+            index
+            for index, heading in enumerate(found)
+            if heading.level == family.level and heading.title == family.heading
+        ),
+        None,
+    )
+    if opening is None:
+        return
+    after = found[opening + 1 :]
+    family_end = next((h.line for h in after if h.level <= family.level), len(lines))
+    subsections = [h for h in after if h.line < family_end and h.level == family.level + 1]
+    for index, heading in enumerate(subsections):
+        end = subsections[index + 1].line if index + 1 < len(subsections) else family_end
+        yield heading.line + 1, "\n".join(lines[heading.line : end])
+
+
 # Every family bound by clause 2 today. **An entry arrives with the annotation
 # pass that makes its family conform, never in anticipation of one**, so the
 # check never holds `make check` red for work nobody has done yet. The check was
 # introduced over the hazard table, which conformed already, so it landed green;
-# `PL-036` added the minimum displayed outputs, and `PL-8LDF` (required
-# invariants) and `PL-2M9N` (required tests) are the two passes still due.
+# `PL-036` added the minimum displayed outputs, `PL-2M9N` added the required
+# tests, and `PL-8LDF` (required invariants) is the pass still due.
 #
-# Both entries name `TEST_ENTITY`, and for the displayed outputs that was a
+# Every entry names `TEST_ENTITY`, and for the displayed outputs that was a
 # decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
 # ratified, over naming the `SimulationSnapshot` field behind each bullet).
 # Three of that list's entries have no snapshot field to name - the playback
@@ -3968,6 +4001,14 @@ BOUND_FAMILIES = (
         kind=TEST_ENTITY,
         members=_list_members,
         promise="every entry names the test that holds it",
+    ),
+    BoundFamily(
+        document=MODEL,
+        heading="Required tests",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_subsection_members,
+        promise="every subsection names the test that holds it",
     ),
 )
 

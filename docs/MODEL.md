@@ -3766,22 +3766,42 @@ $$
 
 using compatible time and flow units.
 
+Held by `test_circuit_matches_analytic_wash_in` and
+`test_wash_in_is_monotonic_and_never_overshoots` in
+`tests/reference/test_circuit_wash_in.py`, and for the washout by
+`test_zero_delivered_concentration_washes_out_circuit` in
+`tests/unit/test_circuit.py`.
+
 ### Zero-agent test
 
 If all initial stores are zero and $`F_D=0`$, then every stored amount and
 concentration must remain zero.
 
+Held by `test_no_delivered_agent_keeps_every_store_zero` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Zero-ventilation test
 
 If $`\dot V_A=0`$, the circuit may wash in, but the patient compartments must receive no new agent through ventilation.
+
+Held by `test_zero_ventilation_prevents_patient_delivery` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Zero-cardiac-output test
 
 If $`Q=0`$, alveolar gas may change through ventilation, but arterial blood, venous blood, and tissue stores must not change through perfusion.
 
+Held by `test_zero_cardiac_output_prevents_patient_uptake` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Zero-tissue-flow test
 
 For any tissue $`i`$, $`Q_i=0`$ must imply $`\frac{dM_i}{dt}=0`$.
+
+Held by `test_a_zero_tissue_flow_leaves_that_group_alone` in
+`tests/unit/test_governing_equations.py`, which checks the coupled system's
+matrix, and by `test_zero_flow_preserves_tissue_state` in
+`tests/unit/test_tissue.py`.
 
 ### Equilibrium test
 
@@ -3789,13 +3809,23 @@ If all connected compartments have the same partial-pressure-equivalent
 fraction, with $`F_I=F_A=F_a=F_v`$ and every tissue group at the same value,
 then all internal transfer rates must be zero.
 
+Held by `test_equilibrium_produces_no_net_internal_transfer`, for sevoflurane
+in `tests/reference/test_sevo_patient.py` and for isoflurane and desflurane in
+`tests/reference/test_multi_agent.py`.
+
 ### Directional ventilation test
 
 With otherwise identical conditions, increasing alveolar ventilation must accelerate the approach of $`F_A`$ toward $`F_I`$.
 
+Held by `test_higher_ventilation_increases_early_alveolar_fraction` in
+`tests/reference/test_sevo_patient.py`.
+
 ### Directional solubility test
 
 In controlled synthetic cases, increasing $`\lambda_{b:g}`$ must increase blood capacity and slow the rise of $`F_A/F_I`$.
+
+Held by `test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Directional tissue-capacity test
 
@@ -3806,6 +3836,9 @@ $$
 \frac{V_i\lambda_{i:b}}{Q_i}
 $$
 
+Held by `test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant` in
+`tests/unit/test_tissue.py`.
+
 ### Washout test
 
 After loading the compartments, setting $`F_D=0`$ must produce finite,
@@ -3814,6 +3847,9 @@ nonnegative washout without spontaneous increases in total system mass.
 Individual tissue concentrations may rise for a time through redistribution.
 The test must therefore not require every compartment to decrease
 monotonically.
+
+Held by `test_washout_never_increases_total_system_mass` in
+`tests/reference/test_sevo_patient.py`.
 
 ### Step-refinement test
 
@@ -3883,6 +3919,10 @@ correctness. A wrong transfer rate is exactly as independent of the step as a
 right one, so it passes here. The § "Independent-solution test" below is the
 test that asks whether the solution is the right one at all.
 
+Held by `test_step_refinement_converges`, for the three halvings, and by
+`test_the_smallest_supported_step_lands_on_the_ceilings_solution`, for the
+minimum step. Both are in `tests/reference/test_sevo_patient.py`.
+
 ### Independent-solution test
 
 The coupled six-state solution must be checked against an integration of the
@@ -3891,6 +3931,9 @@ governing equations that shares no solver with the implementation
 parameter files and nothing else from the package under test. A comparison
 against code derived from the implementation is a tautology, not a
 verification. So the test enforces that restriction on its own imports.
+`test_exact_step_matches_the_independent_solution_everywhere` holds the
+comparison. `test_oracle_imports_no_solver_from_core` and
+`test_oracle_bodies_call_no_solver_from_core` hold the restriction.
 
 The comparison covers every shipped agent, and its tolerance is **absolute**:
 
@@ -5305,6 +5348,11 @@ $$
 
 using the release tolerances documented above.
 
+Held by `test_long_wash_in_and_washout_validate_agent_simulation` in
+`tests/reference/test_sevo_patient.py`, and for isoflurane and desflurane by
+`test_wash_in_and_washout_validates_agent_simulation` in
+`tests/reference/test_multi_agent.py`.
+
 ### Closed-form agreement test
 
 A run driven through its own controls must give identical results from the
@@ -5327,7 +5375,9 @@ The required agreement is far tighter than the two-decimal percent set under
 § "Displayed precision", and far looser than floating-point noise. So a real
 divergence fails and a rounding difference does not.
 `tests/unit/test_run_definition.py` checks `state_at` and `evaluate` against a
-run stepped alongside its definition, and records the figures measured.
+run stepped alongside its definition, and records the figures measured. Its
+`test_evaluate_matches_a_stepped_run` and `test_state_at_matches_a_stepped_run`
+make that comparison on one run that crosses two setting changes.
 `tests/unit/test_resume_at.py` and `tests/integration/test_controller.py` apply
 the same comparison in two more cases. One is a system started at a keyframe
 and stepped from there. The other is a branch compared against its parent.
@@ -5423,6 +5473,11 @@ tested as one. The test uses the rates that the interface actually offers, not
 invented burst sizes. So a rate added to that ladder is covered on the day it
 is added.
 
+Held by `test_identical_runs_produce_identical_snapshots_and_history`,
+`test_a_run_records_the_same_history_however_the_ticks_fell` and
+`test_the_recorded_history_is_identical_at_every_playback_rate` in
+`tests/integration/test_sevo_controller.py`.
+
 ### Canonical evaluation test
 
 A run that is queried while it is built must give the same result as the same
@@ -5447,6 +5502,14 @@ this document prints. The compartment fractions and the cumulative
 accumulators have separate bounds because their displays resolve four orders
 of magnitude apart. A single bound covering both would have to be the looser
 one.
+
+All of these are in `tests/reference/test_canonical_evaluation.py`.
+`test_querying_a_run_does_not_change_what_it_answers` and
+`test_querying_a_run_does_not_change_the_keyframes_it_stores` hold the first
+property. `test_a_fork_opening_from_a_keyframe_reproduces_its_parent` holds
+the branch. `test_a_display_value_cannot_open_a_run_definition` holds the
+refusal, and `test_the_display_path_stays_within_its_measured_separation`
+holds the bounds.
 
 ## Runtime controls
 
