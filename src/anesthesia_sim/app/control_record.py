@@ -100,22 +100,22 @@ CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
 class ControlChange:
     """One setting change the running model actually saw.
 
-    Recorded per change rather than per user gesture, because the model
-    integrates whatever value is in place at each step: a dial swept from
-    2% to 4% across eight steps is eight different settings the run was
-    computed under, and a record that kept only the endpoint would not
+    A change is recorded per change rather than per user gesture, because the
+    model integrates whatever value is in place at each step. A dial swept
+    from 2% to 4% across eight steps gives eight different settings that the
+    run was computed under. A record that kept only the endpoint would not
     reproduce the run it claims to describe.
 
-    `adjustment` is what makes that faithful record readable. It groups the
-    changes a user made as one act - one drag of one slider - so a reader
+    `adjustment` makes that faithful record readable. It groups the changes
+    that a user made as one act, such as one drag of one slider, so a reader
     sees one adjustment where the model saw eight settings. It is assigned
-    from the input boundary the interface reports rather than guessed from
-    the timing of the entries, so two separate turns of the same dial are
-    two adjustments however close together they fall.
+    from the input boundary that the interface reports, not guessed from the
+    timing of the entries. So two separate turns of the same dial are two
+    adjustments, however close together they fall.
 
     Raises:
-        TypeError: If `elapsed_s` was not built as a `CaseInstant`, so
-            nothing has checked it against the supported run length
+        TypeError: If `elapsed_s` was not built as a `CaseInstant`, because
+            then nothing has checked it against the supported run length
             (`core/supported_ranges.py`, `PL-RCYZ`).
     """
 

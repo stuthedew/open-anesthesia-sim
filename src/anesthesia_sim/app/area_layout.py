@@ -571,10 +571,11 @@ class AreaLayout(QWidget):
         """Map each window that a View asks for to the width of the widest plot showing it.
 
         The caller assembles one frame for each window, sampled at that width.
-        So no plot draws a chord wider than a pixel (`PL-GS3R`). A chord is the
-        straight line between two neighbouring drawn columns. Views at the same
-        window also draw the same instants (`PL-9LNF`). The result is empty
-        when no View draws a frame.
+        A chord is the straight line between two neighbouring drawn columns.
+        Sampling at the widest plot's width means that no plot draws a chord
+        wider than a pixel (`PL-GS3R`). Because Views at the same window share
+        one frame, they also draw the same instants (`PL-9LNF`). The result is
+        empty when no View draws a frame.
         """
 
         widths: dict[ChartTimeBase | None, float] = {}

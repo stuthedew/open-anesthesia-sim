@@ -2417,16 +2417,16 @@ def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) 
 
 
 def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
-    """Which of one run's drawn traces are above the top of the plot, if any.
+    """Return a notice naming which of one run's drawn traces are above the plot, if any.
 
-    Read from the points the frame drew rather than from the snapshot: the
-    snapshot carries only the newest state, and a trace that rose above
-    the axis earlier in the window is still drawn clipped now. Hidden
-    traces are skipped, so the notice never points at a trace that is not
-    there. A trace is off scale only once it clears the ceiling by more
-    than the readouts resolve: isoflurane's ceiling is 3 x 1.2, which in
-    binary floating point is 3.5999999999999996, and a comparison against
-    zero would report that noise as an excursion. This function builds no
+    The traces are read from the points the frame drew, not from the snapshot.
+    The snapshot carries only the newest state, and a trace that rose above
+    the axis earlier in the window is still drawn clipped now. Hidden traces
+    are skipped, so the notice never points at a trace that is not there. A
+    trace counts as off scale only once it exceeds the ceiling by more than
+    the readouts resolve. Isoflurane's ceiling is 3 x 1.2, which in binary
+    floating point is 3.5999999999999996. A comparison with zero tolerance
+    would report that rounding noise as an excursion. This function builds no
     checked concentration. The percents and the axis top were built when the
     frame was assembled, so this function cannot reject a value after the
     chart has drawn it (`PL-7DJK`). The run index is built as a `RunIndex`

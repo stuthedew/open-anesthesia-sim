@@ -155,15 +155,16 @@ def wash_in_ratio(
 def is_wash_in(ratio: float) -> bool:
     """Whether a computed quotient is inside the uptake regime.
 
-    The second boundary of the module docstring's domain, as a predicate,
-    so the chart and `read_wash_in` classify a quotient by the same rule
-    rather than each carrying its own copy of the comparison.
+    This is the second boundary of the domain that the module docstring
+    states, written as a predicate. The chart and `read_wash_in` both use it,
+    so they classify a quotient by the same rule rather than each carrying its
+    own copy of the comparison.
 
     Args:
         ratio: A quotient from `wash_in_ratio`.
 
     Returns:
-        `True` at or below `WASH_IN_EQUILIBRIUM_RATIO`.
+        `True` when the quotient is at or below `WASH_IN_EQUILIBRIUM_RATIO`.
     """
 
     return ratio <= WASH_IN_EQUILIBRIUM_RATIO

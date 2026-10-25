@@ -1,44 +1,42 @@
 """How wide the chart's visible window is, and how that window is ruled.
 
-Pure arithmetic over simulated time, independent of any toolkit and of the
-scientific core. Nothing here reads simulation state, builds a control, or
-formats a string: given the newest instant on the chart and a choice, it
-answers with a width, a pair of axis bounds and a list of tick positions, and
-`app/qt_chart.py` draws them.
+This module does pure arithmetic over simulated time. It is independent of any
+toolkit and of the scientific core. Nothing here reads simulation state, builds
+a control, or formats a string. Given the newest instant on the chart and a
+choice, it returns a width, a pair of axis bounds and a list of tick positions,
+and `app/qt_chart.py` draws them.
 
-**It is a view control and reaches no model state.** Choosing a time base
-changes which part of the run is drawn and nothing else - no step is resized,
-no state is discarded, no calculation is re-run. A case watched at 15 minutes
-and the same case watched at 12 hours are the same run, step for step, which
-is what keeps `CLAUDE.md`'s determinism requirement untouched by
-anything in this module.
+**It is a view control and changes no model state.** Choosing a time base
+changes only which part of the run is drawn. No step is resized, no state is
+discarded, and no calculation is re-run. A case watched at 15 minutes and the
+same case watched at 12 hours are the same run, step for step. So nothing in
+this module can affect `CLAUDE.md`'s determinism requirement.
 
-**Why the widths are a fixed ladder rather than a free zoom.** `PL-012`
-settled it and `PL-SSBP` builds it: the selected duration is the *width* of
-the window, so seconds-per-pixel is a property of the choice rather than of
-how long the run has been going. A window that grew continuously with the run
-would change every trace's apparent slope while the underlying rate did not,
-which is a misleading visual encoding of exactly the quantity - rate of rise -
-that uptake and distribution are taught by. Discrete steps also make one step
-a meaningful change rather than a nudge: each rung is at least half again as
-wide as the one below it, and mostly twice.
+**Why the widths are a fixed ladder rather than a free zoom.** `PL-012` made
+the decision and `PL-SSBP` builds it. The selected duration is the *width* of
+the window, so seconds-per-pixel depends on the choice rather than on how long
+the run has been going. If the window grew continuously with the run, every
+trace's apparent slope would change while the underlying rate did not. That
+would be a misleading visual encoding of rate of rise, which is exactly the
+quantity that uptake and distribution are taught by. Discrete steps also make
+one step a meaningful change rather than a nudge. Each rung is at least half
+again as wide as the one below it, and most are twice as wide.
 
 **Why the ladder reaches below what the selector offers.** The project owner
-settled the selectable list at 15 minutes to 12 hours (2026-09-04). "Fit run"
-is the default mode and has to answer at ten seconds as well as at ten hours,
-so the ladder carries three rungs under that floor: fitting a thirty-second
-run to a fifteen-minute axis would draw the whole of induction into the
-leftmost 3% of the plot, which is the moment a learner is most likely to be
-watching. Those three rungs are reachable by fitting and not by choosing,
-because choosing one would be zooming into a span with nothing in it.
+set the selectable list at 15 minutes to 12 hours (2026-09-04). "Fit run" is
+the default mode and has to work at ten seconds as well as at ten hours. So the
+ladder carries three rungs below 15 minutes. Fitting a thirty-second run to a
+fifteen-minute axis would draw the whole of induction into the leftmost 3% of
+the plot, and induction is the moment a learner is most likely to be watching.
+Those three rungs can be reached by fitting but not by choosing, because
+choosing one would zoom into a span with nothing in it.
 
 **Nothing here assumes twelve hours is the end of the list.** The ladder is
-data, and `fit_to_run` continues past its widest rung by doubling rather than
-by refusing, so a case that has run past any declared width still shows
-whole. That matters for the mode's honesty as much as for its reach: "Fit run"
-that silently showed the most recent twelve hours of a fourteen-hour case
-would be a display asserting something false about what the reader is looking
-at.
+data. `fit_to_run` continues past its widest rung by doubling rather than by
+refusing, so a case that has run past every declared width still shows whole.
+That matters for the mode's honesty as much as for its reach. If "Fit run"
+silently showed the most recent twelve hours of a fourteen-hour case, the
+display would be asserting something false about what the reader is looking at.
 """
 
 from __future__ import annotations
@@ -47,7 +45,7 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
     "CHART_LIVE_HEADROOM_FRACTION",
@@ -64,12 +62,12 @@ __all__ = [
     "time_base_for_span",
 ]
 
-# How much of the window is kept clear to the right of the newest instant while
-# the window is following the run. Proportional rather than a fixed number of
-# seconds, so the newest point sits the same distance in from the frame's edge
-# at every width - ten seconds of clearance is a fifth of a one-minute axis and
-# invisible on a twelve-hour one. It is small enough that the width a reader
-# selected is still very nearly the width they are reading.
+# The fraction of the window kept clear to the right of the newest instant while
+# the window is following the run. It is proportional rather than a fixed number
+# of seconds, so the newest point sits the same distance in from the frame's edge
+# at every width. Ten seconds of clearance would be a fifth of a one-minute axis
+# and invisible on a twelve-hour one. The fraction is small enough that the width
+# a reader selected is still very nearly the width they are reading.
 CHART_LIVE_HEADROOM_FRACTION: Final = 0.02
 
 # What the selector's "Fit run" entry is keyed by. A sentinel rather than a
@@ -104,13 +102,13 @@ class ChartTimeBase:
 
     @property
     def live_headroom_s(self) -> float:
-        """Clearance kept to the right of the newest instant while following.
+        """Clearance kept to the right of the newest instant while following the run.
 
-        `following_window` only. Fitting takes none, and that is not an
-        oversight: a fitted window is at least as wide as the run by
-        construction, so the clearance is already there, and charging the
-        headroom against the fit as well would push a run of exactly fifteen
-        minutes onto the thirty-minute rung and draw it across half the plot.
+        Only `following_window` uses it. Fitting takes no clearance, and that
+        is not an oversight. A fitted window is at least as wide as the run by
+        construction, so the clearance is already there. Charging the headroom
+        against the fit as well would push a run of exactly fifteen minutes
+        onto the thirty-minute rung and draw it across half the plot.
         """
 
         return self.span_s * CHART_LIVE_HEADROOM_FRACTION
@@ -142,37 +140,45 @@ SELECTABLE_TIME_BASES: Final = tuple(
 
 
 def fit_to_run(newest_instant_s: CaseInstant) -> ChartTimeBase:
-    """The narrowest width that shows the case whole, from induction to its newest instant.
+    """Return the narrowest width that shows the case whole, from induction to its newest instant.
 
-    Half of the "Fit run" mode, which is the default; `fitted_window` is the
-    other half. `min_x` stays pinned at the case's zero under it, so the
-    width returned here is what decides whether the whole case is on the
-    plot, and it is always wide enough that it is.
+    This function is half of the "Fit run" mode, which is the default.
+    `fitted_window` is the other half. Under that mode `min_x` stays pinned at
+    the case's zero. So the width returned here decides whether the whole case
+    is on the plot, and it is always wide enough that it is.
 
     **It is given an instant, not a length.** The window starts at induction
-    rather than at any one run's opening, so its width has to reach the
-    newest instant on the case's axis. On a trunk that is also the
-    run's length; on a branch it is not. One forked at 900 s and advanced
+    rather than at the opening of any one run, so its width has to reach the
+    newest instant on the case's axis. On a trunk, that instant is also the
+    run's length. On a branch it is not. A branch forked at 900 s and advanced
     60 s stands at 960 s, and a width fitted to its 60 s would end the axis
     before the branch began (`PL-59WB`).
 
-    Past the widest declared rung the ladder is continued by doubling both
-    the width and its interval, rather than by returning the widest rung and
-    showing part of the run. Doubling preserves the four-to-six intervals
-    every declared rung is ruled into, so a fitted twenty-four-hour axis is
-    ruled like a twelve-hour one.
+    Past the widest declared rung, the ladder is continued by doubling both
+    the width and its interval. The function does not return the widest rung
+    and show only part of the run. Doubling keeps the four to six intervals
+    that every declared rung is divided into, so a fitted twenty-four-hour
+    axis is ruled like a twelve-hour one.
 
     Args:
-        newest_instant_s: The instant the furthest-advanced run on the chart
-            stands at, in seconds on the case's axis, which is the value
-            `following_window` is given. A `CaseInstant`, so it is finite and
-            inside the supported run length: `assemble_chart_frame` checks it
-            once where it reads it, and this function only compares it
-            (`PL-9DF9`).
+        newest_instant_s: The instant at which the furthest-advanced run on
+            the chart stands, in seconds on the case's axis. It is the same
+            value that `following_window` is given. It is a `CaseInstant`, so
+            it is finite and inside the supported run length (`PL-9DF9`).
 
     Returns:
         The rung to draw the case against.
+
+    Raises:
+        TypeError: If `newest_instant_s` was not built as a `CaseInstant`.
+            This is the one function here that checks the instant again. Its
+            doubling loop would never end for an infinite instant, and a NaN
+            would return the widest rung without containing the run, so a
+            caller that the type checker does not read gets a refusal rather
+            than a hang.
     """
+
+    require_case_instant("newest_instant_s", newest_instant_s)
 
     for time_base in TIME_BASE_LADDER:
         if time_base.span_s >= newest_instant_s:
@@ -276,27 +282,29 @@ def fitted_window(time_base: ChartTimeBase) -> tuple[float, float]:
 def following_window(
     time_base: ChartTimeBase, newest_instant_s: CaseInstant
 ) -> tuple[float, float]:
-    """The axis bounds a chosen width shows while it follows the run.
+    """Return the axis bounds that a chosen width shows while the window follows the run.
 
-    The width is exactly `time_base.span_s` at every point of every run,
-    which is the property the whole design rests on: a trace's slope on the
-    plot is then a fixed multiple of its rate, comparable between two moments
-    of one run and between two runs. Early in a run the window does not
-    shrink to the part of the run simulated so far - it stays its full width with the
-    run occupying the left of it, so a run shorter than the chosen width
-    still shows whole - because shrinking it would make the axis rescale
-    continuously, which is the encoding `PL-012` rejected.
+    The width is exactly `time_base.span_s` at every point of every run, and
+    the whole design rests on that property. A trace's slope on the plot is
+    then a fixed multiple of its rate, so it can be compared between two
+    moments of one run and between two runs. Early in a run, the window does
+    not shrink to the part of the run simulated so far. It stays at its full
+    width with the run occupying the left part of it, so a run shorter than
+    the chosen width still shows whole. Shrinking the window would make the
+    axis rescale continuously, which is the encoding `PL-012` rejected.
 
-    Once the run outgrows the width the window slides, keeping the newest
+    Once the run outgrows the width, the window slides and keeps the newest
     instant `time_base.live_headroom_s` in from the right edge. Nothing here
-    decides *whether* to follow: this is the live-following case, which is
-    the only one the interface currently offers. Panning away from the right
-    edge, and saying unmistakably that it has happened, is a separate item.
+    decides *whether* to follow. This function handles the live-following
+    case, which is the only one the interface currently offers. Panning away
+    from the right edge, and showing unmistakably that it has happened, is a
+    separate item.
 
     Args:
         time_base: The rung the reader selected.
-        newest_instant_s: The instant the furthest-advanced run stands at, a
-            `CaseInstant` checked where `assemble_chart_frame` reads it.
+        newest_instant_s: The instant at which the furthest-advanced run
+            stands. It is a `CaseInstant`, checked where
+            `assemble_chart_frame` reads it.
 
     Returns:
         `(min_x, max_x)` in simulated seconds, exactly `span_s` apart.

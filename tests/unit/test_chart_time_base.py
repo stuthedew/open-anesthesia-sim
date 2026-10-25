@@ -115,10 +115,10 @@ def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
 def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     """The ladder is not allowed to assume twelve hours is the end of it.
 
-    `PL-SSBP`'s brief: the list grows toward days and weeks later, and
-    nothing in the design should assume otherwise. Returning the widest rung
-    instead would leave "Fit run" quietly showing the most recent twelve
-    hours of a longer case, which is the mode asserting something false.
+    `PL-SSBP`'s brief says that the list will grow toward days and weeks, and
+    that nothing in the design should assume otherwise. Returning the widest
+    rung instead would leave "Fit run" quietly showing the most recent twelve
+    hours of a longer case, so the mode would be asserting something false.
     The supported run length is 24 h, so the one doubling a case can reach
     today is from the twelve-hour rung to twenty-four hours.
     """
@@ -150,10 +150,11 @@ def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
 
 
 def test_a_run_shorter_than_the_chosen_width_still_shows_whole() -> None:
-    """`PL-SSBP`'s "Done when", and the reason the window does not shrink.
+    """A run shorter than the chosen width still shows whole, as `PL-SSBP`'s "Done when" requires.
 
-    The axis stays its full width with the run occupying the left of it,
-    rather than shrinking to the part of the run simulated so far.
+    That is why the window does not shrink to the part of the run simulated so
+    far. The axis stays at its full width, with the run occupying the left part
+    of it.
     """
 
     time_base = time_base_for_span(900.0)
@@ -211,15 +212,22 @@ def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
-    displayed value, and the window's width is what every drawn time is read
-    against. Both windows take a `CaseInstant`, so an instant before
-    induction, one that is not finite, or one past the supported run length
-    is refused where the instant is built, and neither window checks it
-    again (`PL-9DF9`).
+    displayed value, and every drawn time is read against the window's width.
+    Both windows take a `CaseInstant`. So an instant before induction, one that
+    is not finite, or one past the supported run length is rejected where the
+    instant is built, and neither window checks it again (`PL-9DF9`).
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
         CaseInstant(newest_instant_s)
+
+
+@pytest.mark.parametrize("newest_instant_s", [math.inf, math.nan, 900.0])
+def test_fitting_refuses_an_instant_not_built_as_one(newest_instant_s: float) -> None:
+    """An infinite instant would double the width forever, so it is refused instead."""
+
+    with pytest.raises(TypeError, match="newest_instant_s of .* was not built as CaseInstant"):
+        fit_to_run(newest_instant_s)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("interval_s", [0.0, -60.0, math.nan, math.inf])

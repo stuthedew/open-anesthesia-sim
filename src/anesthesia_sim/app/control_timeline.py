@@ -81,8 +81,8 @@ class ControlAdjustment:
 
     Raises:
         TypeError: If `started_at_s` or `ended_at_s` was not built as a
-            `CaseInstant`, so nothing has checked it against the supported
-            run length (`core/supported_ranges.py`, `PL-RCYZ`).
+            `CaseInstant`, because then nothing has checked it against the
+            supported run length (`core/supported_ranges.py`, `PL-RCYZ`).
     """
 
     control: ControlInput

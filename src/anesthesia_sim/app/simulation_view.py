@@ -1445,17 +1445,18 @@ class SimulationView(QWidget):
 
         Each chart View asks for its own window (`PL-L59K`). The dashboard
         assembles one frame for each distinct window, sampled for the widest
-        plot that asks for it. So no plot draws a chord wider than a pixel
-        (`PL-GS3R`). A chord is the straight line drawn between two
-        neighbouring drawn columns. Charts at the same window share one frame,
-        rather than each having a frame at its own width. The two plots'
-        widths differ by about 53 px at every application-window width
-        measured. So a frame for each plot would mean two assemblies on every
-        tick, and two plots at the same window would not draw the same
-        instants (`PL-9LNF`). The adapter hands each View the frame for its
-        window in its `ViewTick` (`PL-TH35`). Each legend is told what its
-        plot drew only after the plot has drawn it. So where the frame fails,
-        the legend goes on naming the curves still on the plot (`PL-G3K7`).
+        plot that asks for it. A chord is the straight line drawn between two
+        neighbouring drawn columns. Sampling for the widest plot means that no
+        plot draws a chord wider than a pixel (`PL-GS3R`). Charts at the same
+        window share one frame, rather than each having a frame at its own
+        width. The two plots' widths differ by about 53 px at every
+        application-window width measured. So a frame for each plot would mean
+        two assemblies on every tick, and two plots at the same window would
+        not draw the same instants (`PL-9LNF`). The adapter hands each View the
+        frame for its window in its `ViewTick` (`PL-TH35`). Each legend is told
+        what its plot drew only after the plot has drawn it. So where the frame
+        fails, the legend goes on naming the curves still on the plot
+        (`PL-G3K7`).
 
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
         are handed frames assembled from the pinned run only, and the run's
@@ -1573,13 +1574,12 @@ class SimulationView(QWidget):
     def _refresh_bookmarks(
         self, bookmarks: BookmarkSet, standings: Sequence[BookmarkStandings], reference: RunSettings
     ) -> None:
-        """Redraw both collections from every run, and rebound the height control.
+        """Redraw both collections from every run, and reset the limits of the height control.
 
-        The *set* of marks is the reference run's, and reading one run for it
-        is correct rather than a simplification: `_apply_to_every_run` is the
-        only thing that writes a mark, so every displayed run carries the same
-        set, and `test_every_displayed_run_carries_the_same_marks` is what
-        holds that.
+        The *set* of marks is the reference run's. Reading one run for it is
+        correct rather than a simplification. `_apply_to_every_run` is the only
+        thing that writes a mark, so every displayed run carries the same set,
+        and `test_every_displayed_run_carries_the_same_marks` enforces that.
 
         **The standings of those marks are not the same on every run, so they
         are read from every run** (`PL-LHBY`, `PL-4KZD`). A standing is
@@ -1589,15 +1589,16 @@ class SimulationView(QWidget):
         rather than one run's, so it never has to choose a run: there is no
         reference run to pick for standings.
 
-        The height control keeps reading the reference run, and that read is
-        sound where the rows' was not: it is bounded by the *agent's*
-        published maximum delivered concentration over the agent's MAC, both
-        settled at construction, and two displayed runs are locked to one
-        agent (`COMPARING_AGENT_LOCK_TEXT`, `BRANCH_AGENT_LOCK_TEXT`, and
+        The height control still reads the reference run. That read is sound,
+        unlike reading the rows from one run, which was not. The control is
+        bounded by the *agent's* published maximum delivered concentration
+        divided by the agent's MAC. Both values are settled at construction,
+        and two displayed runs are locked to one agent
+        (`COMPARING_AGENT_LOCK_TEXT`, `BRANCH_AGENT_LOCK_TEXT`, and
         `assemble_chart_frame` refusing a frame whose runs disagree). A run's
-        own delivered setting moves what it will reach, not what it may be
-        asked to reach. `PL-GHMB` is the item that assumed otherwise, and it
-        was dropped on the measurement.
+        own delivered setting changes what the run will reach, not what it may
+        be asked to reach. `PL-GHMB` is the item that assumed otherwise, and it
+        was dropped once the measurement was taken.
 
         A drawn frame passes in the parts of its snapshots, so the panel shows the values
         that the frame was assembled from. A halt passes the same parts, read instead from
@@ -1613,9 +1614,10 @@ class SimulationView(QWidget):
         Raises:
             ValueError: If no run is given. `bookmark_panel` refuses that
                 rather than drawing the case's marks with no run's standings
-                beside them. Unreachable from here - the constructor refuses an
-                empty run set and `_handle_case_restarted` truncates to the
-                trunk - so it is the contract rather than a live path.
+                beside them. This path cannot be reached from here, because the
+                constructor refuses an empty run set and `_handle_case_restarted`
+                truncates to the trunk. So it is the contract rather than a live
+                path.
             SimulationConfigurationError: If a displayed run's standings were
                 computed for a mark set that does not hold one of the
                 reference run's marks. `_apply_to_every_run` writes a mark to

@@ -333,29 +333,30 @@ class SimulationSnapshot(RunRecord):
         """Whether this run holds anything that starting over would destroy.
 
         True once the run has advanced past its own beginning or has recorded
-        a setting change; false for a run that has been built and not yet
-        touched, which is the state a fresh session, a fresh branch and
+        a setting change. False for a run that has been built and not yet
+        touched, which is the state that a fresh session, a fresh branch and
         `reset()` all leave.
 
-        It exists so the interface can tell a destructive act from a harmless
-        one. `set_agent` always begins a new run, which is unrecoverable where
-        there is a run to lose and is nothing at all where there is not, and a
-        confirmation that fires in both cases states something untrue in the
-        second and has been answered without reading by the time it matters in
-        the first.
+        It exists so that the interface can tell a destructive act from a
+        harmless one. `set_agent` always begins a new run. Where there is a run
+        to lose, that cannot be undone. Where there is none, it changes nothing.
+        A confirmation that appeared in both cases would state something untrue
+        in the second case. By the time it mattered in the first case, users
+        would have learned to answer it without reading.
 
         Elapsed time and the timeline are read together because either alone
-        misses a case: a run paused at its opening instant with the vaporizer
-        already turned has a recorded input and no elapsed time, and a run
-        advanced with nothing touched has the reverse.
+        misses a case. A run paused at its opening instant with the vaporizer
+        already turned has a recorded input and no elapsed time. A run advanced
+        with nothing touched has the reverse.
 
         **Elapsed time counts from `began_at_s`, not from zero** (`PL-7TBQ`).
-        A branch's clock is the case's, so it opens at its fork with
-        `elapsed_s` already past zero, and read against zero every branch held
-        a run to lose from the moment it was made, and again after every reset.
-        The comparison is exact at the fork: the branch's clock is its step
-        count times its step, and every door to a fork refuses an instant that
-        is not a whole number of steps, so the clock stands exactly on it.
+        A branch uses the case's clock, so it opens at its fork with
+        `elapsed_s` already past zero. When elapsed time was compared with
+        zero, every branch held a run to lose from the moment it was made, and
+        again after every reset. The comparison is exact at the fork. The
+        branch's clock is its step count times its step length. Every way of
+        creating a fork rejects an instant that is not a whole number of steps,
+        so the clock stands exactly on the fork instant.
         """
 
         return self.elapsed_s > self.began_at_s or bool(self.control_timeline)
@@ -593,10 +594,9 @@ class SimulationController:
         self._agent_mac_percent = agent_parameters.mac_percent
         self._agent_mac_awake = agent_parameters.mac_awake
         self._state = SimulationState(uptake_system=uptake_system)
-        # One substance: the agent this run is of. `set_agent` comes back
-        # through here and builds a new history under the new agent's id,
-        # so a run's recorded substance is always the one its states were
-        # produced by.
+        # The run records one substance: this run's agent. `set_agent` comes back
+        # through here and builds a new history under the new agent's id, so a
+        # run's recorded substance is always the one its states were produced by.
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(),
             uptake_system.state_vector(),
@@ -2564,25 +2564,25 @@ class SimulationController:
         guard and the failure. None of these inputs builds a `Fraction`. So this method
         cannot raise for a value that a frame would refuse (`PL-YHR3`).
 
-        **Both reasons `start` refuses for are passed, because each one means
-        the run can go no further** (`PL-N3N5`). A standing says whether a
-        mark can still be reached, and only this controller knows that. The
-        two reasons are kept here, as `supported_limit_reason` and
-        `_failure_reason`, and `start` checks exactly these two to decide that
-        the run cannot be resumed at all. When only the cap was passed and the
-        failure was not, every mark on a failed run read as one the run had
-        not reached *yet*, although its next step would raise as its last one
+        **Both reasons for which `start` refuses to resume are passed on, because
+        each one means the run can go no further** (`PL-N3N5`). A standing says
+        whether a mark can still be reached, and only this controller knows that.
+        The controller keeps the two reasons as `supported_limit_reason` and
+        `_failure_reason`. `start` checks exactly these two to decide that the run
+        cannot be resumed at all. When only the run-length cap was passed on and
+        the failure was not, every mark on a failed run was shown as one the run
+        had not reached *yet*, although its next step would raise as its last one
         did.
 
         **The marks the run crossed include those crossed by two particular
         steps, checked against the marks as they are now** (`PL-1ZQ4`,
         project owner 2026-10-17, ratified). The two steps are the step a
         branch opened on and, while the run is stopped, the step it stopped
-        on. A mark that lies inside either step reads as crossed by that step.
+        on. A mark that lies inside either step counts as crossed by that step.
         The marks are the ones that exist at this call, not the ones that
-        existed when the step was taken. So a mark added after the step reads
-        the same on the trunk and on every branch, whichever came first, the
-        mark or the branch.
+        existed when the step was taken. So a mark added after the step has the
+        same standing on the trunk and on every branch, whichever came first,
+        the mark or the branch.
         """
 
         stood_on = self._crossings_stood_on()
