@@ -1,8 +1,9 @@
 """What a run's settings are addressed by, and the change a run records.
 
 The record half of a run's controls: which settings exist (`ControlInput`),
-the unit each is recorded in (`CONTROL_INPUT_UNITS`), and one change the
-running model actually saw (`ControlChange`). Nothing here reads simulation
+the unit each is in (`CONTROL_INPUT_DISPLAY_UNITS`, and its recorded spelling
+`CONTROL_INPUT_UNITS`), and one change the running model actually saw
+(`ControlChange`). Nothing here reads simulation
 state, holds a setting, or formats a value.
 
 `app/control_timeline.py` is the display half - it turns a recorded timeline
@@ -25,9 +26,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
-__all__ = ["CONTROL_INPUT_UNITS", "ControlChange", "ControlInput"]
+__all__ = ["CONTROL_INPUT_DISPLAY_UNITS", "CONTROL_INPUT_UNITS", "ControlChange", "ControlInput"]
 
 
 class ControlInput(StrEnum):
@@ -88,11 +90,19 @@ class ControlInput(StrEnum):
 # the reconstruction property this item exists for - and the percent a
 # reader sees is rendered by the same formatter every other concentration
 # goes through.
+#
+# Each control's unit is one `DisplayUnit` member, which the panel's slider
+# label reads too (`dashboard_frame.ParameterControl.unit`). So the label a
+# reader sees beside a slider and the unit its recorded changes carry are two
+# spellings of one member, and cannot name different units (`PL-Q3G9`).
+CONTROL_INPUT_DISPLAY_UNITS: Final[Mapping[ControlInput, DisplayUnit]] = {
+    ControlInput.FRESH_GAS_FLOW: DisplayUnit.FLOW,
+    ControlInput.DELIVERED: DisplayUnit.CONCENTRATION,
+    ControlInput.ALVEOLAR_VENTILATION: DisplayUnit.FLOW,
+    ControlInput.CARDIAC_OUTPUT: DisplayUnit.FLOW,
+}
 CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
-    ControlInput.FRESH_GAS_FLOW: "L/min",
-    ControlInput.DELIVERED: "percent of 1 atm",
-    ControlInput.ALVEOLAR_VENTILATION: "L/min",
-    ControlInput.CARDIAC_OUTPUT: "L/min",
+    control: unit.recorded for control, unit in CONTROL_INPUT_DISPLAY_UNITS.items()
 }
 
 

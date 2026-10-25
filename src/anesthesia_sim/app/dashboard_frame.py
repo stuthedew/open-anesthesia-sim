@@ -46,7 +46,7 @@ from anesthesia_sim.app.chart_frame import (
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
-from anesthesia_sim.app.control_record import ControlInput
+from anesthesia_sim.app.control_record import CONTROL_INPUT_DISPLAY_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
 from anesthesia_sim.app.controller import (
     HereForkPoint,
@@ -543,11 +543,15 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
         The entry for a mark passed at the instant with the widest reading.
     """
 
-    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(f"{hour}h"))
-    minutes = max(_CLOCK_MINUTES, key=lambda minute: advance_px(f"{minute}m"))
+    # Each part is measured as `format_elapsed` writes it alone, so the
+    # measured text follows the clock's own format (`PL-G84G`).
+    hours = max(_CLOCK_HOURS, key=lambda hour: advance_px(format_elapsed(hour * SECONDS_PER_HOUR)))
+    minutes = max(
+        _CLOCK_MINUTES, key=lambda minute: advance_px(format_elapsed(minute * SECONDS_PER_MINUTE))
+    )
     whole, tenth = max(
         ((whole, tenth) for whole in _CLOCK_WHOLE_SECONDS for tenth in _CLOCK_TENTHS),
-        key=lambda second: advance_px(f"{second[0]}.{second[1]}s"),
+        key=lambda second: advance_px(format_elapsed(second[0] + second[1] / _TENTHS_PER_SECOND)),
     )
     instant_s = (
         hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
@@ -1053,7 +1057,6 @@ class ParameterControl:
             the model's mass balance makes this the whole post-vaporizer
             stream - 22% apart at desflurane's 18% dial, landing on the
             circuit time constant the wash-in curve is about (`PL-71CF`).
-        unit: The unit the slider's value is in.
         decimals: The display resolution the slider steps at, from
             `formatting.py`, so the value applied to the model is exactly
             the value printed beside the slider (`PL-25KS`, decision D4).
@@ -1068,30 +1071,31 @@ class ParameterControl:
     control: ControlInput
     name: str | None
     qualifier: str | None
-    unit: str
     decimals: int
+
+    @property
+    def unit(self) -> str:
+        """The label of the unit the slider's value is in.
+
+        It is read from the member `control_record.CONTROL_INPUT_DISPLAY_UNITS`
+        gives the control, the member whose recorded spelling each recorded
+        change carries. So the slider's label and the recorded unit cannot
+        name different units (`PL-Q3G9`).
+        """
+
+        return CONTROL_INPUT_DISPLAY_UNITS[self.control].label
 
 
 # The four controls in panel order.
 PARAMETER_CONTROLS: Final[tuple[ParameterControl, ...]] = (
     ParameterControl(
-        ControlInput.FRESH_GAS_FLOW,
-        "Fresh gas flow",
-        "common gas outlet",
-        "L/min",
-        FLOW_DISPLAY_DECIMALS,
+        ControlInput.FRESH_GAS_FLOW, "Fresh gas flow", "common gas outlet", FLOW_DISPLAY_DECIMALS
     ),
-    ParameterControl(ControlInput.DELIVERED, None, None, "%", CONCENTRATION_DISPLAY_DECIMALS),
+    ParameterControl(ControlInput.DELIVERED, None, None, CONCENTRATION_DISPLAY_DECIMALS),
     ParameterControl(
-        ControlInput.ALVEOLAR_VENTILATION,
-        "Alveolar ventilation",
-        None,
-        "L/min",
-        FLOW_DISPLAY_DECIMALS,
+        ControlInput.ALVEOLAR_VENTILATION, "Alveolar ventilation", None, FLOW_DISPLAY_DECIMALS
     ),
-    ParameterControl(
-        ControlInput.CARDIAC_OUTPUT, "Cardiac output", None, "L/min", FLOW_DISPLAY_DECIMALS
-    ),
+    ParameterControl(ControlInput.CARDIAC_OUTPUT, "Cardiac output", None, FLOW_DISPLAY_DECIMALS),
 )
 
 
