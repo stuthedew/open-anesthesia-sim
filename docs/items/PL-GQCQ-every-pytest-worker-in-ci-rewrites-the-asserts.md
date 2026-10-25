@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, infra
 feature: ci-cost
+milestone: v0.6.7
 touches: conftest.py, tests/conftest.py, .github/workflows/quality.yml, tests/unit/test_bytecode_guard.py, tests/unit/test_quality_step_order.py
 deferred-from: v0.7.0 - filed after the gate froze; a P3 CI cost of about 25 s a part, which waits for PL-ZWQS's rebalance to settle first
 added: 2026-10-25

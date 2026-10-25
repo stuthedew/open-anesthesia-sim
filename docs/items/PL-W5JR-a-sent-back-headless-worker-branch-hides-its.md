@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: worker-runs
+milestone: v0.6.7
 touches: tools/branch_sweep.py, tools/worker_runs.py, tests/unit/test_branch_sweep.py, tests/unit/test_worker_runs.py, docs/apparatus.md, docs/maintainer.md, docs/items
 added: 2026-10-24
 closed: 2026-10-25

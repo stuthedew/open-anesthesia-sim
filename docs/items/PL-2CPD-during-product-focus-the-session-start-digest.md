@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: workflow-stress-2026-09
+milestone: v0.6.7
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, docket.toml, CLAUDE.md, docs/resident-instructions.md, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 blocked-by: PL-NZC0, PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
