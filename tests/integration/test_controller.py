@@ -29,6 +29,7 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
+    MacPercent,
     Percent,
     fraction_from_percent,
     percent_from_fraction,
@@ -2617,7 +2618,7 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
 
     trunk = _trunk_with_two_changes()
     on_file = load_agent_parameters(trunk.snapshot().agent_id)
-    edited = dataclasses.replace(on_file, mac_percent=Percent(on_file.mac_percent + 0.1))
+    edited = dataclasses.replace(on_file, mac_percent=MacPercent(on_file.mac_percent + 0.1))
     monkeypatch.setattr(
         "anesthesia_sim.app.controller.load_agent_parameters", lambda agent_id: edited
     )

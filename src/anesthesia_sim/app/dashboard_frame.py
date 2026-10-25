@@ -41,6 +41,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
+    RunCount,
     RunIndex,
     TraceStyle,
     trace_style,
@@ -521,6 +522,37 @@ _TENTHS_PER_SECOND: Final = 10
 _CLOCK_TENTHS: Final = range(1, _TENTHS_PER_SECOND)
 
 
+def displayed_run_count(run_count: int) -> RunCount:
+    """Build `run_count` as a `RunCount`, checking that the dashboard can display that many runs.
+
+    `RunCount` refuses anything that is not a count of at least one run. The
+    upper bound, `MAX_DISPLAYED_RUNS`, is a limit of the dashboard rather than
+    of counts in general, so this function checks it. It is the one place that
+    states the range. The dashboard calls it for the runs it is built with and
+    for each run it adds. A compartment selection calls it for the runs it is
+    drawn across (`PL-F9TC`).
+
+    Raises:
+        TypeError: If `run_count` is a `bool` or not an `int` (`RunCount`).
+        ValueError: If `run_count` is not between 1 and `MAX_DISPLAYED_RUNS`.
+            The message gives that range and the count refused.
+    """
+
+    out_of_range = ValueError(
+        f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not {run_count}"
+    )
+
+    try:
+        count = RunCount(run_count)
+    except ValueError as error:
+        raise out_of_range from error
+
+    if count > MAX_DISPLAYED_RUNS:
+        raise out_of_range
+
+    return count
+
+
 def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     """Return the branch selector's widest possible entry, as `advance_px` measures it.
 
@@ -958,25 +990,26 @@ def _compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuanti
 
 
 def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple[Readout, ...]:
-    """The seven readouts, in `READOUT_PANELS` order, from one snapshot.
+    """Build the seven readouts from one snapshot, in `READOUT_PANELS` order.
 
-    Every MAC line is produced from this snapshot's own divisor, read once,
-    so a frame can never pair one agent's concentration with another agent's
+    Every MAC line divides by this snapshot's own MAC, which is read once.
+    So a frame can never pair one agent's concentration with another agent's
     MAC.
 
     Args:
         snapshot: The run's state this tick.
-        playback_rate: The rate the run is being played at - a view
-            setting, drawn on the clock panel because a rate is a mode and
-            the clock is where it would be misread.
+        playback_rate: The rate at which the run is played. It is a view
+            setting. It is drawn on the clock panel, because a rate is a mode
+            and the clock is where it would be misread.
 
     Returns:
         One `Readout` per panel.
 
     Raises:
         ValueError: If the snapshot's elapsed time is negative or not finite
-            (`format_elapsed`), or its `agent_mac_percent` is not strictly
-            positive (`format_mac_multiple`).
+            (`format_elapsed`).
+        TypeError: If its `agent_mac_percent` was not built as a
+            `MacPercent` (`format_mac_multiple`).
     """
 
     mac_percent = snapshot.agent_mac_percent
@@ -1164,26 +1197,28 @@ _OPENING_SOURCES: Final[Mapping[ControlInput, tuple[str, str]]] = MappingProxyTy
 
 
 def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
-    """The four setting controls, in `PARAMETER_CONTROLS` order, from the settings in force.
+    """Build the four setting controls from the settings in force, in `PARAMETER_CONTROLS` order.
 
     Args:
-        settings: The agent and the four settings in force: the snapshot a
-            frame drew from, or `SimulationController.record()` on a run
-            whose snapshot refuses, where no frame draws (`PL-85LJ`).
+        settings: The agent and the four settings in force. This is either
+            the snapshot that a frame drew from, or
+            `SimulationController.record()` for a run whose snapshot is
+            refused, so that no frame is drawn (`PL-85LJ`).
 
     Returns:
         One `SettingReadout` per control.
 
     Raises:
-        ValueError: If `agent_mac_percent` is not strictly positive
-            (`format_mac_multiple`, on the delivered dial's MAC line), or if
-            no step of a control's display resolution lies inside the range
-            the run accepts for it (`offered_range`): a control that can
-            offer no accepted setting fails visibly rather than offering a
-            refused one. No shipped range reaches it; a machine profile
-            declaring a fresh gas flow range narrower than one step could.
-            Also if the fresh gas flow, alveolar ventilation or cardiac
-            output in force is not one of the steps its slider offers.
+        TypeError: If `agent_mac_percent` was not built as a `MacPercent`
+            (`format_mac_multiple`, on the delivered dial's MAC line).
+        ValueError: If no step of a control's display resolution lies inside
+            the range the run accepts for it (`offered_range`). A control
+            that can offer no accepted setting then fails visibly, rather
+            than offering a refused one. No shipped range causes this. A
+            machine profile that declares a fresh gas flow range narrower
+            than one step could cause it. Also raised if the fresh gas flow,
+            alveolar ventilation or cardiac output in force is not one of the
+            steps its slider offers.
             Every flow that a slider sets is a step, so only an opening flow
             stated by a machine or patient profile can cause this. The run
             is then rejected, rather than opened with the slider and its

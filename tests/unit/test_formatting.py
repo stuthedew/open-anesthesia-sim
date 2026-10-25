@@ -57,7 +57,14 @@ from anesthesia_sim.app.formatting import (
     mac_multiple,
 )
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    Percent,
+    fraction_from_percent,
+)
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -402,9 +409,9 @@ def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
     """
 
     assert MAC_UNIT_SUFFIX == " ×MAC"
-    assert format_mac_multiple(Fraction(0.016), Percent(2.0)) == "0.80 ×MAC"
-    assert format_mac_multiple(Fraction(0.0), Percent(2.0)) == "0.00 ×MAC"
-    assert format_mac_multiple(Fraction(0.04), Percent(2.0)) == "2.00 ×MAC"
+    assert format_mac_multiple(Fraction(0.016), MacPercent(2.0)) == "0.80 ×MAC"
+    assert format_mac_multiple(Fraction(0.0), MacPercent(2.0)) == "0.00 ×MAC"
+    assert format_mac_multiple(Fraction(0.04), MacPercent(2.0)) == "2.00 ×MAC"
 
 
 def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
@@ -422,8 +429,8 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
 
     # 0.015% of desflurane: above the percent resolution, below the MAC one.
     assert format_percent(Fraction(0.00015)) == "0.01%"
-    assert format_mac_multiple(Fraction(0.00015), Percent(6.0)) == expected
-    assert format_mac_multiple(Fraction(1e-9), Percent(2.0)) == expected
+    assert format_mac_multiple(Fraction(0.00015), MacPercent(6.0)) == expected
+    assert format_mac_multiple(Fraction(1e-9), MacPercent(2.0)) == expected
 
 
 @pytest.mark.parametrize("impossible", [-0.02, -1e-9])
@@ -437,27 +444,47 @@ def test_format_mac_multiple_refuses_an_impossible_negative(impossible: float) -
     """
 
     with pytest.raises(TypeError, match="was not built as Fraction, it is float: build it as"):
-        format_mac_multiple(impossible, Percent(2.0))  # type: ignore[arg-type]
+        format_mac_multiple(impossible, MacPercent(2.0))  # type: ignore[arg-type]
 
 
-def test_a_non_positive_mac_refuses_to_produce_a_number() -> None:
+@pytest.mark.parametrize("bad_mac", [0.0, -2.0, 2.0, Percent(2.0)])
+def test_a_mac_not_built_as_one_refuses_to_produce_a_number(bad_mac: float) -> None:
     """`CLAUDE.md` requires an obvious failure over a plausible value.
 
-    A zero or negative divisor cannot produce a meaningful multiple. The
-    loader's `PositivePercent` makes one unreachable from a shipped data
-    file, so one arriving here means something upstream is wrong and the
-    display must not carry on regardless.
+    A zero or negative divisor cannot produce a meaningful multiple. Each
+    formatter that divides by a MAC takes a `MacPercent`, which refuses zero
+    when it is built. So a divisor that was not built as one is refused here,
+    whatever its value. Before `PL-F9TC`, each formatter tested the sign
+    itself, and a positive bare `float` passed. A `Percent` is refused too,
+    because a dial setting is not a MAC.
     """
 
-    for bad_mac in (0.0, -2.0):
-        with pytest.raises(ValueError, match="strictly positive"):
-            mac_multiple(Fraction(0.02), bad_mac)
+    refusal = "was not built as MacPercent"
 
-        with pytest.raises(ValueError, match="strictly positive"):
-            format_mac_multiple(Fraction(0.02), bad_mac)
+    with pytest.raises(TypeError, match=refusal):
+        mac_multiple(Fraction(0.02), bad_mac)  # type: ignore[arg-type]
 
-        with pytest.raises(ValueError, match="strictly positive"):
-            mac_axis_ticks(8.0, bad_mac)
+    with pytest.raises(TypeError, match=refusal):
+        format_mac_multiple(Fraction(0.02), bad_mac)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refusal):
+        mac_axis_ticks(8.0, bad_mac)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refusal):
+        chart_axis_top_percent(bad_mac)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refusal):
+        chart_grid_interval_percent(bad_mac)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refusal):
+        format_mac_reference("Sevoflurane", bad_mac)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refusal):
+        mac_awake_band_percent(
+            fraction_of_mac=MacMultiple(0.34),
+            standard_deviation_fraction_of_mac=MacMultiple(0.05),
+            mac_percent=bad_mac,  # type: ignore[arg-type]
+        )
 
 
 def test_mac_axis_ticks_land_on_round_mac_values_inside_the_plotted_range() -> None:
@@ -469,7 +496,7 @@ def test_mac_axis_ticks_land_on_round_mac_values_inside_the_plotted_range() -> N
     the range would be drawn outside the plotted area.
     """
 
-    ticks = mac_axis_ticks(8.0, 2.0)
+    ticks = mac_axis_ticks(8.0, MacPercent(2.0))
 
     assert [label for _, label in ticks] == [
         "0.0",
@@ -530,7 +557,7 @@ def test_the_mac_axis_coarsens_rather_than_crowding_a_wide_range() -> None:
         (25.0, 2.0),
         (45.0, 5.0),
     ):
-        ticks = mac_axis_ticks(max_percent, 2.0)
+        ticks = mac_axis_ticks(max_percent, MacPercent(2.0))
         labels = [float(label) for _, label in ticks]
 
         assert len(ticks) - 1 <= MAX_MAC_AXIS_INTERVALS
@@ -541,8 +568,8 @@ def test_the_mac_axis_coarsens_rather_than_crowding_a_wide_range() -> None:
 def test_the_mac_axis_is_unlabelled_rather_than_invented_for_an_empty_range() -> None:
     """No plotted range means no scale to label, and none is guessed."""
 
-    assert mac_axis_ticks(0.0, 2.0) == ()
-    assert mac_axis_ticks(-1.0, 2.0) == ()
+    assert mac_axis_ticks(0.0, MacPercent(2.0)) == ()
+    assert mac_axis_ticks(-1.0, MacPercent(2.0)) == ()
 
 
 def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
@@ -554,8 +581,8 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
     disagrees with the divisor see that they disagree — and convert back.
     """
 
-    assert format_mac_reference("Sevoflurane", 2.0) == "1 MAC sevoflurane = 2.0%"
-    assert format_mac_reference("Desflurane", 6.0) == "1 MAC desflurane = 6.0%"
+    assert format_mac_reference("Sevoflurane", MacPercent(2.0)) == "1 MAC sevoflurane = 2.0%"
+    assert format_mac_reference("Desflurane", MacPercent(6.0)) == "1 MAC desflurane = 6.0%"
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
@@ -709,37 +736,41 @@ def test_the_mac_awake_band_refuses_inputs_it_cannot_place_honestly() -> None:
     something upstream is wrong and the band must not be drawn anyway.
     """
 
-    with pytest.raises(ValueError, match="mac_percent"):
+    with pytest.raises(TypeError, match="MacPercent"):
         mac_awake_band_percent(
-            fraction_of_mac=0.34, standard_deviation_fraction_of_mac=0.05, mac_percent=0.0
+            fraction_of_mac=0.34,
+            standard_deviation_fraction_of_mac=0.05,
+            mac_percent=0.0,  # type: ignore[arg-type]
         )
 
     with pytest.raises(ValueError, match="lower edge"):
         mac_awake_band_percent(
-            fraction_of_mac=0.05, standard_deviation_fraction_of_mac=0.05, mac_percent=2.0
+            fraction_of_mac=0.05,
+            standard_deviation_fraction_of_mac=0.05,
+            mac_percent=MacPercent(2.0),
         )
 
 
 def test_each_display_refusal_a_halt_can_show_is_pinned_whole() -> None:
-    """The whole sentence the "Simulation stopped" banner shows for each display refusal.
+    """Pin the whole sentence that the "Simulation stopped" banner shows for each display refusal.
 
     A frame that cannot be drawn halts the run and prints the refusal. The
-    tests above match a phrase of each, which passes with the value it names
-    missing (`PL-79PK`).
+    tests above match only a phrase of each refusal. Such a match still
+    passes when the value that the refusal names is missing (`PL-79PK`). A
+    zero MAC is no longer among these refusals. A `MacPercent` refuses it
+    when the agent is read, before any run starts (`PL-F9TC`).
     """
-
-    with pytest.raises(ValueError) as no_mac:
-        mac_multiple(Fraction(0.02), 0.0)
 
     with pytest.raises(ValueError) as no_band:
         mac_awake_band_percent(
-            fraction_of_mac=0.05, standard_deviation_fraction_of_mac=0.05, mac_percent=2.0
+            fraction_of_mac=0.05,
+            standard_deviation_fraction_of_mac=0.05,
+            mac_percent=MacPercent(2.0),
         )
 
     with pytest.raises(ValueError) as no_time:
         format_elapsed(-1.0)
 
-    assert str(no_mac.value) == "mac_percent must be strictly positive, got 0.0"
     assert str(no_band.value) == (
         "the MAC-awake band's lower edge must be strictly positive, got 0.05 - 0.05"
     )
@@ -778,12 +809,12 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     correct = mac_awake_band_percent(
         fraction_of_mac=MacMultiple(0.34),
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=Percent(2.0),
+        mac_percent=MacPercent(2.0),
     )
     swapped = mac_awake_band_percent(
         fraction_of_mac=Fraction(0.08),  # type: ignore[arg-type]
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=Percent(2.0),
+        mac_percent=MacPercent(2.0),
     )
 
     assert correct == pytest.approx((0.58, 0.78))
@@ -805,7 +836,7 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
     """
 
     fraction = Fraction(0.0068)
-    multiple = mac_multiple(fraction, Percent(2.0))
+    multiple = mac_multiple(fraction, MacPercent(2.0))
 
     assert format_percent(fraction) == f"{0.68:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
     assert multiple == pytest.approx(0.34)
@@ -817,17 +848,18 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 
 
 def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
-    """Every `mac_percent` this module takes is a `Percent`, never a bare `float`.
+    """Every `mac_percent` this module takes is a `MacPercent`, never a bare `float`.
 
     Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
     Handed the fraction, every function named below runs without complaint,
-    since the divisor is still positive: the chart's ceiling lands at 0.06%
-    where it belongs at 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
-    `float`, so only a parameter typed `Percent` refuses one, and a parameter
-    typed `float` breaks no caller, so `mypy` never asks for it to change: six
-    of these eight were `float` until `PL-W3Q5`. Read from the signatures
-    rather than from a list, so a function added with a bare `float` divisor
-    fails here too.
+    because the divisor is still positive. The chart's ceiling lands at 0.06%
+    instead of 6%, and 1 MAC reads as 100.00 ×MAC. A `Fraction` is a
+    `float`, so only a parameter typed `Percent` refuses one. A parameter
+    typed `float` breaks no caller, so `mypy` never asks for it to change.
+    Six of these eight were `float` until `PL-W3Q5`. The test reads the types
+    from the signatures rather than from a list, so a function added with a
+    bare `float` divisor fails here too. Since `PL-F9TC`, the type is
+    `MacPercent`, a `Percent` checked to be above zero.
     """
 
     divisors = {
@@ -847,7 +879,7 @@ def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
         "mac_axis_ticks",
         "mac_multiple",
     }
-    assert {name: hint for name, hint in divisors.items() if hint is not Percent} == {}
+    assert {name: hint for name, hint in divisors.items() if hint is not MacPercent} == {}
 
 
 def test_format_mac_awake_reference_names_both_free_parameters() -> None:
@@ -863,7 +895,7 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         "Sevoflurane",
         fraction_of_mac=0.34,
         standard_deviation_fraction_of_mac=0.05,
-        mac_percent=2.0,
+        mac_percent=MacPercent(2.0),
     )
 
     assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.68%), band ±1 SD 0.58–0.78%"
@@ -912,8 +944,8 @@ def test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled(
     two rules.
     """
 
-    assert chart_axis_top_percent(mac_percent) == pytest.approx(expected_top)
-    assert chart_grid_interval_percent(mac_percent) == pytest.approx(expected_interval)
+    assert chart_axis_top_percent(MacPercent(mac_percent)) == pytest.approx(expected_top)
+    assert chart_grid_interval_percent(MacPercent(mac_percent)) == pytest.approx(expected_interval)
 
 
 def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
@@ -927,10 +959,10 @@ def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
     """
 
     for mac_percent in (0.5, 1.2, 2.0, 6.0, 12.0):
-        assert chart_axis_top_percent(mac_percent) / mac_percent == pytest.approx(
+        assert chart_axis_top_percent(MacPercent(mac_percent)) / mac_percent == pytest.approx(
             CHART_AXIS_TOP_MAC
         )
-        assert chart_grid_interval_percent(mac_percent) / mac_percent == pytest.approx(
+        assert chart_grid_interval_percent(MacPercent(mac_percent)) / mac_percent == pytest.approx(
             CHART_GRID_INTERVAL_MAC
         )
 
@@ -954,18 +986,18 @@ def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpress
 
 @pytest.mark.parametrize("bad_mac_percent", [0.0, -1.0, -0.001])
 def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> None:
-    """An axis of zero or negative height places every trace meaninglessly.
+    """An axis of zero or negative height would place every trace somewhere meaningless.
 
-    Failing is the required behavior: a chart drawn against such an axis
-    would still render, and every value on it would be somewhere a reader
-    could read a number off.
+    Failing is the required behavior. A chart drawn against such an axis
+    would still render, and a reader could still read a number off every
+    value on it. The axis takes a `MacPercent`, so such a MAC
+    is refused when it is built, before an axis can be computed from it
+    (`PL-F9TC`). A bare `float` is refused by the axis itself, as
+    `test_a_mac_not_built_as_one_refuses_to_produce_a_number` shows.
     """
 
-    with pytest.raises(ValueError, match="strictly positive"):
-        chart_axis_top_percent(bad_mac_percent)
-
-    with pytest.raises(ValueError, match="strictly positive"):
-        chart_grid_interval_percent(bad_mac_percent)
+    with pytest.raises(SimulationConfigurationError, match="mac_percent of"):
+        chart_axis_top_percent(MacPercent(bad_mac_percent))
 
 
 def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> None:

@@ -62,7 +62,7 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
 )
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
@@ -442,8 +442,8 @@ def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
 
 @pytest.mark.parametrize("mac_percent", [2.0, 1.15, 6.0])
 def test_the_percent_axis_is_labelled_at_exactly_the_values_it_rules(mac_percent: float) -> None:
-    top = chart_axis_top_percent(mac_percent)
-    interval = chart_grid_interval_percent(mac_percent)
+    top = chart_axis_top_percent(MacPercent(mac_percent))
+    interval = chart_grid_interval_percent(MacPercent(mac_percent))
     ticks = percent_axis_ticks(top, interval)
 
     assert ticks[0] == (0.0, "0")
@@ -527,7 +527,7 @@ def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...
         branch_point_s=None,
         agent_id="sevoflurane",
         agent_display_name="Sevoflurane",
-        mac_percent=2.0,
+        mac_percent=MacPercent(2.0),
         elapsed_s=times_s[-1],
         times_s=times_s,
         fractions=MappingProxyType(fractions),
@@ -549,7 +549,7 @@ def _frame(
         tick_times_s=(0.0, 600.0),
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
         plot_width_px=_PLOT_WIDTH_PX,
-        mac_percent=Percent(2.0),
+        mac_percent=MacPercent(2.0),
         axis_top_percent=Percent(6.0),
         grid_interval_percent=1.0,
         percent_ticks=percent_axis_ticks(6.0, 1.0),
@@ -677,7 +677,8 @@ def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled(
 
     controller = _run(60.0)
     run = replace(
-        _input(controller), snapshot=replace(controller.snapshot(), agent_mac_percent=Percent(40.0))
+        _input(controller),
+        snapshot=replace(controller.snapshot(), agent_mac_percent=MacPercent(40.0)),
     )
 
     with pytest.raises(
@@ -1291,7 +1292,7 @@ def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -
     fraction = Fraction(0.0123)
 
     assert format_trace_hover(run, RecordedQuantity.VESSEL_RICH, 0, 1).splitlines()[2] == (
-        f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(2.0))}"
+        f"{format_percent(fraction)}   {format_mac_multiple(fraction, MacPercent(2.0))}"
     )
 
 

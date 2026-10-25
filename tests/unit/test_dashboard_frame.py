@@ -180,7 +180,7 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
 )
 from anesthesia_sim.core import uptake_system
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -383,7 +383,7 @@ def _snapshot(
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
-        agent_mac_percent=Percent(agent_mac_percent),
+        agent_mac_percent=MacPercent(agent_mac_percent),
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
@@ -1344,7 +1344,9 @@ def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
     assert WIDEST_READOUT_SECONDARY == max(
         (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
     )
-    assert len(WIDEST_READOUT_SECONDARY) >= len(format_mac_multiple(Fraction(1e-9), Percent(2.0)))
+    assert len(WIDEST_READOUT_SECONDARY) >= len(
+        format_mac_multiple(Fraction(1e-9), MacPercent(2.0))
+    )
 
 
 # --- the four setting controls -----------------------------------------------
@@ -1894,7 +1896,7 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
     assert delivered.value_text == format_percent(Fraction(0.025))
-    assert delivered.secondary == format_mac_multiple(Fraction(0.025), Percent(2.0))
+    assert delivered.secondary == format_mac_multiple(Fraction(0.025), MacPercent(2.0))
     assert delivered.secondary == "1.25 ×MAC"
 
 
@@ -1932,7 +1934,7 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
 
     assert snapshot.agent_mac_percent == 6.0
     assert _readouts_by_name(snapshot)["Alveolar"][2] == format_mac_multiple(
-        snapshot.alveolar_partial_pressure_fraction, Percent(6.0)
+        snapshot.alveolar_partial_pressure_fraction, MacPercent(6.0)
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
     # the alveolar compartment is somewhere below it and above nothing.
@@ -2212,7 +2214,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     """The divisor is the one free parameter, so the display carries it, per agent."""
 
     assert mac_reference_caption(_frame(_fake_controller())) == format_mac_reference(
-        "Sevoflurane", 2.0
+        "Sevoflurane", MacPercent(2.0)
     )
     assert mac_reference_caption(_frame(_fake_controller())) == "1 MAC sevoflurane = 2.0%"
 
@@ -2222,7 +2224,9 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
         max_delivered_concentration_percent=18.0,
     )
 
-    assert mac_reference_caption(_frame(desflurane)) == format_mac_reference("Desflurane", 6.0)
+    assert mac_reference_caption(_frame(desflurane)) == format_mac_reference(
+        "Desflurane", MacPercent(6.0)
+    )
 
 
 @pytest.mark.parametrize("agent_id", AGENT_DATA_FILENAMES)

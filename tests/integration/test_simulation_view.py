@@ -184,7 +184,13 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    MacMultiple,
+    MacPercent,
+    Percent,
+    fraction_from_percent,
+)
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -921,7 +927,8 @@ def test_a_dashboard_refuses_to_be_built_with_no_run() -> None:
     """A dashboard with no run has no agent, no ruler and nothing to draw."""
 
     with pytest.raises(
-        ValueError, match=re.escape("a dashboard displays at least one run; none was given")
+        ValueError,
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 0"),
     ):
         SimulationView(())
 
@@ -938,7 +945,7 @@ def test_a_dashboard_refuses_more_runs_than_may_be_displayed() -> None:
 
     with pytest.raises(
         ValueError,
-        match=re.escape(f"3 runs given; at most {MAX_DISPLAYED_RUNS} may be displayed at once"),
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 3"),
     ):
         SimulationView(tuple(SimulationController() for _ in range(MAX_DISPLAYED_RUNS + 1)))
 
@@ -4300,7 +4307,7 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     chart = _concentration(view).chart
 
     assert _concentration(view).mac_reference_text.text() == format_mac_reference(
-        "Sevoflurane", 2.0
+        "Sevoflurane", MacPercent(2.0)
     )
     assert chart.one_mac_line() == 2.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -4311,12 +4318,14 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     # which would agree with a band the switch failed to rebuild (`PL-JPS2`).
     mac_awake = load_agent_parameters("desflurane").mac_awake
 
-    assert _concentration(view).mac_reference_text.text() == format_mac_reference("Desflurane", 6.0)
+    assert _concentration(view).mac_reference_text.text() == format_mac_reference(
+        "Desflurane", MacPercent(6.0)
+    )
     assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
         "Desflurane",
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=6.0,
+        mac_percent=MacPercent(6.0),
     )
     assert chart.one_mac_line() == 6.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -8510,9 +8519,7 @@ def test_adding_a_third_run_is_refused(application: QApplication) -> None:
 
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            f"2 runs are already displayed; at most {MAX_DISPLAYED_RUNS} may be displayed at once"
-        ),
+        match=re.escape(f"the dashboard displays 1 to {MAX_DISPLAYED_RUNS} runs at once, not 3"),
     ):
         view.add_run(SimulationController())
 
