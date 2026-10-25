@@ -2131,8 +2131,8 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     """A dragged slider's immediate labels come from the snapshot, so its refusal halts the run.
 
     After a coalesced change, `_apply_setting` rewrites this run's own labels
-    from a snapshot read once the setting has been applied. That read happens
-    outside the gate the setting went through. So on a paused run whose
+    from a snapshot read once the setting has been applied. Before `PL-HJKN`, that
+    read happened outside the `try` that the setting went through. So on a paused run whose
     snapshot refuses (`PL-7DJK`), the drag was accepted and the read raised
     out of the slot. The dial moved, and the status word showed "Paused" over
     a run that no frame could draw. The toolkit printed an error that nothing
@@ -7243,10 +7243,14 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     assert case.fork_points_s == ()
     assert case.mark_fork_points == ()
 
-    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the dashboard this run is drawn in failed"
+    ):
         case.fork_at(CaseInstant(60.0))
 
-    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the dashboard this run is drawn in failed"
+    ):
         case.fork_at_mark(mark)
 
     assert case.branches == ()
@@ -7823,6 +7827,179 @@ def test_a_raise_in_a_slot_that_no_try_guarded_halts_its_run(
     assert controller.has_failed is True
     assert controller.snapshot().failure_reason == ("RuntimeError: the pause could not be recorded")
     assert run._status_text.text() == STATUS_FAILED_TEXT
+
+
+def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboard(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A raise in one of the dashboard's slots halts every run, and the refusal names the dashboard.
+
+    Through the halt gate, every slot of `SimulationView` now halts every run, as a frame
+    that fails does. Edit on the marks panel is one, when the editor cannot be built. The
+    branch panel's refusal said "the frame this run is drawn in failed", for a frame that
+    never failed (blind review of `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    def refuse(*args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("the marks editor could not be built")
+
+    monkeypatch.setattr(simulation_view_module, "BookmarkDialog", refuse)
+    view._bookmarks_panel.edit_button.click()
+
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
+    assert case.trunk.fork_refusal == (
+        "the dashboard this run is drawn in failed (RuntimeError: the marks editor could not "
+        "be built), and a branch would be drawn by the same dashboard and could fail the same "
+        "way; reset the run first"
+    )
+
+
+def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run's halt asks for a frame even when its dials cannot be written, so "Branch here" goes.
+
+    `present_halt` raises once it has shown the halt, for a fresh gas flow range narrower
+    than the dial's step (`PL-M3M2`). `_halt_run` then asked for no frame, and the
+    dashboard restates its branch panel only when it draws. So "Branch here" went on
+    offering the halted trunk. Every slot of a run reaches this path through the halt
+    gate, including `_handle_adjustment_start`, which no `try` guarded before (blind
+    review of `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[0]
+    here = view._fork_panel.here_button
+    assert here.isHidden() is False, "the paused trunk offers no Branch here to withdraw"
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+
+    def refuse() -> None:
+        raise RuntimeError("the adjustment could not be recorded")
+
+    monkeypatch.setattr(case.trunk, "begin_control_adjustment", refuse)
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        trunk._handle_adjustment_start()
+
+    assert case.trunk.has_failed is True
+    assert here.isHidden() is True
+
+
+def test_a_new_case_question_that_cannot_be_built_leaves_the_selector_working_after_reset(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A raise while the new-case question is built halts the run, and Reset frees the selector.
+
+    `_confirm_new_case` recorded the pending agent before it built the question. When
+    building it raised, the gate halted the run, but the pending agent stayed. So every
+    later pick was put back, even after the Reset that the halt names as the way out
+    (blind review of `PL-HJKN`).
+    """
+
+    controller = _paused_run_with_history()
+    run = _shown_view(application, controller).runs[0]
+    running = controller.agent_id
+    other = next(agent for agent in ("desflurane", "isoflurane", "sevoflurane") if agent != running)
+
+    def refuse(*args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("the question could not be built")
+
+    monkeypatch.setattr(run_view_module, "new_case_question", refuse)
+    _select_agent(run, other)
+
+    assert controller.has_failed is True
+    assert run._agent_dropdown.currentData() == running
+
+    monkeypatch.undo()
+    run._reset_button.click()
+    _select_agent(run, other)
+
+    assert controller.agent_id == other
+
+
+def test_a_refused_reset_whose_halt_cannot_write_its_dials_halts_the_run_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A refused Reset halts its run once, for the refusal, even when showing the halt raises.
+
+    `_reset_now` used to halt the run itself, inside the gated Reset slot. Showing that halt
+    raised for a fresh gas flow range narrower than the dial's step (`PL-M3M2`). The gate
+    then caught the dial's exception and halted the run a second time, for that exception
+    (blind review of `PL-HJKN`).
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    run._start_button.click()
+    _steps(run, 5)
+    _with_stale_tissue_flows(controller, 6.0)
+    halted_for: list[str] = []
+    halt_for_slot = RunView.halt_for_slot
+
+    def recording(self: RunView, error: Exception) -> None:
+        halted_for.append(type(error).__name__)
+        halt_for_slot(self, error)
+
+    monkeypatch.setattr(RunView, "halt_for_slot", recording)
+    monkeypatch.setattr(
+        BreathingCircuit,
+        "accepted_fresh_gas_flow_range_l_min",
+        property(lambda circuit: (0.21, 0.29)),
+    )
+
+    with pytest.raises(ValueError, match="can offer no setting"):
+        run._handle_reset()
+
+    assert halted_for == ["SimulationConfigurationError"]
+    assert controller.has_failed is True
+
+
+def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A slot that the halt's own frame sets off, and that raises, does not halt every run again.
+
+    Halting every run ends by drawing a frame. Laying that frame out emits `rangeChanged`,
+    which calls `_follow_chart`. When `_follow_chart` raised, its gate started the halt
+    again inside itself, and one raise started it 21 times, 6 deep (blind review of
+    `PL-HJKN`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    depth = 0
+    deepest = 0
+    halt_every_run = SimulationView._halt_every_run
+
+    def tracking(self: SimulationView, error: BaseException) -> None:
+        nonlocal depth, deepest
+        depth += 1
+        deepest = max(deepest, depth)
+
+        try:
+            halt_every_run(self, error)
+        finally:
+            depth -= 1
+
+    def refuse(self: SimulationView) -> NoReturn:
+        raise RuntimeError("the chart is gone")
+
+    monkeypatch.setattr(SimulationView, "_halt_every_run", tracking)
+    view._chart_view_owed = True
+    monkeypatch.setattr(SimulationView, "_chart_in_view", refuse)
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert deepest == 1
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
 
 
 def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:

@@ -74,7 +74,12 @@ def halt_gate[View: HaltingView, **Params](
         slot: A method of a `HaltingView` that returns nothing.
 
     Returns:
-        The gated method, marked so that `passes_halt_gate` returns True for it.
+        The gated method, marked so that `passes_halt_gate` returns True for it. It
+        raises only what the view's `halt_for_slot` raises (`PL-TLH4`).
+
+    Raises:
+        TypeError: If `slot` takes no parameter for the view. This is raised when the
+            gate is applied, not when the slot is called.
     """
 
     capacity = _positional_capacity(slot)

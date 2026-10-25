@@ -661,8 +661,9 @@ class SimulationController:
         """The agent of this run, read from the run's settings and not from any compartment.
 
         The snapshot carries the same id. This property is for a caller that
-        cannot get the snapshot. `RunView` uses it to set the agent selector
-        back to the running agent on a run whose snapshot raises (`PL-V2HC`).
+        cannot get the snapshot, such as a test of a run whose snapshot raises.
+        `RunView` puts its selector back from the run's record instead
+        (`PL-V2HC`, `PL-HJKN`).
         """
 
         return self._agent_id
@@ -689,22 +690,24 @@ class SimulationController:
             self._failure_reason = reason
 
     def record_failed_frame(self, reason: str) -> None:
-        """Stop the run because the frame it is drawn in raised, recording why.
+        """Stop the run because the dashboard it is drawn in raised, recording why.
 
-        The frame is shared by every run on the dashboard, so a raise there is
-        attributable to none of them (`SimulationView._halt_every_run`). This
-        records that the frame failed. It says nothing about whether the model
-        failed, so the interface also calls `fail()` or
-        `halt_at_supported_limit()`, as the raise deserves.
+        Every run on the dashboard is drawn in one shared frame, and the
+        dashboard's own slots act on the whole case. So a raise in the frame or
+        in one of those slots is attributable to no single run
+        (`SimulationView._halt_every_run`). This records that the dashboard
+        failed. It says nothing about whether the model failed, so the
+        interface also calls `fail()` or `halt_at_supported_limit()`, as the
+        raise deserves.
 
         A run with this record offers no branch at all (`PL-T2Q2`). A branch
-        opened from it would be drawn by the same frame, beside this run, and
-        would halt on the next one. The first reason is kept, as `fail()`
+        opened from it would be drawn by the same dashboard, beside this run,
+        and could fail the same way. The first reason is kept, as `fail()`
         keeps its own. Only a fresh run clears it, via `reset()` or
         `set_agent()`.
 
         Args:
-            reason: What the frame raised, as `dashboard_frame.halt_disposition`
+            reason: What the dashboard raised, as `dashboard_frame.halt_disposition`
                 words it.
         """
 
@@ -718,7 +721,7 @@ class SimulationController:
         """Why no branch at all may be taken from this run, or None where one may.
 
         Two reasons rule out every way of taking a branch. Either this run is
-        itself a branch, or the frame it is drawn in has failed
+        itself a branch, or the dashboard it is drawn in has failed
         (`record_failed_frame`). Each method that takes a branch raises from
         this same check. So `BranchedCase` offers no fork point while a reason
         is set, and the offer and the methods cannot disagree. A method may
@@ -733,8 +736,9 @@ class SimulationController:
 
         if self._failed_frame_reason is not None:
             return (
-                f"the frame this run is drawn in failed ({self._failed_frame_reason}), and a "
-                "branch would be drawn in the same frame and halt on it; reset the run first"
+                f"the dashboard this run is drawn in failed ({self._failed_frame_reason}), and "
+                "a branch would be drawn by the same dashboard and could fail the same way; "
+                "reset the run first"
             )
 
         return None

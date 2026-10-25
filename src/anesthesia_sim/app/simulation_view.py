@@ -461,6 +461,9 @@ class SimulationView(QWidget):
         # so from the moment a branch is taken until the reader scrolls the
         # page themselves (`_keep_chart_in_view`, `PL-562Z`).
         self._chart_view_owed = False
+        # Whether `_halt_every_run` is running. A slot that the halt's own frame
+        # sets off, and that raises, must not start the halt again (`PL-HJKN`).
+        self._halting_every_run = False
 
         # The marks belong to the *case* and not to any one run. That is why
         # they are built here beside the Areas rather than in `RunView`
@@ -1291,7 +1294,7 @@ class SimulationView(QWidget):
         failed, the panel offers nothing (`PL-T2Q2`).
 
         The call is guarded, because it runs inside the halt path. There, an
-        exception would escape the render path's own guard and reach the
+        exception would leave the halt gate that called the halt and reach the
         toolkit. If the case raises while computing its offer, the panel is
         given an offer of nothing rather than left with the last frame's.
         """
@@ -1560,8 +1563,8 @@ class SimulationView(QWidget):
         their standings without building a snapshot. So the restatement needs no frame.
 
         The restatement is guarded, as `_restate_fork_panel` is. It runs inside the halt
-        path, where an exception would escape the render path's own guard and reach the
-        toolkit. If the panel cannot be restated, it is hidden rather than left showing
+        path, where an exception would leave the halt gate that called the halt and reach
+        the toolkit. If the panel cannot be restated, it is hidden rather than left showing
         the last frame's rows. The editor's lists and their Remove buttons are hidden
         too, so the two places that list the marks agree (`PL-F5KT`).
         """
@@ -1819,12 +1822,22 @@ class SimulationView(QWidget):
         on screen said why (`PL-F2T2`), or a branch was kept that was never drawn
         (`PL-08SS`).
 
+        The halt draws a frame, and laying that frame out can call one of this
+        view's slots, such as `_follow_chart`. If that slot raises while every run
+        is being halted, its exception is passed on, to be printed, rather than
+        starting the halt again inside itself. Before this rule, one raise in
+        `_follow_chart` started the halt 21 times, 6 deep (blind review of `PL-HJKN`).
+
         Args:
             error: The exception that the slot raised.
 
         Raises:
+            Exception: `error` itself, when every run is already being halted.
             ValueError: What `_halt_every_run` raises once the halt is shown.
         """
+
+        if self._halting_every_run:
+            raise error
 
         self._halt_every_run(error)
 
@@ -1857,12 +1870,13 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _halt_every_run(self, error: BaseException) -> None:
-        """Halt every run on an exception in the shared render path, show it, then try to draw.
+        """Halt every run on an exception in the dashboard, show it, then try to draw.
 
-        An exception that the render loop meets belongs to no single run, so every run
-        stops. Each run shows its halt before the frame is tried. It shows the halt from
-        its controller's record, which builds no compartment value. The frame is what
-        just failed, and it may fail again for the same cause. For example, two runs may
+        An exception raised in the shared render path, or in one of the dashboard's own
+        slots, belongs to no single run, so every run stops. Each run shows its halt
+        before the frame is tried. It shows the halt from its controller's record, which
+        builds no compartment value. The frame may be what just failed, and it may fail
+        again for the same cause. For example, two runs may
         have come to use different agents, or a snapshot's own values may be rejected. A
         halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
         The branch controls are restated from the case for the same reason
@@ -1870,7 +1884,7 @@ class SimulationView(QWidget):
         run's controller for the same reason (`_restate_bookmark_panel`, `PL-YHR3`). Both
         come from one list, `halt_restatements`. A test checks that this list covers every
         control the dashboard offers outside a run (`PL-5JTH`). The trunk records that its
-        frame failed, so the case then offers no branch at all. A branch opened now would
+        dashboard failed, so the case then offers no branch at all. A branch opened now would
         be drawn by the same frame and would halt on it (`PL-T2Q2`). If presenting the
         frame fails afterwards, the halt is not undone.
 
@@ -1885,24 +1899,29 @@ class SimulationView(QWidget):
                 everything above has been done.
         """
 
-        for run in self._runs:
-            run.halt(error, in_frame=True)
-
-        presentation_error: Exception | None = None
-
-        for run in self._runs:
-            try:
-                run.present_halt()
-            except Exception as raised:
-                presentation_error = presentation_error or raised
-
-        for restatement in self.halt_restatements():
-            restatement.restate()
+        self._halting_every_run = True
 
         try:
-            self._refresh_view()
-        except Exception:
-            pass
+            for run in self._runs:
+                run.halt(error, in_frame=True)
+
+            presentation_error: Exception | None = None
+
+            for run in self._runs:
+                try:
+                    run.present_halt()
+                except Exception as raised:
+                    presentation_error = presentation_error or raised
+
+            for restatement in self.halt_restatements():
+                restatement.restate()
+
+            try:
+                self._refresh_view()
+            except Exception:
+                pass
+        finally:
+            self._halting_every_run = False
 
         if presentation_error is not None:
             raise presentation_error

@@ -109,7 +109,7 @@ src/anesthesia_sim/
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView and AccountingView (PL-TH35); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
-│   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it, so a raise inside one halts the run rather than escaping to Qt (PL-HJKN); toolkit-independent
+│   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it, so a raise inside one halts its run, or every run for SimulationView, rather than escaping to Qt (PL-HJKN); toolkit-independent
 │   ├── run_surfaces.py             # the two parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
@@ -453,9 +453,11 @@ bookmark panel, are restated from one list, `SimulationView.halt_restatements`.
 `test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
 control that is not covered by a run, a listed panel or a named exemption. So a
 panel added later is checked without anyone having to remember it (`PL-5JTH`).
-The trunk records that its frame failed, so it then also offers no keyframe and
-no passed mark. A branch opened at one of them would be drawn by the same
-failing frame (`SimulationController.record_failed_frame`, `PL-T2Q2`).
+The trunk records that its dashboard failed, so it then also offers no keyframe
+and no passed mark. A branch opened at one of them would be drawn by the same
+dashboard, which could fail the same way. A raise in one of the dashboard's own
+slots is recorded the same way as a frame that fails, because it too belongs to
+no single run (`SimulationController.record_failed_frame`, `PL-T2Q2`, `PL-HJKN`).
 
 A run can stop itself inside its own step tick, on a mark or on arriving at the
 supported run length. Such a run asks for no frame, and nothing else needs to
