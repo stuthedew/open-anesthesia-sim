@@ -3,11 +3,12 @@ id: PL-H536
 title: MODEL.md cites no published cross-check for the derived tissue:blood coefficients, though Baker and Farmery Table 2 tabulates all nine to the printed precision
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-03
+closed: 2026-10-25
 verify: grep -qF 'Baker AB, Farmery AD' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
@@ -79,3 +80,18 @@ domain), 2026-09-03, from references supplied by the project owner:
 - Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
   anesthesia. In: Schuttler J, Schwilden H (eds). Modern Anesthetics. Handbook
   of Experimental Pharmacology 182. Springer, 2008:159-186 (p. 165).
+
+**Done 2026-10-25, with two departures from the brief.** First, Baker and
+Farmery's Table 2 could not be re-read: neither this repository nor the
+private reference corpus holds it, PubMed has no full text (PMID 23737195),
+and the publisher refused an unattended client. So `docs/MODEL.md` cites the
+2026-09-03 reading recorded above and says so. It also says that desflurane's
+fat figure does not round: 30.9524 rounds to 31.0, and the brief records
+Baker printing 30.9. The published statement of the operation itself is
+taken from Eger and Saidman 2005, p. 1023, read in full text today. Second,
+the quantified between-author example is not Baker's Fiserova-Bergerova
+column, which could not be checked. It is Yasuda, Targ and Eger's own
+comparison on p. 373 (kidney 115% to 150% greater, muscle 10% to 30% less,
+brain and fat similar), Yasuda's own muscle spread, and Eger and Saidman's
+Table 1 muscle range for sevoflurane, 1.1 to 2.4. All three were read in
+full text from the private corpus.

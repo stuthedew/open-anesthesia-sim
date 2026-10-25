@@ -3305,6 +3305,70 @@ the `AgentParameters` properties in `core/parameters.py`. The data file does
 not store them a second time. The tissue-blood partition-coefficient tests in
 `tests/unit/test_parameters.py` guard this derivation.
 
+**The division is the literature's own operation, and one published table
+reproduces its results** (`PL-H536`). Eger and Saidman state the operation in
+these words: "a tissue/blood partition coefficient for a given anesthetic is
+calculated by dividing a tissue/gas partition coefficient by the blood/gas
+partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
+computed their own tissue:blood table the same way, as the next subsection
+records. Both papers were read in full text from the private reference corpus,
+and Eger and Saidman's p. 1023 was read for this paragraph on 2026-10-25. The
+full citation of Eger and Saidman is in § "Known limitations".
+
+Baker and Farmery's 2011 review publishes the results as well as the
+operation. Its Table 2 (p. 572) gives tissue:blood coefficients for the
+vessel-rich, muscle and fat groups, in a column it attributes to Eger and
+Shafer. The session that filed `PL-H536` read that table on 2026-09-03, from a
+copy the project owner supplied, and recorded these figures. In each cell the
+first figure is this document's derived row and the second is Baker's:
+
+| | vessel-rich | muscle | fat |
+| --- | ---: | ---: | ---: |
+| sevoflurane | 1.6923 vs 1.69 | 3.6923 vs 3.69 | 52.3077 vs 52.3 |
+| isoflurane | 1.6154 vs 1.62 | 3.4615 vs 3.46 | 53.8462 vs 53.8 |
+| desflurane | 1.2857 vs 1.29 | 2.3095 vs 2.31 | 30.9524 vs 30.9 |
+
+<!-- derived: 1.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 3.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 52.3077 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 1.6154 from data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 3.4615 from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 53.8462 from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 1.2857 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 2.3095 from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+Baker prints the same three blood:gas values that the agent files store: 0.65
+for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the nine
+tissue:blood figures are the derived value rounded to Baker's printed
+precision. Desflurane's fat coefficient is the exception. 30.9524 rounds to
+31.0, and Baker prints 30.9. The difference is 0.05, or 0.17%, in the last
+printed digit. That is too small to come from a different operation, and Baker
+does not say how the column was rounded.
+<!-- not-restated: 0.05 -->
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+**The agreement checks the transformation, not the coefficients.** It shows
+that the stored tissue:gas values, divided by the stored blood:gas values,
+give the coefficients as the literature publishes them. That confirms the
+operation and its arithmetic. It is not a second measurement. Baker attributes
+the column to Eger and Shafer. The stored tissue:gas values are Yasuda, Targ
+and Eger's measurements as Gas Man rounded them, and the stored blood:gas
+values are De Wolf et al.'s. Eger is an author in both lines, so the two are
+not independent in origin. A reader should take the table as evidence that the
+division is the right operation, and not as evidence that the coefficients
+are right. § "Known limitations" says how far other laboratories' coefficients
+differ from these.
+
+**Baker's figures have not been re-read since 2026-09-03.** Neither this
+repository nor the private reference corpus holds the review's text. PubMed
+holds no full text for it (PMID 23737195, checked 2026-10-25), and on the same
+day the publisher's site refused an unattended client. `docs/references/README.md`
+has the full citation.
+
 ### v0.2.0: isoflurane and desflurane
 
 Isoflurane and desflurane use the same governing equations and compartment
@@ -10590,6 +10654,10 @@ This model does not model:
   into fat lying against it. This is a route between two tissues, not the
   blood-to-tissue limitation above. The note below this list measures what it
   leaves out of the fat compartment;
+- uncertainty in the tissue:gas partition coefficients. Each is one
+  laboratory's mean, carried as an exact value. Other laboratories report
+  values for the same tissue that differ by up to 150%, and the note below this
+  list says which tissues that reaches;
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -11156,6 +11224,50 @@ value:
   private reference corpus on 2026-09-26, and Hendrickx and De Wolf's
   pp. 165-66 were read again on 2026-09-27. Both are tier 3, and
   `docs/references/README.md` carries their entries.
+
+**The tissue:gas coefficients are one laboratory's means, and other
+laboratories disagree with them by up to 150% in some tissues** (`PL-H536`).
+Hendrickx and De Wolf state the general case: "Tissue solubilities vary up to
+150% between authors (Yasuda et al. 1989), and the tissue homogenates used to
+determine these coefficients may not represent in vivo conditions" (p. 165).
+The 150% is not spread evenly across the tissues this model uses. Yasuda, Targ
+and Eger, whose measurements the agent files store, compare their own values
+with two other laboratories on p. 373. Fiserova-Bergerova et al.'s values for
+sevoflurane, isoflurane and halothane were similar to theirs for brain and for
+fat, except halothane's fat coefficient, which was 65% greater. They were 115%
+to 150% greater for kidney and 10% to 30% less for muscle. Lowe's isoflurane
+values were 50% to 75% greater. The authors could not explain the
+differences.
+
+So for sevoflurane and isoflurane, the two groups that this model
+parameterises from brain and fat rest on values that a second laboratory
+reproduced. Yasuda, Targ and Eger make no such comparison for desflurane. The
+150% is the kidney, which this
+model does not parameterise on its own (§ "Parameter provenance" records that
+the vessel-rich group is Yasuda's brain value). Muscle is where the model's
+coefficient is least certain, on two counts. The other laboratory's muscle
+values were lower, and Yasuda's own muscle measurements spread the most. Their
+standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03), 45% for
+isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35), against 17% to
+19% for fat. Eger and Saidman's Table 1 makes the same point from the
+literature as a whole. Their best figure for sevoflurane muscle is 1.7, with
+1.1 to 2.4 as the range across the studies they cite (p. 1022), where the
+agent file stores 2.4. A muscle group's time constant is proportional to its
+tissue:gas coefficient. So taking 1.7 in place of 2.4 would shorten the
+sevoflurane muscle time constant by 29%. That is the size of change a
+coefficient's provenance can make to the intermediate part of every wash-in
+and washout curve this simulator draws.
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
+<!-- derived: 29% from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4 -->
+<!-- not-restated: 1.1 -->
+
+This is a limit on what the model can claim rather than a defect to fix. No
+coefficient here is wrong against its cited measurement. A learner should read
+the muscle and fat traces as one well-measured parameter set, and not as the
+only set the literature supports. Yasuda, Targ and Eger's p. 373 and Eger and
+Saidman's Table 1 were read in full text from the private reference corpus on
+2026-10-25, and Hendrickx and De Wolf's p. 165 on the same day. The Yasuda,
+Targ and Eger citation is in § "Parameter provenance".
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
