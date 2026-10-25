@@ -3,12 +3,14 @@ id: PL-86DN
 title: A pull request opened after its closing push fails its first pr-title run until the number is recorded by hand: 132 red runs on 116 pull requests since 2026-09-26, one closing pull request in five every week, each costing a push and a full quality run
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: fewer-red-runs
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/start.md, .claude/skills/pull-request/SKILL.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, tools/open_pull_requests.py, tools/pr_record_check.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/start.md, .claude/skills/pull-request/SKILL.md
 deferred-from: v0.7.0 - filed after Gate 3 froze; a CI cost in the workflow lane, not a hazard
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1832
 payoff: a closing pull request starts green, so about 30 pushes and full quality runs a week stop being spent on writing one number
 verify: grep -q 'def test_closing_an_item_writes_its_branch_s_open_pull_request_number' subprojects/docket/tests/test_cli.py
 ---

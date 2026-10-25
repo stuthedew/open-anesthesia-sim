@@ -28,21 +28,23 @@ page and decides which file a session reads.
    Nothing is owed where no pull request is open yet: the title leads with
    the ids when it is opened.
 
-   **Write `pr` before you push the closure, with `bin/docket record N`.** `N`
-   is this branch's own pull request, so the number exists as soon as the pull
-   request is open - which the start mode permits at the claim push, and which
-   the `pull-request` skill requires no later than the first push of work. Run
-   it after `bin/docket set --status done` and before the closure commit, and
-   the number rides the same commit as the work. It writes onto every closure
+   **`pr` rides the closure commit.** `N` is this branch's own pull request,
+   which `bin/docket claim` opened as a draft (`PL-86DN`). `bin/docket set
+   <id> --status done` writes `pr: N` itself where a pull request is open on
+   the branch, and says so. Where it says it wrote none, open the pull request
+   and run `bin/docket record N` before the closure commit. Either way the
+   number rides the same commit as the work. `record N` writes onto every closure
    this checkout introduces, committed or not, and onto nothing the base
    already holds as done; `make check` then reads the same working tree
    through `tools/pr_record_check.py --discover` (`PL-T8PT`), and CI's
    required `pr-title` job refuses the pull request until every closure
    records its number (`PL-HMZZ`). **Never edit the field by hand** - typing
    the line is how the wrong number gets recorded (`PL-QTSB`). Where the pull
-   request opens only after the closure was pushed, run the command then: the
+   request opens only after the closure was pushed, run `record N` then: the
    number rides one more push, and the red check is what holds the merge until
-   it lands, so the window below stays shut.
+   it lands, so the window below stays shut. That extra push and red run is
+   what opening the draft at the claim saves: 116 pull requests paid it
+   between 2026-09-26 and 2026-10-25.
 
    **Do not split the closure out to get the number earlier.** Closing in the
    same commit as the work is what removes the window in which a merge takes
