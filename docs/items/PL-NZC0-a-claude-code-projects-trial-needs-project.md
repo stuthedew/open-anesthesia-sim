@@ -10,6 +10,7 @@ touches: docs/items, .claude/skills/docket/modes/coordinator.md, .claude/skills/
 deferred-from: v0.7.0 - the Projects trial's verdict, which waits on the owner; no v0.7.0 feature reads it
 added: 2026-09-19
 closed: 2026-10-25
+pr: 1799
 not-delegable: the work is a trial run in a Claude Code Project and the owner's verdict on it; no command can prove a coordinator saved the owner attention. What proves it is this brief recording the two numbers under Done when, measured at the trial's end.
 ---
 
