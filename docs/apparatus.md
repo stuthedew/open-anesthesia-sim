@@ -603,7 +603,7 @@ the interpreter that runs it could no longer parse it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard covers the next hook without being extended.
 
-Even so, ten of these tools are *invoked* only under `uv run python`, and three
+Ten of them are nonetheless *invoked* only under `uv run python`, and three
 more are invoked both bare and under it (see below). The distinction is worth
 keeping straight, because it is about what a tool reads rather than what it
 needs. `ignore_check.py` and `duplicate_code_check.py` are the odd ones out,
@@ -635,8 +635,8 @@ instance of. A tool that joins them belongs on the `uv run python` lines in
 both `Makefile` and `.github/workflows/quality.yml`, never in that workflow's
 floor section.
 
-`doc_check.py` and `possessive_section_check.py` are the exception. They run
-both ways. `branch_id_check.py` also runs both ways in `quality.yml`. But it
+`doc_check.py` and `possessive_section_check.py` are the exception, run both
+ways. `branch_id_check.py` also runs both ways in `quality.yml`. But it
 reads only `git log` and the branch name, so the 3.11 parser has nothing it
 cannot read. The comment above its `uv run` step says why (`PL-CP74`). The
 other two do parse repository source: they read every module's docstrings for
