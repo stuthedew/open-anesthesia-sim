@@ -938,15 +938,15 @@ def _green_page(count: int, first: int = 1560) -> list[dict]:
     return [_run("success", first - index) for index in range(count)]
 
 
-# Times whose median (790) differs from their mean (894) and from the newest
-# time (800), so a line built from either of those reads a different figure.
+# Times whose median (1170) differs from their mean (1324) and from the newest
+# time (1200), so a line built from either of those reads a different figure.
 # The median is 1.68 times the baseline, above the band.
-_SLOW = [800.0, 100.0, 790.0, 2000.0, 780.0]
+_SLOW = [1200.0, 100.0, 1170.0, 3000.0, 1150.0]
 
-# The median here (205) is 0.44 times the baseline, below the band, while the
-# mean (333, 0.71 times) sits inside it. A line built from the mean would stay
+# The median here (305) is 0.44 times the baseline, below the band, while the
+# mean (487, 0.70 times) sits inside it. A line built from the mean would stay
 # silent on a baseline this far out of date.
-_FAST = [200.0, 150.0, 210.0, 900.0, 205.0]
+_FAST = [300.0, 220.0, 310.0, 1300.0, 305.0]
 
 
 class TestPytestSeconds:
@@ -1014,13 +1014,13 @@ class TestPytestAdvisory:
     def test_reports_the_median_above_the_band(self) -> None:
         line = main_ci_status.pytest_advisory(_SLOW, _green_page(5))
         assert line is not None
-        assert "is 790 s, which is 1.68 times the 470 s baseline" in line
+        assert "is 1170 s, which is 1.68 times the 695 s baseline" in line
         assert "Find what slowed it." in line
 
     def test_reports_the_median_below_the_band(self) -> None:
         line = main_ci_status.pytest_advisory(_FAST, _green_page(5))
         assert line is not None
-        assert "is 205 s, which is 0.44 times the 470 s baseline" in line
+        assert "is 305 s, which is 0.44 times the 695 s baseline" in line
         assert "or the band cannot catch the next slowdown" in line
 
     def test_names_the_runs_the_median_was_taken_over(self) -> None:
@@ -1054,13 +1054,13 @@ class TestPytestTimeLine:
         line = main_ci_status.pytest_time_line("o/r", runs)
         assert sorted(asked) == sorted(99000000 + number for number in slow)
         assert line is not None
-        assert "(#1569 back to #1564) is 790 s" in line
+        assert "(#1569 back to #1564) is 1170 s" in line
 
     def test_says_nothing_while_the_median_is_inside_the_band(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         page = _green_page(5)
-        times = {run["id"]: 470.0 + index for index, run in enumerate(page)}
+        times = {run["id"]: 695.0 + index for index, run in enumerate(page)}
         monkeypatch.setattr(main_ci_status, "fetch_jobs", _times_by_id(times))
         assert main_ci_status.pytest_time_line("o/r", page) is None
 
@@ -1113,7 +1113,7 @@ class TestPytestTimeLine:
     def test_a_declined_line_gives_no_figure_but_the_baseline(self) -> None:
         line = main_ci_status.pytest_declined("the Actions API could not be read (offline)")
         assert line == (
-            "CI's pytest step time was not compared with its 470 s baseline, because "
+            "CI's pytest step time was not compared with its 695 s baseline, because "
             "the Actions API could not be read (offline)."
         )
 
