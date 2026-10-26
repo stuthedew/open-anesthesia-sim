@@ -603,7 +603,10 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
     with pytest.raises(AgentSimulationValidationError, match="^Agent accounting validation failed"):
         written_past.advance(SimulationStep(0.1))
 
-    assert written_past.capture_state() == before
+    # The rollback leaves the volume written, because a volume is a setting.
+    assert written_past.capture_state() == replace(
+        before, circuit=replace(before.circuit, circuit_volume_l=CompartmentVolume(3.0))
+    )
 
     conserved = _a_sevoflurane_run_stepped_60_s()
 

@@ -479,6 +479,13 @@ class AgentUptakeSystem:
         not an accident. The method runs while a failure is already being
         handled, and a rollback that could fail partway would leave exactly the
         partial state that it exists to prevent.
+
+        The one exception is a circuit volume shrunk, since the capture, to
+        less than the agent the circuit then held. The circuit refuses to put
+        that agent back (`BreathingCircuit.restore_state`, `PL-QG52`). It is
+        restored first, so the refusal leaves every compartment untouched. No
+        rollback inside `advance()` or `resume_at()` can reach it, because
+        nothing there changes the volume.
         """
 
         self.circuit.restore_state(state.circuit)

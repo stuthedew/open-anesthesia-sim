@@ -44,6 +44,7 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     TISSUE_GROUP_COUNT,
     TissueGroupEquationSettings,
@@ -65,6 +66,14 @@ class _Compartment:
     build: Callable[[], Any]
     run_state_fields: frozenset[str]
     setting_fields: frozenset[str]
+    rescaled_by_restore: frozenset[str] = frozenset()
+    """Run-state fields that a restore rescales, rather than copies, once a setting moved.
+
+    The circuit stores its agent as a fraction of its volume. Once the volume has moved, a
+    restore puts back the captured amount, so the fraction it writes differs from the one
+    captured (`PL-QG52`). `test_a_restore_after_a_circuit_volume_change_conserves_agent`
+    checks that amount.
+    """
 
 
 # Every compartment below is built mid-run rather than empty, and no two run
@@ -131,6 +140,7 @@ COMPARTMENTS = (
         label="BreathingCircuit",
         build=_breathing_circuit,
         run_state_fields=frozenset({"inspired_partial_pressure_fraction"}),
+        rescaled_by_restore=frozenset({"inspired_partial_pressure_fraction"}),
         setting_fields=frozenset(
             {
                 "circuit_volume_l",
@@ -302,7 +312,7 @@ def test_capture_and_restore_cover_exactly_the_run_state(compartment: _Compartme
 
     restored = _fields_restored_to_their_original_value(built)
 
-    assert restored == compartment.run_state_fields
+    assert restored == compartment.run_state_fields - compartment.rescaled_by_restore
 
 
 @pytest.mark.parametrize("compartment", COMPARTMENTS, ids=lambda case: case.label)
@@ -426,13 +436,76 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
 
     system.restore_state(state)
 
-    assert system.capture_state() == state
+    restored = system.capture_state()
+    assert restored.alveoli == state.alveoli
+    assert restored.patient == state.patient
+    assert restored.agent_simulation_validator == state.agent_simulation_validator
+    assert system.circuit.agent_amount_l == pytest.approx(state.circuit.agent_amount_l, rel=1e-15)
 
     # The settings the rollback must not have touched.
     assert system.patient.cardiac_output_l_min == 10.0
     assert system.circuit.fresh_gas_flow_l_min == 0.5
     assert system.alveoli.alveolar_ventilation_l_min == 1.0
     assert system.circuit.circuit_volume_l == 0.5
+
+
+def test_a_restore_after_a_circuit_volume_change_conserves_agent() -> None:
+    """A restore puts back the agent captured, whatever the circuit volume is now (`PL-QG52`).
+
+    The circuit once captured only its fraction. After a change from 6 L to 0.5 L, a restore
+    left 1.1e-4 L of the 1.3e-3 L stored, and the next `advance()` raised
+    `AgentSimulationValidationError` with 1.2e-3 L unaccounted. The test restores after the
+    same change, checks that the agent stored equals the agent captured, and advances once.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for _ in range(10):
+        system.advance(SimulationStep(0.1))
+
+    state = system.capture_state()
+    stored_before_l = system.total_stored_agent_l
+    circuit_before_l = system.circuit.agent_amount_l
+
+    system.circuit.set_circuit_volume(CompartmentVolume(0.5))
+    system.restore_state(state)
+
+    assert system.circuit.circuit_volume_l == 0.5
+    assert system.circuit.agent_amount_l == pytest.approx(circuit_before_l, rel=1e-15)
+    assert system.total_stored_agent_l == pytest.approx(stored_before_l, rel=1e-15)
+
+    system.advance(SimulationStep(0.1))
+
+
+def test_a_restore_with_the_volume_unchanged_puts_the_captured_fraction_back_exactly() -> None:
+    """A rollback inside one call restores the fraction bit for bit, not through the amount."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for _ in range(10):
+        system.advance(SimulationStep(0.1))
+
+    state = system.capture_state()
+    system.advance(SimulationStep(0.1))
+    system.restore_state(state)
+
+    assert system.capture_state() == state
+
+
+def test_a_restore_into_a_circuit_too_small_for_the_captured_agent_is_refused() -> None:
+    """The amount captured cannot fit, so the restore refuses before it writes anything."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.circuit.set_agent_amount(0.5)
+    state = system.capture_state()
+    system.circuit.set_agent_amount(0.0)
+    system.circuit.set_circuit_volume(CompartmentVolume(0.25))
+    before = system.capture_state()
+
+    with pytest.raises(SimulationConfigurationError, match="^circuit agent_amount_l of 0.5 L"):
+        system.restore_state(state)
+
+    assert system.capture_state() == before
 
 
 # `PL-R460`: the propagator cache is keyed on a raw tuple of floats rather than

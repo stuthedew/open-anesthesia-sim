@@ -260,6 +260,12 @@ class FreshGasExchange:
     exhausted_agent_l: float
 
 
+def _agent_held_l(circuit_volume_l: float, inspired_partial_pressure_fraction: float) -> float:
+    """Return the agent a circuit of this volume holds at this fraction, in litres."""
+
+    return circuit_volume_l * inspired_partial_pressure_fraction
+
+
 @dataclass(frozen=True, slots=True)
 class BreathingCircuitState:
     """The circuit's run state: the values that one simulation step can change.
@@ -271,31 +277,41 @@ class BreathingCircuitState:
     step writes them, and a rollback that restored them would silently undo a
     setting that had been accepted.
 
-    The record captures the fraction rather than the amount, and that choice
-    depends on the volume staying fixed. Since PL-006, `set_circuit_volume()`
-    conserves agent by rewriting the fraction, so the fraction and the amount
-    agree only while the volume is fixed. They agree here, because no step
-    changes the volume. If a step ever did change it (a bellows model, for
-    example), the record would have to capture the volume too. Otherwise the
-    restored fraction would put back a different amount of agent than the step
-    started with.
+    **The record captures the volume beside the fraction, so that a restore
+    conserves agent.** The circuit stores its agent as a fraction of its
+    volume. Since PL-006, `set_circuit_volume()` conserves agent by rewriting
+    the fraction. So a fraction captured before a volume change describes a
+    different amount of agent afterwards. Until `PL-QG52`, the record held the
+    fraction alone. A restore after a change from 6 L to 0.5 L then left
+    1.1e-4 L of the 1.3e-3 L captured, and the next step failed its accounting.
+    The volume itself is not restored, because it is the user's setting. It
+    is read only to put back the captured amount, as
+    `BreathingCircuit.restore_state()` says.
 
-    The record checks the fraction's type when it is built. So
-    `BreathingCircuit.restore_state()`, which must not raise, is never handed a
-    fraction that `set_inspired_partial_pressure_fraction()` would reject
-    (`PL-4R3W`).
+    The record checks each field's type when it is built. So
+    `BreathingCircuit.restore_state()` is never handed a fraction that
+    `set_inspired_partial_pressure_fraction()` would reject (`PL-4R3W`).
 
     Raises:
         TypeError: the fraction was not built as a `Fraction`, the type that
-            checks it against 0 to 1 (`core/concentration.py`).
+            checks it against 0 to 1 (`core/concentration.py`), or the volume
+            was not built as a `CompartmentVolume`.
     """
 
     inspired_partial_pressure_fraction: Fraction
+    circuit_volume_l: CompartmentVolume
 
     def __post_init__(self) -> None:
         require_fraction(
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
+        require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
+
+    @property
+    def agent_amount_l(self) -> float:
+        """Return the agent the circuit held when this record was captured, in litres."""
+
+        return _agent_held_l(self.circuit_volume_l, self.inspired_partial_pressure_fraction)
 
 
 @dataclass(slots=True)
@@ -542,7 +558,7 @@ class BreathingCircuit:
     def agent_amount_l(self) -> float:
         """Return the agent stored in the circuit, in litres of equivalent agent gas."""
 
-        return self.circuit_volume_l * self.inspired_partial_pressure_fraction
+        return _agent_held_l(self.circuit_volume_l, self.inspired_partial_pressure_fraction)
 
     @property
     def time_constant_s(self) -> float:
@@ -794,21 +810,41 @@ class BreathingCircuit:
         """
 
         return BreathingCircuitState(
-            inspired_partial_pressure_fraction=self.inspired_partial_pressure_fraction
+            inspired_partial_pressure_fraction=self.inspired_partial_pressure_fraction,
+            circuit_volume_l=self.circuit_volume_l,
         )
 
     def restore_state(self, state: BreathingCircuitState) -> None:
-        """Restore the run state previously captured by `capture_state()`.
+        """Put back the agent the circuit held when `state` was captured.
 
-        The method assigns the field directly rather than going through
-        `set_agent_amount()`. The value came from a valid circuit, and the
-        record rejected anything not built as a `Fraction` when the record was
-        made. So there is nothing to check again. A rollback that could itself
-        raise would leave exactly the partial state that the rollback exists to
-        prevent.
+        **While the volume is unchanged, the captured fraction is assigned
+        directly**, rather than through `set_agent_amount()`. The value came
+        from a valid circuit, and the record rejected anything not built as a
+        `Fraction`. So there is nothing to check again, and the restore is
+        exact to the last bit. A rollback that could itself raise would leave
+        exactly the partial state that the rollback exists to prevent. Every
+        restore inside one call, in `AgentUptakeSystem.advance` and
+        `resume_at`, takes this path, because nothing there changes the volume.
+
+        **After a volume change, the captured amount is put back** into the
+        current volume through `set_agent_amount()`, as `set_circuit_volume()`
+        conserves it (`PL-QG52`). The volume stays at the user's setting.
+        Restoring the fraction instead would create or destroy agent in
+        proportion to the change.
+
+        Raises:
+            SimulationConfigurationError: the volume has shrunk since `state`
+                was captured to less than the agent it captured, which
+                `set_agent_amount()` refuses before anything is written. No
+                shipped path changes the volume between a capture and its
+                restore, so no rollback can reach it.
         """
 
-        self.inspired_partial_pressure_fraction = state.inspired_partial_pressure_fraction
+        if state.circuit_volume_l == self.circuit_volume_l:
+            self.inspired_partial_pressure_fraction = state.inspired_partial_pressure_fraction
+            return
+
+        self.set_agent_amount(state.agent_amount_l)
 
     def reset(self) -> None:
         """Remove all agent from the circuit, keeping its settings."""
