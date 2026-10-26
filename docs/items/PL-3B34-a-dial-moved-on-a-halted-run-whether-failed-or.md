@@ -3,7 +3,7 @@ id: PL-3B34
 title: A dial moved on a halted run, whether failed or stopped at the 24-hour supported run length, is applied to the core and recorded as a control change at the halt instant, so the settings readouts and the control-change record show a setting that no step ever ran under beside concentrations computed under the previous one, while the banner says the values shown are the last completed step
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect, ux, safety
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
@@ -43,3 +43,10 @@ does. After the limit, `set_cardiac_output(CardiacOutput(10.0))` was
 accepted and recorded `ControlChange(elapsed_s=5.0, …, previous_value=5.0,
 new_value=10.0)`. A failed run did the same
 (scripts/a6_settings_after_halt.py).
+
+**Decision needed, 2026-10-26 (session on `claude/generator-head-state-consistency-o6wts7`, under the head `PL-J5GC`).** This brief asks how a change made on a stopped run is recorded and shown. That is behaviour a learner sees, so the project owner decides. The question: when a learner moves a dial on a run that has stopped, failed or at the 24-hour supported run length, what happens?
+
+- **Option 1, recommended: the dial springs back, and the banner says why.** The controller refuses the change on a stopped run and records nothing. The dial returns to the setting that the stopped values ran under. The stopped-run banner gains one sentence, such as "A stopped run cannot take a new setting. Reset starts a new run and keeps every setting." The learner presses Reset, then sets the dial. Every setting on screen beside the stopped values is one they ran under. Nothing new is held. The cost is one Reset before adjusting, and a control that refuses every change while it looks enabled. The banner sentence explains that refusal.
+- **Option 2: the dial keeps the new value as the next run's setting.** The stopped run's control-change record is left as it was. A line beside the moved dial says something like "For the next run - the values shown ran at 5.0 L/min". Reset then starts at the new value. The cost is a new state, a setting held for a run that does not exist yet, and a conditional line on each dial. The controller must also remember the settings the run stopped under.
+
+The recommendation is Option 1. It adds no hidden state, and it keeps `PL-V2HC`'s reason for keeping the controls live: nothing is drawn disabled. The brief's "The controls stay live" fits either option. Under Option 1 the sliders are enabled but refuse, which is why this is put to the owner rather than decided here. The test the brief names fits either answer. A dial dragged into a halt (`PL-85LJ`) is a different path and is not changed by either option: that setting was applied before the run stopped, and the undrawn-failure banner says the readouts are the last frame drawn.

@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, ux
 feature: replay-findings
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/exceptions.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 payoff: the accounting panel reports a conservation failure at the moment one is detected, instead of saying Valid under the banner that reports it
 verify: grep -q 'def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt' tests/unit/test_dashboard_frame.py
@@ -39,3 +39,12 @@ failing `require_valid_agent_accounting` into a running controller after
 10 s: the snapshot after `fail()` gave `passes_validation: True` and the
 panel "Valid", under "Simulation stopped — AgentSimulationValidationError:
 Agent accounting validation failed…" (scripts/a3_accounting_panel.py).
+
+**Design, 2026-10-26 (session on `claude/generator-head-state-consistency-o6wts7`, under the head `PL-J5GC`).** The head's rule settles which totals the panel shows. A verdict must come from the same step as the totals it judges. So "Validation failed" beside the restored totals would only move the two-state defect inside the panel. After an accounting halt, the panel's verdict, detail and amounts all describe the rejected step, and the detail line says so: that step was rejected and rolled back, and these are its totals. The fact is recorded where it is known, not parsed back out of the failure string:
+
+1. `AgentSimulationValidationError` carries the failing `AgentSimulationValidationResult`, which `require_valid_agent_accounting` already builds as `check`.
+2. `RunView.halt` passes that check to `SimulationController.fail`. `RunStatus` gains a field holding it, `None` for every other run, and `reset()` and `set_agent()` clear it as they clear `failure_reason`.
+3. `dashboard_frame.accounting` reads the panel from that check where one is set, and from the snapshot's accounting fields otherwise.
+4. The validator's message labels its totals as the rejected step's. The banner quotes the message, so its totals are labelled too.
+
+`core/agent_simulation_validation.py`, `core/exceptions.py` and `tests/integration/test_simulation_view.py` join `touches`. One point is left to settle while building. `FAILURE_NOTICE_TEMPLATE` says "The values shown are the last completed step", and the panel now shows the rejected step's totals under its own label. Either the panel's label is enough, or the banner's sentence excepts the panel. That is a wording choice, so the building session decides it and records it here as a placeholder.
