@@ -3,11 +3,13 @@ id: PL-MLPT
 title: docs/MODEL.md and core/supported_ranges.py argue the 24-hour supported run length with two claims that do not hold: that it sits near the outer edge of the measured 0.35-to-9.5 MAC-hour range, when a run at 1 MAC reaches about 24 MAC-hours at the cap, and that the fat time constant bounds it from below, when 24 hours is about 0.6 of that time constant
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, docs
 feature: supported-run-length-text
 touches: docs/MODEL.md, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1860
 payoff: the authoritative specification no longer certifies a 24-hour span as inside the evidence it cites, and its argument for the limit no longer contradicts itself
 verify: ! grep -qF 'near the outer edge of the exposure range' docs/MODEL.md && ! grep -qF 'It is near the outer edge of the' src/anesthesia_sim/core/supported_ranges.py && ! grep -qF 'With a span shorter than about one' docs/MODEL.md && ! grep -qF 'with a cap shorter than about one' src/anesthesia_sim/core/supported_ranges.py
 recurrences: 2026-10-25 PL-KHXB

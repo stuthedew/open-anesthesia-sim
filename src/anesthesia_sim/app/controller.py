@@ -1252,7 +1252,8 @@ class SimulationController:
         step count. A branch that restarted the count would get a fresh
         envelope. A fork at 23 h could then be advanced to 47 h of case time
         with every guard passing. That is exactly the regime in which, as
-        `core/supported_ranges.py` argues, the omitted metabolism dominates.
+        `core/supported_ranges.py` argues, the model is not validated, because
+        it omits metabolism and its fat flow differs from measurement.
         Second, the clock, every control-change stamp and the chart's axis all
         read `snapshot().elapsed_s`, and `format_elapsed` says that they "state
         one quantity one way". A branch counting from zero would place the

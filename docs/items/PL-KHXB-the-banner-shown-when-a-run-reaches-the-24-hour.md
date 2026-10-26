@@ -3,11 +3,13 @@ id: PL-KHXB
 title: The banner shown when a run reaches the 24-hour supported run length, and the core's refusal message, tell the learner that beyond it the model's omitted metabolism and its fat perfusion dominate the trace, for every agent, though docs/MODEL.md says nothing breaks at hour 25 and only sevoflurane is metabolized enough to matter
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, ux
 feature: supported-run-length-text
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_ranges.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_ranges.py, src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1860
 payoff: the one sentence that explains the 24-hour stop is true for every agent, instead of teaching that metabolism dominates desflurane's kinetics after a day
 verify: ! grep -qF 'fat perfusion dominate' src/anesthesia_sim/app/dashboard_frame.py && ! grep -qF 'fat perfusion dominate' src/anesthesia_sim/core/supported_ranges.py && grep -q 'def test_the_supported_limit_notice_says_the_model_is_not_validated_past_the_span' tests/unit/test_dashboard_frame.py
 recurrences: 2026-10-25 PL-0889

@@ -2252,7 +2252,8 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
     restarted the count would get a fresh envelope. A fork taken late could
     then be advanced well past the span that `docs/MODEL.md` § "Supported run
     length" declares, with every guard passing. That is the regime in which,
-    as `core/supported_ranges.py` argues, the omitted metabolism dominates.
+    as `core/supported_ranges.py` argues, the model is not validated, because
+    it omits metabolism and its fat flow differs from measurement.
     Continuing the parent's count makes the envelope the case's, and it needs
     no second guard.
     """

@@ -244,23 +244,32 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # declared envelope argued against that omission, not a number derived from a
 # metabolic rate.
 #
-# **Why 24 hours.** There are three reasons. First, it is longer than every
+# **Why 24 hours.** There are two reasons. First, it is longer than every
 # anesthetic this simulator exists to teach, by a wide margin. Second, it is
-# about 0.6 of the fat group's time constant of roughly 42 h. So the fat
-# compartment is still visibly loading, and the slow-compartment demonstration
-# survives. A cap of a few hours would cut off the one thing the fat trace
-# exists to show. Third, it lies inside the regime that the source above
-# calls clinically negligible for metabolism. It is near the outer edge of the
-# 0.35-to-9.5 MAC-hour exposure range, which is the only range over which the
-# size of that omission has been measured.
+# about 0.6 of sevoflurane's fat time constant of roughly 42 h. A first-order
+# compartment has gone a little over two fifths of the way to equilibrium at
+# that fraction. So the fat compartment is still visibly loading, and the
+# slow-compartment demonstration survives. A cap of a few hours would cut off
+# the one thing the fat trace exists to show.
 #
-# **The fat time constant sets a lower bound on the cap here, not a unit to
+# **The span is not inside the measured exposure range** (`PL-MLPT`). The
+# review above measured how sevoflurane's metabolism scales with dose only
+# from 0.35 to 9.5 MAC-hours. The cap bounds elapsed time, not exposure. Every
+# agent's dial opens at its 1 MAC, and a run held near 1 MAC accumulates about
+# one MAC-hour per hour. So such a run leaves the measured range at about 9.5
+# hours, and reaches about 24 MAC-hours at the cap. A run held at a higher
+# setting reaches more. From the point where a run leaves that range, even the
+# size of the omission is unmeasured. The 24 hours rests on the argument above
+# that the omission grows progressively and without a cliff, not on that range.
+#
+# **The fat time constant sets a floor on the cap here, not a unit to
 # multiply.** This project already declines to validate over many multiples
 # of the slowest mode. So a cap argued as "several fat time constants" would
-# favour the part of the trace that is most nearly all omission. The fat time
-# constant only bounds the cap from below: with a cap shorter than about one
-# time constant, the fat trace stops teaching. It says nothing about how far
-# above that a run may go.
+# favour the part of the trace that is most nearly all omission. The floor is
+# a fraction of the time constant, not a whole one: the cap must be long
+# enough that the fat compartment is still visibly loading when the run
+# stops, and 24 hours meets it. The floor says nothing about how far above it
+# a run may go.
 #
 # **This is a declared envelope, not a discovered cliff**, exactly as
 # `docs/MODEL.md` § "What a setting outside the range costs" says of the three
@@ -766,10 +775,9 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
         raise SimulationDomainLimitError(
             f"this run has reached {reached}, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
-            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); beyond it "
-            f"this model's omitted metabolism and its fat perfusion dominate the trace, "
-            f'so it is not claimed to represent a patient (docs/MODEL.md, "Supported run '
-            f'length")'
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); this model "
+            f"is not validated past it, because it omits metabolism and its fat flow "
+            f'differs from measurement (docs/MODEL.md, "Supported run length")'
         )
 
 
