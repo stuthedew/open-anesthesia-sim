@@ -34,11 +34,20 @@ PROJECT = {
 }
 
 
-def _checkout(tmp_path: Path, settings: dict[str, object] = PROJECT) -> Path:
-    root = tmp_path / "checkout"
+def _checkout(
+    tmp_path: Path, settings: dict[str, object] = PROJECT, name: str = "checkout"
+) -> Path:
+    root = tmp_path / name
     (root / ".claude").mkdir(parents=True)
     (root / ".claude" / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
     return root
+
+
+def _pinned_to(root: Path, command: str) -> dict[str, object]:
+    """A matcher group holding `command`, as the copy runs it: with the checkout set first."""
+    return {
+        "hooks": [{"type": "command", "command": f"export CLAUDE_PROJECT_DIR={root}; {command}"}]
+    }
 
 
 def _start(
@@ -56,10 +65,10 @@ def test_a_project_thread_gets_the_repository_hooks_in_its_user_settings(tmp_pat
     printed = _start(root, user_path)
 
     user = json.loads(user_path.read_text(encoding="utf-8"))
-    assert user["hooks"]["PreToolUse"] == PROJECT["hooks"]["PreToolUse"]
+    assert user["hooks"]["PreToolUse"] == [{"matcher": "Bash", **_pinned_to(root, "bash guard.sh")}]
     # The repository's entry, and then the hook's own, so the next start runs it again.
     starts = user["hooks"]["SessionStart"]
-    assert starts[0] == PROJECT["hooks"]["SessionStart"][0]
+    assert starts[0] == _pinned_to(root, "echo digest-ran")
     assert starts[1]["hooks"][0]["command"] == thread_hooks.BOOTSTRAP_COMMAND
     # Only the hooks are copied: the repository's other settings stay its own.
     assert "effortLevel" not in user
@@ -95,7 +104,7 @@ def test_the_user_s_other_settings_and_the_setup_script_s_entry_survive_the_writ
     user = json.loads(user_path.read_text(encoding="utf-8"))
     assert user["theme"] == "dark"
     # The entry the setup script wrote is the one kept, in its own wording, once.
-    assert user["hooks"]["SessionStart"] == [PROJECT["hooks"]["SessionStart"][0], own_entry]
+    assert user["hooks"]["SessionStart"] == [_pinned_to(root, "echo digest-ran"), own_entry]
     # The hooks block becomes the repository's: a hook the user file held alone goes.
     assert "Stop" not in user["hooks"]
 
@@ -113,6 +122,41 @@ def test_a_change_to_the_repository_hooks_reaches_the_user_settings_at_the_next_
     _start(tmp_path / "checkout", user_path)
 
     assert json.loads(user_path.read_text(encoding="utf-8"))["hooks"]["PreToolUse"] == []
+
+
+def test_a_copied_hook_finds_the_checkout_after_the_working_directory_moves(tmp_path: Path) -> None:
+    """`PL-TNY6`: a copied command acts on the checkout wherever the session's directory is.
+
+    Claude Code sets `CLAUDE_PROJECT_DIR` from the working directory. On
+    2026-10-26 a thread's working directory moved to the checkout's parent,
+    and every copied hook looked for its script there. The checkout's name
+    holds a space here, so the test also shows that the path is quoted.
+    """
+    settings = {
+        "hooks": {
+            "PreToolUse": [
+                {"hooks": [{"type": "command", "command": 'cat "$CLAUDE_PROJECT_DIR/marker"'}]}
+            ]
+        }
+    }
+    root = _checkout(tmp_path, settings, name="the checkout")
+    (root / "marker").write_text("found the checkout", encoding="utf-8")
+    user_path = tmp_path / "home" / ".claude" / "settings.json"
+    _start(root, user_path)
+    command = json.loads(user_path.read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["hooks"][
+        0
+    ]["command"]
+
+    result = subprocess.run(
+        ["bash", "-c", command],
+        cwd=tmp_path,
+        env={"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (result.returncode, result.stdout) == (0, "found the checkout")
 
 
 @pytest.mark.parametrize("entrypoint", ["remote_desktop", "cli", None])
