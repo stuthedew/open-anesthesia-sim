@@ -25,6 +25,7 @@ tests that rule. The tests here check that the display path is rejected wherever
 forbids it.
 """
 
+import re
 from bisect import bisect_right
 from dataclasses import replace
 from math import inf, nan, nextafter
@@ -1074,8 +1075,18 @@ def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plo
     assert EIGHT_K_PLOT_COLUMNS * 10 < DOCUMENTED_MAXIMUM_WINDOW_COLUMNS
 
 
-@pytest.mark.parametrize("columns", [5.0, True, "5", None])
-def test_a_window_refuses_a_column_count_that_is_not_an_int(columns: object) -> None:
+@pytest.mark.parametrize(
+    ("columns", "shown_as", "type_name"),
+    [
+        (5.0, "5.0", "float"),
+        (True, "True", "bool"),
+        ("5", "'5'", "str"),
+        (None, "None", "NoneType"),
+    ],
+)
+def test_a_window_refuses_a_column_count_that_is_not_an_int(
+    columns: object, shown_as: str, type_name: str
+) -> None:
     """A float or `True` as the column count is refused with an error naming `columns` (`PL-06LS`).
 
     The count must be a whole `int`. Before the fix, a float reached `range()` and failed there
@@ -1087,9 +1098,12 @@ def test_a_window_refuses_a_column_count_that_is_not_an_int(columns: object) -> 
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
 
-    with pytest.raises(
-        TypeError, match=f"^columns of .* has type {type(columns).__name__}, not int"
-    ):
+    expected = (
+        f"columns of {shown_as} has type {type_name}, not int: "
+        "a window is sampled at a whole number of instants"
+    )
+
+    with pytest.raises(TypeError, match=f"^{re.escape(expected)}$"):
         definition.evaluate(0.0, 0.0, columns)  # type: ignore[arg-type]
 
 
@@ -1459,6 +1473,29 @@ def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
     )
 
     assert len(window.times_s) == count + 1
+
+
+def test_evaluate_anchored_counts_the_multiples_its_walk_visits_by_floor_division() -> None:
+    """The bound counts the multiples the walk visits, which floor division gives (`PL-06LS`).
+
+    `_anchored_columns` loops over `range(int(start_s // spacing_s) + 1, int(stop_s //
+    spacing_s) + 1)`. True division can round up to the next whole number where floor
+    division does not. At a spacing of 1e-5 s, 1.00001 / 1e-5 rounds to exactly 100 001, while
+    1.00001 // 1e-5 is 100 000. So a window from 0 to 1.00001 s loops over 100 000 multiples
+    and is accepted. A window from 5e-5 s to 1.00005 s loops over 100 001, because
+    5e-5 // 1e-5 is 4 while 5e-5 / 1e-5 is exactly 5, and is refused.
+    """
+
+    assert (1.00001 / 1e-5, 1.00001 // 1e-5) == (100_001.0, 100_000.0)
+    assert (5e-5 / 1e-5, 5e-5 // 1e-5) == (5.0, 4.0)
+    assert 1.00005 / 1e-5 == 1.00005 // 1e-5 == 100_005.0
+
+    _, definition, _ = _stepped_run(steps=20)
+
+    definition.evaluate_anchored(0.0, 1.00001, 1e-5)
+
+    with pytest.raises(SimulationConfigurationError, match="puts 100001 grid multiples"):
+        definition.evaluate_anchored(5e-5, 1.00005, 1e-5)
 
 
 def test_an_anchored_window_refuses_a_spacing_that_would_never_finish() -> None:
