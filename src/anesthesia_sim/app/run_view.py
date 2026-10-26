@@ -116,6 +116,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
+    WITHHELD_MAC_MULTIPLE_TEXT,
     HaltDisposition,
     NewCaseQuestion,
     Transport,
@@ -486,14 +487,17 @@ class RunView(QWidget):
         # of every ×MAC number in the row. They sit on the heading line above
         # the row. Both values are in `docs/MODEL.md`'s per-substance tier.
         # The dial and the chart's caption cannot carry them once each is a
-        # View that a reader can close (`PL-NWTM`). `_write_settings` writes
-        # both, from the readout that the dial is written from, so the two
-        # cannot disagree.
+        # View that a reader can close (`PL-NWTM`). `_write_statement` writes
+        # both from one record on every path, so the two cannot disagree.
         self._delivered_text = styled_label("", color=INK)
         self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
+        # The agent whose MAC divided the ×MAC numbers on the readout cards.
+        # Only a frame writes the cards, so after a halt that follows an agent
+        # change they still hold another agent's multiples (`PL-6RJ0`).
+        self._cards_agent_id = snapshot.agent_id
 
         # The values last shown by this run's two surfaces that may sit in an
         # Area, and the copies of each surface that Qt has not destroyed. A
@@ -625,13 +629,7 @@ class RunView(QWidget):
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
-        # The 1 MAC line states the divisor of every ×MAC number in the row
-        # above, so it is written here, from the snapshot those numbers were
-        # divided by. Written with the dials, it named a new agent's 1 MAC above
-        # cards a halt had left holding the old agent's multiples (`PL-6RJ0`).
-        self._one_mac_text.setText(
-            format_mac_reference(snapshot.agent_display_name, snapshot.agent_mac_percent)
-        )
+        self._cards_agent_id = snapshot.agent_id
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()
 
@@ -710,6 +708,14 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         self._playback_rate_text.setText(format_playback_rate(self._playback_rate.multiplier))
+        # The 1 MAC line states the divisor of the delivered line beside it and
+        # of the cards' ×MAC numbers. It is written on both paths, and before
+        # the dials, so a raise from `setting_readouts` cannot leave another
+        # agent's 1 MAC on screen. A halt whose cards were divided by another
+        # agent's MAC withholds their multiples (`present_halt`, `PL-6RJ0`).
+        self._one_mac_text.setText(
+            format_mac_reference(record.agent_display_name, record.agent_mac_percent)
+        )
         self._write_notice(statement.banner)
         self._write_settings(record)
 
@@ -785,6 +791,24 @@ class RunView(QWidget):
         self._write_statement(
             record, banner=halt_notice(record, refused_reset=self._refused_reset_notice)
         )
+
+        if self._cards_agent_id != record.agent_id:
+            self._withhold_card_multiples()
+
+    def _withhold_card_multiples(self) -> None:
+        """Replace each card's ×MAC number with `WITHHELD_MAC_MULTIPLE_TEXT`.
+
+        `present_halt` calls this when the agent changed and no frame of the
+        new agent has drawn. The cards then hold the last frame's values,
+        divided by the old agent's MAC, while the 1 MAC line and the delivered
+        line state the new agent's. Showing those multiples would put a number
+        on screen beside a divisor that did not produce it (`PL-6RJ0`). The
+        next frame writes every card again.
+        """
+
+        for index, panel in enumerate(self._readout_row.panels):
+            if index != _CLOCK_PANEL_INDEX:
+                panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
 
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.

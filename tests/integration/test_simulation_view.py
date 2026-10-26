@@ -2286,37 +2286,77 @@ def test_a_halt_after_an_agent_change_names_one_agent(
         assert scheme.foreground in control.styleSheet(), control
 
 
-def test_the_one_mac_line_and_the_cards_name_the_same_agent_after_a_halt(
+def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent_s_1_mac(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`PL-6RJ0`: the 1 MAC line keeps the divisor of the cards beside it.
+    """`PL-6RJ0`: every ×MAC number on screen was divided by the 1 MAC the line states.
 
-    The line states the divisor of every ×MAC number in the readout row. It
-    was written with the dials, which a halt writes, while the cards are
-    written only by a frame. So a halt on the first frame after an agent
-    change put "1 MAC desflurane = 6.0%" above cards still holding
-    sevoflurane's multiples, divided by 2.0%. The line is now written with
-    the cards, from the snapshot they were divided by.
+    A halt writes the 1 MAC line and the delivered line from the controller's
+    record, while only a frame writes the cards. So a halt on the first frame
+    after an agent change left the cards holding sevoflurane's multiples,
+    divided by 2.0%. The line first stated desflurane's 6.0% above them, and
+    then, written with the cards, sevoflurane's 2.0% beside a delivered line
+    divided by 6.0%. The line now follows the record on both paths, and the
+    halt withholds the cards' multiples.
     """
 
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
     drawn = controller.snapshot()
-    line_before = run._one_mac_text.text()
+    sevoflurane_line = format_mac_reference(drawn.agent_display_name, drawn.agent_mac_percent)
     cards_before = [panel.value_label.text() for panel in run._readout_row.panels]
 
-    assert line_before == format_mac_reference(drawn.agent_display_name, drawn.agent_mac_percent)
+    assert run._one_mac_text.text() == sevoflurane_line
 
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     _select_agent(run, "desflurane")
 
+    record = controller.record()
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
-    # The cards still show the last frame's sevoflurane values, so the line
-    # above them still names sevoflurane's 1 MAC.
+    assert run._one_mac_text.text() == format_mac_reference(
+        record.agent_display_name, record.agent_mac_percent
+    )
+    assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
+    # The cards keep the last frame's values, but none of sevoflurane's multiples.
     assert [panel.value_label.text() for panel in run._readout_row.panels] == cards_before
-    assert run._one_mac_text.text() == line_before
-    assert "desflurane" not in run._one_mac_text.text().lower()
+
+    for index, panel in enumerate(run._readout_row.panels):
+        if index != run_view_module._CLOCK_PANEL_INDEX:
+            assert panel.secondary_label.text() == "\u2014 \u00d7MAC"
+
+    monkeypatch.undo()
+    view_frame = run._readout_row.panels
+    run.refresh(controller.snapshot())
+
+    assert all(panel.secondary_label.text() != "\u2014 \u00d7MAC" for panel in view_frame), (
+        "the first frame that draws writes every card's multiple again"
+    )
+
+
+def test_a_halt_on_the_first_frame_still_states_the_1_mac_line(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-6RJ0`: the 1 MAC line is an unconditional value, written on the halt path too.
+
+    The cards were built from the run's first snapshot, so they are of the
+    run's own agent and keep their multiples.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    run._one_mac_text.setText("")
+    monkeypatch.setattr(controller, "_failure_reason", "the first frame failed")
+
+    run.present_halt()
+
+    record = controller.record()
+    assert run._one_mac_text.text() == format_mac_reference(
+        record.agent_display_name, record.agent_mac_percent
+    )
+    assert all(
+        panel.secondary_label.text() != "\u2014 \u00d7MAC" for panel in run._readout_row.panels
+    )
 
 
 def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
@@ -2369,11 +2409,6 @@ FRAME_WIDGETS: dict[str, str] = {
         "readouts, so no row pairs one instant's clock with another's values. "
         "The playback line under the clock is run state, and the test below "
         "compares it on its own (`PL-P58M`)."
-    ),
-    "_one_mac_text": (
-        "the 1 MAC line, which states the divisor of every ×MAC number in the "
-        "readout row. It is written with those readouts, from the snapshot they "
-        "were divided by, so it stays with them on a halt (`PL-6RJ0`)."
     ),
     "_accounting_panels[0]._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "
