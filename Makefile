@@ -277,8 +277,9 @@ check: sync
 # `.claude/hooks/docket-digest.sh` emits `docs/dead-ends.md`'s entry lines at
 # session start, and a `SessionStart` hook's output is resent on every turn -
 # so an entry added without a thought for the cap is paid by every session
-# forever. Reads two files, so it costs milliseconds. `PL-NB35`.
-	python3 tools/dead_ends.py check
+# forever. With `--base` it also fails on an entry that left the list with no
+# record of where it went (`PL-5J1S`). `PL-NB35`.
+	python3 tools/dead_ends.py check --base origin/main
 # Beside the guards above and, like them, bare: it reads the apparatus trees -
 # `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
 # held to the floor themselves, so the floor interpreter parses all of it. It

@@ -336,7 +336,7 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
     for reader in (
         "Run python3 tools/doc_check.py check",
         "Run uv run python tools/doc_check.py check",
-        "Run python3 tools/dead_ends.py check",
+        "dead ends, with removals compared to the base",
         "Run uv run python tools/fixture_id_check.py",
         "Run bin/docket check",
         "verify replay, scoped to what this branch changed",
