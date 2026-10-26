@@ -228,7 +228,7 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
 
 
 @pytest.mark.parametrize("invalid_value", [0.0, -1.0, float("inf"), float("nan")])
-def test_rejects_invalid_alveolar_gas_volume(invalid_value: float) -> None:
+def test_rejects_invalid_gas_volume(invalid_value: float) -> None:
     """A bad volume is refused under its own name, at its own write.
 
     The constructor writes `gas_volume_l` before `agent_amount_l`, and each
