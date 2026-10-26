@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, ux, safety
 feature: replay-findings
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-X6VN-try-a-setup-script-line-that-copies-claude.md
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
 added: 2026-10-25
 closed: 2026-10-26
 pr: 1840
