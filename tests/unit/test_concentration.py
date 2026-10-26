@@ -724,6 +724,14 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
             circuit_volume_l=CompartmentVolume(6.0),
         )
 
+    with pytest.raises(
+        TypeError, match="^circuit_volume_l of 6.0 was not built as CompartmentVolume"
+    ):
+        BreathingCircuitState(
+            inspired_partial_pressure_fraction=Fraction(0.0),
+            circuit_volume_l=6.0,  # type: ignore[arg-type]
+        )
+
     with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
         replace(settings, delivered_concentration_percent=2.0)  # type: ignore[arg-type]
 

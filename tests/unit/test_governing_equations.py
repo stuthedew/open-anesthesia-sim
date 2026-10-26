@@ -937,5 +937,9 @@ def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(positio
             _empty_state_with(position, nextafter(MAXIMUM_CUMULATIVE_AGENT_L, inf))
         )
 
-    assert str(raised.value).startswith(f"state[{position}] (")
-    assert "that a case can deliver or exhaust" in str(raised.value)
+    role = {DELIVERED_AGENT_L: "delivered", EXHAUSTED_AGENT_L: "exhausted"}[position]
+    assert str(raised.value) == (
+        f"state[{position}] ({role} agent in L) of 14400.000000000002 L is more than the "
+        "14400.0 L that a case can deliver or exhaust at the fastest supported fresh gas "
+        "flow over the supported run length"
+    )

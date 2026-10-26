@@ -347,7 +347,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     assert derived_anchor_l < 0.0, "the derivation this avoids has become safe; re-read the design"
     assert abs(derived_anchor_l) < AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
 
-    with pytest.raises(SimulationConfigurationError, match="initial_agent_l"):
+    with pytest.raises(SimulationConfigurationError, match=r"^initial_agent_l must be nonnegative"):
         _like(system_parent).resume_at(opening.state, initial_agent_l=derived_anchor_l)
 
     assert system.agent_simulation_validation.passes_validation, (
