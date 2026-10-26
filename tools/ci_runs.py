@@ -15,6 +15,13 @@ kept. A row whose run
 GitHub no longer returns is kept, since keeping it is the point of the file. A
 run still in progress is left out until a later refresh finds it finished.
 
+A failed run's row also names the steps that failed, read from the run's jobs
+(`PL-SW87`). The model review needs them to tell a red run that found
+something from one of the `pr-title` holds that fail by design until a later
+hand step. A refresh reads the jobs of every failed run whose steps are not
+yet recorded. A later attempt of a run is read again, because its steps may
+differ.
+
 GitHub's run listing returns at most 1,000 runs for one query, so each query
 covers one day. A day that reaches the cap is refused rather than read short,
 because a missing run reads exactly like a run that never happened. On
@@ -30,6 +37,7 @@ import argparse
 import csv
 import json
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
@@ -68,7 +76,19 @@ COLUMNS = (
     "conclusion",
     "created_at",
     "updated_at",
+    "failed_steps",
 )
+
+#: The quality workflow's last step, which fails whenever either test part
+#: fails. Naming it would add nothing to the part's own failed step, so it is
+#: left out of `failed_steps`.
+AGGREGATE_STEPS = frozenset({"both parts succeeded"})
+#: What `failed_steps` holds when GitHub no longer has the run's jobs. Read
+#: jobs are written as a JSON list of step names, because a step with no name
+#: of its own is named after its command, which can hold any separator. An
+#: empty list is a failed run with no failed step of its own, such as a run
+#: cancelled by a later push, and an empty field means the jobs are not read.
+STEPS_GONE = "unavailable"
 
 #: The most runs GitHub's listing returns for one query, however it is paged.
 LISTING_CAP = 1000
@@ -76,6 +96,8 @@ LISTING_CAP = 1000
 Row = dict[str, str]
 #: Reads one page of the run listing for a query, returning the decoded JSON.
 Reader = Callable[[dict[str, str | int]], dict[str, object]]
+#: Reads a run's jobs, given its id, or returns None when GitHub no longer has them.
+JobsReader = Callable[[str], list[dict[str, object]] | None]
 
 
 class RefreshFailed(Exception):
@@ -101,6 +123,7 @@ def row_of(run: dict[str, object]) -> Row:
         "conclusion": str(run.get("conclusion") or ""),
         "created_at": str(run["created_at"]),
         "updated_at": str(run.get("updated_at") or ""),
+        "failed_steps": "",
     }
 
 
@@ -167,6 +190,11 @@ def refresh(rows: list[Row], read: Reader, today: date) -> tuple[list[Row], int,
                 # GitHub stops linking a run to its pull request once the head
                 # branch is deleted, so an empty link never replaces a known one.
                 row["pull_requests"] = known["pull_requests"]
+            if known and (known["attempt"], known["conclusion"]) == (
+                row["attempt"],
+                row["conclusion"],
+            ):
+                row["failed_steps"] = known["failed_steps"]
             if known is None:
                 added += 1
             elif known != row:
@@ -174,6 +202,34 @@ def refresh(rows: list[Row], read: Reader, today: date) -> tuple[list[Row], int,
             by_id[row["run_id"]] = row
         day += timedelta(days=1)
     return list(by_id.values()), added, updated
+
+
+def failed_steps(jobs: Iterable[dict[str, object]]) -> str:
+    """The `failed_steps` field for a failed run with these jobs."""
+
+    names: list[str] = []
+    for job in jobs:
+        steps = job.get("steps")
+        for step in steps if isinstance(steps, list) else []:
+            if not isinstance(step, dict) or step.get("conclusion") != "failure":
+                continue
+            name = str(step.get("name") or "")
+            if name and name not in AGGREGATE_STEPS and name not in names:
+                names.append(name)
+    return json.dumps(names, ensure_ascii=False)
+
+
+def record_failed_steps(rows: list[Row], read_jobs: JobsReader) -> int:
+    """Fill `failed_steps` on every failed run that has none yet, and return how many were read."""
+
+    read = 0
+    for row in rows:
+        if row["conclusion"] != "failure" or row["failed_steps"]:
+            continue
+        jobs = read_jobs(row["run_id"])
+        row["failed_steps"] = STEPS_GONE if jobs is None else failed_steps(jobs)
+        read += 1
+    return read
 
 
 def github_reader(slug: str) -> Reader:
@@ -196,6 +252,38 @@ def github_reader(slug: str) -> Reader:
     return read
 
 
+def github_jobs_reader(slug: str) -> JobsReader:
+    """A reader of the latest attempt's jobs for one of `slug`'s runs, from GitHub itself."""
+
+    token = github_token()
+
+    def read(run_id: str) -> list[dict[str, object]] | None:
+        jobs: list[dict[str, object]] = []
+        page = 1
+        while True:
+            query = urllib.parse.urlencode({"filter": "latest", "per_page": PAGE, "page": page})
+            url = f"{GITHUB_API}/repos/{slug}/actions/runs/{run_id}/jobs?{query}"
+            request = api_request(url, agent="ci_runs", token=token)
+            try:
+                with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT * 3) as response:
+                    answer = json.loads(response.read())
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    return None
+                raise RefreshFailed(f"GitHub could not be read ({error})") from error
+            except (OSError, ValueError) as error:
+                raise RefreshFailed(f"GitHub could not be read ({error})") from error
+            listed = answer.get("jobs") if isinstance(answer, dict) else None
+            if not isinstance(listed, list):
+                raise RefreshFailed(f"GitHub's answer for run {run_id} was not a job listing")
+            jobs.extend(job for job in listed if isinstance(job, dict))
+            if len(listed) < PAGE:
+                return jobs
+            page += 1
+
+    return read
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Refresh the file, print what changed, and exit 1 when it could not."""
 
@@ -209,11 +297,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         rows = read_rows(RUNS)
         fresh, added, updated = refresh(rows, github_reader(slug), date.today())
+        stepped = record_failed_steps(fresh, github_jobs_reader(slug))
     except RefreshFailed as failure:
         print(f"ci_runs: {failure}; {RUNS.name} was left as it was")
         return 1
     write_rows(RUNS, fresh)
-    print(f"ci_runs: {len(fresh)} runs in {RUNS.name}, {added} added and {updated} updated")
+    print(
+        f"ci_runs: {len(fresh)} runs in {RUNS.name}, {added} added and {updated} updated;"
+        f" the failed steps of {stepped} red runs read"
+    )
     return 0
 
 

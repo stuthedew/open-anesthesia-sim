@@ -38,6 +38,7 @@ from docket.claims import (
     Hold,
     Holdings,
     Unclaimed,
+    claimed_here,
     holdings,
     settled_branches,
     unclaimed,
@@ -151,6 +152,29 @@ def test_a_claim_in_the_last_paragraph_holds_and_one_above_it_is_prose(tmp_path:
     ]
     assert read.ids == {"PL-B1B1"}
     assert read.now == T0 + HOUR
+
+
+def test_claimed_here_reads_this_branch_s_claims_and_not_the_base_s(tmp_path: Path) -> None:
+    """`bin/docket new` leaves out the items its own branch claims, and only those (`PL-PNSV`).
+
+    A squash merge can carry a `Claim:` line into the default branch's
+    history. A walk that read the base would then treat every item ever
+    claimed there as in hand, and the capture search would never match one of
+    them again. A branch merged in before it landed carries its own claims,
+    which stay that branch's, as they do for `holdings`.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.claim("PL-C2C2", when=T0 - DAY)
+    repo.branch("claude/other")
+    repo.claim("PL-D3D3", when=T0 - HOUR)
+    repo.branch("claude/held", start="main")
+    repo.claim("PL-B1B1", when=T0)
+    repo.git("merge", "-q", "--no-edit", "claude/other")
+
+    assert claimed_here(repo.root) == {"PL-B1B1"}
+
+    repo.git("checkout", "-q", "main")
+    assert claimed_here(repo.root) == frozenset()
 
 
 def test_a_claim_holds_only_for_the_branch_its_token_names(tmp_path: Path) -> None:

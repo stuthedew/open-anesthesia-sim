@@ -1,6 +1,7 @@
 import copy
 import pickle
 from dataclasses import astuple, replace
+from fractions import Fraction
 from math import inf, nan
 
 import pytest
@@ -312,6 +313,143 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
 
     with pytest.raises(SimulationConfigurationError, match=refused):
         pickle.loads(pickle.dumps(smuggled))
+
+
+# At desflurane's 18% vaporizer maximum and 10 L/min of fresh gas, one step at
+# the 1 ms step floor delivers 0.18 * 10 L/min * (1 ms / 60,000 ms/min) = 3e-5 L.
+# The step floor is the shortest step the model allows. A longer step transfers
+# more, but the floor gives a 24 h run the most steps, and so the most additions
+# that can round. That makes it the worst case for the running totals. The
+# value is computed here rather than read from the model.
+WORST_CASE_TRANSFER_PER_STEP_L = 0.18 * 10.0 / 60_000.0
+
+# Delivering that amount at every step for 24 h adds up to 2592 L. These cases
+# start the totals at 2500 L, because rounding loses the most when the totals
+# are largest. At 2500 L, one unit in the last place is 4.5e-13 L.
+LATE_IN_A_DAY_LONG_RUN_L = 2500.0
+
+# 200,000 steps keeps the case under a second. Over that many steps from
+# 2500 L, plain addition drifted 1.2e-11 relative to the exact sum, measured
+# 2026-10-25 (`PL-XST1`).
+STEPS_IN_THE_SAMPLE = 200_000
+
+# Kahan summation's error bound is 2u + O(n u^2) relative to the sum of the
+# addends, where u = 2**-53 (Higham, *Accuracy and Stability of Numerical
+# Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). Over the 8.64e7 steps of a
+# day, the O(n u^2) term is about 1e-24, so 2u is the bound at every supported
+# run length. That bound is about 450,000 times smaller than a tenth of
+# `DOCUMENTED_RELATIVE_TOLERANCE`.
+COMPENSATED_SUM_BOUND = 2 * 2.0**-53
+
+
+def _relative_drift(total_l: float, exact_l: Fraction) -> float:
+    return float(abs(Fraction(total_l) - exact_l) / exact_l)
+
+
+def test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_tolerance() -> None:
+    """Each running total stays within Kahan summation's bound of the exact sum.
+
+    Until `PL-XST1`, each step's transfer was added to its total with a plain
+    `+=`. Each addition could then round by up to half a unit in the last
+    place, always in the same direction for a nearly constant transfer. Over a
+    24 h run at the 1 ms step floor, that drift brought the residual of a
+    correct run within a few percent of the relative tolerance at which the
+    run is halted (`docs/MODEL.md` § "Mass-balance identity"). The residual is
+    the gap between the two sides of the accounting identity. The expected
+    sums are computed exactly, with `Fraction`, rather than by the code under
+    test. The test also computes the plain sum of the same transfers, which
+    drifts from the exact sum by many orders of magnitude more than the bound.
+    This shows that the test would fail if the code returned to plain addition.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(
+        delivered_agent_l=LATE_IN_A_DAY_LONG_RUN_L, exhausted_agent_l=LATE_IN_A_DAY_LONG_RUN_L
+    )
+    exhausted_per_step_l = WORST_CASE_TRANSFER_PER_STEP_L * 0.97
+    plain_delivered_l = LATE_IN_A_DAY_LONG_RUN_L
+
+    for _ in range(STEPS_IN_THE_SAMPLE):
+        validator.record_external_agent_transfer(
+            delivered_agent_l=WORST_CASE_TRANSFER_PER_STEP_L, exhausted_agent_l=exhausted_per_step_l
+        )
+        plain_delivered_l += WORST_CASE_TRANSFER_PER_STEP_L
+
+    exact_delivered_l = (
+        Fraction(LATE_IN_A_DAY_LONG_RUN_L)
+        + Fraction(WORST_CASE_TRANSFER_PER_STEP_L) * STEPS_IN_THE_SAMPLE
+    )
+    exact_exhausted_l = (
+        Fraction(LATE_IN_A_DAY_LONG_RUN_L) + Fraction(exhausted_per_step_l) * STEPS_IN_THE_SAMPLE
+    )
+
+    assert _relative_drift(validator.delivered_agent_l, exact_delivered_l) <= (
+        COMPENSATED_SUM_BOUND
+    )
+    assert _relative_drift(validator.exhausted_agent_l, exact_exhausted_l) <= (
+        COMPENSATED_SUM_BOUND
+    )
+    assert _relative_drift(plain_delivered_l, exact_delivered_l) > 1e4 * COMPENSATED_SUM_BOUND
+    assert COMPENSATED_SUM_BOUND < DOCUMENTED_RELATIVE_TOLERANCE / 10
+
+
+def test_a_transfer_whose_second_total_is_refused_writes_neither_total() -> None:
+    """A refused transfer leaves both totals and both compensations as they were.
+
+    Until `PL-XST1`, the delivered total was written before the exhausted total
+    was checked. So a transfer whose exhausted total overflowed had already
+    added to the delivered total when it was refused.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=0.79, exhausted_agent_l=1.7e308)
+    held = astuple(validator)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^exhausted_agent_l must be nonnegative and finite" + REFUSAL_REASON,
+    ):
+        validator.record_external_agent_transfer(delivered_agent_l=0.11, exhausted_agent_l=1.7e308)
+
+    assert astuple(validator) == held
+
+
+@pytest.mark.parametrize("term", ["delivered_compensation_l", "exhausted_compensation_l"])
+@pytest.mark.parametrize("value", [nan, inf, -inf])
+def test_a_compensation_term_must_be_finite(term: str, value: float) -> None:
+    """A compensation term that is not finite is refused, and nothing is written.
+
+    A term may be negative, because rounding can leave a total too small as
+    well as too large. A term that is not finite would make the next total
+    that it corrects not finite either.
+    """
+
+    validator = AgentSimulationValidator()
+    setattr(validator, term, -1e-17)
+    held = astuple(validator)
+
+    with pytest.raises(SimulationConfigurationError, match=f"^{term} must be finite, and "):
+        setattr(validator, term, value)
+
+    assert astuple(validator) == held
+
+
+def test_reset_clears_the_compensation_terms() -> None:
+    """A new accounting period starts with no rounding carried over from the last one."""
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=2500.0, exhausted_agent_l=2500.0)
+    validator.record_external_agent_transfer(
+        delivered_agent_l=WORST_CASE_TRANSFER_PER_STEP_L,
+        exhausted_agent_l=WORST_CASE_TRANSFER_PER_STEP_L,
+    )
+
+    assert validator.delivered_compensation_l != 0.0
+
+    validator.reset(initial_agent_l=0.2)
+
+    assert validator.delivered_compensation_l == 0.0
+    assert validator.exhausted_compensation_l == 0.0
 
 
 @pytest.mark.parametrize("initial_agent_l", [-0.1, nan, inf])

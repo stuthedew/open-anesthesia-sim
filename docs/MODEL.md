@@ -1585,6 +1585,63 @@ stricter than the 1e-9 halt threshold. Passing the gate therefore says
 strictly more than that the run did not stop. A real conservation defect would
 raise the residual by orders of magnitude, not by factors of two.
 
+**The delivered and exhausted totals are kept by compensated summation**
+(`PL-XST1`, measured 2026-10-25). Each total is a running sum of one transfer
+per step. Until `PL-XST1`, each transfer was added with plain floating-point
+addition, which can round by up to half a unit in the last place each time.
+For a nearly constant transfer it rounds the same way step after step, so the
+error grows with the number of steps. The worst case in the supported envelope
+is desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas, at the
+1 ms step floor. That delivers 3e-5 L per step, and 2592 L over the 8.64e7
+steps of a 24 h run.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+That run was measured four ways, each for the full 24 h. Two settings of the
+patient were used. "Default" is the reference adult's alveolar ventilation of
+4 L/min and cardiac output of 5 L/min. "No uptake" sets both to zero, so that
+nearly all the delivered agent is exhausted again. Each total's drift is its
+relative difference from an exactly rounded sum of the same transfers. The
+drift was read every 2,000,000 steps. The residual is
+$`\varepsilon_{\mathrm{relative}}`$ as the halt check computes it, and its
+worst value was taken over every step.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+
+| Summation | Patient | Worst drift, delivered | Worst drift, exhausted | Worst residual |
+| --- | --- | --- | --- | --- |
+| plain | default | 1.0e-9 | 9.1e-14 | 9.77e-10, at 18.96 h |
+| plain | no uptake | 1.0e-9 | 1.0e-9 | 1.10e-11 |
+| compensated | default | 8.8e-17 | 9.7e-17 | 3.73e-11, at 24 h |
+| compensated | no uptake | 2.5e-17 | 9.8e-17 | 4.52e-12 |
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+With plain addition, a correct run came within 2.4% of the 1e-9 halt
+threshold. It would have been halted for agent that it had not lost. With no
+uptake, the two totals drifted alike and their errors cancelled in the
+residual. With compensated summation, each total stays within a few units in
+the last place of the exact sum for the whole run. The residual that is left
+comes from the model's own step, not from the sums. It grows with the run's
+length and stays 27 times below the halt threshold at 24 h.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+The method is Kahan's compensated summation. It keeps, beside each total, the
+part that rounding lost on the last addition, and takes it off the next
+transfer. The computed sum of n nonnegative terms is then within
+$`2u + O(nu^2)`$ of the exact sum, relative to it, where $`u = 2^{-53}`$
+(Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM,
+2002, §4.3, equation 4.8). At 8.64e7 steps the $`O(nu^2)`$ term is about
+1e-24, so the bound does not grow with the run's length.
+`tests/unit/test_agent_simulation_validation.py` checks both totals against an
+exact sum at the largest totals the envelope reaches. The two compensation
+terms are run state. `capture_state()` and `restore_state()` carry them, and
+`reset()` clears them. The measurement script and its logs are kept outside
+the repository, in the project's `v0.7.0/pl-xst1/` folder.
+<!-- absent: v0.7.0/pl-xst1/ -->
+
 Clipping a negative stored amount to zero does not repair mass balance. It
 must not be used to conceal an unstable update.
 
@@ -1643,8 +1700,10 @@ failed and the step size at which it failed.
 The dynamic values are the eight that carry the trajectory, plus the
 accounting period's initial amount. The eight are the circuit's inspired
 fraction, the alveolar amount, each of the three tissue amounts, the venous
-amount, and the cumulative delivered and exhausted amounts. Settings and
-parameters are deliberately not captured. A rollback that restored cardiac
+amount, and the cumulative delivered and exhausted amounts. Each cumulative
+amount is captured with its compensation term, as § "Mass-balance identity"
+explains, so a step retried after a rollback gives the same result as the
+step that was undone. Settings and parameters are deliberately not captured. A rollback that restored cardiac
 output would undo a change that the run had accepted. Each compartment
 captures its own values. So if a dynamic field is added later without a
 matching capture, the result is a local omission. It is not a partial restore
@@ -3990,10 +4049,11 @@ accumulated rounding, and rounding does not grow with how far the settings
 move. The unperfused load gives the smallest figure although it runs longest,
 900 s against the others' 600 s. Its worst falls in the loading phase, while
 the blood and tissue states are still exactly zero and only the circuit and
-alveoli hold any agent. The gate also drives three of the five, the reference
-point, the ventilator start and the unperfused load, at 0.05 s and 0.025 s.
-That gives the worst figure measured: **5.89e-14**, for desflurane on a
-*ventilator start* at the finest step. The operator split's worst over the
+alveoli hold any agent. The gate also drives all five at 0.05 s and 0.025 s.
+That gives the worst figure measured on any trajectory: **5.89e-14**, for
+desflurane on a *ventilator start* at the finest step. The next largest is 5.46e-14, for
+desflurane on the held *envelope corner* at the same step (measured
+2026-10-25, `PL-F67Q`). The operator split's worst over the
 same domain was 2.29e-4 at this step. Against it, the exact step is nine orders of magnitude closer to the
 independent solution.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
@@ -4086,10 +4146,11 @@ with the step. Measured on 2026-10-25 (`PL-S86L`):
   peak in the last 1.5 s of a 600 s run. Desflurane peaks there on four of the
   five trajectories. Only sevoflurane on the ventilator start peaks inside a
   transient, 6.4 s after ventilation starts.
-- At 0.05 s and 0.025 s, only two of the nine pairs at each step peak in the
-  last 1.5 s. The ventilator start peaks in the circuit between 236 s and
-  283 s, while ventilation is still off, for every agent at 0.025 s and for
-  two of the three at 0.05 s. The 5.89e-14 above is one of these, at 236.1 s.
+- At 0.05 s, only four of the fifteen pairs peak in the last 1.5 s, and at
+  0.025 s only five do (`PL-F67Q`). The ventilator start peaks in the circuit
+  between 236 s and 283 s, while ventilation is still off, for every agent at
+  0.025 s and for two of the three at 0.05 s. The 5.89e-14 above is one of
+  these, at 236.1 s.
 - At every step, the unperfused load peaks during its loading phase, between
   350.8 s and the phase's end at 600 s, long after the circuit and alveoli
   have saturated.
@@ -5829,7 +5890,7 @@ floating-point operations are composed. This was measured on 2026-09-07 against
 a stepped 600 s sevoflurane run with two setting changes, reaching a fraction
 of 0.0316. The single-instant path stays within 1.8e-14 of the stepped run, and
 the window path within 3.7e-15. Both figures are absolute differences in a
-fraction of one atmosphere. Both are eleven orders of magnitude below 1e-4,
+fraction of one atmosphere. Both are about ten orders of magnitude below 1e-4,
 the smallest difference that the two-decimal percent readout under
 § "Displayed precision" can show. So neither path can change a displayed digit.
 § "The canonical evaluation rule" below states, as a guarantee, which of the
@@ -6128,9 +6189,9 @@ what that reproduces, and what it does not:
   showed when it stood there.** A running case displays its stepped live state,
   which is one propagation per step from the opening. Every branch opens from
   the canonical state. Over three hours of the run in the item's measurement
-  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is ten orders
-  below the 1e-4 that a two-decimal percent can show, so no reader can see the
-  difference. The same holds for a fork at a control event or at a halt.
+  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is about nine
+  orders below the 1e-4 that a two-decimal percent can show, so no reader can
+  see the difference. The same holds for a fork at a control event or at a halt.
 
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 

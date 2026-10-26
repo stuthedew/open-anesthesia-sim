@@ -53,34 +53,35 @@ PERCENT_PER_UNIT_FRACTION = 100.0
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 
-# Each simulated horizon is chosen for what it exercises. At 60 s the circuit and
-# alveoli are washing in while the tissues are still empty. At 600 s the
-# vessel-rich group is approaching its own equilibrium. At 3600 s the run is far
-# enough in for muscle and fat to hold a meaningful amount of agent. The pinned
-# reference states below are computed at these horizons.
+# Each horizon, the length of simulated time that a run covers, is chosen for what it
+# exercises. At 60 s the agent is still washing into the circuit and alveoli, and the
+# tissues are still empty. At 600 s the vessel-rich group is approaching its own
+# equilibrium. At 3600 s the run is far enough in for muscle and fat to hold a meaningful
+# amount of agent. The pinned reference states below are computed at these horizons.
 #
-# 3600 s is also the only run in this module that goes past 900 s, which gives
-# rounding in the shipped step time to accumulate. The residual is the shipped
-# step's difference from the pinned reference state. It is rounding added once per
-# step, over 36 000 shipped steps in an hour. The table of endpoint residuals beside
-# `HELD_RUN_ROUNDING_BOUND` shows the residual growing monotonically with the
-# horizon for every agent.
+# 3600 s is also the only run in this module that goes past 900 s. Over that long run, the
+# rounding in each shipped step has time to accumulate. The shipped step is the 0.1 s step
+# that the simulator uses. The residual is the shipped step's difference from the pinned
+# reference state. It is rounding added once per step, over 36 000 shipped steps in an hour.
+# The table of endpoint residuals beside `HELD_RUN_ROUNDING_BOUND` shows the residual
+# growing monotonically with the horizon for every agent.
 #
-# This comment deliberately does not quote how *many* times the residual grows
-# from 60 s to 3600 s. The 60 s residuals are a few units in the last place
-# (2.5e-16 to 5.7e-16). A ratio taken against them therefore shows how few bits
-# had accumulated by 60 s, and says nothing about the step. That alone is why the
-# three agents' ratios spread over an order of magnitude. The absolute values in
-# the table are the measurement, and the ratio is not.
+# This comment deliberately does not quote how *many* times the residual grows from 60 s to
+# 3600 s. The 60 s residuals are only a few units in the last place (2.5e-16 to 5.7e-16). A
+# ratio taken against values that small shows how few bits of rounding had accumulated by
+# 60 s, and says nothing about the step. Those small 60 s values alone are why the three
+# agents' ratios spread over an order of magnitude. The absolute values in the table are the
+# measurement, and the ratio is not.
 #
-# What does carry information is which state has the largest residual. With the
-# settings held at their defaults, that state moves from the fast circuit
-# compartment to the slow muscle compartment by 3600 s. On the five 600 s gate
-# trajectories, only sevoflurane on "envelope corner, held" has its largest
-# residual in muscle, and only at its last step (measured 2026-10-25, `PL-S86L`).
-# `test_the_shipped_step_reaches_the_pinned_reference_horizons` is the gate that
-# checks the 3600 s run. It samples only the endpoint, which is enough because at
-# 3600 s the maximum is at the endpoint, not inside a transient.
+# What does carry information is which state has the largest residual. With the settings
+# held at their defaults, that state moves from the fast circuit compartment to the slow
+# muscle compartment by 3600 s. The gate trajectories are the five scripted runs that this
+# module's tests check. On these five, muscle has the largest residual only on
+# "envelope corner, held", and only at that trajectory's last step. This happens for
+# sevoflurane at the shipped 0.1 s step (measured 2026-10-25, `PL-S86L`) and for desflurane
+# at 0.05 s (`PL-F67Q`). `test_the_shipped_step_reaches_the_pinned_reference_horizons` is
+# the gate that checks the 3600 s run. It samples only the endpoint. That is enough, because
+# at 3600 s the largest residual is at the endpoint, not inside a transient.
 HORIZONS_S = (60.0, 600.0, 3600.0)
 
 # The historical operating point. It is kept because the pinned reference states
@@ -544,33 +545,32 @@ SHIPPED_STEP_S = 0.1
 ORACLE_STEP_S = 0.0125
 
 # `PL-X9KD` retired two constants, `SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3` and
-# `EXACT_SOLUTION_FLOOR = 1e-12`, and the four tests that used them. They are recorded
-# here rather than simply deleted. "The gate was loosened until it passed" and "the
-# gate measured a quantity that no longer exists" look identical in a diff, but they
-# are opposite things.
+# `EXACT_SOLUTION_FLOOR = 1e-12`, and the four tests that used them. The constants and the
+# tests are recorded here rather than simply deleted. "The gate was loosened until it passed"
+# and "the gate measured a quantity that no longer exists" look identical in a diff, but they
+# mean opposite things.
 #
-# `SPLITTING_ERROR_BOUND_PER_STEP_SECOND` limited a first-order splitting coefficient
-# C, in an error of C·Δt. It was set at 1.22 times a measured worst of 2.29e-3 s^-1.
-# The shipped step is now one matrix exponential of the whole coupled system, so
-# there is no C. Expressed as a coefficient, the worst residual reachable anywhere
-# is 7.747e-12 s^-1, and the bound sat 3.61e8 times above it. The three tests that
-# used the bound passed with 8.6 to 9.7 orders of magnitude to spare. A bound that
-# loose is not a gate.
+# The old shipped step split the coupled system into parts. That split had a first-order
+# error of C·Δt, where Δt is the step, and `SPLITTING_ERROR_BOUND_PER_STEP_SECOND` limited
+# the coefficient C. It was set at 1.22 times the worst C measured, 2.29e-3 s^-1. The
+# shipped step is now one matrix exponential of the whole coupled system, so there is no C.
+# The worst residual reachable anywhere, expressed as a coefficient, is 7.747e-12 s^-1, and
+# the bound was 3.61e8 times larger. The three tests that used the bound passed with 8.6 to
+# 9.7 orders of magnitude to spare. A bound that loose is not a gate.
 #
 # `EXACT_SOLUTION_FLOOR` was the threshold for an early return in
-# `test_shipped_split_error_is_first_order_in_step`. The test returned early when the
-# error fell below what a split could produce. Measurement showed that it returned
-# early on all nine parametrizations, so the test asserted nothing. It was worse
-# than nothing: with the early return removed, all nine would *fail*. The measured
-# step ratios run from 0.147 to 18.6, and the assertion required every one of them
-# to lie in (1.9, 2.1). On desflurane's ventilator start, the test's margin to the
-# floor was only 1.29x. A platform that accumulated slightly more rounding would
-# therefore have stopped taking the early return, and the test would have started
-# failing on correct behavior. The test spent about 25 s of the file's 56 s
-# asserting nothing.
+# `test_shipped_split_error_is_first_order_in_step`. The test returned early when the error
+# was smaller than any split could produce. Measurement showed that it returned early on all
+# nine parametrizations, so the test asserted nothing. It was worse than nothing: with the
+# early return removed, all nine would *fail*. The test required every ratio of the error at
+# one step to the error at half that step to lie in (1.9, 2.1). The measured ratios run from
+# 0.147 to 18.6. On desflurane's ventilator start, the floor was only 1.29x the measured
+# error. On a platform that accumulated slightly more rounding, the test would therefore have
+# stopped returning early and started failing on correct behavior. The test took about 25 s
+# of the file's 56 s run time, and asserted nothing in that time.
 #
-# Below is what replaced each retired test, and which one needed a new gate rather
-# than a replacement:
+# The list below says what replaced each retired test, and which one needed a new gate of
+# its own rather than a replacement:
 #
 #   - `test_shipped_split_is_bounded_across_the_settings_envelope` and
 #     `test_shipped_split_is_bounded_across_setting_changes` are reproduced
@@ -583,44 +583,49 @@ ORACLE_STEP_S = 0.0125
 #   - `test_shipped_split_error_is_first_order_in_step` varied the step over
 #     trajectories that *turn*, meaning that their settings change partway
 #     through. Its nearest replacement,
-#     `test_the_disagreement_does_not_shrink_with_the_step`, did not. The
-#     difference matters. On a turning trajectory the coarsest step is the worst
-#     by 10 to 35 times, which is the opposite of what happens at held settings.
-#     The replacement now runs the setting-change trajectories too, so it covers
-#     that case.
+#     `test_the_disagreement_does_not_shrink_with_the_step`, did not at first.
+#     The difference mattered. The oracle is the independent RK4 solution that
+#     the shipped step is compared with. With the oracle at half the step under
+#     test, the error on a turning trajectory was largest at the coarsest step,
+#     by a factor of 10 to 35. Held settings showed the opposite. `PL-B1WW`
+#     showed that this error was the oracle's own truncation error. The
+#     replacement now runs every gate trajectory, the setting-change ones
+#     included, so it covers that case (`PL-F67Q`).
 #   - `test_shipped_split_matches_independent_solution` was the only test in the
-#     repository that drove the shipped solver past 900 s. It could not be
+#     repository that drove the shipped solver past 900 s, so it could not be
 #     dropped as cleanup. At 3600 s the residual was two to sixteen times its
-#     600 s value. It sat at the endpoint rather than in a transient, and it was
-#     in muscle. Of the five surviving trajectories, muscle has the largest
-#     residual only for sevoflurane on "envelope corner, held", and only at its
-#     last step (measured 2026-10-25, `PL-S86L`). Retiring the test as written
-#     would also have left the 3600 s entries of `PINNED_REFERENCE_STATES`
-#     checking only the oracle, not the shipped solver. The test survives as
+#     600 s value. The largest residual was at the endpoint rather than in a
+#     transient, and it was in muscle. Of the five gate trajectories that
+#     remain, muscle has the largest residual only on "envelope corner, held",
+#     and only at its last step: for sevoflurane at 0.1 s and for desflurane at
+#     0.05 s (measured 2026-10-25, `PL-S86L`, `PL-F67Q`). Retiring the test
+#     without replacing it would also have left the 3600 s entries of
+#     `PINNED_REFERENCE_STATES` checking only the oracle, not the shipped
+#     solver. The test survives as
 #     `test_the_shipped_step_reaches_the_pinned_reference_horizons`, checked
 #     against `HELD_RUN_ROUNDING_BOUND` below.
 #
 # `EXACT_STEP_ORACLE_TOLERANCE` is the amount by which the shipped exact step may
 # disagree with the oracle. It is an absolute difference in any of the six
-# fractions, anywhere on any gate trajectory (`PL-GS5X`).
+# fractions, at any point on any gate trajectory (`PL-GS5X`).
 #
 # **It is not the retired splitting bound rescaled, and it is a different kind
-# of quantity.** That bound limited a first-order coefficient C in an error of
-# C·Δt, which describes a systematic method error that shrinks as the step
-# shrinks. The shipped step is now one matrix exponential of the whole coupled
-# system, which is the *exact* solution of these equations over the interval. So
-# no method error is left to have an order. The residual measured here is
-# floating-point rounding accumulated in two independently written solutions. It
-# grows with the *number* of steps, and therefore gets slightly worse as the step
-# gets smaller. Bounding a coefficient would state the opposite of what is true,
-# so this bound is absolute.
+# of quantity.** That bound limited the coefficient C in an error of C·Δt. Such an error
+# is a systematic method error, and it shrinks as the step shrinks. The shipped step is
+# now one matrix exponential of the whole coupled system, which is the *exact* solution of
+# these equations over each step. So no method error is left whose order could be bounded.
+# The residual measured here is floating-point rounding accumulated in two independently
+# written solutions. It grows with the *number* of steps, and therefore gets slightly worse
+# as the step gets smaller. A bound on a coefficient would claim that the error shrinks with
+# the step, which is the opposite of what is true. So this bound is absolute.
 #
-# **This bound was derived here, not inherited.** `PL-P0BB` forbids reusing the
-# ~2e-15 figure, which described the old mechanism's accounting residual. The
-# figures below were re-measured on 2026-09-07 under the refined `ORACLE_STEP_S`,
-# over every agent and every trajectory in `ALL_GATE_TRAJECTORIES`. Each is the
-# worst over the whole trajectory rather than at the endpoints, at the shipped
-# 0.1 s step. Desflurane is the worst agent on every row:
+# **This bound was derived here, not inherited.** The ~2e-15 figure described the old
+# mechanism's accounting residual, so `PL-P0BB` forbids reusing it. The figures below were
+# re-measured on 2026-09-07 with the refined `ORACLE_STEP_S`, over every agent and every
+# trajectory in `ALL_GATE_TRAJECTORIES`. Each figure is the largest residual anywhere on the
+# trajectory at the shipped 0.1 s step, not only the residual at its endpoints. Desflurane
+# is the worst agent on every row, so each figure is desflurane's, with the state in which
+# it occurs:
 #
 #     ordinary use                            1.5786e-14  (vessel rich)
 #     envelope corner, held                   1.5377e-14  (vessel rich)
@@ -628,83 +633,82 @@ ORACLE_STEP_S = 0.0125
 #     reference point, held                   1.3427e-14  (vessel rich)
 #     unperfused load then dial off           8.7985e-15  (alveolar)
 #
-# **The trajectories no longer give widely different figures.** Under the old
-# 0.05 s oracle, these figures spread over two orders of magnitude, and the
-# trajectories with the largest setting changes gave the largest numbers. They now
-# sit within a factor of 1.8 of each other. With the oracle's truncation error
-# removed, what is left is rounding, and rounding does not grow with how far the
-# settings move. The unperfused load gives the smallest figure although it runs
-# longest, 9 000 steps against the others' 6 000. Its worst falls in the loading
-# phase, while the blood and tissue states are still exactly zero and only the
-# circuit and alveoli hold any agent. A trajectory here earns its place by the
-# domain it covers, not by the size of the residual it produces.
+# **The trajectories no longer give widely different figures.** With the oracle at its old
+# 0.05 s step, these figures spread over two orders of magnitude, and the trajectories with
+# the largest setting changes gave the largest figures. They now sit within a factor of 1.8
+# of each other. With the oracle's truncation error removed, what is left is rounding, and
+# rounding does not grow with how far the settings move. The unperfused load gives the
+# smallest figure although it runs longest, 9 000 steps against the others' 6 000. Its
+# largest residual occurs in the loading phase, while the blood and tissue states are still
+# exactly zero and only the circuit and alveoli hold any agent. A trajectory is included
+# for the conditions it covers, not for the size of the residual it produces.
 #
-# `test_the_disagreement_does_not_shrink_with_the_step` also runs three of these
-# trajectories at 0.05 s and 0.025 s: the reference point, the ventilator start and
-# the unperfused load. The largest residual in this module now occurs in those
-# runs, exactly as rounding predicts, because a smaller step means more steps. The
-# worst measured is **5.8870e-14**, for desflurane on the ventilator start at the
-# 0.025 s step, in the circuit fraction. That is the figure this bound is set
-# against.
+# `test_the_disagreement_does_not_shrink_with_the_step` also runs all five of these
+# trajectories at 0.05 s and 0.025 s. The largest residual on any gate trajectory occurs in
+# those runs. That is exactly what rounding predicts, because a smaller step means more
+# steps. The worst measured is **5.8870e-14**, for desflurane on the ventilator start at the
+# 0.025 s step, in the circuit fraction. That is the figure this bound is set against. The
+# next largest is 5.4623e-14, for desflurane on the held envelope corner at the same step
+# (measured 2026-10-25, `PL-F67Q`). The one-hour run at held settings, which
+# `HELD_RUN_ROUNDING_BOUND` covers, reaches a larger residual, 7.1637e-14, because it takes
+# 36 000 steps rather than 24 000.
 #
-# **The margin is set by platform variation, not by that figure.** This bound
-# constrains accumulated rounding, which is not reproducible between machines. A
-# different libm `exp`, or a compiler contracting a multiply and an add into one
-# FMA, moves the last bits of both solutions. As a proxy for how far those bits
-# can move, this module measures how much the *shipped* solution alone changes
-# when the same interval is divided into different steps. `HELD_RUN_ROUNDING_BOUND`
-# uses the same proxy. The comparison runs the same exact propagator over the same
-# phases at 0.1, 0.05 and 0.025 s. No oracle is involved, so every difference is
-# rounding accumulated by the shipped solution itself. The largest difference is
-# **1.0691e-13**, measured over all three pairs of step sizes, all six fractions,
-# every agent and every gate trajectory, and sampled at 0.1 s. It is for
-# desflurane on the ventilator start, in the circuit fraction at 284.6 s.
+# **The margin is set by platform variation, not by that figure.** This bound constrains
+# accumulated rounding, which is not reproducible between machines. A different libm `exp`,
+# or a compiler contracting a multiply and an add into one fused multiply-add (FMA), moves
+# the last bits of both solutions. As a proxy for how far those bits can move, this module
+# measures how much the *shipped* solution alone changes when the same interval is divided
+# into different steps. This change is called the subdivision spread below.
+# `HELD_RUN_ROUNDING_BOUND` uses the same proxy. The comparison runs the same exact
+# propagator over the same phases at 0.1, 0.05 and 0.025 s. No oracle is involved, so every
+# difference is rounding accumulated by the shipped solution itself. The largest difference
+# is **1.0691e-13**, measured over all three pairs of step sizes, all six fractions, every
+# agent and every gate trajectory, and sampled every 0.1 s. It occurs for desflurane on the
+# ventilator start, in the circuit fraction at 284.6 s.
 #
-# That spread, not the residual, is what sets this bound. The spread is larger
-# than the residual it accompanies, which is why this bound is not set tighter.
-# 4e-13 is 6.8 times the worst observed residual and 3.7 times the subdivision
-# spread. `HELD_RUN_ROUNDING_BOUND` is 3.2 times its own spread, so the two bounds
-# are now sized by the same rule. The split that the exact step replaced had a
-# worst of 2.29e-4 over the same domain at this step. The exact step is nine
-# orders of magnitude closer to the independent solution than that. This bound is
-# nine orders of magnitude smaller than the error of any method that is not exact.
-# So the test still fails as soon as method error returns, and catching that is
-# the bound's only job.
+# The subdivision spread, not the residual, is what sets this bound. The spread is larger
+# than the residual it accompanies, which is why this bound is not set tighter. The bound,
+# 4e-13, is 6.8 times the worst observed residual and 3.7 times the subdivision spread.
+# `HELD_RUN_ROUNDING_BOUND` is 3.2 times its own spread, so the two bounds are now sized by
+# the same rule. The split that the exact step replaced had a worst error of 2.29e-4 over
+# the same domain at this step. The exact step is nine orders of magnitude closer to the
+# independent solution than that. This bound is nine orders of magnitude smaller than the
+# error of any method that is not exact. So the test still fails as soon as method error
+# returns, and catching that is the bound's only job.
 #
-# **Until `PL-B1WW`, this bound was too loose to catch a large regression.** It
-# was 5e-12, set at 6.5 times a worst of 7.7e-13. But 86% to 99.8% of that worst
-# was the oracle's own RK4 truncation error. So the bound sat about 320 times
-# above the shipped step's actual residual. A regression that made the exact step
-# a hundred times worse would have passed it. Refining the oracle is what makes
-# the measured quantity the same as the quantity of interest, the shipped step's
-# own residual. Tightening this bound is what actually makes the gate sensitive.
-# Refining the oracle alone, with this constant left at 5e-12, would have gained
-# none of that sensitivity.
+# **Until `PL-B1WW` refined the oracle, this bound was too loose to catch a large
+# regression.** It was 5e-12, set at 6.5 times the worst residual then measured, 7.7e-13.
+# But 86% to 99.8% of that worst residual was the oracle's own RK4 truncation error. So the
+# bound was about 320 times larger than the shipped step's actual residual. A regression
+# that made the exact step a hundred times worse would have passed it. Refining the oracle
+# made the measured quantity the same as the quantity of interest, the shipped step's own
+# residual. Tightening this bound is what actually made the gate sensitive. Refining the
+# oracle alone, with this constant left at 5e-12, would have gained none of that
+# sensitivity.
 #
-# The gain was measured, not argued. The shipped step was degraded on purpose,
-# and each bound was checked to see whether it noticed. Scaling every shipped
-# state by (1 + 1e-11) is a relative degradation, the kind a solver would produce
-# if it had stopped being exact. It raises the worst gate figure to 1.8084e-12.
-# The old 5e-12 bound passes that silently, and this bound fails it. That is the
-# whole of what `PL-B1WW` gained, stated as the smallest defect the gate can now
-# see. A 2e-12 relative degradation still passes. So the gate cannot see an
-# arbitrarily small degradation, and it is not meant to. Platform variation sets
-# the limit of its sensitivity, as described above.
+# The gain was measured, not argued. The shipped step was degraded on purpose, and each
+# bound was checked to see whether it caught the degradation. Scaling every shipped state
+# by (1 + 1e-11) is a relative degradation, the kind a solver would produce if it had
+# stopped being exact. It raises the worst gate figure to 1.8084e-12. The old 5e-12 bound
+# passes that silently, and this bound fails it. That difference is the whole of what
+# `PL-B1WW` gained, stated as the smallest defect that the gate can now see. A 2e-12
+# relative degradation still passes. So the gate cannot see an arbitrarily small
+# degradation, and it is not meant to. Platform variation sets the limit of its
+# sensitivity, as described above.
 #
-# **The residual is rounding, not truncation, so an absolute bound is the right
-# shape. The evidence is that the residual moves in no consistent direction, not
-# that it does not move.** Refining the oracle a further eightfold, from 0.0125 s
-# to 0.0015625 s, moves the desflurane figures in the table above by at most 11%.
-# It moves them *both ways*. In table order, the ratios of the 0.0125 s figure to
-# the 0.0015625 s one are 0.956, 1.008, 0.925, 1.055 and 0.895. Truncation cannot
-# do that. A residual that still carries RK4 truncation falls by about 2^4 each
-# time the oracle step is halved, and it never rises. The 0.05 s oracle did
-# exactly that. Refining it lowered the figure on every trajectory that turns and
-# never raised one, and the ventilator start fell 68-fold. What is left at
-# 0.0125 s shifts up or down by a few percent as the oracle's own rounding path
-# changes. That is the signature of two independently accumulated rounding errors
-# being subtracted. The absence of a one-way fall is what shows that the oracle
-# has converged everywhere this module runs it.
+# **The residual is rounding, not truncation, so the bound should be absolute. The
+# evidence is that the residual moves in no consistent direction, not that it does not
+# move.** Refining the oracle a further eightfold, from 0.0125 s to 0.0015625 s, moves the
+# desflurane figures in the table above by at most 11%. It moves them *both ways*. In table
+# order, the ratios of the 0.0125 s figure to the 0.0015625 s one are 0.956, 1.008, 0.925,
+# 1.055 and 0.895. Truncation cannot do that. A residual that still carries RK4 truncation
+# error falls by a factor of about 2^4 each time the oracle step is halved, and it never
+# rises. The residual under the old 0.05 s oracle did exactly that. Refining that oracle
+# lowered the figure on every trajectory that turns and raised none, and the figure for the
+# ventilator start fell 68-fold. What is left at 0.0125 s shifts up or down by a few percent
+# as the oracle's own rounding path changes. That is the signature of two independently
+# accumulated rounding errors being subtracted. The figures do not all fall, and that is
+# what shows that the oracle has converged everywhere this module runs it.
 EXACT_STEP_ORACLE_TOLERANCE = 4e-13
 
 # How much the shipped step alone may accumulate over a run at held settings. It
@@ -1277,23 +1281,25 @@ def test_the_shipped_step_reaches_the_pinned_reference_horizons(
 
     A mass-balance check cannot catch what this test catches. A wrong transfer
     rate leaves the mass-balance accounting residual untouched, but it moves
-    these six numbers.
+    the six pinned values that this test compares.
 
     This test is also the only gate here that drives the shipped solver for a
     full hour. Every gate in this module now measures the shipped step's own
     residual. That is because `PL-B1WW` refined `ORACLE_STEP_S`, so the oracle
-    is now converged on the transients as well as at held settings. What
-    distinguishes this gate is no longer the quantity but the run length. The
-    disagreement is rounding accumulated once per step, so it keeps growing
-    for as long as the run does. By 3600 s it is about five times its 600 s
-    value, for all three agents. None of the trajectory gates can see that
-    growth past their own end, at 600 s or 900 s. By the endpoint, the state
-    with the largest disagreement is muscle. On the five gate trajectories,
-    muscle has the largest disagreement only for sevoflurane on the
-    "envelope corner, held" trajectory, and only at its last step.
+    is now converged on the transients as well as at held settings. As a
+    result, what sets this gate apart is no longer the quantity it measures
+    but the length of its run. The shipped step's disagreement with the pinned
+    states is rounding accumulated once per step, so it keeps growing for as
+    long as the run does. By 3600 s it is about five times its 600 s value,
+    for all three agents. The trajectory gates end at 600 s or 900 s, so none
+    of them can see that growth. At the endpoint, the state with the largest
+    disagreement is muscle. On the five gate trajectories, muscle has the
+    largest disagreement only on the "envelope corner, held" trajectory, and
+    only at its last step: for sevoflurane at 0.1 s and for desflurane at
+    0.05 s.
 
     This test samples only the endpoint rather than the whole run. That is
-    right because at 3600 s the maximum *is* at the endpoint.
+    enough, because at 3600 s the largest disagreement *is* at the endpoint.
 
     Retiring this test's predecessor without replacing it would also have left
     the 3600 s entries of `PINNED_REFERENCE_STATES` with no test that ties them
@@ -1369,56 +1375,70 @@ def test_exact_step_matches_the_independent_solution_everywhere(
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 @pytest.mark.parametrize(
     ("trajectory_name", "build_phases"),
-    (("reference point, held", _held_default_settings), *SETTING_CHANGE_SCENARIOS),
-    ids=["reference point, held", *(name for name, _ in SETTING_CHANGE_SCENARIOS)],
+    ALL_GATE_TRAJECTORIES,
+    ids=[name for name, _ in ALL_GATE_TRAJECTORIES],
 )
 def test_the_disagreement_does_not_shrink_with_the_step(
     agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
 ) -> None:
-    """The tolerance above is met at every supported step, not just the shipped one.
+    """`EXACT_STEP_ORACLE_TOLERANCE` is met at every supported step, not just the shipped one.
 
     This test does what the retired
     `test_shipped_split_error_is_first_order_in_step` did for the split, but
     inverted. There, the claim was that halving the step halved the error, so
     bounding a coefficient at one step bounded it at all of them. Here, the
-    claim is that the step size does not enter. An exact propagator solves the
-    same interval exactly however it is subdivided, so the same absolute bound
-    must be met at 0.1 s, 0.05 s and 0.025 s alike. A method error of any
-    order fails this test by being visibly larger at the coarsest step and
-    shrinking as the step shrinks.
+    claim is that the step size does not change the result. An exact
+    propagator solves the same interval exactly however it is subdivided, so
+    the same absolute bound must be met at 0.1 s, 0.05 s and 0.025 s alike. A
+    method error of any order would be visibly larger at the coarsest step and
+    would shrink as the step shrinks, so it would fail this test at the
+    coarsest step.
 
     **The setting-change trajectories are here because the retired test ran
-    them and this one did not (`PL-X9KD`).** That was the one property of the
-    retired test that did not transfer, and it is not decorative. This gate
-    drives the largest residual in the module, and it does so at the finest
-    step rather than the coarsest.
+    them and this test at first did not (`PL-X9KD`).** That was the one
+    property of the retired test that did not transfer, and it matters. This
+    gate produces the largest residual of any gate trajectory, at the finest
+    step rather than the coarsest. It runs all five gate trajectories, the same
+    set as `test_exact_step_matches_the_independent_solution_everywhere`
+    (`PL-F67Q`). So that largest residual is a maximum over all five, not over
+    a subset of them.
 
-    **What refining the oracle changed here (`PL-B1WW`).** This docstring used
-    to say that held settings were worst at the finest step and turning
-    trajectories worst at the coarsest, in opposite directions. Only the first
-    half was ever about the shipped step. The second half was about the
-    oracle. The oracle ran at half the step under test, so the coarsest
-    pairing put it at 0.05 s through a transient that needed 0.0125 s. What
-    fell away as the step shrank was the oracle's own truncation, not anything
-    the shipped step did. With the oracle at an eighth of the step
-    (`_oracle_step_for`), the results are the ones rounding predicts, across
-    all nine parametrizations at 0.1, 0.05 and 0.025 s:
+    **Refining the oracle changed what this test shows (`PL-B1WW`).** This
+    docstring used to say that held settings were worst at the finest step,
+    and that turning trajectories, whose settings change partway through, were
+    worst at the coarsest. Only the first half was ever about the shipped step.
+    The second half was about the oracle. The oracle ran at half the step under
+    test, so at the coarsest step, 0.1 s, it ran at 0.05 s through a transient
+    that needed 0.0125 s. The error that fell as the step shrank was the
+    oracle's own truncation error, not anything the shipped step did. With the
+    oracle at an eighth of the step (`_oracle_step_for`), the results are what
+    rounding predicts. That holds across all fifteen parametrizations at 0.1,
+    0.05 and 0.025 s (measured 2026-10-25, `PL-S86L`, `PL-F67Q`). Each triple
+    below gives the figures at 0.1, 0.05 and 0.025 s, in that order:
 
-      - Eight of the nine are worst at the *finest* step, which takes four
-        times as many steps and accumulates four times as much rounding:
-        2.8935e-15, 1.3385e-14, 3.8337e-14 for sevoflurane at held settings;
-        1.3906e-14, 5.0099e-14, 5.8870e-14 for desflurane's ventilator start,
-        which is the largest residual anywhere in this module.
-      - Desflurane at held settings is the ninth, and it runs the other way:
-        1.3427e-14, 1.1213e-14, 7.8756e-15. It changes by a factor of 1.7,
-        rather than by the 4 to 15 that the others grow by. When two
-        independently accumulated rounding paths are subtracted, they do not
-        have to line up. A factor that small, against a trend that large, is
-        the difference shifting by chance and not the step buying accuracy.
+      - Twelve of the fifteen are worst at the *finest* step. The finest step
+        takes four times as many steps as the coarsest, so it accumulates more
+        rounding. They grow by a factor of 3.6 to 21 from 0.1 s to 0.025 s.
+        Examples are 2.8935e-15, 1.3385e-14, 3.8337e-14 for sevoflurane at held
+        settings, and 1.3906e-14, 5.0099e-14, 5.8870e-14 for desflurane's
+        ventilator start. The last of these is the largest on any gate
+        trajectory.
+      - Desflurane at held settings and on ordinary use run the other way:
+        1.3427e-14, 1.1213e-14, 7.8756e-15, and 1.5786e-14, 1.3677e-14,
+        9.2287e-15. Each falls by a factor of 1.7 over the two halvings. That
+        is too little for a method error, which falls by at least 2 on every
+        halving, so by at least 4 over two.
+      - Isoflurane on the held envelope corner is worst at the middle step:
+        6.9077e-15, 1.9679e-14, 3.9829e-15. It rises from 0.1 s to 0.05 s, and
+        a method error never grows as the step shrinks.
 
-    So the only claim this test makes is that no supported step exceeds the
-    tolerance. It deliberately does not assert a direction. The ninth row is
-    why that restraint is still right, even now that the other eight agree.
+    Two independently accumulated rounding errors need not line up when one is
+    subtracted from the other. So in the three exceptions above, the
+    difference shifted by chance. The smaller step did not make the result more
+    accurate. The only claim this test makes is that no supported step exceeds
+    the tolerance. It deliberately does not assert which way the residual moves
+    as the step shrinks. The three exceptions that run against the trend show
+    why that restraint is still right.
     """
 
     phases = build_phases(agent_id)

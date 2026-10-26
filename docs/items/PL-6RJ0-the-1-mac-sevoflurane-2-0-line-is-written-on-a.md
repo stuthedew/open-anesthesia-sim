@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_v
 added: 2026-10-25
 payoff: the 1 MAC line always states the divisor of the ×MAC numbers beside it, including while a halt is shown
 verify: grep -q 'def test_the_one_mac_line_and_the_cards_name_the_same_agent_after_a_halt' tests/integration/test_simulation_view.py
+reenters: PL-X7D5
 ---
 
 **Problem.** `RunView._write_settings` writes `_one_mac_text` (`app/run_view.py`). It runs from `_write_statement`, and so from `present_halt` as well. The readout cards are written only in `refresh`. After an agent change whose first frame fails, the heading reads "1 MAC desflurane = 6.0%". The cards beside it still show the last frame's sevoflurane values, divided by 2.0%. Separately, `_write_settings` calls `setting_readouts` before it writes the line. A raise there would leave the previous agent's 1 MAC above cards that `refresh` has just rewritten. No shipped agent triggers that raise today.
