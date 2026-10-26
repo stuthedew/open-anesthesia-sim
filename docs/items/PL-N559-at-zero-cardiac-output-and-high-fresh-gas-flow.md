@@ -20,7 +20,7 @@ verify: grep -q 'def test_a_zero_cardiac_output_steady_state_is_not_read_as_elim
 
 **Found by.** `PL-TBQS` reviewer replay on #376, finding r01 F1. Checked against main on 2026-10-25 with `scripts/c_core376.py P`.
 
-**Put to the project owner, 2026-10-26 (#1864).** Measured on the branch: at
+**Decision needed.** Which route stops the steady state at zero cardiac output reading as elimination: a rounding tolerance in the domain rule, or an exact fixed point in the propagator. Put to the project owner, 2026-10-26 (#1864). Measured on the branch: at
 zero cardiac output, all 21 agent and fresh gas combinations run for 24 h on
 the canonical path end with F_A above F_I by rounding alone, at most 9.6e-14
 relative. So the caption is wrong in every such run.
