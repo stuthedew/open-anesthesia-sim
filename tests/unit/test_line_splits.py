@@ -107,6 +107,10 @@ TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
         "listing",
     ): "runs mutmut's mutant generation, which prints one line of JSON and reads no git",
     ("tools/ignore_check.py", "run_mypy"): "runs mypy, whose report is its own and not git's",
+    (
+        ".claude/hooks/thread_hooks.py",
+        "_run",
+    ): "runs the repository's session-start hooks, whose output is printed as it comes",
 }
 
 

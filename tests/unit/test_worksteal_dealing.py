@@ -196,12 +196,29 @@ def test_skipping_the_costly_tests_leaves_the_parts_every_other_test_once() -> N
     assert sorted(runs) == [test for test in tests if test not in costly]
 
 
-def test_part_1_unskipped_and_part_2_skipped_still_run_every_other_test_once() -> None:
-    """The combination CI runs: only the second part passes `--skip-costly`.
+def test_a_run_that_skips_deals_the_first_part_2_of_every_9_ordinary_tests() -> None:
+    """With the costly tests left out, the first part takes fewer tests (`PL-STM6`).
 
-    The first part sees the costly tests and the second does not. They still
-    deal the ordinary tests alike, because `part` counts its cycle over the
-    ordinary tests alone.
+    Its job also runs the linters, so with `PART_SHARES` it finished last on
+    every measured apparatus run. The expected parts are written out by hand
+    from the 2-of-9 cycle, not computed by `part`.
+    """
+
+    tests = list(range(20))
+    costly = {0, 19}
+    assert DEALING.SKIPPING_COSTLY_SHARES == {2: (2, 7)}
+    assert DEALING.selected(tests, costly, (1, 2), skip_costly=True) == [1, 2, 10, 11]
+    assert DEALING.selected(tests, costly, (2, 2), skip_costly=True) == [
+        *range(3, 10),
+        *range(12, 19),
+    ]
+
+
+def test_parts_that_disagree_about_the_skip_do_not_run_every_test_once() -> None:
+    """Why both parts ask for the skip, and why `checks` compares their answers.
+
+    The two parts deal the ordinary tests with other shares when one skips the
+    costly tests and the other does not. Then some tests run in neither part.
     """
 
     tests = list(range(23))
@@ -210,7 +227,7 @@ def test_part_1_unskipped_and_part_2_skipped_still_run_every_other_test_once() -
         *DEALING.selected(tests, costly, (1, 2), skip_costly=False),
         *DEALING.selected(tests, costly, (2, 2), skip_costly=True),
     ]
-    assert sorted(runs) == [test for test in tests if test not in costly]
+    assert sorted(runs) != [test for test in tests if test not in costly]
 
 
 @pytest.mark.parametrize(

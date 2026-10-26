@@ -21,6 +21,7 @@ from anesthesia_sim.app.chart_frame import (
     HOVER_INSTANT_RESOLUTION_S,
     MAX_CHART_CONTROL_MARKS,
     WASH_IN_HOVER_LABEL,
+    WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT,
     WASH_IN_TERMINUS_CEILING,
     ChartFrame,
     RunCount,
@@ -44,7 +45,12 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_axis_ticks,
     wash_in_stretches,
 )
-from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, time_base_for_span
+from anesthesia_sim.app.chart_time_base import (
+    CHART_GRID_RESOLUTIONS_S,
+    TIME_BASE_LADDER,
+    grid_spacing_s,
+    time_base_for_span,
+)
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -52,8 +58,10 @@ from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    format_elapsed,
     format_mac_multiple,
     format_percent,
+    format_wash_in_ratio,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
@@ -61,6 +69,7 @@ from anesthesia_sim.app.run_series import (
     COMPARTMENT_STATE_INDEX,
     DrawnWindow,
     RecordedQuantity,
+    RecordedSeries,
 )
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
@@ -516,6 +525,44 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
     assert all(ratio <= 1.0 for ratio in stretch.ratios[:-1])
     assert run.undrawn_wash_in_stretches == 0
+
+
+def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
+    """`PL-YH6Z`: the crossing column is drawn, but its quotient is not printed as wash-in.
+
+    The crossing column, where the trace passes equilibrium, is the stretch's terminus.
+    It is drawn so that the line meets the reference. Its quotient is above 1, which
+    `read_wash_in` classes as elimination. Printing it under the label "Wash-in F_A/F_I"
+    would suggest that wash-in can go past completion.
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 600.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 300.0)
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    run = frame.runs[0]
+    stretch = run.wash_in[0]
+    terminus = len(stretch.ratios) - 1
+
+    assert stretch.ends_above_equilibrium
+    assert stretch.ratios[terminus] > 1.0
+
+    single = format_wash_in_hover(run, stretch, terminus, 1).splitlines()
+    compared = format_compared_wash_in_hover([(run, stretch, terminus)]).splitlines()
+
+    assert single[1:] == [WASH_IN_HOVER_LABEL, WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT]
+    assert compared[-1].endswith(WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT)
+    assert format_wash_in_ratio(stretch.ratios[terminus]) not in compared[-1]
+
+    # The column before the terminus is still wash-in, and still prints its number.
+    assert format_wash_in_hover(run, stretch, terminus - 1, 1).splitlines()[2] == (
+        format_wash_in_ratio(stretch.ratios[terminus - 1])
+    )
 
 
 # ----------------------------------------------------------------- the hover
@@ -1330,13 +1377,79 @@ def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -
 
 
 def test_the_hover_states_the_instant_at_the_clock_s_own_resolution() -> None:
-    assert HOVER_INSTANT_RESOLUTION_S == MAXIMUM_SIMULATION_STEP_S
+    assert HOVER_INSTANT_RESOLUTION_S == CHART_GRID_RESOLUTIONS_S[-1]
+    assert CHART_GRID_RESOLUTIONS_S[0] == MAXIMUM_SIMULATION_STEP_S
 
-    run = _run_frame((410.7383,), alveolar=(0.01,))
+    run = _run_frame((410.7,), alveolar=(0.01,))
 
     assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[0] == (
         "Modelled sevoflurane · 6m50.7s"
     )
+
+
+@pytest.mark.parametrize("plot_width_px", [600.0, 873.0, 900.0, 1366.0, 2560.0])
+@pytest.mark.parametrize("seconds", [8.0, 600.0])
+def test_the_hover_value_belongs_to_the_instant_it_prints(
+    plot_width_px: float, seconds: float
+) -> None:
+    """`PL-T5NJ`: the state printed beside an instant is the state at that instant.
+
+    Columns used to sit wherever the plot's width put them, and the hover
+    rounded the column's instant to a tenth of a second. Desflurane at 18% and
+    10 L/min takes the circuit from 2.68% at 6.00 s to 2.70% at 6.04 s, so the
+    hover at "6s" could print 2.70% while the readout row at 6 s showed 2.68%.
+    Each drawn column now sits on a whole number of hundredths of a second.
+    So the printed instant is the drawn one, and the run evaluated afresh at
+    the printed instant gives the printed value.
+    """
+
+    controller = SimulationController(agent_id="desflurane")
+    controller.set_delivered_concentration_percent(Percent(18.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    controller.start()
+    _advance(controller, seconds)
+
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=plot_width_px
+    )
+    run = frame.runs[0]
+    near = [index for index, time_s in enumerate(run.times_s) if 5.0 <= time_s <= 7.5]
+
+    assert len(near) >= 2
+
+    for index, time_s in enumerate(run.times_s):
+        printed_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
+
+        assert time_s == pytest.approx(printed_s, abs=1e-9)
+        assert format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1).splitlines()[0] == (
+            f"Modelled desflurane · {format_elapsed(printed_s)}"
+        )
+
+    for index in near:
+        printed_s = round(run.times_s[index] / HOVER_INSTANT_RESOLUTION_S) * (
+            HOVER_INSTANT_RESOLUTION_S
+        )
+        at_printed = controller.drawn_window(printed_s, printed_s, 2).compartment_fractions(
+            RecordedSeries("desflurane", RecordedQuantity.CIRCUIT)
+        )
+
+        assert format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1).splitlines()[2] == (
+            f"{format_percent(Fraction(at_printed[0]))}   "
+            f"{format_mac_multiple(Fraction(at_printed[0]), run.mac_percent)}"
+        )
+
+
+@pytest.mark.parametrize(
+    ("raw_spacing_s", "expected_s"),
+    [(43.2, 43.2), (3.6, 3.6), (1.0, 1.0), (1.07, 1.0), (0.9, 0.9), (0.873, 0.87), (0.0667, 0.06)],
+)
+def test_the_column_spacing_lands_on_whole_hundredths_and_never_widens(
+    raw_spacing_s: float, expected_s: float
+) -> None:
+    spacing_s = grid_spacing_s(raw_spacing_s)
+
+    assert spacing_s == pytest.approx(expected_s, abs=1e-12)
+    assert spacing_s <= raw_spacing_s + 1e-9
 
 
 def test_the_hover_answers_every_drawn_point_within_reach_and_nothing_else() -> None:
