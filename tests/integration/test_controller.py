@@ -7,6 +7,7 @@ import pytest
 from anesthesia_sim.app.bookmarks import BookmarkCrossing, MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
     HereForkPoint,
@@ -5916,6 +5917,75 @@ def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() 
         assert branch.snapshot().changes_since_opening == ()
         assert not branch.snapshot().has_recorded_run
         assert branch.run_segments == fresh.run_segments
+
+
+def test_a_learner_s_first_change_on_a_branch_is_an_adjustment_of_its_own() -> None:
+    """The "Control changes" panel never merges the trunk's change with the learner's.
+
+    The trunk is paused at 60 s and set from 4 to 6 L/min, and a branch is
+    taken at that keyframe. It opens with the trunk's change. The branch runs
+    10 s, and then the flow is set to 8 L/min through the setter alone, with
+    no adjustment boundary from the interface. The interface marks a boundary
+    only when a drag starts, so another input path would arrive this way. The
+    panel must still show two acts: the trunk's at the fork and the
+    learner's. The test-strength review of `PL-ZR49`'s change found that no
+    test noticed if a branch's opening did not start a new adjustment.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.pause()
+    branch.set_fresh_gas_flow(FreshGasFlow(8.0))
+
+    adjustments = group_adjustments(branch.snapshot().control_timeline)
+
+    assert [
+        (adjustment.from_value, adjustment.to_value, adjustment.change_count)
+        for adjustment in adjustments
+    ] == [(4.0, 6.0, 1), (6.0, 8.0, 1)]
+    assert adjustments[0].started_at_s == fork_s
+    assert adjustments[1].started_at_s > fork_s
+
+
+def test_a_reset_branch_stands_on_no_halt_it_made_after_its_fork() -> None:
+    """A branch that halted on a mark after its fork, and was then reset, reports no halt.
+
+    The trunk is paused at 20 s, and a branch is taken where it stands. The
+    branch gets a MAC target at 0.4 MAC alveolar and runs until the target
+    halts it. Its reset returns it to its 20 s fork, which crossed no mark,
+    so its halt record must be empty. A trunk's halt keeps the heights its
+    stepped readings crossed (`_halted_on_crossings`). The test-strength
+    review of `PL-ZR49`'s change found that no test noticed if a reset left
+    those heights behind, which would name the target at the fork.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "later")
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=20.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    branch = trunk.resumed_here()
+    branch.add_mac_target(target)
+    branch.start()
+    _advance_until_halted(branch, limit_s=400.0)
+    halt = branch.snapshot().bookmark_halt
+
+    assert halt is not None
+    assert halt.mac_targets == (target,)
+    assert halt.instant_s > fork_s
+
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch.snapshot().bookmark_halt is None
 
 
 def test_a_setting_kept_through_a_branch_reset_is_work_a_trunk_reset_would_lose() -> None:

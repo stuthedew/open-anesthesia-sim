@@ -624,16 +624,16 @@ class SimulationController:
         # is where the branch is, not something an earlier run did.
         #
         # `_stands_where_it_stopped` records only *that* the run stands where it
-        # stopped, on a halt or on a branch's fork. `_halted_on_instants_s` and
-        # `_halted_on_crossings` record what the stepped readings crossed on the
-        # step that halted a trunk, by instant and by height only.
-        # `_halt_crossing` names the current marks at those keys. It also adds
-        # what the step crosses when it is tested again against the current
-        # marks, as the mark standings do (`PL-XV0D`). The crossing used to be
-        # stored with the mark objects it named, so a mark removed and added
-        # back left it naming the old one.
+        # stopped, on a halt or on a branch's fork. `_halted_on_crossings`
+        # records the heights that the stepped readings crossed on the step
+        # that halted a trunk. `_halt_crossing` names the current marks at
+        # those heights. It also adds what the step crosses when it is tested
+        # again against the current marks, as the mark standings do
+        # (`PL-XV0D`). That test alone finds every marked instant, so instants
+        # need no record of their own. The crossing used to be stored with the
+        # mark objects it named, so a mark removed and added back left it
+        # naming the old one.
         self._stands_where_it_stopped = False
-        self._halted_on_instants_s: frozenset[CaseInstant] = frozenset()
         self._halted_on_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         self._reached_instants_s: frozenset[CaseInstant] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
@@ -676,7 +676,6 @@ class SimulationController:
         """Clear the halt record's facts, because the run no longer stands where it stopped."""
 
         self._stands_where_it_stopped = False
-        self._halted_on_instants_s = frozenset()
         self._halted_on_crossings = frozenset()
 
     def _build_state(
@@ -1227,7 +1226,7 @@ class SimulationController:
         `.claude/rules/expert-review.md` asks to be designed out rather than
         warned about.
 
-        The keys the halt record keeps from a trunk's stepped readings are
+        The heights the halt record keeps from a trunk's stepped readings are
         pruned in the same way (`_halt_crossing`). A mark added back is then
         a new mark to both records. Both records test the step again for that
         mark, so the halt record and the mark's row cannot disagree about
@@ -1239,7 +1238,6 @@ class SimulationController:
 
         self._reached_instants_s &= instants
         self._reached_crossings &= crossings
-        self._halted_on_instants_s &= instants
         self._halted_on_crossings &= crossings
 
     @property
@@ -2899,10 +2897,12 @@ class SimulationController:
         which marks. The first is what the step crosses when it is tested again
         against the current marks, using the canonical states at both ends.
         Every branch uses that test (`_crossings_stood_on`). The second, on a
-        trunk, is what the stepped readings crossed when the step halted the
-        run, kept by instant and by height. It is needed because a height that
-        a stepped reading lands on exactly can lie about 1e-14 beyond the
-        canonical reading. A trunk that halted on that height and then
+        trunk, is the heights that the stepped readings crossed when the step
+        halted the run. It is needed because a height that a stepped reading
+        lands on exactly can lie about 1e-14 beyond the canonical reading.
+        A marked instant needs no such record. Whether a step crosses it
+        depends only on the step's two instants, which are the same on every
+        read. A trunk that halted on that height and then
         reported no mark would be paused for no stated reason. The mark
         standings combine the same two sources (`bookmark_standings`), and
         removing a mark drops its key from both (`_forget_unmarked`). So the
@@ -2915,11 +2915,10 @@ class SimulationController:
             return None
 
         asked = self._crossing_of_step(*self._step_ending_here())
-        instants = self._halted_on_instants_s
+        instants = frozenset[CaseInstant]() if asked is None else _reached_instants(asked)
         heights = self._halted_on_crossings
 
         if asked is not None:
-            instants |= _reached_instants(asked)
             heights |= _reached_heights(asked)
 
         times = tuple(mark for mark in self._bookmarks.time_bookmarks if mark.instant_s in instants)
@@ -3061,10 +3060,11 @@ class SimulationController:
     def _halt_on(self, crossing: BookmarkCrossing) -> None:
         """Pause the run on the step that crossed these marks, and record that it stopped there.
 
-        The marks the step crossed are kept by instant and by height, not as
-        the mark objects. `_halt_crossing` names the current marks at those
-        keys at every read (`PL-XV0D`). The record of the marks that the run
-        has reached keeps them in the same form, as the mark standings require.
+        The heights the step crossed are kept, not the mark objects.
+        `_halt_crossing` names the current marks at those heights at every
+        read, and tests the step again for marked instants (`PL-XV0D`). The
+        record of the marks that the run has reached keeps both the instants
+        and the heights, as the mark standings require.
 
         Args:
             crossing: What the step just taken passed through.
@@ -3072,7 +3072,6 @@ class SimulationController:
 
         self._is_running = False
         self._stands_where_it_stopped = True
-        self._halted_on_instants_s = _reached_instants(crossing)
         self._halted_on_crossings = _reached_heights(crossing)
         self._reached_instants_s |= _reached_instants(crossing)
         self._reached_crossings |= _reached_heights(crossing)

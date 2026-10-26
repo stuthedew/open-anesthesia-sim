@@ -6376,10 +6376,11 @@ disagreements (`PL-3K9B`, `PL-2N43`, `PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`,
   that reached a branch's fork. It is asked again whenever it is read, against
   the current marks, as the standings are (`PL-1ZQ4`). So a mark removed and
   added back under another label is named as it now is (`PL-XV0D`). On a
-  trunk, what the stepped readings crossed when the step halted the run is
-  kept as well, by instant and by height. A height that a stepped reading lands
-  on exactly can lie about 1e-14 beyond the canonical reading, and a trunk
-  halted there must still say why it stopped.
+  trunk, the heights that the stepped readings crossed when the step halted
+  the run are kept as well. A height that a stepped reading lands on exactly
+  can lie about 1e-14 beyond the canonical reading, and a trunk halted there
+  must still say why it stopped. A marked instant needs no such record,
+  because whether a step crosses it depends only on the step's two instants.
 
 At the case's opening no step has closed a stretch, so the opening stretch is
 both sides. A trunk edit at the opening still replaces the opening stretch,
