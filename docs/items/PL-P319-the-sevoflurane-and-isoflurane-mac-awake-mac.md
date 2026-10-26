@@ -3,11 +3,13 @@ id: PL-P319
 title: The sevoflurane and isoflurane mac_awake.mac_reference_basis cannot name the base MAC in percent or the age correction Katoh 1993 used, because the abstract gives neither and the full paper is not in the reference corpus; read the paper and name both, and state the form of Katoh's brain-uptake calculation in docs/MODEL.md
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: mac-awake-reference-text
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, docs/MODEL.md, docs/references/README.md, docs/references/katoh-1993-anesth-analg-mac-awake-washout.md
 added: 2026-10-26
+closed: 2026-10-26
+pr: 1865
 reason: the project owner added the full text of Katoh 1993 (PMID 8214700) and its companion age paper (PMID 8424514) to the reference corpus on 2026-10-26, so the item is an ordinary edit
 payoff: anyone can check which base MAC the sevoflurane and isoflurane MAC-awake fractions were measured against, and so how far each band sits from the source
 verify: grep -qE '"mac_reference_basis": "[^"]*[0-9.]+ percent' src/anesthesia_sim/data/agents/sevoflurane.json && grep -qE '"mac_reference_basis": "[^"]*[0-9.]+ percent' src/anesthesia_sim/data/agents/isoflurane.json
