@@ -287,6 +287,30 @@ residual, 0.0028 pp at worst over the supported envelope.
 Read in full text on 2026-09-14 for the sections named above. §4.3's error
 taxonomy and §5's query rewriting were not read for this entry.
 
+### Katoh et al. 1993 — MAC-awake of sevoflurane and isoflurane
+
+**Not held here. Held in the private corpus since 2026-10-26**, like every
+other owner-supplied full text. The project owner supplied both papers for
+`PL-P319`.
+
+> Katoh T, Suguro Y, Kimura T, Ikeda K. *Cerebral awakening concentration of
+> sevoflurane and isoflurane predicted during slow and fast alveolar washout.*
+> Anesth Analg 1993;77(5):1012-7. PMID
+> [8214700](https://pubmed.ncbi.nlm.nih.gov/8214700/), DOI
+> [10.1213/00000539-199311000-00024](https://doi.org/10.1213/00000539-199311000-00024).
+
+> Katoh T, Suguro Y, Ikeda T, Kazama T, Ikeda K. *Influence of age on
+> awakening concentrations of sevoflurane and isoflurane.* Anesth Analg
+> 1993;76(2):348-52. PMID [8424514](https://pubmed.ncbi.nlm.nih.gov/8424514/).
+
+The first paper is the adopted source of the sevoflurane and isoflurane
+MAC-awake fractions. What has been taken from it, with the pages, is in
+`docs/references/katoh-1993-anesth-analg-mac-awake-washout.md`: the
+age-adjusted MAC equations behind those fractions, the slow-washout values,
+and the form of the brain-uptake calculation. Both papers were read on
+2026-10-26. The second is a scan, and nothing is taken from it; the note says
+why.
+
 ### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*
 
 **Not held here.** A publisher-copyright monograph this public repository may
