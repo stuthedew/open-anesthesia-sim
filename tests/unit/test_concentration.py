@@ -9,7 +9,7 @@ rather than at each place that stores a value (`PL-4R3W`).
 Several tests below pass a value of the wrong type to a parameter, in a call
 that `mypy` would reject. The mechanism needs explaining. `tests/` is outside
 `[tool.mypy] files`, so the mypy gate does not check a `# type: ignore` here.
-Instead `tools/ignore_check.py` checks it. That tool runs mypy over this tree
+Instead `tools/type_ignore_check.py` checks it. That tool runs mypy over this tree
 with `warn_unused_ignores` on, and reports any directive that is no longer
 needed. So if a directive below stops having an effect, `make check` fails,
 and that failure is the assertion that `mypy` still rejects the call. The

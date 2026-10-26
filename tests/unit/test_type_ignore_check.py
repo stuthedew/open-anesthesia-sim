@@ -1,4 +1,4 @@
-"""`tools/ignore_check.py` must never call a live suppression inert.
+"""`tools/type_ignore_check.py` must never call a live suppression inert.
 
 The check exists because nothing evaluates `warn_unused_ignores` over the two
 test trees `[tool.mypy] files` excludes. Its whole value is the verdict, and a
@@ -16,7 +16,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-import ignore_check
+import type_ignore_check
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,7 +36,7 @@ NOISE = (
 
 
 def test_a_clean_run_reports_the_number_evaluated() -> None:
-    code, printed = ignore_check.report(["a.py:1", "b.py:2"], 0, CLEAN, "")
+    code, printed = type_ignore_check.report(["a.py:1", "b.py:2"], 0, CLEAN, "")
 
     assert code == 0
     assert printed == "type: ignore directives: 2 evaluated, 0 inert"
@@ -44,19 +44,19 @@ def test_a_clean_run_reports_the_number_evaluated() -> None:
 
 def test_the_errors_the_gate_excludes_are_not_findings_here() -> None:
     """The 54 errors this run reports are the reason the gate excludes them."""
-    code, printed = ignore_check.report(["a.py:1"], 1, NOISE, "")
+    code, printed = type_ignore_check.report(["a.py:1"], 1, NOISE, "")
 
     assert code == 0
     assert printed == "type: ignore directives: 1 evaluated, 0 inert"
 
 
 def test_an_inert_directive_fails_and_is_named() -> None:
-    code, printed = ignore_check.report(["a.py:1"], 1, NOISE + INERT, "")
+    code, printed = type_ignore_check.report(["a.py:1"], 1, NOISE + INERT, "")
 
     assert code == 1
     assert "1 evaluated, 1 inert" in printed
     assert "test_model.py:39" in printed
-    assert ignore_check.accuses(printed)
+    assert type_ignore_check.accuses(printed)
 
 
 def test_an_unresolved_import_is_not_checked_rather_than_clean() -> None:
@@ -66,17 +66,17 @@ def test_an_unresolved_import_is_not_checked_rather_than_clean() -> None:
     using them raise nothing and their directives look inert. Reporting that
     run as clean would be wrong in the one direction that matters.
     """
-    code, printed = ignore_check.report(["a.py:1"], 1, UNRESOLVED, "")
+    code, printed = type_ignore_check.report(["a.py:1"], 1, UNRESOLVED, "")
 
     assert code == 1
     assert "not checked" in printed
     assert "unresolved import" in printed
-    assert not ignore_check.accuses(printed)
+    assert not type_ignore_check.accuses(printed)
 
 
 def test_an_unresolved_import_outranks_an_inert_finding() -> None:
     """With imports broken, the inert finding is exactly what cannot be trusted."""
-    code, printed = ignore_check.report(["a.py:1"], 1, UNRESOLVED + INERT, "")
+    code, printed = type_ignore_check.report(["a.py:1"], 1, UNRESOLVED + INERT, "")
 
     assert code == 1
     assert "not checked" in printed
@@ -84,7 +84,7 @@ def test_an_unresolved_import_outranks_an_inert_finding() -> None:
 
 
 def test_mypy_crashing_is_not_checked_rather_than_clean() -> None:
-    code, printed = ignore_check.report(["a.py:1"], 2, "", "usage: mypy [-h]\n")
+    code, printed = type_ignore_check.report(["a.py:1"], 2, "", "usage: mypy [-h]\n")
 
     assert code == 1
     assert "not checked" in printed
@@ -93,7 +93,7 @@ def test_mypy_crashing_is_not_checked_rather_than_clean() -> None:
 
 def test_mypy_missing_entirely_is_not_checked_rather_than_clean() -> None:
     """Exit 1 with nothing on stdout is `python -m mypy` with no mypy."""
-    code, printed = ignore_check.report(["a.py:1"], 1, "", "No module named mypy\n")
+    code, printed = type_ignore_check.report(["a.py:1"], 1, "", "No module named mypy\n")
 
     assert code == 1
     assert "not checked" in printed
@@ -109,7 +109,7 @@ def test_directives_finds_the_real_ones_in_this_repository() -> None:
     real directive at once. Every one of them is inside a checked tree, so
     every one is a line a grep over these directories would wrongly count.
     """
-    found = ignore_check.directives(REPO_ROOT)
+    found = type_ignore_check.directives(REPO_ROOT)
 
     assert found, "the repository still carries directives; this found none"
     assert all(":" in site for site in found)
@@ -130,7 +130,7 @@ def test_directives_finds_the_real_ones_in_this_repository() -> None:
     for number in in_a_literal:
         assert f"subprojects/docket/tests/test_verify.py:{number}" not in found
     grepped = subprocess.run(
-        ("grep", "-rn", "type: *ignore", "--include=*.py", *ignore_check.TREES),
+        ("grep", "-rn", "type: *ignore", "--include=*.py", *type_ignore_check.TREES),
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -143,22 +143,22 @@ def test_directives_finds_the_real_ones_in_this_repository() -> None:
 
 
 def test_a_comment_directive_is_counted_and_a_string_is_not(tmp_path: Path) -> None:
-    tree = tmp_path / ignore_check.TREES[0]
+    tree = tmp_path / type_ignore_check.TREES[0]
     tree.mkdir(parents=True)
     (tree / "sample.py").write_text(
         'MARKER = "# type: ignore[misc]"\nx = 1  # type: ignore[assignment]\n', encoding="utf-8"
     )
 
-    assert ignore_check.directives(tmp_path) == [f"{ignore_check.TREES[0]}/sample.py:2"]
+    assert type_ignore_check.directives(tmp_path) == [f"{type_ignore_check.TREES[0]}/sample.py:2"]
 
 
 def test_an_unparseable_file_is_left_to_mypy(tmp_path: Path) -> None:
     """Reporting a syntax error twice, in different words, helps nobody."""
-    tree = tmp_path / ignore_check.TREES[0]
+    tree = tmp_path / type_ignore_check.TREES[0]
     tree.mkdir(parents=True)
     (tree / "broken.py").write_text("def (\n", encoding="utf-8")
 
-    assert ignore_check.directives(tmp_path) == []
+    assert type_ignore_check.directives(tmp_path) == []
 
 
 def test_a_second_conftest_does_not_stop_mypy(tmp_path: Path) -> None:
@@ -168,11 +168,11 @@ def test_a_second_conftest_does_not_stop_mypy(tmp_path: Path) -> None:
     stops on `Duplicate module named "conftest"` having evaluated nothing, and
     the check declines, so neither tree could hold a second one (`PL-CR36`).
     """
-    for tree in ignore_check.TREES:
+    for tree in type_ignore_check.TREES:
         (tmp_path / tree).mkdir(parents=True)
         (tmp_path / tree / "conftest.py").write_text('"""Fixtures."""\n', encoding="utf-8")
 
-    result = ignore_check.run_mypy(tmp_path)
-    code, printed = ignore_check.report([], result.returncode, result.stdout, result.stderr)
+    result = type_ignore_check.run_mypy(tmp_path)
+    code, printed = type_ignore_check.report([], result.returncode, result.stdout, result.stderr)
 
     assert (code, printed) == (0, "type: ignore directives: 0 evaluated, 0 inert"), printed
