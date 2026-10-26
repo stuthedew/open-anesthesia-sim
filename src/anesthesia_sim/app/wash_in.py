@@ -94,40 +94,36 @@ WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
 #: run is eliminating agent rather than taking it up.
 WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 
-#: How far above `WASH_IN_EQUILIBRIUM_RATIO` a quotient may round and still
-#: be treated as wash-in at equilibrium (`PL-N559`).
+#: How far rounding may push a quotient above `WASH_IN_EQUILIBRIUM_RATIO` while the run is still
+#: treated as wash-in at equilibrium (`PL-N559`).
 #:
-#: With cardiac output at zero there is no uptake, so the exact solution has
-#: $`F_A`$ rise to $`F_I`$ and stop there. The stepped run does not land
-#: exactly on that point. It settles onto a floating-point fixed point whose
-#: relative distance from it is about 1e-13, and every later step returns that
-#: same state. In some runs the fixed point has $`F_A`$ above $`F_I`$.
-#: Isoflurane at 10 L/min settles at a quotient of 1 + 2.2e-14. Before this
-#: allowance existed, the plot told the learner that the patient was returning
-#: agent. On 2026-10-26 nine agent and fresh gas flow combinations were stepped
-#: at 0.1 s for 24 h, and one for 96 h. The largest quotient was 1 + 2.2e-14,
-#: and none grew after the run reached its fixed point. Twenty-one runs evaluated
-#: in one exact step from their start to 24 h, as `RunDefinition.state_at` does,
-#: reached at most 1 + 9.6e-14.
+#: With cardiac output at zero there is no uptake, so the exact solution has $`F_A`$ rise to $`F_I`$
+#: and stop there. The stepped run does not land exactly on that point. It settles onto a
+#: floating-point fixed point whose relative distance from it is about 1e-13, and every later step
+#: returns that same state. In some runs the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at a
+#: fresh gas flow of 10 L/min settles at a quotient of 1 + 2.2e-14. Before this allowance existed,
+#: the plot told the learner that the patient was returning agent. On 2026-10-26 nine agent and
+#: fresh gas flow combinations were stepped at 0.1 s for 24 h, and one for 96 h. The largest
+#: quotient was 1 + 2.2e-14, and none grew after the run reached its fixed point. Twenty-one runs
+#: were also evaluated in one exact step from their start to 24 h, which is how
+#: `RunDefinition.state_at` computes a state. They reached at most 1 + 9.6e-14.
 #:
-#: The allowance is set from a clinical requirement, not from the rounding
-#: alone (project owner, 2026-10-26, ratified, over 1e-9 sized from rounding
-#: and over deriving the value in code). The requirement is that a whole run of
-#: the longest supported length, sitting at the edge of the allowance, loses
-#: less than 1% of the agent in the fast pool: the alveolar gas, the venous
-#: blood and the vessel-rich group, which holds the brain. At a quotient of
-#: 1 + allowance, agent leaves at alveolar ventilation times $`F_I`$ times the
-#: allowance. Against the fast pool the concentration cancels. The worst case
-#: is desflurane, the least soluble agent, at 12 L/min. At 1e-6 over 24 h it
-#: loses about 0.3%. `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
-#: checks the requirement for every shipped agent, from the run-length limit,
-#: the ventilation limit and the data files. A longer run limit, a higher
-#: ventilation limit or a less soluble agent turns it red, and a person then
-#: chooses a new value.
+#: The allowance is set from a clinical requirement, not from the rounding alone (project owner,
+#: 2026-10-26, ratified, over 1e-9 sized from rounding and over deriving the value in code). Take a
+#: run of the longest supported length that sits at the edge of the allowance for its whole length.
+#: It must lose less than 1% of the agent in the fast pool. The fast pool is the alveolar gas, the
+#: venous blood and the vessel-rich group, which holds the brain. At a quotient of 1 + allowance,
+#: agent leaves at alveolar ventilation times $`F_I`$ times the allowance. The fast pool also holds
+#: an amount proportional to $`F_I`$, so the loss as a share of the fast pool does not depend on the
+#: concentration. The worst case is desflurane, the least soluble agent, at an alveolar ventilation
+#: of 12 L/min. At 1e-6 over 24 h it loses about 0.3%.
+#: `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run` checks the requirement
+#: for every shipped agent. It reads the run-length limit, the ventilation limit and the data files.
+#: A longer run limit, a higher ventilation limit or a less soluble agent makes the test fail, and a
+#: person then chooses a new value.
 #:
-#: The allowance is also far above the rounding. It is about 10 million times
-#: the largest overshoot measured, 9.6e-14, and
-#: `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination` keeps
+#: The allowance is also far above the rounding. It is about 10 million times the largest overshoot
+#: measured, 9.6e-14, and `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination` keeps
 #: it at least 1,000 times the rounding at each agent's fixed point.
 WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-6
 

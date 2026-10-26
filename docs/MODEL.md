@@ -9635,7 +9635,8 @@ contributes a point only where both of these conditions are true:
    rounding (`PL-N559`). At zero cardiac output the exact solution has
    $`F_A`$ rise to $`F_I`$ and stop. The stepped run instead settles onto a
    floating-point fixed point within about 1e-13 of that, and in some runs
-   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at 10 L/min settles
+   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at a fresh gas flow of
+   10 L/min settles
    at 1 + 2.2e-14, which the plot once captioned as the patient returning
    agent. Once a run reaches its fixed point, every later step returns the
    same state, so the overshoot does not grow with run length. On 2026-10-26
@@ -9649,7 +9650,8 @@ contributes a point only where both of these conditions are true:
    agent in the fast pool: alveolar gas, venous blood and the vessel-rich
    group. Agent then leaves at alveolar ventilation times $`F_I`$ times
    1e-6, and the concentration cancels against the pool. The worst case is
-   desflurane at 12 L/min, which loses about 0.3% in 24 h.
+   desflurane at an alveolar ventilation of 12 L/min, which loses about 0.3%
+   in 24 h.
    `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
    checks this for every shipped agent from the run-length limit, the
    ventilation limit and the data files, so extending any of them fails it.

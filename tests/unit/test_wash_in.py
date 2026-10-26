@@ -47,13 +47,14 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 #: point in about 21 000 steps, so a run that has not reached it within the limit has failed.
 ZERO_OUTPUT_STEP_LIMIT = 36_000
 
-#: The clinical requirement on `WASH_IN_ROUNDING_ALLOWANCE` (`PL-N559`, project owner,
-#: 2026-10-26). A whole run of the longest supported length, held at the edge of the allowance,
-#: must lose less than this share of the agent in the fast pool.
+#: The largest share of the agent in the fast pool that a run may lose while it is held at the
+#: edge of `WASH_IN_ROUNDING_ALLOWANCE` for the longest supported run length. This is the
+#: clinical requirement on the allowance (`PL-N559`, project owner, 2026-10-26).
 HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL = 0.01
 
-#: How many times the rounding at a settled state the allowance must be, at least. Below this,
-#: a later tightening of the allowance would bring back the false elimination caption.
+#: The smallest allowed ratio of `WASH_IN_ROUNDING_ALLOWANCE` to the rounding at a settled state.
+#: Below this ratio, a later tightening of the allowance would bring back the false elimination
+#: caption.
 ROUNDING_MARGIN = 1_000
 
 #: How close each settled fraction must be to the closed form, relative. The
@@ -249,12 +250,12 @@ def test_the_rounding_allowance_is_the_only_slack_above_equilibrium() -> None:
 
 
 def _fast_pool_capacity_l(agent: str) -> float:
-    """Return the litres of vapour that the fast pool holds per unit of fraction.
+    """Return the litres of vapour that the fast pool holds for each unit of gas fraction.
 
     The fast pool is the alveolar gas, the venous blood and the vessel-rich group, which holds
-    the brain. Each compartment holds its volume times its partition coefficient against gas.
-    Muscle and fat are left out, so the pool is the smallest one that a hidden loss could
-    deplete, and the bound is conservative.
+    the brain. Each compartment adds its volume times its partition coefficient against gas.
+    Muscle and fat are left out. That makes the fast pool the smallest store that a hidden loss
+    could deplete, so the bound is conservative.
     """
 
     agent_parameters = load_agent_parameters(agent)
@@ -270,14 +271,15 @@ def _fast_pool_capacity_l(agent: str) -> float:
 
 @pytest.mark.parametrize("agent", sorted(AGENT_DATA_FILENAMES))
 def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent: str) -> None:
-    """A run held at the edge of the allowance loses under 1% of the fast pool (`PL-N559`).
+    """A run held at the edge of the allowance loses less than 1% of the fast pool (`PL-N559`).
 
     A quotient of 1 + `WASH_IN_ROUNDING_ALLOWANCE` is drawn as equilibrium. If the run were
     really eliminating at that edge, agent would leave at alveolar ventilation times $`F_I`$
-    times the allowance. Against the fast pool, which holds its capacity times $`F_I`$, the
-    concentration cancels. The test takes the fastest supported ventilation and the longest
-    supported run, so it covers every run the simulator allows. It is meant to fail when either
-    limit grows or a less soluble agent ships, and its message says what to do then.
+    times the allowance. The fast pool holds its capacity times $`F_I`$, so the loss as a share
+    of the fast pool does not depend on the concentration. The test takes the fastest supported
+    ventilation and the longest supported run, so it covers every run the simulator allows. It
+    is meant to fail when either limit grows or a less soluble agent ships, and its message says
+    what to do then.
     """
 
     run_length_min = MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
