@@ -1,20 +1,18 @@
 """Tests of the two checked forms of a concentration, and of the conversion between them.
 
-`core/concentration.py` states the rule, and these tests enforce it. A
-"crossing" below is one of the two functions that convert between the forms.
-`Fraction` and `Percent` are checked against their ranges when they are
-built. So the edges of each range are pinned here once, on the constructor,
-rather than at each place that stores a value (`PL-4R3W`).
+`core/concentration.py` states the rules that these tests check. Below, a "crossing" means
+one of the two functions that convert between the forms. `Fraction` and `Percent` check
+their ranges when they are built. So the tests below check the edges of each range once,
+on the constructor, rather than at each place that stores a value (`PL-4R3W`).
 
-Several tests below pass a value of the wrong type to a parameter, in a call
-that `mypy` would reject. The mechanism needs explaining. `tests/` is outside
-`[tool.mypy] files`, so the mypy gate does not check a `# type: ignore` here.
-Instead `tools/ignore_check.py` checks it. That tool runs mypy over this tree
-with `warn_unused_ignores` on, and reports any directive that is no longer
-needed. So if a directive below stops having an effect, `make check` fails,
-and that failure is the assertion that `mypy` still rejects the call. The
-test's own assertion covers what the call does at run time. Since `PL-4R3W`,
-each of these calls is refused at run time too (`PL-WVSK`).
+Several tests below pass a value of the wrong type to a parameter, in a call that `mypy`
+would reject. The mypy gate does not check the `# type: ignore` on such a call, because
+`tests/` is outside `[tool.mypy] files`. Instead, `tools/type_ignore_check.py` checks it.
+That tool runs mypy over this tree with `warn_unused_ignores` on, and reports any directive
+that is no longer needed. So if a directive below stops having an effect, `make check`
+fails. That failure is what shows that `mypy` still rejects the call. The test's own
+assertion covers what the call does at run time. Each of these calls is also rejected at
+run time, and has been since `PL-4R3W` (`PL-WVSK`).
 """
 
 import copy

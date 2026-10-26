@@ -141,7 +141,7 @@ SKIPPED_ON_ITEMS = {
         "Run uv run ruff format --check .",
         "Run uv run ruff check .",
         "Run uv run mypy",
-        "Run uv run python tools/ignore_check.py",
+        "Run uv run python tools/type_ignore_check.py",
         "Run uv run python tools/duplicate_code_check.py",
         "write the test modules' rewritten bytecode",
         "Run uv run pytest -n $(python3",

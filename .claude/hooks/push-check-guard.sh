@@ -24,7 +24,7 @@
 # the pull requests of items closed from 2026-09-21 to 2026-10-25. Of the 32
 # that failed a check `make check` also runs, 26 were on branches where this
 # hook runs, and four checks it did not run were behind 22 of those 26:
-# `tools/workflow_paths_check.py` (6), `tools/ignore_check.py` (9, seven of
+# `tools/workflow_paths_check.py` (6), `tools/type_ignore_check.py` (9, seven of
 # them one branch pushing again past the same failure),
 # `tools/fixture_id_check.py` (4) and `tests/unit/test_line_splits.py` (3).
 # They cost the push no time. In a four-CPU session container on 2026-10-26,
@@ -108,7 +108,7 @@ READS_THE_TREE = frozenset(
         "docket check",
         "workflow_paths_check",
         "fixture_id_check",
-        "ignore_check",
+        "type_ignore_check",
         "line-split tests",
     )
 )
@@ -139,7 +139,7 @@ def checks(base):
         ("docket check", ("bin/docket", "check", "--verify", "--verify-base", base, "--no-fetch")),
         ("workflow_paths_check", (PROJECT_PYTHON, "tools/workflow_paths_check.py")),
         ("fixture_id_check", (PROJECT_PYTHON, "tools/fixture_id_check.py")),
-        ("ignore_check", (PROJECT_PYTHON, "tools/ignore_check.py")),
+        ("type_ignore_check", (PROJECT_PYTHON, "tools/type_ignore_check.py")),
         (
             "line-split tests",
             (PROJECT_PYTHON, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/unit/test_line_splits.py"),
