@@ -36,6 +36,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import (
     MacMultiple,
@@ -45,6 +46,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.liquid_agent import LiquidDensity, vapour_volume_per_liquid_volume
 from anesthesia_sim.core.numerical_envelope import (
     CompartmentVolume,
     PartitionCoefficient,
@@ -115,7 +117,7 @@ class SupportedSchemaVersions:
 
 
 AGENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
-    data_files="agent files (data/agents/)", minimum=3, current=3
+    data_files="agent files (data/agents/)", minimum=4, current=4
 )
 PATIENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
     data_files="patient files (data/patients/)", minimum=3, current=3
@@ -293,12 +295,18 @@ class AgentParameters:
     names on purpose. `_StrictPayload` explains why that is a boundary rather
     than duplication.
 
-    The four partition coefficients are `PartitionCoefficient`s, built only
-    inside the numerical envelope (`core/numerical_envelope.py`). So are the
-    three tissue:blood coefficients derived from them. Two coefficients inside
-    the envelope can form a quotient outside it, so each quotient is formed
-    and checked when the record is built, as well as wherever it is read
-    (`PL-QX2G`).
+    The four partition coefficients are `PartitionCoefficient`s. A
+    `PartitionCoefficient` can be built only from a value inside the numerical
+    envelope that `core/numerical_envelope.py` defines. The three tissue:blood
+    coefficients derived from the four are `PartitionCoefficient`s too. Two
+    coefficients inside the envelope can form a quotient outside it. So each
+    quotient is formed and checked when the record is built, as well as
+    wherever it is read (`PL-QX2G`).
+
+    `molar_mass_g_mol` and `liquid_density` describe the agent as a liquid.
+    No uptake equation uses them. `vapour_volume_per_liquid_volume` is
+    derived from them, and it converts an amount of agent vapour into the
+    millilitres of liquid it came from (`core/liquid_agent.py`, `PL-KZ99`).
 
     Raises:
         TypeError: a partition coefficient was not built as a
@@ -310,24 +318,29 @@ class AgentParameters:
             `require_mac_percent`). Each value's range was checked when it was
             built, so nothing here checks it again. A MAC passed in as a
             fraction would be a hundred times too small, and every MAC multiple
-            shown divides by it (`PL-4R3W`).
+            shown divides by it (`PL-4R3W`). Also raised when `liquid_density`
+            is not a `LiquidDensity`. A `LiquidDensity` checks its own fields
+            when it is built.
         SimulationConfigurationError: `max_delivered_concentration_percent`
-            is zero. A `Percent` refuses a negative value when it is built, so
-            zero is the only non-positive value it can hold. A vaporizer that
-            delivers nothing has no dial to set. A zero MAC cannot reach this
-            record, because a `MacPercent` refuses zero when it is built. Every
-            MAC multiple shown is a concentration divided by the MAC, and the
-            MAC is the number in the `1 MAC = x%` reference beside the chart
-            (`PL-0FJ8`, `PL-F9TC`). For a shipped file, the loader's
-            `PositivePercent` refuses a zero MAC first. Also raised when
-            `mac_percent` is above the vaporizer maximum. The loader's
+            is zero. A vaporizer that delivers nothing has no dial to set. A
+            `Percent` refuses a negative value when it is built, so zero is the
+            only non-positive value it can hold. Also raised when `mac_percent`
+            is above the vaporizer maximum. A run opens at 1 MAC
+            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above the
+            vaporizer maximum. So such a run would open at a dial setting that
+            the vaporizer cannot deliver (`PL-HPKK`). The loader's
             `_mac_percent_must_not_exceed_vaporizer_max` refuses such a MAC in
             a file, and this check refuses it in a record built any other way.
-            A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a dial
-            cannot be set above the vaporizer maximum. So such a run would open
-            at a dial setting that the vaporizer cannot deliver (`PL-HPKK`).
             Also raised when a tissue:blood coefficient is outside the
-            numerical envelope.
+            numerical envelope, when `molar_mass_g_mol` is not positive and
+            finite, or when the density and the molar mass give a
+            vapour-to-liquid ratio that is not a positive finite number. A zero
+            MAC cannot reach this record, because a `MacPercent` refuses zero
+            when it is built. For a shipped file, the loader's
+            `PositivePercent` refuses a zero MAC before that. Every MAC multiple
+            shown is a concentration divided by the MAC, and the MAC is the
+            number in the `1 MAC = x%` reference beside the chart (`PL-0FJ8`,
+            `PL-F9TC`).
     """
 
     schema_version: int
@@ -340,6 +353,8 @@ class AgentParameters:
     max_delivered_concentration_percent: Percent
     mac_percent: MacPercent
     mac_awake: MacAwakeReference
+    molar_mass_g_mol: float
+    liquid_density: LiquidDensity
     sources: tuple[SourceReference, ...]
     # The reason no primary source is adopted, if none is, or `None` if one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
@@ -372,6 +387,25 @@ class AgentParameters:
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
+
+        if not isinstance(self.liquid_density, LiquidDensity):
+            raise TypeError(
+                "liquid_density must be a LiquidDensity, which checks its own fields, and "
+                f"{shown(self.liquid_density)} has type {type(self.liquid_density).__name__}"
+            )
+
+        # Compute the vapour-per-liquid volume ratio once here, just as the tissue:blood
+        # quotients are computed above. A density and a molar mass whose ratio is not a
+        # positive finite number are then rejected when this record is built, not at
+        # the first conversion that uses the ratio. Computing the ratio also checks that
+        # the molar mass is positive and finite.
+        _ = self.vapour_volume_per_liquid_volume
+
+    @property
+    def vapour_volume_per_liquid_volume(self) -> float:
+        """Derive the millilitres of vapour that one millilitre of this liquid agent gives."""
+
+        return vapour_volume_per_liquid_volume(self.liquid_density, self.molar_mass_g_mol)
 
     @property
     def vessel_rich_tissue_blood_partition_coefficient(self) -> PartitionCoefficient:
@@ -623,6 +657,20 @@ def _validate_nonnegative_finite(value: object) -> float:
     return numeric_value
 
 
+def _validate_finite(value: object) -> float:
+    """Like `_validate_positive_finite`, but accept any sign, as a Celsius temperature may have."""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("must be a number")
+
+    numeric_value = float(value)
+
+    if not isfinite(numeric_value):
+        raise ValueError("must be finite")
+
+    return numeric_value
+
+
 def _validate_positive_fraction(value: object) -> float:
     numeric_value = _validate_positive_finite(value)
 
@@ -649,6 +697,7 @@ AgentSchemaVersion = Annotated[int, BeforeValidator(_validate_agent_schema_versi
 PatientSchemaVersion = Annotated[int, BeforeValidator(_validate_patient_schema_version)]
 MachineSchemaVersion = Annotated[int, BeforeValidator(_validate_machine_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
+Finite = Annotated[float, BeforeValidator(_validate_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
@@ -970,6 +1019,31 @@ class _MacAwakePayload(_StrictPayload):
         return self
 
 
+class _LiquidDensityPayload(_StrictPayload):
+    """Load-time schema for one agent's `liquid_density`, converted to `LiquidDensity`.
+
+    The payload builds the `LiquidDensity` record once, while it validates the
+    file. So one rule checks both the file and the record. A density measured
+    at a temperature other than the model's reference temperature is refused,
+    and the error names the file's key.
+    """
+
+    g_ml: PositiveFinite
+    standard_deviation_g_ml: NonNegativeFinite
+    measured_at_celsius: Finite
+
+    @model_validator(mode="after")
+    def _must_be_measured_at_the_reference_temperature(self) -> _LiquidDensityPayload:
+        with _collected_by_pydantic():
+            LiquidDensity(
+                g_ml=self.g_ml,
+                standard_deviation_g_ml=self.standard_deviation_g_ml,
+                measured_at_celsius=self.measured_at_celsius,
+            )
+
+        return self
+
+
 class _AgentPayload(_StrictPayload):
     """Load-time schema for `data/agents/*.json`, converted to `AgentParameters`.
 
@@ -985,6 +1059,8 @@ class _AgentPayload(_StrictPayload):
     max_delivered_concentration_percent: PositivePercent
     mac_percent: PositivePercent
     mac_awake: _MacAwakePayload
+    molar_mass_g_mol: PositiveFinite
+    liquid_density: _LiquidDensityPayload
     sources: Sources
     provenance_gap: OptionalNonEmptyString = None
 
@@ -1190,8 +1266,10 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
             numerical envelope. It also covers a `sources` entry whose
             `authority_for` disagrees with `adopted`, or names something other
             than one of this file's stored numeric values. It also covers a
-            stored value that two entries both name, and coefficients whose
-            tissue:blood quotient is outside the numerical envelope.
+            stored value that two `sources` entries both name, and coefficients
+            whose tissue:blood quotient is outside the numerical envelope. It
+            also covers a liquid density measured at a temperature other than
+            the model's reference temperature, 20 °C (`core/liquid_agent.py`).
     """
 
     try:
@@ -1225,6 +1303,12 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
                 model.mac_awake.standard_deviation_fraction_of_mac
             ),
             mac_reference_basis=model.mac_awake.mac_reference_basis,
+        ),
+        molar_mass_g_mol=model.molar_mass_g_mol,
+        liquid_density=LiquidDensity(
+            g_ml=model.liquid_density.g_ml,
+            standard_deviation_g_ml=model.liquid_density.standard_deviation_g_ml,
+            measured_at_celsius=model.liquid_density.measured_at_celsius,
         ),
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,

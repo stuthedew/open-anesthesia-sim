@@ -118,7 +118,7 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
     """
 
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "id": "synthetic-solubility-test-agent",
         "display_name": "Synthetic solubility test agent",
         "blood_gas_partition_coefficient": blood_gas_partition_coefficient,
@@ -129,6 +129,13 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
             "fraction_of_mac": 0.34,
             "standard_deviation_fraction_of_mac": 0.05,
             "mac_reference_basis": "synthetic; no reference band is drawn in this test",
+        },
+        # Sevoflurane's liquid properties. This test reads neither of them.
+        "molar_mass_g_mol": 200.05,
+        "liquid_density": {
+            "g_ml": 1.5203,
+            "standard_deviation_g_ml": 0.0008,
+            "measured_at_celsius": 20.0,
         },
         "sources": [
             {

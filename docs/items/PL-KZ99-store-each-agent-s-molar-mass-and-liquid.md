@@ -3,14 +3,16 @@ id: PL-KZ99
 title: Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, anticipated
 feature: liquid-agent-consumption
-touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
+touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/liquid_agent.py, src/anesthesia_sim/core/units.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/references/README.md, ROADMAP.md, tests/reference, tests/unit, docs/items/PL-1P15-show-what-the-delivered-agent-cost-in-money-at.md, docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; science, but not live at 19af95d - nothing in src/ stores or displays a liquid volume, a density or a molar mass
 added: 2026-09-16
+closed: 2026-10-26
+pr: 1866
 payoff: a vapour-to-liquid conversion is derived from each agent's stored molar mass and liquid density, each with its source and measurement temperature
-verify: grep -q 'liquid_density' src/anesthesia_sim/data/agents/sevoflurane.json
+verify: grep -q 'def test_the_conversion_reproduces_gas_mans_published_delivered_costs' tests/reference/test_published_vapour_to_liquid.py && grep -q 'def test_the_derived_ratio_is_within_one_percent_of_biros_published_constant' tests/reference/test_published_vapour_to_liquid.py && grep -q 'def test_liquid_density_matches_its_adopted_primary_source' tests/unit/test_parameters.py
 ---
 
 **Problem.** Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
@@ -148,3 +150,68 @@ checks it against Biro's and Gas Man's published constants within their
 stated rounding.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still needed, and smaller than the brief says.** No agent file stores a molar mass or a liquid density, and nothing under `src/` converts vapour to liquid. Two things changed. The agent files are already at `schema_version` 3, and `AGENT_SCHEMA_VERSIONS` reads minimum 3, current 3, so the bump is 3 to 4, corrected above. `SupportedSchemaVersions` upcasts nothing, so there is no migration to write. And `docs/MODEL.md` § "Agent amount" already carries the densities, molar masses and derived factors (`PL-S6WW`). What is left is the stored fields with their sources, the conversion in `core/` and the reference test, after which that section's table restates the stored values beside their citation. The sevoflurane molar mass differs between this brief (200.053 g/mol) and that table (200.055). The difference is in the third decimal and depends on the atomic weights used, so take the figure from the source the data file cites.
+
+## Outcome, 2026-10-26
+
+**Built as the brief describes, with three departures, each recorded here.**
+Each agent file now stores `molar_mass_g_mol` and a `liquid_density` group
+holding the density, its standard deviation and the temperature it was
+measured at. Agent files are at `schema_version` 4. `core/liquid_agent.py`
+derives the vapour-to-liquid ratio in one place, as density / molar mass x
+the molar volume at 20 °C and one standard atmosphere. It works out that
+molar volume from CODATA 2022's exact constants instead of storing 24.055.
+`AgentParameters.vapour_volume_per_liquid_volume` reads it. A density
+measured at a temperature other than 20 °C is refused when the file loads,
+because no correction for temperature is stored.
+
+1. **The molar masses are ChEMBL's, tier 2, not "exact from formula".** A
+   formula mass needs the standard atomic weights, and the IUPAC
+   Commission's tables, PubChem, BIPM and NIST were all refused at the
+   proxy on 2026-10-26. ChEMBL release 34 gives each formula and its mass to
+   two decimals: 200.05, 184.49 and 168.04 g/mol. The brief's 200.053 and
+   `docs/MODEL.md`'s 200.055 differ from that in the fourth significant
+   figure, which moves the ratio by less than 0.003 %. The table in
+   `docs/MODEL.md` § "Agent amount" now restates the stored values.
+2. **The comparison with the published ratios uses a tolerance, not "their
+   stated rounding".** Two of the six published ratios fall outside their own
+   rounding. Biro gives sevoflurane 184, against 182.8 derived (0.65 %).
+   Gas Man gives desflurane 209, against 209.7 derived (0.35 %). So the
+   reference test holds the derived ratios within 1 % of Biro's and 0.5 % of
+   Gas Man's, and its docstrings say what each tolerance can and cannot
+   detect. A reference temperature of 37 °C, the error `PL-S6WW` guarded
+   against, is 5.8 % and fails both.
+3. **A worked cost example was added, at the project owner's request.** On
+   2026-10-26 the owner asked for "a sanity check for calculated agent
+   price". The conversion is the half of the price that this item builds. So
+   `tests/reference/test_published_vapour_to_liquid.py` prices the
+   isoflurane delivered in the Gas Man Workbook's Exercises 14-1 and 14-2
+   (printed pp. 133-136). The results must match the four delivered costs
+   the book prints ($2.17, $8.06, $0.68 and $2.00), allowing for the cent
+   and for Gas Man's whole-millilitre ratio. `PL-1P15`, which builds the
+   price on screen, now carries the owner's requirement and an end-to-end
+   version of the same check.
+
+**The commissioned `verify:` command was rewritten.** It was `grep -q
+'liquid_density' src/anesthesia_sim/data/agents/sevoflurane.json`, which any
+mention of the key satisfies, including a file that stores no density. The
+new command names the reference tests and the test of each stored density
+against Laster, Fang and Eger's abstract.
+
+**Regression tests, each run against the code before its fix** (test-oracles
+rule 6). The five tests below came from the blind and adversarial reviews.
+Each was run against commit `670873cb`, before any review fix, with this
+branch's test files copied in:
+`PYTHONPATH=src pytest -q tests/unit/test_liquid_agent.py tests/unit/test_parameters.py -k "not_a_number or not_a_positive_finite_number or not_a_liquid_density or ratio_overflows or result_that_overflows"`.
+All nine cases failed there, and each passes now.
+
+- `test_a_liquid_density_refuses_a_temperature_that_is_not_a_number`, for
+  `None`, `True` and `'20'`: `SimulationConfigurationError: a liquid density
+  measured at None °C cannot be used`, where a `TypeError` was expected.
+- `test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number`,
+  both cases: `Failed: DID NOT RAISE SimulationConfigurationError`.
+- `test_liquid_volume_refuses_a_result_that_overflows`, both cases: `Failed:
+  DID NOT RAISE SimulationConfigurationError`.
+- `test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density`:
+  `Failed: DID NOT RAISE TypeError`.
+- `test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows`: `Failed:
+  DID NOT RAISE SimulationConfigurationError`.
