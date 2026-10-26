@@ -9255,15 +9255,20 @@ partial pressures and do not depend on that divisor. So wherever the divisor
 departs from the literature, the band moves against the traces by the same
 proportion. § "Delivery-limit and MAC parameters" compares the stored MAC with
 Mapleson's age-40 values. Against them, the stored MAC is 11.1% high for
-sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. So the
-sevoflurane band sits about 11% too high, which teaches an earlier wake-up. The
-isoflurane band sits about 3% too high, inside the meta-analysis's ±7%
-confidence limits. The desflurane band sits about 9% too low, which teaches a
-later wake-up. On the measurement above, the vessel-rich trace crosses
-sevoflurane's drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the
-same fraction of Mapleson's 1.80%, at 7.31 min. For desflurane the comparison
-with Mapleson is not the only one. The drawn centre of 2.16% agrees with Song et
-al.'s directly measured 2.17%, as the paragraph below says.
+sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Mapleson's 95%
+confidence limits are about ±7%, and ±10% for desflurane. Only sevoflurane's
+gap is larger than its limits. So the sevoflurane band probably sits too high,
+by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
+wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
+drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
+Mapleson's 1.80%, at 7.31 min. The isoflurane and desflurane gaps are inside
+the limits, so Mapleson does not show either band to be off. For desflurane a
+direct measurement points the same way. The drawn centre of 2.16% agrees with
+Song et al.'s measured 2.17%, as the paragraph below says. All three figures
+are gaps from Mapleson's MAC, not from the MAC each source used. Katoh's
+sevoflurane and isoflurane fractions are ratios to an age-adjusted MAC that the
+abstract does not name, so the gap from Katoh's own denominator is not yet
+known (`PL-P319`).
 <!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 <!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
 
