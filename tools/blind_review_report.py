@@ -261,7 +261,10 @@ def build(root: Path, since: int, git: NetworkGit) -> Report:
     if not owing:
         return report
     heads = pull_heads(git)
-    unfetched = fetch_heads(root, git, (heads[m.number] for m, _ in owing if m.number in heads))
+    try:
+        unfetched = fetch_heads(root, git, (heads[m.number] for m, _ in owing if m.number in heads))
+    except GitUnanswered as error:
+        raise Declined(f"git could not say which pull heads this clone holds: {error}") from error
     for merge, owed in owing:
         head = heads.get(merge.number)
         if head is None:

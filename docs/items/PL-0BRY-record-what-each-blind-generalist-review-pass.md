@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: review-panel
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, tools/blind_review.py, tools/blind_review_report.py, tests/unit/test_blind_review.py, tests/unit/test_blind_review_report.py, .claude/skills/docket/modes/close-out.md, .claude/skills/model-review/SKILL.md, docs/apparatus.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/README.md, tools/blind_review.py, tools/blind_review_report.py, tests/unit/test_blind_review.py, tests/unit/test_blind_review_report.py, .claude/skills/docket/modes/close-out.md, .claude/skills/model-review/SKILL.md, docs/apparatus.md, docket.toml
 added: 2026-10-26
 payoff: each simulator pull request's blind review record says what each pass found and what happened to each finding, and one command reports per pass, across merged pull requests, how many findings were fixed or filed and how many no earlier pass had named
 verify: grep -q 'blind_review_report' .claude/skills/model-review/SKILL.md && grep -q 'pass 1: blocking fixed' .claude/skills/docket/modes/close-out.md
