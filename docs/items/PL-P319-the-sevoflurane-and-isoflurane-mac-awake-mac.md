@@ -46,3 +46,16 @@ base MAC.
 `d7c743a`: the washout paper (PMID 8214700) and the companion age paper
 (Anesth Analg 1993;76(2):348-52, PMID 8424514). That was the answer the
 question above asked for, so the item became `ready` the same day.
+
+**Done (2026-10-26).** The washout paper was read in full in the private
+corpus. Its age-adjusted MAC is 2.56 − 0.0156 × age (yr) percent sevoflurane
+and 1.43 − 0.0061 × age (yr) percent isoflurane (p. 1013), and both
+`mac_reference_basis` strings now name these equations. The brain estimate is
+one perfusion-limited compartment (equation 1, p. 1013). The abstract's
+cerebral figures, 0.34 and 0.30 of MAC, use equation 3, which corrects the
+end-tidal value for dead-space gas. With the arterial value taken as the
+end-tidal value (equation 2) they are 0.30 and 0.26 (Table 1, p. 1014).
+`docs/MODEL.md` and both agent files had quoted the abstract's figures
+without saying which equation produced them, and now say so.
+`docs/references/katoh-1993-anesth-analg-mac-awake-washout.md` holds the
+values with their pages.
