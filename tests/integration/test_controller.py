@@ -14,6 +14,7 @@ from anesthesia_sim.app.controller import (
     RunSettings,
     RunStatus,
     SimulationController,
+    SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
 from anesthesia_sim.app.formatting import (
@@ -3268,46 +3269,89 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     assert after.bookmarks.mac_targets == (target,)
 
 
-def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
-    """A halt lands within one simulation step of its mark, as `docs/MODEL.md` now says.
+def _run_to_halt(
+    controller: SimulationController, reading_of: Callable[[SimulationSnapshot], Fraction]
+) -> tuple[float, SimulationSnapshot]:
+    """Advance one step at a time until a mark halts the run.
 
-    § "Halting on a marked crossing" used to say that the value displayed
-    beside a halt is the height the learner marked (`PL-M8F6`). The circuit is
-    the fastest compartment, so one 0.1 s step can carry its reading past the
-    next display count. The specification gives this case as its example: a
-    0.10 ×MAC circuit target, with 8% sevoflurane at 10 L/min, halts showing
-    0.11 ×MAC.
+    Returns the reading on the step before the halt, in multiples of MAC, and
+    the halted snapshot.
     """
 
+    mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
+    before = float(reading_of(controller.snapshot())) / mac_fraction
+    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        snapshot = controller.snapshot()
+        if snapshot.bookmark_halt is not None:
+            return before, snapshot
+        before = float(reading_of(snapshot)) / mac_fraction
+    raise AssertionError("no mark halted the run within 60 s")
+
+
+def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
     controller = SimulationController()
     controller.set_agent("sevoflurane")
     controller.set_fresh_gas_flow(FreshGasFlow(10.0))
     controller.set_delivered_concentration_percent(Percent(8.0))
+    return controller
+
+
+def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
+    """A halt lands within one simulation step of its mark, as `docs/MODEL.md` now says.
+
+    § "Halting on a marked crossing" used to say that the value displayed
+    beside a halt is the height the learner marked (`PL-M8F6`). The
+    specification now gives this case as its first example: a 0.10 ×MAC
+    circuit target, with 8% sevoflurane at 10 L/min, halts showing 0.11 ×MAC.
+    """
+
+    controller = _sevoflurane_at_8_percent_and_10_l_min()
     mark = MacMultiple(0.10)
     controller.add_mac_target(MacTarget(RecordedQuantity.CIRCUIT, mark))
     controller.start()
-    mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
-    before = float(controller.snapshot().inspired_partial_pressure_fraction) / mac_fraction
 
-    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
-        halted = controller.snapshot()
-        reading = float(halted.inspired_partial_pressure_fraction) / mac_fraction
-        if halted.bookmark_halt is not None:
-            break
-        before = reading
-    else:
-        raise AssertionError("the 0.10 ×MAC circuit target did not halt the run within 60 s")
+    before, halted = _run_to_halt(
+        controller, lambda snapshot: snapshot.inspired_partial_pressure_fraction
+    )
 
     # The halting step is the one that crossed: the reading before it was
     # below the mark, and its own reading is at or past it.
-    assert before < mark <= reading
-    # So the halt is past the mark by less than the one step's change.
-    assert reading - mark < reading - before
-    # And that step is large enough here to show on screen.
+    mac_fraction = float(fraction_from_percent(halted.agent_mac_percent))
+    assert before < mark <= float(halted.inspired_partial_pressure_fraction) / mac_fraction
     assert format_mac_multiple(
         halted.inspired_partial_pressure_fraction, halted.agent_mac_percent
     ) == (f"0.11{MAC_UNIT_SUFFIX}")
+
+
+def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_resumes() -> None:
+    """One step can carry a reading more than one display count past its mark.
+
+    This is the specification's second example. After 120 s with no alveolar
+    ventilation, the alveolar reading is still zero while the circuit has
+    filled. Restoring ventilation to 12 L/min moves the alveolar reading fast
+    enough that a 0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
+    """
+
+    controller = _sevoflurane_at_8_percent_and_10_l_min()
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    controller.start()
+    for _ in range(round(120.0 / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    assert controller.snapshot().alveolar_partial_pressure_fraction == 0.0
+    mark = MacMultiple(0.10)
+    controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, mark))
+    controller.set_alveolar_ventilation(AlveolarVentilation(12.0))
+
+    before, halted = _run_to_halt(
+        controller, lambda snapshot: snapshot.alveolar_partial_pressure_fraction
+    )
+
+    mac_fraction = float(fraction_from_percent(halted.agent_mac_percent))
+    assert before < mark <= float(halted.alveolar_partial_pressure_fraction) / mac_fraction
+    assert format_mac_multiple(
+        halted.alveolar_partial_pressure_fraction, halted.agent_mac_percent
+    ) == (f"0.12{MAC_UNIT_SUFFIX}")
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:

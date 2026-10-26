@@ -26,17 +26,23 @@ verify: ! grep -qF 'So the concentration displayed beside a halt is the height t
 
 `docs/MODEL.md` § "Halting on a marked crossing" now says that the value
 beside a halt is the reading on the first step at or past the marked height,
-within one simulation step of it. It gives the size of that step on the
-fastest compartment and says that a halt one count past the mark is correct.
+within one simulation step of it. It says that one step's change grows with the
+gap between a compartment and the gas reaching it and with the flow that
+carries the gas in, so a correct halt can show one or more display counts past
+its mark on any compartment.
 
-The figures were measured again on this branch, not copied from the finding.
-A script ran a sevoflurane case at 8% and 10 L/min against each circuit and
-alveolar target from 0.05 to 2.95 ×MAC in steps of 0.05, stepping at 0.1 s
-until the halt. It recorded the reading at the halt, the reading one step
-before, and the text `format_mac_multiple` gives. On the circuit, 13 of 59
-halts showed one count past the mark, the largest one-step change was
-0.0109 ×MAC and the largest overshoot 0.0091 ×MAC. On the alveolar
-compartment, 0 of 59 did, with a largest step of 0.0026 ×MAC. The new test
-`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past`
-pins the specification's example: a 0.10 ×MAC circuit target halts showing
-0.11 ×MAC, past the mark by less than the step that crossed it.
+The section gives two examples, and a test in
+`tests/integration/test_controller.py` pins each one. With 8% sevoflurane at
+10 L/min, a 0.10 ×MAC circuit target halts showing 0.11 ×MAC
+(`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past`).
+After 120 s with no alveolar ventilation, restoring it to 12 L/min makes a
+0.10 ×MAC alveolar target halt showing 0.12 ×MAC
+(`test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_resumes`).
+
+The first draft gave counts from a scratch script: 13 of 59 circuit targets
+from 0.05 to 2.95 ×MAC halted one count past the mark, and no alveolar target
+did. The blind review found that the alveolar count holds only while
+ventilation is steady, and reproduced alveolar halts two and three counts past
+the mark after a period of apnoea. The counts were dropped from the
+specification, because no test produced them and they invited the reading that
+only the circuit can overshoot.
