@@ -3,11 +3,13 @@ id: PL-0BRY
 title: Record what each blind generalist review pass found, finding by finding, and report per pass across merged simulator pull requests how many findings were fixed or filed and how many no earlier pass had named, so the monthly model review can check that each pass still finds real faults
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: review-panel
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/README.md, tools/blind_review.py, tools/blind_review_report.py, tests/unit/test_blind_review.py, tests/unit/test_blind_review_report.py, .claude/skills/docket/modes/close-out.md, .claude/skills/model-review/SKILL.md, docs/apparatus.md, docket.toml
 added: 2026-10-26
+closed: 2026-10-26
+pr: 1857
 payoff: each simulator pull request's blind review record says what each pass found and what happened to each finding, and one command reports per pass, across merged pull requests, how many findings were fixed or filed and how many no earlier pass had named
 verify: grep -q 'blind_review_report' .claude/skills/model-review/SKILL.md && grep -q 'pass 1: blocking fixed' .claude/skills/docket/modes/close-out.md
 ---
