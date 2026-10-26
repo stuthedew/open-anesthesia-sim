@@ -9631,6 +9631,22 @@ contributes a point only where both of these conditions are true:
    elimination, not wash-in. Equilibrium is drawn on the chart as a labelled
    reference line.
 
+   The comparison allows `WASH_IN_ROUNDING_ALLOWANCE`, 1e-9, above 1 for
+   rounding (`PL-N559`). At zero cardiac output the exact solution has
+   $`F_A`$ rise to $`F_I`$ and stop. The stepped run instead settles onto a
+   floating-point fixed point within about 1e-13 of that, and in some runs
+   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at 10 L/min settles
+   at 1 + 2.2e-14, which the plot once captioned as the patient returning
+   agent. Once a run reaches its fixed point, every later step returns the
+   same state, so the overshoot does not grow with run length. On 2026-10-26
+   it was the same at 96 h as at 1 h. The allowance is about 10,000 times the
+   largest overshoot measured. The project owner chose it on 2026-10-26 over
+   giving the propagator an exact fixed point, which would have moved every
+   run's last digits.
+   `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`
+   checks the fixed point against the closed form for each shipped agent.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+
 Outside either boundary nothing is drawn. The value is not clamped to the
 axis, not interpolated across, and not replaced by a default. A ratio pinned
 to 1.0 would draw a completed wash-in that the run never reached. A line

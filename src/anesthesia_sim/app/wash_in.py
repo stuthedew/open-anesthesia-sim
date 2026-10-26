@@ -42,6 +42,9 @@ no number at all.
    longer a wash-in fraction, whatever its arithmetic. The curve claims to be
    the textbook wash-in graph. Drawing such a number on it would teach a
    wash-in that went past completion.
+   The rule allows `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and
+   nothing more, because rounding alone can put an equilibrium's quotient a hair
+   above one (`PL-N559`).
 
 `WASH_IN_EQUILIBRIUM_RATIO` is the second boundary. It is a *modelled* value,
 not a plotting choice, because it is where net uptake stops. That is why the
@@ -67,6 +70,7 @@ from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 __all__ = [
     "WASH_IN_DENOMINATOR_FLOOR_FRACTION",
     "WASH_IN_EQUILIBRIUM_RATIO",
+    "WASH_IN_ROUNDING_ALLOWANCE",
     "WashInDomain",
     "WashInReading",
     "is_wash_in",
@@ -89,6 +93,28 @@ WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
 #: curve's asymptote and rule 2 of the module docstring. Above this ratio the
 #: run is eliminating agent rather than taking it up.
 WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
+
+#: How far above `WASH_IN_EQUILIBRIUM_RATIO` a quotient may round and still
+#: be read as wash-in at equilibrium (`PL-N559`).
+#:
+#: With cardiac output at zero there is no uptake, so the exact solution has
+#: $`F_A`$ rise to $`F_I`$ and stop there. The stepped run does not land
+#: exactly on that point. It settles onto a floating-point fixed point within
+#: about 1e-13 of it, relative, and every later step returns that same state.
+#: In some runs the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at
+#: 10 L/min settles at a quotient of 1 + 2.2e-14, and without this allowance
+#: the plot told the learner that the patient was returning agent. On
+#: 2026-10-26 nine agent and fresh gas flow combinations were stepped at 0.1 s
+#: for 24 h, and one for 96 h. The largest quotient was 1 + 2.2e-14, and none
+#: grew after the run reached its fixed point. Twenty-one runs on the
+#: canonical path to 24 h reached at most 1 + 9.6e-14.
+#:
+#: The allowance of 1e-9 is about 10,000 times the largest of those. A
+#: quotient that small above one is genuinely elimination only by an amount
+#: far below the two decimals the interface prints. The project owner chose
+#: this route on 2026-10-26, over giving the propagator an exact fixed point,
+#: which would have changed every run's last digits.
+WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-9
 
 
 class WashInDomain(StrEnum):
@@ -166,10 +192,11 @@ def is_wash_in(ratio: float) -> bool:
         ratio: A quotient from `wash_in_ratio`.
 
     Returns:
-        `True` when the quotient is at or below `WASH_IN_EQUILIBRIUM_RATIO`.
+        `True` when the quotient is at or below `WASH_IN_EQUILIBRIUM_RATIO`
+        plus `WASH_IN_ROUNDING_ALLOWANCE`.
     """
 
-    return ratio <= WASH_IN_EQUILIBRIUM_RATIO
+    return ratio <= WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE
 
 
 def read_wash_in(
