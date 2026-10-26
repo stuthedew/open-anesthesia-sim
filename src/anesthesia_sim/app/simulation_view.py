@@ -1005,10 +1005,10 @@ class SimulationView(QWidget):
         (`branch_at_stake`). The rejection is not handled here. It is the
         branch's own halt, which the branch's own frame states.
 
-        The changes counted are the ones made since the branch opened. The
-        entries it opened with are where it began (`RunRecord.opened_with`),
-        and a Reset of the branch would record them again, so naming them as
-        work to lose would overstate it (`PL-ZR49`).
+        The changes counted are the ones made since the branch opened
+        (`RunRecord.changes_since_opening`). That is the record from which
+        `has_recorded_run` decides whether the branch holds anything, so the
+        question never names a branch with no changes and no run (`PL-ZR49`).
         """
 
         try:
@@ -1017,15 +1017,12 @@ class SimulationView(QWidget):
             snapshot = None
 
         record = run.controller.record() if snapshot is None else snapshot
-        made_since_opening = tuple(
-            change for change in record.control_timeline if change not in record.opened_with
-        )
 
         return branch_at_stake(
             run_label(run.run_id),
             run.controller.began_at_s,
             snapshot,
-            len(group_adjustments(made_since_opening)),
+            len(group_adjustments(record.changes_since_opening)),
         )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:

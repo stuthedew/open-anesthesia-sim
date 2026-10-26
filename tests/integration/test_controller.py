@@ -3685,7 +3685,9 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     # The premise: nothing is recorded where the trunk is paused.
     assert fork_s not in [instant_s for instant_s, _ in keyframes]
     assert trunk.snapshot().bookmark_halt is None
-    assert trunk.here_fork_point == HereForkPoint(fork_s, stopped_on_mark=False)
+    assert trunk.here_fork_point == HereForkPoint(
+        fork_s, stopped_on_mark=False, setting_changed_here=False
+    )
 
     branch = trunk.resumed_here()
 
@@ -3727,7 +3729,9 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
     marked = _trunk_halted_on_a_bookmark()
     halted_s = marked.snapshot().elapsed_s
 
-    assert marked.here_fork_point == HereForkPoint(halted_s, stopped_on_mark=True)
+    assert marked.here_fork_point == HereForkPoint(
+        halted_s, stopped_on_mark=True, setting_changed_here=False
+    )
 
     marked.start()
     marked.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
@@ -3741,7 +3745,9 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
     paused_s = marked.snapshot().elapsed_s
 
     assert paused_s > halted_s
-    assert marked.here_fork_point == HereForkPoint(paused_s, stopped_on_mark=False)
+    assert marked.here_fork_point == HereForkPoint(
+        paused_s, stopped_on_mark=False, setting_changed_here=False
+    )
     assert marked.resumed_here().began_at_s == paused_s
 
 
@@ -4009,7 +4015,7 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
     # A height stops the run as an instant does, and the offered fork point
     # says so in the same way.
     assert marked.here_fork_point == HereForkPoint(
-        marked.snapshot().elapsed_s, stopped_on_mark=True
+        marked.snapshot().elapsed_s, stopped_on_mark=True, setting_changed_here=False
     )
 
     branch = marked.resumed_here()
@@ -4212,7 +4218,9 @@ def test_a_case_refuses_a_fork_where_its_trunk_stands_while_the_trunk_is_going()
     trunk = _trunk_with_two_changes()
     case = BranchedCase(trunk)
 
-    assert case.here_fork_point == HereForkPoint(trunk.snapshot().elapsed_s, stopped_on_mark=False)
+    assert case.here_fork_point == HereForkPoint(
+        trunk.snapshot().elapsed_s, stopped_on_mark=False, setting_changed_here=False
+    )
 
     trunk.start()
 
@@ -5408,7 +5416,11 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     # the marks the trunk held when it was taken.
     now_marked = {(30.0, "relabelled"), (inside_s, "inside the step")}
     assert named(halt_on_the_trunk) == now_marked
-    assert here_on_the_trunk == HereForkPoint(fork_s, stopped_on_mark=True)
+    # The trunk changed a setting while it stood there, so its offer says the
+    # branch opens before that change.
+    assert here_on_the_trunk == HereForkPoint(
+        fork_s, stopped_on_mark=True, setting_changed_here=True
+    )
 
     for name, branch in branches.items():
         snapshot = branch.snapshot()
@@ -5525,7 +5537,9 @@ def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_t
     assert _described(branch.snapshot().control_timeline) == [
         (fork_s, ControlInput.DELIVERED, 2.0, 4.0)
     ]
-    assert trunk.here_fork_point == HereForkPoint(fork_s, stopped_on_mark=False)
+    assert trunk.here_fork_point == HereForkPoint(
+        fork_s, stopped_on_mark=False, setting_changed_here=False
+    )
     assert trunk.resumed_here().opened_from == branch.opened_from
 
 
@@ -5637,7 +5651,9 @@ def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_a
     for run in (trunk, branch):
         assert run.snapshot().bookmark_halt == BookmarkCrossing(halt_s, (again,))
 
-    assert trunk.here_fork_point == HereForkPoint(halt_s, stopped_on_mark=True)
+    assert trunk.here_fork_point == HereForkPoint(
+        halt_s, stopped_on_mark=True, setting_changed_here=False
+    )
 
 
 def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> None:
@@ -5660,3 +5676,117 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
     assert branch.opened_from.segment.settings.delivered_concentration_percent == 4.0
     assert branch.snapshot().delivered_concentration_percent == 4.0
     assert branch.snapshot().control_timeline == ()
+
+
+def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose() -> None:
+    """Whether a branch holds a change, and how many, come from one record.
+
+    The trunk is paused at 60 s and set from 4 to 6 L/min, and a branch is
+    taken at that keyframe. Setting the branch to 8 L/min at the fork replaces
+    the entry it opened with, which is one change made since opening. Setting
+    it back to 4 L/min removes that entry. The branch then runs under the
+    trunk's stretch before the change, as a branch taken where the paused
+    trunk stands would, so it holds nothing a trunk Reset would lose. The
+    blind review of this branch found the Reset question naming such a
+    branch with "0 recorded control changes".
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    branch = trunk.resumed_at(fork_s)
+
+    assert branch.snapshot().changes_since_opening == ()
+    assert not branch.snapshot().has_recorded_run
+
+    branch.set_fresh_gas_flow(FreshGasFlow(8.0))
+
+    assert _described(branch.snapshot().changes_since_opening) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 8.0)
+    ]
+    assert branch.snapshot().has_recorded_run
+
+    branch.set_fresh_gas_flow(FreshGasFlow(4.0))
+    trunk.set_fresh_gas_flow(FreshGasFlow(4.0))
+    taken_here = trunk.resumed_here()
+
+    assert branch.snapshot().control_timeline == ()
+    assert branch.snapshot().changes_since_opening == ()
+    assert not branch.snapshot().has_recorded_run
+    assert branch.run_segments == taken_here.run_segments
+
+
+def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_order_holds() -> None:
+    """ "Change, reset, change back" and "change, change back, reset" give one answer.
+
+    Each branch is taken where the paused trunk stands at 30 s. On both, the
+    flow goes from 4 to 8 L/min and back, with a reset before or after the
+    change back. A reset keeps the settings and records them at the fork
+    (`PL-K5BS`), so the two branches open with different entries. They end
+    with the same run and the same control timeline, and neither holds
+    anything that a trunk Reset would lose.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+
+    reset_between = trunk.resumed_here()
+    reset_between.set_fresh_gas_flow(FreshGasFlow(8.0))
+    reset_between.reset()
+    reset_between.set_fresh_gas_flow(FreshGasFlow(4.0))
+
+    reset_last = trunk.resumed_here()
+    reset_last.set_fresh_gas_flow(FreshGasFlow(8.0))
+    reset_last.set_fresh_gas_flow(FreshGasFlow(4.0))
+    reset_last.reset()
+
+    assert reset_between.snapshot().opened_with != reset_last.snapshot().opened_with
+
+    for branch in (reset_between, reset_last):
+        assert branch.snapshot().control_timeline == ()
+        assert branch.snapshot().fresh_gas_flow_l_min == 4.0
+        assert not branch.snapshot().has_recorded_run
+
+    assert reset_between.run_segments == reset_last.run_segments
+
+
+def test_the_offer_where_the_trunk_stands_says_whether_a_setting_was_changed_there() -> None:
+    """The offer where the trunk stands says when its branch opens before a change made there.
+
+    The blind review of this branch found that "Branch here" and the
+    selector's keyframe entry at one instant opened under different settings
+    after a change made there, with nothing on either control to say so. The
+    trunk is paused at 60 s and set from 4 to 6 L/min. The offer then says a
+    setting was changed there, and the branch it opens runs at 4 L/min while
+    the keyframe branch runs at 6 L/min. Setting the flow back removes the
+    change, and the offer says so too.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+
+    assert trunk.here_fork_point == HereForkPoint(
+        fork_s, stopped_on_mark=False, setting_changed_here=False
+    )
+
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+
+    assert trunk.here_fork_point == HereForkPoint(
+        fork_s, stopped_on_mark=False, setting_changed_here=True
+    )
+    assert trunk.resumed_here().snapshot().fresh_gas_flow_l_min == 4.0
+    assert trunk.resumed_at(fork_s).snapshot().fresh_gas_flow_l_min == 6.0
+
+    trunk.set_fresh_gas_flow(FreshGasFlow(4.0))
+
+    assert trunk.here_fork_point == HereForkPoint(
+        fork_s, stopped_on_mark=False, setting_changed_here=False
+    )

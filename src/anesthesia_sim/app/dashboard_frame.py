@@ -522,6 +522,15 @@ HERE_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}"
 # a learner who misreads it or a measurement. But a rewrite must not
 # reintroduce the wording it was chosen over.
 HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
+# The clause either label above ends with when a setting was changed while the
+# trunk stood where it stands (`HereForkPoint.setting_changed_here`). A branch
+# taken here opens under the settings before that change, and the selector's
+# entry at the same instant opens under the change (`PL-ZR49`). Without the
+# clause, two controls would show one instant and open under different
+# settings. The wording is a placeholder chosen in `PL-ZR49`, under the
+# project owner's rule of 2026-10-18 that wording is the session's to decide
+# while the interface is being built.
+BEFORE_CHANGE_FORK_LABEL_SUFFIX: Final = ", before your change"
 # A time bookmark that the trunk has passed, as an entry in the selector beside
 # the control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
 # instant at which the branch opens, never the value typed for the mark.** A
@@ -2142,7 +2151,8 @@ class ForkOffer:
             using `HERE_FORK_LABEL_TEMPLATE`. When a mark stopped the trunk
             there, it adds that fact, using `HALT_FORK_LABEL_TEMPLATE`. The
             comment on that template explains why those are two clauses
-            rather than one.
+            rather than one. When a setting was changed there, it ends with
+            `BEFORE_CHANGE_FORK_LABEL_SUFFIX`.
         refusal: Why the most recently requested branch was not taken, for
             the notice banner, or None. It is never set while `locked`. The
             control that produced the refusal is gone, so the message would
@@ -2301,15 +2311,19 @@ def fork_offer(
 
 
 def _here_fork_label(here: HereForkPoint) -> str:
-    """Return the label of the fork where the trunk stands: its instant, and any stopping mark.
+    """Return the label of the fork where the trunk stands.
+
+    The label gives the instant, any mark that stopped the trunk there, and
+    whether the branch opens before a setting change made there.
 
     Args:
         here: Where the trunk stands, from `BranchedCase.here_fork_point`.
     """
 
     template = HALT_FORK_LABEL_TEMPLATE if here.stopped_on_mark else HERE_FORK_LABEL_TEMPLATE
+    suffix = BEFORE_CHANGE_FORK_LABEL_SUFFIX if here.setting_changed_here else ""
 
-    return template.format(instant=format_elapsed(here.fork_s))
+    return template.format(instant=format_elapsed(here.fork_s)) + suffix
 
 
 def delivered_line(delivered: SettingReadout) -> str:

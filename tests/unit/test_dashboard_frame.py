@@ -3407,7 +3407,7 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     branch at without inferring it from the run clock.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False, setting_changed_here=False)
 
     offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=here)
 
@@ -3419,6 +3419,37 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     # looks away.
     assert _offered_instants(offer) == (0.0, 60.0)
     assert _offered_labels(offer) == tuple(format_elapsed(instant_s) for instant_s in (0.0, 60.0))
+
+
+def test_the_fork_here_says_it_opens_before_a_setting_changed_there() -> None:
+    """The label ends with the before-change clause only when a setting was changed there.
+
+    The selector's entry at the same instant opens under that change, so
+    without the clause two controls would show one instant and open under
+    different settings (`PL-ZR49`). The clause follows a halt's ratified
+    words rather than replacing them.
+    """
+
+    instant = format_elapsed(45.0)
+    labels = {
+        (stopped, changed): fork_offer(
+            (0.0, 45.0),
+            marks=(),
+            comparing=None,
+            here=HereForkPoint(
+                CaseInstant(45.0), stopped_on_mark=stopped, setting_changed_here=changed
+            ),
+        ).here_label
+        for stopped in (False, True)
+        for changed in (False, True)
+    }
+
+    assert labels[(False, False)] == f"Branch here: {instant}"
+    assert labels[(False, True)] == f"Branch here: {instant}, before your change"
+    assert labels[(True, False)] == f"Branch here: {instant}, stopped on your mark"
+    assert labels[(True, True)] == (
+        f"Branch here: {instant}, stopped on your mark, before your change"
+    )
 
 
 def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
@@ -3433,8 +3464,8 @@ def test_the_fork_here_says_a_mark_stopped_the_trunk_when_one_did() -> None:
     """
 
     halted_s = 45.4
-    halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True)
-    paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False)
+    halted = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=True, setting_changed_here=False)
+    paused = HereForkPoint(CaseInstant(halted_s), stopped_on_mark=False, setting_changed_here=False)
 
     on_the_mark = fork_offer((0.0,), marks=(), comparing=None, here=halted).here_label
     on_a_pause = fork_offer((0.0,), marks=(), comparing=None, here=paused).here_label
@@ -3457,7 +3488,7 @@ def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     """
 
     for stopped_on_mark in (False, True):
-        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark)
+        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark, setting_changed_here=False)
 
         offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=here)
 
@@ -3608,7 +3639,7 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
     control that the lock replaces, not a further control the cap could miss.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True)
+    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True, setting_changed_here=False)
     refusal = "Setting refused: no keyframe at 30.0 s"
     keyframes = (CaseInstant(0.0), CaseInstant(60.0))
 

@@ -82,6 +82,7 @@ from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustm
 from anesthesia_sim.app.controller import BranchedCase, MarkForkPoint, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
+    BEFORE_CHANGE_FORK_LABEL_SUFFIX,
     BRANCH_AGENT_LOCK_TEXT,
     BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
@@ -7135,7 +7136,12 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
 
     assert button.isHidden() is False
     assert button.isEnabled() is True
-    assert button.text() == HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
+    # The fixture's setting change was made at the instant where the trunk
+    # stands, so the label says the branch opens before it (`PL-ZR49`).
+    assert button.text() == (
+        HERE_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(paused_s))
+        + BEFORE_CHANGE_FORK_LABEL_SUFFIX
+    )
 
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S)))
     case.trunk.start()
