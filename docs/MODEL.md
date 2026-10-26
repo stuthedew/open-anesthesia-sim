@@ -5890,7 +5890,7 @@ floating-point operations are composed. This was measured on 2026-09-07 against
 a stepped 600 s sevoflurane run with two setting changes, reaching a fraction
 of 0.0316. The single-instant path stays within 1.8e-14 of the stepped run, and
 the window path within 3.7e-15. Both figures are absolute differences in a
-fraction of one atmosphere. Both are eleven orders of magnitude below 1e-4,
+fraction of one atmosphere. Both are about ten orders of magnitude below 1e-4,
 the smallest difference that the two-decimal percent readout under
 § "Displayed precision" can show. So neither path can change a displayed digit.
 § "The canonical evaluation rule" below states, as a guarantee, which of the
@@ -6189,9 +6189,9 @@ what that reproduces, and what it does not:
   showed when it stood there.** A running case displays its stepped live state,
   which is one propagation per step from the opening. Every branch opens from
   the canonical state. Over three hours of the run in the item's measurement
-  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is ten orders
-  below the 1e-4 that a two-decimal percent can show, so no reader can see the
-  difference. The same holds for a fork at a control event or at a halt.
+  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is about nine
+  orders below the 1e-4 that a two-decimal percent can show, so no reader can
+  see the difference. The same holds for a fork at a control event or at a halt.
 
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
@@ -7734,9 +7734,16 @@ properties that this document requires, not optimisations:
   multiples of the spacing that the selected time base and the plot width
   imply. There is one column per pixel boundary of the widest plot the frame
   is drawn on, and never fewer than 150 (`chart_columns` in
-  `app/chart_frame.py`, `PL-GS3R`). A plot can become wider than the width its
-  frame was sampled for, by a window resize or by a reader dragging an Area
-  border. The plot is then redrawn on the next render tick, whether the run is
+  `app/chart_frame.py`, `PL-GS3R`). The spacing is the span divided by those
+  columns, rounded down onto whole hundredths of a second, and onto tenths
+  wherever that adds at most a tenth more columns (`grid_spacing_s` in
+  `app/chart_time_base.py`, `PL-T5NJ`). Every drawn instant is then a whole
+  number of hundredths, so the chart's hover can print exactly the instant
+  whose state it prints. Rounding down keeps each chord within a pixel of
+  time. The one exception is a spacing below a hundredth of a second, which
+  needs a one-minute axis more than 6000 px wide. A plot can become wider than
+  the width its frame was sampled for, by a window resize or by a reader
+  dragging an Area border. The plot is then redrawn on the next render tick, whether the run is
   running or paused (`resample_owed`, `PL-9LNF`). A window that follows the
   run therefore keeps every column it had and gains at most one, so a steady
   trace is not redrawn on every frame. A grid anchored to the viewport would
@@ -8044,11 +8051,13 @@ $`F_A/F_I`$ is derived at the point of drawing.
 
 - simulated time (`test_refresh_view_formats_every_concentration_metric`,
   `test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour`);
-- the rate at which simulated time is advancing, as a multiple of real time. It
-  is drawn wherever simulated time is drawn, and at every rate, including real
-  time (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). See
-  § "Interface boundary" for what the rate is a statement about, and what it is
-  not;
+- the playback rate that is set, as a multiple of real time. It is drawn
+  wherever simulated time is drawn, and at every rate, including real time
+  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). It is the
+  setting, not a reading of whether the clock is moving: a paused, reset or
+  halted run still shows the rate it plays at, and the status word in the
+  transport row says whether the run is running. See § "Interface boundary"
+  for what the rate is a statement about, and what it is not;
 - how much simulated time the chart is showing, and whether that width was
   chosen or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
@@ -9254,6 +9263,14 @@ all, and the stretch ends where it would have ended without it. The stretch is
 not clamped onto the ceiling and not interpolated onto it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
+**The crossing column is drawn, but its number is not printed as wash-in.**
+Its quotient is above 1, so it is elimination rather than a wash-in fraction.
+The chart's hover at that column says "Past equilibrium: not a wash-in
+fraction" under the wash-in label instead of printing the quotient
+(`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT` in `app/chart_frame.py`, `PL-YH6Z`).
+Printed there, a value such as 1.03 would teach a wash-in past completion, at
+the dot a reader is most likely to point at.
+
 **A blank stretch says which boundary it is.** "No agent has reached the
 circuit yet" and "the patient is returning agent" are opposite situations. A
 reader shown only an absent trace cannot tell which of the two applies. The
@@ -10303,8 +10320,11 @@ Each line, and the reason it must be there:
    is there because the same percentage means different things under different
    agents. For example, 1.43% is 0.71 MAC of sevoflurane and 0.24 MAC of
    desflurane. A floating box cannot rely on the header being visible behind
-   it. The instant is given in the compound form of `format_elapsed`. The
-   clock, every control stamp and the time axis use the same form.
+   it. The instant is given in the compound form of `format_elapsed`, to the
+   hundredth of a second that the chart's columns are laid on. So the printed
+   instant is the instant of the state printed beside it, not a rounding of
+   it (`PL-T5NJ`). The clock, every control stamp and the time axis use the
+   same form.
 2. **What the value is: the compartment, with its gloss where the readout row
    has one.** The two glossed compartments are
    `Alveolar (end-tidal-equivalent)` and `Circuit (inspired)`. The other four

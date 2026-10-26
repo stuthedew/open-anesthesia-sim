@@ -8,11 +8,11 @@ What is tested is the split between the two kinds of finding, because getting
 it wrong in either direction is a live failure. Size only ever *warns* - and
 warns at 80% of budget, before the decision is forced on whoever trips the cap
 mid-task - because a red gate on an unrelated commit is how a session learns to
-raise the cap, which is the one repair that is never right. A structural fault
-*does* fail, because a dangling id, a wrapped entry or one the entry pattern
-cannot read is silent otherwise. The
-third case matters as much as either: a comfortable file must say nothing at
-all, or the advisory fires every run and trains a reader to skim past it.
+raise the cap just to get moving, and a larger budget is the owner's decision.
+A structural fault *does* fail, because a dangling id, a wrapped entry or one
+the entry pattern cannot read is silent otherwise. The third case matters as
+much as either: a comfortable file must say nothing at all, or the advisory
+fires every run and trains a reader to skim past it.
 
 The emit/check split is the second thing under test: the preamble explains how
 to add an entry, which a session *reading* entries never needs, so it must not
@@ -86,6 +86,15 @@ def test_over_budget_warns_and_names_all_three_repairs() -> None:
     assert any("over budget" in a for a in advisories)
     joined = " ".join(advisories)
     assert "shorten" in joined and "merge" in joined and "drop" in joined
+
+
+def test_over_budget_names_the_moves_and_the_owner_s_budget_question() -> None:
+    """Dropping a still-needed lesson is no repair, so the advisory never offers it (`PL-5J1S`)."""
+    text = PREAMBLE + entry("A long one", "x" * (dead_ends.MAX_EMITTED_BYTES + 1))
+    joined = " ".join(dead_ends.budget(text))
+    assert "path-scoped rule" in joined and "retire" in joined
+    assert "bring the owner the cost of a larger budget" in joined
+    assert "least likely to propose again" not in joined
 
 
 def test_over_the_byte_budget_warns() -> None:
@@ -331,3 +340,94 @@ def test_an_entry_citing_a_token_the_store_could_not_mint_says_nothing() -> None
     text = PREAMBLE + entry("An approach", "refuted at the PL-CAP stage")  # not-an-id
 
     assert dead_ends.check(text) == []
+
+
+NO_CATCHERS = dead_ends.Catchers(rules="", code_ids=frozenset())
+
+
+def test_a_removed_entry_needs_a_catcher_or_a_retirement() -> None:
+    """An entry may leave the list only for a place that still stops its approach (`PL-5J1S`).
+
+    Deleted with nothing recorded, a lesson learned the hard way is gone from
+    every session, and the approach it refuted can come back unopposed.
+    """
+    base = PREAMBLE + entry("Kept", "refuted. `PL-D188`") + entry("Gone", "refuted.")
+    after = PREAMBLE + entry("Kept", "refuted. `PL-D188`")
+
+    problems = dead_ends.departures(base, after, NO_CATCHERS)
+
+    assert len(problems) == 1
+    assert "**Gone**" in problems[0]
+    assert dead_ends.RETIRED in problems[0]
+
+
+def test_a_retired_entry_passes_and_is_neither_emitted_nor_budgeted() -> None:
+    base = PREAMBLE + entry("Gone", "refuted.")
+    after = (
+        PREAMBLE + f"\n{dead_ends.RETIRED}\n\n" + entry("Gone", "retired: its code was removed.")
+    )
+
+    assert dead_ends.departures(base, after, NO_CATCHERS) == []
+    assert dead_ends.entries(after) == []
+    assert dead_ends.emitted(after) == ""
+    assert [line for line, _ in dead_ends.retired(after)] == [len(after.splitlines())]
+
+
+def test_an_entry_moved_into_a_path_scoped_rule_passes() -> None:
+    base = PREAMBLE + entry("Moved", "refuted.")
+    moved = dead_ends.Catchers(rules=entry("Moved", "refuted."), code_ids=frozenset())
+
+    assert dead_ends.departures(base, PREAMBLE, moved) == []
+
+
+def test_an_entry_whose_id_the_code_cites_passes() -> None:
+    base = PREAMBLE + entry("Checked", "refuted. `PL-D188`")
+    checked = dead_ends.Catchers(rules="", code_ids=frozenset({"PL-D188"}))
+
+    assert dead_ends.departures(base, PREAMBLE, checked) == []
+
+
+def test_two_entries_merged_into_one_that_keeps_an_id_pass() -> None:
+    base = PREAMBLE + entry("First", "refuted. `PL-D188`") + entry("Second", "refuted. `PL-D188`")
+    after = PREAMBLE + entry("First and second", "both refuted. `PL-D188`")
+
+    assert dead_ends.departures(base, after, NO_CATCHERS) == []
+
+
+def test_a_rule_counts_as_a_place_only_when_paths_scope_it(tmp_path: Path) -> None:
+    """A rule without `paths:` loads in every session, so it would only move the entry's cost."""
+    rules = tmp_path / ".claude" / "rules"
+    rules.mkdir(parents=True)
+    scoped = '---\npaths:\n  - "/tools/**"\n---\n\n' + entry("Scoped", "refuted.")
+    (rules / "scoped.md").write_text(scoped, encoding="utf-8")
+    (rules / "resident.md").write_text(entry("Resident", "refuted."), encoding="utf-8")
+
+    catchers = dead_ends.read_catchers(tmp_path)
+
+    assert "**Scoped**" in catchers.rules
+    assert "**Resident**" not in catchers.rules
+
+
+def test_the_shipped_rules_hold_every_entry_that_left_the_list() -> None:
+    """The entries moved on 2026-10-26 are found in the rule they moved to."""
+    catchers = dead_ends.read_catchers(REPO)
+
+    assert "**One shared queue document**" in catchers.rules
+
+
+def test_check_with_a_base_runs_under_a_bare_interpreter() -> None:
+    """`make check` and CI pass `--base`, and the shipped tree must pass it against itself."""
+    result = subprocess.run(
+        [sys.executable, str(REPO / "tools" / "dead_ends.py"), "check", "--base", "HEAD"],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_base_git_cannot_name_fails_rather_than_passing(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+
+    with pytest.raises(dead_ends.BaseUnreadable):
+        dead_ends.read_base(tmp_path, "no-such-ref")

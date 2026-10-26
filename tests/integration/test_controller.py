@@ -3529,37 +3529,40 @@ display can show.
 
 
 def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
-    """`PL-Z3W6` at the sampled points a learner actually sees.
+    """`PL-Z3W6`: a branch agrees with its parent at every sampled point a learner sees.
 
-    "Every sampled point" has a second meaning, and it is the one the release
-    is for: the columns the chart draws. A learner does not compare two runs at
-    whole steps of the solver. They compare them at the vertices of two
-    overlaid traces. A divergence before the fork would make it impossible to
-    attribute a difference after the fork to the one setting that was changed.
+    "Every sampled point" has a second meaning, and it is the one the release is
+    for: the columns that the chart draws. A learner does not compare two runs at
+    whole steps of the solver. They compare them at the vertices of two overlaid
+    traces. A divergence before the fork would make it impossible to attribute a
+    difference after the fork to the one setting that was changed.
 
     Three things are asserted, and they are three different claims:
 
-    - **The branch adds exactly one column the trunk does not draw, and it is
-      the fork.** A control-event fork adds none, because a control event is a
-      column on every run that has one. A bookmark's instant is not, so the
-      branch draws it as the left end of its own clipped range. That vertex
-      marks where the two stop being one run.
-    - **Canonically, they agree element for element at every column they do
-      share.** This is the guarantee, checked at the drawn instants rather
-      than at the solver's: 0 of 2 160 elements differ over 240 shared columns.
-    - **The drawn values at those columns do not.** 1 909 of the same 2 160
-      differ, the worst by 2.7e-15. That is because `evaluate_anchored` chains
-      one propagator across consecutive columns and breaks the chain at a
-      bound. So the trunk chains through the fork, while the branch restarts
-      there. Without this third claim, a display path that had quietly become
-      the canonical one would satisfy the first two. `docs/MODEL.md` § "The
-      canonical evaluation rule" would then be enforcing a separation that no
-      longer existed.
+    - **The branch adds exactly one column that the trunk does not draw, and that
+      column is the fork.** A fork at a control event adds none, because a control
+      event is a column on every run that has one. A bookmark's instant is not a
+      column on the trunk, so the branch draws it as the left end of its own clipped
+      range. That vertex marks where the two stop being one run.
+    - **Evaluated by the canonical rule, they agree element for element at every
+      column they share.** This is the guarantee, checked at the drawn instants
+      rather than at the solver's steps: 0 of 2 259 elements differ over 251 shared
+      columns.
+    - **The drawn values at those columns do not agree exactly.** 2 000 of the same
+      2 259 elements differ, the worst by 5.3e-16. This was measured on 2026-10-26,
+      after `PL-T5NJ` put the columns on whole hundredths of a second. Before that,
+      1 909 of 2 160 elements over 240 columns differed, the worst by 2.7e-15. The
+      values differ because `evaluate_anchored` chains one propagator across
+      consecutive columns and breaks the chain at a bound. So
+      the trunk chains through the fork, while the branch restarts there. Without
+      this third claim, a display path that had quietly become the canonical one
+      would satisfy the first two. `docs/MODEL.md` § "The canonical evaluation
+      rule" would then be enforcing a separation that no longer existed.
 
     The third claim is why the second is worth asserting at all. A reader who
-    takes the difference between two drawn traces sees a few units in the last
-    place here, where two identical runs should show zero. The canonical
-    agreement is what shows that the case did not disagree with itself.
+    subtracts one drawn trace from the other sees a few units in the last place
+    here, where two identical runs should show zero. The canonical agreement is
+    what shows that the case did not disagree with itself.
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -3580,7 +3583,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     shared = sorted(set(trunk_window.times_s) & set(branch_window.times_s))
 
     assert tuple(sorted(set(branch_window.times_s) - set(trunk_window.times_s))) == (fork_s,)
-    assert len(shared) == 240
+    assert len(shared) == 251
 
     trunk_drawn = dict(zip(trunk_window.times_s, trunk_window.states, strict=True))
     branch_drawn = dict(zip(branch_window.times_s, branch_window.states, strict=True))
@@ -3601,7 +3604,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
                 f"the two drawn columns at {elapsed_s} s diverged further than measured"
             )
 
-    assert elements == 240 * STATE_SIZE
+    assert elements == 251 * STATE_SIZE
     assert drawn_differing > 0, (
         "the drawn values at every shared column agreed bit for bit, so the display path "
         "has become the canonical one and the separation docs/MODEL.md enforces no longer "
