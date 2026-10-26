@@ -25,6 +25,7 @@ import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
+import hook_input
 import pytest
 import stop_hook_patch
 
@@ -181,7 +182,7 @@ def test_a_failed_write_is_reported_and_leaves_nothing_behind(
     def refuse(*args: object, **kwargs: object) -> tuple[int, str]:
         raise OSError("read-only file system")
 
-    monkeypatch.setattr(stop_hook_patch.tempfile, "mkstemp", refuse)
+    monkeypatch.setattr(hook_input.tempfile, "mkstemp", refuse)
 
     assert _run(path) == 0
     assert path.read_text(encoding="utf-8") == SHIPPED

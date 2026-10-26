@@ -957,3 +957,56 @@ comment proposes. In that case the patch finds its own line already in
 place and stays silent. If the fix takes any other form, the patch prints a message at every
 session start saying that the line it rewrites is not there.
 
+## Give Projects threads the repository's hooks with one setup script
+
+A Claude Projects thread does not load `.claude/settings.json`, so none of the
+repository's hooks run in it: not the guards, not the session-start digest and
+not the stop hook patch. Claude Code's documentation says so, in
+[What threads pick up from your repositories](https://code.claude.com/docs/en/claude-projects.md#what-threads-pick-up-from-your-repositories)
+(read 2026-10-26), and `PL-CR81` records the measurement. A thread does read
+the user settings file, `~/.claude/settings.json`. `.claude/hooks/thread_hooks.py`
+uses that file to give a thread the hooks (`PL-X6VN`).
+
+The setup script below adds one `SessionStart` entry to the user settings. At
+each session start in a Projects thread, that entry runs `thread_hooks.py` from
+the checkout. The hook copies the repository's `hooks` block into the user
+settings, and Claude Code applies the copy from its next tool call on. In any
+other session the hook does nothing, because those sessions load the
+repository's settings themselves. The script holds no copy of the hooks, so a
+change to `.claude/settings.json` reaches the next thread without a change
+here. `python3 .claude/hooks/thread_hooks.py --setup-script` prints the script,
+and `tests/unit/test_thread_hooks.py` fails if the copy here differs from it.
+
+To add it:
+
+1. In the project, open **Project settings > Environment** and note which
+   cloud environment new threads use.
+2. At [claude.ai/code](https://claude.ai/code), open the environment selector,
+   the first control under the message box. Under **Cloud**, hover over that
+   environment's row and select the settings icon on its right.
+3. Select the **Setup script** row. Paste the script below at the end of what
+   the box already holds, and select **Save changes**.
+
+```bash
+mkdir -p ~/.claude
+python3 - <<'EOF' || true
+import json, pathlib
+path = pathlib.Path.home() / ".claude" / "settings.json"
+try:
+    data = json.loads(path.read_text())
+except (OSError, ValueError):
+    data = {}
+group = {"hooks": [{"type": "command", "command": "test -f \"$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py\" && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py\" || true"}]}
+starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])
+if group not in starts:
+    starts.append(group)
+path.write_text(json.dumps(data, indent=2) + "\n")
+EOF
+```
+
+Changes to the environment reach new threads, not the ones already running,
+and saving the script rebuilds the environment's cache. To check that it
+worked, ask a new thread to run `uv run pytest --version | head -1`. The
+repository's `gate-status-guard.sh` refuses that command when the hooks are
+loaded. If the thread prints a pytest version instead, the hooks are still off,
+and the thread should record that in `PL-CR81`.
