@@ -3,13 +3,15 @@ id: PL-0S0V
 title: AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: safety, anticipated
 feature: preferences-store
 touches: src/anesthesia_sim/app/formatting.py, docs/MODEL.md, tests/unit
 blocked-by: PL-KZ99
 deferred-from: v0.6.0 - deferred to Gate 3 on beat 3's terms (PL-DB64, project owner, 2026-09-27, ratified, over keeping it on the list): work planned-milestone item 28 would create, waiting on PL-B396; safety, but not live at 19af95d - agent amounts show in one fixed unit with no selector, so displayed precision is one quantity's
 added: 2026-09-16
+payoff: every agent amount on screen is shown at a precision derived for its quantity and its unit, so a liquid-equivalent millilitre figure claims no more precision than the model supports
+verify: grep -q 'def test_a_precision_finer_than_its_derived_band_is_refused' tests/unit/test_formatting.py && grep -q 'def test_a_unit_with_no_derived_precision_is_refused' tests/unit/test_formatting.py
 ---
 
 **Problem.** AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
@@ -88,8 +90,16 @@ session does not re-derive that a display constant is display-only.
 
 **Scheduled in v0.7.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 with planned-milestone item 28, agent cost, inside it (project owner, 2026-10-25, ratified, over leaving item 28 unscheduled and deferring this item to Gate 4). `PL-YRLM` closed with that answer. This item is in `ROADMAP.md` § "v0.7.0 - the schematic" → "Required scope", so v0.7.0 clears it itself.
 
+[superseded 2026-10-26: `PL-KZ99` closed, and the ratio is `AgentParameters.vapour_volume_per_liquid_volume`]
 **It waits on `PL-KZ99` instead of `PL-B396`.** The per-unit precision of a
 liquid-equivalent figure depends on the vapour-to-liquid factor `PL-KZ99`
 stores. `PL-B396`'s readout then uses this item's derivation.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true, but this brief asks for more than v0.7.0 needs.** The constants are as described, and `docs/MODEL.md` § "Displayed precision" still derives one precision per quantity. Entry 7 of v0.7.0's Required scope asks for a precision per quantity and per unit, for the units v0.7.0 offers: litres of vapour and millilitres of liquid equivalent on the agent cost View, and the schematic's millilitres of vapour, whose precision `PL-2881` derives. Nothing scoped lets a reader set a precision, and no concentration or flow gets a unit selector. So in v0.7.0 the one-sided bound in **Done when** has no reader setting to refuse. This sweep reads it, for now, as a test that refuses a precision constant finer than its derived band. Separately, the comment above `FLOW_DISPLAY_DECIMALS` in `app/formatting.py` is out of date: it still names Flet's default and says a flow reaches `core/` unquantized, but `ParameterControl.decimals` sets the slider's step. Correcting it is part of this item, which states that coupling where a reader of `formatting.py` meets it.
+
+**Ready, 2026-10-26.** `PL-KZ99` closed on #1866, so the input this item
+waited on exists. `AgentParameters.vapour_volume_per_liquid_volume` gives the
+millilitres of vapour per millilitre of liquid: 182.8 for sevoflurane, 195.8
+for isoflurane and 209.7 for desflurane. `core/liquid_agent.py`'s
+`liquid_volume_ml` converts an amount with it. Nothing else holds this item.
+`PL-B396` uses this item's derivation, so this item comes first.

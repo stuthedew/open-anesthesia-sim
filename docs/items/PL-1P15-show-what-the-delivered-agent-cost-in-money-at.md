@@ -44,3 +44,38 @@ independently. A test checks that no cost shows before a price is set.
 delivered agent, labelled with its currency and the price's date.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** Nothing under `src/` holds a price, a currency or an agent cost View, and its three blockers are open. The Gas Man Workbook quotation was not re-read, because the reference corpus is not in this tree.
+
+**A sanity check on the calculated price** (project owner, 2026-10-26: "Make
+sure there is a sanity check for calculated agent price"). The project owner
+asked for this in their own words. The three parts below are `PL-KZ99`'s
+recommendation for how to meet it, and the session that builds this item
+decides the details.
+
+1. **The cost matches a published worked example.** The Gas Man Workbook
+   prints delivered costs for two isoflurane exercises, at its default price
+   of US$20.47 per 100 mL (Appendix C, printed p. 171). Exercise 14-1 runs 2 %
+   at 8 L/min for 13 min, then 1.5 % to 60 min. The book gives $2.17 at
+   13 min and $8.06 at 60 min (printed pp. 133-134). Exercise 14-2 runs 5 % at
+   1 L/min for 13 min, then 2.7 % to 60 min, and gives $0.68 and $2.00
+   (printed pp. 135-136). Both read at full text from the private reference
+   corpus on 2026-10-26. A reference test runs both exercises end to end, from
+   the simulator's delivered amount to the displayed text. Gas Man's
+   isoflurane factor is 196 mL of vapour per mL of liquid, rounded to a whole
+   number, and this model derives 195.8. So the test allows the cent's
+   rounding plus 0.26 %, the most that rounding to 196 can move a cost. At
+   60 min, Exercise 14-1 gives $8.07 here against the book's $8.06, inside
+   that allowance. `PL-KZ99` checks the conversion half against the same four
+   figures, with the delivered vapour worked out by hand.
+2. **The readout shows its working.** Beside the cost, it shows the liquid
+   volume and the price per mL that it multiplied, for example
+   "39.4 mL x US$0.2047/mL". A reader can then check the product by eye.
+3. **No cost is shown when one cannot be trusted.** The readout says why
+   instead of showing a number when the price is unset, zero, negative or not
+   finite, or when the delivered amount cannot be converted. Gas Man takes a
+   bottle price and a bottle volume (`Set Cost...`, printed p. 15). Taking the
+   price the same way, and showing the price per mL it implies, makes a bottle
+   price typed into a per-mL field visible. That mistake multiplies the cost by the
+   bottle volume in mL, which is 100 to 250 for the volatile agents in Gas
+   Man's defaults (Appendix C, printed pp. 171-172). Whether to take the
+   price per bottle is `PL-VJZK`'s decision, because `PL-VJZK` stores the
+   price.

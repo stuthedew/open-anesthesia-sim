@@ -744,14 +744,14 @@ checked, rather than resting on convention.
 
    | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | At 37 °C |
    | --- | --- | --- | --- | --- | --- |
-   | Sevoflurane | 1.5203 | 200.055 | 182.8 | 184 | 193.4 |
-   | Isoflurane | 1.5019 | 184.492 | 195.8 | 195 | 207.2 |
-   | Desflurane | 1.4651 | 168.038 | 209.7 | 210 | 221.9 |
+   | Sevoflurane | 1.5203 | 200.05 | 182.8 | 184 | 193.4 |
+   | Isoflurane | 1.5019 | 184.49 | 195.8 | 195 | 207.2 |
+   | Desflurane | 1.4651 | 168.04 | 209.7 | 210 | 221.9 |
 
    The densities are those of Laster, Fang and Eger. They were measured in
    four 50-mL volumetric flasks at 20 °C, with a temperature coefficient of
-   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are exact
-   from the formula. So the field's constants are referenced at 20 °C as a
+   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are the
+   formula masses, which ChEMBL gives to two decimals. So the field's constants are referenced at 20 °C as a
    matter of arithmetic rather than of convention. A model that declared
    37 °C would either mix two conditions or print consumption figures 5.5 %
    below the numbers a reader can look up. That 5.5 % is $`1 - 1/1.058`$, the
@@ -786,7 +786,7 @@ checked, rather than resting on convention.
    | Halothane | 228 | 227.7 (−0.15 %) | 240.9 (+5.6 %) |
    | Enflurane | 198 | 198.6 (+0.29 %) | 210.1 (+6.1 %) |
    | Isoflurane | 196 | 195.8 (−0.09 %) | 207.2 (+5.7 %) |
-   | Sevoflurane | 183 | 182.8 (−0.11 %) | 193.4 (+5.7 %) |
+   | Sevoflurane | 183 | 182.8 (−0.10 %) | 193.4 (+5.7 %) |
    | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
 
    The 20 °C derivation is within 0.35 % on all five, against 5.6–6.2 % at
@@ -799,6 +799,16 @@ checked, rather than resting on convention.
    litre and Gas Man's litre different quantities, even though every parameter
    feeding these volumes is shared with Gas Man.
 
+<!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.g_ml = 1.5019 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.g_ml = 1.4651 -->
+<!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
+<!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
+<!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- derived: 182.8 from data/agents/sevoflurane.json liquid_density.g_ml = 1.5203, molar_mass_g_mol = 200.05 -->
+<!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
+<!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
+
 **37 °C was the alternative, and it is not a poor one.** This model's
 partition coefficients were measured at 37 °C. The alveolar, venous and
 tissue compartments are physically at 37 °C. So 37 °C is the condition at
@@ -808,13 +818,51 @@ the stores. And the published constants that any figure will be compared
 against are 20 °C constants. What choosing 20 °C costs is recorded under
 § "Known limitations".
 
+**The conversion's inputs are stored, and one module does the conversion**
+(`PL-KZ99`). Each agent file stores the liquid's density as
+`liquid_density`, with its spread and the temperature at which it was
+measured. It stores the molar mass as `molar_mass_g_mol`. Each has its own
+`sources` entry. `core/liquid_agent.py` derives the millilitres of vapour per
+millilitre of liquid from them, as the table above does. It works out the
+molar volume from the gas constant, 20 °C and one standard atmosphere, rather
+than storing it. A density measured at any temperature other than 20 °C is
+refused when the file loads, because no correction for temperature is stored.
+The conversion is exact for the delivered and exhausted agent and the
+circuit's amount, which are at room temperature. It reads an alveolar, venous
+or tissue amount 5.8 % high, for the reason § "Known limitations" gives under
+"One reference condition, where the model physically has two". A cost is
+computed from the delivered amount, so it is exact.
+The published ratios are not stored. `tests/reference/test_published_vapour_to_liquid.py`
+checks the derived ratios against Biro's within 1 % and against Gas Man's
+within 0.5 %. It also prices the isoflurane delivered in the Gas Man
+Workbook's Exercises 14-1 and 14-2 with the derived ratio. The prices must
+match the costs the book prints, allowing for the cent and for Gas Man's
+ratio being rounded to a whole millilitre. Nothing on screen reads the
+conversion yet. `PL-B396` builds the liquid-equivalent readout, and `PL-1P15`
+builds the cost.
+
 The sources for this section are listed below, with the route by which each
 was read.
 
 - Laster MJ, Fang Z, Eger EI II. *Specific gravities of desflurane, enflurane,
   halothane, isoflurane, and sevoflurane.* Anesth Analg 1994;78(6):1152-3.
   PMID 8198275, doi:10.1213/00000539-199406000-00022. Retrieved from PubMed
-  and verified against the abstract on 2026-09-17.
+  and verified against the abstract on 2026-09-17, and again on 2026-10-26,
+  when its densities were stored.
+- ChEMBL database, release 34, compounds CHEMBL1200694 (sevoflurane),
+  CHEMBL1256 (isoflurane) and CHEMBL1200733 (desflurane), for the molecular
+  formulas and the molar masses. Read through the ChEMBL MCP server on
+  2026-10-26. It is tier 2 under § "Source hierarchy", because a molar mass is
+  computed from the formula and the standard atomic weights rather than
+  measured on the agent. Each agent file's `sources` entry says why no tier-1
+  source exists for it.
+- Mohr PJ, Newell DB, Taylor BN, Tiesinga E. *CODATA recommended values of the
+  fundamental physical constants: 2022.* Rev Mod Phys 2025;97(2):025002.
+  doi:10.1103/RevModPhys.97.025002. Table XXXII gives the gas constant as the
+  product of the exact Avogadro and Boltzmann constants. Table XXXIII gives
+  the standard atmosphere, 101 325 Pa exactly, and the molar volume of an
+  ideal gas at 0 °C, which the unit tests use to check the 24.055 L/mol above.
+  Read at full text from arXiv:2409.03787v1 on 2026-10-26.
 - Biro P. *Calculation of volatile anaesthetics consumption from agent
   concentration and fresh gas flow.* Acta Anaesthesiol Scand
   2014;58(8):968-72. PMID 25060161, doi:10.1111/aas.12374. Retrieved from
@@ -2656,8 +2704,8 @@ to prevent.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- not-restated: 70 kg -->
 
-**Where this project stands, stated rather than implied.** Of the 37 rows in
-the provenance table below, 16 are tier 3, one is tier 2, 18 are tier 1, and
+**Where this project stands, stated rather than implied.** Of the 49 rows in
+the provenance table below, 16 are tier 3, four are tier 2, 27 are tier 1, and
 two adopt no source of any tier. **Nine of the twelve partition coefficients,
 which are every tissue:gas value, are Yasuda, Targ and Eger's human
 measurements.** They were adopted on 2026-09-13 (`PL-FN5F`) after the stored
@@ -2680,7 +2728,7 @@ named and found the stored numbers in it. Nothing was recalculated. That
 distinction is the whole point of separating `tier` from `adopted`: what
 changed was the record of where a number came from.
 
-**The nineteen exceptions are of four kinds**, and naming them is the point of
+**The thirty-one exceptions are of six kinds**, and naming them is the point of
 the counts above. The largest group is the nine tissue:gas partition
 coefficients, three per agent, adopted from Yasuda, Targ and Eger 1989 on
 2026-09-13. They are human autopsy measurements at 37 °C. The paragraph below
@@ -2688,15 +2736,20 @@ the table on Gas Man's attribution says how they were checked, and why the
 published figures were *not* substituted for the stored ones. The eleventh
 reference-patient parameter, `venous_pool_volume_l`, is Davis and Mapleson
 1981. It is tier 2, adopted on 2026-09-07 on the project owner's decision
-(`PL-8ZJQ`), and it is the only tier-2 source adopted anywhere in this
-project. The three vaporizer maxima are each the calibrated maximum of a
+(`PL-8ZJQ`), and it was the first tier-2 source adopted in this project. The three vaporizer maxima are each the calibrated maximum of a
 device rather than a physiologic quantity. Each cites a primary source for it:
 the Dräger Vapor 2000 specification for sevoflurane, and published
 vaporizer-performance measurements for isoflurane (Kelly and Kong 2011) and
 desflurane (Johnston et al. 1994, on the Tec 6). Finally, the six MAC-awake
 rows, a fraction and a standard deviation for each agent, are adopted primary
 measurements: Katoh et al. 1993 for sevoflurane and isoflurane, and Chortkoff
-et al. 1995 for desflurane.
+et al. 1995 for desflurane. The nine liquid-density rows, a density, its
+standard deviation and its measurement temperature for each agent, are Laster,
+Fang and Eger 1994's primary measurements at 20 °C, adopted on 2026-10-26
+(`PL-KZ99`). The three molar masses are ChEMBL's formula masses, adopted the
+same day. They are tier 2 because a molar mass is computed from the molecular
+formula and the standard atomic weights, not measured on the agent, so no
+tier-1 source exists for one (§ "Agent amount").
 
 **Recompute these with `python3 tools/source_tier_counts.py`. Do not adjust
 them as rows arrive.** The command prints the counts from each `sources`
@@ -3252,11 +3305,14 @@ supported window of versions in `src/anesthesia_sim/core/parameters.py`. So a
 later schema change moves only the family it applies to. At version 2, every
 `sources` entry gained two new required fields, and a data file may carry one
 new optional top-level string. Version 3 (2026-09-30, `PL-9LXK`) again applied
-to every family, and it added a third required field to each entry. Today
-every window accepts version 3 alone. The fields are written as a list rather
-than a table. The reason is that the provenance table below is located by
-being the first table in this section, and a second table above it would be
-read in its place:
+to every family, and it added a third required field to each entry. Version
+4 (2026-10-26, `PL-KZ99`) applied to agent files alone, the first change to
+move one family. It added each agent's `molar_mass_g_mol` and `liquid_density`
+(§ "Agent amount"). Today the agent window accepts version 4 alone, and the
+patient and machine windows accept version 3 alone. The fields are written as
+a list rather than a table. The reason is that the provenance table below is
+located by being the first table in this section, and a second table above it
+would be read in its place:
 
 - `tier`, on each `sources` entry: `primary`, `secondary` or
   `reference-implementation`. It says which of the three tiers above the
@@ -3463,6 +3519,18 @@ a worked example, needs no marker.
 | MAC-awake standard deviation (isoflurane) | 0.05 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
 | MAC-awake (desflurane) | 0.36 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.fraction_of_mac` |
 | MAC-awake standard deviation (desflurane) | 0.063 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| Molar mass (sevoflurane) | 200.05 | g/mol | `data/agents/sevoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (isoflurane) | 184.49 | g/mol | `data/agents/isoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (desflurane) | 168.04 | g/mol | `data/agents/desflurane.json` · `molar_mass_g_mol` |
+| Liquid density at 20 °C (sevoflurane) | 1.5203 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (isoflurane) | 1.5019 | g/mL | `data/agents/isoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (desflurane) | 1.4651 | g/mL | `data/agents/desflurane.json` · `liquid_density.g_ml` |
+| Liquid density standard deviation (sevoflurane) | 0.0008 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (isoflurane) | 0.0006 | g/mL | `data/agents/isoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (desflurane) | 0.0004 | g/mL | `data/agents/desflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density measurement temperature (sevoflurane) | 20.0 | °C | `data/agents/sevoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (isoflurane) | 20.0 | °C | `data/agents/isoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (desflurane) | 20.0 | °C | `data/agents/desflurane.json` · `liquid_density.measured_at_celsius` |
 
 The reference patient weight identifies which patient the volumes and flows
 describe. No equation in this model uses it. `PatientParameters.weight_kg` is
@@ -8220,6 +8288,7 @@ measured on a 1 000 px plot. The chord is the rung's span divided by 1 000:
 | 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
 
 <!-- provenance: app/chart_time_base.py SELECTABLE_TIME_BASE_FLOOR_S = 900 -->
+<!-- not-restated: 0.0004 -->
 
 <!-- not-restated: 2 %, 6 % -->
 
@@ -12164,8 +12233,8 @@ conservation.** Every term is exact in the model's own arithmetic. The
 mass-balance identity closes to 1e-13 L whatever condition the unit names. So
 this is a statement about what the litres *mean*, not about agent going
 missing. Read as amounts of substance, the alveolar, venous and tissue stores
-hold 5.8 % fewer moles than their 20 °C label implies. The ratio behind
-that figure is 25.450/24.055. The fresh-gas terms are unaffected.
+hold 5.5 % fewer moles than their 20 °C label implies, so the label
+overstates them by 5.8 %. The ratio behind both figures is 25.450/24.055. The fresh-gas terms are unaffected.
 
 **It is invisible in everything the simulator shows today, which is why it has
 cost nothing so far.** A partial-pressure fraction is dimensionless and
@@ -12173,7 +12242,10 @@ carries no condition. So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
 trace on the chart are untouched by it, and so is the release gate's relative
 residual. It affects a reader only where an amount leaves the unit. That is the
 liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28. There it biases the split between stored and exhausted agent, not the
+item 28. Since `PL-KZ99`, `core/liquid_agent.py` is where an amount leaves
+the unit, and nothing on screen reads it yet. It converts a delivered or
+exhausted amount exactly and reads a store 5.8 % high, and its docstring says
+so. There it biases the split between stored and exhausted agent, not the
 delivered total, and the delivered total is the figure that means cost.
 Removing this limitation would need a gas-phase model that carries explicit
 conditions per compartment. That is well outside the current milestone. It is
