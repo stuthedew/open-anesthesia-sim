@@ -45,10 +45,12 @@ from anesthesia_sim.core.numerical_envelope import (
     MINIMUM_VOLUME_L,
     CompartmentVolume,
     PartitionCoefficient,
+    require_compartment_volume,
     tissue_blood_partition_coefficient,
 )
 from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
     load_sevoflurane_parameters,
 )
 from anesthesia_sim.core.supported_ranges import (
@@ -61,6 +63,7 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 LONGEST_STEP_S = 0.1
 """The 0.1 s step that the interface takes, the longest that a run supports."""
@@ -559,3 +562,56 @@ def test_the_step_at_the_stiffest_corner_agrees_with_a_high_precision_evaluation
     )
 
     assert worst <= bound
+
+
+# Each refusal names the value it refused, as `.claude/rules/sources-and-docstrings.md` asks.
+
+AGENT_COEFFICIENTS = (
+    "blood_gas_partition_coefficient",
+    "vessel_rich_tissue_gas_partition_coefficient",
+    "muscle_tissue_gas_partition_coefficient",
+    "fat_tissue_gas_partition_coefficient",
+)
+
+PATIENT_VOLUMES = (
+    "alveolar_gas_volume_l",
+    "venous_pool_volume_l",
+    "vessel_rich_volume_l",
+    "muscle_volume_l",
+    "fat_volume_l",
+)
+
+
+@pytest.mark.parametrize("field", AGENT_COEFFICIENTS)
+def test_an_agent_refuses_a_bare_coefficient_by_its_field_name(field: str) -> None:
+    with pytest.raises(TypeError, match=rf"^{field} of 0\.5 was not built as PartitionCoefficient"):
+        replace(load_sevoflurane_parameters(), **{field: 0.5})
+
+
+@pytest.mark.parametrize("field", PATIENT_VOLUMES)
+def test_a_patient_refuses_a_bare_volume_by_its_field_name(field: str) -> None:
+    with pytest.raises(TypeError, match=rf"^{field} of 2\.0 was not built as CompartmentVolume"):
+        replace(load_reference_adult_parameters(), **{field: 2.0})
+
+
+def test_a_machine_profile_and_a_circuit_refuse_a_bare_volume_by_name() -> None:
+    with pytest.raises(TypeError, match=r"^circuit_volume_l of 6\.0 was not built as Compartment"):
+        replace(load_reference_circle_system_parameters(), circuit_volume_l=6.0)
+
+    circuit = AgentUptakeSystem.for_agent("sevoflurane").circuit
+
+    with pytest.raises(TypeError, match=r"^circuit_volume_l of 3\.0 was not built as Compartment"):
+        circuit.set_circuit_volume(3.0)  # type: ignore[arg-type]
+
+
+def test_a_swapped_quantity_and_a_non_number_are_refused_by_name() -> None:
+    """A flow stored as a volume is named as the flow it was built as, and a `str` by its type."""
+
+    with pytest.raises(
+        TypeError,
+        match=r"^circuit_volume_l of 5\.0 was built as FreshGasFlow, which is not CompartmentVol",
+    ):
+        require_compartment_volume("circuit_volume_l", FreshGasFlow(5.0))
+
+    with pytest.raises(TypeError, match=r"^fat volume_l of '2' has type str, not int or float"):
+        CompartmentVolume("2", name="fat volume_l")  # type: ignore[arg-type]
