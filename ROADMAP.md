@@ -8479,24 +8479,20 @@ and each must be assigned when its milestone is fully specified.
     reference condition is already decided. `docs/MODEL.md` § "Agent amount"
     carries Biro's 184 mL of vapour per mL of liquid sevoflurane. It
     reproduces that figure to 182.8 mL from Laster, Fang and Eger's 20 °C
-    density and the exact molar mass. It also records that the project owner
+    density and the molar mass. It also records that the project owner
     ratified a 20 °C reference over 37 °C on 2026-09-17, naming this item as
     the consumer (`PL-S6WW`, shipped in v0.4.28). Here, one litre of vapour is
     5.47 mL of liquid sevoflurane.
 
-    What remains is that those numbers exist only in prose. None of
-    `data/agents/sevoflurane.json`, `data/agents/isoflurane.json` or
-    `data/agents/desflurane.json` carries a density, a molar mass or the
-    ratio. So `CLAUDE.md`'s rule that model parameters live in validated,
-    versioned data files is unmet for these constants. And the provenance walk
-    in `tools/doc_check.py` is structurally blind to a constant that never
-    entered a data file. This is the same gap that `PL-4YY1` closed for the
-    circuit's volume and flow. The work is already filed as `PL-KZ99`. It
-    stores each agent's molar mass and liquid density *with the density's
-    measurement temperature*. The conversion is then derived from Laster's
-    primary measurement rather than from Biro's composite constant. `PL-KZ99`
-    was blocked on `PL-S6WW`, and it is unblocked now that `PL-S6WW` has
-    shipped. So this item's first step is `PL-KZ99` rather than anything new.
+    Those numbers were in prose only until 2026-10-26. `PL-KZ99` then stored
+    each agent's molar mass and its liquid density, with the density's
+    measurement temperature, in `data/agents/sevoflurane.json`,
+    `data/agents/isoflurane.json` and `data/agents/desflurane.json`.
+    `core/liquid_agent.py` derives the ratio from them in one place, so the
+    conversion rests on Laster's primary measurement rather than on Biro's
+    composite constant. It is exact for the delivered amount, which is the one
+    a cost needs, and reads a compartment store 5.8 % high (`docs/MODEL.md`
+    § "Known limitations").
     `PL-B396` chooses what the resulting figure looks like.
 
     *The exhausted/stored split keeps its own labels.* The split is the uptake

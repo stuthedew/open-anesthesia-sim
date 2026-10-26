@@ -30,14 +30,26 @@ The ideal gas is part of the model's definition of its unit, not a claim
 about real vapour. The unit is the volume that the agent would fill as an
 ideal gas at the reference condition, as `docs/MODEL.md` § "Agent amount"
 defines it.
+
+**The conversion is exact for fresh gas and about 5.8 % high for a store.**
+The delivered and exhausted agent and the circuit's amount are gas at room
+temperature, so they really are at the 20 °C condition, and this conversion
+is exact for them. The alveolar, venous and tissue stores are at body
+temperature and carry the 20 °C condition only as a label. They hold 5.8 %
+fewer moles than the label implies, so the liquid volume converted from a
+store is 5.8 % too high (`docs/MODEL.md` § "Known limitations", "One
+reference condition, where the model physically has two"). A cost is a
+delivered amount, so it is exact. A readout that converts a store must say
+so (`PL-B396`).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Final
 
-from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_number import require_a_number, shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE, MILLILITRES_PER_LITRE
 from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
@@ -93,6 +105,9 @@ class LiquidDensity:
     data file sees is the source's own.
 
     Raises:
+        TypeError: `measured_at_celsius` is not an `int` or a `float`, or is a
+            `bool`, as `require_a_number` says. The guards on the other two
+            fields raise the same.
         SimulationConfigurationError: `g_ml` is not positive and finite,
             `standard_deviation_g_ml` is negative or not finite, or
             `measured_at_celsius` is not the reference temperature.
@@ -107,6 +122,8 @@ class LiquidDensity:
         require_nonnegative_finite(
             "liquid density standard_deviation_g_ml", self.standard_deviation_g_ml
         )
+
+        require_a_number("liquid density measured_at_celsius", self.measured_at_celsius)
 
         if self.measured_at_celsius != REFERENCE_TEMPERATURE_CELSIUS:
             raise SimulationConfigurationError(
@@ -127,14 +144,26 @@ def vapour_volume_per_liquid_volume(
 
     Raises:
         SimulationConfigurationError: `molar_mass_g_mol` is not positive and
-            finite.
+            finite. Also raised when the two inputs are each positive and
+            finite but their ratio overflows to infinity or underflows to
+            zero. The message names both inputs.
     """
 
     require_positive_finite("molar_mass_g_mol", molar_mass_g_mol)
 
     moles_per_ml_of_liquid = liquid_density.g_ml / molar_mass_g_mol
+    vapour_per_liquid = (
+        moles_per_ml_of_liquid * REFERENCE_MOLAR_VOLUME_L_MOL * MILLILITRES_PER_LITRE
+    )
 
-    return moles_per_ml_of_liquid * REFERENCE_MOLAR_VOLUME_L_MOL * MILLILITRES_PER_LITRE
+    if not isfinite(vapour_per_liquid) or vapour_per_liquid <= 0.0:
+        raise SimulationConfigurationError(
+            f"a liquid density of {shown(liquid_density.g_ml)} g/mL and a molar mass of "
+            f"{shown(molar_mass_g_mol)} g/mol give a vapour-to-liquid ratio of "
+            f"{shown(vapour_per_liquid)}, which is not a positive finite number"
+        )
+
+    return vapour_per_liquid
 
 
 def liquid_volume_ml(vapour_volume_l: float, vapour_per_liquid: float) -> float:
@@ -142,7 +171,10 @@ def liquid_volume_ml(vapour_volume_l: float, vapour_per_liquid: float) -> float:
 
     `vapour_per_liquid` is the agent's `vapour_volume_per_liquid_volume`, in
     millilitres of vapour per millilitre of liquid. The vapour is an amount of
-    agent as the model states it, at 20 °C and one standard atmosphere.
+    agent as the model states it, at 20 °C and one standard atmosphere. The
+    result is exact for a delivered, exhausted or circuit amount, and 5.8 %
+    too high for an alveolar, venous or tissue amount, as the module
+    docstring says.
 
     Raises:
         SimulationConfigurationError: `vapour_volume_l` is negative or not

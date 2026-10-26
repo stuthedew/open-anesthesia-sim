@@ -870,6 +870,33 @@ def test_an_agent_record_refuses_a_molar_mass_that_is_not_positive() -> None:
         replace(agent, molar_mass_g_mol=0.0)
 
 
+def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density() -> None:
+    """A record whose `liquid_density` is not a `LiquidDensity` is refused when built.
+
+    Before this test, `replace(agent, liquid_density=None)` built, and failed
+    only at the first conversion. Found by `PL-KZ99`'s first blind review pass.
+    """
+
+    agent = load_agent_parameters("sevoflurane")
+
+    with pytest.raises(TypeError, match="^liquid_density must be a LiquidDensity"):
+        replace(agent, liquid_density=None)  # type: ignore[arg-type]
+
+
+def test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows() -> None:
+    """The ratio is formed when the record is built, as the tissue:blood quotients are.
+
+    A molar mass of 1e-306 g/mol is positive and finite, and the ratio it
+    makes is not. Before this test, the record built and the overflow
+    surfaced only at a conversion (`PL-KZ99`'s first blind review pass).
+    """
+
+    agent = load_agent_parameters("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="give a vapour-to-liquid ratio"):
+        replace(agent, molar_mass_g_mol=1e-306)
+
+
 def test_rejects_a_liquid_density_measured_at_another_temperature_under_its_file_key() -> None:
     payload = _valid_agent_payload()
     payload["liquid_density"] = {

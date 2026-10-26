@@ -36,6 +36,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import (
     MacMultiple,
@@ -334,8 +335,10 @@ class AgentParameters:
             at a dial setting that the vaporizer cannot deliver (`PL-HPKK`).
             Also raised when a tissue:blood coefficient is outside the
             numerical envelope, or when `molar_mass_g_mol` is not positive
-            and finite. `LiquidDensity` checks its own fields when it is
-            built.
+            and finite, or when the density and the molar mass give a
+            vapour-to-liquid ratio that is not finite. `LiquidDensity` checks
+            its own fields when it is built, and a `liquid_density` of any
+            other type raises `TypeError`.
     """
 
     schema_version: int
@@ -383,6 +386,17 @@ class AgentParameters:
         )
         require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
         require_positive_finite("molar_mass_g_mol", self.molar_mass_g_mol)
+
+        if not isinstance(self.liquid_density, LiquidDensity):
+            raise TypeError(
+                "liquid_density must be a LiquidDensity, which checks its own fields, and "
+                f"{shown(self.liquid_density)} has type {type(self.liquid_density).__name__}"
+            )
+
+        # The ratio is formed once here, as the tissue:blood quotients are above, so
+        # that a density and a molar mass whose ratio is not finite are refused when
+        # the record is built rather than at the first conversion.
+        _ = self.vapour_volume_per_liquid_volume
 
     @property
     def vapour_volume_per_liquid_volume(self) -> float:

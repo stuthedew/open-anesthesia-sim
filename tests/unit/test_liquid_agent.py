@@ -151,3 +151,51 @@ def test_a_liquid_density_measured_at_another_temperature_is_refused(
         LiquidDensity(
             g_ml=1.5, standard_deviation_g_ml=0.001, measured_at_celsius=measured_at_celsius
         )
+
+
+@pytest.mark.parametrize("measured_at_celsius", [None, True, "20"])
+def test_a_liquid_density_refuses_a_temperature_that_is_not_a_number(
+    measured_at_celsius: object,
+) -> None:
+    """A missing or mistyped temperature is a programming error, not a measurement at 20 °C or not.
+
+    Before this test, `None` was refused as "a liquid density measured at None
+    °C", which reports a real measurement at the wrong temperature (found by
+    `PL-KZ99`'s second blind review pass).
+    """
+
+    with pytest.raises(TypeError, match="liquid density measured_at_celsius"):
+        LiquidDensity(
+            g_ml=1.5,
+            standard_deviation_g_ml=0.001,
+            measured_at_celsius=measured_at_celsius,  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize(
+    ("g_ml", "molar_mass_g_mol"),
+    [
+        # 1.5 / 1e-306 overflows to inf once multiplied by the molar volume.
+        (1.5, 1e-306),
+        # 1e-300 / 1e300 underflows to zero.
+        (1e-300, 1e300),
+    ],
+)
+def test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number(
+    g_ml: float, molar_mass_g_mol: float
+) -> None:
+    """Each input is positive and finite, and the ratio they make is not.
+
+    Before this test, the ratio came back as `inf` or `0.0` with no error. The
+    refusal then came later, from `liquid_volume_ml`, naming its own argument
+    rather than the density and molar mass that caused it (found by
+    `PL-KZ99`'s first blind review pass).
+    """
+
+    density = LiquidDensity(g_ml=g_ml, standard_deviation_g_ml=0.0, measured_at_celsius=20.0)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^a liquid density of .* g/mL and a molar mass of .* g/mol give a vapour-to-liquid",
+    ):
+        vapour_volume_per_liquid_volume(density, molar_mass_g_mol)

@@ -827,6 +827,11 @@ millilitre of liquid from them, as the table above does. It works out the
 molar volume from the gas constant, 20 °C and one standard atmosphere, rather
 than storing it. A density measured at any temperature other than 20 °C is
 refused when the file loads, because no correction for temperature is stored.
+The conversion is exact for the delivered and exhausted agent and the
+circuit's amount, which are at room temperature. It reads an alveolar, venous
+or tissue amount 5.8 % high, for the reason § "Known limitations" gives under
+"One reference condition, where the model physically has two". A cost is
+computed from the delivered amount, so it is exact.
 The published ratios are not stored. `tests/reference/test_published_vapour_to_liquid.py`
 checks the derived ratios against Biro's within 1 % and against Gas Man's
 within 0.5 %. It also prices the isoflurane delivered in the Gas Man
@@ -2699,8 +2704,8 @@ to prevent.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- not-restated: 70 kg -->
 
-**Where this project stands, stated rather than implied.** Of the 37 rows in
-the provenance table below, 16 are tier 3, one is tier 2, 18 are tier 1, and
+**Where this project stands, stated rather than implied.** Of the 49 rows in
+the provenance table below, 16 are tier 3, four are tier 2, 27 are tier 1, and
 two adopt no source of any tier. **Nine of the twelve partition coefficients,
 which are every tissue:gas value, are Yasuda, Targ and Eger's human
 measurements.** They were adopted on 2026-09-13 (`PL-FN5F`) after the stored
@@ -2723,7 +2728,7 @@ named and found the stored numbers in it. Nothing was recalculated. That
 distinction is the whole point of separating `tier` from `adopted`: what
 changed was the record of where a number came from.
 
-**The nineteen exceptions are of four kinds**, and naming them is the point of
+**The thirty-one exceptions are of six kinds**, and naming them is the point of
 the counts above. The largest group is the nine tissue:gas partition
 coefficients, three per agent, adopted from Yasuda, Targ and Eger 1989 on
 2026-09-13. They are human autopsy measurements at 37 °C. The paragraph below
@@ -2731,15 +2736,20 @@ the table on Gas Man's attribution says how they were checked, and why the
 published figures were *not* substituted for the stored ones. The eleventh
 reference-patient parameter, `venous_pool_volume_l`, is Davis and Mapleson
 1981. It is tier 2, adopted on 2026-09-07 on the project owner's decision
-(`PL-8ZJQ`), and it is the only tier-2 source adopted anywhere in this
-project. The three vaporizer maxima are each the calibrated maximum of a
+(`PL-8ZJQ`), and it was the first tier-2 source adopted in this project. The three vaporizer maxima are each the calibrated maximum of a
 device rather than a physiologic quantity. Each cites a primary source for it:
 the Dräger Vapor 2000 specification for sevoflurane, and published
 vaporizer-performance measurements for isoflurane (Kelly and Kong 2011) and
 desflurane (Johnston et al. 1994, on the Tec 6). Finally, the six MAC-awake
 rows, a fraction and a standard deviation for each agent, are adopted primary
 measurements: Katoh et al. 1993 for sevoflurane and isoflurane, and Chortkoff
-et al. 1995 for desflurane.
+et al. 1995 for desflurane. The nine liquid-density rows, a density, its
+standard deviation and its measurement temperature for each agent, are Laster,
+Fang and Eger 1994's primary measurements at 20 °C, adopted on 2026-10-26
+(`PL-KZ99`). The three molar masses are ChEMBL's formula masses, adopted the
+same day. They are tier 2 because a molar mass is computed from the molecular
+formula and the standard atomic weights, not measured on the agent, so no
+tier-1 source exists for one (§ "Agent amount").
 
 **Recompute these with `python3 tools/source_tier_counts.py`. Do not adjust
 them as rows arrive.** The command prints the counts from each `sources`
@@ -12108,7 +12118,10 @@ carries no condition. So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
 trace on the chart are untouched by it, and so is the release gate's relative
 residual. It affects a reader only where an amount leaves the unit. That is the
 liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28. There it biases the split between stored and exhausted agent, not the
+item 28. Since `PL-KZ99`, `core/liquid_agent.py` is where an amount leaves
+the unit, and nothing on screen reads it yet. It converts a delivered or
+exhausted amount exactly and reads a store 5.8 % high, and its docstring says
+so. There it biases the split between stored and exhausted agent, not the
 delivered total, and the delivered total is the figure that means cost.
 Removing this limitation would need a gas-phase model that carries explicit
 conditions per compartment. That is well outside the current milestone. It is
