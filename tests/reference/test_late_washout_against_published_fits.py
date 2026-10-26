@@ -248,6 +248,7 @@ from test_published_wash_in_and_elimination import (
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.numerical_envelope import PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.supported_ranges import maximum_step_count
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
@@ -896,7 +897,10 @@ def _washout_curve(
     if muscle_tissue_gas_partition_coefficient is not None:
         system.patient.muscle = replace(
             system.patient.muscle,
-            tissue_gas_partition_coefficient=muscle_tissue_gas_partition_coefficient,
+            tissue_gas_partition_coefficient=PartitionCoefficient(
+                muscle_tissue_gas_partition_coefficient,
+                name="muscle_tissue_gas_partition_coefficient",
+            ),
         )
     metabolised = 0.0
 

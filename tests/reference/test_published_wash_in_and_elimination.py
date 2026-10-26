@@ -316,6 +316,7 @@ import pytest
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
@@ -934,9 +935,11 @@ class StoredParameterChange:
         patient = load_reference_adult_parameters()
 
         if self.parameter in AGENT_PARAMETER_FIELDS:
-            changed_agent = replace(
-                agent, **{self.parameter: getattr(agent, self.parameter) * self.factor}
+            changed_coefficient = PartitionCoefficient(
+                getattr(agent, self.parameter) * self.factor, name=self.parameter
             )
+            changed_agent = replace(agent, **{self.parameter: changed_coefficient})
+
             return AgentUptakeSystem(
                 circuit=system.circuit,
                 alveoli=system.alveoli,
@@ -944,9 +947,10 @@ class StoredParameterChange:
             )
 
         if self.parameter in PATIENT_COMPARTMENT_FIELDS:
-            changed_patient = replace(
-                patient, **{self.parameter: getattr(patient, self.parameter) * self.factor}
+            changed_volume = CompartmentVolume(
+                getattr(patient, self.parameter) * self.factor, name=self.parameter
             )
+            changed_patient = replace(patient, **{self.parameter: changed_volume})
 
             return AgentUptakeSystem(
                 circuit=system.circuit,
@@ -955,10 +959,15 @@ class StoredParameterChange:
             )
 
         if self.parameter == ALVEOLAR_GAS_VOLUME_FIELD:
-            system.alveoli.gas_volume_l = patient.alveolar_gas_volume_l * self.factor
+            system.alveoli.gas_volume_l = CompartmentVolume(
+                patient.alveolar_gas_volume_l * self.factor, name=self.parameter
+            )
         elif self.parameter == CIRCUIT_VOLUME_FIELD:
             system.circuit.set_circuit_volume(
-                load_reference_circle_system_parameters().circuit_volume_l * self.factor
+                CompartmentVolume(
+                    load_reference_circle_system_parameters().circuit_volume_l * self.factor,
+                    name=self.parameter,
+                )
             )
         else:
             raise ValueError(f"no stored parameter is named {self.parameter!r}")
@@ -1009,7 +1018,10 @@ def _configured_system(
     if vessel_rich_tissue_gas_partition_coefficient is not None:
         system.patient.vessel_rich = replace(
             system.patient.vessel_rich,
-            tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
+            tissue_gas_partition_coefficient=PartitionCoefficient(
+                vessel_rich_tissue_gas_partition_coefficient,
+                name="vessel_rich_tissue_gas_partition_coefficient",
+            ),
         )
 
     if change is not None:

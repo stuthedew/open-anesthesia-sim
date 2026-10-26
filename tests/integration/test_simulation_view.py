@@ -205,6 +205,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
@@ -3628,7 +3629,7 @@ def test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent(
     """
 
     settings = {
-        "circuit_volume_l": 4.5,
+        "circuit_volume_l": CompartmentVolume(4.5),
         "fresh_gas_flow_l_min": FreshGasFlow(2.5),
         "alveolar_ventilation_l_min": AlveolarVentilation(5.5),
         "cardiac_output_l_min": CardiacOutput(6.5),

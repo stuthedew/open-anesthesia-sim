@@ -78,7 +78,9 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from math import inf, isfinite
+from typing import Final
 
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
@@ -91,6 +93,27 @@ from anesthesia_sim.core.validation import require_positive_finite
 
 _PropagatorKey = tuple[UptakeEquationSettings, float]
 """A stretch's settings and an interval, which are everything a propagator is formed from."""
+
+MAXIMUM_WINDOW_COLUMNS: Final = 100_000
+"""The largest number of columns that one call to `evaluate` or `evaluate_anchored` may ask for.
+
+A window costs one matrix-vector product per column, about 6.2 us each
+(`PL-2FM6`), so this many columns take about 0.6 s. The chart asks for one
+column per logical pixel of its plot (`app/chart_frame.py`, `chart_columns`).
+An 8K display is 7 680 pixels wide at a device-pixel ratio of one, so a plot
+across all of it asks for less than a tenth of the bound. The bound therefore
+rejects no window that a chart draws. It exists so that a request too large for
+any screen to show fails at once with a named error. Without it,
+`evaluate_anchored` at a spacing of 1e-300 s over one second would loop about
+1e300 times and never return (`PL-06LS`).
+
+For `evaluate_anchored`, the bound counts the grid multiples after `start_s`
+and up to `stop_s`, which is how many times `_anchored_columns` loops. A
+multiple that falls on `stop_s` is drawn as the window's stop rather than as a
+grid column, so the count can be one more than the grid columns drawn. The
+window's start and the events inside it add columns beyond the count. The
+run's own record limits the events, not the request.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -566,14 +589,27 @@ class RunDefinition:
                 column, only `start_s` is sampled.
 
         Raises:
-            SimulationConfigurationError: `columns` is less than one, either
-                bound is not finite, either bound precedes `opened_at_s`,
-                `stop_s` precedes `start_s`, or `stop_s` is past the time the
-                run has reached.
+            TypeError: `columns` is not an `int`, or is a `bool`.
+            SimulationConfigurationError: `columns` is less than one or more
+                than `MAXIMUM_WINDOW_COLUMNS`, either bound is not finite,
+                either bound precedes `opened_at_s`, `stop_s` precedes
+                `start_s`, or `stop_s` is past the time the run has reached.
         """
+
+        if isinstance(columns, bool) or not isinstance(columns, int):
+            raise TypeError(
+                f"columns of {shown(columns)} has type {type(columns).__name__}, not int: "
+                "a window is sampled at a whole number of instants"
+            )
 
         if columns < 1:
             raise SimulationConfigurationError(f"a window needs at least one column, not {columns}")
+
+        if columns > MAXIMUM_WINDOW_COLUMNS:
+            raise SimulationConfigurationError(
+                f"a window of {columns} columns is more than the {MAXIMUM_WINDOW_COLUMNS} "
+                "that one call may ask for"
+            )
 
         self._require_within_run(start_s)
         self._require_within_run(stop_s)
@@ -712,7 +748,11 @@ class RunDefinition:
                 `opened_at_s`, `stop_s` precedes `start_s`, `stop_s` is past
                 the time the run has reached, or `spacing_s` is so fine that
                 the grid's multiples up to `stop_s` cannot be counted. Before
-                `PL-YZ17`, that last case raised a bare `OverflowError`. A
+                `PL-YZ17`, that last case raised a bare `OverflowError`. It is
+                also raised when the window holds more than
+                `MAXIMUM_WINDOW_COLUMNS` grid multiples, counted as that
+                constant's docstring says. Before `PL-06LS`, such a window
+                looped once per multiple and could fail to return. A
                 fine spacing is otherwise accepted. Unlike a run's step, it is
                 chained at most once per column, so its rounding error does
                 not accumulate beyond what the columns asked for.
@@ -732,6 +772,22 @@ class RunDefinition:
             raise SimulationConfigurationError(
                 f"a column spacing of {spacing_s} s puts more grid columns before {stop_s} s "
                 "than can be counted"
+            )
+
+        # `_anchored_columns` loops once for each multiple in this range, so
+        # this is exactly how many times it loops. Each quotient is a finite
+        # float, and `int()` converts it without rounding. At a very fine
+        # spacing the quotients are themselves rounded, so the message gives
+        # the count to six significant figures rather than as a long integer
+        # whose later digits are rounding error.
+        grid_multiples = int(stop_s // spacing_s) - int(start_s // spacing_s)
+
+        if grid_multiples > MAXIMUM_WINDOW_COLUMNS:
+            raise SimulationConfigurationError(
+                f"a column spacing of {spacing_s} s puts {float(grid_multiples):.6g} grid "
+                "multiples after "
+                f"{start_s} s and up to {stop_s} s, more than the {MAXIMUM_WINDOW_COLUMNS} that "
+                "one call may ask for"
             )
 
         times_s, grid_index = self._anchored_columns(start_s, stop_s, spacing_s)

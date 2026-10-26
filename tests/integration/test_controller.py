@@ -14,9 +14,14 @@ from anesthesia_sim.app.controller import (
     RunSettings,
     RunStatus,
     SimulationController,
+    SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
-from anesthesia_sim.app.formatting import format_supported_run_length
+from anesthesia_sim.app.formatting import (
+    MAC_UNIT_SUFFIX,
+    format_mac_multiple,
+    format_supported_run_length,
+)
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -46,6 +51,7 @@ from anesthesia_sim.core.governing_equations import (
     STATE_SIZE,
     UptakeEquationSettings,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     load_agent_parameters,
@@ -278,7 +284,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 
     controller = SimulationController(
         agent_id="sevoflurane",
-        circuit_volume_l=5.0,
+        circuit_volume_l=CompartmentVolume(5.0),
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
         delivered_concentration_percent=Percent(3.0),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),
@@ -322,7 +328,7 @@ def _run_with_non_default_settings(agent_id: str) -> SimulationController:
 
     return SimulationController(
         agent_id=agent_id,
-        circuit_volume_l=4.5,
+        circuit_volume_l=CompartmentVolume(4.5),
         fresh_gas_flow_l_min=FreshGasFlow(2.5),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),
         cardiac_output_l_min=CardiacOutput(6.5),
@@ -702,7 +708,7 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
 
     assert not hasattr(SimulationController, "set_circuit_volume")
 
-    controller = SimulationController(circuit_volume_l=5.0)
+    controller = SimulationController(circuit_volume_l=CompartmentVolume(5.0))
     controller.start()
     _advance_for(controller, duration_s=10.0)
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
@@ -2640,7 +2646,10 @@ def test_a_settings_mismatch_names_the_setting_that_differs(
     before = trunk.snapshot()
     on_file = load_agent_parameters(before.agent_id)
     edited = dataclasses.replace(
-        on_file, blood_gas_partition_coefficient=on_file.blood_gas_partition_coefficient + 0.05
+        on_file,
+        blood_gas_partition_coefficient=PartitionCoefficient(
+            on_file.blood_gas_partition_coefficient + 0.05
+        ),
     )
     monkeypatch.setattr(uptake_system, "load_agent_parameters", lambda agent_id: edited)
 
@@ -2662,7 +2671,9 @@ def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
 
     trunk = _trunk_with_two_changes()
     on_file = load_reference_adult_parameters()
-    edited = dataclasses.replace(on_file, muscle_volume_l=on_file.muscle_volume_l + 1.0)
+    edited = dataclasses.replace(
+        on_file, muscle_volume_l=CompartmentVolume(on_file.muscle_volume_l + 1.0)
+    )
     monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
 
     with pytest.raises(SimulationConfigurationError) as refusal:
@@ -3309,6 +3320,93 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     assert after.agent_id == "desflurane"
     assert after.control_timeline == ()
     assert after.bookmarks.mac_targets == (target,)
+
+
+def _run_to_halt(
+    controller: SimulationController, reading_of: Callable[[SimulationSnapshot], Fraction]
+) -> tuple[float, SimulationSnapshot]:
+    """Advance one step at a time until a mark halts the run.
+
+    Returns the reading on the step before the halt, in multiples of MAC, and
+    the halted snapshot.
+    """
+
+    mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
+    before = float(reading_of(controller.snapshot())) / mac_fraction
+    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        snapshot = controller.snapshot()
+        if snapshot.bookmark_halt is not None:
+            return before, snapshot
+        before = float(reading_of(snapshot)) / mac_fraction
+    raise AssertionError("no mark halted the run within 60 s")
+
+
+def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
+    controller = SimulationController()
+    controller.set_agent("sevoflurane")
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    return controller
+
+
+def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
+    """The simulation halts within one simulation step of the mark, as `docs/MODEL.md` now says.
+
+    A mark is the target value that the learner sets for a reading. The simulation halts when
+    the reading crosses it. § "Halting on a marked crossing" used to say that the value
+    displayed beside a halt is the value the learner marked (`PL-M8F6`). The specification
+    now gives this case as its first example. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC
+    circuit target halts showing 0.11 ×MAC, one display count past its mark.
+    """
+
+    controller = _sevoflurane_at_8_percent_and_10_l_min()
+    mark = MacMultiple(0.10)
+    controller.add_mac_target(MacTarget(RecordedQuantity.CIRCUIT, mark))
+    controller.start()
+
+    before, halted = _run_to_halt(
+        controller, lambda snapshot: snapshot.inspired_partial_pressure_fraction
+    )
+
+    # The halting step is the one that crossed: the reading before it was
+    # below the mark, and its own reading is at or past it.
+    mac_fraction = float(fraction_from_percent(halted.agent_mac_percent))
+    assert before < mark <= float(halted.inspired_partial_pressure_fraction) / mac_fraction
+    assert format_mac_multiple(
+        halted.inspired_partial_pressure_fraction, halted.agent_mac_percent
+    ) == (f"0.11{MAC_UNIT_SUFFIX}")
+
+
+def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_resumes() -> None:
+    """In one simulation step, a reading can move more than one display count past its mark.
+
+    A display count is one unit of the last digit shown. This test is the second example in
+    `docs/MODEL.md` § "Halting on a marked crossing". After 120 s with no alveolar
+    ventilation, the circuit has filled but the alveolar reading is still zero. When
+    ventilation is restored to 12 L/min, the alveolar reading rises fast enough that a
+    0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
+    """
+
+    controller = _sevoflurane_at_8_percent_and_10_l_min()
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    controller.start()
+    for _ in range(round(120.0 / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    assert controller.snapshot().alveolar_partial_pressure_fraction == 0.0
+    mark = MacMultiple(0.10)
+    controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, mark))
+    controller.set_alveolar_ventilation(AlveolarVentilation(12.0))
+
+    before, halted = _run_to_halt(
+        controller, lambda snapshot: snapshot.alveolar_partial_pressure_fraction
+    )
+
+    mac_fraction = float(fraction_from_percent(halted.agent_mac_percent))
+    assert before < mark <= float(halted.alveolar_partial_pressure_fraction) / mac_fraction
+    assert format_mac_multiple(
+        halted.alveolar_partial_pressure_fraction, halted.agent_mac_percent
+    ) == (f"0.12{MAC_UNIT_SUFFIX}")
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:

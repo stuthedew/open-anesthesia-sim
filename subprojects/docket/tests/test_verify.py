@@ -761,7 +761,7 @@ def test_a_type_ignore_is_not_a_suppression(tmp_path: Path) -> None:
     them, every one carrying an explicit error code, and not one a disabled
     test, which is what this check exists to catch. Whether an ignore is load-bearing is a
     mypy question, and mypy is asked it everywhere: `strict = true` runs
-    `warn_unused_ignores` over `[tool.mypy] files`, and `tools/ignore_check.py`
+    `warn_unused_ignores` over `[tool.mypy] files`, and `tools/type_ignore_check.py`
     runs the same setting over the two test trees that list excludes
     (`PL-G21K`, `PL-J5NN`).
     """

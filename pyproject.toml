@@ -145,7 +145,7 @@ dev = [
     "pyyaml>=6.0.3",
     "ruff>=0.16.4",
     # PyYAML ships no types, so without its typeshed stubs the import above is
-    # unresolved to `tools/ignore_check.py`, which then declines to judge any
+    # unresolved to `tools/type_ignore_check.py`, which then declines to judge any
     # `type: ignore` in the test trees (`PL-R417`).
     "types-pyyaml>=6.0.12.20260906",
 ]
@@ -287,7 +287,7 @@ known-first-party = ["anesthesia_sim"]
 # least return, because a wrongly typed fake fails the test that uses it.
 #
 # `tests/` being outside the gate does not leave its `type: ignore` directives
-# unread. `tools/ignore_check.py`, in `make check` directly below the gate,
+# unread. `tools/type_ignore_check.py`, in `make check` directly below the gate,
 # runs mypy over both test trees separately and reads two things out of the
 # result: an inert directive, and an unresolved import - which would make live
 # directives look inert and so invalidates the answer rather than adding to it.
@@ -320,7 +320,7 @@ ignore_missing_imports = true
 # pytest-xdist ships neither stubs nor `py.typed` either. Only `tests/` imports
 # it - `tests/conftest.py` names the worker its controller-side hook is handed,
 # and `tests/unit/test_worksteal_dealing.py` drives its scheduler (`PL-4Z5Y`) -
-# and `tools/ignore_check.py`'s pass over `tests/` refuses an unresolved import.
+# and `tools/type_ignore_check.py`'s pass over `tests/` refuses an unresolved import.
 [[tool.mypy.overrides]]
 module = ["xdist", "xdist.*"]
 ignore_missing_imports = true

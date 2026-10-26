@@ -240,9 +240,8 @@ Four limits decide what a citation may claim:
   **Reading a source from the corpus owes an extraction note back here.**
   Otherwise the corpus is consulted once per *session* rather than once per
   *source*, and every later session re-reads the same PDF at full context.
-  Where that note lives and what may lawfully go in it is
-  `docs/references/README.md`; `PL-Z3V5` carries the note's fields and the
-  first worked example.
+  `docs/references/README.md` says where the note lives, what may lawfully go
+  in it, and the fields it gives, with a worked example.
 
 ## A search result is not a source
 

@@ -177,7 +177,7 @@ from anesthesia_sim.core.checked_number import (
     shown,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SimulationStep, require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
 
 # Fresh gas flow into the breathing circuit.
@@ -815,6 +815,50 @@ def require_supported_step_count(step_count: StepCount, simulation_step_s: Simul
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
             f"at most {limit} steps of that size; past it this model is not claimed to "
             f'represent a patient (docs/MODEL.md, "Supported run length")'
+        )
+
+
+def require_compartment_step(name: str, simulation_step_s: float) -> None:
+    """Require a step that a compartment stepped on its own may take.
+
+    A compartment's own `advance` takes a plain `float`, not a `SimulationStep`. The run's
+    ceiling, `MAXIMUM_SIMULATION_STEP_S`, limits how long the run holds its settings constant.
+    That ceiling does not apply to a compartment stepped alone, which gives a correct result at a
+    step of 1 s (`PL-WP52`). Instead, each compartment's `advance` calls this function before it
+    changes anything. This function is the one place that states which steps a compartment
+    accepts.
+
+    The floor is `MINIMUM_SIMULATION_STEP_S`. `require_at_least_the_smallest_step` checks it,
+    with the same message that it gives for the run. Below the floor, rounding error is a growing
+    share of the change in each step.
+
+    The ceiling is `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, the supported run length. One step cannot
+    stand for more simulated time than the longest span over which the model is claimed to
+    represent a patient. The ceiling also keeps every quantity computed from the step finite
+    (`PL-YT3T`). Before the ceiling existed, a step of about 1e308 s made a circuit's count of
+    elapsed time constants overflow to `inf`. `BreathingCircuit.advance_fresh_gas` then returned
+    an exhaust of `inf` or `nan` without raising an error. Take the smallest circuit that the
+    numerical envelope allows, at the largest supported fresh gas flow. A step at the ceiling
+    spans about 1.4e6 of its time constants. That count is about 300 orders of magnitude below
+    the largest `float`.
+
+    Raises:
+        TypeError: the step is not an `int` or a `float`, or is a `bool`, as
+            `require_a_number` says.
+        SimulationConfigurationError: the step is not positive and finite, is
+            shorter than `MINIMUM_SIMULATION_STEP_S`, or is longer than
+            `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    require_at_least_the_smallest_step(name, simulation_step_s)
+
+    if simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+        raise SimulationConfigurationError(
+            f"{name} of {simulation_step_s} s is longer than the supported run length of "
+            f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the most "
+            "simulated time this model is claimed to represent a patient over, so no "
+            'single step may be longer (docs/MODEL.md, "Supported simulation step")'
         )
 
 

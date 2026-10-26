@@ -95,6 +95,12 @@ from anesthesia_sim.core.concentration import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
+from anesthesia_sim.core.numerical_envelope import (
+    CompartmentVolume,
+    PartitionCoefficient,
+    require_coefficient,
+    require_compartment_volume,
+)
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -249,11 +255,12 @@ def _hold_as_exact_floats(record: object, fields: tuple[str, ...]) -> None:
     adds values of exact type `float` with Neumaier compensation, and adds a subclass
     without it. So the matrix exponential built from a subclass differed in 39 of its 81
     entries at 7 s (`PL-5BD7`, measured 2026-10-05). An `int` is stored as the `float` it
-    equals, for the same reason. Each field has passed `require_positive_finite`, so it
+    equals, for the same reason. Each field has passed `require_nonnegative_finite`, so it
     is an `int` or a `float` within the range a `float` can represent, and `float()`
-    changes no value. The fields that hold the checked flow and concentration types are
-    not passed here. Each of those fields has the same type in every record, so it cannot
-    be stored in two ways.
+    changes no value. The fields that hold a checked type are not passed here: the flows,
+    the concentrations, and since `PL-QX2G` the volumes and partition coefficients
+    (`core/numerical_envelope.py`). Each of those fields has the same type in every
+    record, so it cannot be stored in two ways.
     """
 
     for field in fields:
@@ -268,29 +275,33 @@ class TissueGroupEquationSettings:
     second, for the reason that `UptakeEquationSettings` gives for its own
     flows.
 
+    The volume and the partition coefficient are checked types, built only
+    inside the numerical envelope (`core/numerical_envelope.py`). So the
+    product in `washin_rate_s` is positive and finite for every record. Before
+    `PL-QX2G` both were checked only as positive and finite, and a volume of
+    1e-300 L with a coefficient of 1e-30 made that product underflow to zero.
+
     Raises:
-        SimulationConfigurationError: any value is outside its domain. The
-            volume and the partition coefficient must be positive and finite,
-            and the blood flow must be nonnegative and finite. The values are
-            checked here so that a matrix is never assembled from a parameter
-            set that could not describe a tissue.
+        TypeError: the volume was not built as a `CompartmentVolume`, or the
+            coefficient as a `PartitionCoefficient`.
+        SimulationConfigurationError: the blood flow is negative or not
+            finite. The flow is checked here so that a matrix is never
+            assembled from a parameter set that could not describe a tissue.
     """
 
     name: str
-    volume_l: float
+    volume_l: CompartmentVolume
     blood_flow_l_min: float
-    tissue_blood_partition_coefficient: float
+    tissue_blood_partition_coefficient: PartitionCoefficient
 
     def __post_init__(self) -> None:
-        require_positive_finite(f"{self.name} volume_l", self.volume_l)
+        require_compartment_volume(f"{self.name} volume_l", self.volume_l)
         require_nonnegative_finite(f"{self.name} blood_flow_l_min", self.blood_flow_l_min)
-        require_positive_finite(
+        require_coefficient(
             f"{self.name} tissue_blood_partition_coefficient",
             self.tissue_blood_partition_coefficient,
         )
-        _hold_as_exact_floats(
-            self, ("volume_l", "blood_flow_l_min", "tissue_blood_partition_coefficient")
-        )
+        _hold_as_exact_floats(self, ("blood_flow_l_min",))
 
     @property
     def blood_flow_l_s(self) -> float:
@@ -316,7 +327,7 @@ class TissueGroupEquationSettings:
 @dataclass(frozen=True, slots=True)
 class UptakeEquationSettings:
     """Everything that the governing equations need and a step does not change,
-    plus the one bound that a run owes its reader.
+    plus the vaporizer maximum that bounds the dial.
 
     The record is frozen and compared by value, because `uptake_system.py` uses
     it as the key under which its propagator is cached. Two steps taken under
@@ -324,21 +335,22 @@ class UptakeEquationSettings:
     different setting must not. The key is the same object from which the
     matrix is built. That makes a stale propagator impossible to represent,
     rather than merely unlikely. A run also stores one of these records for
-    each stretch (`core/run_definition.py`). A stretch that cannot show that
-    its dial setting was deliverable is incomplete. That is why the record
-    carries one field that the matrix never reads, described below.
+    each stretch of unchanged settings (`core/run_definition.py`). A stretch
+    that cannot show that its dial setting was deliverable is incomplete. That
+    is why the record carries one field that the matrix never reads, described
+    below.
 
     **Flows are stored in the litres per minute to which they were set, and
     read in litres per second.** `docs/MODEL.md` § "Governing equations" writes
     every flow term per second. So each flow has a per-second property, and
-    `build_system_matrix` reads only those properties, which keeps the
-    conversion out of every equation. The value as set is what is stored,
-    because this object is also what a run records for each stretch
+    `build_system_matrix` reads only those properties. That keeps the
+    conversion out of every equation. The value as set is what is stored, for
+    two reasons. A run also records this object for each stretch
     (`core/run_definition.py`), and the conversion does not reverse exactly. A
     cardiac output of 1.9 L/min, divided by sixty and multiplied back, is
     1.8999999999999997, and settings rebuilt from that value differ in all
     three tissue flows (`PL-SM5V`). `docs/MODEL.md` § "Time" states which of
-    the two values is the record.
+    the two values is the one recorded.
 
     **The delivered concentration is stored as the percent that was dialled,
     and read as a fraction**, for the same reason (`PL-NJPB`). The equations
@@ -351,9 +363,9 @@ class UptakeEquationSettings:
     **Each flow is a checked type, so no record can store a flow outside its
     supported range** (`PL-HSFV`, `PL-0YYV`). A run is built from this record.
     A record built anywhere other than `AgentUptakeSystem.equation_settings`
-    passes through no compartment. So while the flows were bare floats that
-    each compartment range-checked, a `RunDefinition` opened under a cardiac
-    output of 1000 L/min and simulated it. The three flow fields take
+    passes through no compartment. The flows used to be bare floats, and only
+    the compartments checked their ranges. So a `RunDefinition` opened under a
+    cardiac output of 1000 L/min and simulated it. The three flow fields take
     `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, which cannot be
     built outside their ranges (`core/supported_ranges.py`). So nothing here
     checks a range again, and a bare `float` is rejected as the programming
@@ -365,66 +377,73 @@ class UptakeEquationSettings:
     (`PL-BBMG`). The limit on the delivered concentration is the maximum of
     the agent's vaporizer, not a constant of the model, so no type can enforce
     it. A dial setting is deliverable only relative to a maximum, so the check
-    belongs to a record that stores both. That is where
+    belongs to a record that stores both. This is the point at which
     `.claude/rules/core-domain.md` stops the checked-type pattern. Until
-    `PL-BBMG`, this record stored the dial alone and bounded it at the 100 to
-    which every percent is held. So a record rebuilt with `dataclasses.replace`
-    to 20% sevoflurane, against an 8% maximum, opened a run and returned a
-    precise-looking trace. The record now carries
-    `max_delivered_concentration_percent`, which is required and has no
-    default. It rejects a dial above that maximum through
+    `PL-BBMG`, this record stored the dial alone and bounded it only at 100,
+    the upper limit of every percent. So `dataclasses.replace` could rebuild a
+    record at 20% sevoflurane, although the vaporizer maximum was 8%. That
+    record opened a run, which returned a precise-looking trace. The record
+    now carries `max_delivered_concentration_percent`, which is required and
+    has no default. It rejects a dial above that maximum through
     `require_within_vaporizer_maximum`, the guard that `BreathingCircuit`
     calls, so the two reject it with the same message. The field has no
     default because `BreathingCircuit` sets its maximum to 100% by default for
     a circuit built without an agent. A record with the same default would
     reopen, under a new field, the gap that this field closes. The matrix
     never reads the maximum. `AgentUptakeSystem` copies it from the circuit
-    into every record it builds, and so into the propagator cache key with the
-    rest of the record. Both values are `Percent`s, checked against 0 to 100
-    when they were built (`core/concentration.py`). So this record checks
-    their type, and does not check that range again (`PL-4R3W`). What it still
-    checks is the relation between them, and that the maximum is above zero.
+    into every record it builds. So the maximum also enters the propagator
+    cache key, with the rest of the record. Both values are `Percent`s,
+    checked against 0 to 100 when they were built (`core/concentration.py`).
+    So this record checks their type, and does not check that range again
+    (`PL-4R3W`). What it still checks is the relation between them, and that
+    the maximum is above zero.
+
+    **Each volume and the blood:gas coefficient is a checked type too**
+    (`PL-QX2G`). `CompartmentVolume` and `PartitionCoefficient` are built only
+    inside the numerical envelope (`core/numerical_envelope.py`). Inside it,
+    every rate in `build_system_matrix` is finite, and the step's propagator
+    needs at most 19 squarings. Before `PL-QX2G` the volumes were checked only
+    as positive and finite. So a record could hold an alveolar volume that no
+    step accepts, and the volume was refused only when the propagator was
+    computed (`PL-2MD9`, `PL-3PRZ`).
 
     Raises:
-        SimulationConfigurationError: a volume or the blood:gas partition
-            coefficient is not positive and finite, the vaporizer maximum is
-            zero, the delivered concentration is above the vaporizer
-            maximum, the number of tissue groups is not the three that
-            `patient.py` builds, or the tissue flows do not sum to cardiac
-            output.
+        SimulationConfigurationError: the vaporizer maximum is zero, the
+            delivered concentration is above the vaporizer maximum, the
+            number of tissue groups is not the three that `patient.py`
+            builds, or the tissue flows do not sum to cardiac output.
         TypeError: a flow was not built as its checked type from
-            `core/supported_ranges.py`. Also raised when the delivered
+            `core/supported_ranges.py`, a volume as a `CompartmentVolume`, or
+            the blood:gas coefficient as a `PartitionCoefficient`
+            (`core/numerical_envelope.py`). Also raised when the delivered
             concentration or the vaporizer maximum was not built as a
             `Percent` from `core/concentration.py`, or when the record was
             built without a vaporizer maximum.
     """
 
-    circuit_volume_l: float
-    alveolar_volume_l: float
-    venous_volume_l: float
+    circuit_volume_l: CompartmentVolume
+    alveolar_volume_l: CompartmentVolume
+    venous_volume_l: CompartmentVolume
     fresh_gas_flow_l_min: FreshGasFlow
     alveolar_ventilation_l_min: AlveolarVentilation
     cardiac_output_l_min: CardiacOutput
-    blood_gas_partition_coefficient: float
+    blood_gas_partition_coefficient: PartitionCoefficient
     delivered_concentration_percent: Percent
     max_delivered_concentration_percent: Percent
     tissues: tuple[TissueGroupEquationSettings, ...]
 
     def __post_init__(self) -> None:
-        # Store `tissues` as a tuple, and the fields `_hold_as_exact_floats` is given as
-        # plain floats, whatever sequence and float subclass the record was built from.
-        # Then two equal records build the same propagator bit for bit, and every record
-        # can be a cache key (`PL-5BD7`).
+        # Store `tissues` as a tuple, whatever sequence the record was built from, so that
+        # every record can be a cache key (`PL-5BD7`). Every other field holds a checked
+        # type, so equal values in a field always have the same type.
         object.__setattr__(self, "tissues", tuple(self.tissues))
-        require_positive_finite("circuit_volume_l", self.circuit_volume_l)
-        require_positive_finite("alveolar_volume_l", self.alveolar_volume_l)
-        require_positive_finite("venous_volume_l", self.venous_volume_l)
+        require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
+        require_compartment_volume("alveolar_volume_l", self.alveolar_volume_l)
+        require_compartment_volume("venous_volume_l", self.venous_volume_l)
         require_fresh_gas_flow(self.fresh_gas_flow_l_min)
         require_alveolar_ventilation(self.alveolar_ventilation_l_min)
         require_cardiac_output(self.cardiac_output_l_min)
-        require_positive_finite(
-            "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
-        )
+        require_coefficient("blood_gas_partition_coefficient", self.blood_gas_partition_coefficient)
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
@@ -437,16 +456,6 @@ class UptakeEquationSettings:
             self.delivered_concentration_percent,
             self.max_delivered_concentration_percent,
         )
-        _hold_as_exact_floats(
-            self,
-            (
-                "circuit_volume_l",
-                "alveolar_volume_l",
-                "venous_volume_l",
-                "blood_gas_partition_coefficient",
-            ),
-        )
-
         if len(self.tissues) != TISSUE_GROUP_COUNT:
             raise SimulationConfigurationError(
                 f"the model has {TISSUE_GROUP_COUNT} tissue groups but "

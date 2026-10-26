@@ -69,7 +69,7 @@ discriminate, rewrite it - and `PL-D1RT`'s `Done when.` fits neither, because
 
 - It requires "item 33's placement note says it is **absorbed by the port
   milestone**". `ROADMAP.md:308` now records that absorption **reversed on
-  2026-09-16** (project owner, on `PL-L9RD`), and item 33 is restored to a row of
+  2026-09-16** (project owner, 2026-09-16, ratified, on `PL-L9RD`), and item 33 is restored to a row of
   its own.
 - It assumes the `v0.5.x - the interface pass` row was **deleted**. `PL-PHKP`
   **kept** it and renumbered it `v0.7.x` (project owner, 2026-09-16, ratified).

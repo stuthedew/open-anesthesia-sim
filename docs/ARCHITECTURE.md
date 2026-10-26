@@ -81,6 +81,7 @@ src/anesthesia_sim/
 │   ├── units.py                   # seconds, minutes, hours, milliseconds: the factors between them, each written once
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
 │   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
+│   ├── numerical_envelope.py      # where core's arithmetic is shown correct: CompartmentVolume and PartitionCoefficient, which cannot hold a volume or a coefficient outside it, and the one place the tissue:blood quotient is formed
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient/machine JSON data
 │   ├── circuit.py                 # breathing circuit compartment
@@ -335,8 +336,8 @@ different treatment:
 - `SimulationConfigurationError` means that a value was rejected before it
   changed anything. The guards in `core/validation.py` raise it. So do the
   checked types' constructors (`Fraction`, `Percent` and `MacPercent` in
-  `core/concentration.py`, and those in `core/supported_ranges.py` and
-  `core/simulation_step.py`). Compartment constructors and setters raise it
+  `core/concentration.py`, and those in `core/supported_ranges.py`,
+  `core/simulation_step.py` and `core/numerical_envelope.py`). Compartment constructors and setters raise it
   too. So does a compartment field written directly, because its record
   checks every write in `__setattr__` (`PL-19Y0`). The parameter-file loaders
   raise it as well.

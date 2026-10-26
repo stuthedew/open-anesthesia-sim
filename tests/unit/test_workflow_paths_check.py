@@ -296,7 +296,7 @@ def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
     is.
     """
     paths = workflow_paths_check.declared_workflow_paths(ROOT)
-    for stem in ("pr_title_check", "branch_id_check", "ignore_check"):
+    for stem in ("pr_title_check", "branch_id_check", "type_ignore_check"):
         item = parse_item(
             "---\n"
             "id: PL-T3ST\n"

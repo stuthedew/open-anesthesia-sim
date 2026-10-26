@@ -1,20 +1,18 @@
 """Tests of the two checked forms of a concentration, and of the conversion between them.
 
-`core/concentration.py` states the rule, and these tests enforce it. A
-"crossing" below is one of the two functions that convert between the forms.
-`Fraction` and `Percent` are checked against their ranges when they are
-built. So the edges of each range are pinned here once, on the constructor,
-rather than at each place that stores a value (`PL-4R3W`).
+`core/concentration.py` states the rules that these tests check. Below, a "crossing" means
+one of the two functions that convert between the forms. `Fraction` and `Percent` check
+their ranges when they are built. So the tests below check the edges of each range once,
+on the constructor, rather than at each place that stores a value (`PL-4R3W`).
 
-Several tests below pass a value of the wrong type to a parameter, in a call
-that `mypy` would reject. The mechanism needs explaining. `tests/` is outside
-`[tool.mypy] files`, so the mypy gate does not check a `# type: ignore` here.
-Instead `tools/ignore_check.py` checks it. That tool runs mypy over this tree
-with `warn_unused_ignores` on, and reports any directive that is no longer
-needed. So if a directive below stops having an effect, `make check` fails,
-and that failure is the assertion that `mypy` still rejects the call. The
-test's own assertion covers what the call does at run time. Since `PL-4R3W`,
-each of these calls is refused at run time too (`PL-WVSK`).
+Several tests below pass a value of the wrong type to a parameter, in a call that `mypy`
+would reject. The mypy gate does not check the `# type: ignore` on such a call, because
+`tests/` is outside `[tool.mypy] files`. Instead, `tools/type_ignore_check.py` checks it.
+That tool runs mypy over this tree with `warn_unused_ignores` on, and reports any directive
+that is no longer needed. So if a directive below stops having an effect, `make check`
+fails. That failure is what shows that `mypy` still rejects the call. The test's own
+assertion covers what the call does at run time. Each of these calls is also rejected at
+run time, and has been since `PL-4R3W` (`PL-WVSK`).
 """
 
 import copy
@@ -44,6 +42,7 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_sevoflurane_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
@@ -524,7 +523,8 @@ def test_a_fraction_reaching_a_percent_parameter_is_refused() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     with pytest.raises(
@@ -540,7 +540,7 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
     """The same missing conversion the other way round makes a value a hundred times too large."""
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=Percent(100.0)
+        circuit_volume_l=CompartmentVolume(6.0), max_delivered_concentration_percent=Percent(100.0)
     )
 
     with pytest.raises(
@@ -634,7 +634,8 @@ def test_a_percent_built_from_a_fractions_value_is_not_caught() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     circuit.set_delivered_concentration_percent(Percent(0.08))
@@ -699,17 +700,20 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
 
     with pytest.raises(TypeError, match="^delivered_concentration_percent of 2.0 was not built"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             delivered_concentration_percent=2.0,  # type: ignore[arg-type]
         )
 
     with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
-        BreathingCircuit(circuit_volume_l=6.0, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
+        BreathingCircuit(
+            circuit_volume_l=CompartmentVolume(6.0),
+            max_delivered_concentration_percent=8.0,  # type: ignore[arg-type]
+        )
 
     with pytest.raises(TypeError, match="^inspired_partial_pressure_fraction of 0.0 was not built"):
         BreathingCircuit(
-            circuit_volume_l=6.0,
+            circuit_volume_l=CompartmentVolume(6.0),
             max_delivered_concentration_percent=Percent(100.0),
             inspired_partial_pressure_fraction=0.0,  # type: ignore[arg-type]
         )
@@ -807,7 +811,8 @@ def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_i
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT
+        circuit_volume_l=CompartmentVolume(6.0),
+        max_delivered_concentration_percent=SEVOFLURANE_MAXIMUM_PERCENT,
     )
 
     with pytest.raises(SimulationConfigurationError, match="percent of 150.0 is outside 0 to 100"):
