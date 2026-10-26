@@ -244,32 +244,37 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # declared envelope argued against that omission, not a number derived from a
 # metabolic rate.
 #
-# **Why 24 hours.** There are two reasons. First, it is longer than every
+# **Why 24 hours.** There are two reasons. First, 24 hours is longer than every
 # anesthetic this simulator exists to teach, by a wide margin. Second, it is
-# about 0.6 of sevoflurane's fat time constant of roughly 42 h. A first-order
-# compartment has gone a little over two fifths of the way to equilibrium at
-# that fraction. So the fat compartment is still visibly loading, and the
-# slow-compartment demonstration survives. A cap of a few hours would cut off
-# the one thing the fat trace exists to show.
+# about 0.6 of sevoflurane's fat time constant of roughly 42 h. After 0.6 of a
+# time constant, a first-order compartment has gone a little over two fifths of
+# the way to equilibrium. So the fat compartment is still visibly loading when
+# the run stops, and the run can still demonstrate a slow compartment. A cap of
+# a few hours would cut off the one thing the fat trace exists to show.
 #
-# **The span is not inside the measured exposure range** (`PL-MLPT`). The
-# review above measured how sevoflurane's metabolism scales with dose only
-# from 0.35 to 9.5 MAC-hours. The cap bounds elapsed time, not exposure. Every
-# agent's dial opens at its 1 MAC, and a run held near 1 MAC accumulates about
-# one MAC-hour per hour. So such a run leaves the measured range at about 9.5
-# hours, and reaches about 24 MAC-hours at the cap. A run held at a higher
-# setting reaches more. From the point where a run leaves that range, even the
-# size of the omission is unmeasured. The 24 hours rests on the argument above
-# that the omission grows progressively and without a cliff, not on that range.
+# **The 24-hour span is not inside the measured exposure range** (`PL-MLPT`).
+# The review above reports how sevoflurane's metabolism scales with dose only
+# from 0.35 to 9.5 MAC-hours. The cap limits elapsed time, not exposure. A
+# MAC-hour is conventionally counted at the end-tidal concentration, which is
+# this model's alveolar fraction. A run whose alveolar fraction is held near
+# 1 MAC accumulates about one MAC-hour per hour. So such a run leaves the
+# measured range at about 9.5 hours, and reaches about 24 MAC-hours at the cap.
+# Every agent's dial starts at that agent's 1 MAC, and the alveolar fraction
+# stays below the dial during uptake, so a run left at the dial accumulates
+# somewhat less. A run held at a higher setting reaches more. Once a run leaves that range, nobody
+# has measured even how large the omitted metabolism is. So the 24 hours does
+# not rest on that range. It rests on the argument above, that the error from
+# the omission grows progressively and has no cliff.
 #
-# **The fat time constant sets a floor on the cap here, not a unit to
-# multiply.** This project already declines to validate over many multiples
-# of the slowest mode. So a cap argued as "several fat time constants" would
-# favour the part of the trace that is most nearly all omission. The floor is
-# a fraction of the time constant, not a whole one: the cap must be long
-# enough that the fat compartment is still visibly loading when the run
-# stops, and 24 hours meets it. The floor says nothing about how far above it
-# a run may go.
+# **The fat time constant sets a lower bound on the cap here, not a unit to
+# multiply.** This project already declines to validate the model over many
+# multiples of its slowest mode. A cap argued as "several fat time constants"
+# would therefore give most of the run to the late tail, the part of the trace
+# that is most nearly all error from what the model omits. The lower bound is
+# a fraction of the time constant, not a whole one. The cap must be long
+# enough that the fat compartment is still visibly loading when the run stops.
+# A 24-hour cap meets that bound. The bound says nothing about how far above
+# it a run may go.
 #
 # **This is a declared envelope, not a discovered cliff**, exactly as
 # `docs/MODEL.md` § "What a setting outside the range costs" says of the three
@@ -776,8 +781,10 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
             f"this run has reached {reached}, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); this model "
-            f"is not validated past it, because it omits metabolism and its fat flow "
-            f'differs from measurement (docs/MODEL.md, "Supported run length")'
+            f"leaves out metabolism and its fat flow is uncertain, so how far the slow "
+            f"part of the trace can stray from a patient grows as a run goes on, and the "
+            f"model is not claimed to represent a patient past this length (docs/MODEL.md, "
+            f'"Supported run length")'
         )
 
 

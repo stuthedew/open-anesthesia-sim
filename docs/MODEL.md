@@ -7200,12 +7200,16 @@ simulator is built to teach by a wide margin (`PL-MLPT`).
 **The span is not inside the measured exposure range, and the 24 hours does
 not claim to be** (`PL-MLPT`). The review above measured how sevoflurane's
 metabolism scales with dose only from 0.35 to 9.5 MAC-hours. The cap bounds
-elapsed time, not exposure. Every agent's dial opens at that agent's 1 MAC,
-and a run held near 1 MAC accumulates about one MAC-hour per hour. So such a
-run leaves the measured range at about 9.5 hours, and reaches about 24
-MAC-hours at the cap. Sevoflurane's vaporizer delivers at most 8%, four times
-its 2% MAC, so a run held there reaches about 96 MAC-hours. A long run at or above
-1 MAC therefore leaves the measured range well before 24 hours, and from then
+elapsed time, not exposure. A MAC-hour is conventionally counted at the
+end-tidal concentration, which in this model is the alveolar fraction. A run
+whose alveolar fraction is held near 1 MAC accumulates about one MAC-hour per
+hour. So such a run leaves the measured range at about 9.5 hours, and reaches
+about 24 MAC-hours at the cap. Every agent's dial opens at that agent's 1 MAC.
+The alveolar fraction stays below the dial during uptake, so a run left at the
+dial accumulates somewhat less than that. Sevoflurane's vaporizer delivers at
+most 8%, four times its 2% MAC. Counted at the dial, a run held there reaches
+at most about 96 MAC-hours. A long run at or above 1 MAC end-tidal therefore
+leaves the measured range well before 24 hours, and from then
 on even the size of the omission is unmeasured. The 24 hours rests on the
 argument above instead: the omission grows progressively once only the slow
 tail is still moving, and it grows without a cliff. It does not rest on the

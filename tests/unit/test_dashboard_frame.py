@@ -943,23 +943,31 @@ def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
     assert banner == (
         "Simulation stopped — this run reached the supported run length of "
         f"{format_supported_run_length()}. "
-        "This model is not validated past this span, because it omits metabolism and "
-        "its fat flow differs from measurement. The values shown are the last completed "
-        "step, inside the supported span. Reset to start a new run."
+        "This model leaves out metabolism, and its fat flow is uncertain. How far the "
+        "slow part of the trace can stray from a patient grows as a run goes on, so the "
+        "model is not claimed to represent a patient past this span. The values shown "
+        "are the last completed step, inside the supported span. Reset to start a new run."
     )
 
 
-def test_the_supported_limit_notice_says_the_model_is_not_validated_past_the_span() -> None:
-    """The stop's reason is true for every agent, not only for sevoflurane.
+def test_the_supported_limit_notice_says_why_the_model_is_not_claimed_past_the_span() -> None:
+    """The notice's reason for stopping the run is true for every agent, not only sevoflurane.
 
-    The banner used to say that past the span the omitted metabolism and the
-    fat perfusion "dominate the trace". That is wrong pharmacology for
+    The banner used to say that past the supported span, the omitted metabolism
+    and the fat perfusion "dominate the trace". That is wrong pharmacology for
     desflurane and isoflurane, which are barely metabolized. It also
-    contradicts `core/supported_ranges.py`, which says nothing breaks at hour
-    25 and the error grows progressively. What is true for every agent is
-    that the model is not validated past the span, and why. "Fat perfusion"
-    also read as the patient's physiology, when the recorded limitation is
-    the model's stored fat flow (`PL-KHXB`).
+    contradicts `core/supported_ranges.py`, which says that nothing breaks at
+    hour 25 and that the error grows progressively. The phrase "fat perfusion"
+    could also be taken to describe the patient's physiology, when the
+    recorded limitation is the model's stored fat flow (`PL-KHXB`).
+
+    The banner may not say instead that the model is "not validated" past the
+    span. A reader would take that to mean it is validated inside it, which
+    `docs/MODEL.md` § "Published wash-in and elimination validation test"
+    does not claim. Nor may it call the fat flow wrong: the two human sources
+    that § "Known limitations" weighs disagree about which way it errs. What
+    is true for every agent is that both limitations are present from the
+    start and their cost grows with the run.
     """
 
     banner = notice(
@@ -971,11 +979,13 @@ def test_the_supported_limit_notice_says_the_model_is_not_validated_past_the_spa
     )
 
     assert banner is not None
-    assert "is not validated past this span" in banner
-    assert "omits metabolism" in banner
-    assert "fat flow differs from measurement" in banner
+    assert "leaves out metabolism" in banner
+    assert "fat flow is uncertain" in banner
+    assert "grows as a run goes on" in banner
+    assert "not claimed to represent a patient past this span" in banner
     assert "dominate" not in banner
     assert "perfusion" not in banner
+    assert "validated" not in banner
 
 
 def test_refresh_view_does_not_offer_to_resume_a_run_at_the_supported_limit() -> None:

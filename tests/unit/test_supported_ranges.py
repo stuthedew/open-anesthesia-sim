@@ -812,10 +812,12 @@ def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
 
     assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
     assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
-    assert "is not validated past it" in message
-    assert "omits metabolism" in message
-    assert "fat flow differs from measurement" in message
+    assert "leaves out metabolism" in message
+    assert "fat flow is uncertain" in message
+    assert "grows as a run goes on" in message
+    assert "not claimed to represent a patient past this length" in message
     assert "dominate" not in message
+    assert "validated" not in message
     assert "Supported run length" in message
 
 
