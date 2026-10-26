@@ -414,14 +414,165 @@ PROSE_UNCOUNTED = (
 )
 
 #: The commit trailer a session records close-out step 9's blind generalist
-#: review passes in, with the value `passes N, findings F, fixed X, filed Y,
-#: rejected Z` (`PL-HDRN`). The newest such record covers the branch while its
-#: `passes` is at least the number `blind_count_command` says the branch owes.
-#: A later change does not undo it, because close-out step 9 says a fix made
-#: for a finding needs no further pass. A later change that raises the number
-#: owed, such as a first change to the model's code, does.
+#: review passes in (`PL-HDRN`). Its value lists every finding by pass, as
+#: `parse_blind_review` reads it (`PL-0BRY`). The newest such record covers the
+#: branch while its passes are at least the number `blind_count_command` says
+#: the branch owes. A later change does not undo it, because close-out step 9
+#: says a fix made for a finding needs no further pass. A later change that
+#: raises the number owed, such as a first change to the model's code, does.
 BLIND_REVIEW = "Blind-review"
-BLIND_FORM = re.compile(r"passes (\d+), findings \d+, fixed \d+, filed \d+, rejected \d+", re.ASCII)
+
+#: The severities a blind reviewer gives a finding, in the order its brief
+#: names them. `tools/blind_review.py`'s brief reads them from here.
+BLIND_SEVERITIES = ("blocking", "should-fix", "optional")
+
+#: What happened to a finding, as close-out step 9 defines each one.
+BLIND_OUTCOMES = ("fixed", "filed", "rejected")
+
+#: The word that marks a finding a lower-numbered pass also named.
+BLIND_REPEAT = "repeat"
+
+#: The whole entry for a pass that wrote `NO FINDINGS`.
+BLIND_NONE = "none"
+
+#: One entry per finding, grouped by pass. The form `BLIND_ASK` gives.
+BLIND_EXAMPLE = (
+    "pass 1: blocking fixed, optional rejected; pass 2: blocking fixed repeat, should-fix filed"
+)
+
+#: The older form, which totals the passes together. Read for its pass count,
+#: because 28 records on merged pull requests and branches in flight use it.
+_BLIND_TOTALS = re.compile(
+    r"passes (\d+), findings (\d+), fixed (\d+), filed (\d+), rejected (\d+)", re.ASCII
+)
+_BLIND_PASS = re.compile(r"pass (\d+): (.+)", re.ASCII)
+
+
+@dataclass(frozen=True)
+class BlindFinding:
+    """One finding of a blind review pass: its severity, its outcome, and whether it repeats one.
+
+    `repeat` is true where a lower-numbered pass also named the fault.
+    """
+
+    severity: str
+    outcome: str
+    repeat: bool = False
+
+
+@dataclass(frozen=True)
+class BlindTotals:
+    """The counts the older record form gives, summed over every pass."""
+
+    findings: int
+    fixed: int
+    filed: int
+    rejected: int
+
+
+@dataclass(frozen=True)
+class BlindRecord:
+    """What one `BLIND_REVIEW` trailer records about a branch's blind review passes.
+
+    `split` holds each pass's findings, pass 1 first, for a record in the
+    per-finding form. It is empty for a record in the older form, which keeps
+    only `totals`, summed over every pass. So a reader can always ask how many
+    passes ran, and can ask which pass found what only where `split` says.
+    """
+
+    passes: int
+    split: tuple[tuple[BlindFinding, ...], ...] = ()
+    totals: BlindTotals | None = None
+
+
+def parse_blind_review(value: str) -> BlindRecord:
+    """Read a `BLIND_REVIEW` trailer's value, or raise `ValueError` saying why it cannot be read.
+
+    The per-finding form is one `pass N: ...` entry per pass, separated by
+    semicolons and numbered from 1 in order. Each entry is `none`, for a pass
+    that wrote `NO FINDINGS`, or its findings separated by commas. A finding
+    is a severity from `BLIND_SEVERITIES`, then an outcome from
+    `BLIND_OUTCOMES`, then `repeat` where a lower-numbered pass named it too,
+    so pass 1 can hold no `repeat`. The older form,
+    `passes N, findings F, fixed X, filed Y, rejected Z`, is read as a record
+    whose findings are not split by pass.
+    """
+    text = " ".join(value.split())
+    totals = _BLIND_TOTALS.fullmatch(text)
+    if totals is not None:
+        counts = [whole_number(group) for group in totals.groups()]
+        if any(count is None for count in counts):
+            raise ValueError("a count is not a whole number")
+        passes, findings, fixed, filed, rejected = (count or 0 for count in counts)
+        return BlindRecord(passes, totals=BlindTotals(findings, fixed, filed, rejected))
+    split: list[tuple[BlindFinding, ...]] = []
+    for entry in text.split(";"):
+        match = _BLIND_PASS.fullmatch(entry.strip())
+        if match is None:
+            raise ValueError(f"{entry.strip()!r} is not 'pass N: ...'")
+        number = whole_number(match.group(1))
+        if number != len(split) + 1:
+            raise ValueError(
+                f"pass {match.group(1)} is out of order: expected pass {len(split) + 1}"
+            )
+        body = match.group(2).strip()
+        if body == BLIND_NONE:
+            split.append(())
+            continue
+        findings = []
+        for said in body.split(","):
+            words = said.split()
+            if len(words) not in (2, 3) or (len(words) == 3 and words[2] != BLIND_REPEAT):
+                raise ValueError(
+                    f"pass {number}: {said.strip()!r} is not 'severity outcome [repeat]'"
+                )
+            if words[0] not in BLIND_SEVERITIES:
+                raise ValueError(
+                    f"pass {number}: {words[0]!r} is not one of {', '.join(BLIND_SEVERITIES)}"
+                )
+            if words[1] not in BLIND_OUTCOMES:
+                raise ValueError(
+                    f"pass {number}: {words[1]!r} is not one of {', '.join(BLIND_OUTCOMES)}"
+                )
+            repeat = len(words) == 3
+            if repeat and number == 1:
+                raise ValueError("pass 1 cannot repeat a finding, since no earlier pass ran")
+            findings.append(BlindFinding(words[0], words[1], repeat))
+        split.append(tuple(findings))
+    return BlindRecord(len(split), split=tuple(split))
+
+
+@dataclass(frozen=True)
+class BlindReading:
+    """The newest `BLIND_REVIEW` record in a span of commits, as `arm` and the report read it.
+
+    `commit` is `""` where no commit in the span carries one. `record` is
+    `None` where none does or where its value could not be read, and then
+    `misread` says why.
+    """
+
+    commit: str = ""
+    value: str = ""
+    record: BlindRecord | None = None
+    misread: str = ""
+
+
+def newest_blind_record(
+    root: Path, span: Sequence[str], *, runner: Runner | None = None
+) -> BlindReading:
+    """The newest `BLIND_REVIEW` record in `span`, a list of revisions as `git log` takes them.
+
+    `arm` reads the branch's record through this, and so does
+    `tools/blind_review_report.py`, so the two read one record the same way.
+    """
+    commit, value = _newest_trailer(root, runner or _run_git, span, BLIND_REVIEW)
+    if not commit:
+        return BlindReading()
+    try:
+        return BlindReading(commit, value, parse_blind_review(value))
+    except ValueError as error:
+        return BlindReading(commit, value, misread=str(error))
+
 
 #: What a `hold` on missing blind review passes tells the session. The step's
 #: own instructions are in the close-out mode, so they are pointed at.
@@ -430,8 +581,8 @@ BLIND_ASK = (
     "(.claude/skills/docket/modes/close-out.md): commit the work, run "
     "`python3 tools/blind_review.py`, start one subagent per brief it prints, and deal with "
     "each finding as the step says. Then record the passes as a trailer in the last paragraph "
-    "of a commit made after them, beside its Co-authored-by line: "
-    f"`{BLIND_REVIEW}: passes N, findings F, fixed X, filed Y, rejected Z`. One commit can "
+    "of a commit made after them, beside its Co-authored-by line, with one entry per "
+    f"finding by pass: `{BLIND_REVIEW}: {BLIND_EXAMPLE}`. One commit can "
     f"carry this, a {PROSE_REVIEW} record and an {OWNER_READ} record together. Then ask again."
 )
 
@@ -1452,15 +1603,14 @@ def arm(
     blind_since = ""
     blind_declined = ""
     if on_list and blind_count is not None:
-        blind_since, value = _newest_trailer(root, run, ["HEAD", f"^{base}"], BLIND_REVIEW)
-        form = BLIND_FORM.fullmatch(value) if blind_since else None
-        if blind_since and form is None:
+        blind = newest_blind_record(root, ["HEAD", f"^{base}"], runner=run)
+        if blind.record is None and blind.commit:
             unread.append(
-                f"the {BLIND_REVIEW} record on {blind_since[:12]} is not 'passes N, findings F, "
-                f"fixed X, filed Y, rejected Z', so it was not read: {value}"
+                f"the {BLIND_REVIEW} record on {blind.commit[:12]} could not be read "
+                f"({blind.misread}), so it covers nothing: {blind.value}"
             )
-            blind_since = ""
-        blind_recorded = (whole_number(form.group(1)) or 0) if form is not None else 0
+        blind_since = blind.commit if blind.record is not None else ""
+        blind_recorded = blind.record.passes if blind.record is not None else 0
         passes = blind_count()
         blind_declined = passes.declined
         blind_owed = 0 if blind_declined else passes.count
