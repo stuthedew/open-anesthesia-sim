@@ -959,8 +959,10 @@ class AreaLayout(QWidget):
     ) -> AreaOperation:
         """Return the menu entry that splits the Area halfway across.
 
-        The entry is refused if a half would be less than the Area's floor
-        (`_floor`). Both halves show the cut View, so each has that floor.
+        The entry is refused if a half would be smaller than the Area's floor (`_floor`).
+        The floor is the size at which an Area is held while it is too small for its View.
+        Both halves would show the View that the Area shows now, so each half has that
+        same floor.
         """
 
         frame = self._frames[area_id]
@@ -1210,18 +1212,19 @@ class AreaLayout(QWidget):
     def _settle(self, kept: AbstractSet[AreaId]) -> None:
         """Decide which Areas can be given their View's size, and lay every splitter out.
 
-        `layout/sizing.py`'s `settle` decides it at this widget's size, so the
-        sizes drawn are the ones it worked out (`PL-K285`). Each Area's frame
-        is held at the bound it was given. An Area that draws its View is held
-        at its need. An Area that is too small is held at its floor (`_floor`).
-        In place of the View, it shows a statement of the size its View needs.
-        Before
-        this widget is shown, its size is not the size it is drawn at. So until
-        then, every Area keeps its View and is held at its need.
+        The decision is made by `settle` in `layout/sizing.py`, at this widget's current
+        size, so the sizes drawn are the ones `settle` worked out (`PL-K285`). Each Area's
+        frame is held at the bound that `settle` gave it. An Area that draws its View is
+        held at its need, the smallest size at which its View can be drawn. An Area that is
+        too small for its View is held at its floor (`_floor`). In place of the View, that
+        Area shows a statement of the size its View needs.
 
-        When the Views' needs add up to a new least size, this method tells the
-        host. So a host that can grow, such as the dashboard's scrolling page,
-        gives this widget room for every View (`minimumSizeHint`).
+        Before this widget is shown, its size is not yet the size it will be drawn at. So
+        until it is shown, every Area keeps its View and is held at its need.
+
+        When the Views' needs add up to a new minimum size for this widget, this method
+        tells the host through `minimumSizeHint`. A host that can grow, such as the
+        dashboard's scrolling page, then gives this widget room for every View.
         """
 
         if self._settling:
@@ -1286,12 +1289,12 @@ class AreaLayout(QWidget):
     def _floor(self, area_id: AreaId) -> PixelSize:
         """Return the size at which the Area `area_id` is held while it is too small for its View.
 
-        Its width is `_structural_minimum`'s. Its height holds the header and
-        the too-small notice's title and short statement of the two sizes,
-        wrapped at that width (`PL-Y65Q` route B), but never more than the
-        View's need. The notice's advice sentence is shown only where the
-        Area has room for it. An Area that shows a notice in place of a View
-        is held at `_structural_minimum`.
+        Its width is the width from `_structural_minimum`. Its height is enough for the
+        header, the too-small notice's title and the notice's short statement of two sizes:
+        the size the View needs and the size the Area has. That text is wrapped at the
+        floor's own width (`PL-Y65Q` route B). The height is never more than the View's
+        need. The notice's advice sentence is shown only where the Area has room for it. An
+        Area that shows a notice in place of a View is held at `_structural_minimum`.
         """
 
         frame = self._frames[area_id]
@@ -1301,9 +1304,9 @@ class AreaLayout(QWidget):
         if shown is None:
             return PixelSize(width, height)
 
-        # At its floor, the Area has less room than its View needs. So the
-        # statement measured with the need as both sizes is as wide as the
-        # one the Area will show.
+        # The probe measures the short statement with the View's need given as both the
+        # needed size and the available size. At its floor, the Area has less room than its
+        # View needs, so this statement is as wide as the one the Area will show.
         needed = self._view_need(area_id)
         probe = self._notice_probe
         probe.title_label.setText(too_small_title(self._registered[shown[0]].title))
@@ -2696,14 +2699,15 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
 
 
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
-    """The least width and height an Area can be drawn at: its header, and one line of a notice.
+    """Return the smallest width and height that hold an Area's header and one line of a notice.
 
-    `PL-30L5` Q2 set this minimum. Below it, a half could not hold its own
-    header row and the first line of `PL-DB5G`'s notice. An Area that shows
-    a View has a taller floor, which `AreaLayout._floor` works out, so that
-    the too-small notice of `PL-K285` fits (`PL-Y65Q`). A split is refused
-    where a half would be less than that floor, and allowed where a half is
-    only too small for its View, because the notice then tells the reader so.
+    `PL-30L5` Q2 set this minimum. Below it, half of a split Area could not hold its own
+    header row and the first line of `PL-DB5G`'s notice. An Area that shows a View has a
+    taller floor, the size at which it is held while it is too small for its View.
+    `AreaLayout._floor` works that floor out so that `PL-K285`'s too-small notice fits
+    (`PL-Y65Q`). A split is refused where a half would be smaller than that floor. A split
+    is allowed where a half is only too small for its View, because the too-small notice
+    then tells the reader so.
     """
 
     title_font = QFont(frame.font())

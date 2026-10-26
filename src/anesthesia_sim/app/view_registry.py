@@ -441,14 +441,14 @@ def too_small_text(needed: PixelSize, available: PixelSize) -> str:
 
 
 def too_small_short_text(needed: PixelSize, available: PixelSize) -> str:
-    """The short body of the too-small notice, for an Area held at its floor.
+    """Return the short body of the too-small notice, for an Area held at its floor.
 
-    An Area held at its floor has too little height for `too_small_text`, so
-    it states only the two sizes. It drops the advice to drag a border or
-    choose a smaller View. `needed` and `available` mean what they mean in
-    `too_small_text`. The wording is a placeholder that `PL-Y65Q` route B
-    chose, under the project owner's rule of 2026-10-18 that look and wording
-    are placeholders while the structure is built.
+    An Area held at its floor is too short to show the full text from `too_small_text`.
+    So this short body states only the two sizes: the size the View needs and the size the
+    Area has. It leaves out the advice to drag a border or choose a smaller View. `needed`
+    and `available` mean what they mean in `too_small_text`. The wording is a placeholder
+    that `PL-Y65Q` route B chose. The project owner ruled on 2026-10-18 that look and
+    wording are placeholders while the structure is built.
 
     Raises:
         TypeError: `needed` or `available` is not a `PixelSize`.

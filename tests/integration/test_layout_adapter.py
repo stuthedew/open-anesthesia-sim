@@ -1947,12 +1947,12 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
 ) -> None:
     """`PL-Y65Q`: an Area held at its floor shows the notice's title and both sizes in full.
 
-    The window is 170 by 300 px, and the Big view's Area has a tenth of its
-    height, far less than the 227 px its View needs. So that Area is held at
-    its floor, and its neighbour takes the rest. The floor
-    used to hold only the header and one line, so both labels were laid out
-    0 px tall. Now the floor holds the title and the short statement of the
-    two sizes, each at the height its wrapped text needs.
+    The window is 170 by 300 px. The Big view's Area has a tenth of the window's height,
+    far less than the 227 px its View needs. So that Area is held at its floor, and the
+    neighbouring Area takes the rest of the height. The floor used to hold only the header
+    and one line, so the notice's title label and body label were both laid out 0 px tall.
+    Now the floor holds the title and the short statement of the two sizes, each at the
+    height that its wrapped text needs.
     """
 
     model = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
@@ -1975,13 +1975,12 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
 def test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """`PL-Y65Q`: a split is refused where a half would be less than the Area's floor.
+    """`PL-Y65Q`: a split is refused where a half would be smaller than the Area's floor.
 
-    The Big view's Area is 400 by 250 px. Stacked halves would be 121 px
-    tall, which holds a header and one line but not the notice that each
-    half, too small for the Big view, would have to show. Halves side by
-    side are 196 px wide, wide enough for the header, so that split is
-    allowed.
+    The Big view's Area is 400 by 250 px. Stacked halves would each be 121 px tall. That is
+    enough for a header and one line, but not for the too-small notice. Each half would be
+    too small for the Big view, so each would have to show that notice. Halves side by
+    side would be 196 px wide, which is wide enough for the header, so that split is allowed.
     """
 
     container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (400, 250))
