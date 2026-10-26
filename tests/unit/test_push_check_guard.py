@@ -403,7 +403,11 @@ PROJECT_CHECKS = (
         ".venv/bin/python tools/workflow_paths_check.py",
     ),
     ("fixture_id_check", "tools/fixture_id_check.py", ".venv/bin/python tools/fixture_id_check.py"),
-    ("ignore_check", "tools/ignore_check.py", ".venv/bin/python tools/ignore_check.py"),
+    (
+        "type_ignore_check",
+        "tools/type_ignore_check.py",
+        ".venv/bin/python tools/type_ignore_check.py",
+    ),
     (
         "line-split tests",
         "tests/unit/test_line_splits.py",
@@ -465,11 +469,11 @@ def test_a_push_every_project_interpreter_check_passes_goes_through(project: Pat
 
 def test_a_tree_without_the_project_interpreter_skips_only_those_checks(project: Path) -> None:
     """With no `.venv/bin/python`, the four are skipped and the other three still decide."""
-    _project_stub(project, failing="ignore_check")
+    _project_stub(project, failing="type_ignore_check")
     assert _decision("git push", cwd=project, project=project) is None
     _stub(project, doc=DOC_FAILS)
     decision = _decision("git push", cwd=project, project=project)
     assert decision is not None
     reason = decision["permissionDecisionReason"]
     assert "`doc_check` failed" in reason
-    assert "ignore_check" not in reason
+    assert "type_ignore_check" not in reason

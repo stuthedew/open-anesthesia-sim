@@ -189,7 +189,7 @@ FACTS: tuple[Fact, ...] = (
         Place("pyproject.toml", r"^testpaths = \[([^\]]*)\]$", _quoted),
         (
             Place("docket.toml", r"^collected_test_paths = \[([^\]]*)\]$", _quoted),
-            Place("tools/ignore_check.py", r"^TREES = \(([^)]*)\)$", _quoted),
+            Place("tools/type_ignore_check.py", r"^TREES = \(([^)]*)\)$", _quoted),
         ),
     ),
     Fact(

@@ -4258,7 +4258,7 @@ would delete configuration rather than prose.
 directive - 56 of them, all carrying an explicit error code, and none of them a
 disabled test - and whether an ignore is load-bearing is a question for mypy,
 which `warn_unused_ignores` asks of every directive in the repository:
-`strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
+`strict = true` over `[tool.mypy] files`, and `tools/type_ignore_check.py` over the
 two test trees that list excludes. The four markers that remained had matched a
 real directive zero times, and stayed at that price because a count of zero
 cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).
