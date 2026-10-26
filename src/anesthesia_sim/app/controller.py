@@ -59,6 +59,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
@@ -260,7 +261,7 @@ class SimulationSnapshot(RunRecord):
     § "MAC-awake as a chart reference" states what the band asserts, which
     trace it is read against, and why it is not a time to wake-up.
     """
-    circuit_volume_l: float
+    circuit_volume_l: CompartmentVolume
     # The six compartment values below all belong to the agent `agent_id`
     # names. They are flat named floats rather than a mapping keyed by
     # substance, which is the shape the recorded run took at `PL-W3DD`. The
@@ -507,7 +508,7 @@ class SimulationController:
     def __init__(
         self,
         agent_id: str = "sevoflurane",
-        circuit_volume_l: float | None = None,
+        circuit_volume_l: CompartmentVolume | None = None,
         fresh_gas_flow_l_min: FreshGasFlow | None = None,
         delivered_concentration_percent: Percent | None = None,
         alveolar_ventilation_l_min: AlveolarVentilation | None = None,
@@ -576,7 +577,7 @@ class SimulationController:
     def _build_state(
         self,
         agent_id: str,
-        circuit_volume_l: float | None,
+        circuit_volume_l: CompartmentVolume | None,
         fresh_gas_flow_l_min: FreshGasFlow | None,
         delivered_concentration_percent: Percent | None,
         alveolar_ventilation_l_min: AlveolarVentilation | None,

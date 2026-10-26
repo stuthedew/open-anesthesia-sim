@@ -48,6 +48,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
@@ -1380,7 +1381,7 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
         minimum_l_min=0.5, maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0
     )
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         deliverable_fresh_gas_flow_range=machine_range,
     )

@@ -65,6 +65,7 @@ from anesthesia_sim.core.governing_equations import (
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
@@ -397,7 +398,7 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         delivered_concentration_percent=Percent(100.0),
     )
@@ -621,26 +622,36 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     `PL-544D` limits the alveolar and tissue amounts to the compartment's capacity at each
     write, and a rollback is a write. Since `PL-19Y0`, only a write that bypasses the
     volume's own guard can move a capacity below an amount already held. When the rollback
-    went through the capacity guard, such a capacity made `restore_state` refuse at fat. By
-    then the circuit, the alveoli and two tissue groups had been restored. The venous pool,
-    which is restored after fat, was left holding the failed step, under a configuration
-    error that had replaced the step's own error. This was found at review on 2026-10-12, on
-    a run at 8% for 300 s whose fat volume was halved below the held amount. In that run the
-    step itself then refuses at fat.
+    went through the capacity guard, such a capacity made `restore_state` refuse at the fat
+    group. By then the circuit, the alveoli and two tissue groups had been restored. The
+    venous pool, which is restored after fat, was left holding the failed step. The error
+    raised was a configuration error, which had replaced the step's own error. This was
+    found at review on 2026-10-12, on a run at 8% for 300 s whose fat volume was halved
+    below the amount held. In that run the step itself then refuses at fat.
 
-    The refusal here is the armed one that the file injects throughout. Whether a shrunk fat
-    volume makes the *step* refuse depends on the parameter set. At ordinary loads it gives
-    fat a time constant shorter than the step, and the fraction written is back in range.
-    The rollback's requirement does not depend on the parameter set. The volume is written
-    directly, bypassing its own guard, because what is under test is the rollback and not
-    the route. The state left is the one the step began from, with fat over capacity as it
-    already was, for the snapshot's `Fraction` to refuse.
+    The refusal here is the armed, injected refusal that the file uses throughout. Whether
+    a shrunk fat volume makes the *step* refuse depends on the parameter set. At ordinary
+    loads the shrunk volume gives fat a time constant shorter than the step, so the
+    fraction written is back in range. The rollback's requirement does not depend on the
+    parameter set. The volume and the tissue:gas coefficient are written directly,
+    bypassing their own guards, because what is under test is the rollback and not how the
+    capacity became too small. The state left behind is the one that the step began from.
+    In it, fat is over capacity, as it already was, so that the snapshot's `Fraction`
+    refuses it.
     """
 
     system = _a_run_whose_next_step_a_compartment_refuses()
     fat = system.patient.fat
+    # Making the capacity half the amount held by changing the volume alone would need about
+    # 4e-6 L, which is below the numerical envelope (`PL-QX2G`). So the volume is set to the
+    # envelope's smallest value, 0.01 L, and the coefficient is set to make the capacity half
+    # the amount held. The capacity, and so fat's row of the system matrix, is the same as
+    # before.
+    object.__setattr__(fat, "volume_l", CompartmentVolume(0.01))
     object.__setattr__(
-        fat, "volume_l", fat.agent_amount_l / fat.tissue_gas_partition_coefficient / 2
+        fat,
+        "tissue_gas_partition_coefficient",
+        PartitionCoefficient(fat.agent_amount_l / fat.volume_l / 2),
     )
     before = system.capture_state()
 
@@ -886,7 +897,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # to move with that parameter, and the 3.7e-6 L drop is in the expected direction.
     assert circuit_agent_before_l == pytest.approx(0.048301285)
 
-    system.circuit.set_circuit_volume(3.0)
+    system.circuit.set_circuit_volume(CompartmentVolume(3.0))
 
     assert system.circuit.agent_amount_l == pytest.approx(circuit_agent_before_l)
     assert system.total_stored_agent_l == pytest.approx(total_agent_before_l)

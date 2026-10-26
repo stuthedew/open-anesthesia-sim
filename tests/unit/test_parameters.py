@@ -1785,3 +1785,55 @@ def test_a_boolean_schema_version_is_refused_even_where_a_window_reads_one(
 
     with pytest.raises(SimulationConfigurationError, match="schema_version must be an integer"):
         parse_agent_parameters(payload)
+
+
+def _with_value(payload: dict[str, object], path: tuple[str, ...], value: float) -> None:
+    """Write `value` at the nested key `path` of a payload."""
+
+    holder: Any = payload
+
+    for key in path[:-1]:
+        holder = holder[key]
+
+    holder[path[-1]] = value
+
+
+@pytest.mark.parametrize(
+    ("parse", "payload", "path"),
+    [
+        (parse_agent_parameters, _valid_agent_payload, ("blood_gas_partition_coefficient",)),
+        *(
+            (parse_agent_parameters, _valid_agent_payload, ("tissue_gas_partition_coefficients", g))
+            for g in ("vessel_rich", "muscle", "fat")
+        ),
+        (parse_reference_adult_parameters, _valid_patient_payload, ("alveolar_gas_volume_l",)),
+        (parse_reference_adult_parameters, _valid_patient_payload, ("venous_pool_volume_l",)),
+        *(
+            (
+                parse_reference_adult_parameters,
+                _valid_patient_payload,
+                ("tissue_groups", g, "volume_l"),
+            )
+            for g in ("vessel_rich", "muscle", "fat")
+        ),
+        (
+            parse_breathing_circuit_parameters,
+            _valid_breathing_circuit_payload,
+            ("circuit_volume_l",),
+        ),
+    ],
+    ids=lambda value: ".".join(value) if isinstance(value, tuple) else "",
+)
+def test_a_value_outside_the_numerical_envelope_is_refused_under_its_file_key(
+    parse: Any, payload: Any, path: tuple[str, ...]
+) -> None:
+    """`PL-QX2G`: a loader builds each volume and coefficient as its type, named by its key path."""
+
+    document = payload()
+    _with_value(document, path, 1e-5)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"^{re.escape('.'.join(path))} of 1e-05 is outside the numerical envelope of ",
+    ):
+        parse(document)

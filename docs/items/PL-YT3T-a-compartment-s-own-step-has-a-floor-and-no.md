@@ -3,7 +3,7 @@ id: PL-YT3T
 title: A compartment's own step has a floor and no ceiling, so BreathingCircuit.advance_fresh_gas at a step near 1e308 s, or at a circuit volume near 1e-310 L, overflows the time constants elapsed to inf and returns an exhaust of inf or nan without checking it
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: defect, safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/simulation_step.py, tests/unit

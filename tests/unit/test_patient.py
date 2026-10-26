@@ -5,6 +5,7 @@ import pytest
 
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import (
     FLOW_FRACTION_TOLERANCE,
     load_agent_parameters,
@@ -250,7 +251,7 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
     assert vessel_rich.perfusion_fraction == 0.76
     _assert_perfused_at_5_l_min(patient)
 
-    patient.vessel_rich = replace(vessel_rich, volume_l=7.0)
+    patient.vessel_rich = replace(vessel_rich, volume_l=CompartmentVolume(7.0))
 
     assert patient.vessel_rich.volume_l == 7.0
     assert patient.total_perfusion_fraction == pytest.approx(1.0, abs=FLOW_FRACTION_TOLERANCE)
