@@ -97,6 +97,7 @@ from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
+from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
     RunSettings,
@@ -1003,6 +1004,11 @@ class SimulationView(QWidget):
         snapshot: its fork and its recorded control changes
         (`branch_at_stake`). The rejection is not handled here. It is the
         branch's own halt, which the branch's own frame states.
+
+        The changes counted are the ones made since the branch opened. The
+        entries it opened with are where it began (`RunRecord.opened_with`),
+        and a Reset of the branch would record them again, so naming them as
+        work to lose would overstate it (`PL-ZR49`).
         """
 
         try:
@@ -1011,9 +1017,15 @@ class SimulationView(QWidget):
             snapshot = None
 
         record = run.controller.record() if snapshot is None else snapshot
+        made_since_opening = tuple(
+            change for change in record.control_timeline if change not in record.opened_with
+        )
 
         return branch_at_stake(
-            run_label(run.run_id), run.controller.began_at_s, snapshot, len(run.adjustments(record))
+            run_label(run.run_id),
+            run.controller.began_at_s,
+            snapshot,
+            len(group_adjustments(made_since_opening)),
         )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:

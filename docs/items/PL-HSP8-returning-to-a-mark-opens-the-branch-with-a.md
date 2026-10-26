@@ -3,11 +3,13 @@ id: PL-HSP8
 title: Returning to a mark opens the branch with a setting the trunk changed at that instant already in force, so the 'on your mark' branch repeats the trunk's own decision, though docs/MODEL.md calls it the branch the halt would have given
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, science
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/MODEL.md
 added: 2026-10-24
+closed: 2026-10-26
+pr: 1844
 payoff: a learner who returns to a decision point gets the state before their decision, so trying the alternative shows a real difference
 verify: grep -q 'def test_a_change_made_on_the_halt_stays_the_trunks' tests/integration/test_controller.py
 ---
@@ -25,3 +27,5 @@ verify: grep -q 'def test_a_change_made_on_the_halt_stays_the_trunks' tests/inte
 **Route decided 2026-10-24 at triage: fix the halt and mark doors, and leave the keyframe door.** `resumed_at` at a keyframe deliberately opens inside the stretch that a control change starts, so `resumed_at(60.0)` giving 0% is that door's documented answer. The halt and the mark doors are defined differently, as the state the reaching step was computed under, before any change made while standing on the halt. So the narrow fix is in `_resume_point_at_mark` and `resumed_here`, which should open under the settings in force for the step that reached the instant. Changing `<=` to `<` in `_setting_at` and moving `segment_at` to `bisect_left` would also change the keyframe door, and is not the route. `docs/MODEL.md` gains one sentence saying that a change made while standing on a halt is the trunk's, and that the keyframe door opens after it.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still reproduces.** On `cc31bef7`, with the trunk at 2% and a mark at 60 s, the halt branch taken before a change to 0% opens at 2.0%. The halt branch taken after the change, while the trunk still stands on the halt, opens at 0.0%. So does `resumed_at_mark` once the trunk has run on to 120 s. The halt branch's `opened_from` still does not compare equal to the mark branch's, and `_setting_at` still takes a change at `elapsed_s <= instant_s` as in force.
+
+**Closed 2026-10-26 by `PL-ZR49`.** Every branch now takes its provenance from the stretch the step reaching its fork ran under, records how its settings differ from that stretch as a change at the fork, and reads its halt record from the step and the current marks. `tests/integration/test_controller.py::test_a_change_made_on_the_halt_stays_the_trunks` checks this item's case, and `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there` checks it beside the other doors.

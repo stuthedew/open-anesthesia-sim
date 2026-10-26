@@ -598,7 +598,7 @@ timeline. The branch's record is of what the learner does to *it*, and
 `opened_from` is what records where the fork was taken. The one entry it can
 open with is a setting it runs under that differs from the stretch it opened
 from: the trunk's change at a setting change it was taken at, or the learner's
-dial kept by a reset (`SimulationSnapshot.opened_with`).
+dial kept by a reset (`RunRecord.opened_with`).
 `began_at_s` is the one number to read for that. It is zero on a trunk and the
 fork instant on a branch. The definition's own first segment used to start at
 the same instant, and it no longer always does. That is why the property

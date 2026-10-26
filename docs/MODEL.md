@@ -6168,7 +6168,7 @@ disagreements (`PL-3K9B`, `PL-2N43`, `PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`,
   branch's record and its provenance agree on what it runs under. That entry
   is where the branch began rather than something done to it since, so it does
   not count as something a Reset of the trunk would discard
-  (`SimulationSnapshot.opened_with`).
+  (`RunRecord.opened_with`).
 - **The halt record names the marks as they are.** A run's halt record is what
   the step it stopped on crossed: the step that halted a trunk, or the step
   that reached a branch's fork. It is asked again whenever it is read, against
@@ -7558,9 +7558,12 @@ a reader's agreement to leave it alone:**
   (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
 
 **What differs is the control timeline after the fork, and nothing else.** A
-branch opens with an empty timeline of its own
-(`test_a_branch_opens_with_its_own_empty_control_timeline`). Forking leaves
-the trunk untouched (`test_forking_leaves_the_trunk_untouched`). So everything
+branch opens with a timeline of its own, which holds none of the trunk's
+earlier changes. The one entry it can open with is the trunk's change at the
+keyframe it was taken at, which it runs under
+(`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`).
+That entry is a setting that differs after the fork, so the sentence below
+still holds. Forking leaves the trunk untouched (`test_forking_leaves_the_trunk_untouched`). So everything
 that either run records after the fork is what its learner did to it. **A
 difference between the two runs at an instant past the fork is therefore
 caused by the settings that differ after the fork, on either side, and by

@@ -218,8 +218,22 @@ class RunRecord(RunSettings):
     stretch at the fork is recorded here as a change at the fork. That is
     the trunk's own change when the branch was taken at a keyframe
     (`SimulationController.resumed_at`), and the learner's dials when a
-    branch was reset after they changed. `SimulationSnapshot.opened_with`
+    branch was reset after they changed. `RunRecord.opened_with`
     names those entries.
+    """
+
+    opened_with: tuple[ControlChange, ...]
+    """The control timeline as this run was opened with it.
+
+    It is empty on a trunk, which opens under whatever its settings are. A
+    branch opens on its parent's stretch and records each setting that
+    differs from it as a change at the fork (`PL-ZR49`). Those entries are
+    part of where the branch began, not something done to it since. So
+    `SimulationSnapshot.has_recorded_run` compares the timeline with this
+    field rather than with an empty one, for the reason it compares
+    `elapsed_s` with `began_at_s` rather than with zero. A change the learner
+    makes at the fork afterwards can collapse into one of these entries, and
+    then the timeline no longer holds it as it is here.
     """
 
     def run_record(self) -> RunRecord:
@@ -253,17 +267,6 @@ class SimulationSnapshot(RunRecord):
     elapsed time it bounds because `has_recorded_run` reads the two together.
     A branch is built already standing at its fork, so an elapsed time above
     zero says nothing about whether anyone has touched it (`PL-7TBQ`).
-    """
-    opened_with: tuple[ControlChange, ...]
-    """The entries at the head of `control_timeline` that this run was opened with.
-
-    It is empty on a trunk, which opens under whatever its settings are. A
-    branch opens on its parent's stretch and records each setting that
-    differs from it as a change at the fork (`PL-ZR49`). Those entries are
-    part of where the branch began, not something done to it since. So
-    `has_recorded_run` compares the timeline with this field rather than
-    with an empty one, for the reason it compares `elapsed_s` with
-    `began_at_s` rather than with zero.
     """
     agent_mac_awake: MacAwakeReference
     """The running agent's population MAC-awake, as a fraction of its MAC.
@@ -422,7 +425,7 @@ class ResumePoint:
     provenance stays one of the parent's stretches whatever the parent does
     at the fork later. Every way of branching takes this side. They differ
     only in which changes made at the fork the branch then records in its
-    own timeline (`SimulationSnapshot.opened_with`).
+    own timeline (`RunRecord.opened_with`).
 
     **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
     The stretch the reaching step ran under opens at a keyframe before the
@@ -1015,6 +1018,7 @@ class SimulationController:
         return RunRecord(
             **{field.name: getattr(settings, field.name) for field in fields(RunSettings)},
             control_timeline=self._control_timeline,
+            opened_with=self._opened_with,
         )
 
     def snapshot(self) -> SimulationSnapshot:
@@ -1302,7 +1306,7 @@ class SimulationController:
         change, and this method branches in order to run under it. Its
         provenance, `opened_from.segment`, is still the stretch the step
         reaching `instant_s` ran under. The change is then recorded on the
-        branch as a change at the fork (`SimulationSnapshot.opened_with`). So
+        branch as a change at the fork (`RunRecord.opened_with`). So
         the branch's own record states the setting it runs under. That stays
         true whatever the trunk does at `instant_s` afterwards, including
         setting the dial back, which removes the trunk's keyframe (`PL-TNYP`).
@@ -1609,7 +1613,7 @@ class SimulationController:
         # nothing on screen to say so. The one entry a branch's timeline does
         # open with is a setting it was opened under, which `_open_at` records
         # as a change at the fork. That entry is where the branch began rather
-        # than something done to it (`SimulationSnapshot.opened_with`).
+        # than something done to it (`RunRecord.opened_with`).
         #
         # A mark that lies before the fork is copied with the rest. It cannot
         # be reached from here on, but it is not dropped. Dropping it would make
