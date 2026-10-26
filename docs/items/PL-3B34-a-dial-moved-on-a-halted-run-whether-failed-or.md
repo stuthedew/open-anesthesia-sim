@@ -3,7 +3,7 @@ id: PL-3B34
 title: A dial moved on a halted run, whether failed or stopped at the 24-hour supported run length, is applied to the core and recorded as a control change at the halt instant, so the settings readouts and the control-change record show a setting that no step ever ran under beside concentrations computed under the previous one, while the banner says the values shown are the last completed step
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect, ux, safety
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py
@@ -50,3 +50,5 @@ new_value=10.0)`. A failed run did the same
 - **Option 2: the dial keeps the new value as the next run's setting.** The stopped run's control-change record is left as it was. A line beside the moved dial says something like "For the next run - the values shown ran at 5.0 L/min". Reset then starts at the new value. The cost is a new state, a setting held for a run that does not exist yet, and a conditional line on each dial. The controller must also remember the settings the run stopped under.
 
 The recommendation is Option 1. It adds no hidden state, and it keeps `PL-V2HC`'s reason for keeping the controls live: nothing is drawn disabled. The brief's "The controls stay live" fits either option. Under Option 1 the sliders are enabled but refuse, which is why this is put to the owner rather than decided here. The test the brief names fits either answer. A dial dragged into a halt (`PL-85LJ`) is a different path and is not changed by either option: that setting was applied before the run stopped, and the undrawn-failure banner says the readouts are the last frame drawn.
+
+**Decided, 2026-10-26 (session decision, after the project owner questioned why it was offered as a choice).** Option 1: a stopped run refuses a dial change, records nothing, and the dial springs back. The stopped-run banner says that Reset starts a new run and keeps every setting. Option 2 added a held setting and a line on each dial in order to buy one fewer Reset click, so it was never a close choice. The owner's question assumed that Reset returns the dials to their defaults. It does not: `SimulationController.reset` keeps the settings, which is why the banner sentence names that.
