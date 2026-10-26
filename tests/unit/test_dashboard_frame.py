@@ -25,7 +25,7 @@ import json
 import math
 import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib.resources import files
 from typing import Any
 
@@ -180,8 +180,13 @@ from anesthesia_sim.app.run_series import (
     RecordedQuantity,
 )
 from anesthesia_sim.core import uptake_system
+from anesthesia_sim.core.agent_simulation_validation import (
+    AgentSimulationValidationResult,
+    AgentSimulationValidator,
+)
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
@@ -353,6 +358,7 @@ def _snapshot(
     delivered_agent_l: float = 0.012345,
     exhausted_agent_l: float = 0.002345,
     stored_agent_l: float = 0.01,
+    rejected_accounting: AgentSimulationValidationResult | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot, defaulting MAC and MAC-awake from the named agent's data file.
 
@@ -412,6 +418,7 @@ def _snapshot(
         bookmark_standings=_unreached(BookmarkSet() if bookmarks is None else bookmarks),
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
+        rejected_accounting=rejected_accounting,
     )
 
 
@@ -701,7 +708,12 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
         "outside 0 to 1, the range a fraction of one atmosphere takes "
         '(docs/MODEL.md, "Concentrations")'
     )
-    status = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=reason)
+    status = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=reason,
+        rejected_accounting=None,
+    )
 
     banner = halt_notice(status)
 
@@ -733,11 +745,23 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
 
     limit = "this run has reached 86400 s of simulated time"
     failed = RunStatus(
-        is_running=False, supported_limit_reason=None, failure_reason="TypeError: boom"
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="TypeError: boom",
+        rejected_accounting=None,
     )
-    at_limit = RunStatus(is_running=False, supported_limit_reason=limit, failure_reason=None)
-    paused = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=None)
-    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason=limit,
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+    paused = RunStatus(
+        is_running=False, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
 
     assert isinstance(_snapshot(), RunStatus)
     assert status_word(failed).text == "Stopped — simulation error"
@@ -840,13 +864,21 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
         "the venous balance returns what the tissues receive, so the two must agree"
     )
     this_refusal = f"SimulationConfigurationError: {error}"
-    refusal = RunStatus(is_running=False, supported_limit_reason=None, failure_reason=this_refusal)
+    refusal = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=this_refusal,
+        rejected_accounting=None,
+    )
     earlier = RunStatus(
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationNumericalError: boom",
+        rejected_accounting=None,
     )
-    running = RunStatus(is_running=True, supported_limit_reason=None, failure_reason=None)
+    running = RunStatus(
+        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+    )
 
     first = refused_reset_exit(error, recorded_failure_reason=None)
     pressed_again = refused_reset_exit(error, recorded_failure_reason=this_refusal)
@@ -2049,6 +2081,57 @@ def test_refresh_view_reports_failed_agent_accounting() -> None:
     assert panel.status.text == "Validation failed"
     assert panel.status.emphasis is Emphasis.WARNING
     assert "unaccounted agent" in panel.detail
+
+
+def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> None:
+    """After a step fails its accounting check, the panel shows that step's verdict and totals.
+
+    The core rolls the failed step back. So the snapshot's own accounting is the
+    restored step's, which passed, and the panel used to read "Valid" under a
+    banner saying the accounting had failed. That banner quoted the rejected
+    step's totals beside the panel's different restored ones (`PL-HF4B`). The
+    snapshot now carries the rejected step's check, and the panel shows it. The
+    expected amounts are worked out by hand from the transfers below: 4.24 L
+    delivered, 2.53 L exhausted and 1.1 L stored leave 0.61 L unaccounted.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=4.24, exhausted_agent_l=2.53)
+
+    with pytest.raises(AgentSimulationValidationError) as raised:
+        validator.require_valid_agent_accounting(currently_stored_agent_l=1.1)
+
+    rejected = raised.value.check
+    assert rejected is not None
+    halted = _snapshot(
+        passes_validation=True,
+        delivered_agent_l=3.991974,
+        exhausted_agent_l=2.06,
+        stored_agent_l=1.9319,
+        failure_reason=f"AgentSimulationValidationError: {raised.value}",
+        rejected_accounting=rejected,
+    )
+
+    panel = accounting(halted)
+
+    assert panel.status.text == "Validation failed"
+    assert panel.status.emphasis is Emphasis.WARNING
+    assert "rolled back" in panel.detail
+    assert panel.amounts.splitlines()[:3] == [
+        "Delivered: 4.2 L",
+        "Exhausted: 2.5 L",
+        "Stored: 1.1 L",
+    ]
+    assert accounting(replace(halted, rejected_accounting=None)).status.text == "Valid", (
+        "the restored step passed its check, so only the rejected check can fail the panel"
+    )
+
+    banner = notice(halted, None)
+
+    assert banner is not None
+    assert "The rejected step's totals: " in banner
+    assert "delivered=4.240000e+00 L" in banner
+    assert "except the agent accounting panel, which shows the rejected step" in banner
 
 
 def test_the_accounting_unit_caption_names_litres_of_agent_gas() -> None:

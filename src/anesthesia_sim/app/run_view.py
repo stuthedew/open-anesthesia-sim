@@ -182,7 +182,10 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
+    SimulationConfigurationError,
+)
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
@@ -1487,6 +1490,10 @@ class RunView(QWidget):
 
         if disposition is HaltDisposition.SUPPORTED_LIMIT:
             self.controller.halt_at_supported_limit(reason)
+        elif isinstance(error, AgentSimulationValidationError):
+            # The core rolled the step back, so only the error still holds the
+            # rejected step's check (`PL-HF4B`).
+            self.controller.fail(reason, rejected_accounting=error.check)
         else:
             self.controller.fail(reason)
 

@@ -14,7 +14,7 @@ does not also depend on the controller.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from math import isfinite
 
 from anesthesia_sim.app.bookmarks import (
@@ -43,6 +43,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
@@ -124,6 +125,17 @@ class RunStatus:
     time advances only after that call returns. So a halted session reports
     the last step that finished, at the simulation time it finished at,
     rather than a step abandoned partway through.
+    """
+    rejected_accounting: AgentSimulationValidationResult | None = field(kw_only=True)
+    """The failing accounting check of the step that halted the run, or `None`.
+
+    It is set only when a step's agent accounting failed its check. That step
+    is rolled back, so the run's own accounting describes the last completed
+    step again, and that step passed. This field keeps the rejected step's
+    verdict and totals, which `dashboard_frame.accounting` shows in place of
+    the restored ones. Otherwise the panel read "Valid" under a banner saying
+    that the accounting had failed (`PL-HF4B`). The field has no default, so
+    a constructor that leaves it out fails instead of reporting no failure.
     """
 
 
@@ -525,6 +537,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
+        self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
         # These fields record what this run has done with the marks, as opposed
@@ -636,6 +649,7 @@ class SimulationController:
         # session that has nothing wrong with it. A stale limit reason would
         # do the same to a run that has taken no steps at all.
         self._failure_reason = None
+        self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
 
@@ -669,7 +683,9 @@ class SimulationController:
 
         return self._agent_id
 
-    def fail(self, reason: str) -> None:
+    def fail(
+        self, reason: str, *, rejected_accounting: AgentSimulationValidationResult | None = None
+    ) -> None:
         """Halt the session because something raised, recording why.
 
         This differs from `pause()`, which is a user decision that the run
@@ -680,15 +696,25 @@ class SimulationController:
         so a resumed run would fail again on its first tick. Offering Start
         would present that as a working control. Only a fresh run clears the
         failure, through `reset()` or `set_agent()`.
+
+        Args:
+            reason: What raised, as `dashboard_frame.halt_disposition` words it.
+            rejected_accounting: The failing check that an
+                `AgentSimulationValidationError` carried, or `None` for any
+                other failure. The rollback leaves the run's accounting
+                passing again, so the rejected step's check is kept here
+                (`RunStatus.rejected_accounting`, `PL-HF4B`).
         """
 
         self._is_running = False
 
         # The first failure is the one that explains the rest, so a later
         # raise (e.g. from the render loop reacting to the same broken
-        # state) must not overwrite it.
+        # state) must not overwrite it. The rejected check belongs to that
+        # first failure, so it is kept with it.
         if self._failure_reason is None:
             self._failure_reason = reason
+            self._rejected_accounting = rejected_accounting
 
     def record_failed_frame(self, reason: str) -> None:
         """Stop the run because the dashboard that draws it raised an exception, and record why.
@@ -925,6 +951,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
         )
 
     def settings(self) -> RunSettings:
@@ -945,6 +972,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
@@ -1043,6 +1071,7 @@ class SimulationController:
             bookmark_standings=self.bookmark_standings(),
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            rejected_accounting=self._rejected_accounting,
         )
 
     # ------------------------------------------------------------- bookmarks
@@ -2293,6 +2322,7 @@ class SimulationController:
 
         self.pause()
         self._failure_reason = None
+        self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
         self._forget_reached_marks()

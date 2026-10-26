@@ -222,6 +222,16 @@ FAILURE_NOTICE_TEMPLATE: Final = (
 # banner with `FAILURE_NOTICE_TEMPLATE` on the first frame that draws. Which of
 # the two banners is shown is therefore decided by whether a frame drew, not
 # guessed from the reason (`PL-7DJK`).
+# The failure banner after a step whose agent accounting failed its check, for a
+# frame that drew. The core rolled the step back, so the readouts and the chart
+# show the last completed step. The accounting panel shows the rejected step's
+# verdict and totals instead, because the restored step passed its check
+# (`PL-HF4B`). So this banner names the panel as the one exception to "the last
+# completed step". The wording is a placeholder.
+REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
+    "except the agent accounting panel, which shows the rejected step. {exit}"
+)
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
     "the chart and the readouts show the last frame drawn before it stopped, and the "
@@ -736,6 +746,12 @@ ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
 ACCOUNTING_INITIAL_DETAIL_TEXT: Final = "No unaccounted agent detected."
 ACCOUNTING_VALID_DETAIL_TEXT: Final = "The simulation still accounts for all delivered agent."
 ACCOUNTING_FAILED_DETAIL_TEXT: Final = "The simulation has detected unaccounted agent."
+# The detail line after a step whose accounting failed its check. That step was
+# rolled back, and the panel shows its totals, the ones the check judged
+# (`PL-HF4B`). The wording is a placeholder.
+ACCOUNTING_REJECTED_DETAIL_TEXT: Final = (
+    "A step failed this check and was rolled back. The amounts below are that step's."
+)
 ACCOUNTING_UNIT_CAPTION: Final = "Litres of equivalent pure agent gas"
 
 # The transport row's labels, and the two selector captions beside it.
@@ -1630,7 +1646,12 @@ def notice(
     """
 
     if status.failure_reason is not None:
-        return FAILURE_NOTICE_TEMPLATE.format(
+        template = (
+            FAILURE_NOTICE_TEMPLATE
+            if status.rejected_accounting is None
+            else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
+        )
+        return template.format(
             failure_reason=status.failure_reason, exit=refused_reset or RESET_EXIT_TEXT
         )
 
@@ -1740,12 +1761,35 @@ class Accounting:
 def accounting(snapshot: SimulationSnapshot) -> Accounting:
     """The agent-accounting panel for one snapshot.
 
+    The verdict and the amounts always come from one step. After a step whose
+    accounting failed its check, the core rolls that step back, and the
+    snapshot's own accounting describes the restored step, which passed. The
+    panel then shows the rejected step's check, which the snapshot carries as
+    `rejected_accounting`. Showing "Validation failed" beside the restored
+    totals would pair a verdict with totals it never judged (`PL-HF4B`,
+    `PL-J5GC`).
+
     Args:
         snapshot: The run's state this tick.
 
     Returns:
         The panel's three parts.
     """
+
+    rejected = snapshot.rejected_accounting
+
+    if rejected is not None:
+        return Accounting(
+            StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING),
+            ACCOUNTING_REJECTED_DETAIL_TEXT,
+            _accounting_amounts(
+                delivered_l=rejected.delivered_agent_l,
+                exhausted_l=rejected.exhausted_agent_l,
+                stored_l=rejected.currently_stored_agent_l,
+                unaccounted_l=rejected.unaccounted_agent_l,
+                absolute_error_l=rejected.absolute_error_l,
+            ),
+        )
 
     if snapshot.agent_accounting_passes_validation:
         status = StatusWord(ACCOUNTING_VALID_TEXT, Emphasis.ACCENT)
@@ -1754,17 +1798,36 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         status = StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING)
         detail = ACCOUNTING_FAILED_DETAIL_TEXT
 
-    amounts = "\n".join(
-        (
-            f"Delivered: {format_agent_volume(snapshot.delivered_agent_l)}",
-            f"Exhausted: {format_agent_volume(snapshot.exhausted_agent_l)}",
-            f"Stored: {format_agent_volume(snapshot.stored_agent_l)}",
-            f"Unaccounted: {format_agent_residual(snapshot.unaccounted_agent_l)}",
-            f"Absolute error: {format_agent_residual(snapshot.agent_accounting_absolute_error_l)}",
-        )
+    amounts = _accounting_amounts(
+        delivered_l=snapshot.delivered_agent_l,
+        exhausted_l=snapshot.exhausted_agent_l,
+        stored_l=snapshot.stored_agent_l,
+        unaccounted_l=snapshot.unaccounted_agent_l,
+        absolute_error_l=snapshot.agent_accounting_absolute_error_l,
     )
 
     return Accounting(status, detail, amounts)
+
+
+def _accounting_amounts(
+    *,
+    delivered_l: float,
+    exhausted_l: float,
+    stored_l: float,
+    unaccounted_l: float,
+    absolute_error_l: float,
+) -> str:
+    """The accounting panel's five amount lines, from one step's totals, in litres."""
+
+    return "\n".join(
+        (
+            f"Delivered: {format_agent_volume(delivered_l)}",
+            f"Exhausted: {format_agent_volume(exhausted_l)}",
+            f"Stored: {format_agent_volume(stored_l)}",
+            f"Unaccounted: {format_agent_residual(unaccounted_l)}",
+            f"Absolute error: {format_agent_residual(absolute_error_l)}",
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)

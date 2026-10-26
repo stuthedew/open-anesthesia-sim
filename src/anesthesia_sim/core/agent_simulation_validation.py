@@ -268,6 +268,12 @@ class AgentSimulationValidator:
         always this validator's own. The earlier signature accepted another
         validator's result and silently let it pass. It would also have named
         that other period's totals in the halt message (`PL-X204`).
+
+        The one caller, `AgentUptakeSystem.advance()`, rolls the step back on
+        this error. So the message names its totals as the rejected step's,
+        and the error carries the failing check as `check`. The run's own
+        accounting no longer holds those totals after the rollback, so the
+        interface reads them from the error (`PL-HF4B`).
         """
 
         check = self.check_agent_accounting(currently_stored_agent_l)
@@ -276,7 +282,8 @@ class AgentSimulationValidator:
             return check
 
         raise AgentSimulationValidationError(
-            "Agent accounting validation failed: "
+            "Agent accounting validation failed, so the step was rejected and rolled back. "
+            "The rejected step's totals: "
             f"unaccounted={check.unaccounted_agent_l:.6e} L, "
             f"absolute_error={check.absolute_error_l:.6e} L, "
             f"relative_error={check.relative_error:.6e}, "
@@ -284,7 +291,8 @@ class AgentSimulationValidator:
             f"delivered={check.delivered_agent_l:.6e} L, "
             f"exhausted={check.exhausted_agent_l:.6e} L, "
             "currently_stored="
-            f"{check.currently_stored_agent_l:.6e} L"
+            f"{check.currently_stored_agent_l:.6e} L",
+            check=check,
         )
 
     def capture_state(self) -> AgentSimulationValidatorState:
