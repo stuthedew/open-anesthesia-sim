@@ -3,12 +3,14 @@ id: PL-TNY6
 title: A Projects thread's copied hooks find their scripts through CLAUDE_PROJECT_DIR at run time, so when the session's working directory moves away from the checkout every hook fails and post_message is refused
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: projects-trial
 touches: .claude/hooks/thread_hooks.py, tests/unit/test_thread_hooks.py
 deferred-from: v0.7.0 - captured after the cut and not classed safety or science; fixed on its own branch the day it was filed
 added: 2026-10-26
+closed: 2026-10-26
+pr: 1859
 payoff: a Projects thread's copied hooks find the checkout even after the session's working directory moves, so no guard blocks the tool it guards
 verify: grep -qF 'def test_a_copied_hook_finds_the_checkout_after_the_working_directory_moves' tests/unit/test_thread_hooks.py
 ---
@@ -40,3 +42,20 @@ for #1858 was refused, 2026-10-26. The coordinator asked for the fix.
 
 **Generator check.** Not a generator. It is one defect in one mechanism,
 `PL-X6VN`'s copier, and no other item names the same cause.
+
+## Done 2026-10-26
+
+`thread_hooks.py` now writes each copied command as
+`export CLAUDE_PROJECT_DIR=<checkout>; <command>`, with the checkout's path
+shell-quoted. The checkout is the one the file itself sits in, two
+directories up, rather than the value of `CLAUDE_PROJECT_DIR` when the
+session starts. Setting the variable first fixes both ways a hook finds the
+checkout: the `"$CLAUDE_PROJECT_DIR/.claude/hooks/..."` path in the command,
+and `hook_input.project_root()` inside the script.
+`test_a_copied_hook_finds_the_checkout_after_the_working_directory_moves`
+runs a copied command from the checkout's parent, with `CLAUDE_PROJECT_DIR`
+pointing there, and a checkout whose name holds a space. The command still
+reads a file in the checkout.
+
+A thread already running keeps its old copy until its next session start,
+when the copier finds the copy out of date and rewrites it.
