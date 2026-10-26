@@ -503,8 +503,8 @@ def parse_blind_review(value: str) -> BlindRecord:
         counts = [whole_number(group) for group in totals.groups()]
         if any(count is None for count in counts):
             raise ValueError("a count is not a whole number")
-        passes, findings, fixed, filed, rejected = (count or 0 for count in counts)
-        return BlindRecord(passes, totals=BlindTotals(findings, fixed, filed, rejected))
+        passes, *sums = (count or 0 for count in counts)
+        return BlindRecord(passes, totals=BlindTotals(*sums))
     split: list[tuple[BlindFinding, ...]] = []
     for entry in text.split(";"):
         match = _BLIND_PASS.fullmatch(entry.strip())
@@ -548,13 +548,15 @@ class BlindReading:
 
     `commit` is `""` where no commit in the span carries one. `record` is
     `None` where none does or where its value could not be read, and then
-    `misread` says why.
+    `misread` says why. `declined` says why git could not be asked, so a read
+    that never happened is not reported as a branch with no record.
     """
 
     commit: str = ""
     value: str = ""
     record: BlindRecord | None = None
     misread: str = ""
+    declined: str = ""
 
 
 def newest_blind_record(
@@ -565,7 +567,18 @@ def newest_blind_record(
     `arm` reads the branch's record through this, and so does
     `tools/blind_review_report.py`, so the two read one record the same way.
     """
-    commit, value = _newest_trailer(root, runner or _run_git, span, BLIND_REVIEW)
+    run = runner or _run_git
+    silent: list[str] = []
+
+    def watched(args: list[str], at: Path) -> str:
+        said = run(args, at)
+        if not answered(said):
+            silent.append(f"git did not answer a log of {' '.join(span)}")
+        return said
+
+    commit, value = _newest_trailer(root, watched, span, BLIND_REVIEW)
+    if silent:
+        return BlindReading(declined=silent[0])
     if not commit:
         return BlindReading()
     try:
@@ -1609,6 +1622,8 @@ def arm(
                 f"the {BLIND_REVIEW} record on {blind.commit[:12]} could not be read "
                 f"({blind.misread}), so it covers nothing: {blind.value}"
             )
+        if blind.declined:
+            unread.append(f"the {BLIND_REVIEW} record could not be read: {blind.declined}")
         blind_since = blind.commit if blind.record is not None else ""
         blind_recorded = blind.record.passes if blind.record is not None else 0
         passes = blind_count()

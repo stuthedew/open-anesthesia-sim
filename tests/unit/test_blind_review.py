@@ -122,3 +122,11 @@ def test_the_brief_names_the_pass_directory_and_its_findings_file() -> None:
     assert "Your directory is /tmp/blind/pass-2." in brief
     assert "/tmp/blind/pass-2/findings-pass-2.md" in brief
     assert "{" not in brief
+
+
+def test_the_brief_asks_for_the_severities_the_record_is_read_against() -> None:
+    """A severity the brief offers and the record refuses would make each such record unreadable.
+
+    The literal is the brief as `PL-TCBJ` ran it.
+    """
+    assert "### F<n> [blocking|should-fix|optional] <file path" in BRIEF
