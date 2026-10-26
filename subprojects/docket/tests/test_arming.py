@@ -8,6 +8,7 @@ the hold on blind review passes that no record says ran (`PL-HDRN`).
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -261,7 +262,9 @@ def test_the_prose_count_command_is_read_as_one_whole_number(
 # no record (`PL-HDRN`). The count is stubbed, because what
 # `tools/blind_review.py --count` counts is pinned by its own tests.
 
-PASSES_TWO = "Blind-review: passes 2, findings 3, fixed 1, filed 1, rejected 1"
+PASSES_TWO = "Blind-review: pass 1: blocking fixed, optional rejected; pass 2: should-fix filed"
+PASS_ONE = "Blind-review: pass 1: none"
+OLDER_TWO = "Blind-review: passes 2, findings 3, fixed 1, filed 1, rejected 1"
 
 
 def test_arm_holds_without_blind_review(tmp_path: Path) -> None:
@@ -284,7 +287,7 @@ def test_arm_holds_without_blind_review(tmp_path: Path) -> None:
     )
     assert arming.BLIND_ASK in held.lines
 
-    short = _record(git, "Blind-review: passes 1, findings 0, fixed 0, filed 0, rejected 0")
+    short = _record(git, PASS_ONE)
 
     again = _arm(root, None, lambda: owed)
 
@@ -307,7 +310,7 @@ def test_arm_holds_again_when_the_passes_owed_rise(tmp_path: Path) -> None:
     """A record of one pass no longer covers a branch that later owes two."""
     root, git = _repo(tmp_path)
     _change(root, git, "src/anesthesia_sim/app/panel.py", "X = 1\n")
-    _record(git, NOT_NEEDED, "Blind-review: passes 1, findings 0, fixed 0, filed 0, rejected 0")
+    _record(git, NOT_NEEDED, PASS_ONE)
 
     assert _arm(root, None, lambda: arming.CommandCount(count=1)).answer == arming.ARM
 
@@ -337,13 +340,26 @@ def test_arm_holds_when_blind_count_fails(tmp_path: Path) -> None:
 def test_a_malformed_blind_record_is_said_and_covers_nothing(tmp_path: Path) -> None:
     root, git = _repo(tmp_path)
     _change(root, git, SIMULATOR, "X = 1\n")
-    _record(git, NOT_NEEDED, "Blind-review: passes 2")
+    _record(git, NOT_NEEDED, "Blind-review: pass 1: blocking fixed; pass 2: blocking fixed rpeat")
 
     held = _arm(root, None, lambda: arming.CommandCount(count=2))
 
     assert held.answer == arming.HOLD
     assert "no Blind-review record says any ran" in held.lines[0]
-    assert any("is not 'passes N, findings F, fixed X, filed Y" in line for line in held.lines)
+    assert any(
+        "could not be read (pass 2: 'blocking fixed rpeat' is not 'severity outcome [repeat]')"
+        in line
+        for line in held.lines
+    )
+
+
+def test_an_older_blind_record_still_counts_its_passes(tmp_path: Path) -> None:
+    """A record in the totals form, which 28 merged pull requests carry, still covers the branch."""
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(git, NOT_NEEDED, OLDER_TWO)
+
+    assert _arm(root, None, lambda: arming.CommandCount(count=2)).answer == arming.ARM
 
 
 def test_a_change_outside_the_simulator_asks_for_no_blind_count(tmp_path: Path) -> None:
@@ -407,3 +423,49 @@ def test_renders_owner_ask_recognizes_every_line_parse_owner_ask_renders(value: 
 )
 def test_renders_owner_ask_refuses_a_line_in_neither_form(text: str) -> None:
     assert not arming.renders_owner_ask(text)
+
+
+# How a `Blind-review` value is read: one entry per finding, by pass (`PL-0BRY`).
+
+
+def test_the_per_finding_form_is_read_by_pass() -> None:
+    record = arming.parse_blind_review(
+        "pass 1: blocking fixed, optional rejected; pass 2: blocking fixed repeat, "
+        "should-fix   filed; pass 3: none"
+    )
+
+    assert record.passes == 3
+    assert record.totals is None
+    assert record.split == (
+        (arming.BlindFinding("blocking", "fixed"), arming.BlindFinding("optional", "rejected")),
+        (
+            arming.BlindFinding("blocking", "fixed", repeat=True),
+            arming.BlindFinding("should-fix", "filed"),
+        ),
+        (),
+    )
+
+
+def test_the_older_totals_form_counts_its_passes_and_splits_nothing() -> None:
+    record = arming.parse_blind_review("passes 2, findings 7, fixed 7, filed 1, rejected 0")
+
+    assert record == arming.BlindRecord(2, totals=arming.BlindTotals(7, 7, 1, 0))
+
+
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        ("", "'' is not 'pass N: ...'"),
+        ("pass 2: none", "pass 2 is out of order: expected pass 1"),
+        ("pass 1: none; pass 1: none", "pass 1 is out of order: expected pass 2"),
+        ("pass 1: blocking fixed repeat", "pass 1 cannot repeat a finding"),
+        ("pass 1: major fixed", "pass 1: 'major' is not one of blocking, should-fix, optional"),
+        ("pass 1: blocking done", "pass 1: 'done' is not one of fixed, filed, rejected"),
+        ("pass 1: blocking", "pass 1: 'blocking' is not 'severity outcome [repeat]'"),
+        ("pass 1: blocking fixed,", "pass 1: '' is not 'severity outcome [repeat]'"),
+        ("passes 2", "'passes 2' is not 'pass N: ...'"),
+    ],
+)
+def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) -> None:
+    with pytest.raises(ValueError, match=re.escape(reason)):
+        arming.parse_blind_review(value)
