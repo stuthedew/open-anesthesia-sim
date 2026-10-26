@@ -3298,12 +3298,13 @@ def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
 
 
 def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
-    """A halt lands within one simulation step of its mark, as `docs/MODEL.md` now says.
+    """The simulation halts within one simulation step of the mark, as `docs/MODEL.md` now says.
 
-    § "Halting on a marked crossing" used to say that the value displayed
-    beside a halt is the height the learner marked (`PL-M8F6`). The
-    specification now gives this case as its first example: a 0.10 ×MAC
-    circuit target, with 8% sevoflurane at 10 L/min, halts showing 0.11 ×MAC.
+    A mark is the target value that the learner sets for a reading. The simulation halts when
+    the reading crosses it. § "Halting on a marked crossing" used to say that the value
+    displayed beside a halt is the value the learner marked (`PL-M8F6`). The specification
+    now gives this case as its first example. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC
+    circuit target halts showing 0.11 ×MAC, one display count past its mark.
     """
 
     controller = _sevoflurane_at_8_percent_and_10_l_min()
@@ -3325,12 +3326,13 @@ def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_cou
 
 
 def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_resumes() -> None:
-    """One step can carry a reading more than one display count past its mark.
+    """In one simulation step, a reading can move more than one display count past its mark.
 
-    This is the specification's second example. After 120 s with no alveolar
-    ventilation, the alveolar reading is still zero while the circuit has
-    filled. Restoring ventilation to 12 L/min moves the alveolar reading fast
-    enough that a 0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
+    A display count is one unit of the last digit shown. This test is the second example in
+    `docs/MODEL.md` § "Halting on a marked crossing". After 120 s with no alveolar
+    ventilation, the circuit has filled but the alveolar reading is still zero. When
+    ventilation is restored to 12 L/min, the alveolar reading rises fast enough that a
+    0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
     """
 
     controller = _sevoflurane_at_8_percent_and_10_l_min()
