@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.p
 added: 2026-10-25
 payoff: the settings shown beside a halted run's concentrations are the ones those concentrations were computed under, so a learner cannot pair a value with a setting no step ran
 verify: grep -q 'def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_the_values_were_computed_under' tests/integration/test_simulation_view.py
+reenters: PL-X7D5
 ---
 
 **Problem.** The controller's setters have no halt check
