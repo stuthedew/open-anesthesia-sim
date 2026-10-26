@@ -35,8 +35,8 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-#: One hour of `SIMULATION_STEP_S` steps. Each run below reaches its fixed point in about
-#: 21 000 steps, so a run that has not reached it by then is a failure.
+#: The limit is one hour of `SIMULATION_STEP_S` steps. Each run below reaches its fixed
+#: point in about 21 000 steps, so a run that has not reached it within the limit has failed.
 ZERO_OUTPUT_STEP_LIMIT = 36_000
 
 #: How close each settled fraction must be to the closed form, relative. The
@@ -171,12 +171,12 @@ def test_the_domain_and_the_plotted_value_always_agree(
 
 @pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
 def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: str) -> None:
-    """At zero cardiac output, the settled run is read as wash-in at equilibrium (`PL-N559`).
+    """At zero cardiac output, the settled run is treated as wash-in at equilibrium (`PL-N559`).
 
     With no blood flow there is no uptake. The closed form then has the circuit and the alveoli
     both settle at the delivered fraction, so $`F_A/F_I`$ is exactly 1. The stepped run settles
     onto a floating-point fixed point instead, within rounding of that value. Isoflurane at the
-    fastest fresh gas flow settles with $`F_A`$ above $`F_I`$, which the rule once read as
+    fastest fresh gas flow settles with $`F_A`$ above $`F_I`$, which the rule once treated as
     elimination.
 
     The test does not depend on how long a run may last. It steps until one more step changes

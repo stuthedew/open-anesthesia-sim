@@ -4,23 +4,23 @@ This module is pure arithmetic over two modelled fractions. It is independent
 of Flet and of the scientific core. Nothing here reads simulation state, builds
 a control, or formats a string.
 
-The ratio has its own module for this reason. `docs/MODEL.md` § "F_A/F_I as a
-displayed ratio" specifies the quantity, and this module implements that
-specification. `app/formatting.py` has the same relationship to § "Displayed
-precision". The ratio is a clinically meaningful displayed value derived from
-two other values. So `CLAUDE.md`'s safety-critical standard requires that it
-can be read, cited and tested without loading the dashboard that draws it.
+The ratio has its own module so that it can be read, cited and tested without
+loading the dashboard that draws it. `CLAUDE.md`'s safety-critical standard
+requires this, because the ratio is a clinically meaningful displayed value
+derived from two other values. `docs/MODEL.md` § "F_A/F_I as a displayed ratio"
+specifies the quantity, and this module implements that specification, in the
+same way that `app/formatting.py` implements § "Displayed precision".
 `tests/unit/test_wash_in.py` holds the tests that pin down its behaviour.
 
 **What the numerator and the denominator are.** $`F_A`$ is the modelled
-alveolar fraction. $`F_I`$ is the modelled *inspired* fraction, which in this
-model is the breathing-circuit fraction. The identity $`F_C \equiv
-F_I`$ is true because the model contains one ideal, perfectly mixed circuit. That
-circuit has no dead space and no separate inspiratory and expiratory limbs
-(`docs/MODEL.md` § "Model boundary"). $`F_I`$ is not the vaporizer dial
-setting. The circuit fraction only approaches the dial setting, over the
-circuit's own time constant. A breathing system with several limbs would break
-the identity, and would make this ratio wrong too.
+alveolar fraction. $`F_I`$ is the modelled *inspired* fraction. In this model
+it is the breathing-circuit fraction, $`F_C`$, so the identity $`F_C \equiv
+F_I`$ holds. It holds because the model contains one ideal, perfectly mixed
+circuit. That circuit has no dead space and no separate inspiratory and
+expiratory limbs (`docs/MODEL.md` § "Model boundary"). $`F_I`$ is not the
+vaporizer dial setting. The circuit fraction only approaches the dial setting,
+over the circuit's own time constant. A breathing system with several limbs
+would break the identity, and would make this ratio wrong too.
 
 **Two rules decide when the quotient is a number that this application will
 show.** Both rules exist because a plausible-looking number is worse here than
@@ -46,18 +46,18 @@ no number at all.
    nothing more, because rounding alone can put an equilibrium's quotient a hair
    above one (`PL-N559`).
 
-`WASH_IN_EQUILIBRIUM_RATIO` is the second boundary. It is a *modelled* value,
-not a plotting choice, because it is where net uptake stops. That is why the
-chart draws it as a labelled reference line and ends the trace on it, rather
-than at the top of a frame.
+`WASH_IN_EQUILIBRIUM_RATIO` is the boundary that rule 2 uses. It is a
+*modelled* value, not a plotting choice, because it is where net uptake stops.
+That is why the chart draws it as a labelled reference line and ends the trace
+on it, rather than at the top of a frame.
 
 Neither rule invents a value, substitutes a default, or clamps a value into
 range. Where the ratio is outside its domain, `read_wash_in` returns no number
 to draw and says which rule excluded it. The interface can then state the
 reason instead of drawing a number it cannot stand behind. For the same reason,
-the number and the domain come out of one call. A caption saying "no agent in
-the circuit yet" beside a trace that is still drawing would be two displays
-disagreeing about the same instant.
+one call returns both the number and whether it is inside its domain. A caption
+saying "no agent in the circuit yet" beside a trace that is still drawing would
+be two displays disagreeing about the same instant.
 """
 
 from dataclasses import dataclass
@@ -95,25 +95,27 @@ WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
 WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 
 #: How far above `WASH_IN_EQUILIBRIUM_RATIO` a quotient may round and still
-#: be read as wash-in at equilibrium (`PL-N559`).
+#: be treated as wash-in at equilibrium (`PL-N559`).
 #:
 #: With cardiac output at zero there is no uptake, so the exact solution has
 #: $`F_A`$ rise to $`F_I`$ and stop there. The stepped run does not land
-#: exactly on that point. It settles onto a floating-point fixed point within
-#: about 1e-13 of it, relative, and every later step returns that same state.
-#: In some runs the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at
-#: 10 L/min settles at a quotient of 1 + 2.2e-14, and without this allowance
-#: the plot told the learner that the patient was returning agent. On
-#: 2026-10-26 nine agent and fresh gas flow combinations were stepped at 0.1 s
-#: for 24 h, and one for 96 h. The largest quotient was 1 + 2.2e-14, and none
-#: grew after the run reached its fixed point. Twenty-one runs on the
-#: canonical path to 24 h reached at most 1 + 9.6e-14.
+#: exactly on that point. It settles onto a floating-point fixed point whose
+#: relative distance from it is about 1e-13, and every later step returns that
+#: same state. In some runs the fixed point has $`F_A`$ above $`F_I`$.
+#: Isoflurane at 10 L/min settles at a quotient of 1 + 2.2e-14. Before this
+#: allowance existed, the plot told the learner that the patient was returning
+#: agent. On 2026-10-26 nine agent and fresh gas flow combinations were stepped
+#: at 0.1 s for 24 h, and one for 96 h. The largest quotient was 1 + 2.2e-14,
+#: and none grew after the run reached its fixed point. Twenty-one runs evaluated
+#: in one exact step from their start to 24 h, as `RunDefinition.state_at` does,
+#: reached at most 1 + 9.6e-14.
 #:
-#: The allowance of 1e-9 is about 10,000 times the largest of those. A
-#: quotient that small above one is genuinely elimination only by an amount
-#: far below the two decimals the interface prints. The project owner chose
-#: this route on 2026-10-26, over giving the propagator an exact fixed point,
-#: which would have changed every run's last digits.
+#: The allowance of 1e-9 is about 10,000 times the largest of those. If a
+#: quotient that close to one does reflect real elimination, the elimination is
+#: far too small to show in the two decimals that the interface prints. The
+#: project owner chose this allowance on 2026-10-26. The alternative was to give
+#: the propagator an exact fixed point, which would have changed the last
+#: digits of every run.
 WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-9
 
 
@@ -183,10 +185,10 @@ def wash_in_ratio(
 def is_wash_in(ratio: float) -> bool:
     """Return whether a computed quotient is inside the uptake regime.
 
-    This is the second boundary of the domain that the module docstring
-    states, written as a predicate. The chart and `read_wash_in` both use it,
-    so they classify a quotient by the same rule rather than each carrying its
-    own copy of the comparison.
+    The function writes rule 2 of the module docstring as a predicate. That
+    rule sets the upper boundary of the ratio's domain. The chart and
+    `read_wash_in` both use this function, so they classify a quotient by the
+    same rule rather than each carrying its own copy of the comparison.
 
     Args:
         ratio: A quotient from `wash_in_ratio`.

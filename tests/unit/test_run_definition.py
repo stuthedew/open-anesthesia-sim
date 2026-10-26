@@ -1876,18 +1876,20 @@ a restart, on the grounds that the difference is too small to matter.
 # is restarted from the canonical state at 655.3 s, on the two-change sevoflurane run below.
 # The divergence is the largest difference between the two at the instants in `PROBES_S`,
 # from 700 s to the end of the run at 3600 s. The test pins it as a ceiling rather than as
-# an equality, because it is a floating-point difference in how operations are composed. A
-# compiler, a platform or an unrelated change in `matrix_exponential` may move it. The claim
-# needs only that the divergence is real and this small. `PL-HWNG` moved the first change to
-# a 3.0% dial so that the run carries both changes. Measured after that, on 2026-10-26, the
-# divergence at the six probes was 1.5e-14, 1.1e-13, 1.5e-14, 1.2e-13, 1.7e-14 and 7.8e-13.
-# Before, with one change, the largest was 5.8e-13. Its order of magnitude agrees with the
-# 5.3e-13 that `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart
-# on a different run, in an accumulator (a running total of agent volume). That section is
-# the authority for the size, and this constant is not a second claim about it. The ceiling
-# was 1e-12, which left only 1.3 times above 7.8e-13, so a harmless change in composition
-# could have failed the test. At 1e-11 it is about 13 times the largest divergence measured,
-# and still seven orders of magnitude below the 1e-4 that the interface displays as 0.01%.
+# an equality, because it comes from floating-point differences in how operations are
+# composed. A compiler, a platform or an unrelated change in `matrix_exponential` may move
+# it. The test needs to show only that the divergence is real and this small. Before `PL-HWNG`
+# the first change set the dial to the 2.0% it already held, so the run had one real change.
+# `PL-HWNG` moved that change to a 3.0% dial. Measured after
+# that, on 2026-10-26, the divergence at the six probes was 1.5e-14, 1.1e-13, 1.5e-14,
+# 1.2e-13, 1.7e-14 and 7.8e-13. Before, with one change, the largest was 5.8e-13. That size
+# is the same order of magnitude as the 5.3e-13 that `docs/MODEL.md` § "The canonical
+# evaluation rule" records for the same restart on a different run, in an accumulator (a
+# running total of agent volume). That section is the authority for the size, and this
+# constant is not a second claim about it. The ceiling was 1e-12, only 1.3 times the
+# largest divergence of 7.8e-13, so a harmless change in composition could have failed the
+# test. At 1e-11 it is about 13 times the largest divergence measured, and still seven
+# orders of magnitude below the 1e-4 that the interface displays as 0.01%.
 FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-11
 
 FORK_S = 655.3
