@@ -3,11 +3,13 @@ id: PL-X4X2
 title: The playback-rate line under the clock reads "300× real time" while the run is paused, reset or halted, but `docs/MODEL.md` § "Minimum displayed outputs" still defines that line as the rate at which simulated time is advancing, which contradicts § "Interface boundary"'s statement that the label states the setting
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, ux, safety
 feature: replay-findings
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1840
 payoff: the specification gives one definition of the rate line under the clock, the one the screen matches, so a stopped run is not described as advancing
 verify: ! grep -qF 'the rate at which simulated time is advancing' docs/MODEL.md && ! grep -qF 'State how fast simulated time is being played' src/anesthesia_sim/app/formatting.py
 ---
