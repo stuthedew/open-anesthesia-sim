@@ -4554,15 +4554,16 @@ a closed recirculating path except for fresh-gas inflow and exhaust, and
 inspired gas *is* circuit gas. So during an elimination $`F_I`$ settles near
 $`\dot V_A/(\dot V_A + \dot V_F)`$ of $`F_A`$. That fraction is 0.29 at the
 highest supported flow, and it was measured at 0.30 to 0.32 at five minutes.
-The published protocols did not rebreathe. This is an inference and is
-recorded as one. Neither abstract states the breathing system. But both report
-mixed expired concentrations and agent recovered against agent taken up.
-Neither quantity can be obtained without collecting the whole expirate rather
-than returning it to the subject. Their elimination therefore ran at an
-inspired fraction at or near zero. This model cannot be set to that fraction
-at any supported flow. Confirming the inference against the methods sections
-needs full texts that are not in PubMed Central and are not held in
-`docs/references/`.
+The published protocols did not rebreathe. Both methods sections describe
+the apparatus that shows it. Each study gave the agents through a
+non-rebreathing circuit, and at exactly 30 minutes exchanged it for a fresh
+inspiratory and expiratory circuit (*Anesth Analg* page 317, *Anesthesiology*
+page 490). Neither paper states the inspired fraction during elimination, so
+the next step is an inference: their elimination ran at an inspired fraction
+at or near zero. This model cannot be set to that fraction at any supported
+flow. Neither full text is in PubMed Central. Both are in the
+private reference corpus that `docs/references/README.md` describes, and each
+has an extraction note in `docs/references/` that gives these pages.
 
 **The open-circuit diagnostic, and why its numbers are not this simulator's.**
 `tests/reference/test_published_wash_in_and_elimination.py` can run the same
@@ -5880,13 +5881,27 @@ learner can reach while the run is playing. § "Supported simulation step"
 publishes the grid on which a *control change* lands. That grid is
 `multiplier × 0.1` s, so 0.1 s at 1x and 30 simulated seconds at 300x. A halt
 is not on that grid. It lands on the crossing step itself, at every playback
-rate. So the concentration displayed beside a halt is the height the learner
-marked. It is not a value up to a whole burst's worth of simulated time past
-that height. If the test ran once per rendered frame instead, the same
+rate. So the concentration displayed beside a halt is the reading on the
+first step at or past the height the learner marked. It lies
+within one simulation step of that height, not up to a whole burst's worth of
+simulated time past it. One step's change can still show on screen. It grows
+with the gap between a compartment and the gas reaching it, and with the flow
+that carries that gas in. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC circuit
+target halts showing 0.11 ×MAC. The jump can be larger on other compartments.
+Run the same settings for 120 s with alveolar ventilation at 0 L/min, so that
+the alveolar reading stays at zero while the circuit fills. Restoring
+ventilation to 12 L/min then makes a 0.10 ×MAC alveolar target halt showing
+0.12 ×MAC, two display counts past its mark. A halt one or more counts past
+its mark is therefore correct. It lies above the mark on a rising crossing and
+below it on a falling one, and it is not a
+detection fault. If the test ran once per rendered frame instead, the same
 bookmark would stop at a different concentration depending on how fast the
 case was being played. Nothing on screen would say so. Two branches nominally
 taken "at 0.8 ×MAC" would then open from two different states.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
 **A halt leaves the run paused, and resuming is explicit.** This follows from
 the paragraph above rather than being a separate choice. A halt is exact, but

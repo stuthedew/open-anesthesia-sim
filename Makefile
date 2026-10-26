@@ -128,7 +128,7 @@ check: sync
 # reason goes, so the question arrives at the moment a line is added here
 # rather than whenever somebody next notices (`PL-PBP5`). It is placed beside
 # this line because this is the first `tools/` script the target runs.
-	uv run python tools/ignore_check.py
+	uv run python tools/type_ignore_check.py
 # Under `uv run` for the same kind of reason: it runs pylint, a `dev`
 # dependency, for its duplicate-code check alone. A block copied between two
 # modules fails here unless its baseline allows it (`PL-VWXL`).
@@ -386,7 +386,7 @@ check: sync
 # named one belongs, and a numeric constant defined in two modules: the
 # colours' one-home rule in `contrast_check.py`, extended to numbers.
 #
-# `tools/ignore_check.py` above is the same category for a different reason.
+# `tools/type_ignore_check.py` above is the same category for a different reason.
 # All eight tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.

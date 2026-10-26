@@ -60,7 +60,7 @@ carried when this landed, keyed by file, enclosing scope and value rather than
 by line, so an edit above a literal moves nothing. A literal beyond its entry
 fails as new. An entry the tree no longer fills fails as stale, naming the
 count to lower it to, so a literal removed is a literal that cannot quietly
-come back: the ratchet `tools/ignore_check.py` is for `type: ignore`, and
+come back: the ratchet `tools/type_ignore_check.py` is for `type: ignore`, and
 `check_colors_live_in_the_theme` in `tools/contrast_check.py` is this rule for
 colours.
 

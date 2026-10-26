@@ -212,7 +212,7 @@ jobs:
           python-version: '3.11'
 
       # **The item-only fast path** (`PL-DXD4`). A pull request that changes
-      # only item files cannot change what ruff, mypy or `ignore_check.py`
+      # only item files cannot change what ruff, mypy or `type_ignore_check.py`
       # find, nor the result of most tests. Before `PL-T9X9` split the suite
       # across two jobs, the full suite took 8m33s of the one job's 10m23s on
       # run 39062070913. So this step asks `bin/docket ci-scope` whether every
@@ -220,7 +220,7 @@ jobs:
       # `scope=items` as its output if so. It writes `scope=apparatus` when
       # every path is under `workflow_paths`, which both parts' pytest steps
       # read (`PL-STM6`), and `scope=full` otherwise. On
-      # `items`, ruff, mypy, `ignore_check.py` and both parts of the suite are
+      # `items`, ruff, mypy, `type_ignore_check.py` and both parts of the suite are
       # skipped, with the coverage the parts upload and `checks` combines. The second part runs
       # only the tests marked `reads_item_store` instead. The root
       # `conftest.py` fails any test that reads the store without that marker,
@@ -230,7 +230,7 @@ jobs:
       # The others took about 9 seconds together on that run. They were
       # measured not to read the store on 2026-10-17, but nothing about what
       # they are guarantees it, so skipping them could miss a tool that starts
-      # reading it. ruff's linter, mypy and `ignore_check.py` read only Python
+      # reading it. ruff's linter, mypy and `type_ignore_check.py` read only Python
       # files, and no item file is one. ruff's formatter also formats fenced
       # Python blocks in Markdown, so `pyproject.toml` excludes the store from
       # it. Without that exclusion an item-only pull request could merge green
@@ -335,7 +335,7 @@ jobs:
       # `.mypy_cache`. Measured on this tree, four cores: 27.3 s from a cold
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
-      - run: uv run python tools/ignore_check.py
+      - run: uv run python tools/type_ignore_check.py
         if: steps.scope.outputs.scope != 'items'
       # Under `uv run` because it runs pylint, a `dev` dependency, for its
       # duplicate-code check alone. An item file holds no code, so the fast
