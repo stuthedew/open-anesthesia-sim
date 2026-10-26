@@ -653,3 +653,39 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
     tissue.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
 
     assert tissue.agent_amount_l > held_l
+
+
+@pytest.mark.parametrize(
+    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1.7976931348623157e308]
+)
+def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-YT3T`: the tissue group stepped on its own refuses a step longer than 24 h.
+
+    Every compartment stepped alone has the same ceiling, the supported run length, so one
+    function states which steps a compartment accepts. The step is refused and the amount held
+    does not change. A step of exactly 86 400 s is accepted, and it brings the tissue group to
+    its equilibrium, 0.02 of its capacity. The expected ceiling is written out here rather than
+    read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    tissue = _build_tissue()
+    held_l = tissue.agent_amount_l
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            rf"^test simulation_step_s of {re.escape(str(simulation_step_s))} s is longer "
+            r"than the supported run length of 86400 s \(24 h\), the most simulated time "
+            r"this model is claimed to represent a patient over, so no single step may be "
+            r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
+        ),
+    ):
+        tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+
+    assert tissue.agent_amount_l == held_l
+
+    tissue.advance(Fraction(0.02), 86_400.0, BLOOD_FLOW_L_MIN)
+
+    assert tissue.agent_amount_l == pytest.approx(0.02 * tissue.capacity_l, rel=1e-15, abs=0.0)

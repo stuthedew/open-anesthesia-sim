@@ -3,7 +3,7 @@ id: PL-58D7
 title: core's closed forms and products are fixed one at a time at extreme inputs - overflow to inf, underflow to zero, cancellation and rounding at the wrong scale - because nothing states the floating-point domain each operation must hold: nine members from 2026-09-06 to 2026-10-17
 priority: P1
 effort: L
-status: blocked
+status: ready
 classes: defect, refactor
 feature: defect-review-2026-10
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, docs/MODEL.md, tests/unit
@@ -11,7 +11,7 @@ blocked-by: PL-QX2G, PL-YT3T
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 payoff: each core operation states and enforces the inputs on which its floating-point answer is correct, so an extreme input is refused at build rather than found as a nan or a negative uptake
-verify: grep -rq 'def test_every_core_operation_refuses_inputs_outside_its_floating_point_domain' tests/unit
+verify: grep -rq 'def test_every_core_operation_refuses_inputs_outside_its_floating_point_domain' tests/unit && grep -rq 'def test_every_core_operation_holds_its_equations_at_every_envelope_corner' tests/unit
 root-cause-of: PL-3PRZ, PL-2MD9, PL-6QYJ, PL-8H2R, PL-B26Y, PL-YT8N, PL-XWFP, PL-FNH3, PL-8LQZ
 generator: live - seven members filed 2026-10-03 to 2026-10-17, the last two closed 2026-10-19, each fixed for its own operation with no stated domain for the next
 misread: The floating-point input domain on which each closed form and product in core gives a correct answer

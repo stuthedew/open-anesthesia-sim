@@ -19,8 +19,11 @@ from anesthesia_sim.core.numerical_envelope import (
     require_compartment_volume,
     tissue_blood_partition_coefficient,
 )
-from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
-from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
+from anesthesia_sim.core.supported_ranges import (
+    CardiacOutput,
+    require_cardiac_output,
+    require_compartment_step,
+)
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_a_capacity_with_room_for_the_agent,
@@ -367,16 +370,16 @@ class TissueGroup:
         simulation_step_s: float,
         blood_flow_l_min: float,
     ) -> float:
-        """Advance exactly for a constant arterial fraction and blood flow.
+        """Advance the tissue exactly for a constant arterial fraction and blood flow.
 
         This method is the tissue group's own closed-form solution. It is not how
         a run advances. In a run, the arterial fraction changes continuously, and
-        `AgentUptakeSystem.advance()` is the step that follows that change. The
+        `AgentUptakeSystem.advance()` is the step that tracks that change. The
         package docstring in `core/__init__.py` explains the distinction.
-        `core/exponential_approach.py` holds the form in which the amount is
-        advanced. That form is exact at zero flow, so this method needs no
-        separate branch for it. `docs/MODEL.md` § "Tissue uptake and return"
-        gives the equation.
+        `core/exponential_approach.py` holds the formula that advances the amount.
+        That formula is exact at zero flow, so this method needs no separate branch
+        for zero flow. `docs/MODEL.md` § "Tissue uptake and return" gives the
+        equation.
 
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return
@@ -386,22 +389,24 @@ class TissueGroup:
             TypeError: the arterial fraction was not built as a `Fraction`,
                 which is the type that checks it lies in the range 0 to 1
                 (`core/concentration.py`).
-            SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
-                (`core/simulation_step.py`, `PL-WP52`), or `blood_flow_l_min` is
-                negative or not finite. These checks run before anything
-                changes. The error is also raised when the amount held is
-                already more than the capacity. Only a write that bypasses
-                `__setattr__` can have stored such an amount. The new amount is
-                always written through `__setattr__`, which refuses an amount
-                past the capacity. That includes zero flow, where the new amount
-                is the amount held, unchanged.
+            SimulationConfigurationError: `blood_flow_l_min` is negative or not
+                finite, or `simulation_step_s` is outside the range that
+                `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
+                step must be positive and finite, no shorter than
+                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. These checks run
+                before anything changes. The error is also raised when the amount
+                held is already more than the capacity. Only a write that bypasses
+                `__setattr__` can have stored such an amount. This method always
+                writes the new amount through `__setattr__`, which refuses an
+                amount greater than the capacity. It does so even at zero flow,
+                where the new amount equals the amount held.
         """
 
         require_fraction(
             f"{self.name} arterial_partial_pressure_fraction", arterial_partial_pressure_fraction
         )
-        require_at_least_the_smallest_step(f"{self.name} simulation_step_s", simulation_step_s)
+        require_compartment_step(f"{self.name} simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l
