@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: before a `git push` sends this repository's tree,
-# run the three checks that most often turn a pull request red on something
-# `make check` already refuses locally, and deny the push while any fails
-# (`PL-PLSJ`, `PL-S1BG`).
+# run the checks that most often turn a pull request red on something `make
+# check` already refuses locally, and deny the push while any fails
+# (`PL-PLSJ`, `PL-S1BG`, `PL-3JG7`).
 #
 # **Why these three and why here.** `PL-JYJJ`'s census counted 391 red runs; 32
 # were `doc_check` and 8 `branch_id_check`, rising week on week, and every one
@@ -20,6 +20,20 @@
 # refused since; on such a day this refuses a push the branch did not cause,
 # naming the item on `main` that is wrong.
 #
+# **Four more since `PL-3JG7`**, from `PL-2D1S`'s reading of every red run on
+# the pull requests of items closed from 2026-09-21 to 2026-10-25. Of the 32
+# that failed a check `make check` also runs, 26 were on branches where this
+# hook runs, and four checks it did not run were behind 22 of those 26:
+# `tools/workflow_paths_check.py` (6), `tools/ignore_check.py` (9, seven of
+# them one branch pushing again past the same failure),
+# `tools/fixture_id_check.py` (4) and `tests/unit/test_line_splits.py` (3).
+# They cost the push no time. In a four-CPU session container on 2026-10-26,
+# the first three took 61 s side by side, bounded by `doc_check` alone at 59 s,
+# and all seven took 61 s. The four run under the tree's `.venv/bin/python`,
+# the interpreter `make check`'s `uv run` uses, because `fixture_id_check`
+# parses `src/`, whose Python 3.14 syntax the bare `python3` running this hook
+# need not read.
+#
 # **What counts as a push**: a git call whose command, after git's own options,
 # is `push`, read through `shell_split.commands` as the three sibling guards
 # read theirs, so a push in a subshell, after `&&` or behind `timeout` counts
@@ -35,11 +49,12 @@
 # directory there is this project's, so a linked worktree is checked and
 # another repository is not. Like `make check`, the checks read the working
 # tree, so an uncommitted edit counts. Each runs from that tree's own copy of
-# its script, and is skipped in a tree without one. A push sends an
-# uncommitted edit only once it is committed, so where `doc_check` or `docket
-# check` fails in a tree `git status` shows changes in, the refusal says so and
-# how to settle which tree was meant; `branch_id_check` reads the history, where
-# no uncommitted edit can be the cause (`PL-GR0L`).
+# its script, and is skipped in a tree without one. The four that need the
+# project's interpreter are skipped in a tree without `.venv/bin/python` too.
+# A push sends an uncommitted edit only once it is committed, so where a check
+# that reads the tree fails in a tree `git status` shows changes in, the
+# refusal says so and how to settle which tree was meant. `branch_id_check`
+# reads the history, where no uncommitted edit can be the cause (`PL-GR0L`).
 #
 # **Known gaps**, each costing a push CI would then catch, never a false
 # refusal of a clean tree: in `git commit ... && git push` the hook runs before
@@ -87,7 +102,19 @@ command = call.command
 # where no `=` joins one, the letter among them, and what sends nothing.
 PUSH_VALUED = frozenset(("--repo", "--recurse-submodules", "--receive-pack", "--exec", "--push-option"))
 SENDS_NOTHING = frozenset(("--delete", "--dry-run", "--no-verify"))
-READS_THE_TREE = frozenset(("doc_check", "docket check"))
+READS_THE_TREE = frozenset(
+    (
+        "doc_check",
+        "docket check",
+        "workflow_paths_check",
+        "fixture_id_check",
+        "ignore_check",
+        "line-split tests",
+    )
+)
+# The interpreter of the project, relative to the top of the tree: the one
+# that the `uv run` steps of `make check` run under (`PL-3JG7`).
+PROJECT_PYTHON = ".venv/bin/python"
 DEADLINE = 100
 SKILL_NOTE = (
     "This was a push of this repository. Opening, arming, updating or merging "
@@ -102,15 +129,40 @@ SHOWN = 40
 def checks(base):
     """Each check as a session types it to re-run it, the store check comparing against `base`.
 
-    `python3` runs as this interpreter, and `bin/docket`, a bash wrapper, runs
-    under bash. `base` is the default base `docket.vcs` answers for the tree,
-    `origin/main` in this repository, as `make check` spells it (`PL-ZXCN`).
+    `base` is the default base `docket.vcs` answers for the tree, `origin/main`
+    in this repository, as `make check` spells it (`PL-ZXCN`). `launch` says
+    which interpreter runs each one.
     """
     return (
         ("doc_check", ("python3", "tools/doc_check.py", "check")),
         ("branch_id_check", ("python3", "tools/branch_id_check.py")),
         ("docket check", ("bin/docket", "check", "--verify", "--verify-base", base, "--no-fetch")),
+        ("workflow_paths_check", (PROJECT_PYTHON, "tools/workflow_paths_check.py")),
+        ("fixture_id_check", (PROJECT_PYTHON, "tools/fixture_id_check.py")),
+        ("ignore_check", (PROJECT_PYTHON, "tools/ignore_check.py")),
+        (
+            "line-split tests",
+            (PROJECT_PYTHON, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/unit/test_line_splits.py"),
+        ),
     )
+
+
+def launch(top, argv):
+    """The command that runs `argv` in `top`, or None where `top` lacks a file it needs.
+
+    `python3` runs as this interpreter, and `bin/docket`, a bash wrapper, runs
+    under bash. A check under the project interpreter needs that interpreter
+    in the tree as well as the file it runs, which is its last word.
+    """
+    if argv[0] == "python3":
+        needed, command = (argv[1],), [sys.executable, *argv[1:]]
+    elif argv[0] == "bin/docket":
+        needed, command = (argv[0],), ["bash", *argv]
+    else:
+        needed, command = (argv[0], argv[-1]), [os.path.join(top, argv[0]), *argv[1:]]
+    if all(os.path.isfile(os.path.join(top, path)) for path in needed):
+        return command
+    return None
 
 
 def sends(words):
@@ -229,10 +281,10 @@ for target in targets:
 running = []
 for top in trees:
     for name, argv in checks(vcs.default_base(Path(top), runner=run)):
-        python = argv[0] == "python3"
-        if os.path.isfile(os.path.join(top, argv[1] if python else argv[0])):
+        command = launch(top, argv)
+        if command is not None:
             process = subprocess.Popen(
-                [sys.executable, *argv[1:]] if python else ["bash", *argv],
+                command,
                 cwd=top,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -268,7 +320,8 @@ reason = (
 )
 changed = sum(uncommitted(top) for top in read_trees)
 if changed:
-    names = " and ".join("`" + name + "`" for name, _ in checks("") if name in readers)
+    listed = ["`" + name + "`" for name, _ in checks("") if name in readers]
+    names = listed[-1] if len(listed) == 1 else ", ".join(listed[:-1]) + " and " + listed[-1]
     paths = "1 path" if changed == 1 else f"{changed} paths"
     reason += (
         f"\n\n{names} read the working tree, and `git status --short` lists {paths} "
