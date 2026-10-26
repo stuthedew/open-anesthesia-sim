@@ -7675,9 +7675,16 @@ properties that this document requires, not optimisations:
   multiples of the spacing that the selected time base and the plot width
   imply. There is one column per pixel boundary of the widest plot the frame
   is drawn on, and never fewer than 150 (`chart_columns` in
-  `app/chart_frame.py`, `PL-GS3R`). A plot can become wider than the width its
-  frame was sampled for, by a window resize or by a reader dragging an Area
-  border. The plot is then redrawn on the next render tick, whether the run is
+  `app/chart_frame.py`, `PL-GS3R`). The spacing is the span divided by those
+  columns, rounded down onto whole hundredths of a second, and onto tenths
+  wherever that adds at most a tenth more columns (`grid_spacing_s` in
+  `app/chart_time_base.py`, `PL-T5NJ`). Every drawn instant is then a whole
+  number of hundredths, so the chart's hover can print exactly the instant
+  whose state it prints. Rounding down keeps each chord within a pixel of
+  time. The one exception is a spacing below a hundredth of a second, which
+  needs a one-minute axis more than 6000 px wide. A plot can become wider than
+  the width its frame was sampled for, by a window resize or by a reader
+  dragging an Area border. The plot is then redrawn on the next render tick, whether the run is
   running or paused (`resample_owed`, `PL-9LNF`). A window that follows the
   run therefore keeps every column it had and gains at most one, so a steady
   trace is not redrawn on every frame. A grid anchored to the viewport would
@@ -10244,8 +10251,11 @@ Each line, and the reason it must be there:
    is there because the same percentage means different things under different
    agents. For example, 1.43% is 0.71 MAC of sevoflurane and 0.24 MAC of
    desflurane. A floating box cannot rely on the header being visible behind
-   it. The instant is given in the compound form of `format_elapsed`. The
-   clock, every control stamp and the time axis use the same form.
+   it. The instant is given in the compound form of `format_elapsed`, to the
+   hundredth of a second that the chart's columns are laid on. So the printed
+   instant is the instant of the state printed beside it, not a rounding of
+   it (`PL-T5NJ`). The clock, every control stamp and the time axis use the
+   same form.
 2. **What the value is: the compartment, with its gloss where the readout row
    has one.** The two glossed compartments are
    `Alveolar (end-tidal-equivalent)` and `Circuit (inspired)`. The other four

@@ -54,6 +54,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.chart_time_base import (
+    CHART_GRID_RESOLUTIONS_S,
     ChartTimeBase,
     fit_to_run,
     fitted_window,
@@ -90,7 +91,6 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
@@ -221,20 +221,22 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # have been rendered and checked by eye (`tools/glyph_check.py`).
 WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 
-# The resolution at which the hover states its instant. It is the step the run
-# advances by, which is also the clock's own resolution and the finest
-# resolution a control stamp carries. A drawn column sits wherever the anchored
-# grid puts it, such as 410.7383 s on a thirty-minute axis. The state reported
-# is the state at exactly that instant, evaluated in closed form. But printing
-# the instant to four decimals would claim a resolution that no other display
-# on the screen has and that no reader can use. Rounded to the tenth of a
-# second that the clock steps by, the printed instant differs from the drawn
-# one by at most 0.05 s. Over that interval no compartment moves by a
-# hundredth of a percent. The value is taken from the core's declared ceiling
-# rather than written as a digit, for the same reason the dashboard's own step
-# is. The shipped step sits at that ceiling on purpose, and a second literal
-# would drift from it silently.
-HOVER_INSTANT_RESOLUTION_S: Final = MAXIMUM_SIMULATION_STEP_S
+# The resolution at which the hover states its instant. It is the finest grid
+# a drawn column can sit on, a hundredth of a second, so the instant printed is
+# the instant whose state is printed beside it (`PL-T5NJ`). Columns used to sit
+# wherever the plot's width put them, such as 410.7383 s, and the hover rounded
+# that to the clock's tenth of a second. The state printed was still the state
+# at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
+# induction that is not negligible: desflurane at 18% and 10 L/min takes the
+# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s, so the hover at "6s" could
+# print 2.70% while the readout row at 6 s showed 2.68%.
+# `chart_time_base.grid_spacing_s` now rounds the spacing down onto whole
+# hundredths, and onto tenths wherever that costs few columns, and every other
+# drawn instant (a bound, a control event, a fork) is a step instant. Rounding
+# to this resolution therefore removes only floating-point noise. The value is
+# read from the grid's own declaration rather than written as a digit, so the
+# two cannot drift apart.
+HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -1500,12 +1502,11 @@ def _hover_agent(run: RunFrame) -> str:
 
 
 def _hover_instant(time_s: float) -> str:
-    """Return a drawn point's instant, rounded to the step the run advances by.
+    """Return a drawn point's instant, as the clock and the axis state time.
 
-    A drawn column sits wherever the anchored grid puts it, and the state
-    reported is the state at exactly that instant. But printing the instant to
-    four decimals would claim a resolution that no other display on the
-    screen has.
+    Every drawn instant is a whole number of `HOVER_INSTANT_RESOLUTION_S`, so
+    the rounding removes only floating-point noise, and the instant printed is
+    the one whose state the hover prints.
     """
 
     return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)

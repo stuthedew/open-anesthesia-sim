@@ -3546,9 +3546,11 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
       marks where the two stop being one run.
     - **Canonically, they agree element for element at every column they do
       share.** This is the guarantee, checked at the drawn instants rather
-      than at the solver's: 0 of 2 160 elements differ over 240 shared columns.
-    - **The drawn values at those columns do not.** 1 909 of the same 2 160
-      differ, the worst by 2.7e-15. That is because `evaluate_anchored` chains
+      than at the solver's: 0 of 2 259 elements differ over 251 shared columns.
+    - **The drawn values at those columns do not.** 2 000 of the same 2 259
+      differ, the worst by 5.3e-16 (measured 2026-10-26, after `PL-T5NJ` put
+      the columns on whole hundredths of a second; before that, 1 909 of 2 160
+      over 240 columns differed, the worst by 2.7e-15). That is because `evaluate_anchored` chains
       one propagator across consecutive columns and breaks the chain at a
       bound. So the trunk chains through the fork, while the branch restarts
       there. Without this third claim, a display path that had quietly become
@@ -3580,7 +3582,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     shared = sorted(set(trunk_window.times_s) & set(branch_window.times_s))
 
     assert tuple(sorted(set(branch_window.times_s) - set(trunk_window.times_s))) == (fork_s,)
-    assert len(shared) == 240
+    assert len(shared) == 251
 
     trunk_drawn = dict(zip(trunk_window.times_s, trunk_window.states, strict=True))
     branch_drawn = dict(zip(branch_window.times_s, branch_window.states, strict=True))
@@ -3601,7 +3603,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
                 f"the two drawn columns at {elapsed_s} s diverged further than measured"
             )
 
-    assert elements == 240 * STATE_SIZE
+    assert elements == 251 * STATE_SIZE
     assert drawn_differing > 0, (
         "the drawn values at every shared column agreed bit for bit, so the display path "
         "has become the canonical one and the separation docs/MODEL.md enforces no longer "

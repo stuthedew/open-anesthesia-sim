@@ -25,6 +25,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
+from anesthesia_sim.app.chart_time_base import grid_spacing_s
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
@@ -2144,10 +2145,12 @@ class SimulationController:
             stop_s: Right edge of the axis, in simulated seconds. It must not
                 be before `start_s`.
             columns: The number of grid columns the axis is divided into, at
-                least two. The points actually drawn are these columns plus
-                the control events inside the window and the two ends of the
-                drawn range. So this value bounds the grid, not the number of
-                points.
+                least two. The spacing this gives is rounded down onto whole
+                hundredths of a second, so the grid can have a few more
+                columns than this (`chart_time_base.grid_spacing_s`). The
+                points actually drawn are these columns plus the control
+                events inside the window and the two ends of the drawn range.
+                So this value sets the grid, not the number of points.
 
         Returns:
             The states at the drawn instants, bound to this run's agent.
@@ -2172,7 +2175,11 @@ class SimulationController:
                 f"an axis from {start_s} s to {stop_s} s ends before it begins"
             )
 
-        spacing_s = (stop_s - start_s) / (columns - 1)
+        # The spacing is rounded down onto a grid of whole hundredths of a
+        # second, so the chart's hover can print each column's instant exactly
+        # (`chart_time_base.grid_spacing_s`, `PL-T5NJ`).
+        span_s = stop_s - start_s
+        spacing_s = grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
         # The axis and the run definition use one clock, so nothing is
         # converted here. The range is only clipped to the span the run
         # actually holds. The lower clip is where this run *began*, not zero.
