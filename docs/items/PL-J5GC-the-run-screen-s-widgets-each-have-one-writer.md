@@ -7,7 +7,6 @@ status: ready
 classes: defect, safety
 feature: defect-review-2026-10
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, tests/integration/test_simulation_view.py
-deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 payoff: a value and its divisor, setting or verdict are never shown from two different states
 verify: grep -q 'def test_every_value_and_its_qualifiers_on_screen_come_from_one_state' tests/integration/test_simulation_view.py
