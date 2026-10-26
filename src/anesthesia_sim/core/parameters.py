@@ -386,7 +386,6 @@ class AgentParameters:
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
-        require_positive_finite("molar_mass_g_mol", self.molar_mass_g_mol)
 
         if not isinstance(self.liquid_density, LiquidDensity):
             raise TypeError(
@@ -396,7 +395,8 @@ class AgentParameters:
 
         # The ratio is formed once here, as the tissue:blood quotients are formed
         # above. So a density and a molar mass whose ratio is not finite are refused
-        # when the record is built, not at the first conversion.
+        # when the record is built, not at the first conversion. Forming it also
+        # checks that the molar mass is positive and finite.
         _ = self.vapour_volume_per_liquid_volume
 
     @property

@@ -310,3 +310,16 @@ quantities under the 20 °C label (`docs/MODEL.md` § "Known limitations").
 So a readout that shows a store or the uptake in millilitres of liquid must
 either say so beside the figure or correct it. A delivered or exhausted
 figure needs neither. `PL-KZ99`'s first blind review pass found this.
+
+**Also from `PL-KZ99`'s reviews: make the conversion's caller unable to pair
+an amount with the wrong agent or the wrong kind.** `liquid_volume_ml` takes
+a bare vapour volume and a bare ratio. So nothing stops a caller from
+converting one agent's vapour with another agent's ratio after an agent
+switch. Sevoflurane vapour converted with desflurane's ratio reads about 13 %
+low. Nothing stops it from converting a store as though it were fresh gas
+either. Two reviewers named this. It was left for this item rather than built
+in `PL-KZ99`, because the right shape is an amount record that carries its
+agent and whether it is fresh gas or a store. `PL-KFTM` builds those records.
+Nothing calls `liquid_volume_ml` yet, so changing its signature costs nothing
+here. Recommended: take that record, refuse an agent mismatch, and refuse or
+label a store.

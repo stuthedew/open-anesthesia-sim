@@ -29,7 +29,7 @@ from anesthesia_sim.core.parameters import load_agent_parameters
 # Biro P. Calculation of volatile anaesthetics consumption from agent
 # concentration and fresh gas flow. Acta Anaesthesiol Scand. 2014;58(8):968-72.
 # doi:10.1111/aas.12374. Abstract: "The amount of volatile agent vapour deriving
-# from 1 ml of fluid volatile agent are for halothane 229 ml, isoflurane 195 ml,
+# from 1 ml of fluid agent are for halothane 229 ml, isoflurane 195 ml,
 # sevoflurane 184 m[l], and desflurane 210 ml." Read from PubMed (PMID
 # 25060161) on 2026-10-26, abstract only.
 BIRO_2014_VAPOUR_ML_PER_LIQUID_ML = {"sevoflurane": 184.0, "isoflurane": 195.0, "desflurane": 210.0}

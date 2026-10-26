@@ -196,3 +196,22 @@ because no correction for temperature is stored.
 mention of the key satisfies, including a file that stores no density. The
 new command names the reference tests and the test of each stored density
 against Laster, Fang and Eger's abstract.
+
+**Regression tests, each run against the code before its fix** (test-oracles
+rule 6). The five tests below came from the blind and adversarial reviews.
+Each was run against commit `670873cb`, before any review fix, with this
+branch's test files copied in:
+`PYTHONPATH=src pytest -q tests/unit/test_liquid_agent.py tests/unit/test_parameters.py -k "not_a_number or not_a_positive_finite_number or not_a_liquid_density or ratio_overflows or result_that_overflows"`.
+All nine cases failed there, and each passes now.
+
+- `test_a_liquid_density_refuses_a_temperature_that_is_not_a_number`, for
+  `None`, `True` and `'20'`: `SimulationConfigurationError: a liquid density
+  measured at None °C cannot be used`, where a `TypeError` was expected.
+- `test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number`,
+  both cases: `Failed: DID NOT RAISE SimulationConfigurationError`.
+- `test_liquid_volume_refuses_a_result_that_overflows`, both cases: `Failed:
+  DID NOT RAISE SimulationConfigurationError`.
+- `test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density`:
+  `Failed: DID NOT RAISE TypeError`.
+- `test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows`: `Failed:
+  DID NOT RAISE SimulationConfigurationError`.

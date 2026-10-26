@@ -144,6 +144,8 @@ def vapour_volume_per_liquid_volume(
     standard atmosphere. The module docstring gives the equation.
 
     Raises:
+        TypeError: `molar_mass_g_mol` is not an `int` or a `float`, or is a
+            `bool`, as `require_positive_finite` says.
         SimulationConfigurationError: `molar_mass_g_mol` is not positive and
             finite. Also raised when the two inputs are each positive and
             finite but their ratio overflows to infinity or underflows to
@@ -178,6 +180,8 @@ def liquid_volume_ml(vapour_volume_l: float, vapour_per_liquid: float) -> float:
     amount, as the module docstring says.
 
     Raises:
+        TypeError: `vapour_volume_l` or `vapour_per_liquid` is not an `int` or
+            a `float`, or is a `bool`, as the shared guards say.
         SimulationConfigurationError: `vapour_volume_l` is negative or not
             finite, or `vapour_per_liquid` is not positive and finite. Also
             raised when the two are each acceptable but the liquid volume
