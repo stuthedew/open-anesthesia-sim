@@ -564,10 +564,14 @@ label repairs.
 
 The guarantee does not cover four things, and none of them is a defect:
 
-- **A different step size.** Two runs at different steps are two roundings of
-  the same solution, not two solutions. The step is exact, so what separates
-  them is floating-point accumulation. "Step-refinement test" is what bounds
-  that difference.
+- **A different step size.** Between setting changes, two runs at different
+  steps are two roundings of the same solution, not two solutions. The step
+  is exact, so what separates them there is floating-point accumulation.
+  "Step-refinement test" is what bounds that difference. A setting change is
+  different. It takes effect at the next step boundary, and the boundaries
+  fall at different times on each step grid. So a change's timing moves with
+  the step, and two runs with any setting change follow different
+  trajectories by more than rounding after it (`PL-5RPD`).
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
 - **A different platform.** Addition, multiplication and division are

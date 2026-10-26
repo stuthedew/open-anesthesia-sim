@@ -3,11 +3,13 @@ id: PL-5RPD
 title: docs/MODEL.md says two runs at different step sizes are two roundings of the same solution, but a step holds each setting for its whole length, so a control change lands at a different instant on each step grid and two runs with any setting change follow different trajectories by more than rounding
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: replay-findings
 touches: docs/MODEL.md
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: a reader comparing two runs at different steps does not dismiss a real difference in a control change's timing as rounding noise
 verify: grep -qF 'between setting changes' docs/MODEL.md
 ---
