@@ -29,6 +29,7 @@ from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
+    MAXIMUM_CUMULATIVE_AGENT_L,
     STATE_SIZE,
     TISSUE_GROUP_COUNT,
     UNIT_STATE,
@@ -916,3 +917,24 @@ def test_require_canonical_state_accepts_each_fraction_at_both_bounds() -> None:
     for position in range(FIRST_TISSUE_FRACTION + TISSUE_GROUP_COUNT):
         require_canonical_state(_empty_state_with(position, 0.0))
         require_canonical_state(_empty_state_with(position, 1.0))
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(position: int) -> None:
+    """A total above a whole case at the fastest fresh gas flow is refused (found at review).
+
+    Both totals at the largest float once passed, and `state_at(600.0)` returned `inf` for
+    each. The bound itself is accepted, and the next float above it is not.
+    """
+
+    assert MAXIMUM_CUMULATIVE_AGENT_L == 14_400.0
+
+    require_canonical_state(_empty_state_with(position, MAXIMUM_CUMULATIVE_AGENT_L))
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(
+            _empty_state_with(position, nextafter(MAXIMUM_CUMULATIVE_AGENT_L, inf))
+        )
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "that a case can deliver or exhaust" in str(raised.value)

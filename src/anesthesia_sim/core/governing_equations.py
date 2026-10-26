@@ -102,6 +102,8 @@ from anesthesia_sim.core.numerical_envelope import (
     require_compartment_volume,
 )
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
     CardiacOutput,
     FreshGasFlow,
@@ -177,6 +179,18 @@ _ACCUMULATOR_STATE_NAMES = (
 )
 """The two states that hold an amount of agent, with the name a refusal of each gives."""
 
+MAXIMUM_CUMULATIVE_AGENT_L = (
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN * MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
+)
+"""The most agent that a case can deliver or exhaust, in litres: 14 400 L.
+
+Agent enters with the fresh gas at the delivered fraction and leaves through the
+exhaust at the circuit's fraction. Neither fraction exceeds 1, so neither total
+can pass the fresh gas volume of a whole case at the fastest supported flow.
+That is 10 L/min for 1 440 min. A larger total describes no case, and the
+accumulator rows would carry it to `inf` (`PL-0WFJ`, found at review).
+"""
+
 CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
 """How far the tissue flows may sum away from cardiac output.
@@ -237,8 +251,8 @@ def require_canonical_state(state: object) -> None:
     the check where it could never fire.
 
     **The guard also checks each value's physical range.** Each of the six
-    fractions must lie from 0 to 1, and each of the two amounts of agent must
-    not be negative. The live system's compartments refuse any other value,
+    fractions must lie from 0 to 1. Each of the two amounts of agent must lie
+    from 0 to `MAXIMUM_CUMULATIVE_AGENT_L`. The live system's compartments refuse any other value,
     so a sink that opened from one would draw a state the system can never
     hold. A `RunDefinition` opened from a fat fraction of 1.7 once returned
     fractions above one and below zero from `state_at`, with no error
@@ -248,7 +262,8 @@ def require_canonical_state(state: object) -> None:
     Raises:
         SimulationConfigurationError: `state` is not a tuple, is not
             `STATE_SIZE` long, holds a non-finite value, holds a fraction
-            outside 0 to 1 or a negative amount of agent, or does not hold
+            outside 0 to 1 or an amount of agent outside 0 to
+            `MAXIMUM_CUMULATIVE_AGENT_L`, or does not hold
             exactly one in `UNIT_STATE`. The last condition is what makes
             every forcing term in `build_system_matrix` mean what it says. A
             state holding any other value there would scale the whole delivery
@@ -278,6 +293,13 @@ def require_canonical_state(state: object) -> None:
 
     for index, role in _ACCUMULATOR_STATE_NAMES:
         require_nonnegative_finite(f"state[{index}] ({role})", state[index])
+
+        if state[index] > MAXIMUM_CUMULATIVE_AGENT_L:
+            raise SimulationConfigurationError(
+                f"state[{index}] ({role}) of {state[index]!r} L is more than the "
+                f"{MAXIMUM_CUMULATIVE_AGENT_L!r} L that a case can deliver or exhaust at the "
+                "fastest supported fresh gas flow over the supported run length"
+            )
 
     if state[UNIT_STATE] != 1.0:
         raise SimulationConfigurationError(

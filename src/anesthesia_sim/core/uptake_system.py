@@ -769,10 +769,11 @@ class AgentUptakeSystem:
         not absorbed into the anchor, where nothing would report it.
 
         If any guard fires, the system is left untouched, by the route that
-        `advance()` uses and for the same reason. `_write_state_vector` writes
-        one compartment at a time, so a fraction that the model cannot
-        represent is rejected after earlier compartments have already been
-        written.
+        `advance()` uses. `require_canonical_state` checks every fraction before
+        anything is written, so a fraction out of range is refused first. A
+        later refusal, such as the validator rejecting the carried-over
+        accounting, comes after the compartments have been written, and the
+        rollback undoes them.
 
         The cached propagator is neither rebuilt nor cleared, because
         `_propagator_cache_key()` reads only the settings that the system matrix

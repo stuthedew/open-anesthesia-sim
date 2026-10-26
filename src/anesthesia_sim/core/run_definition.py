@@ -1103,7 +1103,7 @@ def _require_state(state: tuple[float, ...] | DisplayState) -> None:
     Raises:
         SimulationConfigurationError: `state` came from the display path, or is
             not `STATE_SIZE` long, holds a non-finite value, holds a fraction
-            outside 0 to 1 or a negative amount of agent, or does not carry
+            outside 0 to 1 or an amount of agent it cannot hold, or does not carry
             exactly one in `UNIT_STATE`.
     """
 

@@ -1707,8 +1707,11 @@ fraction, the alveolar amount, each of the three tissue amounts, the venous
 amount, and the cumulative delivered and exhausted amounts. Each cumulative
 amount is captured with its compensation term, as § "Mass-balance identity"
 explains, so a step retried after a rollback gives the same result as the
-step that was undone. Settings and parameters are deliberately not captured. A rollback that restored cardiac
-output would undo a change that the run had accepted. Each compartment
+step that was undone. Settings and parameters are deliberately not restored. A rollback that restored cardiac
+output would undo a change that the run had accepted. The circuit's record
+holds its volume beside the inspired fraction for one reason. After a volume
+change, a restore puts back the captured amount of agent rather than the
+captured fraction, and the volume stays at its setting (`PL-QG52`). Each compartment
 captures its own values. So if a dynamic field is added later without a
 matching capture, the result is a local omission. It is not a partial restore
 that looks complete.
@@ -1861,8 +1864,9 @@ A step therefore cannot drive a compartment negative at any step size. This
 follows from the construction, not from the shipped parameters.
 
 The argument proves the lower bound only. It says nothing about the upper
-bound of 1. In exact arithmetic no fraction passes the delivered fraction,
-but rounding can carry a fraction just above 1 from a state already at 1.
+bound of 1. In exact arithmetic no fraction passes the larger of the
+delivered fraction and the largest fraction the run opened with. Rounding can
+still carry a fraction just above 1 from a state already at 1.
 With every compartment at 1.0 and a 100% dial, the first 0.1 s step raised
 `SimulationNumericalError` in all 12 agent and flow cases tried (`PL-PM67`,
 measured 2026-10-25). No supported setting reaches that state, because every
@@ -2337,7 +2341,7 @@ lists each input that has one, and the function or type that refuses it.
 | The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
-| The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent at least 0 | `require_canonical_state` |
+| The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent 0 to 14 400 L | `require_canonical_state` |
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
@@ -2358,9 +2362,13 @@ checked a state's length, that its values are finite and its unit entry, and
 not that each fraction lies from 0 through 1. So a `RunDefinition` opened from
 a state with every fraction at 1e308 was accepted, and its `state_at(600.0)`
 returned an exhausted-agent total of `inf` (reproduced 2026-10-26). The guard
-now builds each of the six fractions as a `Fraction` and refuses a negative
-cumulative amount. `tests/unit/test_governing_equations.py` drives each
-fraction one representable value past each bound and expects a refusal.
+now builds each of the six fractions as a `Fraction`. It also refuses a
+cumulative amount of agent below zero or above 14 400 L, which is the fresh gas
+of a whole 24-hour case at 10 L/min. Neither the delivered nor the exhausted
+fraction exceeds 1, so no case can move more agent than that.
+`tests/unit/test_governing_equations.py` drives each fraction and each amount
+one representable value past each bound and expects a refusal.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 The blood flow that a tissue group or the venous pool is handed when it is
 stepped on its own has no upper bound either, by design. It must only be
