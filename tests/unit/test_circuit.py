@@ -1108,3 +1108,88 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
     circuit.advance(1.0)
 
     assert circuit.inspired_partial_pressure_fraction > 0.0
+
+
+@pytest.mark.parametrize(
+    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1e308, 1.7976931348623157e308]
+)
+def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-YT3T`: the circuit stepped on its own refuses a step longer than 24 h.
+
+    Before the ceiling existed, a step near 1e308 s made the count of elapsed time constants
+    overflow to `inf`, and the exhaust came back as `inf` or `nan`. Both `advance_fresh_gas` and
+    `advance` refuse the step, and the inspired fraction does not change. The ceiling itself is
+    accepted. The expected ceiling, 86 400 s, is written out here rather than read from
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
+        circuit_volume_l=CompartmentVolume(6.0),
+        fresh_gas_flow_l_min=FreshGasFlow(6.0),
+        delivered_concentration_percent=Percent(2.0),
+    )
+    refusal = (
+        rf"^circuit simulation_step_s of {re.escape(str(simulation_step_s))} s is longer "
+        r"than the supported run length of 86400 s \(24 h\), the most simulated time "
+        r"this model is claimed to represent a patient over, so no single step may be "
+        r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        circuit.advance_fresh_gas(simulation_step_s)
+
+    with pytest.raises(SimulationConfigurationError, match=refusal):
+        circuit.advance(simulation_step_s)
+
+    assert circuit.inspired_partial_pressure_fraction == 0.0
+
+    circuit.advance(86_400.0)
+
+    assert circuit.inspired_partial_pressure_fraction == pytest.approx(0.02, rel=1e-15)
+
+
+@pytest.mark.parametrize(
+    ("starting_fraction", "dial_percent", "delivered_l", "exhausted_l"),
+    [
+        # Wash-in. Fresh gas at 10 L/min for 86 400 s delivers 14 400 L at 2%,
+        # which is 288 L of agent. The circuit starts empty and its volume is 0.01 L,
+        # so it keeps 0.01 x 0.02 = 2e-4 L of that agent.
+        (0.0, 2.0, 288.0, 288.0 - 2e-4),
+        # The dial equals the circuit: everything delivered leaves. This case
+        # returned an exhaust of nan (0 x inf) at a step near 1e308 s.
+        (0.02, 2.0, 288.0, 288.0),
+        # Washout with the dial off: the 0.01 x 0.05 = 5e-4 L held all leaves.
+        (0.05, 0.0, 0.0, 5e-4),
+    ],
+)
+def test_the_circuit_stepped_alone_at_the_ceiling_returns_a_finite_exchange_at_the_envelope_corner(
+    starting_fraction: float, dial_percent: float, delivered_l: float, exhausted_l: float
+) -> None:
+    """`PL-YT3T`: at the step ceiling and the envelope's stiffest circuit, the exchange is exact.
+
+    The circuit has the smallest volume that the numerical envelope admits, 0.01 L. It runs at the
+    largest supported fresh gas flow, 10 L/min, and is stepped by the 86 400 s ceiling. That step
+    spans about 1.4e6 time constants, the most that any accepted step can span.
+    The circuit ends at the dial's fraction. The expected amounts in the parameter list are worked
+    out by hand from the flow, the step, the volume and the fractions. They are not read from the
+    code under test.
+    """
+
+    circuit = BreathingCircuit(
+        max_delivered_concentration_percent=Percent(100.0),
+        circuit_volume_l=CompartmentVolume(0.01),
+        fresh_gas_flow_l_min=FreshGasFlow(10.0),
+        delivered_concentration_percent=Percent(dial_percent),
+    )
+    circuit.set_inspired_partial_pressure_fraction(Fraction(starting_fraction))
+
+    exchange = circuit.advance_fresh_gas(86_400.0)
+
+    assert circuit.inspired_partial_pressure_fraction == pytest.approx(
+        dial_percent / 100.0, rel=1e-15, abs=0.0
+    )
+    assert exchange.delivered_agent_l == pytest.approx(delivered_l, rel=1e-12, abs=0.0)
+    assert exchange.exhausted_agent_l == pytest.approx(exhausted_l, rel=1e-12, abs=0.0)
