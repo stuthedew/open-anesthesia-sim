@@ -607,12 +607,13 @@ def test_the_reaching_stretch_at_the_opening_is_the_first_stretch() -> None:
 
 
 def test_a_change_at_the_reached_instant_never_replaces_the_reaching_stretch() -> None:
-    """Setting the dial back at the reached instant removes the open stretch, and keeps this one.
+    """Setting the dial back at the reached instant removes the open stretch, not the reaching one.
 
-    `record_change` folds a change made at an instant where a stretch already
-    opens into that stretch. The stretch the reaching step ran under opens
-    earlier, so no change made while the run stands at 30 s can touch it.
-    That is what makes it a provenance that cannot later point at nothing.
+    When a stretch already opens at the instant of a change, `record_change`
+    folds the change into that stretch. The stretch that the reaching step ran
+    under opens earlier, so no change made while the run stands at 30 s can
+    touch it. That is what makes it a provenance that cannot later point at
+    nothing.
     """
 
     definition = _changed_at_12_5_and_30()

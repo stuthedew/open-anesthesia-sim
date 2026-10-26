@@ -9020,15 +9020,16 @@ def _branch_holding_work(view: SimulationView, application: QApplication, work: 
 def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     application: QApplication, work: str, warning: str
 ) -> None:
-    """`PL-W5WX`: the press is on Run 1, so Run 2's work is not discarded until the reader says so.
+    """Reset on Run 1 does not discard Run 2's work until the learner agrees (`PL-W5WX`).
 
-    The test covers both halves of `has_recorded_run`, because a question
-    that checked only one half would miss the other. The warning is a
-    literal: four steps of 0.1 s from the 60 s fork reach 1m0.4s on the case
-    clock. In both cases the branch's "Control changes" panel lists one
-    change. For `elapsed` it is the trunk's change at 1m, which the branch
-    opened with. For `change` it is the learner's change, which replaced
-    that entry. The question counts what the panel lists (`PL-ZR49`).
+    The `work` parameter covers both conditions that `has_recorded_run`
+    checks, `elapsed` and `change`. A question that checked only one of them
+    would miss the other. The expected warning is a literal string. Four
+    steps of 0.1 s from the fork at 60 s reach 1m0.4s on the case clock. In
+    both cases the branch's "Control changes" panel lists one change. For
+    `elapsed`, it is the trunk's change at 1m, which the branch opened with.
+    For `change`, it is the learner's change, which replaced that entry. The
+    question counts what the panel lists (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -9052,12 +9053,15 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
 
 
 def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApplication) -> None:
-    """`PL-WM5P`: the Reset question names the branch work as it stands now, not when asked.
+    """The Reset question reports the branch's work as it is now (`PL-WM5P`).
 
-    Reset stays enabled while the runs step, so a branch goes on running
+    The question does not report the work as it was when it was asked.
+    Reset stays enabled while the runs advance, so a branch goes on running
     while the trunk's question is open. The test compares the warning with a
-    literal string: four steps of 0.1 s from the 60 s fork reach 1m0.4s, and
-    four more reach 1m0.8s.
+    literal string. Four steps of 0.1 s from the fork at 60 s reach 1m0.4s,
+    and four more reach 1m0.8s. The one recorded change is the trunk's change
+    at 1m. The branch opened with that change, and its "Control changes"
+    panel lists it (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -9075,7 +9079,7 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     view.present(False)
 
     assert dialog.body_labels[1].text() == (
-        "Run 2 — branched at 1m and run to 1m0.8s, 0 recorded control changes — will be "
+        "Run 2 — branched at 1m and run to 1m0.8s, 1 recorded control change — will be "
         "discarded along with its chart history. This cannot be undone."
     )
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
@@ -9684,9 +9688,9 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     rather than measuring it as a bare string.
 
     Returns:
-        The entry's advance, its drawn width, and the width of the
-        selector's text field. Both are in pixels, in the font the selector
-        is drawn in.
+        The entry's advance, which is its drawn width, and the width of the
+        selector's text field. Both are in pixels, in the font that the
+        selector is drawn in.
     """
 
     view = _case_view(application, _branched_case())

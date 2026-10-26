@@ -997,22 +997,24 @@ class SimulationView(QWidget):
 
     @staticmethod
     def _branch_at_stake(run: RunView) -> BranchAtStake | None:
-        """What discarding this drawn branch would lose, or None where it holds nothing.
+        """Return what discarding this drawn branch would lose, or None if it holds nothing.
 
-        A branch whose snapshot rejects a value still holds work. So what it
-        would lose is stated from what its controller can report without a
-        snapshot: its fork and its recorded control changes
-        (`branch_at_stake`). The rejection is not handled here. It is the
-        branch's own halt, which the branch's own frame states.
+        A branch whose snapshot rejects a value still holds work. So this
+        method builds what the branch would lose from what its controller can
+        report without a snapshot. That is the branch's fork and its recorded
+        control changes (`branch_at_stake`). This method does not handle the
+        rejection. The rejection is the branch's own halt, and the branch's
+        own frame reports it.
 
-        The count is of the whole control timeline, grouped as the branch's
-        "Control changes" panel lists it, so the question and the panel give
-        one number. That includes a change the branch opened with, such as
-        the trunk's change at the keyframe it was taken at (`PL-ZR49`).
-        Whether to ask at all is `has_recorded_run`'s decision, which counts
-        only the changes made since the branch opened. A branch that holds
-        such a change holds a timeline entry, so the question never says "0
-        recorded control changes" for a branch that has not run.
+        The count covers the whole control timeline, grouped as the branch's
+        "Control changes" panel lists it. So the Reset question and the panel
+        give the same number. The count includes a change that the branch
+        opened with, such as the trunk's change at the keyframe where the
+        branch was taken (`PL-ZR49`). `has_recorded_run` decides whether to
+        ask at all, and it counts only the changes made since the branch
+        opened. A branch that holds such a change also holds a timeline
+        entry. So the question never says "0 recorded control changes" for a
+        branch that has not run.
         """
 
         try:

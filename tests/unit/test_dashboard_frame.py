@@ -3428,8 +3428,8 @@ def test_the_fork_here_says_it_opens_before_a_setting_changed_there() -> None:
 
     The selector's entry at the same instant opens under that change, so
     without the clause two controls would show one instant and open under
-    different settings (`PL-ZR49`). The clause follows a halt's ratified
-    words rather than replacing them.
+    different settings (`PL-ZR49`). The clause is added after the ratified
+    wording of the halt label rather than replacing it.
     """
 
     instant = format_elapsed(45.0)
@@ -3576,20 +3576,22 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
 
 
 def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
-    """Two entries rather than one, and always in this order.
+    """A control event and a mark at the same instant get two entries, control event first.
 
     A mark set on a recorded control event is a different way to branch.
-    `fork_at` opens at the keyframe, and `fork_at_mark` opens at the step that
-    reaches the mark, standing on its crossing. So neither entry absorbs the
-    other. Their order is the order in which the two lists are given, which
-    keeps one case listed the same way every time. The case's own opening is
-    the boundary case. A mark there is reached by no step and opens at the
-    opening keyframe, and it is listed after that keyframe.
+    `fork_at` opens at the keyframe, and `fork_at_mark` opens at the end of
+    the step that reaches the mark, the step in which the run crossed it. So
+    neither entry replaces the other. The entries keep the order in which the
+    two lists are given, so one case is always listed the same way. The
+    case's opening, at 0 s, is the boundary case. No step reaches a mark
+    there. Its branch opens at the opening keyframe, and the mark is listed
+    after that keyframe.
 
-    A mark on a control event opens before the change made there, and the
-    keyframe entry opens under it, so the mark's label ends with the clause
-    that says so (`PL-ZR49`). The opening has one side, so the mark there
-    has no clause.
+    A branch taken at a mark on a control event opens before the change made
+    there, and the keyframe entry opens under the change. So the mark's label
+    ends with the clause that says so (`PL-ZR49`). The opening has only one
+    stretch of settings, the one that starts there, so the mark there has no
+    clause.
     """
 
     at_opening = MarkForkPoint(

@@ -1372,20 +1372,32 @@ def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
 
 
 def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
-    """The case `PL-7TBQ` measured: a branch advanced, changed and reset still had a run to lose.
+    """The case `PL-7TBQ` measured: a branch advanced and reset still had a run to lose.
 
-    A branch's reset returns it to its fork rather than to zero. So a reset
-    branch is a fresh branch, and it must count as one.
+    A branch's reset returns it to its fork rather than to zero. So a branch
+    that was only advanced is a fresh branch after its reset, and it must
+    count as one. A setting the learner changed and kept through the reset
+    is different. `PL-7TBQ`'s Done-when counts "a setting change of its own"
+    as something to lose. Until `PL-K5BS`, a reset dropped the record of
+    such a change while the branch kept running under it, so this test once
+    expected nothing to lose there too (`PL-ZR49`).
     """
 
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
     _advance_for(branch, duration_s=5.0)
-    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     branch.reset()
 
     assert branch.snapshot().has_recorded_run is False
+
+    branch.start()
+    _advance_for(branch, duration_s=5.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
+    branch.reset()
+
+    assert branch.snapshot().fresh_gas_flow_l_min == 1.0
+    assert branch.snapshot().has_recorded_run is True
 
 
 # --- Stopping at the supported run length (PL-Y5WR) --------------------------
@@ -2222,9 +2234,9 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     opened at a zero of its own, a branch carried two time frames, and every
     reader had to know which one it was using.
 
-    The definition opens on the trunk's stretch before the keyframe, which
-    the step reaching it ran under, and records the trunk's change at the
-    keyframe as a keyframe of its own (`PL-ZR49`).
+    The definition opens on the trunk's stretch before the keyframe, which is
+    the stretch that the step reaching the keyframe ran under. It records the
+    trunk's change at the keyframe as a keyframe of its own (`PL-ZR49`).
     """
 
     trunk = _trunk_with_two_changes()
@@ -2528,13 +2540,13 @@ def test_a_control_moved_before_a_branch_steps_replaces_the_stretch_at_its_fork(
     When the run has not advanced past the open segment's own opening,
     `RunDefinition.record_change` replaces that segment's settings in place.
     It does not record a zero-length stretch that nothing was ever computed
-    under. The check it makes is an equality between the run's reach and the
-    open keyframe's instant. On a branch taken at a keyframe, both of those
-    are the fork instant, because the branch records the trunk's change there
-    as a keyframe of its own (`PL-ZR49`). So the behaviour is worth asserting
-    rather than assuming from the code. A version that recorded the keyframe
-    anywhere else would open a zero-length segment here, and the run would
-    still look right.
+    under. The check it makes is whether the instant the run has reached
+    equals the open keyframe's instant. On a branch taken at a keyframe, both
+    of those are the fork instant, because the branch records the trunk's
+    change there as a keyframe of its own (`PL-ZR49`). So the behaviour is
+    worth asserting rather than assuming from the code. A version that
+    recorded the keyframe anywhere else would open a zero-length segment
+    here, and the run would still look right.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2584,10 +2596,9 @@ def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> 
 
     The history before the fork belongs to the trunk and is not reproduced
     here. What a branch carries forward is the *state* that history produced.
-    The one entry a branch taken at a keyframe opens with is the trunk's
-    change at that keyframe, because the branch runs under it (`PL-ZR49`).
-    A branch taken where the trunk stands, between keyframes, opens with
-    none.
+    A branch taken at a keyframe opens with only the trunk's change at that
+    keyframe, because the branch runs under it (`PL-ZR49`). A branch taken
+    where the trunk stands, between keyframes, opens with none.
     """
 
     trunk = _trunk_with_two_changes()
@@ -2752,8 +2763,9 @@ def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
     """Every recorded setting change is a branch point, and so is the run's start.
 
     The branch's last keyframe is the trunk's keyframe, at the same instant,
-    state and settings. Its first stretch is the trunk's stretch before it,
-    or the trunk's opening stretch for a branch at the start (`PL-ZR49`).
+    state and settings. The branch's first stretch is the trunk's stretch
+    before that keyframe, or the trunk's opening stretch for a branch at the
+    start (`PL-ZR49`).
     """
 
     trunk = _trunk_with_two_changes()
@@ -2932,9 +2944,15 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
     # The timeline holds only what the branch reopened with at the fork: the
     # trunk's change there, and the fresh gas flow the reset kept (`PL-ZR49`).
+    # The branch first opened with the trunk's change alone, and the reset
+    # keeps that record, so the kept flow is a change since the opening.
     assert after.elapsed_s == fork_s
-    assert after.control_timeline == after.opened_with
+    assert after.opened_with == at_fork.control_timeline
     assert [change.elapsed_s for change in after.control_timeline] == [fork_s, fork_s]
+    assert [change.control for change in after.changes_since_opening] == [
+        ControlInput.FRESH_GAS_FLOW
+    ]
+    assert after.changes_since_opening[0].new_value == 1.0
     assert branch.run_segments[-1].opening.state == trunk.run_segments[-1].opening.state
 
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
@@ -3111,16 +3129,18 @@ def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -
 
 
 def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> None:
-    """`PL-TFX5`'s last clause, against a patient value that moves during the run.
+    """A branch carries its trunk's agent and patient as they were at the fork.
 
-    Cardiac output is the one patient quantity that a control can change. So
-    it is the only one that tells "the branch carries its parent's patient"
-    apart from "the branch rebuilds the same reference patient from the same
-    data file". A run that never changes it checks the second claim while
-    appearing to check the first, because a branch built from the value in
-    force now would pass too. So this test changes it mid-run and forks *before*
-    the change. The branch must carry the value the case was computed under at
-    the fork, which is no longer the trunk's current value.
+    This checks the last clause of `PL-TFX5` against a patient value that moves
+    during the run. Cardiac output is the one patient quantity that a control
+    can change. So it is the only one that tells "the branch carries its
+    parent's patient" apart from "the branch rebuilds the same reference
+    patient from the same data file". A run that never changes it checks the
+    second claim while appearing to check the first, because a branch built
+    from the value in force now would pass too. So this test changes it
+    mid-run and forks *before* the change. The branch must carry the value
+    the case was computed under at the fork, which is no longer the trunk's
+    current value.
     """
 
     trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=CardiacOutput(4.2))
@@ -3425,9 +3445,9 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
 
     assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45.0), "the decision point"),)
     assert marks.mac_targets == (target,)
-    # The trunk's earlier changes do not carry over, because the timeline is
-    # the half that does not. It holds only the change at the fork that the
-    # branch runs under (`PL-ZR49`).
+    # The trunk's earlier changes do not carry over, because a branch inherits
+    # the marks but not the timeline. The branch's timeline holds only the
+    # change at the fork that the branch runs under (`PL-ZR49`).
     fork_s = trunk.run_segments[-1].opening.instant_s
     timeline = branch.snapshot().control_timeline
     assert [change.elapsed_s for change in timeline] == [fork_s]
@@ -4399,11 +4419,12 @@ def test_a_setting_changed_while_halted_is_carried_only_by_the_keyframe_fork() -
     A halt is an ordinary pause, and the setters apply unconditionally. So a
     learner may stop on a mark and dial something before branching. That
     opens a segment at the halt instant, so the halt is now a keyframe as
-    well. The two doors at that instant then take its two sides (`PL-ZR49`).
-    `resumed_here` opens under the stretch the halting step ran under, and
-    the change stays the trunk's (`PL-HSP8`). `resumed_at` opens after the
-    change and records it in its own timeline. Both name the same provenance,
-    and the keyframe branch reproduces the trunk element for element.
+    well. The two ways of branching at that instant then open on its two
+    sides (`PL-ZR49`). `resumed_here` opens under the stretch the halting
+    step ran under, and the change stays the trunk's (`PL-HSP8`). `resumed_at`
+    opens after the change and records it in its own timeline. Both name the
+    same provenance, and the keyframe branch reproduces the trunk element for
+    element.
     """
 
     marked = SimulationController()
@@ -4451,11 +4472,11 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
     """Where a branch's definition opens cannot depend on the order of a dial and a reset.
 
     "Dial, dial back, reset" and "dial, reset, dial back" end at one branch:
-    the same settings, live state, run definition and control timeline. Suppose the
-    reset decided where the definition opens from the settings in place at
-    that moment. The second sequence would then open at the fork rather than
-    at the parent's keyframe. It would restart from two propagations where the
-    parent took one, and quietly stop reproducing the parent in 40 of 45
+    the same settings, live state, run definition and control timeline. Suppose
+    the reset used the settings in place at that moment to decide where the
+    definition opens. The second sequence would then open at the fork rather
+    than at the parent's keyframe. It would restart from two propagations where
+    the parent took one, and quietly stop reproducing the parent in 40 of 45
     elements, with nothing on screen to show it. Instead, `_open_at` records
     the dialled settings as a change at the fork, and `record_change`'s own
     collapse rule notices the dial-back.
@@ -5371,10 +5392,11 @@ def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
 # An instant where a run stands has two sides. The step that reached it ran
 # under one stretch, which nothing can change any more. A setting changed
 # while the run stands there opens the next stretch. Every branch takes its
-# provenance from the first side, and records how the settings it runs under
-# differ from it as a change at the fork. The halt record is what the step
-# crossed, asked of the marks as they are. `docs/MODEL.md` § "The canonical
-# evaluation rule" states the rule these tests hold each door to.
+# provenance from the first side. Where the settings a branch runs under
+# differ from that side, the branch records the difference as a change at the
+# fork. The halt record lists what the step crossed, tested against the marks
+# as they are now. `docs/MODEL.md` § "The canonical evaluation rule" states
+# the rule that these tests check each way of branching against.
 
 
 def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
@@ -5387,9 +5409,9 @@ def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
 
 
 def _replayed_from_provenance(branch: SimulationController) -> UptakeEquationSettings:
-    """The settings a branch's provenance and its own control timeline say it runs under.
+    """Return the settings a branch runs under, as its provenance and control timeline state them.
 
-    The test applies each recorded change to the stretch the branch opened
+    This helper applies each recorded change to the stretch the branch opened
     from, by hand, so the result does not come from the controller's own
     reading of either record.
     """
@@ -5426,23 +5448,24 @@ def _states_agree_after_the_fork(
 
 
 def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> None:
-    """`PL-ZR49`: every way of branching at one instant reads the same two sides of it.
+    """`PL-ZR49`: every way of branching at one instant uses the same two sides of it.
 
     The trunk runs at 2% and a mark at 30 s halts it. Standing there, the
     learner turns the vaporizer to 4%, removes the mark and adds it back under
-    another label, and marks an instant inside the halting step. Each door is
-    taken before those edits, after them, and again after the trunk has run
-    on. Each branch is then reset.
+    another label, and marks an instant inside the halting step. Each way of
+    branching is used before those edits, after them, and again after the
+    trunk has run on. Each branch is then reset.
 
-    The rule each door is held to is the one `docs/MODEL.md` states. All of
-    them share one provenance, the stretch the halting step ran under. Only
-    the door at the keyframe the change recorded runs under 4%, and its own
-    timeline says so. Every branch taken after the edits names the marks as
-    they now are in its halt record, as the trunk standing there does. A
-    reset reopens each branch on the same record. The expected settings are
-    the dialled literals, and the marks are expected by the instants and
-    labels the test gave them. The run each record describes is checked
-    against a run built directly: a 2% case nobody changed, or the trunk.
+    Each way of branching is checked against the rule that `docs/MODEL.md`
+    states. All of them share one provenance, the stretch the halting step ran
+    under. Only the branch taken at the keyframe that the change recorded runs
+    under 4%, and its own timeline says so. Every branch taken after the edits
+    names the marks as they now are in its halt record, as the trunk standing
+    there does. A reset reopens each branch on the same record. The expected
+    settings are the dialled literals, and the marks are expected by the
+    instants and labels the test gave them. The run each record describes is
+    checked against a run built directly: a 2% case nobody changed, or the
+    trunk.
     """
 
     first = TimeBookmark(CaseInstant(30.0), "first")
@@ -5515,9 +5538,9 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
 
         assert _replayed_from_provenance(branch) == branch.run_segments[-1].settings, name
 
-    # Marks: the trunk standing there and every branch taken after the edits
-    # name the marks as they now are. A branch taken before the edits holds
-    # the marks the trunk held when it was taken.
+    # The trunk standing there, and every branch taken after the edits, name
+    # the marks as they now are. A branch taken before the edits holds the
+    # marks that the trunk held when the branch was taken.
     now_marked = {(30.0, "relabelled"), (inside_s, "inside the step")}
     assert named(halt_on_the_trunk) == now_marked
     # The trunk changed a setting while it stood there, so its offer says the
@@ -5567,13 +5590,14 @@ def test_a_change_made_on_the_halt_stays_the_trunks() -> None:
     """`PL-HSP8`: a setting changed while the trunk stands on a halt is the trunk's own act.
 
     The trunk runs at 2% and a mark at 60 s halts it. The vaporizer is turned
-    off while it stands there, and the trunk runs on to 120 s. The halt
-    branch, taken before or after the change, and the branch returned to at
-    the mark afterwards all open under 2%, the setting the halting step ran
-    under, and their provenance compares equal. `resumed_at` at the keyframe
-    the change recorded opens after it, at 0%, with the same provenance and
-    the change in its own timeline. The expected settings are the dialled
-    literals, and the halt branch is checked against a 2% run nobody changed.
+    off while it stands there, and the trunk runs on to 120 s. The halt branch
+    is taken both before and after the change, and a branch is taken at the
+    mark afterwards. All of them open under 2%, the setting that the halting
+    step ran under, and their provenances compare equal. A branch taken with
+    `resumed_at` at the keyframe that the change recorded opens after the
+    change, at 0%. It has the same provenance and the change in its own
+    timeline. The expected settings are the dialled literals, and the halt
+    branch is checked against a 2% run nobody changed.
     """
 
     mark = TimeBookmark(CaseInstant(60.0), "on your mark")
@@ -5613,16 +5637,16 @@ def test_a_change_made_on_the_halt_stays_the_trunks() -> None:
 
 
 def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk() -> None:
-    """`PL-NRR6`: setting the dial back where a branch was taken leaves its provenance standing.
+    """`PL-NRR6`: setting the dial back where a branch was taken keeps its provenance in the trunk.
 
     The trunk is paused at 30 s at 2% and set to 4%. A branch is taken at the
     keyframe that change recorded, and the trunk is then set back to 2%. That
     removes the trunk's keyframe at 30 s, because nothing about the trunk
-    changed there. The branch's provenance is the stretch the step reaching
-    30 s ran under, which is still the trunk's, and its own timeline records
-    the 4% it runs under. The instant stays a place to branch for as long as
-    the trunk stands there, and a branch taken there now names the same
-    provenance.
+    changed there. The branch's provenance is the stretch that the step
+    reaching 30 s ran under, which is still the trunk's. The branch's own
+    timeline records the 4% it runs under. The instant stays a place to
+    branch for as long as the trunk stands there, and a branch taken there
+    now names the same provenance.
     """
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
@@ -5763,11 +5787,11 @@ def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_a
 def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> None:
     """At the case's opening no step has closed a stretch, so the opening stretch is both sides.
 
-    A trunk edit at the opening still replaces the opening stretch, after a
-    branch was taken there as before. What the branch opened from is the
-    opening keyframe, whose state no setting produced, and the settings it
-    ran under from there. Both stay true of the branch after the trunk's
-    edit, so the branch's provenance still states what it runs under.
+    A trunk edit at the opening still replaces the opening stretch, as it did
+    before, even after a branch was taken there. What the branch opened from
+    is the opening keyframe, whose state no setting produced, and the
+    settings it ran under from there. Both stay true of the branch after the
+    trunk's edit, so the branch's provenance still states what it runs under.
     """
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
@@ -5783,16 +5807,17 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
 
 
 def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose() -> None:
-    """Whether a branch holds a change, and how many, come from one record.
+    """Whether a branch holds a change, and how many it holds, both come from one record.
 
-    The trunk is paused at 60 s and set from 4 to 6 L/min, and a branch is
-    taken at that keyframe. Setting the branch to 8 L/min at the fork replaces
-    the entry it opened with, which is one change made since opening. Setting
-    it back to 4 L/min removes that entry. The branch then runs under the
-    trunk's stretch before the change, as a branch taken where the paused
-    trunk stands would, so it holds nothing a trunk Reset would lose. The
-    blind review of this branch found the Reset question naming such a
-    branch with "0 recorded control changes".
+    The trunk is paused at 60 s, its fresh gas flow is set from 4 to 6 L/min,
+    and a branch is taken at that keyframe. Setting the branch to 8 L/min at
+    the fork replaces the entry it opened with, which is one change made
+    since opening. Setting it back to 4 L/min removes that entry. The branch
+    then runs under the trunk's settings from before the change, as a branch
+    taken where the paused trunk stands would. So it holds nothing that a
+    trunk Reset would lose. The blind review of `PL-ZR49`'s change found
+    that the Reset question named such a branch as having "0 recorded
+    control changes".
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5824,14 +5849,15 @@ def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose
 
 
 def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_order_holds() -> None:
-    """ "Change, reset, change back" and "change, change back, reset" give one answer.
+    """ "Change, reset, change back" and "change, change back, reset" give one result.
 
     Each branch is taken where the paused trunk stands at 30 s. On both, the
     flow goes from 4 to 8 L/min and back, with a reset before or after the
     change back. A reset keeps the settings and records them at the fork
-    (`PL-K5BS`), so the two branches open with different entries. They end
-    with the same run and the same control timeline, and neither holds
-    anything that a trunk Reset would lose.
+    (`PL-K5BS`), but it keeps the entries each branch first opened with. The
+    two branches end with the same run, the same control timeline and the
+    same opened entries, and neither holds anything that a trunk Reset would
+    lose.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5849,26 +5875,116 @@ def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_or
     reset_last.set_fresh_gas_flow(FreshGasFlow(4.0))
     reset_last.reset()
 
-    assert reset_between.snapshot().opened_with != reset_last.snapshot().opened_with
-
     for branch in (reset_between, reset_last):
         assert branch.snapshot().control_timeline == ()
+        assert branch.snapshot().opened_with == ()
         assert branch.snapshot().fresh_gas_flow_l_min == 4.0
         assert not branch.snapshot().has_recorded_run
 
     assert reset_between.run_segments == reset_last.run_segments
 
 
-def test_the_offer_where_the_trunk_stands_says_whether_a_setting_was_changed_there() -> None:
-    """The offer where the trunk stands says when its branch opens before a change made there.
+def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() -> None:
+    """A branch that ends where it opened holds nothing, whatever path its dial took there.
 
-    The blind review of this branch found that "Branch here" and the
-    selector's keyframe entry at one instant opened under different settings
-    after a change made there, with nothing on either control to say so. The
-    trunk is paused at 60 s and set from 4 to 6 L/min. The offer then says a
-    setting was changed there, and the branch it opens runs at 4 L/min while
-    the keyframe branch runs at 6 L/min. Setting the flow back removes the
-    change, and the offer says so too.
+    The trunk is paused at 60 s and set from 4 to 6 L/min, and two branches
+    are taken at that keyframe. Each opens with the trunk's change at the
+    fork. One branch is set to 4 L/min and then to 6 L/min. The other is set
+    to 8 L/min and then to 6 L/min. Setting 4 L/min removes the opened entry,
+    and setting 6 L/min records it again with a new adjustment number. Both
+    branches then run as a branch freshly taken there does. The adversarial
+    review of `PL-ZR49`'s change found the first counted as holding a change,
+    because the comparison included the adjustment number.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    fresh = trunk.resumed_at(fork_s)
+
+    for detour in (4.0, 8.0):
+        branch = trunk.resumed_at(fork_s)
+        branch.set_fresh_gas_flow(FreshGasFlow(detour))
+        branch.set_fresh_gas_flow(FreshGasFlow(6.0))
+
+        assert _described(branch.snapshot().control_timeline) == [
+            (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0)
+        ]
+        assert branch.snapshot().changes_since_opening == ()
+        assert not branch.snapshot().has_recorded_run
+        assert branch.run_segments == fresh.run_segments
+
+
+def test_a_setting_kept_through_a_branch_reset_is_work_a_trunk_reset_would_lose() -> None:
+    """A branch reset keeps the learner's settings, and they still count as the learner's work.
+
+    The trunk runs at 4 L/min, 2% and 4 L/min of ventilation, is paused at
+    60 s and set to 6 L/min. A branch taken at that keyframe opens with the
+    trunk's change. On the branch the learner sets 3% and runs 5 s, then
+    resets the branch, which keeps 3% and records it at the fork
+    (`PL-K5BS`). The learner then sets 5 L/min of ventilation. The timeline
+    holds three entries. Only the trunk's change is one the branch opened
+    with, so the other two are work that the trunk's Reset would discard,
+    and it must ask first (`PL-W5WX`). The adversarial review of `PL-ZR49`'s
+    change found the 3% treated as an opened entry after the reset, so that
+    a branch holding only it was dropped without asking.
+    """
+
+    trunk = SimulationController(
+        fresh_gas_flow_l_min=FreshGasFlow(4.0),
+        delivered_concentration_percent=Percent(2.0),
+        alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+    )
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    branch = trunk.resumed_at(fork_s)
+    branch.set_delivered_concentration_percent(Percent(3.0))
+    branch.start()
+    _advance_for(branch, duration_s=5.0)
+    branch.pause()
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert _described(branch.snapshot().changes_since_opening) == [
+        (fork_s, ControlInput.DELIVERED, 2.0, 3.0)
+    ]
+    assert branch.snapshot().has_recorded_run
+
+    branch.set_alveolar_ventilation(AlveolarVentilation(5.0))
+
+    timeline = _described(branch.snapshot().control_timeline)
+    since_opening = _described(branch.snapshot().changes_since_opening)
+
+    assert len(timeline) == 3
+    assert set(timeline) == {
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0),
+        (fork_s, ControlInput.DELIVERED, 2.0, 3.0),
+        (fork_s, ControlInput.ALVEOLAR_VENTILATION, 4.0, 5.0),
+    }
+    assert len(since_opening) == 2
+    assert set(since_opening) == {
+        (fork_s, ControlInput.DELIVERED, 2.0, 3.0),
+        (fork_s, ControlInput.ALVEOLAR_VENTILATION, 4.0, 5.0),
+    }
+
+
+def test_the_offer_where_the_trunk_stands_says_whether_a_setting_was_changed_there() -> None:
+    """The "Branch here" offer says when its branch opens before a change made at the same instant.
+
+    The blind review of `PL-ZR49`'s change found a problem after a change made
+    at one instant. "Branch here" and the selector's keyframe entry at that
+    instant opened under different settings, and nothing on either control
+    said so. The trunk is paused at 60 s and its fresh gas flow is set from 4
+    to 6 L/min. The offer then says a setting was changed there. The branch
+    it opens runs at 4 L/min, while the keyframe branch runs at 6 L/min.
+    Setting the flow back removes the change, and the offer then no longer
+    says a setting was changed.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5899,13 +6015,15 @@ def test_the_offer_where_the_trunk_stands_says_whether_a_setting_was_changed_the
 def test_a_passed_mark_says_whether_a_setting_was_changed_where_its_branch_opens() -> None:
     """A mark's offer says when its branch opens before a change the trunk made there.
 
-    The adversarial review of this branch found that a mark on a setting change
-    and the keyframe there were two selector entries at one instant that opened
-    under different settings, and only the "Branch here" control said so. The
-    trunk is paused at 30 s and set from 4 to 6 L/min, then runs on to 60 s.
-    Three marks are then set behind the clock: at the opening, on the change
-    and at 45 s. Only the mark on the change has a change at its fork. Its
-    branch runs at 4 L/min while the keyframe branch there runs at 6 L/min.
+    The adversarial review of `PL-ZR49`'s change found a problem with a mark
+    set on a setting change. The mark and the keyframe there were two
+    selector entries at one instant, and they opened under different
+    settings. Only the "Branch here" control said so. The trunk is paused at
+    30 s, its fresh gas flow is set from 4 to 6 L/min, and it then runs on to
+    60 s. Three marks are then set at instants the trunk has already passed:
+    at the opening, on the change and at 45 s. Only the mark on the change
+    has a change at its fork. Its branch runs at 4 L/min, while the keyframe
+    branch there runs at 6 L/min.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))

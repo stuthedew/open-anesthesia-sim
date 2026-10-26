@@ -214,24 +214,30 @@ class RunRecord(RunSettings):
     run by `reset()` and by a change of agent. A setting the core refused
     is absent: it never took effect, so it is not part of the run.
 
-    **A branch's timeline opens with the changes it was opened with**
-    (`PL-ZR49`). A branch's run opens on the stretch of its parent that the
-    step reaching the fork ran under. Any setting that differs from that
-    stretch at the fork is recorded here as a change at the fork. That is
-    the trunk's own change when the branch was taken at a keyframe
-    (`SimulationController.resumed_at`), and the learner's dials when a
-    branch was reset after they changed. `RunRecord.opened_with`
-    names those entries.
+    **A branch's timeline starts with the entries recorded when it opened**
+    (`PL-ZR49`). A branch's run opens on the parent's stretch that the step
+    reaching the fork ran under. Any setting that differs from that stretch
+    at the fork is recorded here as a change at the fork. For a branch taken
+    at a keyframe (`SimulationController.resumed_at`), that change is the
+    trunk's own change there. For a branch that was reset after the learner
+    changed its dials, the changes are the learner's new settings.
+    `RunRecord.opened_with` names the entries of the branch's first opening.
     """
 
     opened_with: tuple[ControlChange, ...]
-    """The control timeline as this run was opened with it.
+    """The entries that the control timeline held when this run opened.
 
     It is empty on a trunk, which opens under whatever its settings are. A
     branch opens on its parent's stretch and records each setting that
     differs from it as a change at the fork (`PL-ZR49`). Those entries are
     part of where the branch began, not something done to it since.
     `changes_since_opening` is the timeline without them.
+
+    These are the entries of the branch's first opening, and a reset of the
+    branch leaves them as they were. A setting that the learner changed and
+    then kept through the reset is recorded at the fork too. But it is the
+    learner's work on the branch, so it must still count as a change since
+    the opening.
     """
 
     @property
@@ -240,20 +246,33 @@ class RunRecord(RunSettings):
 
         `SimulationSnapshot.has_recorded_run` reads this to decide whether a
         run holds anything that a reset would destroy (`PL-ZR49`). The
-        trunk's Reset question counts the whole timeline instead, because
-        that is what the branch's "Control changes" panel lists.
+        question that the trunk's Reset asks before it discards a branch
+        counts the branch's whole timeline instead, because that is what the
+        branch's "Control changes" panel lists.
 
-        A learner's change at the fork can collapse into an entry the run
-        opened with. A change to a new value replaces that entry, and the
-        replacement is returned here. A change back to the parent's value
-        removes the entry, and nothing is returned for it. The run then
-        stands on its parent's settings for that control, as a branch freshly
-        opened on the same stretch would, so it holds nothing new. That keeps
-        the answer independent of order: "change, reset, change back" and
-        "change, change back, reset" leave the same run and the same answer.
+        An entry is compared with the opened entries by the setting it
+        records: its instant, its control and its two values. The adjustment
+        number is left out, because it only groups entries into the acts that
+        the panel shows. A learner who sets a dial back to its parent's value
+        and then forward again leaves an entry with a new adjustment number.
+        The branch then stands exactly where it opened, so it holds nothing new.
+
+        A change that the learner makes at the fork can merge with an entry
+        that the run opened with. A change to a new value replaces that entry,
+        and the replacement is returned here. A change back to the parent's
+        value removes the entry, and nothing is returned for it. The run then
+        uses its parent's setting for that control, as a branch newly opened
+        on the same stretch would. So the run holds nothing new. Removing the
+        entry makes the result independent of order. The sequences "change,
+        reset, change back" and "change, change back, reset" leave the same
+        run and return the same result.
         """
 
-        return tuple(change for change in self.control_timeline if change not in self.opened_with)
+        opened = {_setting_recorded(change) for change in self.opened_with}
+
+        return tuple(
+            change for change in self.control_timeline if _setting_recorded(change) not in opened
+        )
 
     def run_record(self) -> RunRecord:
         """Return this record as a plain `RunRecord`, without any field a subclass adds.
@@ -411,10 +430,12 @@ class SimulationSnapshot(RunRecord):
 
         **Only the changes made since the run opened count, for the same
         reason** (`PL-ZR49`). A branch taken at a keyframe opens with the
-        trunk's change there in its timeline, and a branch reset after a
-        setting change opens with that change. Neither is something a reset
-        would destroy, because a reset opens the branch with the same
-        entries. `RunRecord.changes_since_opening` says which entries count.
+        trunk's change there in its timeline. That entry is the trunk's
+        decision, not work done on the branch. The trunk's Reset question is
+        the one reader that asks this of a branch, and that Reset discards the
+        trunk's change anyway. A setting that the learner kept through a
+        reset of the branch is their work, so it still counts.
+        `RunRecord.changes_since_opening` says which entries count.
         """
 
         return self.elapsed_s > self.began_at_s or bool(self.changes_since_opening)
@@ -422,7 +443,7 @@ class SimulationSnapshot(RunRecord):
 
 @dataclass(frozen=True, slots=True)
 class ResumePoint:
-    """Everything a branch needs in order to have opened where it did.
+    """Everything a branch needs in order to open where it did.
 
     These six values mean something only together. So they travel as one
     object, not as six attributes that a later edit could set one at a
@@ -435,25 +456,26 @@ class ResumePoint:
     run to its own beginning. A branch begins at the fork, not at the case's
     induction, which the branch does not hold and cannot recover.
 
-    **`segment` is the stretch the step reaching the fork ran under**
+    **`segment` is the stretch that the step reaching the fork ran under**
     (`PL-ZR49`). An instant where a run stands has two sides. The step that
     reached it ran under one stretch, and a change made while the run stands
     there opens the next. The first side can no longer change, because
     `RunDefinition.record_change` replaces only a stretch that opens at the
     instant the run stands on (`RunDefinition.reaching_segment_at`). So this
     provenance stays one of the parent's stretches whatever the parent does
-    at the fork later. Every way of branching takes this side. They differ
-    only in which changes made at the fork the branch then records in its
-    own timeline (`RunRecord.opened_with`).
+    at the fork later. Every way of branching takes this side. The ways
+    differ only in which changes made at the fork are then recorded in the
+    branch's own timeline (`RunRecord.opened_with`).
 
     **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
-    The stretch the reaching step ran under opens at a keyframe before the
-    fork, even when the fork is itself a keyframe. Recording a keyframe at a
-    bookmark or a pause would change the trunk's own later results. So a
-    branch opens its run definition at the keyframe where the parent's
-    stretch begins, while the branch stands at the fork itself. Both are
-    instants on the case's own time axis, the single axis left by
-    `PL-ZMRT`. They are equal only for a fork at the case's opening.
+    The stretch that the step reaching the fork ran under opens at a keyframe
+    before the fork, even when the fork is itself a keyframe. Recording a
+    keyframe at a bookmark or a pause would change the trunk's own later
+    results. So a branch opens its run definition at the keyframe where the
+    parent's stretch begins, while the branch stands at the fork itself.
+    Both are instants on the case's own time axis, which has been the only
+    time axis since `PL-ZMRT`. They are equal only for a fork at the case's
+    opening.
 
     Attributes:
         segment: The parent stretch that the step reaching the fork ran
@@ -483,14 +505,15 @@ class ResumePoint:
             canonical state there, or `None` for a fork at the case's
             opening, where no step ends. Together with `fork`, it gives the
             step that the branch is standing on when it opens. Each time the
-            branch's standings are read, the branch asks that step which marks
-            it crossed, using the marks as they are at that moment. So a mark
-            added after the fork is treated as it would have been had it
-            existed before the fork (`PL-1ZQ4`). The halt record a branch
-            opens on asks the same step (`SimulationSnapshot.bookmark_halt`).
-            No crossing is stored here, because a stored one names the marks
-            as they were at the fork, and a mark removed and added back since
-            would leave it naming the old one (`PL-XV0D`).
+            branch's mark standings (`MarkStanding`) are read, the branch
+            tests that step against the marks as they are at that moment. So
+            a mark added after the fork is treated as it would have been had
+            it existed before the fork (`PL-1ZQ4`). The halt record that a
+            branch opens with is computed from the same step
+            (`SimulationSnapshot.bookmark_halt`). No crossing is stored here.
+            A stored crossing would name the marks as they were at the fork,
+            so a mark removed and added back since then would leave it
+            naming the old mark (`PL-XV0D`).
     """
 
     segment: RunSegment
@@ -505,14 +528,15 @@ class ResumePoint:
 class MarkForkPoint:
     """A marked instant that a run has passed, and the instant where a branch taken there opens.
 
-    These two numbers are in general not equal, which is why they travel
-    together (`PL-W4XQ`). A mark that lies inside a step is reached at the
-    end of that step. So `bookmark.instant_s` is where the learner placed the
-    mark, and `fork_s` is the step instant where a branch stands. For a typed
-    45.3 s at the 0.1 s step, they are 45.3 and 45.300000000000004. Code that
-    labels the offer reads `fork_s`, the instant the action will use. Code
-    that takes the offer passes back `bookmark`, the mark itself. So neither
-    has a float to get wrong.
+    These two instants are in general not equal, which is why this record
+    carries both (`PL-W4XQ`). A mark that lies inside a step is reached at
+    the end of that step. So `bookmark.instant_s` is where the learner placed
+    the mark, and `fork_s` is the end of that step, where a branch opens. For
+    a mark typed as 45.3 s, with a step of 0.1 s, they are 45.3 and
+    45.300000000000004. Code that labels the offer to branch reads `fork_s`,
+    the instant that the branch will use. Code that takes the offer passes
+    back `bookmark`, the mark itself. So neither piece of code has a float
+    to get wrong.
 
     Attributes:
         bookmark: The mark, as the run holds it.
@@ -521,10 +545,10 @@ class MarkForkPoint:
             steps into the case.
         setting_changed_at_fork: Whether the run changed a setting at
             `fork_s`, so that a label can say the branch opens before that
-            change. A branch taken at a mark opens under the settings that
-            the step reaching `fork_s` ran under. The run's keyframe at
-            `fork_s` opens under the change instead, and the selector offers
-            both, so without this a reader would see two entries at one
+            change. A branch taken at a mark opens under the settings of the
+            step that reaches `fork_s`. A branch taken at the run's keyframe
+            at `fork_s` opens under the change instead. The selector offers
+            both. Without this flag, a learner would see two entries at one
             instant that open under different settings (`PL-ZR49`).
     """
 
@@ -552,11 +576,11 @@ class HereForkPoint:
         setting_changed_here: Whether a setting was changed while the run
             stood here, so that a label can say the branch opens before that
             change. A branch taken here opens under the settings that the
-            step reaching this instant ran under. The run's keyframe at this
-            instant opens under the change instead (`resumed_at`, `PL-ZR49`).
-            Both are offered at the same instant, so without this a reader
-            would see two controls labelled with one instant that open under
-            different settings.
+            step reaching this instant ran under. A branch taken at the run's
+            keyframe at this instant (`resumed_at`) opens under the change
+            instead (`PL-ZR49`). Both are offered at the same instant, so
+            without this a reader would see two controls labelled with one
+            instant that open under different settings.
     """
 
     fork_s: CaseInstant
@@ -591,20 +615,21 @@ class SimulationController:
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
         # These fields record what this run has done with the marks, as opposed
-        # to what is marked. Both are the run's product rather than the
-        # learner's question. So both are cleared wherever a new run begins:
+        # to what is marked. They are the run's product rather than the
+        # learner's question. So they are cleared wherever a new run begins:
         # in `_build_state`, which `set_agent` also calls, and in `reset()`.
         # `_bookmarks` below survives all of these. `_open_at` is the one
-        # exception, and it does not carry anything over. A branch opens
-        # *standing on* the step that reached its fork. That step is where
-        # the branch is, not something an earlier run did.
+        # exception to that clearing, and it does not carry anything over. A
+        # branch opens *standing on* the step that reached its fork. That step
+        # is where the branch is, not something an earlier run did.
         #
-        # The first field records only *that* the run stands where it stopped,
-        # on a halt or on a branch's fork. The second records what the stepped
-        # readings crossed on the step that halted a trunk, by instant and by
-        # height only. `_halt_crossing` names the current marks at those keys,
-        # and adds what the step crosses when asked again with the current
-        # marks, as the standings do (`PL-XV0D`). The crossing used to be
+        # `_stands_where_it_stopped` records only *that* the run stands where it
+        # stopped, on a halt or on a branch's fork. `_halted_on_instants_s` and
+        # `_halted_on_crossings` record what the stepped readings crossed on the
+        # step that halted a trunk, by instant and by height only.
+        # `_halt_crossing` names the current marks at those keys. It also adds
+        # what the step crosses when it is tested again against the current
+        # marks, as the mark standings do (`PL-XV0D`). The crossing used to be
         # stored with the mark objects it named, so a mark removed and added
         # back left it naming the old one.
         self._stands_where_it_stopped = False
@@ -633,8 +658,8 @@ class SimulationController:
 
         Called wherever a new run begins. A mark is the learner's question,
         and it survives. Whether a run halted on a mark is that run's product,
-        and it does not survive. A standing carried across a reset would
-        report a crossing that the run now on screen never made.
+        and it does not survive. A mark's standing, carried across a reset,
+        would report a crossing that the run now on screen never made.
 
         A branch's reset clears these fields here, and then `_open_at` puts
         the branch back on its fork. A fork runs the same sequence. The step
@@ -1196,16 +1221,17 @@ class SimulationController:
     def _forget_unmarked(self) -> None:
         """Drop what the run did with marks the learner has since removed.
 
-        A removed mark has no row to draw a standing beside. Leaving its
-        standing behind would name a mark that is no longer listed. That is
-        the kind of stale state that `.claude/rules/expert-review.md` asks to
-        be designed out rather than warned about.
+        A removed mark has no row in the bookmark panel, so there is nowhere to
+        show its standing. Leaving its standing behind would name a mark that
+        is no longer listed. That is the kind of stale state that
+        `.claude/rules/expert-review.md` asks to be designed out rather than
+        warned about.
 
         The keys the halt record keeps from a trunk's stepped readings are
         pruned in the same way (`_halt_crossing`). A mark added back is then
-        a new mark to both records. Both ask the step again for it, so the
-        halt record and the mark's row cannot disagree about whether the run
-        stopped on it.
+        a new mark to both records. Both records test the step again for that
+        mark, so the halt record and the mark's row cannot disagree about
+        whether the run stopped on it.
         """
 
         instants = frozenset(bookmark.instant_s for bookmark in self._bookmarks.time_bookmarks)
@@ -1243,8 +1269,9 @@ class SimulationController:
 
         **The first of these segments does not in general begin where the
         branch began** (`PL-B8MK`). A branch opens its run definition where
-        its parent's stretch that reached the fork opens (`ResumePoint.segment`).
-        That opening is a keyframe before the fork, unless the fork is at the
+        one of its parent's stretches opens (`ResumePoint.segment`). That
+        stretch is the one that the step reaching the fork ran under. Its
+        opening is a keyframe before the fork, unless the fork is at the
         case's opening (`PL-ZR49`). A caller that wants the run's own beginning
         reads `began_at_s`. This tuple describes what the *definition* holds.
         """
@@ -1276,12 +1303,13 @@ class SimulationController:
 
         **It is not `run_segments[0].opening.instant_s`. This property exists
         to stop callers inferring it from there** (`PL-B8MK`). A branch opens
-        its run definition where its parent's stretch that reached the fork
-        opens. That opening is a keyframe *before* the fork, unless the fork is
-        at the case's opening (`PL-ZR49`). A caller that took the first
-        segment's opening as the run's beginning would place the branch earlier
-        than it exists. It would draw the branch across an interval that the
-        branch never lived.
+        its run definition where one of its parent's stretches opens. That
+        stretch is the one that the step reaching the fork ran under. Its
+        opening is a keyframe *before* the fork, unless the fork is at the
+        case's opening (`PL-ZR49`). A caller that took the first segment's
+        opening as the run's beginning would place the branch earlier than it
+        exists. It would draw the branch across an interval that the branch
+        never lived.
         """
 
         return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
@@ -1289,38 +1317,37 @@ class SimulationController:
     def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
         """Open a second live run at this run's canonical state at `instant_s`.
 
-        This is the seam that `PL-J2TD` exists for. A branch has to become
-        something a learner can *manage*, not just a second curve, and managing
-        it means advancing it. The result is an ordinary paused
-        `SimulationController`, standing at the state this run passed through
-        at `instant_s`. It advances by the same path every run takes.
-        `advance()` is not overridden, and no second way to move a run forward
-        is introduced.
+        This method makes a branch something a learner can *manage*, not just
+        a second curve (`PL-J2TD`). Managing a branch means advancing it. The
+        result is an ordinary paused `SimulationController`, standing at the
+        state this run passed through at `instant_s`. It advances by the same
+        path every run takes. `advance()` is not overridden, and no second way
+        to move a run forward is introduced.
 
         **It opens at a keyframe, because that is this method's scope**
         (`PL-54V0`). `instant_s` must be an instant at which this run holds a
         keyframe, which means its start or a recorded setting change. Any other
-        instant is rejected, but not because it cannot be reproduced. A marked
-        instant is branched at through `resumed_at_mark`, and the instant where
-        a paused run stands is branched at through `resumed_here`. Both fork
-        between two keyframes and reproduce this run element-wise, by opening
-        the branch's run definition at the keyframe before the fork
-        (`_open_at`). No method offers any other instant, so a learner first
-        marks it or pauses the run on it. No method *restarts* a run definition
-        at the fork from the canonical state there. That would replace one
-        propagation over an interval with two propagations over its halves.
-        The result is a different rounding of the same exact solution, measured
-        at up to 5.3e-13 in an accumulator, and `PL-Z3W6` requires a branch to
-        reproduce its parent element-wise.
+        instant is rejected, but not because it cannot be reproduced.
+        `resumed_at_mark` branches at a marked instant, and `resumed_here`
+        branches at the instant where a paused run stands. Both fork between
+        two keyframes and reproduce this run element-wise, by opening the
+        branch's run definition at the keyframe before the fork (`_open_at`).
+        No method offers any other instant, so a learner first marks it or
+        pauses the run on it. No method *restarts* a run definition at the fork
+        from the canonical state there. That would replace one propagation over
+        an interval with two propagations over its halves. The result would be
+        a different rounding of the same exact solution, measured at up to
+        5.3e-13 in an accumulator. A branch must reproduce its parent
+        element-wise (`PL-Z3W6`).
 
         **The branch's clock continues the case's clock**, because a branch is
         one patient's case under a second management, not a second patient.
         Three things follow, and each is a correctness property rather than a
         convenience. First, the 24 h supported run length is enforced on the
-        step count. A branch that restarted the count would get a fresh
-        envelope. A fork at 23 h could then be advanced to 47 h of case time
-        with every guard passing. That is exactly the regime in which, as
-        `core/supported_ranges.py` argues, the omitted metabolism dominates.
+        step count. A branch that restarted the count would get a fresh 24 h
+        allowance. A fork at 23 h could then be advanced to 47 h of case time
+        with every guard passing. That is exactly the regime in which
+        metabolism, which the model omits, dominates (`core/supported_ranges.py`).
         Second, the clock, every control-change stamp and the chart's axis all
         read `snapshot().elapsed_s`, and `format_elapsed` says that they "state
         one quantity one way". A branch counting from zero would place the
@@ -1333,20 +1360,20 @@ class SimulationController:
         **The run definition opens on the case's own axis rather than at a
         zero of its own**, so the branch's clock and its run definition's
         instants are one quantity, and nothing converts between them
-        (`PL-ZMRT`). § "The canonical evaluation rule" requires this. When
-        asked for a case instant, the branch forms its interval from the same
-        two floats its parent used. A run definition shifted to its own zero
-        would depend on a subtraction that does not always round-trip. It
-        opens at the keyframe where the stretch before `instant_s` opens, as
-        every branch does. `_open_at` and `docs/MODEL.md` § "What this
-        requires of a branch" explain this.
+        (`PL-ZMRT`). `docs/MODEL.md` § "The canonical evaluation rule" requires
+        this. When asked for a case instant, the branch forms its interval from
+        the same two floats its parent used. A run definition shifted to its
+        own zero would depend on a subtraction that does not always round-trip.
+        The branch's run definition opens at the keyframe where the stretch
+        before `instant_s` opens, as every branch's does. `_open_at` and
+        `docs/MODEL.md` § "What this requires of a branch" explain this.
 
         **It opens after the change made at `instant_s`, and records that
         change in its own timeline** (`PL-ZR49`). A keyframe is a setting
-        change, and this method branches in order to run under it. Its
-        provenance, `opened_from.segment`, is still the stretch the step
-        reaching `instant_s` ran under. The change is then recorded on the
-        branch as a change at the fork (`RunRecord.opened_with`). So
+        change, and this method branches in order to run under it. The
+        branch's provenance, `opened_from.segment`, is still the stretch that
+        the step reaching `instant_s` ran under. The change is then recorded on
+        the branch as a change at the fork (`RunRecord.opened_with`). So
         the branch's own record states the setting it runs under. That stays
         true whatever the trunk does at `instant_s` afterwards, including
         setting the dial back, which removes the trunk's keyframe (`PL-TNYP`).
@@ -1363,11 +1390,11 @@ class SimulationController:
         as it was set (`UptakeEquationSettings`, `PL-SM5V`). The rebuilt
         branch is then checked against those settings rather than trusted.
         The check matters because a branch that assembled a system matrix its
-        parent never used would diverge from its first step, within the
-        tolerance that keeps the two records together. The agent's displayed
-        references are checked as well. A rejection names each value that
-        differs rather than a cause, because the rebuild reads the data files
-        again (`_disagreements_with`).
+        parent never used would diverge from its first step. That divergence
+        would stay within the tolerance that keeps the two records together.
+        The agent's displayed references are checked as well. A rejection
+        names each value that differs rather than a cause, because the rebuild
+        reads the data files again (`_disagreements_with`).
 
         Args:
             instant_s: The case instant to open at, in seconds. It must be an
@@ -1428,7 +1455,7 @@ class SimulationController:
         opening, and a run at the supported run length**, each for its own
         reason. The position of a running run moves with every step, so an
         instant read from it is stale before it can be used. A failure is not
-        a pause (`RunStatus.failure_reason`), and a branch that opened where a
+        a pause (`RunStatus.failure_reason`). A branch that opened where a
         failed run stands would resume what `fail` says must not be resumed. A
         run standing at its opening has recorded nothing to branch from, and
         `resumed_at` already opens there. A run at the supported run length is
@@ -1455,18 +1482,20 @@ class SimulationController:
         (`PL-HSP8`, `PL-ZR49`). The branch opens under the stretch that the
         step reaching this instant ran under, which a change made here cannot
         alter. So the branch is the same whether it is taken before or after
-        such a change, and it is the branch `resumed_at_mark` gives for a mark
-        here. A learner who wants the changed setting on the branch sets it on
-        the branch. `resumed_at` at the keyframe the change recorded opens
-        after it instead, and says so in its own timeline.
+        such a change, and it is the same branch that `resumed_at_mark` gives
+        for a mark here. A learner who wants the changed setting on the branch
+        sets it on the branch. A branch taken with `resumed_at` at the keyframe
+        that the change recorded opens after the change instead, and its own
+        timeline says so.
 
-        **The halt record the branch opens on is asked of the step**
-        (`_halt_crossing`), as the record of a halted trunk is. It is not
-        copied from the trunk. A stored record named what was marked when the
-        run stopped. So a mark added inside the halting step, while the run
-        stood on it, was missing from it, and the same mark reached through
-        `resumed_at_mark` was treated as passed (`PL-2N43`). A mark removed
-        and added back was named as the old one (`PL-XV0D`).
+        **The branch's halt record is computed from the step it opens on**
+        (`_halt_crossing`), as a halted trunk's record is. It is not copied
+        from the trunk. The record used to be stored, and it named what was
+        marked when the run stopped. So a mark added inside the halting step,
+        while the run stood on it, was missing from the record, and the same
+        mark reached through `resumed_at_mark` was treated as passed
+        (`PL-2N43`). A mark removed and added back was named as the old one
+        (`PL-XV0D`).
 
         Returns:
             A paused `SimulationController` standing where this run stands,
@@ -1514,11 +1543,13 @@ class SimulationController:
     def _setting_changed_at(self, instant_s: float) -> bool:
         """Return whether this run changed a setting at `instant_s`.
 
-        The run then has two sides at that instant. A branch taken where the
-        run stands or at a mark opens under the stretch that reached the
-        instant, and the keyframe there opens under the change (`PL-ZR49`).
-        Both `here_fork_point` and `mark_fork_points` read this, so the two
-        labels that say so cannot disagree about when it is true.
+        If it did, two stretches of settings meet at that instant: the one
+        that reached it and the one that starts there. A branch taken where
+        the run stands, or at a mark, opens under the stretch that reached
+        the instant. A branch taken at the keyframe there opens under the
+        change (`PL-ZR49`). Both `here_fork_point` and `mark_fork_points`
+        call this method. So the two labels that report such a change cannot
+        disagree about whether a setting changed at a given instant.
 
         Args:
             instant_s: An instant this run has reached, in seconds of the case.
@@ -1546,30 +1577,31 @@ class SimulationController:
         `RunDefinition.state_at` evaluated there. The branch opens under the
         stretch that step ran under, so a setting the trunk changed while it
         stood on the mark stays the trunk's, as it does for `resumed_here`
-        (`PL-HSP8`). So a mark the run is halted on forks at the same place,
-        from the same state and under the same settings as `resumed_here`,
-        before or after such a change. A mark set behind the clock forks where
-        the halt would have stopped the run, had the mark been set in time.
-        Nothing is recorded on this run, so it stays the case it would have
-        been without the mark (`docs/MODEL.md` § "What this requires of a
-        branch").
+        (`PL-HSP8`). So for a mark the run is halted on, this method forks at
+        the same place, from the same state and under the same settings as
+        `resumed_here`, before or after such a change. For a mark set behind
+        the clock, it forks where a halt would have stopped the run, had the
+        mark been set in time. Nothing is recorded on this run, so it stays
+        the case it would have been without the mark (`docs/MODEL.md` § "What
+        this requires of a branch").
 
-        **The halt record the branch opens on is asked of that step**, because
-        a step that halted nothing kept no record of what it crossed
+        **The branch's halt record is computed from that step**, because a
+        step that halted nothing kept no record of what it crossed
         (`_halt_crossing`). It is the result of `BookmarkSet.crossings_between`
         for that one step, using the marks as they are now and each
         compartment read canonically at both ends of the step. So the rule that
-        halts a running case is the same rule that names this crossing. A mark
-        that lies inside the step, which the branch opens just after, is still
-        treated as passed rather than as before the branch (`PL-3K9B`, case B).
+        halts a running case is the same rule that names this crossing. The
+        branch opens just after that step, and a mark that lies inside the step
+        is still treated as passed rather than as lying before the branch
+        (`PL-3K9B`, case B).
 
         **It takes the mark, not an instant**, for the same reason that
         `resumed_here` takes nothing. A float would let a caller name the
         instant a learner typed, which in general is not the step instant at
         which the run reached the mark. A mark at the case's opening is the one
-        mark that no step reaches. The run stands on it from the start, so it
-        forks at the opening keyframe with no crossing, as `resumed_at` would
-        there.
+        mark that no step reaches. The run stands on it from the start, so this
+        method forks at the opening keyframe with no crossing, as `resumed_at`
+        would there.
 
         Args:
             bookmark: The mark to branch at. It is matched on its instant, in
@@ -1626,12 +1658,12 @@ class SimulationController:
     def _branch_from(
         self, resume_point: ResumePoint, settings: UptakeEquationSettings
     ) -> SimulationController:
-        """Build the branch `resume_point` describes, running under `settings`, and leave this run.
+        """Build the branch that `resume_point` describes, running under `settings`.
 
-        Every branching method uses this: `resumed_at`, `resumed_at_mark` and
-        `resumed_here`. The only things that separate them are where a branch
-        may be taken and which settings it runs under from the fork. What a
-        branch *is* is defined once, here.
+        This run is left unchanged. Every branching method uses this:
+        `resumed_at`, `resumed_at_mark` and `resumed_here`. The only things
+        that separate them are where a branch may be taken and which settings
+        it runs under from the fork. What a branch *is* is defined once, here.
 
         Args:
             resume_point: The branch's provenance, including the stretch the
@@ -1674,20 +1706,24 @@ class SimulationController:
         # managements answering one question. If the learner had to enter the
         # marks again, a typed 0.85 against a 0.8 would leave two branches
         # apparently compared at one height but actually compared at two, with
-        # nothing on screen to say so. The one entry a branch's timeline does
-        # open with is a setting it was opened under, which `_open_at` records
-        # as a change at the fork. That entry is where the branch began rather
-        # than something done to it (`RunRecord.opened_with`).
+        # nothing on screen to say so. The only entries that a branch's
+        # timeline opens with are settings it was opened under, which
+        # `_open_at` records as changes at the fork. Those entries are where
+        # the branch began rather than something done to it
+        # (`RunRecord.opened_with`).
         #
         # A mark that lies before the fork is copied with the rest. It cannot
         # be reached from here on, but it is not dropped. Dropping it would make
         # the trunk's list and the branch's list disagree about where the case
-        # is marked, which is harder for a comparison to explain. Showing that
-        # such a mark is unreachable, where it is listed, belongs to `PL-CTD7`,
-        # with the rest of the reached / not-reached outcome set.
+        # is marked, which is harder for a comparison to explain. Showing in
+        # the list that such a mark is unreachable is left to `PL-CTD7`, along
+        # with the other reached and not-reached outcomes.
         branch._bookmarks = self._bookmarks
 
         branch._open_at(resume_point, branch._state.uptake_system.equation_settings())
+        # What the first opening recorded is what the branch opened with. A
+        # reset of the branch keeps this (`reset`).
+        branch._opened_with = branch._control_timeline
 
         return branch
 
@@ -1779,9 +1815,10 @@ class SimulationController:
         parent's settings** (`PL-B8MK`). That stretch is the one the step
         reaching the fork ran under (`ResumePoint.segment`). Every setting in
         force that differs from it is recorded as a change at the fork, in the
-        run definition and in the control timeline alike (`PL-ZR49`). That is
-        the trunk's own change for a branch taken at a keyframe, and the
-        learner's dials for a branch reset after they changed (`PL-K5BS`). So
+        run definition and in the control timeline alike (`PL-ZR49`). For a
+        branch taken at a keyframe, that change is the trunk's own change
+        there. For a branch that was reset after the learner changed its
+        dials, the changes are the learner's new settings (`PL-K5BS`). So
         the two records agree about what the branch runs under, and
         `opened_from` names the stretch they both start from. The definition
         keeps propagating from the same keyframe that its parent propagates
@@ -1797,17 +1834,17 @@ class SimulationController:
         not done that way. "Dial, dial back, reset" and "dial, reset, dial
         back" leave the same branch: the same settings, the same live state,
         the same run definition and the same control timeline. Choosing the
-        opening at reset time would give the second sequence the fork rather
-        than the keyframe. That branch would restart from two propagations
-        where the parent took one, and it would stop reproducing the parent.
-        This was measured on 2026-09-20: 40 of 45 elements differed across
-        five probes, the worst by 1.21e-15, with nothing on screen to say so.
-        Recording the change instead lets the collapse rules of
-        `record_change` and `_record_in_timeline` notice the dial-back. The
-        fork segment ends up with the settings that the stretch before it
-        already had, so it is removed entirely, and so is the timeline entry.
-        Only `opened_with` tells the two sequences apart, because the second
-        changed a setting after the branch reopened.
+        opening at reset time would open the second sequence's run definition
+        at the fork rather than at the keyframe. That branch would restart from
+        two propagations where the parent took one, and it would stop
+        reproducing the parent. This was measured on 2026-09-20: 40 of 45
+        elements differed across five probes, the worst by 1.21e-15, with
+        nothing on screen to say so. Recording the change instead lets the
+        collapse rules of `record_change` and `_record_in_timeline` notice the
+        dial-back. The fork segment ends up with the settings that the stretch
+        before it already had, so it is removed entirely, and so is the
+        timeline entry. The two sequences then leave the same branch in every
+        record. That includes `opened_with`, which a reset does not replace.
         """
 
         segment = resume_point.segment
@@ -1857,7 +1894,6 @@ class SimulationController:
             if new_value != previous_value:
                 self._record_in_timeline(control, previous_value, new_value)
 
-        self._opened_with = self._control_timeline
         # The learner's first change after this starts an adjustment of its
         # own, rather than joining the last control recorded here.
         self.begin_control_adjustment()
@@ -1865,8 +1901,9 @@ class SimulationController:
         # step is where the branch is, not something its parent did. A run
         # that opens on a crossing and reports that it stopped on nothing
         # describes a different run (`PL-3K9B`). So the step's crossing is the
-        # branch's halt record, as a halting step's is on a trunk, and it is
-        # asked of the current marks at every read (`_halt_crossing`).
+        # branch's halt record, as a halting step's is on a trunk. The record
+        # is recomputed from the current marks each time it is read
+        # (`_halt_crossing`).
         self._stands_where_it_stopped = True
 
     def _resume_point_at(self, instant_s: CaseInstant) -> ResumePoint:
@@ -1897,14 +1934,15 @@ class SimulationController:
                 "it, and the instant a paused run stands at with resumed_here"
             )
 
-        # The provenance is the stretch the step reaching the keyframe ran
-        # under, as for every other branching method, not the stretch the
+        # The provenance is the stretch that the step reaching the keyframe ran
+        # under, as for every other branching method, not the stretch that the
         # keyframe opens. A change made while the trunk stands at `instant_s`
-        # can still replace or remove the stretch that opens there, and a
-        # branch whose provenance named it would then name a stretch the trunk
-        # no longer holds (`PL-NRR6`). `resumed_at` records the keyframe's own
-        # change on the branch instead (`_open_at`). The state at the keyframe
-        # is the keyframe's state, which `state_at` returns bit for bit.
+        # can still replace or remove the stretch that opens there. A branch
+        # whose provenance named that stretch would then name a stretch the
+        # trunk no longer holds (`PL-NRR6`). `resumed_at` records the
+        # keyframe's own change on the branch instead (`_open_at`). The state
+        # at the keyframe is the keyframe's state, which `state_at` returns bit
+        # for bit.
         return self._resume_point(
             self._run_definition.reaching_segment_at(instant_s),
             Keyframe(instant_s, self._run_definition.state_at(instant_s)),
@@ -2147,12 +2185,13 @@ class SimulationController:
 
         **The step ending at the fork is named here, once, for every branching
         method** (`PL-1ZQ4`). Whichever method named the fork, the branch then
-        asks that step what it crossed, with the marks as they are when it is
-        asked (`_crossings_stood_on`, `_halt_crossing`). So a branch taken at a
-        control event, at a mark, or where the run stands opens on one account
-        of one step. When each method passed in its own crossing, `resumed_at`
-        passed none. A branch opened at a keyframe where the trunk was halted
-        then treated the halt's marks as lying before the branch.
+        tests that step against the marks as they are at that moment
+        (`_crossings_stood_on`, `_halt_crossing`). So a branch taken at a
+        control event, at a mark, or where the run stands opens on the same
+        step, tested the same way. Before this, each method passed in its own
+        crossing, and `resumed_at` passed none. A branch opened at a keyframe
+        where the trunk was halted then treated the halt's marks as lying
+        before the branch.
 
         Args:
             segment: The stretch of this run that the step reaching `fork` ran
@@ -2360,7 +2399,10 @@ class SimulationController:
         in the run definition and in the control timeline, as `_open_at` does
         for every branch. The branch's record and its provenance then agree
         on what it runs under. A reset branch whose settings match the stretch
-        records nothing.
+        records nothing. The branch keeps `opened_with` from its first
+        opening. So a setting the learner changed and kept through the reset
+        still counts as their work, and the trunk's Reset asks before
+        discarding it (`RunRecord.changes_since_opening`).
 
         Raises:
             SimulationConfigurationError: If the settings record on which the run
@@ -2397,7 +2439,9 @@ class SimulationController:
             # a cleared system would put the patient at zero agent at a case
             # time when the model says the patient is loaded. That is a
             # plausible state that never happened, not the start of anything.
+            opened_with = self._opened_with
             self._open_at(self._opened_from, settings)
+            self._opened_with = opened_with
             return
 
         self._run_definition = RunDefinition(
@@ -2626,8 +2670,8 @@ class SimulationController:
     ) -> None:
         """Add one accepted setting change to the control timeline, at the run's clock.
 
-        `_record_control_change` calls this for a learner's change, and
-        `_open_at` calls it for each setting a branch opens under that differs
+        `_record_control_change` calls this for a learner's change. `_open_at`
+        calls it for each setting that a branch opens under and that differs
         from its parent's stretch. Both have already recorded the settings in
         the run definition. The grouping and collapsing rules below are in one
         place, so a learner's change made at a branch's fork collapses into
@@ -2841,30 +2885,30 @@ class SimulationController:
         )
 
     def _halt_crossing(self) -> BookmarkCrossing | None:
-        """The halt record: what the step this run stopped on crossed, asked of the current marks.
+        """Return the halt record, the current marks crossed by the step this run stopped on.
 
         It is None unless the run stands where it stopped. A trunk stops on the
         step that halted it (`_halt_on`). A branch opens standing on the step
-        that reached its fork, whichever way it was taken (`_open_at`). A step
-        taken clears it. A run that is only paused did not stop on a mark, so
+        that reached its fork, whichever way it was taken (`_open_at`). Taking a
+        step clears it. A run that is only paused did not stop on a mark, so
         its halt record is None even when the step it stands on crossed one.
 
         **It names the current marks, read at every call** (`PL-XV0D`). So a
         mark added inside that step is named, a removed mark is not, and a
         mark removed and added back is named as it is now. Two facts decide
-        which marks. The first is what the step crosses when asked again with
-        the current marks, from the canonical states at both ends, which is
-        what every branch asks (`_crossings_stood_on`). The second, on a
+        which marks. The first is what the step crosses when it is tested again
+        against the current marks, using the canonical states at both ends.
+        Every branch uses that test (`_crossings_stood_on`). The second, on a
         trunk, is what the stepped readings crossed when the step halted the
         run, kept by instant and by height. It is needed because a height that
         a stepped reading lands on exactly can lie about 1e-14 beyond the
         canonical reading. A trunk that halted on that height and then
-        reported no mark would be paused for no stated reason. These are the
-        same two sources the standings combine (`bookmark_standings`), and
+        reported no mark would be paused for no stated reason. The mark
+        standings combine the same two sources (`bookmark_standings`), and
         removing a mark drops its key from both (`_forget_unmarked`). So the
-        halt record and the bookmark panel cannot name different marks. A halt
-        whose marks have all been removed reads None, as it did when the
-        record was pruned.
+        halt record and the bookmark panel cannot name different marks. When
+        all of a halt's marks have been removed, this returns None, as it did
+        when the record was pruned.
         """
 
         if not self._stands_where_it_stopped:
@@ -3019,8 +3063,8 @@ class SimulationController:
 
         The marks the step crossed are kept by instant and by height, not as
         the mark objects. `_halt_crossing` names the current marks at those
-        keys at every read (`PL-XV0D`). What the run has reached keeps them in
-        the same form, as the standings require.
+        keys at every read (`PL-XV0D`). The record of the marks that the run
+        has reached keeps them in the same form, as the mark standings require.
 
         Args:
             crossing: What the step just taken passed through.
@@ -3046,13 +3090,25 @@ def _reached_heights(crossing: BookmarkCrossing) -> frozenset[tuple[RecordedQuan
     return frozenset(target.crossing_key for target in crossing.mac_targets)
 
 
+def _setting_recorded(change: ControlChange) -> tuple[CaseInstant, ControlInput, float, float]:
+    """Return the setting that `change` records: its instant, its control and its two values.
+
+    Two entries that return the same tuple put the run under the same
+    setting, whatever their adjustment numbers. The adjustment number groups
+    entries into the acts that the "Control changes" panel shows, and says
+    nothing about what the model ran under (`RunRecord.changes_since_opening`).
+    """
+
+    return (change.elapsed_s, change.control, change.previous_value, change.new_value)
+
+
 def _control_value(settings: UptakeEquationSettings, control: ControlInput) -> float:
     """The value `settings` holds for `control`, in the unit the control was set in.
 
     The settings record holds each control's value exactly as it was set
     (`UptakeEquationSettings`), which is the value the control timeline
-    records. So a change read from two records compares exactly with the
-    change a setter recorded.
+    records. So a change worked out from two settings records compares
+    exactly equal to the change that a setter recorded.
     """
 
     match control:
