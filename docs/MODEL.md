@@ -9196,13 +9196,19 @@ part.** The band must be read against the **vessel-rich** trace. This model
 has no effect-site compartment and defines $`F_a \equiv F_A`$ (see § "Model
 boundary"). So the alveolar trace is the fastest curve on the chart, and the
 furthest from where responsiveness actually returns. One measurement shows
-the size of the gap. It used a 3-hour 1 MAC sevoflurane case with the
-vaporizer turned off at 10 L/min. The alveolar trace crosses the band's centre
-at 2.83 min, and the vessel-rich trace crosses it at 6.51 min, 2.30 times
-later.
+the size of the gap. It ran sevoflurane for 3 hours at the opening dial of
+2.0%, which is the stored 1 MAC, and the default fresh gas flow of 4 L/min.
+That brought the alveolar fraction only to 1.69%, or 0.84 MAC. The vaporizer
+was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
+trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
+it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
+with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
 <!-- not-restated: 10 L/min -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
-<!-- derived: 2.83 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
 The primary literature makes this a question of *which number is correct*,
 not only of how a number is read. Katoh et al. determined sevoflurane and
@@ -9211,22 +9217,29 @@ one. The two methods disagree. Slow washout gave 0.34 and 0.31 of MAC for
 sevoflurane and isoflurane respectively, against 0.22 for both by fast
 washout. The paper attributes the difference to end-tidal-to-arterial and
 arterial-to-cerebral anesthetic differences. That is precisely what this model
-represents as the alveolar-to-vessel-rich difference. The paper also measures
-the brain concentration directly rather than leaving it to inference. During
-fast washout, the cerebral concentration at first eye opening was 0.34 of MAC
-for sevoflurane and 0.30 for isoflurane,
+represents as the alveolar-to-vessel-rich difference. The paper also
+estimates the brain concentration at awakening. That estimate is not a
+measurement, because cerebral concentration cannot be sampled in these
+patients. The abstract says the brain concentrations were "calculated with
+end-tidal anesthetic concentrations", and the title calls them "predicted".
+So they come from Katoh's own model of brain uptake (`PL-YDRT`). The full paper
+is not in the reference corpus, so the form of that model is not recorded
+here. During fast washout, the calculated cerebral concentration at first eye
+opening was 0.34 of MAC for sevoflurane and 0.30 for isoflurane,
 "nearly equal to MAC-Awake obtained by slow alveolar washout". The stored
 values are therefore the slow-washout ones, and the trace they belong against
-is the vessel-rich one.
+is the vessel-rich one. That rests on a modelled estimate agreeing with an
+equilibrated measurement, which is weaker evidence than a direct measurement
+of the brain would be.
 
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 
-**Every way of getting this wrong runs in the same direction, and it is the
+**Three ways of misreading the band run in the same direction, and it is the
 consequential one.** Concentration falls during emergence. So a trace crosses
 a higher reference sooner, and a faster-falling trace crosses any reference
-sooner. Three distinct errors therefore all shorten the apparent time to
-awakening. The first is reading the band against the alveolar trace instead
+sooner. Three distinct reading errors therefore all shorten the apparent time
+to awakening. The first is reading the band against the alveolar trace instead
 of the vessel-rich one. The second is drawing the slow-washout value against a
 fast-washout alveolar trace, where 0.22 would be the matching figure. The
 third is the denominator mistake described below. A learner who takes away
@@ -9234,6 +9247,30 @@ any of these errors concludes that emergence is faster than this model says.
 That learner carries into practice the belief that a patient is more awake
 than they are. That is why this document specifies the reference, rather than
 leaving it to the chart.
+
+**The band's height has a fourth source of error, and its direction differs
+by agent** (`PL-GCGX`). The band is the stored fraction times the stored
+`mac_percent`, which is the Gas Man flat adult MAC. The traces are absolute
+partial pressures and do not depend on that divisor. So wherever the divisor
+departs from the literature, the band moves against the traces by the same
+proportion. § "Delivery-limit and MAC parameters" compares the stored MAC with
+Mapleson's age-40 values. Against them, the stored MAC is 11.1% high for
+sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Mapleson's 95%
+confidence limits are about ±7%, and ±10% for desflurane. Only sevoflurane's
+gap is larger than its limits. So the sevoflurane band probably sits too high,
+by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
+wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
+drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
+Mapleson's 1.80%, at 7.31 min. The isoflurane and desflurane gaps are inside
+the limits, so Mapleson does not show either band to be off. For desflurane a
+direct measurement points the same way. The drawn centre of 2.16% agrees with
+Song et al.'s measured 2.17%, as the paragraph below says. All three figures
+are gaps from Mapleson's MAC, not from the MAC each source used. Katoh's
+sevoflurane and isoflurane fractions are ratios to an age-adjusted MAC that the
+abstract does not name, so the gap from Katoh's own denominator is not yet
+known (`PL-P319`).
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
 
 **The value is stored as a fraction of MAC, never as a percent of one
 atmosphere, and that is a safety decision rather than a schema preference.**
@@ -9270,9 +9307,14 @@ reference adult value, not as a patient-specific one. The reason is that this
 model has no age parameter, while Katoh expressed MAC-awake as a ratio to
 age-adjusted MAC.
 
-One consequence is expected and is not a rendering fault. On a short case, the
-vessel-rich trace never reaches the 1 MAC line, because it never equilibrated.
-That is true of the patient, and it is worth teaching.
+One consequence is expected and is not a rendering fault. At a 1 MAC dial, no
+patient trace reaches the 1 MAC line, however long the case runs. Muscle and
+fat keep taking up agent for many hours, so the blood returning to the lungs
+stays below the alveolar gas. That keeps the alveolar fraction below the
+inspired fraction, and rebreathing keeps the inspired fraction below the dial
+(`PL-39KH`). The measurement above shows the size: after 3 hours at 1 MAC the
+alveolar and vessel-rich traces stood at 0.84 MAC. That is true of the
+patient, and it is worth teaching.
 
 **What the references inherit, and one methodological limitation.** The
 fractions are tier 1, from primary measurements in humans. `mac_percent` is
