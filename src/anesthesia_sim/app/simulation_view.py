@@ -1005,10 +1005,14 @@ class SimulationView(QWidget):
         (`branch_at_stake`). The rejection is not handled here. It is the
         branch's own halt, which the branch's own frame states.
 
-        The changes counted are the ones made since the branch opened
-        (`RunRecord.changes_since_opening`). That is the record from which
-        `has_recorded_run` decides whether the branch holds anything, so the
-        question never names a branch with no changes and no run (`PL-ZR49`).
+        The count is of the whole control timeline, grouped as the branch's
+        "Control changes" panel lists it, so the question and the panel give
+        one number. That includes a change the branch opened with, such as
+        the trunk's change at the keyframe it was taken at (`PL-ZR49`).
+        Whether to ask at all is `has_recorded_run`'s decision, which counts
+        only the changes made since the branch opened. A branch that holds
+        such a change holds a timeline entry, so the question never says "0
+        recorded control changes" for a branch that has not run.
         """
 
         try:
@@ -1022,7 +1026,7 @@ class SimulationView(QWidget):
             run_label(run.run_id),
             run.controller.began_at_s,
             snapshot,
-            len(group_adjustments(record.changes_since_opening)),
+            len(group_adjustments(record.control_timeline)),
         )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:

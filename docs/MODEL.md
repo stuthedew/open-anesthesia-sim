@@ -6362,7 +6362,8 @@ disagreements (`PL-3K9B`, `PL-2N43`, `PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`,
   stays the trunk's, whether the halt branch is taken before the change or
   after it, and the branch returned to at the mark later agrees with both
   (`PL-HSP8`). All three ways of branching at one instant name the same
-  provenance. They differ only in that one recorded change.
+  provenance. They differ only in the changes that `resumed_at` records at
+  the fork.
 - **A reset branch keeps its settings and records the difference** (`PL-K5BS`).
   It reopens at the fork on the same provenance, and each setting that differs
   from it is recorded at the fork, as at any branch's opening. So a reset
@@ -7772,10 +7773,13 @@ a reader's agreement to leave it alone:**
 
 **What differs is the control timeline after the fork, and nothing else.** A
 branch opens with a timeline of its own, which holds none of the trunk's
-earlier changes. The one entry it can open with is the trunk's change at the
-keyframe it was taken at, which it runs under
-(`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`).
-That entry is a setting that differs after the fork, so the sentence below
+earlier changes. The entries it can open with are the settings it runs under
+that differ from the stretch it opened from, one for each control that
+differs. For a branch taken at a keyframe, they are the trunk's changes at that
+keyframe
+(`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`). A
+reset branch can open with the learner's settings, as § "Reset behavior" says.
+Each entry is a setting that differs after the fork, so the sentence below
 still holds. Forking leaves the trunk untouched (`test_forking_leaves_the_trunk_untouched`). So everything
 that either run records after the fork is what its learner did to it. **A
 difference between the two runs at an instant past the fork is therefore

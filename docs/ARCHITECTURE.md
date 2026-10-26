@@ -599,10 +599,11 @@ comparison is two managements answering one question. If a learner had to
 re-enter the marks, two branches could be compared at two different heights
 with nothing saying so. What a branch does not inherit is the trunk's control
 timeline. The branch's record is of what the learner does to *it*, and
-`opened_from` is what records where the fork was taken. The one entry it can
-open with is a setting it runs under that differs from the stretch it opened
-from: the trunk's change at a setting change it was taken at, or the learner's
-dial kept by a reset (`RunRecord.opened_with`).
+`opened_from` is what records where the fork was taken. The entries it can
+open with are the settings it runs under that differ from the stretch it opened
+from, one for each control that differs. They are the trunk's changes at the
+keyframe it was taken at, or the learner's dials kept by a reset
+(`RunRecord.opened_with`).
 `began_at_s` is the one number to read for that. It is zero on a trunk and the
 fork instant on a branch. The definition's own first segment used to start at
 the same instant, and it no longer always does. That is why the property
@@ -725,8 +726,10 @@ is a property of the display, not of the model:
   mark stopped the trunk there, the label is
   "..., stopped on your mark". When a setting was changed while the trunk
   stood there, the label ends ", before your change". The branch opens under
-  the settings before that change, while the selector's entry at the same
-  instant opens under it (`PL-ZR49`). Pausing records no keyframe, so the paused
+  the settings before that change. The selector's keyframe entry at the same
+  instant opens under the change. A mark's entry at that instant opens before
+  the change, and its label ends with the same clause (`PL-ZR49`). Pausing
+  records no keyframe, so the paused
   point adds nothing to `fork_points_s`. The selector therefore never loses a
   row as the run moves. It gains a row as the clock passes a mark. It loses a
   row only when the learner unmarks that mark or the trunk starts over. The

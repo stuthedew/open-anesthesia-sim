@@ -8740,7 +8740,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     panel.set_offer(
         fork_offer(
             case.fork_points_s,
-            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
+            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1), setting_changed_at_fork=False),),
             comparing=None,
             here=None,
         )
@@ -9007,7 +9007,7 @@ def _branch_holding_work(view: SimulationView, application: QApplication, work: 
     [
         (
             "elapsed",
-            "Run 2 — branched at 1m and run to 1m0.4s, 0 recorded control changes — will be "
+            "Run 2 — branched at 1m and run to 1m0.4s, 1 recorded control change — will be "
             "discarded along with its chart history. This cannot be undone.",
         ),
         (
@@ -9025,7 +9025,10 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     The test covers both halves of `has_recorded_run`, because a question
     that checked only one half would miss the other. The warning is a
     literal: four steps of 0.1 s from the 60 s fork reach 1m0.4s on the case
-    clock.
+    clock. In both cases the branch's "Control changes" panel lists one
+    change. For `elapsed` it is the trunk's change at 1m, which the branch
+    opened with. For `change` it is the learner's change, which replaced
+    that entry. The question counts what the panel lists (`PL-ZR49`).
     """
 
     case = _branched_case()
@@ -9041,6 +9044,7 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     assert dialog.isVisible() is True
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
     assert dialog.body_labels[1].text() == warning
+    assert len(branch._control_timeline_text.text().splitlines()) == 1
     assert len(view.runs) == 2
     assert view.case is case
     assert (branch.snapshot().elapsed_s, branch.controller.run_segments) == before
@@ -9674,8 +9678,10 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     23h59m59.9s, the reading at the last step, is not the widest reading.
     Hours, minutes and seconds vary independently, so the widest value of
     each, put together, is the widest clock reading that `format_elapsed`
-    can write. The test passes the entry through `fork_offer` and reads it
-    back from the selector, rather than measuring it as a bare string.
+    can write. The widest entry is also a mark on a setting change, whose
+    label ends with the clause for that change (`PL-ZR49`). The test passes
+    the entry through `fork_offer` and reads it back from the selector,
+    rather than measuring it as a bare string.
 
     Returns:
         The entry's advance, its drawn width, and the width of the
@@ -9704,12 +9710,12 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     panel.set_offer(
         fork_offer(
             (CaseInstant(0.0),),
-            marks=(MarkForkPoint(TimeBookmark(instant), instant),),
+            marks=(MarkForkPoint(TimeBookmark(instant), instant, setting_changed_at_fork=True),),
             comparing=None,
             here=None,
         )
     )
-    _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark")
+    _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark, before your change")
     option = QStyleOptionComboBox()
     panel.point_selector.initStyleOption(option)
     field = panel.point_selector.style().subControlRect(

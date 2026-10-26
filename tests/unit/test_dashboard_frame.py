@@ -3293,7 +3293,9 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 #: therefore two different numbers, and a test can tell which one an entry
 #: carries.
 _MARK_INSIDE_A_STEP = MarkForkPoint(
-    TimeBookmark(CaseInstant(45.35), "the decision point"), CaseInstant(454 * 0.1)
+    TimeBookmark(CaseInstant(45.35), "the decision point"),
+    CaseInstant(454 * 0.1),
+    setting_changed_at_fork=False,
 )
 
 
@@ -3527,8 +3529,14 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
     are passed in.
     """
 
-    early = MarkForkPoint(TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0))
-    late = MarkForkPoint(TimeBookmark(CaseInstant(120.0), "what if"), CaseInstant(120.0))
+    early = MarkForkPoint(
+        TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0), setting_changed_at_fork=False
+    )
+    late = MarkForkPoint(
+        TimeBookmark(CaseInstant(120.0), "what if"),
+        CaseInstant(120.0),
+        setting_changed_at_fork=False,
+    )
 
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0), CaseInstant(185.0)),
@@ -3577,10 +3585,21 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     keeps one case listed the same way every time. The case's own opening is
     the boundary case. A mark there is reached by no step and opens at the
     opening keyframe, and it is listed after that keyframe.
+
+    A mark on a control event opens before the change made there, and the
+    keyframe entry opens under it, so the mark's label ends with the clause
+    that says so (`PL-ZR49`). The opening has one side, so the mark there
+    has no clause.
     """
 
-    at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))
-    on_the_change = MarkForkPoint(TimeBookmark(CaseInstant(60.0), "the change"), CaseInstant(60.0))
+    at_opening = MarkForkPoint(
+        TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0), setting_changed_at_fork=False
+    )
+    on_the_change = MarkForkPoint(
+        TimeBookmark(CaseInstant(60.0), "the change"),
+        CaseInstant(60.0),
+        setting_changed_at_fork=True,
+    )
 
     offer = fork_offer(
         (CaseInstant(0.0), CaseInstant(60.0)),
@@ -3598,9 +3617,7 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
         ),
         ForkPoint(CaseInstant(60.0), format_elapsed(60.0), None),
         ForkPoint(
-            CaseInstant(60.0),
-            MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(60.0)),
-            on_the_change.bookmark,
+            CaseInstant(60.0), "1m, on your mark, before your change", on_the_change.bookmark
         ),
     )
 

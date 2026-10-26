@@ -4931,8 +4931,12 @@ def test_the_marks_a_trunk_can_be_returned_to_are_the_ones_its_standings_call_pa
     snapshot = trunk.snapshot()
 
     assert trunk.mark_fork_points == (
-        MarkForkPoint(off_grid, CaseInstant(453 * MAXIMUM_SIMULATION_STEP_S)),
-        MarkForkPoint(later, CaseInstant(1200 * MAXIMUM_SIMULATION_STEP_S)),
+        MarkForkPoint(
+            off_grid, CaseInstant(453 * MAXIMUM_SIMULATION_STEP_S), setting_changed_at_fork=False
+        ),
+        MarkForkPoint(
+            later, CaseInstant(1200 * MAXIMUM_SIMULATION_STEP_S), setting_changed_at_fork=False
+        ),
     )
     assert {point.bookmark for point in trunk.mark_fork_points} == {
         mark
@@ -4950,7 +4954,9 @@ def test_a_trunk_that_has_not_stepped_can_be_returned_only_to_a_mark_at_its_open
     trunk.add_time_bookmark(at_induction)
     trunk.add_time_bookmark(ahead)
 
-    assert trunk.mark_fork_points == (MarkForkPoint(at_induction, CaseInstant(0.0)),)
+    assert trunk.mark_fork_points == (
+        MarkForkPoint(at_induction, CaseInstant(0.0), setting_changed_at_fork=False),
+    )
     assert trunk.resumed_at_mark(at_induction).began_at_s == 0.0
 
     with pytest.raises(SimulationConfigurationError, match="short of the mark at 30.0 s"):
@@ -5888,3 +5894,44 @@ def test_the_offer_where_the_trunk_stands_says_whether_a_setting_was_changed_the
     assert trunk.here_fork_point == HereForkPoint(
         fork_s, stopped_on_mark=False, setting_changed_here=False
     )
+
+
+def test_a_passed_mark_says_whether_a_setting_was_changed_where_its_branch_opens() -> None:
+    """A mark's offer says when its branch opens before a change the trunk made there.
+
+    The adversarial review of this branch found that a mark on a setting change
+    and the keyframe there were two selector entries at one instant that opened
+    under different settings, and only the "Branch here" control said so. The
+    trunk is paused at 30 s and set from 4 to 6 L/min, then runs on to 60 s.
+    Three marks are then set behind the clock: at the opening, on the change
+    and at 45 s. Only the mark on the change has a change at its fork. Its
+    branch runs at 4 L/min while the keyframe branch there runs at 6 L/min.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+    change_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+    at_opening = TimeBookmark(CaseInstant(0.0))
+    on_the_change = TimeBookmark(CaseInstant(30.0), "the change")
+    after_it = TimeBookmark(CaseInstant(45.0))
+
+    for mark in (after_it, on_the_change, at_opening):
+        trunk.add_time_bookmark(mark)
+
+    points = {point.bookmark: point for point in trunk.mark_fork_points}
+
+    assert points[on_the_change].fork_s == change_s
+    assert {mark: point.setting_changed_at_fork for mark, point in points.items()} == {
+        at_opening: False,
+        on_the_change: True,
+        after_it: False,
+    }
+    assert trunk.resumed_at_mark(on_the_change).snapshot().fresh_gas_flow_l_min == 4.0
+    assert trunk.resumed_at(change_s).snapshot().fresh_gas_flow_l_min == 6.0
+    assert trunk.resumed_at_mark(after_it).snapshot().fresh_gas_flow_l_min == 6.0

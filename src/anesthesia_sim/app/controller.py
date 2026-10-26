@@ -238,9 +238,10 @@ class RunRecord(RunSettings):
     def changes_since_opening(self) -> tuple[ControlChange, ...]:
         """Return the timeline's entries that this run did not open with, oldest first.
 
-        `SimulationSnapshot.has_recorded_run` and the trunk's Reset question
-        both read this, so whether a branch holds a change and how many it
-        holds come from one place (`PL-ZR49`).
+        `SimulationSnapshot.has_recorded_run` reads this to decide whether a
+        run holds anything that a reset would destroy (`PL-ZR49`). The
+        trunk's Reset question counts the whole timeline instead, because
+        that is what the branch's "Control changes" panel lists.
 
         A learner's change at the fork can collapse into an entry the run
         opened with. A change to a new value replaces that entry, and the
@@ -518,10 +519,18 @@ class MarkForkPoint:
         fork_s: Where a branch taken at the mark opens. This is the end of
             the step that reaches the mark, `TimeBookmark.steps_to_reach`
             steps into the case.
+        setting_changed_at_fork: Whether the run changed a setting at
+            `fork_s`, so that a label can say the branch opens before that
+            change. A branch taken at a mark opens under the settings that
+            the step reaching `fork_s` ran under. The run's keyframe at
+            `fork_s` opens under the change instead, and the selector offers
+            both, so without this a reader would see two entries at one
+            instant that open under different settings (`PL-ZR49`).
     """
 
     bookmark: TimeBookmark
     fork_s: CaseInstant
+    setting_changed_at_fork: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -1499,11 +1508,25 @@ class SimulationController:
         return HereForkPoint(
             elapsed_s,
             stopped_on_mark=self._halt_crossing() is not None,
-            setting_changed_here=(
-                self._run_definition.segment_at(elapsed_s)
-                != self._run_definition.reaching_segment_at(elapsed_s)
-            ),
+            setting_changed_here=self._setting_changed_at(elapsed_s),
         )
+
+    def _setting_changed_at(self, instant_s: float) -> bool:
+        """Return whether this run changed a setting at `instant_s`.
+
+        The run then has two sides at that instant. A branch taken where the
+        run stands or at a mark opens under the stretch that reached the
+        instant, and the keyframe there opens under the change (`PL-ZR49`).
+        Both `here_fork_point` and `mark_fork_points` read this, so the two
+        labels that say so cannot disagree about when it is true.
+
+        Args:
+            instant_s: An instant this run has reached, in seconds of the case.
+        """
+
+        definition = self._run_definition
+
+        return definition.segment_at(instant_s) != definition.reaching_segment_at(instant_s)
 
     def resumed_at_mark(self, bookmark: TimeBookmark) -> SimulationController:
         """Open a second live run at the step that reached `bookmark`, stopped there or not.
@@ -1592,11 +1615,12 @@ class SimulationController:
         reads the trunk's value.
         """
 
+        marks = sorted(self._passed_time_bookmarks(), key=lambda bookmark: bookmark.instant_s)
+        fork_instants_s = [self._instant_after(self._steps_to_reach(mark)) for mark in marks]
+
         return tuple(
-            MarkForkPoint(bookmark, self._instant_after(self._steps_to_reach(bookmark)))
-            for bookmark in sorted(
-                self._passed_time_bookmarks(), key=lambda bookmark: bookmark.instant_s
-            )
+            MarkForkPoint(mark, fork_s, self._setting_changed_at(fork_s))
+            for mark, fork_s in zip(marks, fork_instants_s, strict=True)
         )
 
     def _branch_from(
