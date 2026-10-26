@@ -3,12 +3,14 @@ id: PL-N701
 title: Two 2026-09-13 corpus reads owe an extraction note under docs/references/README.md, once PL-Z3V5 settles what one contains
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: provenance
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13
+closed: 2026-10-26
+pr: 1853
 payoff: the circuit paper's and the Anesth Analg kinetics paper's facts carry page locators in public notes, so neither PDF is read again for them
 verify: grep -qF '2764290' docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md && grep -qF '1994760' docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md
 recurrences: 2026-09-30 PL-KN5Y
@@ -63,3 +65,20 @@ one should take both, since the shape is settled once and applied three times.
 **Triaged 2026-09-13** in the pass that could not reach this item the first
 time: its file was being retitled on `origin/claude/determined-hamilton-atx5bi`,
 which has since merged (`PL-JYR4`).
+
+## Done 2026-10-26
+
+Both reads now have a note in the shape `PL-Z3V5` fixed. The *Anesth Analg*
+1991 kinetics paper's is
+`docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`,
+written under `PL-Z3V5` as its worked example. It carries the methods fact
+this item named: the paper's tissue/blood and tissue/gas coefficients are its
+reference 3, the 1989 tissue paper (page 319). Table 5's blood flows and
+volumes were already recorded with their page by `PL-HBH2`, so the note points
+there. The circuit paper's is
+`docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md`, checked
+against the corpus's text layer on this date. It gives the 9860 ml system
+volume, the components' coefficient order, the ideal wash-in line, the
+desflurane conclusion and reference 10, each with its page, and says which
+item uses each. `docs/references/README.md` gained an entry for the circuit
+paper, which had none.
