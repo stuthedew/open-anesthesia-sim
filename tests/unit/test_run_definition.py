@@ -1884,8 +1884,11 @@ a restart, on the grounds that the difference is too small to matter.
 # Before, with one change, the largest was 5.8e-13. Its order of magnitude agrees with the
 # 5.3e-13 that `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart
 # on a different run, in an accumulator (a running total of agent volume). That section is
-# the authority for the size, and this constant is not a second claim about it.
-FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
+# the authority for the size, and this constant is not a second claim about it. The ceiling
+# was 1e-12, which left only 1.3 times above 7.8e-13, so a harmless change in composition
+# could have failed the test. At 1e-11 it is about 13 times the largest divergence measured,
+# and still seven orders of magnitude below the 1e-4 that the interface displays as 0.01%.
+FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-11
 
 FORK_S = 655.3
 PROBES_S = (700.0, 800.0, 900.0, 1200.0, 1800.0, 3600.0)
