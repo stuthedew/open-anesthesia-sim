@@ -50,3 +50,14 @@ read from a fresh controller: sevoflurane opens at 2.0% with an 8.0% dial
 maximum, isoflurane at 1.2% of 5.0%, desflurane at 6.0% of 18.0%
 (scripts/b1_mac_hours.py). Finding r06 F3 on #421, the time-constant
 floor, was checked against main on 2026-10-25 by reading both places.
+
+**Closed on #1860, counting MAC-hours end-tidal** (2026-10-26). A blind
+review pass on #1860 found that the first rewrite counted MAC-hours at the
+dial. A MAC-hour is conventionally counted at the end-tidal concentration,
+which in this model is the alveolar fraction, and that fraction stays below
+the dial during uptake. So `docs/MODEL.md` and the comment count about 24
+MAC-hours for a run whose alveolar fraction is held near 1 MAC, say a run
+left at its opening dial accumulates somewhat less, and give the 96 at
+sevoflurane's 8% dial maximum as an upper bound counted at the dial. The cap
+is still argued in elapsed time. Enforcing it in exposure terms would be a
+model change, not a text change, and nothing here asked for one.
