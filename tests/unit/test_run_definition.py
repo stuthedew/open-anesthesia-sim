@@ -1476,14 +1476,16 @@ def test_evaluate_anchored_refuses_more_samples_than_its_bound() -> None:
 
 
 def test_evaluate_anchored_counts_the_multiples_its_walk_visits_by_floor_division() -> None:
-    """The bound counts the multiples the walk visits, which floor division gives (`PL-06LS`).
+    """The bound uses floor division to count the multiples of the spacing that the walk visits.
 
-    `_anchored_columns` loops over `range(int(start_s // spacing_s) + 1, int(stop_s //
-    spacing_s) + 1)`. True division can round up to the next whole number where floor
-    division does not. At a spacing of 1e-5 s, 1.00001 / 1e-5 rounds to exactly 100 001, while
-    1.00001 // 1e-5 is 100 000. So a window from 0 to 1.00001 s loops over 100 000 multiples
-    and is accepted. A window from 5e-5 s to 1.00005 s loops over 100 001, because
-    5e-5 // 1e-5 is 4 while 5e-5 / 1e-5 is exactly 5, and is refused.
+    The bound is `MAXIMUM_WINDOW_COLUMNS`, 100 000 multiples. The walk is the loop in
+    `_anchored_columns` over `range(int(start_s // spacing_s) + 1, int(stop_s // spacing_s) + 1)`
+    (`PL-06LS`). True division can round up to the next whole number where floor division does
+    not. At a spacing of 1e-5 s, 1.00001 / 1e-5 rounds to exactly 100 001, while
+    1.00001 // 1e-5 is 100 000. So for a window from 0 to 1.00001 s, the walk visits 100 000
+    multiples, and the bound accepts the window. For a window from 5e-5 s to 1.00005 s, the
+    walk visits 100 001 multiples, and the bound refuses it. This is because 5e-5 // 1e-5 is 4,
+    while 5e-5 / 1e-5 is exactly 5.
     """
 
     assert (1.00001 / 1e-5, 1.00001 // 1e-5) == (100_001.0, 100_000.0)
