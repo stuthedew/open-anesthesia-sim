@@ -715,7 +715,7 @@ def test_a_run_definition_refuses_a_state_the_live_system_refuses() -> None:
 
     The definition once accepted an alveolar fraction of -0.3 and a fat fraction of 1.7, and
     `state_at(30.0)` returned a fat fraction of 1.6996 and negative circuit and alveolar
-    fractions with no error. Both sinks now share one range check.
+    fractions with no error. The definition and `resume_at` now share one range check.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -1872,19 +1872,19 @@ the design rests on. Without this test, nothing would catch a way of opening a f
 a restart, on the grounds that the difference is too small to matter.
 """
 
-# A ceiling on how far a branch restarted from the canonical state at 655.3 s drifts from
-# the parent run, on the two-change sevoflurane run below. The divergence is the largest
-# difference between the two at the instants in `PROBES_S`, from 700 s to the end of the
-# run at 3600 s. The test pins it as a ceiling rather than as an equality, because it is a
-# floating-point difference in how operations are composed. A compiler, a platform or an
-# unrelated change in `matrix_exponential` may move it. The claim needs only that the
-# divergence is real and this small. Measured on 2026-10-26, after `PL-HWNG` moved the
-# first change to a 3.0% dial so that the run carries both changes, the divergence at the
-# six probes was 1.5e-14, 1.1e-13, 1.5e-14, 1.2e-13, 1.7e-14 and 7.8e-13. Before, with
-# one change, the largest was 5.8e-13. Its order of magnitude agrees with the 5.3e-13 that
-# `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart on a
-# different run, in an accumulator (a running total of agent volume). That section is the
-# authority for the size, and this constant is not a second claim about it.
+# This constant is a ceiling on how far a branch drifts from the parent run when the branch
+# is restarted from the canonical state at 655.3 s, on the two-change sevoflurane run below.
+# The divergence is the largest difference between the two at the instants in `PROBES_S`,
+# from 700 s to the end of the run at 3600 s. The test pins it as a ceiling rather than as
+# an equality, because it is a floating-point difference in how operations are composed. A
+# compiler, a platform or an unrelated change in `matrix_exponential` may move it. The claim
+# needs only that the divergence is real and this small. `PL-HWNG` moved the first change to
+# a 3.0% dial so that the run carries both changes. Measured after that, on 2026-10-26, the
+# divergence at the six probes was 1.5e-14, 1.1e-13, 1.5e-14, 1.2e-13, 1.7e-14 and 7.8e-13.
+# Before, with one change, the largest was 5.8e-13. Its order of magnitude agrees with the
+# 5.3e-13 that `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart
+# on a different run, in an accumulator (a running total of agent volume). That section is
+# the authority for the size, and this constant is not a second claim about it.
 FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
 
 FORK_S = 655.3

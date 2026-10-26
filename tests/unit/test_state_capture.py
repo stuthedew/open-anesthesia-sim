@@ -67,7 +67,7 @@ class _Compartment:
     run_state_fields: frozenset[str]
     setting_fields: frozenset[str]
     rescaled_by_restore: frozenset[str] = frozenset()
-    """Run-state fields that a restore rescales, rather than copies, once a setting moved.
+    """Run-state fields that a restore rescales, rather than copies, once a setting has moved.
 
     The circuit stores its agent as a fraction of its volume. Once the volume has moved, a
     restore puts back the captured amount, so the fraction it writes differs from the one

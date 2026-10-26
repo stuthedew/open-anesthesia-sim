@@ -451,14 +451,15 @@ def _refusing(message: str) -> Callable[..., None]:
 def test_a_refused_resume_leaves_every_compartment_as_it_was(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A refusal that fires late must not leave the partial state it exists to prevent.
+    """A late refusal must not leave the partial state that the rollback exists to prevent.
 
     `_write_state_vector` writes one compartment at a time, and it writes the fat group
     last. `resume_at` captures the system before the write and restores it on any exit that
     is not a completed resume, as `AgentUptakeSystem.advance()` does. Since `PL-0WFJ`,
     `require_canonical_state` refuses an out-of-range fraction before anything is written.
-    So no state now reaches a refusal partway through, and the test injects one at the fat
-    group's write, after every other compartment has taken its new value.
+    So no real state now reaches a refusal partway through the write. The test therefore
+    injects a refusal at the fat group's write, after every other compartment has taken its
+    new value.
     """
 
     system_parent, definition = _run()

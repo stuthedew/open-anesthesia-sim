@@ -247,12 +247,12 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
 
 
 def test_a_resume_into_an_impossible_fraction_says_which_state_refused() -> None:
-    """A state handed to `resume_at` is refused at the position it holds, before any write.
+    """A fraction out of range in a state handed to `resume_at` is refused before any write.
 
     Since `PL-0WFJ`, `require_canonical_state` checks each fraction's range, so a `RunDefinition`
     and the live system refuse the same states. The guard knows positions, not compartments,
     so its message names the position and what it holds. Each of the six positions is driven
-    alone. The messages must be pairwise distinct, and the run is left as it was.
+    out of range alone. The messages must be pairwise distinct, and the run is left as it was.
     """
 
     system = _sevoflurane_at_one_mac()

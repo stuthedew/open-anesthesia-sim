@@ -284,9 +284,9 @@ class BreathingCircuitState:
     different amount of agent afterwards. Until `PL-QG52`, the record held the
     fraction alone. A restore after a change from 6 L to 0.5 L then left
     1.1e-4 L of the 1.3e-3 L captured, and the next step failed its accounting.
-    The volume itself is not restored, because it is the user's setting. It
-    is read only to put back the captured amount, as
-    `BreathingCircuit.restore_state()` says.
+    A restore does not put the captured volume back, because the volume is the
+    user's setting. The restore uses the captured volume only to work out the
+    amount of agent to put back, as `BreathingCircuit.restore_state()` says.
 
     The record checks each field's type when it is built. So
     `BreathingCircuit.restore_state()` is never handed a fraction that
@@ -827,17 +827,17 @@ class BreathingCircuit:
         `resume_at`, takes this path, because nothing there changes the volume.
 
         **After a volume change, the captured amount is put back** into the
-        current volume through `set_agent_amount()`, as `set_circuit_volume()`
-        conserves it (`PL-QG52`). The volume stays at the user's setting.
-        Restoring the fraction instead would create or destroy agent in
-        proportion to the change.
+        current volume through `set_agent_amount()`. This conserves agent in
+        the same way that `set_circuit_volume()` does (`PL-QG52`). The volume
+        stays at the user's setting. Restoring the fraction instead would
+        create or destroy agent in proportion to the change.
 
         Raises:
-            SimulationConfigurationError: the volume has shrunk since `state`
-                was captured to less than the agent it captured, which
-                `set_agent_amount()` refuses before anything is written. No
-                shipped path changes the volume between a capture and its
-                restore, so no rollback can reach it.
+            SimulationConfigurationError: since `state` was captured, the
+                volume has shrunk to less than the volume of agent that `state`
+                holds. `set_agent_amount()` refuses this before anything is
+                written. No shipped path changes the volume between a capture
+                and its restore, so no rollback can reach this error.
         """
 
         if state.circuit_volume_l == self.circuit_volume_l:

@@ -886,7 +886,7 @@ def _empty_state_with(position: int, value: float) -> tuple[float, ...]:
 def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one(
     position: int, value: float
 ) -> None:
-    """Each of the six fractions is refused outside 0 to 1, by position (`PL-0WFJ`).
+    """A value outside 0 to 1 is refused at each of the six fraction positions (`PL-0WFJ`).
 
     The live system's compartments refuse these values, so a `RunDefinition` that opened from
     one would draw a state that the system can never hold. The values include the nearest
@@ -921,10 +921,11 @@ def test_require_canonical_state_accepts_each_fraction_at_both_bounds() -> None:
 
 @pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
 def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(position: int) -> None:
-    """A total above a whole case at the fastest fresh gas flow is refused (found at review).
+    """A total above what a whole case can move at the fastest fresh gas flow is refused.
 
-    Both totals at the largest float once passed, and `state_at(600.0)` returned `inf` for
-    each. The bound itself is accepted, and the next float above it is not.
+    This was found at review. Set to the largest float, each total once passed the check, and
+    `state_at(600.0)` returned `inf` for each. The bound itself is accepted, and the next float
+    above it is not.
     """
 
     assert MAXIMUM_CUMULATIVE_AGENT_L == 14_400.0

@@ -101,13 +101,14 @@ class SimulationNumericalError(SimulationExecutionError):
     one.
 
     The shipped propagator cannot drive a fraction below zero at any step
-    size. The system matrix is a Metzler matrix, so its exponential is
-    nonnegative in every entry. That argument says nothing about the upper
-    bound. Rounding can carry a fraction just above 1 from a state already at
-    1, which needs a 100% dial that no supported setting reaches. The error
-    covers that state and a model extension whose matrix is not a pure
-    transfer system, as `docs/MODEL.md` § "Supported simulation step" says
-    (`PL-PM67`).
+    size. The system matrix is a Metzler matrix: every entry off its diagonal
+    is nonnegative. So the matrix exponential is nonnegative in every entry.
+    That argument says nothing about the upper bound. Rounding can carry a
+    fraction just above 1 from a state already at 1, and that state needs a
+    100% dial that no supported setting reaches. The error covers that state.
+    It also covers a model extension whose matrix is not a pure transfer
+    system, meaning a matrix with an off-diagonal entry that is not a transfer
+    rate. `docs/MODEL.md` § "Supported simulation step" says so (`PL-PM67`).
 
     `AgentUptakeSystem.advance` also raises this error when the settings
     record from which a step builds its propagator cannot be built. The

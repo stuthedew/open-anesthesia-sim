@@ -166,7 +166,7 @@ _FRACTION_STATE_NAMES = (
         for offset in range(TISSUE_GROUP_COUNT)
     ),
 )
-"""Each state that holds a fraction, with the name a refusal of it gives.
+"""Each state position that holds a fraction, with the name that its refusal message gives.
 
 The names describe the position in the state vector, because that is all that
 `require_canonical_state` knows. The tissue groups are numbered in the order of
@@ -224,26 +224,26 @@ and nine above the noise (`PL-M4M0`).
 
 
 def require_canonical_state(state: object) -> None:
-    """Refuse a state vector the equations could not be read against.
+    """Reject a state vector that the equations cannot be applied to.
 
-    This is the shared entry guard for every sink that opens from a state that
-    a run passed through. There are two such sinks: a `RunDefinition`, and the
-    live system into which a branch resumes. Because they share one guard, the
-    two cannot come to disagree about what a state is. The guard lives here
-    because each condition below is a statement about the state vector that
-    this module defines, not about either caller.
+    Two kinds of object open from a state that a run passed through: a
+    `RunDefinition`, and the live system into which a branch resumes. This
+    docstring calls each of them a sink. This function is the entry guard that
+    both sinks share, so the two cannot come to disagree about what a state
+    is. The guard lives here because each condition below is a statement about
+    the state vector that this module defines, not about either caller.
 
-    **The first check tests structure, not the type's name.** A drawn value
-    carries the same nine numbers in the same order as a canonical one, so
-    nothing in its contents tells them apart. What does tell them apart is
-    that the display path wraps its results in something that is not a tuple.
-    `docs/MODEL.md` § "The canonical evaluation rule" argues for exactly this
-    test: only a value that is structurally not a state is rejected even by a
-    sink that never thought to check. A structural test also works for
-    wrappers that this module has never heard of. `core/run_definition.py`
-    names `DisplayState` before delegating here, because that module knows
-    the type. The message below is what a sink outside that module can still
-    say.
+    **The first check tests structure, not the type's name.** A value from the
+    display path carries the same nine numbers in the same order as a
+    canonical state, so nothing in its contents tells them apart. What does
+    tell them apart is that the display path wraps its results in something
+    that is not a tuple. `docs/MODEL.md` § "The canonical evaluation rule"
+    argues for exactly this test. Even a sink that never thought to check
+    rejects a value that is structurally not a state, and only such a value.
+    A structural test also works for wrappers that this module has never
+    heard of. `core/run_definition.py` rejects `DisplayState` by name before
+    it calls this function, because that module knows the type. The message
+    raised here is what a sink outside that module still gets.
 
     `state` is typed as `object` rather than as the tuple, deliberately. The
     values that this function rejects are exactly the ones that a caller
@@ -252,24 +252,24 @@ def require_canonical_state(state: object) -> None:
 
     **The guard also checks each value's physical range.** Each of the six
     fractions must lie from 0 to 1. Each of the two amounts of agent must lie
-    from 0 to `MAXIMUM_CUMULATIVE_AGENT_L`. The live system's compartments refuse any other value,
-    so a sink that opened from one would draw a state the system can never
-    hold. A `RunDefinition` opened from a fat fraction of 1.7 once returned
-    fractions above one and below zero from `state_at`, with no error
-    (`PL-0WFJ`). Each fraction is built as a `Fraction`, so the range and its
-    message come from that one type.
+    from 0 to `MAXIMUM_CUMULATIVE_AGENT_L`. The live system's compartments
+    refuse any other value, so a sink that opened from one would draw a state
+    that the system can never hold. A `RunDefinition` opened from a fat
+    fraction of 1.7 once returned fractions above one and below zero from
+    `state_at`, with no error (`PL-0WFJ`). Each fraction is built as a
+    `Fraction`, so the range and its message come from that one type.
 
     Raises:
         SimulationConfigurationError: `state` is not a tuple, is not
             `STATE_SIZE` long, holds a non-finite value, holds a fraction
             outside 0 to 1 or an amount of agent outside 0 to
-            `MAXIMUM_CUMULATIVE_AGENT_L`, or does not hold
-            exactly one in `UNIT_STATE`. The last condition is what makes
-            every forcing term in `build_system_matrix` mean what it says. A
-            state holding any other value there would scale the whole delivery
-            term without changing any setting that a reader can see. A
-            refusal of a fraction or an amount names its position and what it
-            holds, such as "state[1] (alveolar fraction F_A)".
+            `MAXIMUM_CUMULATIVE_AGENT_L`, or does not hold exactly one at the
+            `UNIT_STATE` position. The last condition is what makes every
+            forcing term in `build_system_matrix` mean what it says. A state
+            holding any other value there would scale the whole delivery term
+            without changing any setting that a reader can see. A refusal of a
+            fraction or an amount names its position and what it holds, such
+            as "state[1] (alveolar fraction F_A)".
     """
 
     if not isinstance(state, tuple):
