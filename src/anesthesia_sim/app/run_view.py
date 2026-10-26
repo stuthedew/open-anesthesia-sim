@@ -483,12 +483,12 @@ class RunView(QWidget):
         self._interpretation_text = styled_label(
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
-        # These labels show the dial's setting in both units, and the divisor
-        # of every ×MAC number in the row. They sit on the heading line above
-        # the row. Both values are in `docs/MODEL.md`'s per-substance tier.
-        # The dial and the chart's caption cannot carry them once each is a
-        # View that a reader can close (`PL-NWTM`). `_write_statement` writes
-        # both from one record on every path, so the two cannot disagree.
+        # These two labels sit on the heading line above the row. One shows the dial's
+        # setting in both units. The other shows the 1 MAC value that divides every
+        # ×MAC number in the row. Both values are in `docs/MODEL.md`'s per-substance
+        # tier. The dial and the chart's caption cannot carry them, because each is now
+        # a View that a reader can close (`PL-NWTM`). `_write_statement` writes both
+        # from one record on every path, so the two cannot disagree.
         self._delivered_text = styled_label("", color=INK)
         self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
@@ -708,11 +708,12 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         self._playback_rate_text.setText(format_playback_rate(self._playback_rate.multiplier))
-        # The 1 MAC line states the divisor of the delivered line beside it and
-        # of the cards' ×MAC numbers. It is written on both paths, and before
-        # the dials, so a raise from `setting_readouts` cannot leave another
-        # agent's 1 MAC on screen. A halt whose cards were divided by another
-        # agent's MAC withholds their multiples (`present_halt`, `PL-6RJ0`).
+        # The 1 MAC line states the divisor of the delivered line beside it and of the
+        # cards' ×MAC numbers. It is written on both the frame path and the halt path,
+        # and before the dials. So an exception raised in `setting_readouts` cannot
+        # leave another agent's 1 MAC on screen. When a halt finds cards that were
+        # divided by another agent's MAC, it withholds their multiples (`present_halt`,
+        # `PL-6RJ0`).
         self._one_mac_text.setText(
             format_mac_reference(record.agent_display_name, record.agent_mac_percent)
         )
@@ -798,12 +799,12 @@ class RunView(QWidget):
     def _withhold_card_multiples(self) -> None:
         """Replace each card's ×MAC number with `WITHHELD_MAC_MULTIPLE_TEXT`.
 
-        `present_halt` calls this when the agent changed and no frame of the
-        new agent has drawn. The cards then hold the last frame's values,
-        divided by the old agent's MAC, while the 1 MAC line and the delivered
-        line state the new agent's. Showing those multiples would put a number
-        on screen beside a divisor that did not produce it (`PL-6RJ0`). The
-        next frame writes every card again.
+        `present_halt` calls this when the agent has changed and no frame has yet
+        been drawn for the new agent. The cards then hold the last frame's values,
+        divided by the old agent's MAC. The 1 MAC line and the delivered line,
+        however, state values for the new agent. Showing those multiples would put
+        a number on screen beside a divisor that did not produce it (`PL-6RJ0`).
+        The next frame writes every card again.
         """
 
         for index, panel in enumerate(self._readout_row.panels):

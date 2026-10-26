@@ -222,29 +222,30 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # have been rendered and checked by eye (`tools/glyph_check.py`).
 WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 
-# What the wash-in hover prints in place of a number at a column past
-# equilibrium. The crossing column is drawn only so that the line meets the
-# reference. Its quotient is above 1, which rule 2 of `app/wash_in.py` and
-# `docs/MODEL.md` § "F_A/F_I as a displayed ratio" refuse to show as a wash-in
-# fraction (`PL-YH6Z`). Printed under the wash-in label it would teach a wash-in
-# past completion, at the dot a reader is most likely to point at.
+# The text that the wash-in hover prints, instead of a number, at a column past
+# equilibrium. The crossing column, where the trace passes equilibrium, is drawn only
+# so that the line meets the reference. Its quotient is above 1. Rule 2 of
+# `app/wash_in.py` and `docs/MODEL.md` § "F_A/F_I as a displayed ratio" do not allow
+# such a quotient to be shown as a wash-in fraction (`PL-YH6Z`). Printed under the
+# wash-in label, it would suggest that wash-in can go past completion. It would do so
+# at the dot that a reader is most likely to point at.
 WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
 
-# The resolution at which the hover states its instant. It is the finest grid
-# a drawn column can sit on, a hundredth of a second, so the instant printed is
-# the instant whose state is printed beside it (`PL-T5NJ`). Columns used to sit
-# wherever the plot's width put them, such as 410.7383 s, and the hover rounded
-# that to the clock's tenth of a second. The state printed was still the state
-# at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
-# induction that is not negligible: desflurane at 18% and 10 L/min takes the
-# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s, so the hover at "6s" could
-# print 2.70% while the readout row at 6 s showed 2.68%.
-# `chart_time_base.grid_spacing_s` now rounds the spacing down onto whole
-# hundredths, and onto tenths wherever that costs few columns, and every other
-# drawn instant (a bound, a control event, a fork) is a step instant. Rounding
-# to this resolution therefore removes only floating-point noise. The value is
-# read from the grid's own declaration rather than written as a digit, so the
-# two cannot drift apart.
+# The resolution to which the hover rounds the instant it prints. It is the finest
+# grid that a drawn column can sit on, a hundredth of a second. So the instant
+# printed is the instant whose state is printed beside it (`PL-T5NJ`). Columns used
+# to sit wherever the plot's width put them, such as at 410.7383 s, and the hover
+# rounded that to the clock's tenth of a second. The state printed was still the
+# state at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
+# induction that difference matters. Desflurane at 18% and 10 L/min takes the
+# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s. So the hover at "6s" could print
+# 2.70% while the readout row at 6 s showed 2.68%.
+# `chart_time_base.grid_spacing_s` now rounds the column spacing down onto whole
+# hundredths of a second. It rounds onto tenths instead wherever that adds few
+# columns. Every other drawn instant (a bound, a control event, a fork) falls on a
+# simulation step. Rounding to this resolution therefore removes only
+# floating-point noise. The value is read from the grid's own declaration rather
+# than written as a digit, so the two cannot drift apart.
 HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 
 # The word that opens every hover readout. It appears on every hover, not only
@@ -1314,10 +1315,11 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
 
 
 def _wash_in_hover_value(ratio: float) -> str:
-    """Return the ratio as the hover prints it, or a statement where it is not wash-in.
+    """Return the ratio as the hover prints it, or a notice where it is not wash-in.
 
-    The stretch's crossing column has a quotient above 1, which is elimination
-    rather than wash-in, so no number is printed for it (`PL-YH6Z`).
+    The stretch's crossing column, where the trace passes equilibrium, has a quotient
+    above 1. That is elimination rather than wash-in, so no number is printed for it
+    (`PL-YH6Z`).
     """
 
     if not is_wash_in(ratio):
@@ -1526,11 +1528,11 @@ def _hover_agent(run: RunFrame) -> str:
 
 
 def _hover_instant(time_s: float) -> str:
-    """Return a drawn point's instant, as the clock and the axis state time.
+    """Return a drawn point's instant, formatted the way the clock and the axis show time.
 
-    Every drawn instant is a whole number of `HOVER_INSTANT_RESOLUTION_S`, so
-    the rounding removes only floating-point noise, and the instant printed is
-    the one whose state the hover prints.
+    Every drawn instant is a whole multiple of `HOVER_INSTANT_RESOLUTION_S`. So the
+    rounding removes only floating-point noise, and the printed instant is the one
+    whose state the hover prints.
     """
 
     return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)

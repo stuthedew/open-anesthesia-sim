@@ -238,7 +238,7 @@ def trace_pen(style: TraceStyle) -> QPen:
 
 
 def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | None) -> QPen:
-    """A pen with a dash pattern stated in display pixels.
+    """Return a pen whose dash pattern is given in display pixels.
 
     Qt states a dash pattern in units of the pen's width. `app/theme.py` and
     `chart_frame.COMPARTMENT_TRACES` state theirs in pixels, which is the unit
@@ -248,11 +248,12 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
     dash too long by a factor of the pen's width, which is what the spike did.
 
     A dashed pen also gets a flat cap. Qt's default square cap extends every
-    dash by half the pen's width at each end, so a 3 px pen with a 10/4 pattern
+    dash by half the pen's width at each end. So a 3 px pen with a 10/4 pattern
     paints 13 px on and 1 px off, and the dashed compartment traces look almost
     solid. The dash is the only thing that tells some compartments apart for a
     reader with a colour-vision deficiency (`PL-88MK`). `pg.mkPen` sets a round
-    cap only on pens wider than 4 px, so it sets no cap on these.
+    cap only on pens wider than 4 px, so on these pens it leaves Qt's default
+    square cap in place.
 
     Args:
         color: Hexadecimal line colour.

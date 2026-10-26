@@ -73,26 +73,29 @@ __all__ = [
 # a reader selected is still very nearly the width they are reading.
 CHART_LIVE_HEADROOM_FRACTION: Final = 0.02
 
-# The grids a chart column's spacing is rounded down onto, coarsest first: the
-# step the run advances by, and a tenth of it. The chart's hover prints the
-# instant of the column it reports, and the value it prints is the state at
-# exactly that column (`PL-T5NJ`). A spacing derived from the plot's width alone
-# puts columns at instants such as 410.7383 s. Printed to the clock's tenth of a
-# second, that instant names a state up to 0.05 s away, and early in a fast
-# induction the circuit moves by 0.02 percentage points in 0.04 s. On these grids
-# every column is a whole number of hundredths of a second, so the hover can
-# print the instant it reports exactly. `grid_spacing_s` says which grid applies.
+# The grids onto which the spacing of chart columns is rounded down, coarsest first.
+# They are the step by which the run advances, and a tenth of that step. The chart's
+# hover prints the instant of the column it reports, and the value it prints is the
+# state at exactly that column (`PL-T5NJ`). A spacing derived from the plot's width
+# alone puts columns at instants such as 410.7383 s. Printed to the clock's tenth of
+# a second, that instant can be up to 0.05 s away from the state it labels. Early in
+# a fast induction, the circuit concentration moves by 0.02 percentage points in
+# 0.04 s. On these grids every column is a whole number of hundredths of a second,
+# so the hover can print the instant it reports exactly. `grid_spacing_s` decides
+# which grid applies.
 CHART_GRID_RESOLUTIONS_S: Final = (MAXIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S / 10)
 
-# How many units of a grid a spacing must span before it is rounded onto that
-# grid rather than a finer one. Rounding down then drops less than one unit in
-# this many, so it adds at most that fraction more columns.
+# How many units of a grid a spacing must span before it is rounded onto that grid
+# rather than a finer one. Rounding down then removes less than one unit, which is
+# less than one part in this many of the spacing. So rounding adds at most that
+# fraction more columns.
 _GRID_UNITS_FOR_A_COARSER_GRID: Final = 10
 
-# How far a spacing's count of grid units may fall short of a whole number and
-# still count as that number. Dividing a spacing such as 0.9 s by 0.01 s can
-# land just below 90 in binary, and the floor would then drop a whole unit.
-# A billionth of a unit is far below any spacing the chart could be asked for.
+# How far a spacing's count of grid units may fall short of a whole number and still
+# count as that number. In binary floating point, dividing a spacing such as 0.9 s by
+# 0.01 s can give a result just below 90. Taking the floor would then lose a whole
+# unit. A billionth of a unit is far smaller than any spacing the chart could be
+# asked for.
 _GRID_UNIT_COUNT_TOLERANCE: Final = 1e-9
 
 # The key of the selector's "Fit run" entry. It is a sentinel rather than a
@@ -381,21 +384,23 @@ def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float,
 
 
 def grid_spacing_s(raw_spacing_s: float) -> float:
-    """Round a column spacing down onto the coarsest grid that costs few columns.
+    """Round a column spacing down onto the coarsest grid that adds few columns.
 
-    A grid is used where the spacing is at least ten of its units. Rounding
-    down then adds at most a tenth more columns. So a spacing of 1 s or more
-    lands on the clock's tenth of a second, and a column's printed instant is
-    one the clock also shows. A finer spacing lands on hundredths of a second.
-    Below a tenth of a second the hundredths grid is all there is, so rounding
-    can add more columns, up to twice as many just below 0.02 s. Only the
-    one- and two-minute axes reach that, on plots wider than 600 and 1200 px.
+    A grid is used where the spacing is at least ten of its units. Rounding down then
+    adds at most a tenth more columns. So a spacing of 1 s or more lands on the clock's
+    tenth of a second, and each column's printed instant is one that the clock also
+    shows. A spacing of less than 1 s lands on hundredths of a second. A spacing of
+    less than a tenth of a second spans fewer than ten hundredths, but there is no
+    finer grid, so it still lands on hundredths. There, rounding can add more columns,
+    up to twice as many just below 0.02 s. Only the one- and two-minute axes reach such
+    spacings, on plots wider than 600 px and 1200 px respectively.
 
-    The spacing is rounded down, never up, so a column is still no more than a
-    pixel of time from the next. That is the chart's guarantee in `docs/MODEL.md`
-    § "What the chart draws". The one exception is a spacing below a hundredth
-    of a second, which needs a one-minute axis more than 6000 px wide. It is
-    raised to a hundredth, so there a chord spans more than a pixel.
+    The spacing is rounded down, never up, so each column is still no more than one
+    pixel's width of time from the next. That is the chart's guarantee in
+    `docs/MODEL.md` § "What the chart draws". The one exception is a spacing of less
+    than a hundredth of a second, which needs a one-minute axis more than 6000 px wide.
+    That spacing is raised to a hundredth, so there the line segment between two
+    columns spans more than a pixel.
 
     Args:
         raw_spacing_s: The axis span divided by its intervals, in simulated

@@ -530,9 +530,10 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
 def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
     """`PL-YH6Z`: the crossing column is drawn, but its quotient is not printed as wash-in.
 
-    The terminus is drawn so that the line meets the reference. Its quotient is
-    above 1, which `read_wash_in` classes as elimination. Printing it under the
-    label "Wash-in F_A/F_I" would teach a wash-in past completion.
+    The crossing column, where the trace passes equilibrium, is the stretch's terminus.
+    It is drawn so that the line meets the reference. Its quotient is above 1, which
+    `read_wash_in` classes as elimination. Printing it under the label "Wash-in F_A/F_I"
+    would suggest that wash-in can go past completion.
     """
 
     controller = SimulationController()

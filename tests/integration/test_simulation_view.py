@@ -2294,10 +2294,12 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
     A halt writes the 1 MAC line and the delivered line from the controller's
     record, while only a frame writes the cards. So a halt on the first frame
     after an agent change left the cards holding sevoflurane's multiples,
-    divided by 2.0%. The line first stated desflurane's 6.0% above them, and
-    then, written with the cards, sevoflurane's 2.0% beside a delivered line
-    divided by 6.0%. The line now follows the record on both paths, and the
-    halt withholds the cards' multiples.
+    divided by 2.0%. Before `PL-6RJ0`, the 1 MAC line above them stated
+    desflurane's 6.0%. Its first fix wrote the line together with the cards,
+    so the line then stated sevoflurane's 2.0% beside a delivered line divided
+    by 6.0%. The line now
+    follows the record on both the frame path and the halt path, and the halt
+    withholds the cards' multiples.
     """
 
     controller = SimulationController()
@@ -2337,10 +2339,10 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
 def test_a_halt_on_the_first_frame_still_states_the_1_mac_line(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`PL-6RJ0`: the 1 MAC line is an unconditional value, written on the halt path too.
+    """`PL-6RJ0`: the 1 MAC line is an unconditional value, so the halt path writes it too.
 
-    The cards were built from the run's first snapshot, so they are of the
-    run's own agent and keep their multiples.
+    The cards were built from the run's first snapshot. Their multiples were
+    therefore divided by the MAC of the run's own agent, and the cards keep them.
     """
 
     controller = SimulationController()

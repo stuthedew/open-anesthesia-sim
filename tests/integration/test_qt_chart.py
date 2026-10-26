@@ -1034,11 +1034,11 @@ def test_each_dashed_pen_paints_its_dash_pattern(application: QApplication) -> N
     """`PL-88MK`: each dash and gap is painted at the length the table gives.
 
     Qt's default square cap extends every dash by half the pen's width at each
-    end. On the 2-3 px compartment pens that turned a 10/4 pattern into 13 on
+    end. On a 3 px compartment pen, that turned a 10/4 pattern into 13 on
     and 1 off, so the dashed traces looked almost solid. The dash pattern is
     the only thing that tells some compartments apart for a reader with a
-    colour-vision deficiency. Comparing `dashPattern()` numbers cannot see the
-    cap, so this paints each pen and measures what reached the pixels.
+    colour-vision deficiency. Comparing the numbers that `dashPattern()` returns
+    cannot detect the cap, so this test paints each pen and measures the pixels.
     """
 
     pens = [(style.dash_pattern, trace_pen(style)) for style in COMPARTMENT_TRACES]
