@@ -47,7 +47,7 @@ item names - a merge, a stale ref, a docs sweep, a stranded recovery - to be
 filed first and worked under its id, because every in-flight guard this project
 has matches a `PL-` id and unfiled work reads as nobody's to all of them.
 
-**Approved 2026-09-21** (project owner, ratified), over leaving the branches to
+**Approved 2026-09-21** (project owner, 2026-09-21, ratified), over leaving the branches to
 be noticed again by a later `docket stranded`, and over running the two branches
 as separate recoveries.
 
