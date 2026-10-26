@@ -59,3 +59,10 @@ The recommendation is Option 1. It adds no hidden state, and it keeps `PL-V2HC`'
 - On a failed run, which is a fault, the banner keeps Reset as the way out.
 
 On either stopped run, the dials show the settings in force at its last completed step.
+
+**Build plan, 2026-10-26, for the session after the reset.** Check one risk first. `test_a_refused_reset_takes_once_the_cardiac_output_is_set_again` (`PL-M4M0`) sets the cardiac output on a run that a refused Reset failed, and then expects Reset to take. A setter that refuses on every failed run changes that path. Read that test and `test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart` together, and decide whether the refusal applies to that failure too. Then:
+
+1. In `app/controller.py`, the four setters refuse on a stopped run, failed or at the supported run length, before they apply anything. They raise `SimulationConfigurationError`, which `RunView._apply_setting` already treats as a refused setting, so the dial is rewritten from the run and springs back, and nothing is recorded.
+2. `notice` ranks a stopped run above a refused setting, so the refusal text never shows on a stopped run. So when a stopped run's view holds a refused setting, `notice` adds the stopped run's own way out to its banner. At the supported run length: branch at an earlier instant to try a different setting, where each dial shows its setting then, or Reset, which keeps every setting. On a failure: Reset starts a new run and keeps every setting. Check `halt_notice` too.
+3. Tests: `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_the_values_were_computed_under` in `tests/integration/test_simulation_view.py`, at a shortened supported run length and on a failed run, as `PL-J5GC`'s two dial-moved scenarios set them up. Add a controller test in `tests/integration/test_controller.py` that a setter on a stopped run raises and records nothing. Run both against `c2f66e41` and record the failures here. The two `PL-J5GC` scenarios must then pass.
+
