@@ -9,7 +9,7 @@ touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation
 blocked-by: PL-ZW0J
 added: 2026-09-20
 closed: 2026-10-12
-reason: Its brief says the setting exists only once both behaviours are built, and PL-ZW0J was answered 2026-10-12 (project owner, ratified) to keep forking and build no truncation, so there is nothing for it to choose
+reason: Its brief says the setting exists only once both behaviours are built, and PL-ZW0J was answered 2026-10-12 (project owner, 2026-10-12, ratified) to keep forking and build no truncation, so there is nothing for it to choose
 ---
 
 **Problem.** A setting chooses whether returning to a mark forks or truncates, so the default is the learner's rather than the build's
@@ -41,6 +41,6 @@ two it is taking at the point of taking it, so the setting cannot be read off
 the result after the fact.
 
 **Dropped 2026-10-12.** Its own brief says the setting "only exists once both
-are built". `PL-ZW0J` was answered the same day (project owner, ratified) to
+are built". `PL-ZW0J` was answered the same day (project owner, 2026-10-12, ratified) to
 keep returning to a mark as a fork and build no truncation, so there is no
 second behaviour for a setting to choose between.
