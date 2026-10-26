@@ -3295,11 +3295,14 @@ supported window of versions in `src/anesthesia_sim/core/parameters.py`. So a
 later schema change moves only the family it applies to. At version 2, every
 `sources` entry gained two new required fields, and a data file may carry one
 new optional top-level string. Version 3 (2026-09-30, `PL-9LXK`) again applied
-to every family, and it added a third required field to each entry. Today
-every window accepts version 3 alone. The fields are written as a list rather
-than a table. The reason is that the provenance table below is located by
-being the first table in this section, and a second table above it would be
-read in its place:
+to every family, and it added a third required field to each entry. Version
+4 (2026-10-26, `PL-KZ99`) applied to agent files alone, the first change to
+move one family. It added each agent's `molar_mass_g_mol` and `liquid_density`
+(§ "Agent amount"). Today the agent window accepts version 4 alone, and the
+patient and machine windows accept version 3 alone. The fields are written as
+a list rather than a table. The reason is that the provenance table below is
+located by being the first table in this section, and a second table above it
+would be read in its place:
 
 - `tier`, on each `sources` entry: `primary`, `secondary` or
   `reference-implementation`. It says which of the three tiers above the
