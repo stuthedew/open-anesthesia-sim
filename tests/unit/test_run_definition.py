@@ -28,6 +28,7 @@ forbids it.
 import re
 from bisect import bisect_right
 from dataclasses import replace
+from itertools import pairwise
 from math import inf, nan, nextafter
 
 import pytest
@@ -788,6 +789,29 @@ def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
         RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
 
 
+def test_a_run_definition_refuses_a_state_the_live_system_refuses() -> None:
+    """A fraction outside 0 to 1 is refused at the opening, as `resume_at` refuses it (`PL-0WFJ`).
+
+    The definition once accepted an alveolar fraction of -0.3 and a fat fraction of 1.7, and
+    `state_at(30.0)` returned a fat fraction of 1.6996 and negative circuit and alveolar
+    fractions with no error. The definition and `resume_at` now share one range check.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    state = list(system.state_vector())
+    state[ALVEOLAR_FRACTION] = -0.3
+    state[FIRST_TISSUE_FRACTION + 2] = 1.7
+
+    with pytest.raises(SimulationConfigurationError) as by_definition:
+        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
+
+    with pytest.raises(SimulationConfigurationError) as by_system:
+        system.resume_at(tuple(state), initial_agent_l=0.0)
+
+    assert str(by_definition.value) == str(by_system.value)
+    assert str(by_definition.value).startswith(f"state[{ALVEOLAR_FRACTION}] (")
+
+
 @pytest.mark.parametrize("opened_at_s", [nan, inf, -inf, -1.0])
 def test_an_opening_no_case_reaches_cannot_be_built(opened_at_s: float) -> None:
     """The instant is refused where it is built, before any run can open at it (`PL-CN5S`).
@@ -1140,6 +1164,30 @@ def test_a_window_refuses_to_reach_past_the_run() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="rather than the run"):
         definition.evaluate(10.0, 30.1, 5)
+
+
+def test_evaluate_ends_its_last_column_exactly_at_stop() -> None:
+    """The last column is `stop_s` itself, so it never lands past the run (`PL-9SL5`).
+
+    `0.3 + 41 * (10.7 / 41)` is 11.000000000000002, one rounding unit past 11 s. On an 11 s
+    run that is past the time the run has reached, which `_require_within_run` refuses when
+    a caller names it. The window's first column stays `start_s`.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+    definition.advance_to(CaseInstant(11.0))
+
+    assert 0.3 + 41 * ((11.0 - 0.3) / 41) > 11.0, "the case no longer rounds past the stop"
+
+    window = definition.evaluate(0.3, 11.0, 42)
+
+    assert len(window.times_s) == 42
+    assert window.times_s[0] == 0.3
+    assert window.times_s[-1] == 11.0
+    assert all(later > earlier for earlier, later in pairwise(window.times_s))
 
 
 def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plot() -> None:
@@ -1903,24 +1951,38 @@ the design rests on. Without this test, nothing would catch a way of opening a f
 a restart, on the grounds that the difference is too small to matter.
 """
 
-# A ceiling on how far a branch restarted from the canonical state at 655.3 s drifts from
-# the parent run, on the two-change sevoflurane run below. The divergence is the largest
-# difference between the two at the instants in `PROBES_S`, from 700 s to the end of the
-# run at 3600 s. The test pins it as a ceiling rather than as an equality, because it is a
-# floating-point difference in how operations are composed. A compiler, a platform or an
-# unrelated change in `matrix_exponential` may move it. The claim needs only that the
-# divergence is real and this small. Its order of magnitude agrees with the 5.3e-13 that
-# `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart on a
-# different run, in an accumulator (a running total of agent volume). That section is the
-# authority for the size, and this constant is not a second claim about it.
-FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
+# This constant is a ceiling on how far a branch drifts from the parent run when the branch
+# is restarted from the canonical state at 655.3 s, on the two-change sevoflurane run below.
+# The divergence is the largest difference between the two at the instants in `PROBES_S`,
+# from 700 s to the end of the run at 3600 s. The test pins it as a ceiling rather than as
+# an equality, because it comes from floating-point differences in how operations are
+# composed. A compiler, a platform or an unrelated change in `matrix_exponential` may move
+# it. The test needs to show only that the divergence is real and this small. Before `PL-HWNG`
+# the first change set the dial to the 2.0% it already held, so the run had one real change.
+# `PL-HWNG` moved that change to a 3.0% dial. Measured after
+# that, on 2026-10-26, the divergence at the six probes was 1.5e-14, 1.1e-13, 1.5e-14,
+# 1.2e-13, 1.7e-14 and 7.8e-13. Before, with one change, the largest was 5.8e-13. That size
+# is the same order of magnitude as the 5.3e-13 that `docs/MODEL.md` § "The canonical
+# evaluation rule" records for the same restart on a different run, in an accumulator (a
+# running total of agent volume). That section is the authority for the size, and this
+# constant is not a second claim about it. The ceiling was 1e-12, only 1.3 times the
+# largest divergence of 7.8e-13, so a harmless change in composition could have failed the
+# test. At 1e-11 it is about 13 times the largest divergence measured, and still seven
+# orders of magnitude below the 1e-4 that the interface displays as 0.01%.
+FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-11
 
 FORK_S = 655.3
 PROBES_S = (700.0, 800.0, 900.0, 1200.0, 1800.0, 3600.0)
 
 
 def _two_change_run() -> RunDefinition:
-    """Return a one-hour sevoflurane run that carries two setting changes."""
+    """Return a one-hour sevoflurane run that carries two setting changes.
+
+    The dial moves from the 2.0% that sevoflurane opens at to 3.0% at 300 s, and the fresh
+    gas flow moves to 1.0 L/min at 600 s. `record_change` drops a change equal to the
+    settings in force, so the dial must move to a value other than the opening one
+    (`PL-HWNG`).
+    """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -1928,7 +1990,7 @@ def _two_change_run() -> RunDefinition:
     )
 
     definition.advance_to(CaseInstant(300.0))
-    system.set_delivered_concentration_percent(Percent(2.0))
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(600.0))
     system.set_fresh_gas_flow(FreshGasFlow(1.0))
@@ -1936,6 +1998,16 @@ def _two_change_run() -> RunDefinition:
     definition.advance_to(CaseInstant(3600.0))
 
     return definition
+
+
+def test_the_two_change_run_carries_both_changes() -> None:
+    """The helper's run holds three segments: the opening and one for each change."""
+
+    assert [segment.opening.instant_s for segment in _two_change_run().segments] == [
+        0.0,
+        300.0,
+        600.0,
+    ]
 
 
 def _worst(left: tuple[float, ...], right: tuple[float, ...]) -> float:

@@ -3,11 +3,13 @@ id: PL-QG52
 title: BreathingCircuit.restore_state writes back a captured fraction rather than an amount, so a restore after the circuit volume changed creates or destroys agent and the next step fails accounting
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, science
 feature: replay-findings
-touches: src/anesthesia_sim/core/circuit.py, tests/unit/test_state_capture.py
+touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_state_capture.py, tests/unit/test_circuit.py, tests/unit/test_concentration.py
 added: 2026-10-24
+closed: 2026-10-26
+pr: 1864
 payoff: restoring a captured state can no longer create or destroy anaesthetic agent, before any feature lets the circuit volume change during a run
 verify: grep -q 'def test_a_restore_after_a_circuit_volume_change_conserves_agent' tests/unit/test_state_capture.py
 ---

@@ -34,11 +34,15 @@ here is true whichever clock a branch keeps.
 """
 
 import math
+from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
 
-from anesthesia_sim.core.agent_simulation_validation import AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
+from anesthesia_sim.core.agent_simulation_validation import (
+    AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
+    AgentSimulationValidator,
+)
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -54,6 +58,7 @@ from anesthesia_sim.core.governing_equations import (
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 SIMULATION_STEP_S = SimulationStep(0.1)
@@ -342,7 +347,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     assert derived_anchor_l < 0.0, "the derivation this avoids has become safe; re-read the design"
     assert abs(derived_anchor_l) < AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
 
-    with pytest.raises(SimulationConfigurationError, match="initial_agent_l"):
+    with pytest.raises(SimulationConfigurationError, match=r"^initial_agent_l must be nonnegative"):
         _like(system_parent).resume_at(opening.state, initial_agent_l=derived_anchor_l)
 
     assert system.agent_simulation_validation.passes_validation, (
@@ -417,7 +422,10 @@ def test_a_negative_cumulative_total_cannot_resume_a_system() -> None:
     state[UNIT_STATE] = 1.0
     state[DELIVERED_AGENT_L] = -1.0
 
-    with pytest.raises(SimulationConfigurationError, match="delivered_agent_l"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^state\[6\] \(delivered agent in L\) must be nonnegative",
+    ):
         _fresh_system().resume_at(tuple(state), initial_agent_l=0.0)
 
 
@@ -431,15 +439,27 @@ def test_a_negative_anchor_cannot_resume_a_system() -> None:
         _fresh_system().resume_at(opening.state, initial_agent_l=-1e-9)
 
 
-def test_a_refused_resume_leaves_every_compartment_as_it_was() -> None:
-    """The guard that fires late must not leave the partial state it exists to prevent.
+def _refusing(message: str) -> Callable[..., None]:
+    """Return a stand-in method that refuses whatever it is given."""
 
-    `_write_state_vector` writes one compartment at a time, so a fraction the
-    model cannot represent is refused after earlier compartments have already
-    taken their new values. `AgentUptakeSystem.advance()` already handles the
-    same problem, and `resume_at` handles it the same way. It captures the
-    system before the write and restores it on any exit that is not a
-    completed resume.
+    def refuse(*_: object, **__: object) -> None:
+        raise SimulationConfigurationError(message)
+
+    return refuse
+
+
+def test_a_refused_resume_leaves_every_compartment_as_it_was(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A late refusal must not leave the partial state that the rollback exists to prevent.
+
+    `_write_state_vector` writes one compartment at a time, and it writes the fat group
+    last. `resume_at` captures the system before the write and restores it on any exit that
+    is not a completed resume, as `AgentUptakeSystem.advance()` does. Since `PL-0WFJ`,
+    `require_canonical_state` refuses an out-of-range fraction before anything is written.
+    So no real state now reaches a refusal partway through the write. The test therefore
+    injects a refusal at the fat group's write, after every other compartment has taken its
+    new value.
     """
 
     system_parent, definition = _run()
@@ -447,20 +467,33 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was() -> None:
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
+    system.advance(SIMULATION_STEP_S)
 
     before = system.capture_state()
+    original = TissueGroup.set_partial_pressure_fraction
 
-    impossible = list(opening.state)
-    impossible[FIRST_TISSUE_FRACTION + 2] = 1.5
+    def refuse_the_fat_group(group: TissueGroup, fraction: Fraction) -> None:
+        if group.name == "fat":
+            raise SimulationConfigurationError("the fat group refused its fraction")
 
-    with pytest.raises(SimulationConfigurationError):
-        system.resume_at(tuple(impossible), initial_agent_l=0.0)
+        original(group, fraction)
+
+    monkeypatch.setattr(TissueGroup, "set_partial_pressure_fraction", refuse_the_fat_group)
+
+    with pytest.raises(SimulationConfigurationError, match="the fat group refused"):
+        system.resume_at(opening.state, initial_agent_l=0.0)
 
     assert system.capture_state() == before
 
 
-def test_a_refused_resume_leaves_the_accounting_period_as_it_was() -> None:
-    """The totals are written after the compartments, so the rollback has to restore them too."""
+def test_a_refused_resume_leaves_the_accounting_period_as_it_was(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The totals are written after the compartments, so the rollback has to restore them too.
+
+    The refusal is injected at the last write, after the accounting period has been reset
+    to the new anchor, for the reason the test above gives.
+    """
 
     system_parent, definition = _run()
     opening = definition.segments[-1].opening
@@ -468,11 +501,14 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was() -> None:
 
     system.resume_at(opening.state, initial_agent_l=0.125)
 
-    impossible = list(opening.state)
-    impossible[ALVEOLAR_FRACTION] = 2.0
+    monkeypatch.setattr(
+        AgentSimulationValidator,
+        "record_external_agent_transfer",
+        _refusing("the transfer was refused"),
+    )
 
-    with pytest.raises(SimulationConfigurationError):
-        system.resume_at(tuple(impossible), initial_agent_l=0.9)
+    with pytest.raises(SimulationConfigurationError, match="the transfer was refused"):
+        system.resume_at(opening.state, initial_agent_l=0.9)
 
     accounting = system.agent_simulation_validation
 
