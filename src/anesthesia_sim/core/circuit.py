@@ -52,11 +52,11 @@ from anesthesia_sim.core.concentration import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
-from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     FreshGasFlow,
+    require_compartment_step,
     require_fresh_gas_flow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -699,19 +699,21 @@ class BreathingCircuit:
 
         This method is the circuit's own closed-form solution with no patient
         connected. It is not how a run advances. A connected patient adds a
-        ventilation term, which `docs/MODEL.md` § "Breathing circuit" gives beside
-        this one, and `AgentUptakeSystem.advance()` is the step that solves both.
+        ventilation term, and `docs/MODEL.md` § "Breathing circuit" gives that term
+        beside this one. `AgentUptakeSystem.advance()` is the step that solves both.
         The package docstring in `core/__init__.py` explains the distinction. It
         also explains why zero flow needs no separate branch here.
 
         Raises:
-            SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
-                (`core/simulation_step.py`, `PL-WP52`). Nothing changes when the
-                step is refused.
+            SimulationConfigurationError: `simulation_step_s` is outside the range
+                that `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
+                step must be positive and finite, no shorter than
+                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. Nothing changes when
+                the step is refused.
         """
 
-        require_at_least_the_smallest_step("circuit simulation_step_s", simulation_step_s)
+        require_compartment_step("circuit simulation_step_s", simulation_step_s)
 
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction

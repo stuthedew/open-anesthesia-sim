@@ -425,6 +425,42 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
     assert venous.agent_amount_l > held_l
 
 
+@pytest.mark.parametrize(
+    "simulation_step_s", [nextafter(86_400.0, inf), 1e6, 1.7976931348623157e308]
+)
+def test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone(
+    simulation_step_s: float,
+) -> None:
+    """`PL-YT3T`: the venous pool stepped on its own refuses a step longer than 24 h.
+
+    Every compartment stepped alone has the same ceiling, the supported run length, so one
+    function states which steps a compartment accepts. The step is refused and the amount held
+    does not change. A step of exactly 86 400 s is accepted, and it brings the venous pool to
+    its equilibrium, 0.02 of its capacity. The expected ceiling is written out here rather than
+    read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    venous = _build_venous_blood()
+    held_l = venous.agent_amount_l
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            rf"^venous simulation_step_s of {re.escape(str(simulation_step_s))} s is longer "
+            r"than the supported run length of 86400 s \(24 h\), the most simulated time "
+            r"this model is claimed to represent a patient over, so no single step may be "
+            r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
+        ),
+    ):
+        venous.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+
+    assert venous.agent_amount_l == held_l
+
+    venous.advance(Fraction(0.02), 86_400.0, BLOOD_FLOW_L_MIN)
+
+    assert venous.agent_amount_l == pytest.approx(0.02 * venous.capacity_l, rel=1e-15, abs=0.0)
+
+
 @pytest.mark.parametrize("invalid_value", [0.0, -1.0, inf, nan])
 def test_rejects_invalid_venous_volume(invalid_value: float) -> None:
     """A zero, negative or non-finite venous volume is refused at construction (`PL-X8F6`).

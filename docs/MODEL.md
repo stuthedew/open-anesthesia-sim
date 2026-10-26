@@ -2165,13 +2165,34 @@ breathing circuit at 60 s:
 So `TissueGroup.advance`, `VenousBloodCompartment.advance` and
 `BreathingCircuit.advance_fresh_gas` each reject a step below the floor.
 `BreathingCircuit.advance` calls `BreathingCircuit.advance_fresh_gas`. Each of
-the three makes the check through `require_at_least_the_smallest_step` in
-`core/simulation_step.py`. That is the same check, in the same words, that
-`require_supported_simulation_step` makes for the run. A compartment still
-takes a plain `float` rather than a `SimulationStep`. The reason is that the
-ceiling is how long the run holds its settings, and a compartment stepped
-alone at 1 s is correct.
+the three makes the check through `require_compartment_step` in
+`core/supported_ranges.py`. It checks the floor through
+`require_at_least_the_smallest_step` in `core/simulation_step.py`. That is the
+same check, in the same words, that `require_supported_simulation_step` makes
+for the run. A compartment still takes a plain `float` rather than a
+`SimulationStep`. The reason is that the ceiling is how long the run holds its
+settings, and a compartment stepped alone at 1 s is correct.
 <!-- not-restated: 1 s -->
+
+**A compartment stepped on its own has a ceiling of its own: the supported
+run length** (`PL-YT3T`, 2026-10-26). One step cannot stand for more simulated
+time than the span over which the model is claimed to represent a patient,
+§ "Supported run length". Before this ceiling, the step had no upper bound. A
+breathing circuit stepped by about 1e308 s formed its count of time constants
+elapsed as the admitted gas divided by the circuit volume, and that count
+overflowed to `inf`. `BreathingCircuit.advance_fresh_gas` then returned an
+exhaust of `inf` during wash-in, and of `nan` (zero times `inf`) when the dial
+was at or below the circuit's fraction. Nothing refused it. At the ceiling,
+the largest supported fresh gas flow in the smallest circuit volume that the
+numerical envelope admits, § "The numerical envelope", elapses about 1.4e6
+time constants. That is about 300 decades inside the range of a `float`. The
+tissue groups and the venous pool already returned a finite amount at any
+finite step, because `exponential_approach` saturates at equilibrium. They
+take the same ceiling, so that one statement says which steps a compartment
+accepts.
+<!-- derived: 1.4e6 time constants from core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- derived: 1.4e6 time constants from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- derived: 1.4e6 time constants from core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 A playback tick counts in the run's own step. So
 `PlaybackRate.steps_per_tick` takes a `SimulationStep`, as the run does.
