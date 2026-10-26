@@ -417,7 +417,10 @@ def test_a_negative_cumulative_total_cannot_resume_a_system() -> None:
     state[UNIT_STATE] = 1.0
     state[DELIVERED_AGENT_L] = -1.0
 
-    with pytest.raises(SimulationConfigurationError, match="delivered_agent_l"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"^state\[6\] \(delivered agent in L\) must be nonnegative",
+    ):
         _fresh_system().resume_at(tuple(state), initial_agent_l=0.0)
 
 

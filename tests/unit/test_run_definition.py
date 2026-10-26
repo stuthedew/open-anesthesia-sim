@@ -709,6 +709,29 @@ def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
         RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
 
 
+def test_a_run_definition_refuses_a_state_the_live_system_refuses() -> None:
+    """A fraction outside 0 to 1 is refused at the opening, as `resume_at` refuses it (`PL-0WFJ`).
+
+    The definition once accepted an alveolar fraction of -0.3 and a fat fraction of 1.7, and
+    `state_at(30.0)` returned a fat fraction of 1.6996 and negative circuit and alveolar
+    fractions with no error. Both sinks now share one range check.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    state = list(system.state_vector())
+    state[ALVEOLAR_FRACTION] = -0.3
+    state[FIRST_TISSUE_FRACTION + 2] = 1.7
+
+    with pytest.raises(SimulationConfigurationError) as by_definition:
+        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
+
+    with pytest.raises(SimulationConfigurationError) as by_system:
+        system.resume_at(tuple(state), initial_agent_l=0.0)
+
+    assert str(by_definition.value) == str(by_system.value)
+    assert str(by_definition.value).startswith(f"state[{ALVEOLAR_FRACTION}] (")
+
+
 @pytest.mark.parametrize("opened_at_s", [nan, inf, -inf, -1.0])
 def test_an_opening_no_case_reaches_cannot_be_built(opened_at_s: float) -> None:
     """The instant is refused where it is built, before any run can open at it (`PL-CN5S`).

@@ -774,16 +774,15 @@ class AgentUptakeSystem:
         Raises:
             SimulationConfigurationError: `state` did not come from the
                 canonical path, is not `STATE_SIZE` long, holds a non-finite
-                value, or does not carry exactly one in `UNIT_STATE`. Or
-                `initial_agent_l` or either cumulative total is negative or not
-                finite. Or a fraction is outside 0 to 1, which is rejected
-                under the name of the compartment that would hold it.
+                value, holds a fraction outside 0 to 1 or a negative cumulative
+                total, or does not carry exactly one in `UNIT_STATE`. All of
+                these are `require_canonical_state`'s checks, which a
+                `RunDefinition` applies to its opening state too. Or
+                `initial_agent_l` is negative or not finite.
         """
 
         require_canonical_state(state)
         require_nonnegative_finite("initial_agent_l", initial_agent_l)
-        require_nonnegative_finite("delivered_agent_l", state[DELIVERED_AGENT_L])
-        require_nonnegative_finite("exhausted_agent_l", state[EXHAUSTED_AGENT_L])
 
         state_before = self.capture_state()
         resumed = False
@@ -823,7 +822,8 @@ class AgentUptakeSystem:
         for its two callers, and it would not be safe for a third.
         `_advance_step` passes it what `propagate` returned from this system's
         own state. `resume_at` passes it a state that `require_canonical_state`
-        has already checked for length, finiteness and the constant entry. A
+        has already checked for length, finiteness, range and the constant
+        entry. A
         caller that reached this method with anything else would get an
         `IndexError` from a short vector, a silent truncation from a long one,
         and no error at all for a wrong `UNIT_STATE`. None of these is how the

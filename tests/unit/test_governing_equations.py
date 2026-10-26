@@ -36,6 +36,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
     build_system_matrix,
+    require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import matrix_exponential
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
@@ -859,3 +860,59 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
         assert matrix_exponential(build_system_matrix(built_otherwise), interval_s) == (
             matrix_exponential(build_system_matrix(plain), interval_s)
         )
+
+
+def _empty_state_with(position: int, value: float) -> tuple[float, ...]:
+    """An empty canonical state with `value` at `position`."""
+
+    state = [0.0] * STATE_SIZE
+    state[UNIT_STATE] = 1.0
+    state[position] = value
+
+    return tuple(state)
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        INSPIRED_FRACTION,
+        ALVEOLAR_FRACTION,
+        VENOUS_FRACTION,
+        *(FIRST_TISSUE_FRACTION + offset for offset in range(TISSUE_GROUP_COUNT)),
+    ],
+)
+@pytest.mark.parametrize("value", [-0.3, nextafter(0.0, -1.0), nextafter(1.0, 2.0), 1.7])
+def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one(
+    position: int, value: float
+) -> None:
+    """Each of the six fractions is refused outside 0 to 1, by position (`PL-0WFJ`).
+
+    The live system's compartments refuse these values, so a `RunDefinition` that opened from
+    one would draw a state that the system can never hold. The values include the nearest
+    floats outside each bound.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, value))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "is outside 0 to 1" in str(raised.value)
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_a_negative_amount_of_agent(position: int) -> None:
+    """A cumulative amount of agent below zero describes a run that never happened."""
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, -1e-12))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "must be nonnegative" in str(raised.value)
+
+
+def test_require_canonical_state_accepts_each_fraction_at_both_bounds() -> None:
+    """Zero and one are physical fractions, so the range check must not refuse them."""
+
+    for position in range(FIRST_TISSUE_FRACTION + TISSUE_GROUP_COUNT):
+        require_canonical_state(_empty_state_with(position, 0.0))
+        require_canonical_state(_empty_state_with(position, 1.0))

@@ -155,6 +155,28 @@ STATE_SIZE = 9
 TISSUE_GROUP_COUNT = 3
 """Vessel-rich, muscle and fat: the three groups `patient.py` builds."""
 
+_FRACTION_STATE_NAMES = (
+    (INSPIRED_FRACTION, "inspired fraction F_I"),
+    (ALVEOLAR_FRACTION, "alveolar fraction F_A"),
+    (VENOUS_FRACTION, "mixed venous fraction F_v"),
+    *(
+        (FIRST_TISSUE_FRACTION + offset, f"tissue group {offset + 1} fraction F_{offset + 1}")
+        for offset in range(TISSUE_GROUP_COUNT)
+    ),
+)
+"""Each state that holds a fraction, with the name a refusal of it gives.
+
+The names describe the position in the state vector, because that is all that
+`require_canonical_state` knows. The tissue groups are numbered in the order of
+their states. Their names, such as "fat", belong to `patient.py`.
+"""
+
+_ACCUMULATOR_STATE_NAMES = (
+    (DELIVERED_AGENT_L, "delivered agent in L"),
+    (EXHAUSTED_AGENT_L, "exhausted agent in L"),
+)
+"""The two states that hold an amount of agent, with the name a refusal of each gives."""
+
 CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
 """How far the tissue flows may sum away from cardiac output.
@@ -214,13 +236,25 @@ def require_canonical_state(state: object) -> None:
     believed were states. A signature that accepted only a state would put
     the check where it could never fire.
 
+    **The guard also checks each value's physical range.** Each of the six
+    fractions must lie from 0 to 1, and each of the two amounts of agent must
+    not be negative. The live system's compartments refuse any other value,
+    so a sink that opened from one would draw a state the system can never
+    hold. A `RunDefinition` opened from a fat fraction of 1.7 once returned
+    fractions above one and below zero from `state_at`, with no error
+    (`PL-0WFJ`). Each fraction is built as a `Fraction`, so the range and its
+    message come from that one type.
+
     Raises:
         SimulationConfigurationError: `state` is not a tuple, is not
-            `STATE_SIZE` long, holds a non-finite value, or does not hold
+            `STATE_SIZE` long, holds a non-finite value, holds a fraction
+            outside 0 to 1 or a negative amount of agent, or does not hold
             exactly one in `UNIT_STATE`. The last condition is what makes
             every forcing term in `build_system_matrix` mean what it says. A
             state holding any other value there would scale the whole delivery
-            term without changing any setting that a reader can see.
+            term without changing any setting that a reader can see. A
+            refusal of a fraction or an amount names its position and what it
+            holds, such as "state[1] (alveolar fraction F_A)".
     """
 
     if not isinstance(state, tuple):
@@ -238,6 +272,12 @@ def require_canonical_state(state: object) -> None:
     for index, value in enumerate(state):
         if not isfinite(value):
             raise SimulationConfigurationError(f"state[{index}] is {value}, which is not finite")
+
+    for index, role in _FRACTION_STATE_NAMES:
+        Fraction(state[index], name=f"state[{index}] ({role})")
+
+    for index, role in _ACCUMULATOR_STATE_NAMES:
+        require_nonnegative_finite(f"state[{index}] ({role})", state[index])
 
     if state[UNIT_STATE] != 1.0:
         raise SimulationConfigurationError(
