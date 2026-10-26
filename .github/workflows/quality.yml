@@ -218,8 +218,8 @@ jobs:
       # run 39062070913. So this step asks `bin/docket ci-scope` whether every
       # path the pull request changed is under the store, and writes
       # `scope=items` as its output if so. It writes `scope=apparatus` when
-      # every path is under `workflow_paths`, which only the second part's
-      # pytest step reads (`PL-STM6`), and `scope=full` otherwise. On
+      # every path is under `workflow_paths`, which both parts' pytest steps
+      # read (`PL-STM6`), and `scope=full` otherwise. On
       # `items`, ruff, mypy, `ignore_check.py` and both parts of the suite are
       # skipped, with the coverage the parts upload and `checks` combines. The second part runs
       # only the tests marked `reads_item_store` instead. The root

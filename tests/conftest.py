@@ -86,7 +86,7 @@ run's log instead.
 **A pull request that changes only apparatus files skips the costly tests**
 (`PL-STM6`). `--skip-costly` leaves out every test that reads a costly
 computation. It finds them with the same `_costly_reads` that the parts and the
-dealing use. `quality.yml` asks for it on the second part when
+dealing use. `quality.yml` asks for it on both parts when
 `bin/docket ci-scope` returns `apparatus`, because no apparatus file is an
 input to those tests. It asks through `SKIP_COSTLY_TESTS=1`, which only this
 conftest reads, and not through `PYTEST_ADDOPTS`. Every pytest that the suite
