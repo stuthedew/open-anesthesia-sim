@@ -803,7 +803,12 @@ def format_supported_run_length() -> str:
 
 
 def format_playback_rate(multiplier: int) -> str:
-    """State how fast simulated time is being played against real time.
+    """State the playback rate that is set, as a multiple of real time.
+
+    The string states the setting, not whether the clock is moving. A paused,
+    reset or halted run still shows the rate it plays at, and the status word
+    in the transport row says whether the run is running. `docs/MODEL.md`
+    § "Interface boundary" defines the label this way (`PL-SQJ1`, `PL-X4X2`).
 
     The rate is a mode, and a mode that nobody can see is the failure this
     project's interface rules exist to prevent. A clock advancing at 60x
@@ -825,8 +830,8 @@ def format_playback_rate(multiplier: int) -> str:
     compares the rate with the pace of a case they have stood through, and
     the multiple is of that pace. Simulated time itself is rendered by
     `format_elapsed`, in simulated seconds, and remains the only clock on
-    the display. This string names the pace at which the clock advances,
-    and is never a second reading of the time.
+    the display. This string names the pace at which the clock advances
+    while the run plays, and is never a second reading of the time.
 
     Args:
         multiplier: Simulated seconds advanced per second of real time, as

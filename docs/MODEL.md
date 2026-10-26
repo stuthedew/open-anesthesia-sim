@@ -8051,11 +8051,13 @@ $`F_A/F_I`$ is derived at the point of drawing.
 
 - simulated time (`test_refresh_view_formats_every_concentration_metric`,
   `test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour`);
-- the rate at which simulated time is advancing, as a multiple of real time. It
-  is drawn wherever simulated time is drawn, and at every rate, including real
-  time (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). See
-  § "Interface boundary" for what the rate is a statement about, and what it is
-  not;
+- the playback rate that is set, as a multiple of real time. It is drawn
+  wherever simulated time is drawn, and at every rate, including real time
+  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). It is the
+  setting, not a reading of whether the clock is moving: a paused, reset or
+  halted run still shows the rate it plays at, and the status word in the
+  transport row says whether the run is running. See § "Interface boundary"
+  for what the rate is a statement about, and what it is not;
 - how much simulated time the chart is showing, and whether that width was
   chosen or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
