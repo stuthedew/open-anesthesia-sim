@@ -3,12 +3,14 @@ id: PL-T6P0
 title: PlaybackRate.steps_per_tick refuses only a step count that cannot be counted, so an enormous finite tick interval returns a step count of about 1e305 and the run loop would step for ever instead of refusing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: floating-point-domain
 touches: src/anesthesia_sim/app/playback.py, tests/unit
 deferred-from: v0.7.0 - filed 2026-10-25 while fixing PL-06LS, after this gate froze; the gate defers its sibling PL-06LS for the same reason, so the generator tier ranks it, not the gate
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1862
 payoff: a tick asked to take an absurd number of steps is refused with a message instead of freezing the application
 verify: grep -q 'def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused' tests/unit/test_playback.py
 ---
