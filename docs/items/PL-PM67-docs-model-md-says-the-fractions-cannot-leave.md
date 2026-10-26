@@ -3,11 +3,13 @@ id: PL-PM67
 title: docs/MODEL.md says the fractions cannot leave their physical range and no parameter set can trigger the capacity guard, and core/exceptions.py says no step can raise SimulationNumericalError, but the Metzler argument proves only the lower bound, and rounding carries a fraction just above 1 from a saturated state
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, science
 feature: replay-findings
 touches: docs/MODEL.md, src/anesthesia_sim/core/exceptions.py, tests/unit/test_uptake_system_failure.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: the specification no longer states an upper-bound guarantee that rounding breaks from a saturated state
 verify: ! grep -qF 'the fractions cannot leave their physical range' docs/MODEL.md && ! grep -qF 'Under the exact step, no parameter set triggers the' docs/MODEL.md && ! grep -qF 'No step, whatever its size, can produce this error' src/anesthesia_sim/core/exceptions.py
 ---

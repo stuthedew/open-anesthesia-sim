@@ -1848,16 +1848,24 @@ was not a cost either.
 
 **Two consequences worth stating rather than leaving to be inferred.**
 
-First, **the fractions cannot leave their physical range**. Every off-diagonal
+First, **a step cannot drive a fraction negative**. Every off-diagonal
 entry of $`A`$ is a transfer rate, so it is nonnegative. That makes $`A`$ a
 Metzler matrix and $`\exp(A\Delta t)`$ an entrywise nonnegative matrix.
 `core/matrix_exponential.py` shifts the matrix before summing its series, so
 that this property holds in floating point and not only in exact arithmetic.
 A step therefore cannot drive a compartment negative at any step size. This
-follows from the construction, not from the shipped parameters. So no patient
-file or agent can trigger the compartment capacity guard through the model.
-The guard and the rollback remain as protection for a model extension
-whose matrix is not a pure transfer system.
+follows from the construction, not from the shipped parameters.
+
+The argument proves the lower bound only. It says nothing about the upper
+bound of 1. In exact arithmetic no fraction passes the delivered fraction,
+but rounding can carry a fraction just above 1 from a state already at 1.
+With every compartment at 1.0 and a 100% dial, the first 0.1 s step raised
+`SimulationNumericalError` in all 12 agent and flow cases tried (`PL-PM67`,
+measured 2026-10-25). No supported setting reaches that state, because every
+shipped vaporizer maximum keeps each fraction far below 1. The capacity guard
+and the rollback therefore cover two cases: a state at the top of the range,
+and a model extension whose matrix is not a pure transfer system.
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 Second, **refining the step no longer changes the answer**. Under the split,
 halving $`\Delta t`$ halved the error. The step-refinement gate
@@ -2230,10 +2238,12 @@ enter.** Where a step drives an amount out of range,
 `AgentUptakeSystem.advance()` reports `SimulationNumericalError`. The step is
 rolled back in full, and simulation time does not advance. The caller must
 stop the run, and the run stops at the last completed step rather than at a
-partially applied one. Under the exact step, no parameter set triggers the
-guard, because the system matrix is Metzler and its propagator is therefore
-entrywise nonnegative (see § "Selected method (as implemented)"). The guard is cover for
-a model extension whose matrix is not a pure transfer system. It is not cover
+partially applied one. Under the exact step, no step drives a fraction below
+zero, because the system matrix is Metzler and its propagator is therefore
+entrywise nonnegative (see § "Selected method (as implemented)"). Rounding can
+still carry a fraction just above 1 from a state already at 1, which no
+supported setting reaches. The guard is cover for that state, and for a model
+extension whose matrix is not a pure transfer system. It is not cover
 for a caller stepping too coarsely. The two failures are kept deliberately
 distinct. `SimulationConfigurationError` says that the setting was rejected
 and the run is still trustworthy. `SimulationNumericalError` says that a run

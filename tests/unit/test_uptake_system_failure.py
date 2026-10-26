@@ -61,6 +61,8 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
+    DELIVERED_AGENT_L,
+    EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
@@ -285,6 +287,31 @@ def test_a_resume_into_an_impossible_fraction_says_which_state_refused() -> None
         messages.append(message)
 
     assert len(set(messages)) == len(messages), messages
+
+
+@pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
+def test_rounding_can_carry_a_saturated_fraction_above_one(agent: str) -> None:
+    """The Metzler argument bounds a fraction below, not above (`PL-PM67`).
+
+    Every compartment at 1.0 under a 100% dial is the exact equilibrium, yet one step rounds
+    a tissue fraction to 1.0000000000000002. The step is refused and rolled back. So the
+    documents claim only the lower bound, and this test keeps that claim honest. No shipped
+    vaporizer maximum reaches the state, so the test widens the maximum by hand.
+    """
+
+    system = AgentUptakeSystem.for_agent(agent)
+    system.circuit.max_delivered_concentration_percent = Percent(100.0)
+    system.circuit.set_delivered_concentration_percent(Percent(100.0))
+    saturated = [1.0] * len(system.state_vector())
+    saturated[DELIVERED_AGENT_L] = 0.0
+    saturated[EXHAUSTED_AGENT_L] = 0.0
+    system.resume_at(tuple(saturated), initial_agent_l=0.0)
+    before = system.capture_state()
+
+    with pytest.raises(SimulationNumericalError, match="of 1.0000000000000002 is outside 0 to 1"):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    assert system.capture_state() == before
 
 
 def test_writing_an_impossible_fraction_says_which_compartment_refused() -> None:
