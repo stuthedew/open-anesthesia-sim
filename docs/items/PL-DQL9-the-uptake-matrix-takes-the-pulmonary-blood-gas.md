@@ -19,3 +19,13 @@ verify: grep -q 'def test_settings_with_disagreeing_blood_gas_coefficients_are_r
 **Done when.** A settings record whose tissue rows and pulmonary term use different blood:gas coefficients is refused when it is built, with a `SimulationConfigurationError` naming the coefficients, or the model carries one blood:gas coefficient. `tests/unit/test_governing_equations.py` has `test_settings_with_disagreeing_blood_gas_coefficients_are_refused`.
 
 **Found by.** `PL-TBQS` reviewer replay on #376, findings r02 F1 and r06 F1. Checked against main on 2026-10-25 with `scripts/c_core376.py Q`.
+
+**Folded in from `PL-YXGX` on 2026-10-26.** `PL-YXGX` filed the same four
+copies from the patient's side, while building `PL-N7MM`. It adds two facts.
+First, a `PatientCompartments` built directly with the fat group at blood:gas
+2.0 and the rest at 0.65 is accepted, and so is a later write of 3.0 to one
+group's `blood_gas_partition_coefficient`. So a check at construction alone
+would still let a write make the copies disagree. Second, `CLAUDE.md`'s
+one-source-of-truth principle says to fix a second copy by replacing it with a
+read of its home. **Recommended:** take the Done-when's second route, so the
+patient carries one blood:gas coefficient and each tissue group reads it.
