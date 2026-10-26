@@ -5716,13 +5716,27 @@ learner can reach while the run is playing. § "Supported simulation step"
 publishes the grid on which a *control change* lands. That grid is
 `multiplier × 0.1` s, so 0.1 s at 1x and 30 simulated seconds at 300x. A halt
 is not on that grid. It lands on the crossing step itself, at every playback
-rate. So the concentration displayed beside a halt is the height the learner
-marked. It is not a value up to a whole burst's worth of simulated time past
-that height. If the test ran once per rendered frame instead, the same
+rate. So the concentration displayed beside a halt is the reading on the
+first step at or past the height the learner marked. It lies
+within one simulation step of that height, not up to a whole burst's worth of
+simulated time past it. One step's change can still show on screen. It grows
+with the gap between a compartment and the gas reaching it, and with the flow
+that carries that gas in. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC circuit
+target halts showing 0.11 ×MAC. The jump can be larger on other compartments.
+Run the same settings for 120 s with alveolar ventilation at 0 L/min, so that
+the alveolar reading stays at zero while the circuit fills. Restoring
+ventilation to 12 L/min then makes a 0.10 ×MAC alveolar target halt showing
+0.12 ×MAC, two display counts past its mark. A halt one or more counts past
+its mark is therefore correct. It lies above the mark on a rising crossing and
+below it on a falling one, and it is not a
+detection fault. If the test ran once per rendered frame instead, the same
 bookmark would stop at a different concentration depending on how fast the
 case was being played. Nothing on screen would say so. Two branches nominally
 taken "at 0.8 ×MAC" would then open from two different states.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
 **A halt leaves the run paused, and resuming is explicit.** This follows from
 the paragraph above rather than being a separate choice. A halt is exact, but
