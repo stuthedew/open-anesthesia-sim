@@ -2277,15 +2277,18 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
 
 
 def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s() -> None:
-    """The 24 h supported run length is the patient's, not each branch's.
+    """The 24 h supported run length belongs to the patient, not to each branch.
 
     `require_supported_run_length` reads a step count, so a branch that
-    restarted the count would get a fresh envelope. A fork taken late could
-    then be advanced well past the span that `docs/MODEL.md` § "Supported run
-    length" declares, with every guard passing. That is the regime in which,
-    as `core/supported_ranges.py` argues, the omitted metabolism dominates.
-    Continuing the parent's count makes the envelope the case's, and it needs
-    no second guard.
+    restarted the count would get a fresh 24 h envelope. A fork taken late
+    could then be advanced well past the span that `docs/MODEL.md` § "Supported
+    run length" declares, with every guard passing. The model is not claimed to
+    represent a patient for a run that long. As `core/supported_ranges.py`
+    argues, the model omits metabolism and its fat flow is uncertain, so how
+    far the slow part of the trace can stray from a patient grows as a run
+    goes on. When the branch
+    continues the parent's count, the whole case has one envelope, and no
+    second guard is needed.
     """
 
     trunk = _trunk_with_two_changes()

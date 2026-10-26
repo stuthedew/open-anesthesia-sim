@@ -3,17 +3,17 @@ id: PL-58D7
 title: core's closed forms and products are fixed one at a time at extreme inputs - overflow to inf, underflow to zero, cancellation and rounding at the wrong scale - because nothing states the floating-point domain each operation must hold: nine members from 2026-09-06 to 2026-10-17
 priority: P1
 effort: L
-status: ready
+status: blocked
 classes: defect, refactor
 feature: defect-review-2026-10
-touches: src/anesthesia_sim/core, src/anesthesia_sim/data, docs/MODEL.md, tests/unit
-blocked-by: PL-QX2G, PL-YT3T
+touches: src/anesthesia_sim/core, src/anesthesia_sim/data, docs/MODEL.md, tests/unit, docs/items/PL-0WFJ-the-guard-every-run-opening-shares-require.md
+blocked-by: PL-0WFJ
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 payoff: each core operation states and enforces the inputs on which its floating-point answer is correct, so an extreme input is refused at build rather than found as a nan or a negative uptake
-verify: grep -rq 'def test_every_core_operation_refuses_inputs_outside_its_floating_point_domain' tests/unit && grep -rq 'def test_every_core_operation_holds_its_equations_at_every_envelope_corner' tests/unit
-root-cause-of: PL-3PRZ, PL-2MD9, PL-6QYJ, PL-8H2R, PL-B26Y, PL-YT8N, PL-XWFP, PL-FNH3, PL-8LQZ
-generator: live - seven members filed 2026-10-03 to 2026-10-17, the last two closed 2026-10-19, each fixed for its own operation with no stated domain for the next
+verify: grep -q '^| The state a run opens from, each fraction |' docs/MODEL.md && grep -q 'def test_every_core_operation_holds_its_equations_at_every_envelope_corner' tests/unit/test_numerical_envelope_sweep.py
+root-cause-of: PL-3PRZ, PL-2MD9, PL-6QYJ, PL-8H2R, PL-B26Y, PL-YT8N, PL-XWFP, PL-FNH3, PL-8LQZ, PL-0WFJ
+generator: live - the corner sweep found one more input with no interval, a run's opening state (PL-0WFJ), so the structure is not finished until that lands (2026-10-26)
 misread: The floating-point input domain on which each closed form and product in core gives a correct answer
 ---
 
@@ -53,3 +53,49 @@ Recorded as the session's decision, not the owner's. It changes the mechanism an
 **Done when.** `PL-QX2G`, `PL-YT3T`, `PL-06LS` and `PL-XST1` are closed. Every input to `core/` has a declared envelope, stated in `docs/MODEL.md` with its measurement and refused outside it when built. The corner sweep above and the refusal test past each edge pass.
 
 **Generator check.** This item is the head.
+
+**Sweep landed, head reopened, 2026-10-26 (#1862).** All four members filed
+with the head are closed: `PL-QX2G`, `PL-YT3T`, `PL-06LS` and `PL-XST1`. The
+sweep is `tests/unit/test_numerical_envelope_sweep.py`, and `docs/MODEL.md`
+§ "The numerical envelope" now has one table of the inputs to `core/` that
+have an interval, and what refuses each. The blind review found one input with
+no interval: the state a run opens from, which `PL-0WFJ` already records. From
+an opening with every fraction at 1e308, `RunDefinition.state_at(600.0)`
+returned an exhausted-agent total of `inf`. That is this head's own failure
+mode, so the head stays open, blocked on `PL-0WFJ`, and its generator stays
+live.
+
+How the sweep checks each result. A fraction must stay from 0 through 1, every
+amount and running total must be finite and not negative, and the agent balance
+must close. The balance cannot close to a fixed tolerance across 24 hours at the
+stiffest corners: washing out from a full state there, the display path's last
+column was 3.3e-5 out. So the sweep allows each result the error bound that
+`core/matrix_exponential.py` states for each propagator that produced it:
+2**s times machine epsilon, for the s squarings that propagator actually
+needed, with a margin of 3. The module states the worst entry it measured at
+2.7 times its bound, and the worst result in this sweep reached 2.5 times. The
+first version charged every propagator the 32-squaring cap, about 2.9e-6. The
+blind review showed that this let a 1e-6 balance error through at an ordinary
+corner, which is the kind of cancellation the sweep exists to catch.
+
+What it found. Nothing went negative, non-finite or out of balance anywhere.
+One new defect: a step from a state with every compartment at a fraction of 1
+can round a fraction a few units in the last place past 1, and the step is then
+refused and rolled back. That is the safe failure, and no shipped agent reaches
+it. It is filed as `PL-9B1M` in this feature, and the sweep accepts that one
+refusal by name. The canonical path's refusal of one 86 400 s propagator at the
+stiffest corners is the documented one and is also accepted by name.
+
+Two inputs were added to what the brief listed. A tissue group's perfusion
+fraction is accepted at any positive float, so the coupled step also runs with
+all of the cardiac output in one group and the smallest float in each other.
+The blood flow handed to a compartment stepped on its own has no upper bound,
+so the sweep steps it at the largest float rather than bounding it. A bound
+there would refuse nothing a run can produce, because a run computes that flow
+from a bounded cardiac output.
+
+What is left. Fix `PL-0WFJ`, so the opening state has an interval, and add
+it to the table in `docs/MODEL.md` as a row that starts "The state a run opens
+from, each fraction", which this item's `verify:` looks for. Then close this head and mark the
+generator spent. `PL-9B1M`, the rounding at the top of the fraction range, is
+a member of the feature but not a blocker: its refusal is the safe failure.

@@ -424,7 +424,10 @@ def _squarings(matrix: Matrix, interval_s: float) -> int:
         for row, matrix_row in enumerate(matrix)
     )
 
-    return max(0, ceil(log2(norm / MAXIMUM_SERIES_ARGUMENT_NORM)))
+    if norm <= MAXIMUM_SERIES_ARGUMENT_NORM:
+        return 0
+
+    return ceil(log2(norm / MAXIMUM_SERIES_ARGUMENT_NORM))
 
 
 def _corner_settings() -> list[UptakeEquationSettings]:

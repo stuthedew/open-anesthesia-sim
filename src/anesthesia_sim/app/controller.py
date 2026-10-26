@@ -1350,19 +1350,21 @@ class SimulationController:
         **The branch's clock continues the case's clock**, because a branch is
         one patient's case under a second management, not a second patient.
         Three things follow, and each is a correctness property rather than a
-        convenience. First, the 24 h supported run length is enforced on the
+        convenience. First, the guard on the 24 h supported run length checks the
         step count. A branch that restarted the count would get a fresh 24 h
-        allowance. A fork at 23 h could then be advanced to 47 h of case time
-        with every guard passing. That is exactly the regime in which
-        metabolism, which the model omits, dominates (`core/supported_ranges.py`).
+        envelope. A fork at 23 h could then be advanced to 47 h of case time
+        with every guard passing. The model is not claimed to represent a
+        patient for a case that long. As `core/supported_ranges.py` argues, the
+        model omits metabolism and its fat flow is uncertain, so how far the
+        slow part of the trace can stray from a patient grows as a run goes on.
         Second, the clock, every control-change stamp and the chart's axis all
-        read `snapshot().elapsed_s`, and `format_elapsed` says that they "state
-        one quantity one way". A branch counting from zero would place the
+        read `snapshot().elapsed_s`. `format_elapsed` says that these three
+        "state one quantity one way". A branch counting from zero would place the
         patient at the wrong point on the uptake curve in all three places at
-        once. Third, elapsed time stays one multiplication, `(k + n)` steps
-        times the step length, rather than the fork instant plus the branch's
-        own elapsed time. `docs/MODEL.md` § "Simulated time is a count of
-        steps, not a running total" is the rule against that sum.
+        once. Third, elapsed time stays one multiplication: `(k + n)` steps
+        times the step length. It is not the fork instant plus the branch's own
+        elapsed time. `docs/MODEL.md` § "Simulated time is a count of steps, not
+        a running total" states the rule against that sum.
 
         **The run definition opens on the case's own axis rather than at a
         zero of its own**, so the branch's clock and its run definition's

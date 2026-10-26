@@ -110,6 +110,20 @@ from anesthesia_sim.core.validation import require_positive_finite
 #: because the nearest such rate is half a step away from a whole number.
 STEP_COUNT_TOLERANCE: Final = 1e-9
 
+#: The largest number of steps that one tick may take. A tick runs all of its
+#: steps before the interface can respond, so an unbounded count would hang the
+#: interface without raising an error (`PL-T6P0`). The bound is set by time,
+#: because a tick that outlasts its own interval freezes the interface and
+#: plays slower than its label. The shipped tick is 0.1 s, one step long, and
+#: one step of the running controller measured about 53 microseconds on
+#: 2026-10-26. So a tick has room for about 1 900 steps. This bound allows
+#: 1 000, about 53 ms, which leaves the rest of the tick for drawing. The
+#: fastest offered rate, 300x, takes 300 steps per tick, because the tick is
+#: always one step long.
+#: `test_the_most_steps_one_tick_may_take_covers_every_rate_at_a_one_step_tick`
+#: fails if a faster rate would need more steps than this bound.
+MAXIMUM_STEPS_PER_TICK: Final = 1_000
+
 
 @dataclass(frozen=True, slots=True)
 class PlaybackRate:
@@ -161,17 +175,19 @@ class PlaybackRate:
         Raises:
             TypeError: If `tick_interval_s` is not an `int` or a `float`, or
                 is a `bool`. Also if `simulation_step_s` is not a
-                `SimulationStep`, so nothing has checked it against `core`'s
-                supported range (`core/simulation_step.py`).
+                `SimulationStep`, because then nothing has checked it against
+                the range that `core` supports (`core/simulation_step.py`).
             SimulationConfigurationError: If the tick interval is not
                 positive and finite, as `core.validation.require_positive_finite`
-                checks (`PL-F9TC`). Also if the step count that these give is
-                too large to count. A vanishing step or an enormous tick used
-                to raise that as a bare `OverflowError` (`PL-YZ17`). Also if
-                this rate does not land on a whole number of steps at these
-                intervals. The refusal is deliberate. The alternatives are a
-                step of a different size, or a run that plays at a rate other
-                than the one displayed.
+                checks (`PL-F9TC`). Also if this rate, tick and step need more
+                than `MAXIMUM_STEPS_PER_TICK` steps. An enormous tick used to
+                raise a bare `OverflowError` when the count overflowed to
+                infinity (`PL-YZ17`). A large but finite count used to be
+                returned, so the run loop would have stepped for ever
+                (`PL-T6P0`). Also if this rate does not land on a whole number
+                of steps at this tick and step. The refusal is deliberate. The
+                alternatives are a step of a different size, or a run that
+                plays at a rate other than the one displayed.
         """
 
         require_positive_finite("tick_interval_s", tick_interval_s)
@@ -179,11 +195,16 @@ class PlaybackRate:
 
         exact = self.multiplier * tick_interval_s / simulation_step_s
 
-        if not math.isfinite(exact):
+        # The count is compared with the bound after rounding. A ratio one
+        # rounding error above the bound rounds to the bound, so it is returned
+        # as the bound rather than refused. An infinite ratio cannot be rounded,
+        # so it is refused before rounding.
+        if not math.isfinite(exact) or round(exact) > MAXIMUM_STEPS_PER_TICK:
             raise SimulationConfigurationError(
                 f"playing at {self.multiplier}x real time with a {tick_interval_s} s tick "
-                f"and a {simulation_step_s} s step needs more steps per tick than can be "
-                "counted"
+                f"and a {simulation_step_s} s step needs {exact:g} steps per tick, more "
+                f"than the {MAXIMUM_STEPS_PER_TICK} one tick may take, because the "
+                "interface cannot respond until a tick's steps are done"
             )
 
         steps = round(exact)

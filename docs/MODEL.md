@@ -2299,6 +2299,97 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
 factors, so each checks the quotient whenever a factor is written.
 
+**Every input to `core/` but one has an interval, and one sweep tests them**
+(`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
+between 2026-09-06 and 2026-10-17, each one operation at a time. A product
+overflowed, a quotient underflowed or a subtraction cancelled at an extreme
+input that a constructor had accepted. So each input now has a closed interval,
+and a value outside it is refused when it is built. An operation added later
+inherits those intervals without anyone writing a domain for it. The table
+lists each input that has one, and the function or type that refuses it.
+
+| Input | Interval | Refused by |
+| --- | --- | --- |
+| A compartment volume | 0.01 to 10 000 L | `CompartmentVolume` |
+| A partition coefficient, including each tissue:blood quotient | 0.001 to 10 000 | `PartitionCoefficient` |
+| Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` |
+| Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` |
+| Cardiac output | 0 to 10 L/min | `CardiacOutput` |
+| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `TissueGroup` and `PatientCompartments` |
+| The coupled system's step | 0.001 to 0.1 s | `SimulationStep` |
+| A compartment's own step | 0.001 s to 86 400 s | `require_compartment_step` |
+| A case instant | 0 to 86 400 s | `CaseInstant` |
+| A run's step count | 0 up to the steps that fit in 86 400 s | `require_supported_step_count` |
+| The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
+| A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
+| The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_PARTITION_COEFFICIENT = 10000 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: core/tissue.py PERFUSION_FRACTION_UPPER_BOUND = 1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
+
+**The state a run opens from has no interval yet.** `require_canonical_state`
+in `core/governing_equations.py` checks a state's length, that its values are
+finite and its unit entry. It does not check that each fraction lies from 0
+through 1. So a `RunDefinition` opened from a state with every fraction at
+1e308 is accepted, and its `state_at(600.0)` returns an exhausted-agent total
+of `inf` (reproduced 2026-10-26). Every state a shipped run opens from comes
+from a run that began in range, so no learner reaches this today. `PL-0WFJ`
+records the fix, and `PL-58D7` stays open until it lands.
+
+The blood flow that a tissue group or the venous pool is handed when it is
+stepped on its own has no upper bound either, by design. It must only be
+finite and not negative. A run computes that flow from a bounded cardiac
+output, so a bound there would refuse nothing a run can produce. The sweep
+steps both at a flow of the largest float, and each result stays finite and
+between where it started and its equilibrium.
+
+`tests/unit/test_numerical_envelope_sweep.py` tests the two halves of the
+claim. The first test runs every operation at each of the 96 corners of the
+volumes and coefficients. Each volume is at either bound, and the two
+coefficients are at each of the six vertices of the region their bounds and
+the tissue:blood quotient's bounds cut out. At each corner, each flow is at
+zero, at the smallest positive float and at its maximum. The test steps the
+coupled system once at each bound of its step, steps each compartment on its
+own at each bound of its own step, and evaluates a run across the 24 hours on
+both the display and the canonical path. Each result must be finite. Each
+fraction must lie from 0 through 1, and the agent balance must close, both to
+within the error bound that `core/matrix_exponential.py` states for the
+propagators that produced it. That bound uses the squarings each propagator
+actually needed, with a margin of 3, so a corner that needs few squarings is
+held to a few roundings. The worst result measured on 2026-10-26 reached 2.5
+times its bound. The second test builds every input in the table at each edge of
+its interval, and then one representable value past each edge, and requires
+the simulator's own refusal.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+Two refusals inside the intervals are accepted by name. Both are errors from
+`core/exceptions.py`, never a wrong value. On the canonical path, one
+propagator across the whole 86 400 s at the stiffest corners needs more than 32
+squarings. It is refused, as § "What a long interval costs at the corners" below
+describes. And a step from a state at the top of the fraction range, with
+every compartment at a fraction of 1, can round one fraction past 1, by up to
+3.5e-11 in the sweep. The fraction check then refuses it and the step is
+rolled back. The sweep checks that the state is unchanged after the refusal.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**A drawn fraction can exceed 1 slightly at the stiffest corners.** The
+display path, `RunDefinition.evaluate`, does not check its fractions. Washing
+out from a full state at the stiffest corners, it draws fractions up to
+1.000033 after 60 chained propagators. That is inside the error bound of
+those propagators, so the sweep accepts it, but a plotted partial pressure is
+then above one atmosphere. No shipped agent's dial reaches a fraction near 1,
+so no shipped run draws this. `PL-9B1M` records both effects at the top of the
+fraction range.
+
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
 `core/matrix_exponential.py` halves the interval until the scaled matrix is
@@ -7264,18 +7355,43 @@ than this one, but it is not what is claimed here.
 <!-- not-restated: 2 %, 5 % -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**Why 24 hours, and not a multiple of the slowest time constant.** The fat
-group's time constant is about 42 h. A cap argued as several multiples of it
-would select for precisely the regime described above. That regime is the part
-of the trace that is most nearly all omission. The fat time constant bounds
-this number from *below* rather than above. With a span shorter than about one
-time constant, the fat trace stops showing what it exists to show. 24 hours is
-about 0.6 of it, so the fat compartment is still visibly loading. The span
-clears every anesthetic this simulator is built to teach by a wide margin. It
-also sits inside the regime that the source above calls clinically negligible
-for metabolism. It is also near the outer edge of the exposure range over
-which that omission has been measured at all.
+**Why 24 hours, and not a multiple of the slowest time constant.** At the
+reference settings, sevoflurane's fat group has a time constant of about 42 h.
+A cap argued as several multiples of it would select for precisely the regime
+described above. That regime is the part of the trace that is most nearly all
+omission. The fat time constant sets a floor on this number instead, and the
+floor is a fraction of the time constant, not a whole one. The span must be
+long enough that the fat compartment is still visibly loading when the run
+stops. 24 hours is about 0.6 of the time constant. At that fraction a
+first-order compartment has gone a little over two fifths of the way to
+equilibrium, so the fat trace still shows what it exists to show. A span of a
+few hours would stop that trace near its start. The floor says nothing about
+how far above it a run may go. The span also clears every anesthetic this
+simulator is built to teach by a wide margin (`PL-MLPT`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**The span is not inside the measured exposure range, and the 24 hours does
+not claim to be** (`PL-MLPT`). The review above measured how sevoflurane's
+metabolism scales with dose only from 0.35 to 9.5 MAC-hours. The cap bounds
+elapsed time, not exposure. A MAC-hour is conventionally counted at the
+end-tidal concentration, which in this model is the alveolar fraction. A run
+whose alveolar fraction is held near 1 MAC accumulates about one MAC-hour per
+hour. So such a run leaves the measured range at about 9.5 hours, and reaches
+about 24 MAC-hours at the cap. Every agent's dial opens at that agent's 1 MAC.
+The alveolar fraction stays below the dial during uptake, so a run left at the
+dial accumulates somewhat less than that. Sevoflurane's vaporizer delivers at
+most 8%, four times its 2% MAC. Counted at the dial, a run held there reaches
+at most about 96 MAC-hours. A long run at or above 1 MAC end-tidal therefore
+leaves the measured range well before 24 hours, and from then
+on even the size of the omission is unmeasured. The 24 hours rests on the
+argument above instead: the omission grows progressively once only the slow
+tail is still moving, and it grows without a cliff. It does not rest on the
+measured range. Isoflurane and desflurane are metabolized far less than
+sevoflurane, so for them the same span omits less.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- derived: 96 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **This replaces a memory limit that was never a modelling one.** The figure
 used before this section existed was 30 days. It was set on 2026-08-25 to size
@@ -8246,7 +8362,14 @@ advancing at a rate other than the one displayed. This rule keeps a faster playb
 "The reproducibility guarantee" rather than making it a second numerical
 solution. Identical inputs still produce identical run definitions. Two
 learners comparing the same case at different speeds are comparing the same
-arithmetic.
+arithmetic. A count of more than 1 000 steps per tick is refused too
+(`PL-T6P0`). A tick takes all of its steps before the interface can respond,
+so a count with no bound would freeze the application with no error. The
+bound is set by time: one step measured about 53 microseconds on 2026-10-26,
+so 1 000 steps take about half of the 0.1 s tick. The tick is one step long,
+so the fastest offered rate takes 300 steps per tick at any step.
+<!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 1000 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **What the rate label is a statement about, and what was measured**
 (`PL-SQJ1`). The label states the *setting*: the multiple of real time that
@@ -9248,13 +9371,19 @@ part.** The band must be read against the **vessel-rich** trace. This model
 has no effect-site compartment and defines $`F_a \equiv F_A`$ (see § "Model
 boundary"). So the alveolar trace is the fastest curve on the chart, and the
 furthest from where responsiveness actually returns. One measurement shows
-the size of the gap. It used a 3-hour 1 MAC sevoflurane case with the
-vaporizer turned off at 10 L/min. The alveolar trace crosses the band's centre
-at 2.83 min, and the vessel-rich trace crosses it at 6.51 min, 2.30 times
-later.
+the size of the gap. It ran sevoflurane for 3 hours at the opening dial of
+2.0%, which is the stored 1 MAC, and the default fresh gas flow of 4 L/min.
+That brought the alveolar fraction only to 1.69%, or 0.84 MAC. The vaporizer
+was then turned off and the fresh gas flow raised to 10 L/min. The alveolar
+trace crosses the band's centre at 2.86 min, and the vessel-rich trace crosses
+it at 6.55 min, 2.29 times later. These figures were measured on 2026-10-26
+with `AgentUptakeSystem.for_agent("sevoflurane")` at 0.1 s steps (`PL-39KH`).
 <!-- not-restated: 10 L/min -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
-<!-- derived: 2.83 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
 The primary literature makes this a question of *which number is correct*,
 not only of how a number is read. Katoh et al. determined sevoflurane and
@@ -9263,22 +9392,53 @@ one. The two methods disagree. Slow washout gave 0.34 and 0.31 of MAC for
 sevoflurane and isoflurane respectively, against 0.22 for both by fast
 washout. The paper attributes the difference to end-tidal-to-arterial and
 arterial-to-cerebral anesthetic differences. That is precisely what this model
-represents as the alveolar-to-vessel-rich difference. The paper also measures
-the brain concentration directly rather than leaving it to inference. During
-fast washout, the cerebral concentration at first eye opening was 0.34 of MAC
-for sevoflurane and 0.30 for isoflurane,
-"nearly equal to MAC-Awake obtained by slow alveolar washout". The stored
-values are therefore the slow-washout ones, and the trace they belong against
-is the vessel-rich one.
-
+represents as the alveolar-to-vessel-rich difference. The paper also
+estimates the brain concentration at awakening. That estimate is not a
+measurement, because cerebral concentration cannot be sampled in these
+patients. The abstract says the brain concentrations were "calculated with
+end-tidal anesthetic concentrations", and the title calls them "predicted".
+So they come from Katoh's own model of brain uptake (`PL-YDRT`). That model
+treats the brain as one well-mixed compartment perfused by arterial blood. Its
+equation 1 (p. 1013) is:
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 
-**Every way of getting this wrong runs in the same direction, and it is the
+$$
+\frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
+$$
+
+This is the perfusion-limited form that § "Tissue uptake and return" uses for
+each tissue group. Katoh's compartment is the brain alone, though, while this
+model's vessel-rich group pools the brain with the heart, liver, kidney and
+viscera. Every patient was given the same rules for the flow and the volume.
+Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac
+index of 3.5 L/min/m², so it scales with body surface area. Brain volume
+$`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's time
+constant therefore varied a little from patient to patient. The coefficients
+were the same for everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is
+0.63 for sevoflurane and 1.36 for isoflurane, and the brain:gas coefficient
+$`\lambda_{T/G}`$ is 1.15 and 2.09.
+The arterial partial pressure was not measured. Katoh's equation 2 sets it
+equal to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal
+value for 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The
+two give different answers. During fast washout, the calculated cerebral
+concentration at first eye opening was 0.30 of MAC for sevoflurane and 0.26
+for isoflurane under equation 2 (Table 1, p. 1014). Under equation 3 it was
+0.34 and 0.30 (Table 3, p. 1016). The abstract quotes the equation 3 figures,
+"nearly equal to MAC-Awake obtained by slow alveolar washout". Neither set
+differs significantly from the slow-washout values. The stored values are
+therefore the slow-washout ones, and the trace they belong against is the
+vessel-rich one. That rests on a modelled estimate agreeing with an
+equilibrated measurement, which is weaker evidence than a direct measurement
+of the brain would be.
+
+<!-- not-restated: 0.34 -->
+
+**Three ways of misreading the band run in the same direction, and it is the
 consequential one.** Concentration falls during emergence. So a trace crosses
 a higher reference sooner, and a faster-falling trace crosses any reference
-sooner. Three distinct errors therefore all shorten the apparent time to
-awakening. The first is reading the band against the alveolar trace instead
+sooner. Three distinct reading errors therefore all shorten the apparent time
+to awakening. The first is reading the band against the alveolar trace instead
 of the vessel-rich one. The second is drawing the slow-washout value against a
 fast-washout alveolar trace, where 0.22 would be the matching figure. The
 third is the denominator mistake described below. A learner who takes away
@@ -9286,6 +9446,53 @@ any of these errors concludes that emergence is faster than this model says.
 That learner carries into practice the belief that a patient is more awake
 than they are. That is why this document specifies the reference, rather than
 leaving it to the chart.
+
+**The band's height has a fourth source of error, and its direction differs
+by agent** (`PL-GCGX`). The band is the stored fraction times the stored
+`mac_percent`, which is the Gas Man flat adult MAC. The traces are absolute
+partial pressures and do not depend on that divisor. So wherever the divisor
+departs from the literature, the band moves against the traces by the same
+proportion. § "Delivery-limit and MAC parameters" compares the stored MAC with
+Mapleson's age-40 values. Against them, the stored MAC is 11.1% high for
+sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Mapleson's 95%
+confidence limits are about ±7%, and ±10% for desflurane. Only sevoflurane's
+gap is larger than its limits. So the sevoflurane band probably sits too high,
+by about 11% if Mapleson is right, and a band drawn too high teaches an earlier
+wake-up. On the measurement above, the vessel-rich trace crosses sevoflurane's
+drawn band centre of 0.68% at 6.55 min. It crosses 0.612%, the same fraction of
+Mapleson's 1.80%, at 7.31 min. The isoflurane and desflurane gaps are inside
+the limits, so Mapleson does not show either band to be off. For desflurane a
+direct measurement points the same way. The drawn centre of 2.16% agrees with
+Song et al.'s measured 2.17%, as the paragraph below says. All three figures
+are gaps from Mapleson's MAC, not from the MAC each source used.
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+
+Katoh's own denominator is each patient's age-adjusted MAC, from two linear
+equations on p. 1013. For isoflurane it is 1.43 − 0.0061 × age (yr) percent,
+and for sevoflurane 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC
+studies for them and does not say how the equations were derived from those
+studies. At age 40 the equations give 1.94% for sevoflurane and 1.19% for
+isoflurane. At that age the stored MAC is 3.3% above Katoh's for sevoflurane
+and 1.2% above it for isoflurane. The band is the stored fraction times the
+stored MAC, so it sits above Katoh's own age-40 awakening concentration by
+the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
+isoflurane, where Katoh's fractions times Katoh's age-40 MAC give 0.658% and
+0.368%. Both differences are much less than the 0.05 of MAC standard
+deviation of Katoh's fractions. Katoh's slow-washout patients themselves woke
+at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
+(Table 1, p. 1014). Those figures are lower than the band mostly because the
+patients were older, with mean ages of 45.9 and 45.1 years. So they are not a
+like-for-like check of a band drawn for age 40. The age-40 comparison points
+the same way as the Mapleson one: the band sits slightly high, so it teaches a
+slightly early wake-up (`PL-P319`).
+<!-- not-restated: 0.36 -->
+<!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 3.3% from data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- derived: 1.2% from data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
 
 **The value is stored as a fraction of MAC, never as a percent of one
 atmosphere, and that is a safety decision rather than a schema preference.**
@@ -9322,9 +9529,14 @@ reference adult value, not as a patient-specific one. The reason is that this
 model has no age parameter, while Katoh expressed MAC-awake as a ratio to
 age-adjusted MAC.
 
-One consequence is expected and is not a rendering fault. On a short case, the
-vessel-rich trace never reaches the 1 MAC line, because it never equilibrated.
-That is true of the patient, and it is worth teaching.
+One consequence is expected and is not a rendering fault. At a 1 MAC dial, no
+patient trace reaches the 1 MAC line, however long the case runs. Muscle and
+fat keep taking up agent for many hours, so the blood returning to the lungs
+stays below the alveolar gas. That keeps the alveolar fraction below the
+inspired fraction, and rebreathing keeps the inspired fraction below the dial
+(`PL-39KH`). The measurement above shows the size: after 3 hours at 1 MAC the
+alveolar and vessel-rich traces stood at 0.84 MAC. That is true of the
+patient, and it is worth teaching.
 
 **What the references inherit, and one methodological limitation.** The
 fractions are tier 1, from primary measurements in humans. `mac_percent` is
