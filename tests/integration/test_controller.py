@@ -6,7 +6,7 @@ import pytest
 
 from anesthesia_sim.app.bookmarks import BookmarkCrossing, MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
-from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.controller import (
     BranchedCase,
     HereForkPoint,
@@ -1303,6 +1303,10 @@ def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
     The branch uses the case's clock, so its elapsed time is past zero as soon
     as it exists. Counted from zero, it held a run to lose before the learner
     had done anything to it. Counted from where it began, it holds nothing.
+
+    A branch taken at a keyframe also opens with the trunk's change there in
+    its own timeline (`PL-ZR49`). That entry is where the branch began, not
+    something the learner did to it, so it does not count either.
     """
 
     trunk = _trunk_with_two_changes()
@@ -1311,10 +1315,12 @@ def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
 
     snapshot = branch.snapshot()
 
-    # The premise: the clock is past zero and nothing has been recorded.
+    # The premise: the clock is past zero, and the only entry is the one the
+    # branch opened with.
     assert snapshot.elapsed_s == snapshot.began_at_s == branch.began_at_s == fork_s
     assert snapshot.elapsed_s > 0.0
-    assert snapshot.control_timeline == ()
+    assert [change.elapsed_s for change in snapshot.control_timeline] == [fork_s]
+    assert snapshot.opened_with == snapshot.control_timeline
     assert trunk.snapshot().began_at_s == 0.0
 
     assert snapshot.has_recorded_run is False
@@ -2196,14 +2202,18 @@ def _trunk_with_two_changes() -> SimulationController:
 def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     """The item's own deliverable, in one test.
 
-    A branch opens at a canonical keyframe state of another run. Both its
-    clock and its definition start at the instant it was forked from. That is
-    because a branch is one patient's case under a second management, and
-    uptake is a function of time since induction. The test asserts the clock
-    and the definition together, because their agreement is what `PL-ZMRT`
-    delivered. While the definition opened at a zero of its own, a branch
-    carried two time frames, and every reader had to know which one it was
-    using.
+    A branch opens at a canonical keyframe state of another run. Its clock
+    starts at the instant it was forked from, and its definition's instants
+    are on the same axis. That is because a branch is one patient's case
+    under a second management, and uptake is a function of time since
+    induction. The test asserts the clock and the definition together,
+    because their agreement is what `PL-ZMRT` delivered. While the definition
+    opened at a zero of its own, a branch carried two time frames, and every
+    reader had to know which one it was using.
+
+    The definition opens on the trunk's stretch before the keyframe, which
+    the step reaching it ran under, and records the trunk's change at the
+    keyframe as a keyframe of its own (`PL-ZR49`).
     """
 
     trunk = _trunk_with_two_changes()
@@ -2214,14 +2224,16 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     # The branch uses the case's clock: it starts at the fork instant, not at zero.
     assert branch.snapshot().elapsed_s == fork_s
 
-    # The definition uses the case's clock too, and opens *at* the keyframe it carries.
-    assert branch.run_segments[0].opening.instant_s == fork_s
-    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+    # The definition uses the case's axis too. It opens on the stretch before
+    # the fork, and its own keyframe at the fork stands where the trunk's does.
+    assert branch.run_segments[0] == trunk.run_segments[-2]
+    assert branch.run_segments[-1].opening.instant_s == fork_s
+    assert branch.run_segments[-1].settings == trunk.run_segments[-1].settings
 
-    # And the state that arrived is the parent's keyframe, element for element.
+    # And the state at the fork is the parent's keyframe, element for element.
     for entry in COMPARTMENT_STATE_INDEX.values():
         assert (
-            branch.run_segments[0].opening.state[entry]
+            branch.run_segments[-1].opening.state[entry]
             == (trunk.run_segments[-1].opening.state[entry])
         )
 
@@ -2235,7 +2247,7 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     # `PL-ZMRT`, the reach and the clock are one quantity, not two related by
     # an offset. So asserting that they are equal asserts that no frame
     # conversion is left.
-    assert branch.run_segments[0].opening.instant_s == fork_s
+    assert branch.run_segments[0] == trunk.run_segments[-2]
     assert branch._run_definition.reached_s == branch.snapshot().elapsed_s
 
 
@@ -2499,39 +2511,40 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     assert branch_columns[-1] == trunk_columns[-1]
 
 
-def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> None:
+def test_a_control_moved_before_a_branch_steps_replaces_the_stretch_at_its_fork() -> None:
     """The learner's actual first act on a branch, which is to change something.
 
     When the run has not advanced past the open segment's own opening,
     `RunDefinition.record_change` replaces that segment's settings in place.
     It does not record a zero-length stretch that nothing was ever computed
-    under. The check it makes is an equality between the run's reach and its
-    first keyframe's instant. On a branch, both of those are now the fork
-    instant, where they used to be zero. So the behaviour is worth asserting
-    rather than assuming from the code. A version that initialised only one
-    of the two would open a zero-length segment here, and the run would still
-    look right.
+    under. The check it makes is an equality between the run's reach and the
+    open keyframe's instant. On a branch taken at a keyframe, both of those
+    are the fork instant, because the branch records the trunk's change there
+    as a keyframe of its own (`PL-ZR49`). So the behaviour is worth asserting
+    rather than assuming from the code. A version that recorded the keyframe
+    anywhere else would open a zero-length segment here, and the run would
+    still look right.
     """
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
     branch = trunk.resumed_at(fork_s)
 
-    assert len(branch.run_segments) == 1
+    assert len(branch.run_segments) == 2
 
     branch.set_delivered_concentration_percent(Percent(1.0))
 
-    assert len(branch.run_segments) == 1
-    assert branch.run_segments[0].opening.instant_s == fork_s
-    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+    assert len(branch.run_segments) == 2
+    assert branch.run_segments[-1].opening.instant_s == fork_s
+    assert branch.run_segments[-1].opening.state == trunk.run_segments[-1].opening.state
 
     # And the new settings are the ones the run is then computed under.
     branch.start()
     _advance_for(branch, duration_s=10.0)
     branch.pause()
 
-    assert branch.run_segments[0].settings.delivered_concentration_percent == 1.0
-    assert len(branch.run_segments) == 1
+    assert branch.run_segments[-1].settings.delivered_concentration_percent == 1.0
+    assert len(branch.run_segments) == 2
 
 
 def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
@@ -2555,22 +2568,42 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
     assert at_fork.exhausted_agent_l == trunk.run_segments[-1].opening.state[EXHAUSTED_AGENT_L]
 
 
-def test_a_branch_opens_with_its_own_empty_control_timeline() -> None:
+def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> None:
     """A branch records the acts its own learner makes, not its parent's.
 
     The history before the fork belongs to the trunk and is not reproduced
     here. What a branch carries forward is the *state* that history produced.
+    The one entry a branch taken at a keyframe opens with is the trunk's
+    change at that keyframe, because the branch runs under it (`PL-ZR49`).
+    A branch taken where the trunk stands, between keyframes, opens with
+    none.
     """
 
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    at_the_keyframe = trunk.resumed_at(fork_s).snapshot()
 
-    assert branch.snapshot().control_timeline == ()
-    assert trunk.snapshot().control_timeline != ()
+    def described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
+        return [
+            (change.elapsed_s, change.control, change.previous_value, change.new_value)
+            for change in changes
+        ]
+
+    at_fork = [change for change in trunk.snapshot().control_timeline if change.elapsed_s == fork_s]
+
+    assert len(trunk.snapshot().control_timeline) > len(at_fork) == 1
+    assert described(at_the_keyframe.control_timeline) == described(tuple(at_fork))
+    assert at_the_keyframe.opened_with == at_the_keyframe.control_timeline
+
+    trunk.start()
+    _advance_for(trunk, duration_s=10.0)
+    trunk.pause()
+
+    assert trunk.resumed_here().snapshot().control_timeline == ()
 
 
 def test_a_branch_inherits_its_parent_s_settings_at_the_fork() -> None:
-    """The settings are replayed from the recorded timeline, then checked against the segment.
+    """The settings are read from the run definition, then checked against the rebuilt branch.
 
     The check is the point. A branch that assembled a system matrix its parent
     never used would diverge from its first step. The divergence would stay
@@ -2700,15 +2733,20 @@ def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once(
 
 
 def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
-    """Every recorded setting change is a branch point, and so is the run's start."""
+    """Every recorded setting change is a branch point, and so is the run's start.
+
+    The branch's last keyframe is the trunk's keyframe, at the same instant,
+    state and settings. Its first stretch is the trunk's stretch before it,
+    or the trunk's opening stretch for a branch at the start (`PL-ZR49`).
+    """
 
     trunk = _trunk_with_two_changes()
 
-    for segment in trunk.run_segments:
+    for index, segment in enumerate(trunk.run_segments):
         branch = trunk.resumed_at(segment.opening.instant_s)
 
-        assert branch.run_segments[0].opening.instant_s == segment.opening.instant_s
-        assert branch.run_segments[0].opening.state == segment.opening.state
+        assert branch.run_segments[-1] == segment
+        assert branch.run_segments[0] == trunk.run_segments[max(index - 1, 0)]
 
 
 def test_resumed_at_refuses_an_instant_no_setting_changed_at_and_names_the_other_doors() -> None:
@@ -2876,9 +2914,12 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
     after = branch.snapshot()
 
+    # The timeline holds only what the branch reopened with at the fork: the
+    # trunk's change there, and the fresh gas flow the reset kept (`PL-ZR49`).
     assert after.elapsed_s == fork_s
-    assert after.control_timeline == ()
-    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+    assert after.control_timeline == after.opened_with
+    assert [change.elapsed_s for change in after.control_timeline] == [fork_s, fork_s]
+    assert branch.run_segments[-1].opening.state == trunk.run_segments[-1].opening.state
 
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
         assert getattr(after, field) == getattr(at_fork, field)
@@ -2915,7 +2956,8 @@ def test_a_branch_reset_the_core_refuses_leaves_the_branch_exactly_as_it_was() -
     assert branch.has_failed is False
     assert after.elapsed_s == before.elapsed_s > fork_s
     assert after.control_timeline == before.control_timeline
-    assert len(after.control_timeline) == 1
+    # The trunk's change the branch opened with, and the learner's change at 70 s.
+    assert len(after.control_timeline) == 2
     assert branch.run_segments == segments
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
         assert getattr(after, field) == getattr(before, field)
@@ -2965,7 +3007,7 @@ def test_a_case_forks_at_every_instant_the_trunk_offers() -> None:
     for elapsed_s in case.fork_points_s:
         branch = case.fork_at(elapsed_s)
 
-        assert branch.run_segments[0].opening.instant_s == elapsed_s
+        assert branch.run_segments[-1].opening.instant_s == elapsed_s
         assert branch.snapshot().elapsed_s == elapsed_s
 
     assert len(case.branches) == len(case.fork_points_s)
@@ -3169,7 +3211,7 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
 
     for change in trunk.snapshot().control_timeline:
         assert change.elapsed_s in case.fork_points_s
-        assert case.fork_at(change.elapsed_s).run_segments[0].opening.instant_s == (
+        assert case.fork_at(change.elapsed_s).run_segments[-1].opening.instant_s == (
             change.elapsed_s
         )
 
@@ -3280,9 +3322,12 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
 
     assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45.0), "the decision point"),)
     assert marks.mac_targets == (target,)
-    # The timeline still starts empty, because it is the half that does not
-    # carry over.
-    assert branch.snapshot().control_timeline == ()
+    # The trunk's earlier changes do not carry over, because the timeline is
+    # the half that does not. It holds only the change at the fork that the
+    # branch runs under (`PL-ZR49`).
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    timeline = branch.snapshot().control_timeline
+    assert [change.elapsed_s for change in timeline] == [fork_s]
 
 
 def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
@@ -3640,7 +3685,7 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     assert branch._state.step_count == fork_steps
     assert branch.opened_from is not None
     assert branch.opened_from.fork.state == trunk._run_definition.state_at(fork_s)
-    assert branch.opened_from.crossing is None
+    assert branch.snapshot().bookmark_halt is None
     assert branch.run_segments[0].opening.instant_s == trunk.run_segments[-1].opening.instant_s
     assert [
         (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
@@ -4013,7 +4058,9 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
     branch = marked.resumed_at(CaseInstant(30.0))
 
     assert branch.opened_from is not None
-    assert branch.opened_from.crossing == BookmarkCrossing(CaseInstant(30.0), (at_the_keyframe,))
+    assert branch.snapshot().bookmark_halt == BookmarkCrossing(
+        CaseInstant(30.0), (at_the_keyframe,)
+    )
     assert branch.opened_from == marked.resumed_here().opened_from
     assert marked.snapshot().bookmark_standings.of_time_bookmark(at_the_keyframe) is (
         MarkStanding.PASSED
@@ -4232,17 +4279,17 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
         branch.resumed_here()
 
 
-def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork() -> None:
-    """Where the two fork methods meet, and the arithmetic does not notice.
+def test_a_setting_changed_while_halted_is_carried_only_by_the_keyframe_fork() -> None:
+    """Where the halt fork and the control-event fork meet, at one instant with two sides.
 
     A halt is an ordinary pause, and the setters apply unconditionally. So a
     learner may stop on a mark and dial something before branching. That
-    opens a segment at the halt instant, which makes the fork a keyframe after
-    all. The definition opens *at* the fork, and the two options that
-    `_open_at` chooses between are the same keyframe. The test pins this
-    because it is the one path where a bookmark fork and a control-event fork
-    are the same fork. A later change that treated the halt as a special case
-    would have to keep them the same.
+    opens a segment at the halt instant, so the halt is now a keyframe as
+    well. The two doors at that instant then take its two sides (`PL-ZR49`).
+    `resumed_here` opens under the stretch the halting step ran under, and
+    the change stays the trunk's (`PL-HSP8`). `resumed_at` opens after the
+    change and records it in its own timeline. Both name the same provenance,
+    and the keyframe branch reproduces the trunk element for element.
     """
 
     marked = SimulationController()
@@ -4251,34 +4298,46 @@ def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork(
     _advance_until_halted(marked, limit_s=60.0)
 
     fork_s = marked.snapshot().elapsed_s
+    dialled = marked.snapshot().delivered_concentration_percent
     marked.set_delivered_concentration_percent(Percent(4.0))
 
     assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, fork_s]
     assert marked.snapshot().bookmark_halt is not None
 
-    branch = marked.resumed_here()
+    here = marked.resumed_here()
+    at_the_keyframe = marked.resumed_at(fork_s)
 
-    assert branch.run_segments[0].opening.instant_s == branch.began_at_s == fork_s
-    assert branch.run_segments[0].opening.state == marked._run_definition.state_at(fork_s)
+    assert here.opened_from == at_the_keyframe.opened_from
+    assert here.opened_from is not None
+    assert here.opened_from.segment == marked.run_segments[0]
+    assert here.snapshot().delivered_concentration_percent == dialled
+    assert here.snapshot().control_timeline == ()
+    assert at_the_keyframe.snapshot().delivered_concentration_percent == 4.0
+    assert [
+        (change.elapsed_s, change.control, change.previous_value, change.new_value)
+        for change in at_the_keyframe.snapshot().control_timeline
+    ] == [(fork_s, ControlInput.DELIVERED, dialled, 4.0)]
 
     marked.start()
     _advance_for(marked, duration_s=30.0)
-    branch.start()
-    _advance_for(branch, duration_s=30.0)
+    at_the_keyframe.start()
+    _advance_for(at_the_keyframe, duration_s=30.0)
 
     fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
 
     for steps_past_fork in range(0, 301):
         case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s)
+        assert at_the_keyframe._run_definition.state_at(case_s) == (
+            marked._run_definition.state_at(case_s)
+        )
 
 
 def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
     """Where a branch's definition opens cannot depend on the order of a dial and a reset.
 
     "Dial, dial back, reset" and "dial, reset, dial back" end at one branch:
-    the same settings, the same live state, the same snapshot. Suppose the
+    the same settings, live state, run definition and control timeline. Suppose the
     reset decided where the definition opens from the settings in place at
     that moment. The second sequence would then open at the fork rather than
     at the parent's keyframe. It would restart from two propagations where the
@@ -4553,7 +4612,7 @@ def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too
     branch = late.resumed_at_mark(instant)
 
     assert branch.opened_from is not None
-    assert branch.opened_from.crossing == BookmarkCrossing(crossed_at_s, (instant,), (target,))
+    assert branch.snapshot().bookmark_halt == BookmarkCrossing(crossed_at_s, (instant,), (target,))
     assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
 
 
@@ -4661,7 +4720,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
     where_it_stands = case.fork_here()
 
     assert at_the_keyframe.opened_from is not None
-    assert at_the_keyframe.opened_from.crossing == BookmarkCrossing(
+    assert at_the_keyframe.snapshot().bookmark_halt == BookmarkCrossing(
         CaseInstant(crossed_at_s), (halting, late), (target,)
     )
     assert at_the_keyframe.opened_from == where_it_stands.opened_from
@@ -4683,7 +4742,7 @@ def test_a_mark_at_the_case_s_opening_returns_to_induction_with_no_crossing() ->
     returned = trunk.resumed_at_mark(at_induction)
 
     assert returned.opened_from is not None
-    assert returned.opened_from.crossing is None
+    assert returned.snapshot().bookmark_halt is None
     assert returned.opened_from == trunk.resumed_at(CaseInstant(0.0)).opened_from
     assert returned.snapshot().bookmark_standings.of_time_bookmark(at_induction) is (
         MarkStanding.PASSED
@@ -4700,8 +4759,9 @@ def test_a_mark_is_returned_to_by_its_instant_whatever_label_the_caller_holds() 
     branch = trunk.resumed_at_mark(TimeBookmark(CaseInstant(60.0)))
 
     assert branch.opened_from is not None
-    assert branch.opened_from.crossing is not None
-    assert branch.opened_from.crossing.time_bookmarks == (held,)
+    halt = branch.snapshot().bookmark_halt
+    assert halt is not None
+    assert halt.time_bookmarks == (held,)
 
 
 def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:

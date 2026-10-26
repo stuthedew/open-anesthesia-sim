@@ -381,6 +381,7 @@ def _snapshot(
         is_running=is_running,
         elapsed_s=CaseInstant(latest.elapsed_s),
         began_at_s=CaseInstant(0.0),
+        opened_with=(),
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
