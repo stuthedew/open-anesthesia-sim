@@ -110,13 +110,26 @@ WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 #: in one exact step from their start to 24 h, as `RunDefinition.state_at` does,
 #: reached at most 1 + 9.6e-14.
 #:
-#: The allowance of 1e-9 is about 10,000 times the largest of those. If a
-#: quotient that close to one does reflect real elimination, the elimination is
-#: far too small to show in the two decimals that the interface prints. The
-#: project owner chose this allowance on 2026-10-26. The alternative was to give
-#: the propagator an exact fixed point, which would have changed the last
-#: digits of every run.
-WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-9
+#: The allowance is set from a clinical requirement, not from the rounding
+#: alone (project owner, 2026-10-26, ratified, over 1e-9 sized from rounding
+#: and over deriving the value in code). The requirement is that a whole run of
+#: the longest supported length, sitting at the edge of the allowance, loses
+#: less than 1% of the agent in the fast pool: the alveolar gas, the venous
+#: blood and the vessel-rich group, which holds the brain. At a quotient of
+#: 1 + allowance, agent leaves at alveolar ventilation times $`F_I`$ times the
+#: allowance. Against the fast pool the concentration cancels. The worst case
+#: is desflurane, the least soluble agent, at 12 L/min. At 1e-6 over 24 h it
+#: loses about 0.3%. `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
+#: checks the requirement for every shipped agent, from the run-length limit,
+#: the ventilation limit and the data files. A longer run limit, a higher
+#: ventilation limit or a less soluble agent turns it red, and a person then
+#: chooses a new value.
+#:
+#: The allowance is also far above the rounding. It is about 10 million times
+#: the largest overshoot measured, 9.6e-14, and
+#: `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination` keeps
+#: it at least 1,000 times the rounding at each agent's fixed point.
+WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-6
 
 
 class WashInDomain(StrEnum):

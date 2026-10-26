@@ -28,16 +28,33 @@ from anesthesia_sim.app.wash_in import (
     wash_in_ratio,
 )
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION, INSPIRED_FRACTION
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     CardiacOutput,
     FreshGasFlow,
 )
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 #: The limit is one hour of `SIMULATION_STEP_S` steps. Each run below reaches its fixed
 #: point in about 21 000 steps, so a run that has not reached it within the limit has failed.
 ZERO_OUTPUT_STEP_LIMIT = 36_000
+
+#: The clinical requirement on `WASH_IN_ROUNDING_ALLOWANCE` (`PL-N559`, project owner,
+#: 2026-10-26). A whole run of the longest supported length, held at the edge of the allowance,
+#: must lose less than this share of the agent in the fast pool.
+HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL = 0.01
+
+#: How many times the rounding at a settled state the allowance must be, at least. Below this,
+#: a later tightening of the allowance would bring back the false elimination caption.
+ROUNDING_MARGIN = 1_000
 
 #: How close each settled fraction must be to the closed form, relative. The
 #: measured distance is about 2e-14 (`PL-N559`, 2026-10-26).
@@ -211,6 +228,15 @@ def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: st
     assert reading.plotted_ratio == alveolar / inspired
     if agent == "isoflurane":
         assert alveolar > inspired, "the case that the rule once read as elimination"
+    overshoot = abs(alveolar / inspired - WASH_IN_EQUILIBRIUM_RATIO)
+    assert overshoot * ROUNDING_MARGIN <= WASH_IN_ROUNDING_ALLOWANCE, (
+        f"WASH_IN_ROUNDING_ALLOWANCE ({WASH_IN_ROUNDING_ALLOWANCE:g}) is less than "
+        f"{ROUNDING_MARGIN} times the rounding at {agent}'s settled state ({overshoot:.2g}). "
+        "Either the allowance was tightened too far, or a change to the solver now rounds "
+        "worse. Too small an allowance brings back PL-N559: at zero cardiac output the wash-in "
+        "plot says the patient is returning agent when nothing has changed. See "
+        'docs/MODEL.md § "F_A/F_I as a displayed ratio".'
+    )
 
 
 def test_the_rounding_allowance_is_the_only_slack_above_equilibrium() -> None:
@@ -219,4 +245,69 @@ def test_the_rounding_allowance_is_the_only_slack_above_equilibrium() -> None:
     assert is_wash_in(WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE)
     assert not is_wash_in(
         math.nextafter(WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE, math.inf)
+    )
+
+
+def _fast_pool_capacity_l(agent: str) -> float:
+    """Return the litres of vapour that the fast pool holds per unit of fraction.
+
+    The fast pool is the alveolar gas, the venous blood and the vessel-rich group, which holds
+    the brain. Each compartment holds its volume times its partition coefficient against gas.
+    Muscle and fat are left out, so the pool is the smallest one that a hidden loss could
+    deplete, and the bound is conservative.
+    """
+
+    agent_parameters = load_agent_parameters(agent)
+    patient = load_reference_adult_parameters()
+    return (
+        float(patient.alveolar_gas_volume_l)
+        + float(patient.venous_pool_volume_l)
+        * float(agent_parameters.blood_gas_partition_coefficient)
+        + float(patient.vessel_rich_volume_l)
+        * float(agent_parameters.vessel_rich_tissue_gas_partition_coefficient)
+    )
+
+
+@pytest.mark.parametrize("agent", sorted(AGENT_DATA_FILENAMES))
+def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent: str) -> None:
+    """A run held at the edge of the allowance loses under 1% of the fast pool (`PL-N559`).
+
+    A quotient of 1 + `WASH_IN_ROUNDING_ALLOWANCE` is drawn as equilibrium. If the run were
+    really eliminating at that edge, agent would leave at alveolar ventilation times $`F_I`$
+    times the allowance. Against the fast pool, which holds its capacity times $`F_I`$, the
+    concentration cancels. The test takes the fastest supported ventilation and the longest
+    supported run, so it covers every run the simulator allows. It is meant to fail when either
+    limit grows or a less soluble agent ships, and its message says what to do then.
+    """
+
+    run_length_min = MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
+    capacity_l = _fast_pool_capacity_l(agent)
+    hidden_loss_fraction = (
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN * WASH_IN_ROUNDING_ALLOWANCE * run_length_min
+    ) / capacity_l
+    largest_allowance = (
+        HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL
+        * capacity_l
+        / (MAXIMUM_ALVEOLAR_VENTILATION_L_MIN * run_length_min)
+    )
+
+    assert hidden_loss_fraction < HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL, (
+        "This test failed as designed. It guards WASH_IN_ROUNDING_ALLOWANCE in "
+        "src/anesthesia_sim/app/wash_in.py (PL-N559). The wash-in plot treats a ratio up to "
+        f"1 + {WASH_IN_ROUNDING_ALLOWANCE:g} as equilibrium, and that is only safe while a "
+        "whole run at that edge loses less than "
+        f"{HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL:.0%} of the agent in the fast pool. "
+        f"For {agent} it would now lose {hidden_loss_fraction:.2%}.\n"
+        "The inputs it read:\n"
+        f"  run-length limit MAXIMUM_ELAPSED_SIMULATION_TIME_S = "
+        f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s ({run_length_min / 60:g} h)\n"
+        f"  ventilation limit MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = "
+        f"{MAXIMUM_ALVEOLAR_VENTILATION_L_MIN:g} L/min\n"
+        f"  {agent}'s fast pool = {capacity_l:.3g} L of vapour per unit fraction\n"
+        "One of these grew since the allowance was set, or a less soluble agent was added. "
+        "What to do: lower WASH_IN_ROUNDING_ALLOWANCE to at most "
+        f"{largest_allowance:.2g} (a round value below it, such as half), and update its "
+        'reasoning there and in docs/MODEL.md § "F_A/F_I as a displayed ratio". '
+        "test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination then checks that "
+        "the new value is still far enough above the rounding."
     )
