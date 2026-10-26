@@ -96,6 +96,12 @@ auto-merge never updates a branch. The refusal binds an admin too. A session's
 GitHub calls are the owner's, so a session squash-merges a pull request that
 GitHub will not arm because it is already green and current (project owner,
 2026-10-03, ratified, over the owner's click, `PL-NXRJ`).
+It asks the owner nothing first. A direct merge needs exactly what an armed
+auto-merge needs: green checks, a current branch and `bin/docket arm`
+answering arm. Merging directly instead of through auto-merge is never a
+reason to ask. A harness permission check that refuses the call is a blocked
+tool call, reported as blocked, and never a question for the owner (project
+owner, 2026-10-26, `PL-D902`).
 
 Bring `main` in sooner only on a genuine conflict, on a notice that `main` is
 green again, or before editing work the session will push anyway, as
