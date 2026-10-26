@@ -19,3 +19,21 @@ verify: grep -q 'def test_a_zero_cardiac_output_steady_state_is_not_read_as_elim
 **Done when.** At zero cardiac output and high fresh gas flow, the steady state is read as wash-in at equilibrium, not elimination, through an exact fixed point in the propagator or a tolerance derived from rounding, and `docs/MODEL.md` records which. `tests/unit/test_wash_in.py` has `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`, checked against the closed form.
 
 **Found by.** `PL-TBQS` reviewer replay on #376, finding r01 F1. Checked against main on 2026-10-25 with `scripts/c_core376.py P`.
+
+**Put to the project owner, 2026-10-26 (#1864).** Measured on the branch: at
+zero cardiac output, all 21 agent and fresh gas combinations run for 24 h on
+the canonical path end with F_A above F_I by rounding alone, at most 9.6e-14
+relative. So the caption is wrong in every such run.
+
+- Route A: `is_wash_in` allows a tolerance derived from the model's stated
+  rounding. A ratio up to 1 + tau reads as wash-in at equilibrium, and the
+  plotted value is the computed quotient, not clamped. tau is set from the
+  worst accumulated 24 h relative error that `docs/MODEL.md` § "The numerical
+  envelope" states for shipped settings, with margin. An app-only change.
+- Route B: an exact fixed point in the propagator, by carrying each fraction
+  as its distance from the delivered fraction. A core change that moves every
+  run's last digits, filed as its own item.
+
+**Recommended:** route A. It fixes the false caption with no change to the
+core's numbers, and the elimination it could misread is far below the ratio's
+two displayed decimals.
