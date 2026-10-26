@@ -1,26 +1,29 @@
-"""Every core operation gives a correct answer at every corner of the inputs it accepts.
+"""Every core operation returns a correct result at every corner of the inputs it accepts.
 
-Before `PL-58D7`, each of nine floating-point defects in `core/` was found one
-operation at a time. A product overflowed to `inf`, a quotient underflowed to
-zero, or a subtraction cancelled, at an extreme input that the constructors
-accepted. Each fix guarded its own operation and said nothing about the next.
+Before `PL-58D7`, nine floating-point defects in `core/` were found one
+operation at a time. In each, a product overflowed to `inf`, a quotient
+underflowed to zero, or a subtraction lost its precision to cancellation. Each
+happened at an extreme input that the constructors accepted. Each fix guarded
+its own operation and said nothing about the next.
 
-The fix gives every input a declared interval, and refuses a value outside it
-when the value is built. `docs/MODEL.md` § "The numerical envelope" lists the
-intervals. This module tests the two halves of that claim.
+The `PL-58D7` fix gives every input a declared interval, and refuses a value
+outside that interval when the value is built. `docs/MODEL.md` § "The numerical
+envelope" lists the intervals. So every value inside its interval should give a
+correct result, and every value outside it should be refused. This module tests
+both halves of that claim.
 
 **Every operation at every corner.** The first test runs every operation at
-every corner of the intervals and checks each result against what the equations
+every corner of the intervals. It checks each result against what the equations
 require there. A rate, a capacity or a time constant is a product or quotient of
-positive inputs. Its logarithm is a sum of the inputs' logarithms, so its
-largest and smallest values over the intervals lie at their corners. An
-operation added later is tested at those corners without anyone listing it,
-because the test runs whole operations rather than named formulas.
+positive inputs. Its logarithm is the inputs' logarithms added or subtracted. So
+its largest and smallest values over the intervals lie at the intervals'
+corners. An operation added later is tested at those corners without anyone
+listing it, because the test runs whole operations rather than named formulas.
 
 **One representable value past every edge.** The second test builds every input
-at each edge of its interval, and then one representable value past each edge,
-and expects the simulator's own refusal. So a bound that moves, or a guard that
-stops firing, fails here by name.
+at each edge of its interval. It then builds each input one representable value
+past each edge, and expects the simulator's own refusal. So if a bound moves or
+a guard stops firing, this test fails and names the input.
 """
 
 import itertools
@@ -79,15 +82,16 @@ from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 PROPAGATOR_ERROR = 3.0 * 2.0**MAXIMUM_SQUARINGS * 2.0**-52
-"""The largest relative error that one propagator may carry, from the bound its module states.
+"""The largest relative error that one propagator may carry, from the bound that its module states.
 
-`core/matrix_exponential.py` states that after `s` squarings a propagator's
+`core/matrix_exponential.py` states that after `s` squarings, a propagator's
 entries carry an error of up to about `2**s` times the machine epsilon,
-`2**-52`, and that the measured worst entry stayed within 2.7 times that bound.
-It refuses a propagator that would need more than `MAXIMUM_SQUARINGS`. So no
-propagator it returns is further from the exact exponential than this, which
-rounds 2.7 up to 3. A state reached by composing several propagators may carry
-that error once for each of them.
+`2**-52`. It also states that the worst entry measured stayed within 2.7 times
+that bound. The module refuses a propagator that would need more than
+`MAXIMUM_SQUARINGS` squarings. So no propagator that it returns is further from
+the exact exponential than this constant, which rounds 2.7 up to 3. A state
+reached by composing several propagators may carry that error once for each of
+them.
 """
 
 SMALLEST_SUBNORMAL = 5e-324
@@ -103,25 +107,26 @@ COEFFICIENT_CORNERS = (
     (MAXIMUM_PARTITION_COEFFICIENT, MINIMUM_PARTITION_COEFFICIENT),
     (MAXIMUM_PARTITION_COEFFICIENT, 1.0),
 )
-"""Each pair is a blood:gas coefficient and a tissue:blood coefficient at a corner.
+"""Each pair is a blood:gas and a tissue:blood partition coefficient at one corner.
 
-The two are not independent. Their product is the tissue:gas coefficient, and
-all three must lie in the envelope of 0.001 to 10 000. On logarithmic axes those
-three intervals cut a hexagon out of the square. Its six vertices are these
-pairs, and a product or quotient of the coefficients takes its extremes at
-them.
+The two coefficients are not independent. Their product is the tissue:gas
+coefficient, and all three must lie in the envelope of 0.001 to 10 000. On
+logarithmic axes, the blood:gas and tissue:blood intervals make a square, and
+the tissue:gas interval cuts a hexagon out of it. These pairs are the hexagon's
+six vertices. A product or quotient of the coefficients takes its largest and
+smallest values at them.
 """
 
 PERFUSION_FRACTIONS = (0.75, 0.19, 0.06)
 """How cardiac output is split among the vessel-rich, muscle and fat groups here.
 
 Each tissue's flow is a fraction of the cardiac output, so its extremes are
-zero and the cardiac output itself. Zero cardiac output and the largest share
-stand for those extremes in every run.
+zero and the cardiac output itself. Every run uses zero cardiac output and the
+largest share to represent those extremes.
 """
 
 LOPSIDED_PERFUSION_FRACTIONS = (1.0, SMALLEST_SUBNORMAL, SMALLEST_SUBNORMAL)
-"""A split that sends all of the cardiac output to one group and the smallest float to each other.
+"""A split that sends the whole cardiac output to one group and the smallest float to the other two.
 
 A perfusion fraction is refused at zero but accepted at any positive float, so
 a group can take a vanishing share of a full cardiac output. The three still
@@ -138,8 +143,9 @@ class Corner(NamedTuple):
     """One corner of the volumes and coefficients, with every tissue at the same corner.
 
     Each tissue's own rates are products and quotients of its own volume and
-    coefficients, so the three groups do not need separate corners for those.
-    They meet only in the venous pool, which sums what each returns.
+    coefficients. So the three groups do not need separate corners to reach the
+    extremes of those rates. The groups interact only in the venous pool, which
+    sums what each group returns.
     """
 
     circuit_l: float
@@ -216,11 +222,11 @@ def _opening_state(fraction: float) -> tuple[float, ...]:
 
 
 def _stored_agent_l(corner: Corner, state: tuple[float, ...]) -> float:
-    """The agent the compartments hold, in litres of gas, worked from the state and the corner.
+    """Return the agent held in the compartments, in litres of gas, from the state and the corner.
 
     Each gas compartment holds its volume times its fraction. The venous pool
-    holds its volume times the blood:gas coefficient times its fraction, and
-    each tissue its volume times its tissue:gas coefficient times its fraction
+    holds its volume times the blood:gas coefficient times its fraction. Each
+    tissue holds its volume times its tissue:gas coefficient times its fraction
     (`docs/MODEL.md` § "Governing equations").
     """
 
@@ -240,14 +246,14 @@ def _stored_agent_l(corner: Corner, state: tuple[float, ...]) -> float:
 def _require_what_the_equations_require(
     corner: Corner, opening: tuple[float, ...], state: tuple[float, ...], propagators: int
 ) -> None:
-    """Check one state of a run that opened at `opening` under the full dial or none.
+    """Check one state of a run that opened at `opening`, with the dial full or at zero.
 
-    Every value is finite. Every fraction lies between its opening and its
-    equilibrium, which here always means between 0 and 1. Neither accumulator
-    is negative. The agent held, plus what was exhausted, equals what was held
-    at the opening plus what was delivered. Each of the last two holds to within
-    `PROPAGATOR_ERROR` for each of the `propagators` that were composed to reach
-    the state.
+    Every value is finite. Every fraction lies between its opening value and its
+    equilibrium, which here always means between 0 and 1. Neither accumulator is
+    negative. The agent held now, plus the agent exhausted, equals the agent held
+    at the opening plus the agent delivered. The fraction check and the balance
+    check allow an error of up to `PROPAGATOR_ERROR` for each of the
+    `propagators` that were composed to reach the state.
     """
 
     tolerance = propagators * PROPAGATOR_ERROR
@@ -273,15 +279,16 @@ COLUMNS = 60
 def _require_the_run(corner: Corner) -> None:
     """Evaluate a run across the supported run length at every flow corner.
 
-    Each run opens either empty under the full dial, a wash-in, or full under
-    the dial at zero, a washout. It is sampled on the display path at
-    `COLUMNS` columns. The display path composes one propagator per column, so
-    its last column carries `COLUMNS` propagators' error. It is also sampled on
-    the canonical path at five instants from the step's floor to the run's end.
-    The canonical path forms one propagator from the opening to each instant.
-    At the stiffest corners the whole 86 400 s interval needs more squarings
-    than `MAXIMUM_SQUARINGS`, so that one instant may be refused, with the
-    simulator's own error. No other refusal is accepted.
+    Each run is either a wash-in or a washout. A wash-in opens empty with the
+    dial full. A washout opens full with the dial at zero. Each run is sampled
+    on the display path at `COLUMNS` columns. The display path composes one
+    propagator per column, so its last column carries the error of `COLUMNS`
+    propagators. Each run is also sampled on the canonical path at five
+    instants, from the smallest supported step to the end of the run. The
+    canonical path forms one propagator from the opening to each instant. At the
+    stiffest corners, the whole 86 400 s interval needs more than
+    `MAXIMUM_SQUARINGS` squarings. So the instant at the end of the run may be
+    refused there, with the simulator's own error. No other refusal is accepted.
     """
 
     for flows in FLOW_CORNERS:
@@ -365,16 +372,17 @@ def _system(
 
 
 def _require_the_system(corner: Corner) -> None:
-    """Step the coupled system once, at the run's floor and at its ceiling, at every flow corner.
+    """Step the coupled system once per flow corner, at the smallest and largest supported step.
 
     `AgentUptakeSystem.advance` checks the agent balance after every step, to
-    one part in 10**9, and refuses a step that misses it. One step passes that
-    check at every corner. Over many steps the stiffest corners do not, which
+    one part in 10**9. It refuses a step that fails that check. One step passes
+    the check at every corner. Over many steps, the stiffest corners fail it, as
     `PL-D88N` measures.
 
-    A step from a full state may be refused, and only with the one refusal
-    `PL-9B1M` describes: rounding takes a fraction a few units in the last place
-    past 1, the fraction check refuses it, and the step is rolled back.
+    A step from a full state may be refused, but only for the one reason that
+    `PL-9B1M` describes. Rounding can take a fraction a few units in the last
+    place past 1. The fraction check then refuses that fraction, and the step is
+    rolled back.
     """
 
     for flows, fraction, step_s, perfusion_fractions in itertools.product(
@@ -409,14 +417,14 @@ def _require_the_system(corner: Corner) -> None:
 
 
 def _require_the_compartments_alone(corner: Corner) -> None:
-    """Step each compartment on its own at its step's floor and its ceiling.
+    """Step each compartment on its own at the shortest and the longest step it accepts.
 
-    A compartment stepped alone takes a step from `MINIMUM_SIMULATION_STEP_S` to
-    the supported run length (`require_compartment_step`), and a tissue or the
-    venous pool takes any finite blood flow that is not negative. So the blood
-    flow also runs at the largest float. The circuit's exchange must close its
-    own balance, and every amount must lie between where it started and its
-    equilibrium.
+    A compartment stepped alone accepts a step from `MINIMUM_SIMULATION_STEP_S`
+    up to the supported run length, as `require_compartment_step` checks. A
+    tissue or the venous pool accepts any finite blood flow that is not
+    negative. So the blood flow also runs at the largest float. The circuit's
+    exchange must close its own agent balance. Every amount must lie between its
+    starting value and its equilibrium.
     """
 
     for step_s in (MINIMUM_SIMULATION_STEP_S, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
@@ -488,12 +496,14 @@ def test_the_corners_are_the_96_that_the_envelope_has() -> None:
 
 @pytest.mark.parametrize("corner", CORNERS, ids=lambda corner: "-".join(f"{v:g}" for v in corner))
 def test_every_core_operation_holds_its_equations_at_every_envelope_corner(corner: Corner) -> None:
-    """At each corner, every operation gives a finite answer that the equations allow, or refuses.
+    """At each corner, every operation returns a finite result that the equations allow, or refuses.
 
-    The corner fixes every volume and coefficient. Inside it, the flows run at
-    zero, the smallest float and their tops, and the run opens either empty or
-    full. The only refusal accepted is the canonical path's single 86 400 s
-    interval at the stiffest corners.
+    The corner fixes every volume and coefficient. At each corner, the flows run
+    at zero, at the smallest float and at their supported maximums. The run opens
+    either empty or full. Two refusals are accepted, each with the simulator's
+    own error. One is the canonical path's refusal of its single 86 400 s
+    interval at the stiffest corners. The other is a step from a full state that
+    rounds a fraction just past 1, which `PL-9B1M` records.
     """
 
     _require_the_run(corner)
@@ -559,9 +569,9 @@ EDGES = (
 )
 """Every input with an interval of its own, and the interval as `PL-58D7` records it.
 
-The bounds are written out here rather than read from the modules that hold
-them, so that a bound which moves fails this test and is noticed. A step count
-and a window's column count are whole numbers, so they are in `WHOLE_EDGES`.
+The bounds are written out here rather than read from the modules that define
+them. So a bound that moves fails this test and is noticed. A step count and a
+window's column count are whole numbers, so they are in `WHOLE_EDGES`.
 """
 
 WHOLE_EDGES = (
