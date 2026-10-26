@@ -3,7 +3,7 @@ id: PL-N559
 title: At zero cardiac output and high fresh gas flow, the exact propagator settles with the alveolar fraction a few units in the last place above the inspired fraction and the dial, so read_wash_in classes the steady state as elimination and the wash-in plot tells the learner the patient is returning agent while nothing changed
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect, science, ux, safety
 feature: replay-findings
 touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/app/wash_in.py, tests/unit/test_wash_in.py, docs/MODEL.md
