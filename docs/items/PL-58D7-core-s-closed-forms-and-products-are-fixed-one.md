@@ -13,7 +13,7 @@ added: 2026-10-25
 payoff: each core operation states and enforces the inputs on which its floating-point answer is correct, so an extreme input is refused at build rather than found as a nan or a negative uptake
 verify: grep -rq 'def test_every_core_operation_refuses_inputs_outside_its_floating_point_domain' tests/unit && grep -rq 'def test_every_core_operation_holds_its_equations_at_every_envelope_corner' tests/unit
 root-cause-of: PL-3PRZ, PL-2MD9, PL-6QYJ, PL-8H2R, PL-B26Y, PL-YT8N, PL-XWFP, PL-FNH3, PL-8LQZ
-generator: live - seven members filed 2026-10-03 to 2026-10-17, the last two closed 2026-10-19, each fixed for its own operation with no stated domain for the next
+generator: spent - every input to core now has one interval, refused where it is built, and the corner sweep tests every operation at its corners (2026-10-26)
 misread: The floating-point input domain on which each closed form and product in core gives a correct answer
 ---
 
@@ -53,3 +53,39 @@ Recorded as the session's decision, not the owner's. It changes the mechanism an
 **Done when.** `PL-QX2G`, `PL-YT3T`, `PL-06LS` and `PL-XST1` are closed. Every input to `core/` has a declared envelope, stated in `docs/MODEL.md` with its measurement and refused outside it when built. The corner sweep above and the refusal test past each edge pass.
 
 **Generator check.** This item is the head.
+
+**Done, 2026-10-26.** All four members are closed: `PL-QX2G`, `PL-YT3T`,
+`PL-06LS` and `PL-XST1`. The sweep is `tests/unit/test_numerical_envelope_sweep.py`,
+and `docs/MODEL.md` § "The numerical envelope" now has one table of every input
+to `core/`, its interval and what refuses it.
+
+How the sweep checks each result. A fraction must stay from 0 through 1, every
+amount and running total must be finite and not negative, and the agent balance
+must close. The balance cannot close to a fixed tolerance across 24 hours at the
+stiffest corners: washing out from a full state there, the display path's last
+column was 2.6e-5 out, which matches the "After 24 h" column of the envelope
+table. So the sweep allows each result the error bound that
+`core/matrix_exponential.py` states, 2**32 times machine epsilon per propagator
+with a margin of 3, times the number of propagators chained to reach it. The
+error was measured at up to 2.7 times the stated bound, which is why the margin
+is 3 and not 1.
+
+What it found. Nothing went negative, non-finite or out of balance anywhere.
+One new defect: a step from a state with every compartment at a fraction of 1
+can round a fraction a few units in the last place past 1, and the step is then
+refused and rolled back. That is the safe failure, and no shipped agent reaches
+it. It is filed as `PL-9B1M` in this feature, and the sweep accepts that one
+refusal by name. The canonical path's refusal of one 86 400 s propagator at the
+stiffest corners is the documented one and is also accepted by name.
+
+Two inputs were added to what the brief listed. A tissue group's perfusion
+fraction is accepted at any positive float, so the coupled step also runs with
+all of the cardiac output in one group and the smallest float in each other.
+The blood flow handed to a compartment stepped on its own has no upper bound,
+so the sweep steps it at the largest float rather than bounding it. A bound
+there would refuse nothing a run can produce, because a run computes that flow
+from a bounded cardiac output.
+
+The generator is spent. The structure the brief asked for is built: each input
+has one interval, held where it is refused, and an operation added later is
+tested at those corners without anyone listing it.

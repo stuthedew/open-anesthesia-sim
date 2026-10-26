@@ -2299,6 +2299,75 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
 factors, so each checks the quotient whenever a factor is written.
 
+**Every input to `core/` has an interval, and one sweep tests them all**
+(`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
+between 2026-09-06 and 2026-10-17, each one operation at a time. A product
+overflowed, a quotient underflowed or a subtraction cancelled at an extreme
+input that a constructor had accepted. So each input now has a closed interval,
+and a value outside it is refused when it is built. An operation added later
+inherits those intervals without anyone writing a domain for it. The table
+lists every input and the function or type that refuses it.
+
+| Input | Interval | Refused by |
+| --- | --- | --- |
+| A compartment volume | 0.01 to 10 000 L | `CompartmentVolume` |
+| A partition coefficient, including each tissue:blood quotient | 0.001 to 10 000 | `PartitionCoefficient` |
+| Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` |
+| Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` |
+| Cardiac output | 0 to 10 L/min | `CardiacOutput` |
+| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `TissueGroup` and `PatientCompartments` |
+| The coupled system's step | 0.001 to 0.1 s | `SimulationStep` |
+| A compartment's own step | 0.001 s to 86 400 s | `require_compartment_step` |
+| A case instant | 0 to 86 400 s | `CaseInstant` |
+| A run's step count | 0 up to the steps that fit in 86 400 s | `require_supported_step_count` |
+| The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
+| A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
+| The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+<!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_PARTITION_COEFFICIENT = 10000 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+<!-- provenance: core/tissue.py PERFUSION_FRACTION_UPPER_BOUND = 1 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
+
+The blood flow that a tissue group or the venous pool is handed when it is
+stepped on its own is the one input with no upper bound. It must only be finite
+and not negative. The sweep steps both at a flow of the largest float, and each
+result stays finite and between where it started and its equilibrium.
+
+`tests/unit/test_numerical_envelope_sweep.py` tests the two halves of the
+claim. The first test runs every operation at each of the 96 corners of the
+volumes and coefficients. Each volume is at either bound, and the two
+coefficients are at each of the six vertices of the region their bounds and
+the tissue:blood quotient's bounds cut out. At each corner, each flow is at
+zero, at the smallest positive float and at its maximum. The test steps the
+coupled system once at each bound of its step, steps each compartment on its
+own at each bound of its own step, and evaluates a run across the 24 hours on
+both the display and the canonical path. Each result must be finite, must stay
+between 0 and 1 as a fraction, and must close the agent balance to within the
+error bound that `core/matrix_exponential.py` states for the propagators that
+produced it. The second test builds every input in the table at each edge of
+its interval, and then one representable value past each edge, and requires
+the simulator's own refusal.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+Two refusals inside the intervals are accepted by name. Both are errors from
+`core/exceptions.py`, never a wrong value. On the canonical path, one
+propagator across the whole 86 400 s at the stiffest corners needs more than 32
+squarings. It is refused, as "What a long interval costs at the corners" below
+describes. And a step
+from a state at the top of the fraction range, with every compartment at a
+fraction of 1, can round one fraction a few units in the last place past 1.
+The fraction check then refuses it and the step is rolled back. No shipped
+agent's dial reaches a fraction near 1. `PL-9B1M` records that defect.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
 `core/matrix_exponential.py` halves the interval until the scaled matrix is
