@@ -3,11 +3,13 @@ id: PL-88MK
 title: dashed_pen leaves Qt's default square cap on 2-3 px pens, so each dash paints one pen width longer and each gap one shorter; three dashed compartment traces look near-solid, and dash is the only channel separating compartments for colour-vision-deficient readers
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: replay-findings
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 added: 2026-10-24
+closed: 2026-10-25
+pr: 1840
 payoff: each dashed compartment trace paints the dash pattern it is meant to, so a reader with a colour-vision deficiency can still tell the traces apart
 verify: grep -q 'FlatCap' src/anesthesia_sim/app/qt_chart.py && grep -q 'def test_each_dashed_pen_paints_its_dash_pattern' tests/integration/test_qt_chart.py
 ---
