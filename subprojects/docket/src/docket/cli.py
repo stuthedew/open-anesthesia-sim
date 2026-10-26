@@ -36,6 +36,7 @@ from .claims import (
     LIVE,
     Hold,
     Holdings,
+    claimed_here,
     holdings,
     settled_branches,
     unclaimed,
@@ -191,6 +192,7 @@ from .vcs import (
     cut_window,
     cuts_in_flight,
     default_base,
+    default_branch,
     fetch_remote,
     filed_with_work,
     files_in_flight,
@@ -1483,6 +1485,12 @@ def cmd_new(args: argparse.Namespace) -> int:
     # defect, is what fell through that hole. Read once for the whole call,
     # since every title in it was captured from the same working tree.
     inferred = () if declared else _inferred_paths(args)
+    # An item this branch claims is never a candidate. The session filing the
+    # capture is working that item, so it knows the item exists, and a filing
+    # by a session that knew is not the defect firing again. Its paths are
+    # also the ones the working tree is changing, which is why the search
+    # found `PL-S86L` for `PL-F67Q` (`PL-PNSV`).
+    held = _claimed_here(args)
     captures: list[Item] = []
     for title in args.title:
         captures.append(_captured(new_id(taken), title, args))
@@ -1505,7 +1513,7 @@ def cmd_new(args: argparse.Namespace) -> int:
         found = near_duplicates(
             capture.title,
             declared or inferred,
-            items,
+            [item for item in items if item.identifier not in held],
             feature=capture.feature,
             items_dir=_invocation(args).tracked,
         )
@@ -1649,6 +1657,18 @@ def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
     if inv.git is None:
         return ()
     return working_paths(inv.root, runner=inv.git).paths
+
+
+def _claimed_here(args: argparse.Namespace) -> frozenset[str]:
+    """The items this branch's own commits claim, or none under `--no-git`.
+
+    Read once per invocation, as `_inferred_paths` is. A git that does not
+    answer gives an empty set, and the search then runs as it did before.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        return frozenset()
+    return claimed_here(inv.root, runner=inv.git)
 
 
 def _record_recurrence(
@@ -1898,7 +1918,8 @@ def _capture(directory: Path, item: Item) -> str:
 #: attribute each lands on - which is also the flag's `dest`, so one table
 #: serves the parser, the conflict check and the write. Every field triage
 #: answers is here and nothing else is: `id`, `title` and `added` are the
-#: capture's, `pr` is `record`'s, `milestone` is `release`'s, `recurrences` is
+#: capture's, `pr` is `record`'s (and `--status done` writes it from the
+#: branch's open pull request, `PL-86DN`), `milestone` is `release`'s, `recurrences` is
 #: `new`'s, and `commit` is retired. A flag outside this table is an unknown
 #: field, and argparse refuses it before the store is read.
 #:
@@ -2033,6 +2054,11 @@ def cmd_set(args: argparse.Namespace) -> int:
         return 1
     if not changes:
         return 0
+    numbered = ""
+    if changes.get("status") == "done":
+        number, numbered = _closing_pull_request(args, item)
+        if number is not None:
+            changes["pr"] = number
 
     updated = with_fields(item, **changes)
     # `check` pins an item on the generator tier at P0 or P1, so a write that
@@ -2125,12 +2151,63 @@ def cmd_set(args: argparse.Namespace) -> int:
             f"{item.identifier}: priority: {TIER_BANDS[-1]}, raised from {raised_from} - an "
             "item on the generator tier is stored at P0 or P1, the rank `docket next` gives it"
         )
+    if numbered:
+        print(f"{item.identifier}: {numbered}")
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after, milestones)
     _say_contradicted(changes, items, after, today)
     for line in render.generator_check_on_set(item, updated, config.workflow_paths):
         print(line)
     return 0
+
+
+def _closing_pull_request(args: argparse.Namespace, item: Item) -> tuple[str | None, str]:
+    """The `pr` a closure writes, from the pull request open on this branch, and what to say.
+
+    `pr_record_check.py` fails a pull request until every item it closes
+    records the pull request's number. Written here, in the write that closes
+    the item, the number travels in the closing commit, and the first
+    `pr-title` run after it passes (`PL-86DN`). Before this, the number was
+    written by a separate `record N` that had to follow the pull request's
+    opening, and 116 pull requests in a month took a red run and a second push
+    for it. `claim` opens the pull request as a draft, so it is normally open
+    by the time the item closes.
+
+    The number is `None`, with the reason in the sentence, wherever it cannot
+    be established: no forge command, `--no-git`, a detached `HEAD`, a forge
+    that did not answer, or no pull request open on the branch. An item that
+    already records a number keeps it, and a different open number is named
+    with the `record` command that replaces it, since a value somebody wrote
+    is not replaced unasked here. A project with no forge command is told
+    nothing, because it has no pull request to hold.
+    """
+    inv = _invocation(args)
+    opened = _open_pull_requests(args, inv.root, inv.config)
+    if opened is None:
+        return None, ""
+    branch = head_branch(inv.root, inv.git) if inv.git is not None else ""
+    if not branch:
+        return None, "`pr:` not written: HEAD is on no branch, so no pull request is its own"
+    answer = opened()
+    if answer is None:
+        return None, (
+            f"`pr:` not written: whether a pull request is open on {branch} could not be read. "
+            "Run `bin/docket record N` with its number before pushing the closure"
+        )
+    if branch not in answer or answer[branch] is None:
+        return None, (
+            f"`pr:` not written: no pull request is open on {branch}. Open one as a draft, then "
+            "run `bin/docket record N` with its number before pushing the closure"
+        )
+    number = str(answer[branch])
+    if item.pr and item.pr != number:
+        return None, (
+            f"`pr:` left at {item.pr}, though #{number} is open on {branch}; "
+            f"`bin/docket record {number}` replaces it if #{number} is the closing pull request"
+        )
+    if item.pr:
+        return None, ""
+    return number, f"pr: {number}, the pull request open on {branch}"
 
 
 def _replayed(
@@ -5414,7 +5491,74 @@ def cmd_claim(args: argparse.Namespace) -> int:
     )
     for line in written.lines:
         print(line)
+    if written.code == claiming.CLAIMED:
+        for line in _draft_at_claim(args, inv, args.ids):
+            print(line)
     return written.code
+
+
+#: The longest title a draft opened at the claim is given. The title is a
+#: placeholder, rewritten when the work is finished, so it is cut rather than
+#: risk GitHub refusing a long item title.
+DRAFT_TITLE_LIMIT = 120
+
+
+def _draft_at_claim(args: argparse.Namespace, inv: Invocation, keys: Sequence[str]) -> list[str]:
+    """Open the branch's pull request as a draft once the claim is published, and say so.
+
+    **Opened at the claim, the pull request has its number before the item
+    closes** (`PL-86DN`). `set --status done` then writes `pr:` in the closing
+    commit, and `pr_record_check.py` passes on the first run after it. Opened
+    after the closing push, as 116 pull requests were between 2026-09-26 and
+    2026-10-25, it failed that run and cost a second push. A draft, because a
+    claim rides it and GitHub merges no draft (`PL-H14W`).
+
+    Nothing is opened where the forge names a pull request open on the branch
+    already. Where it cannot be opened - no command, `--no-remote`, a forge
+    that did not answer or refused - the lines say why and name the step the
+    session takes instead, so a claim never reads as having opened one it did
+    not. A failure here never fails the claim, which is already published.
+    """
+    root, command = inv.root, inv.config.open_draft_command
+    opened = _open_pull_requests(args, root, inv.config)
+    instead = (
+        "  Open it as a draft with your own GitHub tool now, before any work, so the "
+        "closing commit can carry its number."
+    )
+    if not command or opened is None or inv.git is None:
+        return []
+    branch = head_branch(root, inv.git)
+    if not branch:
+        return ["claim: no draft pull request opened: HEAD is on no branch", instead]
+    answer = opened()
+    if answer is None:
+        return [
+            f"claim: no draft pull request opened: whether one is open on {branch} could not "
+            "be read",
+            instead,
+        ]
+    if branch in answer:
+        number = answer[branch]
+        return [f"claim: pull request {f'#{number} ' if number else ''}is open on {branch}"]
+    _, items, _ = _load(args)
+    first = find_item(items, keys[0]) if keys else None
+    ids = ", ".join(as_identifier(key) for key in keys)
+    title = f"{ids}: {first.title}" if first is not None else ids
+    if len(title) > DRAFT_TITLE_LIMIT:
+        title = title[: DRAFT_TITLE_LIMIT - 3].rsplit(" ", 1)[0] + "..."
+    base = default_branch(root, runner=inv.git)
+    done = _run_forge_command(command, root, branch, base, title)
+    if isinstance(done, str):
+        return [f"claim: no draft pull request opened: `{command}` {done}", instead]
+    said = done.stdout.strip()
+    number = pr_number(said)
+    if done.returncode != 0 or number is None:
+        why = " ".join(done.stderr.split()) or f"it exited {done.returncode}, printing {said!r}"
+        return [f"claim: no draft pull request opened: {why}", instead]
+    return [
+        f"claim: opened draft pull request #{number} on {branch}; `set --status done` "
+        "writes its number when the item closes"
+    ]
 
 
 def cmd_yield(args: argparse.Namespace) -> int:

@@ -204,6 +204,18 @@ WRITES: dict[str, dict[str, Write]] = {
             _ACCOUNTING,
         )
         for total in ("initial_agent_l", "delivered_agent_l", "exhausted_agent_l")
+    }
+    | {
+        term: Write(
+            OWN,
+            why=(
+                "The term only corrects the next addition to its total, by less than one unit "
+                "in the last place of that total. No rule ties its value to another field. A "
+                "wrong term moves the next total, which the accounting identity checks at that "
+                "step (PL-XST1)."
+            ),
+        )
+        for term in ("delivered_compensation_l", "exhausted_compensation_l")
     },
     "alveolar.AlveolarCompartment": {
         "gas_volume_l": Write(CHECKED, _alveoli, lambda alveoli: CompartmentVolume(0.25)),

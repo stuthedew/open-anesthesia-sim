@@ -347,6 +347,25 @@ def test_settle_runs_nothing_when_no_pytest_run_raised(
     assert runs == []
 
 
+def test_a_module_that_raises_while_it_is_collected_counts_as_a_kill(tmp_path: Path) -> None:
+    """pytest stops such a run with status 2, the status of an interrupted run (`PL-N3YB`).
+
+    A real interrupt keeps status 2, because it says nothing about the mutant.
+    """
+    tests = tmp_path / diff_mutation.MUTANTS
+    tests.mkdir()
+    (tests / "test_raises.py").write_text('raise TypeError("built at import")\n')
+    (tests / "test_passes.py").write_text("def test_passes():\n    pass\n")
+    (tests / "test_stops.py").write_text("def test_stops():\n    raise KeyboardInterrupt\n")
+
+    def run(name: str) -> int | None:
+        return diff_mutation._pytest_in_mutants(tmp_path, [name], "")
+
+    assert run("test_raises.py") == 1
+    assert run("test_passes.py") == 0
+    assert run("test_stops.py") == 2
+
+
 def test_statuses_reads_the_results_listing(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -639,6 +658,142 @@ def test_the_verdict_counts_only_a_mutant_of_a_changed_line(
         "functions that this branch did not change: pkg.core.model.x_outer__mutmut_1."
     ) in notes
     assert notes[-1] == TIERS_NOT_RUN
+
+
+OUTER_SHOWN = _outer_shown("pkg.core.model.x_outer__mutmut_1")
+UNPLACED_SHOWN = _shown(
+    "pkg.core.model.x_outer__mutmut_2", "@@ -9 +9 @@", "-    nowhere", "+    else"
+)
+
+
+def _listed_by_script(monkeypatch: pytest.MonkeyPatch, shown: dict[str, str], code: int = 0):
+    """Answer `listing`'s script run with `shown`, as JSON after a line of mutmut's chatter."""
+    asked: list[list[str]] = []
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        asked.append(command)
+        return _completed(f"src/pkg/core/model.py\n{json.dumps(shown)}\n", code)
+
+    monkeypatch.setattr(diff_mutation.subprocess, "run", run)
+    return asked
+
+
+def test_the_verdict_runs_only_the_mutants_of_changed_lines(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-88HC`. A mutant of a changed function's unchanged line cannot refuse, so it does not run.
+
+    A mutant that cannot be placed still runs, because a guess at its line
+    could pass a branch on a line it wrote.
+    """
+    shown = {
+        "pkg.core.model.xǁModelǁstep__mutmut_1": STEP_SHOWN,
+        "pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN,
+        "pkg.core.model.x_outer__mutmut_2": UNPLACED_SHOWN,
+        "pkg.other.x_f__mutmut_1": OUTER_SHOWN,
+    }
+    asked = _listed_by_script(monkeypatch, shown)
+    change = Change("main", [OUTER, STEP], {}, {"src/pkg/core/model.py": {12, 22}})
+
+    listed = diff_mutation.listing(repo, change)
+
+    assert listed is not None
+    assert listed.run == {
+        "pkg.core.model.xǁModelǁstep__mutmut_1",
+        "pkg.core.model.x_outer__mutmut_2",
+    }
+    assert asked[0][-2:] == [OUTER.pattern, STEP.pattern]
+
+
+def test_every_listed_mutant_of_a_new_file_runs(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _listed_by_script(monkeypatch, {"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN})
+    change = Change("main", [OUTER], {}, {"src/pkg/core/model.py": None})
+
+    listed = diff_mutation.listing(repo, change)
+
+    assert listed is not None and listed.run == {"pkg.core.model.x_outer__mutmut_1"}
+
+
+@pytest.mark.parametrize(("stdout_code", "stdout"), [(1, "{}"), (0, "not json")])
+def test_a_listing_that_fails_runs_every_mutant(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, stdout_code: int, stdout: str
+) -> None:
+    """mutmut's internals can move in a later release, and the run then goes on as before."""
+    monkeypatch.setattr(
+        diff_mutation.subprocess, "run", lambda command, **kwargs: _completed(stdout, stdout_code)
+    )
+    change = Change("main", [OUTER], {}, {"src/pkg/core/model.py": {12}})
+
+    assert diff_mutation.listing(repo, change) is None
+
+
+def test_a_mutant_that_did_not_run_is_counted_in_a_note_and_never_shown(
+    repo: Path, judged: dict[str, str]
+) -> None:
+    """The verdict's lists are what they were when every mutant ran (`PL-88HC`)."""
+    listed = diff_mutation.Listing(
+        {
+            "pkg.core.model.xǁModelǁstep__mutmut_1": STEP_SHOWN,
+            "pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN,
+        },
+        frozenset({"pkg.core.model.xǁModelǁstep__mutmut_1"}),
+    )
+    change = Change("main", [OUTER, STEP], {}, {"src/pkg/core/model.py": {12, 22}})
+    # `judged` is empty, so a `mutmut show` call would fail the test.
+    found = {
+        "pkg.core.model.xǁModelǁstep__mutmut_1": "survived",
+        "pkg.core.model.x_outer__mutmut_1": "not checked",
+    }
+
+    found_verdict = verdict(repo, change, found, listed=listed)
+
+    assert [entry.splitlines()[0] for entry in found_verdict["uncaught"]] == [
+        "src/pkg/core/model.py:22 pkg.core.model.xǁModelǁstep__mutmut_1 - survived"
+    ]
+    assert found_verdict["undecided"] == []
+    assert (
+        "Not run: 1 mutants of the changed functions that change only lines this branch did "
+        "not change, so they cannot change this verdict: pkg.core.model.x_outer__mutmut_1."
+    ) in found_verdict["notes"]
+
+
+def test_main_runs_mutmut_on_the_listed_names_alone(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    listed = diff_mutation.Listing(
+        {"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN, "pkg.core.model.x_outer__mutmut_2": ""},
+        frozenset({"pkg.core.model.x_outer__mutmut_2"}),
+    )
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
+    changed = Change("main", [OUTER], {}, {"src/pkg/core/model.py": {12}})
+    monkeypatch.setattr(diff_mutation, "branch_change", lambda root, base, table: changed)
+    ran: list[list[str]] = []
+    log = tabled / "run.log"
+    log.write_text(f"{NOTHING_MATCHES}\n", encoding="utf-8")
+
+    def run(root: Path, patterns: list[str], table: object) -> tuple[int, Path]:
+        ran.append(list(patterns))
+        return 1, log
+
+    monkeypatch.setattr(diff_mutation, "run", run)
+    monkeypatch.setattr(diff_mutation, "compare_tests", lambda root, change, table: None)
+
+    assert main(["--root", str(tabled), "--base", "main", "--verdict"]) == 0
+    assert ran == [["pkg.core.model.x_outer__mutmut_2"]]
+
+
+def test_main_runs_nothing_when_no_listed_mutant_can_change_the_verdict(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    listed = diff_mutation.Listing({"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN}, frozenset())
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
+    monkeypatch.setattr(diff_mutation, "run", lambda root, patterns, table: pytest.fail("ran"))
+    monkeypatch.setattr(diff_mutation, "compare_tests", lambda root, change, table: None)
+
+    assert main(["--root", str(tabled), "--base", "main", "--verdict"]) == 0
+    assert "Not run: 1 mutants" in capsys.readouterr().out
 
 
 def test_a_mutant_whose_line_cannot_be_placed_is_undecided(

@@ -172,8 +172,18 @@ COMPARTMENTS = (
         build=_agent_simulation_validator,
         # `initial_agent_l` is run state rather than a setting. It anchors the
         # current accounting period, and `reset()` writes it. Everywhere else
-        # in `core/`, `reset()` is what clears run state.
-        run_state_fields=frozenset({"initial_agent_l", "delivered_agent_l", "exhausted_agent_l"}),
+        # in `core/`, `reset()` is what clears run state. The two compensation
+        # terms are run state too, because a running total is not complete
+        # without its own compensation term (`PL-XST1`).
+        run_state_fields=frozenset(
+            {
+                "initial_agent_l",
+                "delivered_agent_l",
+                "exhausted_agent_l",
+                "delivered_compensation_l",
+                "exhausted_compensation_l",
+            }
+        ),
         setting_fields=frozenset(),
     ),
 )
@@ -520,9 +530,11 @@ def test_moving_any_setting_moves_the_propagator_cache_key(
 def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
     """Check end to end that the key change affects the propagator, not just the tuple.
 
-    Two systems stepped under the same final ventilation must agree, whether
-    that ventilation was set before the first step or after it. If the cache
-    returned the stale propagator they would not.
+    Both systems take one step, have their ventilation changed, and take a
+    second step. They differ only in that `rebuilt` has its propagator cache
+    cleared before the second step, so it must build the matrix afresh. The
+    two must agree. If the cache in `changed` returned the stale propagator,
+    they would not.
     """
 
     changed = AgentUptakeSystem.for_agent("sevoflurane")

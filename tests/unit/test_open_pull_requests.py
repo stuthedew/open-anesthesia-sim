@@ -418,3 +418,83 @@ def test_auto_merge_exits_non_zero_and_prints_nothing_when_it_could_not_ask(
     monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
     assert open_pull_requests.main(["--auto-merge", "7"]) == 1
     assert capsys.readouterr().out == ""
+
+
+def _posted(monkeypatch: pytest.MonkeyPatch, answer: str | Exception) -> list:
+    """Answer every request with `answer`, and collect the requests made."""
+    asked: list = []
+
+    class _Response:
+        def __enter__(self) -> io.BytesIO:
+            assert isinstance(answer, str)
+            return io.BytesIO(answer.encode())
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+    def _open(request: urllib.request.Request, timeout: float = 0) -> _Response:
+        asked.append(request)
+        if isinstance(answer, Exception):
+            raise answer
+        return _Response()
+
+    monkeypatch.setenv("GH_TOKEN", TOKEN)
+    monkeypatch.setattr(open_pull_requests.urllib.request, "urlopen", _open)
+    return asked
+
+
+def test_open_draft_posts_a_draft_from_the_branch_into_the_base_and_returns_its_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PL-86DN: `docket claim` opens the pull request so its number exists before the close."""
+    asked = _posted(monkeypatch, json.dumps({"number": 1832, "draft": True}))
+
+    assert open_pull_requests.open_draft("owner/repo", "claude/x", "main", "PL-K7QX: a") == 1832
+
+    (request,) = asked
+    assert request.get_method() == "POST"
+    assert request.full_url == "https://api.github.com/repos/owner/repo/pulls"
+    # The harness proxy refuses a body with no declared type, with HTTP 415.
+    assert request.get_header("Content-type") == "application/json"
+    sent = json.loads(request.data)
+    assert {key: sent[key] for key in ("head", "base", "title", "draft")} == {
+        "head": "claude/x",
+        "base": "main",
+        "title": "PL-K7QX: a",
+        "draft": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("answer", "kind"),
+    [
+        (urllib.error.HTTPError("u", 403, "forbidden", {}, None), "no permission"),  # type: ignore[arg-type]
+        (urllib.error.HTTPError("u", 422, "exists", {}, None), "unreadable"),  # type: ignore[arg-type]
+        (urllib.error.URLError("no network"), "no network"),
+        (json.dumps({"number": True}), "unreadable"),
+        ("not json", "unreadable"),
+    ],
+)
+def test_a_draft_that_could_not_be_opened_says_why(
+    monkeypatch: pytest.MonkeyPatch, answer: str | Exception, kind: str
+) -> None:
+    _posted(monkeypatch, answer)
+    with pytest.raises(open_pull_requests.ListingFailed) as failed:
+        open_pull_requests.open_draft("owner/repo", "claude/x", "main", "t")
+    assert failed.value.kind == kind
+
+
+def test_the_open_draft_command_prints_the_number_or_exits_one_with_the_reason(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    _posted(monkeypatch, json.dumps({"number": 77}))
+    assert open_pull_requests.main(["--open-draft", "claude/x", "main", "t"]) == 0
+    assert capsys.readouterr().out == "77\n"
+
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    assert open_pull_requests.main(["--open-draft", "claude/x", "main", "t"]) == 1
+    said = capsys.readouterr()
+    assert said.out == ""
+    assert "no GH_TOKEN or GITHUB_TOKEN" in said.err

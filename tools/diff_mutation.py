@@ -18,6 +18,14 @@ waived about 15 times in 17 (project owner, 2026-10-19, ratified, over making
 that check an advisory and over keeping it, `PL-CZXN`). `verdict` states the
 rule.
 
+**`--verdict` runs only the mutants that can change it** (`PL-88HC`). Before
+mutmut runs, `listing` generates the mutants of the changed functions and
+places each on its line, as `verdict` does. A mutant whose changed lines the
+branch left alone is not run, and a note counts it. A mutant that cannot be
+placed still runs, so it can still refuse the branch. A run without
+`--verdict` still runs every mutant of each changed function, so a reviewer
+still sees the survivors on its unchanged lines.
+
 **`--verdict` also compares each changed simulator unit test with its base
 version.** A mutant of the code cannot show that a branch weakened a test,
 because the test is what changed. So `compare_tests` runs the mutants of the
@@ -122,11 +130,18 @@ RESULT_RE = re.compile(r"^\s+(\S+): (.+)$")
 #: returning. Its worker catches the exception and exits with -1.
 RAISED = 255
 #: What a run of whole test files under one mutant says, by pytest's exit
-#: status. Under `-x` a test module that raises while it is imported stops the
-#: run with status 1, as a failed test does. Any other status, such as 2 for an
-#: interrupted run, is reported as it is, because it says nothing about the
-#: mutant.
+#: status. Any other status, such as 2 for an interrupted run, is reported as
+#: it is, because it says nothing about the mutant. A test module that raises
+#: while it is imported is the exception, because pytest gives it status 2 as
+#: well. `_pytest_in_mutants` reads that case from pytest's output instead.
 RERUN_STATUS = {0: "survived", 1: "killed"}
+#: pytest's exit status for an interrupted run, `ExitCode.INTERRUPTED`.
+INTERRUPTED = 2
+#: What pytest 9 prints, between rows of "!", when it ends a run because a test
+#: module raised while it was collected: "Interrupted: 1 error during
+#: collection". The files ran cleanly with no mutant applied first, so the
+#: mutant caused the raise (`PL-N3YB`).
+COLLECTION_ERROR_RE = re.compile(r"Interrupted: \d+ errors? during collection")
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
 #: Why a run whose results list is empty is refused rather than reported.
@@ -171,6 +186,40 @@ CORE_PACKAGE = f"{PACKAGE}.core"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
+#: The script `listing` runs to generate mutants without running any test, and
+#: to print each listed mutant's diff, as JSON keyed by name. It calls the
+#: steps mutmut 3.8.0's `run` takes before it collects coverage, which is the
+#: slow part, and the function `mutmut show` prints from. They are mutmut's
+#: internals rather than its command line, so the pinned version in
+#: `pyproject.toml` is what keeps them. `listing` falls back to running every
+#: mutant when the script fails.
+LIST_SCRIPT = """
+import fnmatch, json, shutil, sys
+from pathlib import Path
+from mutmut.__main__ import create_mutants
+from mutmut.mutation.data import SourceFileMutationData
+from mutmut.mutation.diff_apply import get_diff_for_mutant
+from mutmut.mutation.trampoline import set_mutant_under_test
+from mutmut.utils.file_utils import (
+    copy_also_copy_files, copy_src_dir, setup_source_paths, walk_mutatable_files,
+)
+shutil.rmtree("mutants", ignore_errors=True)
+Path("mutants").mkdir()
+set_mutant_under_test("mutant_generation")
+copy_src_dir()
+copy_also_copy_files()
+setup_source_paths()
+create_mutants(1)
+patterns = sys.argv[1:]
+shown = {}
+for path in walk_mutatable_files():
+    data = SourceFileMutationData(path=path)
+    data.load()
+    for name in data.exit_code_by_key:
+        if any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
+            shown[name] = get_diff_for_mutant(name, path=path)
+print(json.dumps(shown))
+"""
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
 SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
@@ -408,6 +457,53 @@ def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.Compl
         )
 
 
+@dataclass(frozen=True)
+class Listing:
+    """The mutants of the changed functions, listed before the run, and the ones to run."""
+
+    #: Each listed mutant's diff, as `mutmut show` prints it, by name.
+    shown: Mapping[str, str]
+    #: The names that run: those on a changed line, and those not placed.
+    run: frozenset[str]
+
+
+def listing(root: Path, change: Change) -> Listing | None:
+    """List the changed functions' mutants and keep the ones that can change the verdict.
+
+    A mutant runs when a line it changes is one the branch changed, or when it
+    cannot be placed. In a new file every line is changed, so all of them run.
+    `None` where the mutants could not be listed, and then every mutant of the
+    changed functions runs, as it did before this listing existed.
+    """
+    patterns = [unit.pattern for unit in change.units]
+    environment = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    listed = subprocess.run(
+        [sys.executable, "-c", LIST_SCRIPT, *patterns],
+        cwd=root,
+        capture_output=True,
+        encoding="utf-8",
+        env=environment,
+        check=False,
+    )
+    try:
+        shown = json.loads(split_lines(listed.stdout)[-1]) if not listed.returncode else None
+    except (IndexError, ValueError):
+        shown = None
+    if not isinstance(shown, dict):
+        return None
+    files = {path: split_lines((root / path).read_text(encoding="utf-8")) for path in change.rows}
+    selected: set[str] = set()
+    for unit in change.units:
+        rows = change.rows.get(unit.path)
+        for name, text in shown.items():
+            if not fnmatch.fnmatch(name, unit.pattern):
+                continue
+            placed = None if rows is None else mutated_rows(unit, files[unit.path], text)
+            if rows is None or placed is None or placed & rows:
+                selected.add(name)
+    return Listing(shown, frozenset(selected))
+
+
 def run(
     root: Path,
     patterns: Sequence[str],
@@ -476,6 +572,11 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
     The mutated copy of the source comes first on the import path, and mutmut's
     trampolines read which mutant to run from the environment, as its own
     workers do.
+
+    A run that stopped because a test module raised while it was collected
+    returns 1, the status of a failed test. pytest gives that run status 2, the
+    status of an interrupted run, and `settle` counts a raise at import as a
+    kill.
     """
     environment = {**os.environ, "MUTANT_UNDER_TEST": mutant, "PYTHONPATH": "src"}
     command = [sys.executable, "-m", "pytest", "--rootdir=.", "-x", "-q", "-p", "no:cacheprovider"]
@@ -490,6 +591,10 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
         )
     except subprocess.TimeoutExpired:
         return None
+    if done.returncode == INTERRUPTED and COLLECTION_ERROR_RE.search(
+        done.stdout.decode("utf-8", errors="replace")
+    ):
+        return 1
     return done.returncode
 
 
@@ -624,7 +729,11 @@ def _listed(names: Sequence[str]) -> str:
 
 
 def verdict(
-    root: Path, change: Change, found: Mapping[str, str], compared: Compared | None = None
+    root: Path,
+    change: Change,
+    found: Mapping[str, str],
+    compared: Compared | None = None,
+    listed: Listing | None = None,
 ) -> dict[str, object]:
     """What `docket verify` reads: the mutants of changed lines that the tests did not catch.
 
@@ -642,29 +751,40 @@ def verdict(
     function, a changed function with no mutants, and a changed line that
     carries `# pragma: no mutate`. `compared` is what `compare_tests` found
     for the changed tests, and its lists are added to these.
+
+    `listed` is what `listing` chose before the run. A listed mutant that did
+    not run changes only lines the branch did not change, so a note counts it,
+    and a listed diff is used in place of a `mutmut show` call.
     """
     caught = 0
     uncaught: list[str] = []
     undecided: list[str] = []
     elsewhere: list[str] = []
+    not_run: list[str] = []
     notes: list[str] = []
+    pool = set(found) | set(listed.shown if listed is not None else ())
     files = {path: split_lines((root / path).read_text(encoding="utf-8")) for path in change.rows}
     if not change.units:
         notes.append(f"No function that mutmut mutates changed against {change.against}.")
     for unit in change.units:
-        names = sorted(name for name in found if fnmatch.fnmatch(name, unit.pattern))
+        names = sorted(name for name in pool if fnmatch.fnmatch(name, unit.pattern))
         if not names:
             notes.append(f"Not mutated: {unit.label} changed and has no mutants. {NO_MUTANTS}")
         rows = change.rows.get(unit.path)
         for name in names:
-            status = found[name]
+            if listed is not None and name not in listed.run:
+                not_run.append(name)
+                continue
+            status = found.get(name, "not in mutmut's results after the run")
             if status in CAUGHT:
                 caught += 1
                 continue
-            shown = _mutmut(root, "show", name)
-            placed = (
-                mutated_rows(unit, files[unit.path], shown.stdout) if not shown.returncode else None
-            )
+            if listed is not None and name in listed.shown:
+                text, readable = listed.shown[name], True
+            else:
+                shown = _mutmut(root, "show", name)
+                text, readable = shown.stdout, not shown.returncode
+            placed = mutated_rows(unit, files[unit.path], text) if readable else None
             if rows is not None and placed is None:
                 undecided.append(f"{unit.path}: {name} - {status}, on a line not placed")
                 continue
@@ -672,7 +792,7 @@ def verdict(
                 elsewhere.append(name)
                 continue
             where = f"{unit.path}:{min(placed)}" if placed else unit.path
-            entry = "\n".join([f"{where} {name} - {status}", *_edited_lines(shown.stdout)])
+            entry = "\n".join([f"{where} {name} - {status}", *_edited_lines(text)])
             (uncaught if status in MISSED else undecided).append(entry)
     for path, outside in change.outside.items():
         notes.append(
@@ -689,6 +809,11 @@ def verdict(
                 and "no mutate" in lines[row - 1]
             ):
                 notes.append(f"Exempted by `# pragma: no mutate` on a changed line: {path}:{row}")
+    if not_run:
+        notes.append(
+            f"Not run: {len(not_run)} mutants of the changed functions that change only lines "
+            f"this branch did not change, so they cannot change this verdict: {_listed(not_run)}."
+        )
     if elsewhere:
         notes.append(
             f"Not counted: {len(elsewhere)} mutants that the tests did not catch, on lines of the "
@@ -1024,11 +1149,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
 
-    def answer(change: Change, found: Mapping[str, str]) -> str:
+    def answer(change: Change, found: Mapping[str, str], listed: Listing | None = None) -> str:
         if args.verdict:
             # ASCII, so the reader decodes it the same under any locale.
             compared = compare_tests(root, change, table)
-            return json.dumps(verdict(root, change, found, compared), indent=1)
+            return json.dumps(verdict(root, change, found, compared, listed), indent=1)
         return report_branch(root, change, found)
 
     try:
@@ -1062,9 +1187,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             for path, rows in change.outside.items():
                 print(f"  {path}: {len(rows)} changed lines outside any function.")
             return 0
-        code, log = run(root, [unit.pattern for unit in change.units], table)
+        listed = listing(root, change) if args.verdict else None
+        if listed is not None and not listed.run:
+            print(answer(change, {}, listed))
+            return 0
+        patterns = sorted(listed.run) if listed else [unit.pattern for unit in change.units]
+        code, log = run(root, patterns, table)
         if code and NOTHING_MATCHES in log.read_text(encoding="utf-8", errors="replace"):
-            print(answer(change, {}))
+            print(answer(change, {}, listed))
             return 0
         if code:
             raise Refusal(f"mutmut exited {code}. The end of {log}:\n{_tail(log)}")
@@ -1076,7 +1206,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + LISTING_UNREAD
             )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
-        print(answer(change, settle(root, found, codes)))
+        print(answer(change, settle(root, found, codes), listed))
         return 0
     except (Refusal, GitUnanswered, OSError, SyntaxError, ValueError, KeyError) as error:
         reason = str(error) if isinstance(error, Refusal) else repr(error)

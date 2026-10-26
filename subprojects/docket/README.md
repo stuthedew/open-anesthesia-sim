@@ -101,9 +101,15 @@ available guess, and it is the only one, since asking the session for a path is
 friction capture may not have. `PL-0KQP` is the miss it closes — nine of
 thirteen known duplicate pairs share a declared path and the key finds them,
 and all four misses are that one item, filed from a branch whose commits
-touched the exact path the four items it duplicated declare. Where git answers
-nothing the search keys on what the capture names, an id in its title or its
-`--feature`; with neither it finds nothing, and the command behaves as it did
+touched the exact path the four items it duplicated declare. An item that a
+`Claim:` on the branch's own commits names is left out of the search. The
+session filing the capture is working that item, so it knows the item exists,
+and a recurrence is a filing by a session that did not. The working tree is
+also changing that item's files, which is why the search kept finding it: on
+2026-10-25, 68 of the store's 178 recorded entries had been matched onto the
+item the filing branch was working, and sessions had withdrawn 24 of them by
+hand (`PL-PNSV`). Where git answers nothing the search keys on what the
+capture names, an id in its title or its `--feature`; with neither it finds nothing, and the command behaves as it did
 before any of this existed; it does not fall back to that refuted title-only
 key.
 
@@ -1036,7 +1042,14 @@ where no pull request was ever opened, or exits non-zero where it could not
 ask. `auto_merge_command` is the same boundary for `arm`'s other question
 (`PL-8TPV`): the package appends the pull request's number, and the command
 prints `on TIME` or `off TIME` for the latest switch of its auto-merge, nothing
-where it was never switched on, or exits non-zero where it could not ask. A
+where it was never switched on, or exits non-zero where it could not ask.
+`open_draft_command` is the one forge command that writes (`PL-86DN`): after
+`claim` publishes a claim on a branch with no pull request open, the package
+appends the branch, the default branch's name and a title, and the command
+opens a draft pull request and prints its number, or exits non-zero with the
+reason on stderr. `set --status done` then reads the branch's open pull request
+through `open_pull_requests_command` and writes its number as `pr:` in the same
+write. A
 switch off that no `Auto-merge: off - <why>` trailer on a commit made since
 records as the session's holds the pull request. `prose_count_command` is how
 `arm` counts the long docstrings and comments a simulator change adds that no

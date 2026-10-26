@@ -3,11 +3,13 @@ id: PL-SJ1D
 title: tests/unit/test_bookmarks.py: test_a_mark_inside_a_step_is_reached_at_the_step_s_end_and_not_rounded_back calls its 0.05 s step coarser than 0.1 s and says the reaching step ends at 45.4 s, but 0.05 s is finer and its reaching step ends at 45.35 s (found in the PL-FDMJ prose pass, 2026-10-25)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: stale-source-claims
 touches: tests/unit/test_bookmarks.py
 added: 2026-10-25
+closed: 2026-10-25
+pr: 1817
 payoff: the bookmark test's docstring agrees with the step and time its assertions check
 verify: ! grep -qF '45.4 s, at a coarser step' tests/unit/test_bookmarks.py
 ---

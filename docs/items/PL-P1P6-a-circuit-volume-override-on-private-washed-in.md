@@ -3,12 +3,14 @@ id: PL-P1P6
 title: A circuit-volume override on _private_washed_in_system would let one test pin the direction that a larger circuit-side agent store can only slow the elimination
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test
 feature: model-spec-accuracy
-touches: tests/reference/test_published_wash_in_and_elimination.py
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
 added: 2026-09-13
-verify: grep -q 'def test_a_larger_circuit_cannot_speed_the_elimination' tests/reference/test_published_wash_in_and_elimination.py && uv run pytest tests/reference/test_published_wash_in_and_elimination.py
+closed: 2026-10-25
+pr: 1819
+verify: grep -q 'def test_a_larger_circuit_can_only_slow_the_elimination' tests/reference/test_published_wash_in_and_elimination.py && grep -q 'test_a_larger_circuit_can_only_slow_the_elimination' docs/MODEL.md
 ---
 
 **Problem.** A circuit-volume override on _private_washed_in_system would let one test pin the direction that a larger circuit-side agent store can only slow the elimination
@@ -71,3 +73,15 @@ to the shipped one so every existing caller is unchanged, and
 `tests/reference/test_published_wash_in_and_elimination.py` has a test that runs
 the same cohort at a larger circuit volume and asserts the elimination is not
 faster.
+
+**Checked 2026-10-25: changed shape, and the fixture change is no longer
+needed.** `_private_washed_in_system` now takes a `change` argument, and
+`StoredParameterChange` already scales the stored circuit volume through
+`CIRCUIT_VOLUME_FIELD` for the resolving-power tests. So
+`_eliminate(agent_id, change=...)` runs the same cohort at another circuit
+volume without a second override. What was left was the assertion.
+`test_a_larger_circuit_can_only_slow_the_elimination` runs each agent at 0.5,
+1.0, 1.5 and 2.0 times the stored volume and asserts that the five-minute
+F_A/F_A0 rises at each step. It does, by 0.0133 to 0.0220 per step, while
+F_A0 moves by less than 0.3%. `docs/MODEL.md`'s directional paragraph in the
+desflurane-residual section now names the test.

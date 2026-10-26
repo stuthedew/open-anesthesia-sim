@@ -2808,7 +2808,9 @@ def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None
     assert trunk.fork_refusal is not None
     assert "this frame could not be assembled" in trunk.fork_refusal
 
-    with pytest.raises(SimulationConfigurationError, match="the frame this run is drawn in failed"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the dashboard this run is drawn in failed"
+    ):
         case.fork_at(keyframes[0])
 
     trunk.reset()

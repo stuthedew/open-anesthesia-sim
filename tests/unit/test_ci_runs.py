@@ -7,6 +7,7 @@ so the history must outlive GitHub's retention (`PL-4SFQ`).
 from __future__ import annotations
 
 import importlib.util
+import json
 from datetime import date
 from pathlib import Path
 from types import ModuleType
@@ -140,6 +141,79 @@ def test_a_file_with_other_columns_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(CI_RUNS.RefreshFailed, match="does not have the columns"):
         CI_RUNS.read_rows(path)
+
+
+def _job(*steps: tuple[str, str]) -> dict[str, object]:
+    """One job as GitHub's job listing describes it, with each step's name and conclusion."""
+
+    return {"name": "checks", "steps": [{"name": n, "conclusion": c} for n, c in steps]}
+
+
+def test_a_failed_run_names_its_failed_steps_without_the_aggregate_step() -> None:
+    """`PL-SW87`. The aggregate step fails whenever a part fails, so it names nothing new."""
+
+    jobs = [
+        _job(
+            ("check out", "success"),
+            ("every closure records this pull request's number", "failure"),
+        ),
+        _job(("run the tests", "failure"), ("both parts succeeded", "failure")),
+    ]
+
+    assert json.loads(CI_RUNS.failed_steps(jobs)) == [
+        "every closure records this pull request's number",
+        "run the tests",
+    ]
+
+
+def test_a_step_named_after_its_command_keeps_its_separators() -> None:
+    """An unnamed step is named after its command, which can hold any separator."""
+
+    command = "Run uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)')"
+    recorded = CI_RUNS.failed_steps([_job((command, "failure"))])
+
+    assert json.loads(recorded) == [command]
+
+
+def test_a_failed_run_whose_only_failed_step_is_the_aggregate_reads_as_read() -> None:
+    """A cancelled run fails only the aggregate step, and must not be read again."""
+
+    assert CI_RUNS.failed_steps([_job(("both parts succeeded", "failure"))]) == "[]"
+
+
+def test_only_a_failed_run_with_no_recorded_steps_is_read() -> None:
+    rows = [
+        CI_RUNS.row_of(_run(1, "2026-10-20", conclusion="failure")),
+        CI_RUNS.row_of(_run(2, "2026-10-20", conclusion="success")),
+        CI_RUNS.row_of(_run(3, "2026-10-20", conclusion="failure")),
+        CI_RUNS.row_of(_run(4, "2026-08-01", conclusion="failure")),
+    ]
+    rows[2]["failed_steps"] = "run the tests"
+    asked: list[str] = []
+
+    def read_jobs(run_id: str) -> list[dict[str, object]] | None:
+        asked.append(run_id)
+        return None if run_id == "4" else [_job(("lint", "failure"))]
+
+    assert CI_RUNS.record_failed_steps(rows, read_jobs) == 2
+    assert asked == ["1", "4"]
+    assert [row["failed_steps"] for row in rows] == ['["lint"]', "", "run the tests", "unavailable"]
+
+
+def test_a_refresh_keeps_recorded_steps_until_a_later_attempt() -> None:
+    """A rerun can fail on other steps, so its steps are read again."""
+
+    rows = [CI_RUNS.row_of(_run(1, "2026-10-20", conclusion="failure"))]
+    rows[0]["failed_steps"] = "lint"
+
+    same, _, updated = CI_RUNS.refresh(
+        rows, _reader([_run(1, "2026-10-20", conclusion="failure")]), date(2026, 10, 20)
+    )
+    assert (same[0]["failed_steps"], updated) == ("lint", 0)
+
+    rerun = _run(1, "2026-10-20", conclusion="failure", run_attempt=2)
+    again, _, _ = CI_RUNS.refresh(same, _reader([rerun]), date(2026, 10, 20))
+    assert again[0]["failed_steps"] == ""
 
 
 def test_the_real_file_has_the_columns_the_tool_writes() -> None:

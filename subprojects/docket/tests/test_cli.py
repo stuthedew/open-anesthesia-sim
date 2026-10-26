@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import ast
 import inspect
+import json
 import os
 import re
 import subprocess
@@ -578,6 +579,63 @@ def test_new_infers_candidate_paths_from_the_working_tree(
     printed = capsys.readouterr().out
     assert "PL-C1C1" in printed
     assert "a path this branch is changing" in printed, "the key's source is named"
+
+
+def _changing_verify_py(root: Path, *, claimed: bool) -> Path:
+    """A repository on a branch changing the file `SUPPRESSION` declares, and its store.
+
+    With `claimed`, the branch's one commit claims `PL-C1C1`, as `bin/docket
+    claim` writes it.
+    """
+    store = root / "items"
+    store.mkdir(parents=True)
+    (store / "existing.md").write_text(SUPPRESSION, encoding="utf-8")
+    target = root / "subprojects" / "docket" / "src" / "docket"
+    target.mkdir(parents=True)
+    (target / "verify.py").write_text("# the module this session is changing\n", encoding="utf-8")
+    git = ["git", "-C", str(root)]
+    commands = [
+        ["git", "init", "-q", "-b", "main", str(root)],
+        [*git, "config", "user.email", "t@example.com"],
+        [*git, "config", "user.name", "T"],
+        [*git, "add", "-A"],
+        [*git, "commit", "-qm", "base"],
+        [*git, "switch", "-qc", "claude/work"],
+    ]
+    if claimed:
+        claim = "PL-C1C1: start\n\nClaim: PL-C1C1 claude/work cse_test"
+        commands.append([*git, "commit", "-q", "--allow-empty", "-m", claim])
+    for command in commands:
+        subprocess.run(command, check=True, capture_output=True)
+    (target / "verify.py").write_text("# now being changed\n", encoding="utf-8")
+    return store
+
+
+def test_new_records_nothing_on_an_item_this_branch_claims(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture made while working an item is not a second filing of it (`PL-PNSV`).
+
+    `PL-F67Q` was filed on the branch that was working `PL-S86L`. It declared
+    no `touches`, so the search keyed on the files that branch was changing,
+    which were `PL-S86L`'s own, and recorded the capture as a recurrence of the
+    item in hand. A recurrence is a filing by a session that did not know the
+    item existed, and this session was working it. The same capture on a
+    branch that claims nothing is still matched and recorded, so the claim is
+    the only thing that decides it.
+    """
+    title = "verify's suppression check reads every added line as code"
+    unclaimed = _changing_verify_py(tmp_path / "unclaimed", claimed=False)
+    claimed = _changing_verify_py(tmp_path / "claimed", claimed=True)
+
+    assert _run_with_git("new", title, "--items", str(unclaimed)) == 0
+    assert "Recorded on PL-C1C1" in capsys.readouterr().out
+    assert "recurrences:" in (unclaimed / "existing.md").read_text(encoding="utf-8")
+
+    assert _run_with_git("new", title, "--items", str(claimed)) == 0
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" not in printed, "the item in hand is not offered as an earlier filing"
+    assert "recurrences:" not in (claimed / "existing.md").read_text(encoding="utf-8")
 
 
 def test_a_capture_with_no_git_to_read_is_written_exactly_as_before(
@@ -12868,3 +12926,124 @@ def test_an_empty_evidence_table_changes_nothing_show_or_next_print(
     assert before == after == [0, 0]
     assert capsys.readouterr().out == said_before
     assert "model:" not in said_before
+
+
+def _draft_forge(tmp_path: Path, root: Path, opened: str, drafted: str = "77") -> Path:
+    """Point `root`'s forge commands at a fake forge, and return where it records a draft.
+
+    `opened` is the listing `open_pull_requests_command` prints. The draft
+    command writes the arguments it was given to the returned file and prints
+    `drafted`, or exits 1 with a reason on stderr where `drafted` is empty.
+    """
+    asked = tmp_path / "drafted.json"
+    forge = tmp_path / "forge.py"
+    forge.write_text(
+        "import json, sys\n"
+        f"if sys.argv[1] == 'open':\n    print({opened!r}, end='')\n    raise SystemExit(0)\n"
+        f"open({str(asked)!r}, 'w').write(json.dumps(sys.argv[2:]))\n"
+        f"if not {drafted!r}:\n"
+        "    print('GitHub refused (HTTP 403)', file=sys.stderr)\n    raise SystemExit(1)\n"
+        f"print({drafted!r})\n",
+        encoding="utf-8",
+    )
+    (root / "docket.toml").write_text(
+        "[docket]\n"
+        f'open_pull_requests_command = "python3 {forge} open"\n'
+        f'open_draft_command = "python3 {forge} draft"\n',
+        encoding="utf-8",
+    )
+    return asked
+
+
+def _claim(root: Path) -> int:
+    return main(["claim", "--items", str(root / "docs" / "items"), "--now", ARM_NOW, "PL-B1B1"])
+
+
+def test_claim_opens_the_branch_s_pull_request_as_a_draft_once_the_claim_is_pushed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-86DN: the number exists before the item closes, so the closing commit can carry it."""
+    root, git = _arm_repo(tmp_path)
+    asked = _draft_forge(tmp_path, root, opened="")
+
+    assert _claim(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"claim: opened draft pull request #77 on {ARM_BRANCH}" in out
+    assert json.loads(asked.read_text()) == [ARM_BRANCH, "main", "PL-B1B1: PL-B1B1"]
+    assert git("ls-remote", "--heads", "origin", ARM_BRANCH).strip()
+
+
+def test_claim_opens_no_draft_where_a_pull_request_is_open_on_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, _ = _arm_repo(tmp_path)
+    asked = _draft_forge(tmp_path, root, opened=f"{ARM_BRANCH} 12\n")
+
+    assert _claim(root) == 0
+
+    assert f"claim: pull request #12 is open on {ARM_BRANCH}" in capsys.readouterr().out
+    assert not asked.exists()
+
+
+def test_a_draft_the_forge_refused_is_said_with_the_step_the_session_takes_instead(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The claim is published either way, so it still exits 0, and never reads as opened."""
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened="", drafted="")
+
+    assert _claim(root) == 0
+
+    out = capsys.readouterr().out
+    assert "claim: no draft pull request opened: GitHub refused (HTTP 403)" in out
+    assert "Open it as a draft with your own GitHub tool now, before any work" in out
+    assert "opened draft" not in out
+
+
+def _close(root: Path) -> int:
+    return main(
+        [
+            "set",
+            "--items",
+            str(root / "docs" / "items"),
+            "PL-B1B1",
+            "--status",
+            "done",
+            "--closed",
+            "2026-09-01",
+        ]
+    )
+
+
+def test_closing_an_item_writes_its_branch_s_open_pull_request_number(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-86DN: `pr:` lands in the closing commit, so the first `pr-title` run passes.
+
+    Before, the number was written by a separate `record N` after the pull
+    request opened, and 116 pull requests took a red run and a second push.
+    """
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened=f"claude/other 5\n{ARM_BRANCH} 1832\n")
+
+    assert _close(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"PL-B1B1: pr: 1832, the pull request open on {ARM_BRANCH}" in out
+    text = (root / "docs" / "items" / "PL-B1B1-held.md").read_text(encoding="utf-8")
+    assert "\npr: 1832\n" in text
+
+
+def test_closing_an_item_with_no_pull_request_open_writes_no_number_and_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, _ = _arm_repo(tmp_path)
+    _draft_forge(tmp_path, root, opened="claude/other 5\n")
+
+    assert _close(root) == 0
+
+    out = capsys.readouterr().out
+    assert f"`pr:` not written: no pull request is open on {ARM_BRANCH}" in out
+    assert "bin/docket record N" in out
+    assert "pr:" not in (root / "docs" / "items" / "PL-B1B1-held.md").read_text(encoding="utf-8")

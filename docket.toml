@@ -511,6 +511,7 @@ workflow_paths = [
   "tests/unit/test_restated_constants.py",
   "tests/unit/test_rules_paths_check.py",
   "tests/unit/test_stop_hook_patch.py",
+  "tests/unit/test_thread_hooks.py",
   "tests/unit/test_tools_portability.py",
   "tests/unit/test_generator_check.py",
   "tests/unit/test_context_reading.py",
@@ -650,6 +651,16 @@ newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
 # was never switched on, or exits non-zero where it could not ask - which `arm`
 # answers `unknown` on.
 auto_merge_command = "python3 tools/open_pull_requests.py --auto-merge"
+
+# How `bin/docket claim` opens a draft pull request once it has pushed a claim
+# onto a branch with no pull request open (`PL-86DN`). Opened at the claim, the
+# pull request has a number before the item closes, so `bin/docket set
+# --status done` writes `pr:` in the closing commit and the first `pr-title` run
+# after it passes. The package appends the branch, the default branch's name
+# and a title, and the script prints the new number, or exits non-zero with the
+# reason on stderr, which `claim` passes on with the step the session takes
+# instead.
+open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 
 # How `bin/docket arm` counts the long docstrings and comments a simulator
 # branch adds that no prose review covers (`PL-W04Z`). Close-out step 8's review

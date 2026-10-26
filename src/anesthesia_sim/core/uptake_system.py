@@ -338,12 +338,15 @@ class AgentUptakeSystem:
     def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance the system by one conservative, validated step, or leave it unchanged.
 
-        The step is all-or-nothing. `_advance_step()` applies five
-        sub-exchanges in sequence, and a guard can reject the fifth after the
-        first four have already written their compartments. So this method
-        captures every dynamic value first. It restores those values on any
-        exit that is not a completed step, which leaves the system
-        bit-identical to what it was on entry.
+        The step is all-or-nothing. `_advance_step()` computes the whole step
+        in one exact propagation, but it then writes the result into the
+        compartments one at a time. A fraction's guard can reject a value after
+        earlier compartments have already been written. The accounting check
+        runs last, after every compartment has been written and the step's
+        delivered and exhausted agent have been recorded in the validator.
+        So this method captures every dynamic value first. It restores those
+        values on any exit that is not a completed step, which leaves the
+        system bit-identical to what it was on entry.
 
         The rollback is on the unwind path rather than in an `except` clause,
         so "any exit" really means any exit. A `BaseException` unwinds through
@@ -358,9 +361,9 @@ class AgentUptakeSystem:
         (PL-BNPY).
 
         This matters because a partly applied step is not a solution of
-        anything. Its numbers are an artifact of the order in which the
-        operators ran (the fifth having run against the second's output). They
-        are not evidence of where the model broke down, and `CLAUDE.md`
+        anything. It holds the new step's values in the compartments already
+        written and the old step's values in the rest. Its numbers are not
+        evidence of where the model broke down, and `CLAUDE.md`
         prefers an obvious failure to a plausible-looking number. Rolling back
         leaves the last completed step, which *is* a solution. So a caller that
         halts still holds a state that it can display and reason about. The
@@ -371,20 +374,22 @@ class AgentUptakeSystem:
         that it could not step from, so the same step would fail again. The
         caller must stop.
 
-        **This method also handles a settings record that the step cannot
-        build, and restates that failure like the others.** When a setting has
-        changed since the last step, `_advance_step` builds the record through
-        `_propagator_for`. The record rejects tissue blood flows that no longer
-        sum to the cardiac output. Setting a tissue's blood flow directly on the
-        tissue can leave the flows that way (`PL-HQF5`). The mismatch is not
-        rejected before the step as a `SimulationConfigurationError`, because
-        that type promises the caller that the run is still worth continuing
-        (`core/exceptions.py`). A run whose record cannot be built is not worth
-        continuing. The same record is rejected on every later step, and by
-        anything else that builds it, a Reset included. Restated as a step that
-        could not be completed, the failure reaches the caller as the halt that
-        it is. The message names the two flows in the litres per minute in
-        which they were set (`PL-M4M0`).
+        **This method also handles a settings record that the step cannot build. It raises
+        that failure as a `SimulationNumericalError`, as it does for the failures described
+        above.** When a setting has changed since the last step, `_advance_step` builds the
+        settings record through `_propagator_for`. The record rejects tissue blood flows that
+        do not sum to the cardiac output. No guarded way of changing a setting can leave the
+        flows in that state. Each flow is the tissue's perfusion fraction of the patient's
+        cardiac output (`PL-HQF5`). The patient rejects fractions that do not sum to 1, and a
+        tissue rejects a second write of its fraction (`PL-Z0HN`). So this check is a
+        safeguard, and only a write that bypasses those guards can reach it. The mismatch is
+        not rejected before the step as a `SimulationConfigurationError`. That type promises
+        the caller that the run is still worth continuing (`core/exceptions.py`), and a run
+        whose record cannot be built is not. The same record is rejected on every later step,
+        and by anything else that builds it, including a Reset. As a `SimulationNumericalError`,
+        the failure tells the caller that the run has to stop. The message gives the tissues'
+        total flow and the cardiac output, both in litres per minute, the unit in which the
+        cardiac output was set (`PL-M4M0`).
 
         Raises:
             TypeError: `simulation_step_s` is not a `SimulationStep`, so

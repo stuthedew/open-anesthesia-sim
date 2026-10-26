@@ -3934,14 +3934,47 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
             return
 
 
+def _subsection_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each subsection one level below the family's heading, heading and body.
+
+    The third member shape. It arrived with § "Required tests", where each
+    requirement is a `###` subsection rather than a row or a bullet
+    (`PL-2M9N`). A member runs from its heading to the next heading at its own
+    depth or shallower, so a deeper heading inside it is part of it. Prose
+    between the family's heading and its first subsection belongs to no
+    member. The family ends at the next heading at its own depth or shallower.
+
+    The headings are the ones `markdown` reads, so a `#` line inside a fence
+    opens no subsection, for the reason `_list_members` gives (`PL-0Y7J`).
+    """
+    lines = split_lines(text)
+    found = read_headings(lines)
+    opening = next(
+        (
+            index
+            for index, heading in enumerate(found)
+            if heading.level == family.level and heading.title == family.heading
+        ),
+        None,
+    )
+    if opening is None:
+        return
+    after = found[opening + 1 :]
+    family_end = next((h.line for h in after if h.level <= family.level), len(lines))
+    subsections = [h for h in after if h.line < family_end and h.level == family.level + 1]
+    for index, heading in enumerate(subsections):
+        end = subsections[index + 1].line if index + 1 < len(subsections) else family_end
+        yield heading.line + 1, "\n".join(lines[heading.line : end])
+
+
 # Every family bound by clause 2 today. **An entry arrives with the annotation
 # pass that makes its family conform, never in anticipation of one**, so the
 # check never holds `make check` red for work nobody has done yet. The check was
 # introduced over the hazard table, which conformed already, so it landed green;
-# `PL-036` added the minimum displayed outputs, and `PL-8LDF` (required
-# invariants) and `PL-2M9N` (required tests) are the two passes still due.
+# `PL-036` added the minimum displayed outputs, `PL-2M9N` added the required
+# tests, and `PL-8LDF` (required invariants) is the pass still due.
 #
-# Both entries name `TEST_ENTITY`, and for the displayed outputs that was a
+# Every entry names `TEST_ENTITY`, and for the displayed outputs that was a
 # decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
 # ratified, over naming the `SimulationSnapshot` field behind each bullet).
 # Three of that list's entries have no snapshot field to name - the playback
@@ -3968,6 +4001,14 @@ BOUND_FAMILIES = (
         kind=TEST_ENTITY,
         members=_list_members,
         promise="every entry names the test that holds it",
+    ),
+    BoundFamily(
+        document=MODEL,
+        heading="Required tests",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_subsection_members,
+        promise="every subsection names the test that holds it",
     ),
 )
 
@@ -5791,16 +5832,23 @@ def _unresolved(token: str) -> str:
     exist, which on the machine running the check may be false: the container
     paths sessions cite, `/root/.ccr/README.md` among them, are there (`PL-H0CF`).
     """
-    if token.startswith("/"):
-        where = "which is not in this repository - a leading `/` is read from its root"
-    elif next(_repository_paths(token), None) is None:
-        where = "which is outside this repository"
-    else:
-        where = "which does not exist"
     return (
-        f"{where}; a sentence naming it as absent, planned, deleted or elsewhere says so "
-        f"under its paragraph: <!-- absent: {token} -->"
+        f"{_unresolved_place(token)}; a sentence naming it as absent, planned, deleted or "
+        f"elsewhere says so under its paragraph: <!-- absent: {token} -->"
     )
+
+
+def _unresolved_place(token: str) -> str:
+    """Where a cited path that resolves to nothing is, as the clause that tells a reader.
+
+    `_unresolved` tells a path citation this, and `check_quoted_sources` tells a
+    quotation's source, so both say the same thing about the same path.
+    """
+    if token.startswith("/"):
+        return "which is not in this repository - a leading `/` is read from its root"
+    if next(_repository_paths(token), None) is None:
+        return "which is outside this repository"
+    return "which does not exist"
 
 
 def check_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -6525,6 +6573,15 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     written with an ellipsis cannot be found verbatim, and declining to
     answer beats a false error.
 
+    **The named file is found the way a path citation is found**, by
+    `_repository_paths`. A leading `/` is the repository's root, and a path
+    that climbs out of the repository names nothing. Before this, the check
+    joined the name to the root, which for a leading `/` asked the machine
+    running it. So a quotation from a container path, such as
+    `/root/.ccr/README.md`, passed in a session, where the file exists, and
+    failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
+    this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
+
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
     advisory: the words may be a proposal for the file or a sentence it has
@@ -6547,10 +6604,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
 
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
-            target = root / cited
+            target = next(
+                (root / path for path in _repository_paths(cited) if (root / path).is_file()), None
+            )
             bodies[cited] = (
                 _comparable_statements(target.read_text(encoding="utf-8"))
-                if target.is_file()
+                if target is not None
                 else None
             )
         return bodies[cited]
@@ -6588,7 +6647,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 continue
             body = body_of(cited)
             if body is None:
-                finding = f"{path}:{line}: quotes {cited}, which does not exist"
+                finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
             else:

@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/dashbo
 added: 2026-10-25
 payoff: the accounting panel reports a conservation failure at the moment one is detected, instead of saying Valid under the banner that reports it
 verify: grep -q 'def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt' tests/unit/test_dashboard_frame.py
+reenters: PL-X7D5
 ---
 
 **Problem.** `AgentUptakeSystem.advance()` rolls back every failed step in its
