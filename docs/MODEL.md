@@ -5890,7 +5890,7 @@ floating-point operations are composed. This was measured on 2026-09-07 against
 a stepped 600 s sevoflurane run with two setting changes, reaching a fraction
 of 0.0316. The single-instant path stays within 1.8e-14 of the stepped run, and
 the window path within 3.7e-15. Both figures are absolute differences in a
-fraction of one atmosphere. Both are eleven orders of magnitude below 1e-4,
+fraction of one atmosphere. Both are about ten orders of magnitude below 1e-4,
 the smallest difference that the two-decimal percent readout under
 § "Displayed precision" can show. So neither path can change a displayed digit.
 § "The canonical evaluation rule" below states, as a guarantee, which of the
@@ -6189,9 +6189,9 @@ what that reproduces, and what it does not:
   showed when it stood there.** A running case displays its stepped live state,
   which is one propagation per step from the opening. Every branch opens from
   the canonical state. Over three hours of the run in the item's measurement
-  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is ten orders
-  below the 1e-4 that a two-decimal percent can show, so no reader can see the
-  difference. The same holds for a fork at a control event or at a halt.
+  (2026-10-12), the two agree to 4.9e-14 as a fraction. That is about nine
+  orders below the 1e-4 that a two-decimal percent can show, so no reader can
+  see the difference. The same holds for a fork at a control event or at a halt.
 
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
