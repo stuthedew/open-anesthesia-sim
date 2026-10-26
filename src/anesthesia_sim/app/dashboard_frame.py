@@ -228,9 +228,10 @@ UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
 )
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
-    "Beyond it this model's omitted metabolism and its fat perfusion dominate the "
-    "trace, so it is not claimed to represent a patient. The values shown are the "
-    "last completed step, inside the supported span. Reset to start a new run."
+    "This model leaves out metabolism, and its fat flow is uncertain. How far the "
+    "slow part of the trace can stray from a patient grows as a run goes on, so the "
+    "model is not claimed to represent a patient past this span. The values shown "
+    "are the last completed step, inside the supported span. Reset to start a new run."
 )
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (

@@ -7294,18 +7294,43 @@ than this one, but it is not what is claimed here.
 <!-- not-restated: 2 %, 5 % -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**Why 24 hours, and not a multiple of the slowest time constant.** The fat
-group's time constant is about 42 h. A cap argued as several multiples of it
-would select for precisely the regime described above. That regime is the part
-of the trace that is most nearly all omission. The fat time constant bounds
-this number from *below* rather than above. With a span shorter than about one
-time constant, the fat trace stops showing what it exists to show. 24 hours is
-about 0.6 of it, so the fat compartment is still visibly loading. The span
-clears every anesthetic this simulator is built to teach by a wide margin. It
-also sits inside the regime that the source above calls clinically negligible
-for metabolism. It is also near the outer edge of the exposure range over
-which that omission has been measured at all.
+**Why 24 hours, and not a multiple of the slowest time constant.** At the
+reference settings, sevoflurane's fat group has a time constant of about 42 h.
+A cap argued as several multiples of it would select for precisely the regime
+described above. That regime is the part of the trace that is most nearly all
+omission. The fat time constant sets a floor on this number instead, and the
+floor is a fraction of the time constant, not a whole one. The span must be
+long enough that the fat compartment is still visibly loading when the run
+stops. 24 hours is about 0.6 of the time constant. At that fraction a
+first-order compartment has gone a little over two fifths of the way to
+equilibrium, so the fat trace still shows what it exists to show. A span of a
+few hours would stop that trace near its start. The floor says nothing about
+how far above it a run may go. The span also clears every anesthetic this
+simulator is built to teach by a wide margin (`PL-MLPT`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**The span is not inside the measured exposure range, and the 24 hours does
+not claim to be** (`PL-MLPT`). The review above measured how sevoflurane's
+metabolism scales with dose only from 0.35 to 9.5 MAC-hours. The cap bounds
+elapsed time, not exposure. A MAC-hour is conventionally counted at the
+end-tidal concentration, which in this model is the alveolar fraction. A run
+whose alveolar fraction is held near 1 MAC accumulates about one MAC-hour per
+hour. So such a run leaves the measured range at about 9.5 hours, and reaches
+about 24 MAC-hours at the cap. Every agent's dial opens at that agent's 1 MAC.
+The alveolar fraction stays below the dial during uptake, so a run left at the
+dial accumulates somewhat less than that. Sevoflurane's vaporizer delivers at
+most 8%, four times its 2% MAC. Counted at the dial, a run held there reaches
+at most about 96 MAC-hours. A long run at or above 1 MAC end-tidal therefore
+leaves the measured range well before 24 hours, and from then
+on even the size of the omission is unmeasured. The 24 hours rests on the
+argument above instead: the omission grows progressively once only the slow
+tail is still moving, and it grows without a cliff. It does not rest on the
+measured range. Isoflurane and desflurane are metabolized far less than
+sevoflurane, so for them the same span omits less.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- derived: 96 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **This replaces a memory limit that was never a modelling one.** The figure
 used before this section existed was 30 days. It was set on 2026-08-25 to size
