@@ -2287,6 +2287,81 @@ def test_a_halt_after_an_agent_change_names_one_agent(
         assert scheme.foreground in control.styleSheet(), control
 
 
+def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent_s_1_mac(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-6RJ0`: every ×MAC number on screen was divided by the 1 MAC the line states.
+
+    A halt writes the 1 MAC line and the delivered line from the controller's
+    record, while only a frame writes the cards. So a halt on the first frame
+    after an agent change left the cards holding sevoflurane's multiples,
+    divided by 2.0%. Before `PL-6RJ0`, the 1 MAC line above them stated
+    desflurane's 6.0%. Its first fix wrote the line together with the cards,
+    so the line then stated sevoflurane's 2.0% beside a delivered line divided
+    by 6.0%. The line now
+    follows the record on both the frame path and the halt path, and the halt
+    withholds the cards' multiples.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    drawn = controller.snapshot()
+    sevoflurane_line = format_mac_reference(drawn.agent_display_name, drawn.agent_mac_percent)
+    cards_before = [panel.value_label.text() for panel in run._readout_row.panels]
+
+    assert run._one_mac_text.text() == sevoflurane_line
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    _select_agent(run, "desflurane")
+
+    record = controller.record()
+    assert controller.agent_id == "desflurane"
+    assert controller.has_failed is True
+    assert run._one_mac_text.text() == format_mac_reference(
+        record.agent_display_name, record.agent_mac_percent
+    )
+    assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
+    # The cards keep the last frame's values, but none of sevoflurane's multiples.
+    assert [panel.value_label.text() for panel in run._readout_row.panels] == cards_before
+
+    for index, panel in enumerate(run._readout_row.panels):
+        if index != run_view_module._CLOCK_PANEL_INDEX:
+            assert panel.secondary_label.text() == "\u2014 \u00d7MAC"
+
+    monkeypatch.undo()
+    view_frame = run._readout_row.panels
+    run.refresh(controller.snapshot())
+
+    assert all(panel.secondary_label.text() != "\u2014 \u00d7MAC" for panel in view_frame), (
+        "the first frame that draws writes every card's multiple again"
+    )
+
+
+def test_a_halt_on_the_first_frame_still_states_the_1_mac_line(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-6RJ0`: the 1 MAC line is an unconditional value, so the halt path writes it too.
+
+    The cards were built from the run's first snapshot. Their multiples were
+    therefore divided by the MAC of the run's own agent, and the cards keep them.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    run._one_mac_text.setText("")
+    monkeypatch.setattr(controller, "_failure_reason", "the first frame failed")
+
+    run.present_halt()
+
+    record = controller.record()
+    assert run._one_mac_text.text() == format_mac_reference(
+        record.agent_display_name, record.agent_mac_percent
+    )
+    assert all(
+        panel.secondary_label.text() != "\u2014 \u00d7MAC" for panel in run._readout_row.panels
+    )
+
+
 def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

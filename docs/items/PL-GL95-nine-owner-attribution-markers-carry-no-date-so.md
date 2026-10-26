@@ -3,10 +3,12 @@ id: PL-GL95
 title: Nine owner-attribution markers carry no date, so CLAUDE.md's pre-2026-09-16 reading rule cannot classify them at all
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
-touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items
+touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items, .github/workflows/pr-title.yml, docket.toml
 added: 2026-09-20
+closed: 2026-10-26
+pr: 1854
 payoff: CLAUDE.md's pre-2026-09-16 reading rule has a date to read on every owner attribution in the tree, so no session has to guess whether a decision was ratified or specified
 verify: grep -qE '\(project owner, 20[0-9]{2}-[0-9]{2}-[0-9]{2}[^)]*PL-KQHN' ROADMAP.md
 ---
@@ -53,3 +55,13 @@ context, or is listed in the item as genuinely unrecoverable, so that
 the tree. `PL-QNMM` is the adjacent sweep of the 52 *dated* but unmarked
 attributions in `ROADMAP.md` and `docs/MODEL.md`; this is the smaller,
 different problem of markers a date-keyed rule cannot see at all.
+
+**Done 2026-10-26.** The nine markers above had moved, and the tree held 22 more of the same kind, each with no date inside its parentheses. A line-by-line scan with `\(project owner[,)][^)]*\)`, keeping lines with no year, found 31 outside `docs/pr-bodies/`, which keeps the published pull request bodies as they were. Every one now carries its date inside the marker, as `CLAUDE.md`'s form `(project owner, DATE, ratified)` writes it. Each date came from the sentence around the marker or from the named item's `closed:` date. None had to be guessed.
+
+Three needed a kind as well as a date, because a plain marker dated from 2026-09-16 reads as specified:
+
+- `PL-L9RD` (item 33 un-absorbed from the Qt port, 2026-09-16) is now `ratified`, at all four places it is cited. That item says "The project owner accepted the recommendation".
+- `PL-NMTF` (item 34 scoped, 2026-09-16) is now `kind unrecorded`. Its item says each question was "put with a recommendation and answered", but not whether each answer followed the recommendation.
+- `PL-H8YD` (pr-title added to the required checks, 2026-09-17) stays plain, because the owner made that settings change himself.
+
+A second scan, for markers that wrap across a line, found 87 with no date inside the parentheses. Every one has a date in the sentence or heading it belongs to, such as "Answered 2026-09-12 (project owner)", so the reading rule can classify them and they were left alone.

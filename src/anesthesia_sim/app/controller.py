@@ -25,6 +25,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
+from anesthesia_sim.app.chart_time_base import grid_spacing_s
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
@@ -2112,7 +2113,7 @@ class SimulationController:
         return current
 
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
-        """The states to plot across an axis, evaluated from the run definition.
+        """Return the states to plot across an axis, evaluated from the run definition.
 
         The chart reads its states here. Before the run stopped keeping
         samples of itself, the chart read a recorded window instead (`PL-2FM6`).
@@ -2121,20 +2122,20 @@ class SimulationController:
         the axis that the caller has just set, and that axis may legitimately
         extend past the run. `chart_time_base.following_window` keeps
         `live_headroom_s` of empty axis to the right of the newest instant.
-        `fitted_window` returns the chosen rung's full width however short the
-        run is. Both do this deliberately, so that the width a trace is drawn
-        at is fixed and its slope means the same thing at every moment of every
-        run. So the drawn range is clipped to the part of the axis that the run
-        covers. That clipping is not the coercion `CLAUDE.md` forbids. Nothing
-        is substituted or defaulted, and `DrawnWindow.times_s` says exactly
-        which instants came back. So a caller can see where the run ends,
-        rather than being given a value for an instant the run never reached.
-        The run definition itself rejects a request for those instants, and
-        rightly so. See `evaluate_anchored`.
+        `fitted_window` returns the full width of the chosen rung, however short
+        the run is. Both do this deliberately. The axis width at which a trace is
+        drawn then stays fixed, so the trace's slope means the same thing at every
+        moment of every run. The drawn range is therefore clipped to the part of
+        the axis that the run covers. That clipping is not the coercion that
+        `CLAUDE.md` forbids. Nothing is substituted or defaulted, and
+        `DrawnWindow.times_s` lists exactly which instants were returned. So a
+        caller can see where the run ends, rather than being given a value for an
+        instant the run never reached. The run definition itself rejects a
+        request for those instants, and rightly so. See `evaluate_anchored`.
 
         **The column spacing comes from the axis, not from the clipped
-        range.** That keeps the grid anchored. The span is a property of the
-        selected time base, so it is constant. The evaluated instants
+        range.** That keeps the grid anchored. The axis span is a property of
+        the selected time base, so it is constant. The evaluated instants
         therefore stay in place as the window follows the run, and only the
         newest column is new. Deriving the spacing from the clipped range
         instead would move every column on every frame early in a run. That is
@@ -2145,16 +2146,18 @@ class SimulationController:
             stop_s: Right edge of the axis, in simulated seconds. It must not
                 be before `start_s`.
             columns: The number of grid columns the axis is divided into, at
-                least two. The points actually drawn are these columns plus
-                the control events inside the window and the two ends of the
-                drawn range. So this value bounds the grid, not the number of
-                points.
+                least two. The spacing this gives is rounded down onto whole
+                hundredths of a second, so the grid can have a few more
+                columns than this (`chart_time_base.grid_spacing_s`). The
+                points actually drawn are these columns plus the control
+                events inside the window and the two ends of the drawn range.
+                So this value sets the grid, not the number of points.
 
         Returns:
             The states at the drawn instants, bound to this run's agent.
 
         Raises:
-            SimulationConfigurationError: If `columns` is below two, either
+            SimulationConfigurationError: If `columns` is fewer than two, either
                 bound is not finite, or `stop_s` precedes `start_s`.
         """
 
@@ -2173,7 +2176,11 @@ class SimulationController:
                 f"an axis from {start_s} s to {stop_s} s ends before it begins"
             )
 
-        spacing_s = (stop_s - start_s) / (columns - 1)
+        # The spacing is rounded down onto a grid of whole hundredths of a
+        # second, so the chart's hover can print each column's instant exactly
+        # (`chart_time_base.grid_spacing_s`, `PL-T5NJ`).
+        span_s = stop_s - start_s
+        spacing_s = grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
         # The axis and the run definition use one clock, so nothing is
         # converted here. The range is only clipped to the span the run
         # actually holds. The lower clip is where this run *began*, not zero.

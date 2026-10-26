@@ -218,8 +218,8 @@ jobs:
       # run 39062070913. So this step asks `bin/docket ci-scope` whether every
       # path the pull request changed is under the store, and writes
       # `scope=items` as its output if so. It writes `scope=apparatus` when
-      # every path is under `workflow_paths`, which only the second part's
-      # pytest step reads (`PL-STM6`), and `scope=full` otherwise. On
+      # every path is under `workflow_paths`, which both parts' pytest steps
+      # read (`PL-STM6`), and `scope=full` otherwise. On
       # `items`, ruff, mypy, `ignore_check.py` and both parts of the suite are
       # skipped, with the coverage the parts upload and `checks` combines. The second part runs
       # only the tests marked `reads_item_store` instead. The root
@@ -384,8 +384,15 @@ jobs:
         # Write each line to the log as pytest prints it. Without this, the log
         # stamped pytest's session header at the end of collection, which hid
         # where a slow part spent its time (`PL-2N6J`).
+        #
+        # This part asks for `--skip-costly` on the same answer as the second
+        # part, though it holds no costly test. The parts deal the ordinary
+        # tests with other shares when the costly ones are left out, so both
+        # parts have to ask, or some tests would run in neither part and some
+        # in both. `checks` fails a run whose parts answered differently.
         env:
           PYTHONUNBUFFERED: "1"
+          SKIP_COSTLY_TESTS: ${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}
       # `.coverage` is a hidden file, which the action leaves out unless asked.
       # One day is enough, since only this run's `checks` job reads it.
       - uses: actions/upload-artifact@v7.0.2
@@ -635,7 +642,10 @@ jobs:
         # change. It is not `PYTEST_ADDOPTS`, which every pytest a test starts
         # in a subprocess inherits: the docket tests' own pytest, in a scratch
         # repository with no such option, stopped at exit 4 on `#1774`. A push
-        # to `main` never asks `ci-scope`, so it runs them all.
+        # to `main` never asks `ci-scope`, so it runs them all. The first part
+        # asks for the skip too, so that both parts deal the ordinary tests
+        # with the shares `tests/conftest.py` keeps for a run without the
+        # costly tests.
         #
         # Coverage still runs, but `checks` does not hold it to 100% on this
         # answer, for the reason its `COSTLY_SKIPPED` comment gives. Without
@@ -716,6 +726,16 @@ jobs:
           PART_1: ${{ needs.checks-part-1.result }}
           PART_2: ${{ needs.checks-part-2.result }}
         run: test "$PART_1" = success && test "$PART_2" = success
+      # The parts deal the ordinary tests with other shares when they skip the
+      # costly ones (`PL-STM6`). If one part answered `apparatus` and the other
+      # `full`, some tests would run in neither part, and coverage could still
+      # pass. The two parts diff the same merge commit, so they agree in
+      # practice. This step makes a disagreement fail instead of passing quietly.
+      - name: both parts answered the same scope
+        env:
+          SCOPE_1: ${{ needs.checks-part-1.outputs.scope }}
+          SCOPE_2: ${{ needs.checks-part-2.outputs.scope }}
+        run: test "$SCOPE_1" = "$SCOPE_2"
       # The same checkout and environment the parts measured, so the source
       # paths in their coverage data name files that exist here.
       - uses: actions/checkout@v7.0.1

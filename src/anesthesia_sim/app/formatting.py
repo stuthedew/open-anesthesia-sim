@@ -803,16 +803,20 @@ def format_supported_run_length() -> str:
 
 
 def format_playback_rate(multiplier: int) -> str:
-    """State how fast simulated time is being played against real time.
+    """Return the label for the playback rate that is set, as a multiple of real time.
 
-    The rate is a mode, and a mode that nobody can see is the failure this
-    project's interface rules exist to prevent. A clock advancing at 60x
-    beside numbers that look like a live case is easy to misread at a
-    glance. So this function renders a label at every rate, including real
-    time, where it gives "1x real time" rather than nothing. With no label
-    at 1x, the label's *presence* would become the signal. A reader who has
-    not learned that convention would read a missing label as a missing
-    mode, not as the default one.
+    The string states the setting, not whether the clock is moving. A paused,
+    reset or halted run still shows the rate it plays at, and the status word
+    in the transport row says whether the run is running. `docs/MODEL.md`
+    § "Interface boundary" defines the label this way (`PL-SQJ1`, `PL-X4X2`).
+
+    The rate is a mode. This project's interface rules exist to prevent a mode
+    that nobody can see. A clock advancing at 60x beside numbers that look like
+    a live case is easy to misread at a glance. So this function renders a label
+    at every rate, including real time, where it gives "1x real time" rather than
+    nothing. With no label at 1x, the label's *presence* would become the signal.
+    A reader who has not learned that convention would take a missing label to
+    mean a missing mode, not the default one.
 
     One function serves both places where the rate appears: the control
     that sets it, and the line under the clock that reports it. So the two
@@ -822,16 +826,16 @@ def format_playback_rate(multiplier: int) -> str:
     never by writing its own.
 
     The label says "Real time" rather than "wall clock" because a reader
-    compares the rate with the pace of a case they have stood through, and
-    the multiple is of that pace. Simulated time itself is rendered by
+    compares the rate with the pace of a case they have stood through. The
+    rate is a multiple of that pace. Simulated time itself is rendered by
     `format_elapsed`, in simulated seconds, and remains the only clock on
-    the display. This string names the pace at which the clock advances,
-    and is never a second reading of the time.
+    the display. This string names the pace at which the clock advances
+    while the run plays, and is never a second reading of the time.
 
     Args:
         multiplier: Simulated seconds advanced per second of real time, as
             `app/playback.py` defines it. It is a whole number by
-            construction. `app/playback.py` refuses a rate that does not
+            construction. `app/playback.py` rejects a rate that does not
             land on a whole number of simulation steps per tick, so such a
             rate is never displayed here.
 

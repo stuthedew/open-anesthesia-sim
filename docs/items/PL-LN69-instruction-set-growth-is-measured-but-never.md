@@ -129,7 +129,7 @@ first candidate list has been produced and ruled on by the project owner — so
 that at least one rule has been either defended on evidence or retired on it.
 Producing a list nobody acts on does not close this.
 
-## Resolved 2026-09-21: no retirement mechanism (project owner, ratified)
+## Resolved 2026-09-21: no retirement mechanism (project owner, 2026-09-21, ratified)
 
 **Decision (project owner, 2026-09-21, ratified, over adding a subsumption
 retirement test and a rule-count tripwire, both of which this item's own
