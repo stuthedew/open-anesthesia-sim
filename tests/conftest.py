@@ -93,9 +93,12 @@ conftest reads, and not through `PYTEST_ADDOPTS`. Every pytest that the suite
 starts in a subprocess inherits `PYTEST_ADDOPTS`. The docket tests start
 pytest in a scratch repository that has no `--skip-costly` option. So on the
 first apparatus pull request that set the option through `PYTEST_ADDOPTS`,
-that inner pytest stopped with exit code 4 (`#1774`). When the costly tests are left out,
-`PART_SHARES` stays as it is. The first part's linters already make up for
-most of the gap that leaving those tests out opens.
+that inner pytest stopped with exit code 4 (`#1774`). When the costly tests are
+left out, the parts deal the ordinary tests with `SKIPPING_COSTLY_SHARES`
+instead of `PART_SHARES`, because the second part then has far less to run.
+Both parts ask for the skip, so they deal with the same shares. The first part
+holds no costly test, so the skip changes only how many ordinary tests it
+takes.
 
 **The windows the tests leave open** (`PL-CW51`). Many tests build a dashboard
 and never delete it, so a worker can end its run holding hundreds of windows.
@@ -329,6 +332,18 @@ def deal[Test: Hashable](
 #: number of parts that is not named here splits the tests evenly.
 PART_SHARES: dict[int, tuple[int, ...]] = {2: (2, 3)}
 
+#: How many tests of each cycle each part takes when the costly tests are left
+#: out, keyed by the number of parts (`PL-STM6`). With `PART_SHARES`, the first
+#: part finished last on all 37 apparatus pull request runs measured on
+#: 2026-10-26, by a median of 74 s. On the 26 of them that ran after `PL-GQCQ`
+#: added the bytecode step, the first part's job spent a median of 163 s outside
+#: pytest and the second part's 39 s. Their pytest steps took 119 s for 2 of
+#: every 5 ordinary tests and 164 s for 3 of every 5. That puts the ordinary
+#: tests at about 45 s of step time per fifth, plus about 28 s of start-up in
+#: each step. Giving the first part 2 of every 9 ordinary tests then brings both
+#: jobs to about 240 s. This is an estimate from those medians, not a measurement.
+SKIPPING_COSTLY_SHARES: dict[int, tuple[int, ...]] = {2: (2, 7)}
+
 
 def part[Test: Hashable](
     tests: Sequence[Test],
@@ -375,13 +390,16 @@ def selected[Test: Hashable](
 
     With `skip_costly`, every test in `costly` is left out. When `chosen` is a
     `(K, N)` pair from `--part`, `part` then picks part K of N from the
-    remaining tests, using the shares that `PART_SHARES` names for N parts.
+    remaining tests. It uses the shares that `SKIPPING_COSTLY_SHARES` names for
+    N parts with `skip_costly`, and those that `PART_SHARES` names without it.
+    So every part of one run has to be given the same `skip_costly`.
     """
 
     kept = [test for test in tests if test not in costly] if skip_costly else list(tests)
     if chosen is None:
         return kept
-    return part(kept, costly, *chosen, PART_SHARES.get(chosen[1]))
+    shares = SKIPPING_COSTLY_SHARES if skip_costly else PART_SHARES
+    return part(kept, costly, *chosen, shares.get(chosen[1]))
 
 
 def _part(text: str) -> tuple[int, int]:
