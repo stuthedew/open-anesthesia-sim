@@ -88,7 +88,7 @@ MACHINE_EPSILON = 2.0**-52
 """The spacing of doubles just above 1, the unit in which a rounding error is counted."""
 
 PROPAGATOR_MARGIN = 3.0
-"""How many times the stated bound one propagator's error may reach here.
+"""The largest multiple of the stated bound that one propagator's error may reach here.
 
 `core/matrix_exponential.py` states that after `s` squarings, a propagator's
 entries carry an error of up to about `2**s` times `MACHINE_EPSILON`. It also
@@ -417,8 +417,9 @@ def _require_the_system(corner: Corner) -> None:
     A step from a full state may be refused, but only for the one reason that
     `PL-9B1M` describes. Rounding can take a fraction just past 1. The fraction
     check then refuses that fraction, and the step is rolled back. The refused
-    fraction must lie within one step's propagator bound of 1, at the most
-    squarings any corner's step needs, and the state must be unchanged.
+    fraction may be no more than one step's propagator bound above 1, taken at
+    the most squarings that any corner's step needs. The state must also be
+    unchanged after the refusal.
     """
 
     largest_refused_fraction = 1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON
