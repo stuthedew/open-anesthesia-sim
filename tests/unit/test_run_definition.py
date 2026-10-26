@@ -1877,7 +1877,10 @@ a restart, on the grounds that the difference is too small to matter.
 # run at 3600 s. The test pins it as a ceiling rather than as an equality, because it is a
 # floating-point difference in how operations are composed. A compiler, a platform or an
 # unrelated change in `matrix_exponential` may move it. The claim needs only that the
-# divergence is real and this small. Its order of magnitude agrees with the 5.3e-13 that
+# divergence is real and this small. Measured on 2026-10-26, after `PL-HWNG` moved the
+# first change to a 3.0% dial so that the run carries both changes, the divergence at the
+# six probes was 1.5e-14, 1.1e-13, 1.5e-14, 1.2e-13, 1.7e-14 and 7.8e-13. Before, with
+# one change, the largest was 5.8e-13. Its order of magnitude agrees with the 5.3e-13 that
 # `docs/MODEL.md` § "The canonical evaluation rule" records for the same restart on a
 # different run, in an accumulator (a running total of agent volume). That section is the
 # authority for the size, and this constant is not a second claim about it.
@@ -1888,7 +1891,13 @@ PROBES_S = (700.0, 800.0, 900.0, 1200.0, 1800.0, 3600.0)
 
 
 def _two_change_run() -> RunDefinition:
-    """Return a one-hour sevoflurane run that carries two setting changes."""
+    """Return a one-hour sevoflurane run that carries two setting changes.
+
+    The dial moves from the 2.0% that sevoflurane opens at to 3.0% at 300 s, and the fresh
+    gas flow moves to 1.0 L/min at 600 s. `record_change` drops a change equal to the
+    settings in force, so the dial must move to a value other than the opening one
+    (`PL-HWNG`).
+    """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
@@ -1896,7 +1905,7 @@ def _two_change_run() -> RunDefinition:
     )
 
     definition.advance_to(CaseInstant(300.0))
-    system.set_delivered_concentration_percent(Percent(2.0))
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(600.0))
     system.set_fresh_gas_flow(FreshGasFlow(1.0))
@@ -1904,6 +1913,16 @@ def _two_change_run() -> RunDefinition:
     definition.advance_to(CaseInstant(3600.0))
 
     return definition
+
+
+def test_the_two_change_run_carries_both_changes() -> None:
+    """The helper's run holds three segments: the opening and one for each change."""
+
+    assert [segment.opening.instant_s for segment in _two_change_run().segments] == [
+        0.0,
+        300.0,
+        600.0,
+    ]
 
 
 def _worst(left: tuple[float, ...], right: tuple[float, ...]) -> float:
