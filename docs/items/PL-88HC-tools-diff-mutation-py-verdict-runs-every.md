@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: session-cost
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, docs/apparatus.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py, docs/mutation-testing.md, docs/apparatus.md
 added: 2026-10-24
 closed: 2026-10-26
 pr: 1849
