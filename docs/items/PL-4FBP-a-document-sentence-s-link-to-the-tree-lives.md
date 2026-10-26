@@ -299,7 +299,7 @@ four clauses written into `docs/MODEL.md` and the tool's docstring;
 `check_bound_families`; the member re-pointing; the three annotation passes
 re-scoped.
 
-**Decided 2026-09-19 (project owner, ratified).** Adopted as recommended
+**Decided 2026-09-19 (project owner, 2026-09-19, ratified).** Adopted as recommended
 above - the four clauses, the bound documents, the declared-none form and the
 record rule - chosen over refusing the convention, and over marking free prose
 one sentence at a time. The answer was "agree with recs", which `CLAUDE.md`

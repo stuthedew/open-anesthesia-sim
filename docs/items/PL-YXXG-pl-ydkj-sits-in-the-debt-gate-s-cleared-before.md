@@ -66,7 +66,7 @@ rather than an edit.
 `PL-2FM6`'s brief on when `PL-YDKJ` is answered, and the reasoning is recorded
 wherever the disagreement is resolved.
 
-**Closed 2026-09-08, option 1** (project owner, same day). `PL-YDKJ`'s gate entry
+**Closed 2026-09-08, option 1** (project owner, 2026-09-08). `PL-YDKJ`'s gate entry
 moved from "Cleared before v0.5.0 begins, the product lane" (now 39 entries) to
 "Cleared by v0.5.0 itself" (now 10), and the item gained `blocked-by: PL-2FM6`
 with `status: blocked`, so the edge is machine-readable rather than prose two

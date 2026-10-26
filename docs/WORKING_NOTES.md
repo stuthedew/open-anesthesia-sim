@@ -1358,7 +1358,7 @@ future run should expect the same pressure and say how it handled it.
 
 ## Open: item 34's two releases, and the one ordering question left
 
-**Scoped 2026-09-16** (project owner, on `PL-NMTF`). `ROADMAP.md`
+**Scoped 2026-09-16** (project owner, 2026-09-16, kind unrecorded, on `PL-NMTF`). `ROADMAP.md`
 planned-milestone item 34 - the Blender-style area/workspace system - was placed
 on the timeline and split across two releases: **v0.6.0 "the layout is the
 reader's"** (Areas, the View contract, the View registry, Workspaces,
@@ -2092,7 +2092,7 @@ lists them. Three come from the plan above: `PL-X5JR`, `PL-THLT` and
 the plan named it: it closed in `v0.5.0` under the `slug-rename-on-write`
 feature.
 
-**Amended 2026-09-20 on build, both halves measured** (project owner, ratified).
+**Amended 2026-09-20 on build, both halves measured** (project owner, 2026-09-20, ratified).
 Two constants moved from what this section specified, and they turned out to be
 one question:
 

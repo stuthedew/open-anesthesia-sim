@@ -102,7 +102,7 @@ misread by six open items and one closed, with no head's `misread:` stating it
 ten days (`PL-V2HC`'s, `PL-85LJ`'s, `PL-Y2SL`'s and `PL-VN6M`'s) each handed
 it new members.
 
-**Design round requested 2026-10-17** (project owner, in the triage session):
+**Design round requested 2026-10-17** (project owner, 2026-10-17, in the triage session):
 claim this item, read its members' briefs (`PL-1YDD`, `PL-DTJQ`, `PL-MMNX`,
 `PL-T995`, `PL-G3K7`, `PL-0LG6`), run the round from the marked
 recommendation, and put the refactor's size and risk to the owner before
