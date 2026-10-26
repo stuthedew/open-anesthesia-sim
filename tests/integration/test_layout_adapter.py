@@ -1942,6 +1942,36 @@ def test_the_notice_restates_the_size_as_the_area_grows_and_clears_once_it_is_en
     assert container.model == model
 
 
+def test_an_area_held_at_its_floor_shows_its_whole_notice(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-Y65Q`: an Area held at its floor shows the notice's title and both sizes in full.
+
+    The window is 170 by 300 px, and the Big view's Area has a tenth of its
+    height, far less than the 227 px its View needs. So that Area is held at
+    its floor, and its neighbour takes the rest. The floor
+    used to hold only the header and one line, so both labels were laid out
+    0 px tall. Now the floor holds the title and the short statement of the
+    two sizes, each at the height its wrapped text needs.
+    """
+
+    model = _layout(_column((0.9, 0.1), _area(1), Area(AreaId(2), _BIG)), 3)
+    _, container = _host_sized(application, hosts, model, (170, 300))
+    frame = container.frame(AreaId(2))
+    notice = frame.too_small_notice
+
+    assert [entry.area_id for entry in container.too_small()] == [AreaId(2)]
+    assert frame.height() == frame.minimumHeight()
+    assert notice is not None
+    assert _texts(frame) == [
+        "Too small for Big view.",
+        f"Needs 300 by 200 px; has 170 by {frame.height() - _CHROME_PX}.",
+    ]
+
+    for label in (notice.title_label, notice.body_label):
+        assert label.height() >= label.heightForWidth(label.width()) > 0
+
+
 def test_a_drag_stops_where_the_neighbour_reaches_its_views_declared_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:

@@ -23,9 +23,10 @@ extent is large enough.
 than the extent has: a split whose halves are smaller than their View needs,
 a View chosen for an Area too small for it, or a layout opened at a smaller
 size than it was arranged at. Such an Area is *too small*. It is held only at
-its *floor*, the least size at which it can show its header and one line of a
-notice, and the adapter draws `PL-DB5G`'s notice there, stating the size the
-View needs and the size the Area has. The adapter gives its host the sum of
+its *floor*, the least size at which it can show its header, the notice's
+title and a short statement of the size the View needs and the size the Area
+has (`PL-Y65Q`). The adapter draws `PL-DB5G`'s notice there, and adds its
+advice sentence only where the Area has room for it. The adapter gives its host the sum of
 the needs as its least size (`minimum_extent`), so a host that can grow, such
 as the dashboard's scrolling page, grows instead, and no Area there is too
 small. Nothing is clipped, and nothing is collapsed to zero extent. Collapsing

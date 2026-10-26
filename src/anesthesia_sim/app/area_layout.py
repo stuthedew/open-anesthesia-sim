@@ -190,6 +190,7 @@ from anesthesia_sim.app.view_registry import (
     pinned_run_absent_text,
     pinned_run_absent_title,
     rename_offer_text,
+    too_small_short_text,
     too_small_text,
     too_small_title,
     unbuilt_view_text,
@@ -467,6 +468,9 @@ class AreaLayout(QWidget):
         # The state of each View the reader replaced, by its Area and kind.
         self._saved: dict[tuple[AreaId, ViewKind], SavedState] = _flattened(states or {})
         self._notices: list[AreaNotice] = []
+        # A notice that is never shown. `_floor` lays the too-small notice out
+        # in it to measure how tall the notice is at an Area's floor width.
+        self._notice_probe = AreaNotice("", "")
         self._frames: dict[AreaId, AreaFrame] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
@@ -1208,9 +1212,9 @@ class AreaLayout(QWidget):
         `layout/sizing.py`'s `settle` decides it at this widget's size, so the
         sizes drawn are the ones it worked out (`PL-K285`). Each Area's frame
         is held at the bound it was given. An Area that draws its View is held
-        at its need. An Area that is too small is held at its floor, the
-        smallest size that holds its header and one line of a notice. In place
-        of the View, it shows a statement of the size its View needs. Before
+        at its need. An Area that is too small is held at its floor (`_floor`).
+        In place of the View, it shows a statement of the size its View needs.
+        Before
         this widget is shown, its size is not the size it is drawn at. So until
         then, every Area keeps its View and is held at its need.
 
@@ -1228,7 +1232,7 @@ class AreaLayout(QWidget):
             tree = self._model.windows[MAIN_WINDOW].tree
             needs = {area_id: self._need(area_id) for area_id in self._frames}
             self._needs = needs
-            floors = {area_id: _floor(frame) for area_id, frame in self._frames.items()}
+            floors = {area_id: self._floor(area_id) for area_id in self._frames}
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
             least = minimum_extent(tree, AREA_HANDLE_WIDTH, needs)
@@ -1264,18 +1268,51 @@ class AreaLayout(QWidget):
     def _need(self, area_id: AreaId) -> PixelSize:
         """Return the least size at which the Area `area_id` draws its View, header included.
 
-        An Area that shows a notice in place of a View needs only its floor,
-        the smallest size that holds its header and one line of the notice.
+        An Area that shows a notice in place of a View needs only
+        `_structural_minimum`, the smallest size that holds its header and one
+        line of the notice.
         """
 
         frame = self._frames[area_id]
 
         if area_id not in self._views:
-            return _floor(frame)
+            return PixelSize(*_structural_minimum(frame))
 
         view = self._view_need(area_id)
 
         return PixelSize(view.width_px, view.height_px + _chrome_height(frame))
+
+    def _floor(self, area_id: AreaId) -> PixelSize:
+        """Return the size at which the Area `area_id` is held while it is too small for its View.
+
+        Its width is `_structural_minimum`'s. Its height holds the header and
+        the too-small notice's title and short statement of the two sizes,
+        wrapped at that width (`PL-Y65Q` route B), but never more than the
+        View's need. The notice's advice sentence is shown only where the
+        Area has room for it. An Area that shows a notice in place of a View
+        is held at `_structural_minimum`.
+        """
+
+        frame = self._frames[area_id]
+        width, height = _structural_minimum(frame)
+        shown = self._views.get(area_id)
+
+        if shown is None:
+            return PixelSize(width, height)
+
+        # At its floor, the Area has less room than its View needs. So the
+        # statement measured with the need as both sizes is as wide as the
+        # one the Area will show.
+        needed = self._view_need(area_id)
+        probe = self._notice_probe
+        probe.title_label.setText(too_small_title(self._registered[shown[0]].title))
+        probe.body_label.setText(too_small_short_text(needed, needed))
+
+        notice = _chrome_height(frame) + probe.heightForWidth(width)
+
+        # An Area that has its View's need is drawn and shows no notice, so the
+        # notice never raises the floor above the need.
+        return PixelSize(width, max(height, min(notice, self._need(area_id).height_px)))
 
     def _view_need(self, area_id: AreaId) -> PixelSize:
         """Return the least size at which the View in `area_id` is drawn, below the Area's header.
@@ -1976,6 +2013,11 @@ class AreaFrame(QFrame):
         has = PixelSize(max(self.width(), 0), max(self.height() - _chrome_height(self), 0))
         notice.body_label.setText(too_small_text(needed, has))
 
+        # Below the room the whole notice needs, the advice sentence gives way
+        # to the short statement of the two sizes (`PL-Y65Q` route B).
+        if notice.heightForWidth(has.width_px) > has.height_px:
+            notice.body_label.setText(too_small_short_text(needed, has))
+
     def enterEvent(self, event: QEnterEvent) -> None:
         super().enterEvent(event)
         self._show_grips(True)
@@ -2670,12 +2712,6 @@ def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
         frame.chooser.sizeHint().width() + 2 * _HEADER_MARGIN_PX,
         header.height() + _HEADER_RULE_PX + PANEL_PADDING + line,
     )
-
-
-def _floor(frame: AreaFrame) -> PixelSize:
-    """Return the size at which an Area too small for its View is held: `_structural_minimum`."""
-
-    return PixelSize(*_structural_minimum(frame))
 
 
 def _chrome_height(frame: AreaFrame) -> int:

@@ -29,6 +29,7 @@ from anesthesia_sim.app.view_registry import (
     rename_offer_text,
     required_kinds,
     retirements,
+    too_small_short_text,
     too_small_text,
     too_small_title,
 )
@@ -309,3 +310,14 @@ def test_the_too_small_notice_names_the_view_and_both_sizes() -> None:
 def test_the_too_small_notice_refuses_a_size_that_is_not_a_pixel_size() -> None:
     with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
         too_small_text((300, 246), PixelSize(212, 97))  # type: ignore[arg-type]
+
+
+def test_the_short_too_small_notice_states_both_sizes_and_drops_the_advice() -> None:
+    """At its floor, an Area states only the two sizes (`PL-Y65Q` route B)."""
+
+    assert too_small_short_text(PixelSize(300, 246), PixelSize(143, 31)) == (
+        "Needs 300 by 246 px; has 143 by 31."
+    )
+
+    with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
+        too_small_short_text(PixelSize(300, 246), (143, 31))  # type: ignore[arg-type]

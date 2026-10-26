@@ -93,6 +93,7 @@ __all__ = [
     "retirements",
     "pinned_run_absent_text",
     "pinned_run_absent_title",
+    "too_small_short_text",
     "too_small_text",
     "too_small_title",
     "unbuilt_view_text",
@@ -436,6 +437,30 @@ def too_small_text(needed: PixelSize, available: PixelSize) -> str:
         f"It needs at least {needed.width_px} by {needed.height_px} px; this Area is "
         f"{available.width_px} by {available.height_px}. Drag a border to enlarge it, "
         "or choose a smaller View from the menu above."
+    )
+
+
+def too_small_short_text(needed: PixelSize, available: PixelSize) -> str:
+    """The short body of the too-small notice, for an Area held at its floor.
+
+    An Area held at its floor has too little height for `too_small_text`, so
+    it states only the two sizes. It drops the advice to drag a border or
+    choose a smaller View. `needed` and `available` mean what they mean in
+    `too_small_text`. The wording is a placeholder that `PL-Y65Q` route B
+    chose, under the project owner's rule of 2026-10-18 that look and wording
+    are placeholders while the structure is built.
+
+    Raises:
+        TypeError: `needed` or `available` is not a `PixelSize`.
+    """
+
+    for size in (needed, available):
+        if not isinstance(size, PixelSize):
+            raise TypeError(f"a size on screen is a PixelSize, not {type(size).__name__}")
+
+    return (
+        f"Needs {needed.width_px} by {needed.height_px} px; "
+        f"has {available.width_px} by {available.height_px}."
     )
 
 
