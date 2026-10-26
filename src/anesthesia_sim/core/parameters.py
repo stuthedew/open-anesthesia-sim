@@ -334,12 +334,13 @@ class AgentParameters:
             Also raised when a tissue:blood coefficient is outside the
             numerical envelope, when `molar_mass_g_mol` is not positive and
             finite, or when the density and the molar mass give a
-            vapour-to-liquid ratio that is not finite. A zero MAC cannot reach
-            this record, because a `MacPercent` refuses zero when it is built.
-            For a shipped file, the loader's `PositivePercent` refuses a zero
-            MAC before that. Every MAC multiple shown is a concentration divided
-            by the MAC, and the MAC is the number in the `1 MAC = x%` reference
-            beside the chart (`PL-0FJ8`, `PL-F9TC`).
+            vapour-to-liquid ratio that is not a positive finite number. A zero
+            MAC cannot reach this record, because a `MacPercent` refuses zero
+            when it is built. For a shipped file, the loader's
+            `PositivePercent` refuses a zero MAC before that. Every MAC multiple
+            shown is a concentration divided by the MAC, and the MAC is the
+            number in the `1 MAC = x%` reference beside the chart (`PL-0FJ8`,
+            `PL-F9TC`).
     """
 
     schema_version: int
@@ -393,10 +394,11 @@ class AgentParameters:
                 f"{shown(self.liquid_density)} has type {type(self.liquid_density).__name__}"
             )
 
-        # The ratio is formed once here, as the tissue:blood quotients are formed
-        # above. So a density and a molar mass whose ratio is not finite are refused
-        # when the record is built, not at the first conversion. Forming it also
-        # checks that the molar mass is positive and finite.
+        # Compute the vapour-per-liquid volume ratio once here, just as the tissue:blood
+        # quotients are computed above. A density and a molar mass whose ratio is not a
+        # positive finite number are then rejected when this record is built, not at
+        # the first conversion that uses the ratio. Computing the ratio also checks that
+        # the molar mass is positive and finite.
         _ = self.vapour_volume_per_liquid_volume
 
     @property

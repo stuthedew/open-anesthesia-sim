@@ -140,16 +140,17 @@ def vapour_volume_per_liquid_volume(
 ) -> float:
     """Return the millilitres of vapour that one millilitre of liquid agent gives.
 
-    The vapour is stated at the model's reference condition, 20 °C and one
-    standard atmosphere. The module docstring gives the equation.
+    The result is the vapour's volume at the model's reference condition, which is
+    20 °C and one standard atmosphere. The module docstring gives the equation.
 
     Raises:
         TypeError: `molar_mass_g_mol` is not an `int` or a `float`, or is a
-            `bool`, as `require_positive_finite` says.
+            `bool`. `require_positive_finite` raises it.
         SimulationConfigurationError: `molar_mass_g_mol` is not positive and
-            finite. Also raised when the two inputs are each positive and
-            finite but their ratio overflows to infinity or underflows to
-            zero. The message names both inputs.
+            finite. Also raised when the liquid density and the molar mass are
+            both positive and finite, but the vapour-to-liquid ratio they give
+            overflows to infinity or underflows to zero. The message names
+            both inputs.
     """
 
     require_positive_finite("molar_mass_g_mol", molar_mass_g_mol)
@@ -174,18 +175,20 @@ def liquid_volume_ml(vapour_volume_l: float, vapour_per_liquid: float) -> float:
 
     `vapour_per_liquid` is the agent's `vapour_volume_per_liquid_volume`, in
     millilitres of vapour per millilitre of liquid. `vapour_volume_l` is an
-    amount of agent in the model's own terms: a volume of vapour at 20 °C and
-    one standard atmosphere. The result is exact for a delivered, exhausted or
-    circuit amount, and 5.8 % too high for an alveolar, venous or tissue
-    amount, as the module docstring says.
+    amount of agent, which the model expresses as a volume of vapour at 20 °C
+    and one standard atmosphere. The result is exact for an amount delivered,
+    an amount exhausted or an amount in the circuit. It is 5.8 % too high for
+    an amount in the alveoli, in venous blood or in a tissue. The module
+    docstring describes both cases.
 
     Raises:
         TypeError: `vapour_volume_l` or `vapour_per_liquid` is not an `int` or
-            a `float`, or is a `bool`, as the shared guards say.
+            a `float`, or is a `bool`. `require_nonnegative_finite` and
+            `require_positive_finite` raise it.
         SimulationConfigurationError: `vapour_volume_l` is negative or not
             finite, or `vapour_per_liquid` is not positive and finite. Also
-            raised when the two are each acceptable but the liquid volume
-            overflows to infinity. The message names both.
+            raised when both inputs pass those checks but the liquid volume
+            overflows to infinity. The message names both inputs.
     """
 
     require_nonnegative_finite("vapour_volume_l", vapour_volume_l)
