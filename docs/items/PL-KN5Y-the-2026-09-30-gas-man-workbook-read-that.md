@@ -3,14 +3,17 @@ id: PL-KN5Y
 title: The 2026-09-30 Gas Man Workbook read that located the 70 kg reference weight (Chapter 13, 'Patient Size', printed page 127) owes an extraction note under docs/references/README.md once PL-Z3V5 settles what one contains
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: docs
 feature: provenance
 touches: docs/references
 blocked-by: PL-Z3V5
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-30
+closed: 2026-10-26
+pr: 1853
 payoff: a later session checking where the 70 kg reference weight is stated finds the page in the corpus notes instead of re-reading the Workbook
+verify: grep -qF 'Chapter 13, "Patient Size", printed p. 127' docs/references/README.md
 ---
 
 **Problem.** The 2026-09-30 Gas Man Workbook read that located the 70 kg reference weight (Chapter 13, 'Patient Size', printed page 127) owes an extraction note under docs/references/README.md once PL-Z3V5 settles what one contains
@@ -36,3 +39,14 @@ reads the book again.
 
 **Done when.** The extraction note exists in the form `PL-Z3V5` settles. It
 names the corpus file, the printed page and the quoted sentence.
+
+## Done 2026-10-26
+
+The Gas Man Workbook's readings already sit inside its entry in
+`docs/references/README.md`, so this one joined them rather than starting a
+separate file. The README now says that readings recorded before `PL-Z3V5`
+fixed the note's fields stay inside the source's entry, and that a later
+reading of such a source is added there. The new bullet gives the corpus file's
+chapter, the printed page and the quoted sentence, as this item asked, and
+says the value is tier 3. The sentence was checked again against the corpus's
+text extraction on this date.

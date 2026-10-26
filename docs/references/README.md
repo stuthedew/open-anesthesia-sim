@@ -116,6 +116,9 @@ page in another file, the note names that file rather than copying the fact.
 `yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
 example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
 page images.
+Readings recorded before 2026-10-26 sit inside the source's entry below,
+as the Gas Man Workbook's do, and stay there. A later reading of such a source
+is added to its entry.
 
 **Two of its holdings are whole books**, added 2026-09-15 and split into
 section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
@@ -404,6 +407,18 @@ value:
   is where they are written down. `PL-9GP1` brought it into those notes and
   into `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as a value
   no source contained; no stored value changed.
+- **Chapter 13, "Patient Size", printed p. 127, states the 70 kg reference
+  weight.** It says: "Values for volumes and flows for a 70 kg patient are
+  those found often in the literature: VA = 4 L/min, CO = 5 L/min, and oxygen
+  consumption = 250 mL/min." The same paragraph says Gas Man scales alveolar
+  ventilation and cardiac output with weight to the 3/4 power, and compartment
+  volumes linearly. Read through the corpus's text extraction on 2026-09-30
+  for `PL-9LXK`, and checked again on 2026-10-26 for `PL-KN5Y`. It is the
+  page that the Workbook entry of
+  `src/anesthesia_sim/data/patients/reference_adult.json` names for the 70 kg
+  reference weight. Like the rest
+  of the book it is tier 3: the program's own reference patient, not a
+  measurement.
 - **Appendix C also carries a `Volatility` line, and it states a
   temperature.** Read on 2026-09-16 while working `PL-S6WW`: the per-agent
   entry is written `Volatility=209           Vapor/Liquid volume ratio
