@@ -75,7 +75,7 @@ vector of `governing_equations`, in that module's own order.
 
 from __future__ import annotations
 
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from math import inf, isfinite
 
@@ -482,13 +482,19 @@ class RunDefinition:
         return self._canonical_state_at(instant_s)
 
     def segment_at(self, instant_s: float) -> RunSegment:
-        """The stretch of constant settings this run was under at `instant_s`.
+        """The stretch of constant settings in force from `instant_s` onward.
 
         The segment holds the settings that the equations were assembled from
         at that instant, together with the keyframe they start from. A state
-        at `instant_s` is one propagation from that keyframe. So a branch
-        taken at `instant_s` opens its own definition at that keyframe
-        (`app/controller.py`, `SimulationController._resume_point_here`).
+        at `instant_s` is one propagation from that keyframe.
+
+        **At an instant where a stretch opens, this is the stretch that
+        opens there.** It is the settings that the next step runs under,
+        including a change made at `instant_s`. The step that reached
+        `instant_s` ran under the stretch before it, which
+        `reaching_segment_at` returns. The two differ only at a keyframe.
+        `docs/MODEL.md` § "The canonical evaluation rule" says which of the
+        two a branch opens from (`PL-ZR49`).
 
         This method returns the segment rather than its index. An index is
         meaningful only beside the tuple it came from. A caller that held an
@@ -503,6 +509,35 @@ class RunDefinition:
         self._require_within_run(instant_s)
 
         return self._segments[self._segment_index_at(instant_s)]
+
+    def reaching_segment_at(self, instant_s: float) -> RunSegment:
+        """The stretch of constant settings that the step reaching `instant_s` ran under.
+
+        This is the last stretch that opens strictly before `instant_s`. At
+        an instant inside a stretch it is the same stretch that `segment_at`
+        returns. At a keyframe it is the stretch before the keyframe, because
+        the keyframe's settings apply only from that instant onward. At the
+        run's opening no step has reached the instant, so the result is the
+        first stretch. The state at the opening is a keyframe that no setting
+        produced.
+
+        **No later change can alter the result**, which is why a branch reads
+        its provenance from here (`PL-ZR49`). `record_change` opens a stretch
+        only at `reached_s` and can replace only the stretch that opens
+        there. A stretch that opens strictly before `reached_s` is fixed. So
+        once the run stands on `instant_s`, the stretch returned here stays
+        in `segments` however the settings are changed at `instant_s`. The
+        one exception is the run's opening, where the first stretch opens at
+        `instant_s` itself and a change there replaces it.
+
+        Raises:
+            SimulationConfigurationError: `instant_s` is not finite, precedes
+                `opened_at_s`, or is past the time the run has reached.
+        """
+
+        self._require_within_run(instant_s)
+
+        return self._segments[max(bisect_left(self._segments, instant_s, key=_opening_of) - 1, 0)]
 
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
         """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
