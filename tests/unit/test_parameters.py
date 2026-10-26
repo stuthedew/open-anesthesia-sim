@@ -879,10 +879,11 @@ def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density(
 ) -> None:
     """A record whose `liquid_density` is not a `LiquidDensity` is refused when built.
 
-    Before this test, `replace(agent, liquid_density=None)` built a record
-    without error, and the record failed only at the first conversion.
-    `PL-KZ99`'s first blind review pass found this. The bare density checks
-    that the message names the value and type it was given.
+    Before this test, `replace(agent, liquid_density=None)` built a record without an error.
+    The record failed only later, at the first conversion that used the density.
+    The first blind review pass on `PL-KZ99` found the problem. One case passes a bare
+    density instead of a `LiquidDensity`. It checks that the error message names the given
+    value and its type.
     """
 
     agent = load_agent_parameters("sevoflurane")
@@ -934,9 +935,10 @@ def test_rejects_a_liquid_density_measured_at_another_temperature_under_its_file
 def test_rejects_a_measurement_temperature_that_is_not_a_finite_number_under_its_file_key(
     measured_at_celsius: object, reason: str
 ) -> None:
-    """The file's temperature is checked as a number before it is compared with 20 °C.
+    """The file's temperature is checked to be a number before it is compared with 20 °C.
 
-    A string "20" or `true` in the file is a malformed file, not a measurement at 20 °C.
+    It is the temperature at which the liquid density was measured. A string "20" or `true`
+    in the file makes the file malformed. Neither value is a measurement at 20 °C.
     """
 
     payload = _valid_agent_payload()

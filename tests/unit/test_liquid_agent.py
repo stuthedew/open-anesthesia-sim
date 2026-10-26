@@ -213,9 +213,10 @@ def test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number(
 
 
 def test_the_ratio_accepts_a_ratio_below_one() -> None:
-    """Only a ratio that is not a positive finite number is refused, not one below 1.
+    """A ratio of vapour volume to liquid volume below 1 is accepted.
 
-    At 0.001 g/mL and 200 g/mol, 1 mL of liquid fills about 0.12 mL as vapour.
+    Only a ratio that is not a positive finite number is rejected. With a liquid density of
+    0.001 g/mL and a molar mass of 200 g/mol, 1 mL of liquid becomes about 0.12 mL of vapour.
     No agent has such a density, but nothing physical forbids the ratio.
     """
 
