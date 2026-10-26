@@ -7036,6 +7036,15 @@ is grabbed and not yet released. v0.6.0's gate deferred it to Gate 3
 was written. So the item is `ready` again, and it is worked with the rest of
 the second group.
 
+**`PL-P319` joined this list on 2026-10-26, after the freeze, beside
+`PL-GCGX`.** `PL-GCGX` closed on #1863 with all of its work done except
+naming the base MAC that Katoh 1993 measured its sevoflurane and isoflurane
+fractions against. That part needs the full paper, which no session can
+fetch, and it moved to `PL-P319`. Deferring it instead would need its hazard
+to be not live, and it is live: nobody can yet check how far those two bands
+sit from the source. So the remainder stays on the list, and this gate waits
+on the project owner adding the paper to the reference corpus.
+
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. The reason is that
 a `verify:` command tests for the fix and never for the fault. Each of the 24
@@ -7057,7 +7066,7 @@ brief has the tally.
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 
-**Cleared before v0.7.0 begins unless deferred - 71 entries**
+**Cleared before v0.7.0 begins unless deferred - 72 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -7115,6 +7124,7 @@ brief has the tally.
 - PL-C9XP (S) AreaLayout's minimum size hint is the sum of the Views' needs, while settle and each frame hold an Area at the larger of need and floor, so where a header floor is wider than a View's need the scrolling page grows too little and a neighbouring View shows "Too small" (568 px hint against a 585 px requirement in one case)
 - PL-DQL9 (S) The uptake matrix takes the pulmonary blood:gas coefficient from the venous pool and each tissue's rate from that tissue's own blood:gas coefficient, and nothing requires the four to agree, so a mismatch makes the matrix create agent and halts the run as an AgentSimulationValidationError that blames the numerics for an inconsistent parameter set
 - PL-GCGX (S) docs/MODEL.md says every way of misreading the MAC-awake band runs toward an earlier wake-up, but the band also inherits the Gas Man MAC divisor, which puts sevoflurane's band 11% above the primary literature and desflurane's 9% below it, and the sevoflurane and isoflurane mac_reference_basis record no base MAC
+- PL-P319 (S) The sevoflurane and isoflurane mac_awake.mac_reference_basis cannot name the base MAC in percent or the age correction Katoh 1993 used, because the abstract gives neither and the full paper is not in the reference corpus; read the paper and name both, and state the form of Katoh's brain-uptake calculation in docs/MODEL.md
 - PL-HF4B (S) After an agent-accounting failure halts a run, the rollback restores the previous step's passing validator, so the accounting panel reads "Valid" and "The simulation still accounts for all delivered agent" directly under a banner saying accounting validation failed, and the banner quotes the failed step's delivered and stored totals beside the panel's different restored ones
 - PL-KDZW (S) When SimulationView._place_run refuses a run for a missing unconditional value, the run's transport row, banner, readouts and record are already in the shared layouts and stay there, so a refused branch from add_run leaves frozen widgets that no slot will ever refresh or remove
 - PL-KHXB (S) The banner shown when a run reaches the 24-hour supported run length, and the core's refusal message, tell the learner that beyond it the model's omitted metabolism and its fat perfusion dominate the trace, for every agent, though docs/MODEL.md says nothing breaks at hour 25 and only sevoflurane is metabolized enough to matter
