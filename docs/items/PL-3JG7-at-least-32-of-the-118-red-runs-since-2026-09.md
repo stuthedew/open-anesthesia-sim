@@ -3,11 +3,13 @@ id: PL-3JG7
 title: At least 32 of the 118 red runs since 2026-09-21 that caught a real defect failed a check a local make check also runs: 18 whole-repository self-check tests in pytest, which the push guard does not run, and 14 repeated pushes on three branches past a failure make check reports
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: fewer-red-runs
-touches: .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py
+touches: .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py, docs/resident-instructions.md
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1843
 payoff: a push that a local make check would refuse for a misplaced apparatus file, a malformed fixture id, an inert type: ignore or a line-split rule is refused in the session, before it spends a red run
 verify: grep -q 'def test_a_push_whose_project_interpreter_check_fails_is_refused' tests/unit/test_push_check_guard.py
 ---
@@ -97,6 +99,16 @@ other three checks and lets the push through where those pass.
 `test_a_push_whose_project_interpreter_check_fails_is_refused` in
 `tests/unit/test_push_check_guard.py` pins the refusal, and the guard's comment
 records the measurement above.
+
+**Built 2026-10-26.** `.claude/hooks/push-check-guard.sh` runs the four under
+`.venv/bin/python`. Against the guard before the change,
+`uv run --no-sync pytest -q -p no:cacheprovider tests/unit/test_push_check_guard.py -k project_interpreter`
+failed all four cases of
+`test_a_push_whose_project_interpreter_check_fails_is_refused` with
+`assert None is not None`: the guard let each push through. After it, the file's
+54 tests pass. Run on this tree, the whole hook took 67 s, inside its 100 s
+deadline, and refused only on this item's own `verify:` passing while the
+item was still open.
 
 **Generator check.** The fact is which of `make check`'s checks run before a
 push leaves the session. `PL-0HPV` and `PL-ZQ3R`, both closed, hold the local
