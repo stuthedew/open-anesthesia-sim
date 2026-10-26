@@ -19,6 +19,7 @@ import pytest
 
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 # tau_C = V_C / V_F = 6.0 L / 6.0 L/min = 1.0 min = 60.0 s.
@@ -34,7 +35,7 @@ def test_circuit_wash_in_matches_a_closed_form_written_from_literals(elapsed_s: 
 
     circuit = BreathingCircuit(
         max_delivered_concentration_percent=Percent(100.0),
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=Percent(8.0),
     )

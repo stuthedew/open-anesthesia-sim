@@ -55,6 +55,7 @@ from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
@@ -109,10 +110,10 @@ def _tissue_group() -> TissueGroup:
 
     return TissueGroup(
         name="muscle",
-        volume_l=10.0,
+        volume_l=CompartmentVolume(10.0),
         perfusion_fraction=0.2,
-        blood_gas_partition_coefficient=0.65,
-        tissue_gas_partition_coefficient=2.0,
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         agent_amount_l=4.0,
     )
 
@@ -121,7 +122,9 @@ def _venous_blood() -> VenousBloodCompartment:
     """A pool holding 1 L of agent in a capacity of 1.3 L (2 L times a coefficient of 0.65)."""
 
     return VenousBloodCompartment(
-        volume_l=2.0, blood_gas_partition_coefficient=0.65, agent_amount_l=1.0
+        volume_l=CompartmentVolume(2.0),
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        agent_amount_l=1.0,
     )
 
 
@@ -129,7 +132,9 @@ def _alveoli() -> AlveolarCompartment:
     """Alveoli holding 0.5 L of agent in 2.5 L of gas."""
 
     return AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0), agent_amount_l=0.5
+        gas_volume_l=CompartmentVolume(2.5),
+        alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+        agent_amount_l=0.5,
     )
 
 
@@ -137,7 +142,7 @@ def _circuit() -> BreathingCircuit:
     """A circuit dialled to 2% under an 8% maximum, at 2 L/min on a 0.5 to 8 L/min machine."""
 
     return BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         fresh_gas_flow_l_min=FreshGasFlow(2.0),
         delivered_concentration_percent=Percent(2.0),
         max_delivered_concentration_percent=Percent(8.0),
@@ -213,21 +218,23 @@ WRITES: dict[str, dict[str, Write]] = {
         for term in ("delivered_compensation_l", "exhausted_compensation_l")
     },
     "alveolar.AlveolarCompartment": {
-        "gas_volume_l": Write(CHECKED, _alveoli, lambda alveoli: 0.25),
+        "gas_volume_l": Write(CHECKED, _alveoli, lambda alveoli: CompartmentVolume(0.25)),
         "alveolar_ventilation_l_min": Write(
             OWN, why="The ventilation is tied to no other field. Its type carries its range check."
         ),
         "agent_amount_l": Write(CHECKED, _alveoli, lambda alveoli: 5.0),
     },
     "blood.VenousBloodCompartment": {
-        "volume_l": Write(CHECKED, _venous_blood, lambda blood: 1.0),
-        "blood_gas_partition_coefficient": Write(CHECKED, _venous_blood, lambda blood: 0.1),
+        "volume_l": Write(CHECKED, _venous_blood, lambda blood: CompartmentVolume(1.0)),
+        "blood_gas_partition_coefficient": Write(
+            CHECKED, _venous_blood, lambda blood: PartitionCoefficient(0.1)
+        ),
         "agent_amount_l": Write(CHECKED, _venous_blood, lambda blood: 2.0),
     },
     "circuit.BreathingCircuit": {
         "circuit_volume_l": _accounted(
             lambda system: system.circuit,
-            lambda circuit: circuit.circuit_volume_l * 2.0,
+            lambda circuit: CompartmentVolume(circuit.circuit_volume_l * 2.0),
             "The circuit stores its agent as a fraction of its volume, so a volume written "
             "directly changes the agent the circuit holds. `set_circuit_volume` is the "
             "write that conserves the agent. " + _ACCOUNTING,
@@ -283,7 +290,7 @@ WRITES: dict[str, dict[str, Write]] = {
     },
     "tissue.TissueGroup": {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),
-        "volume_l": Write(CHECKED, _tissue_group, lambda group: 1.0),
+        "volume_l": Write(CHECKED, _tissue_group, lambda group: CompartmentVolume(1.0)),
         "perfusion_fraction": Write(ONCE, _tissue_group),
         "blood_gas_partition_coefficient": Write(
             GAP,
@@ -292,7 +299,9 @@ WRITES: dict[str, dict[str, Write]] = {
                 "agreement with the venous pool's copy is not checked anywhere (PL-YXGX)."
             ),
         ),
-        "tissue_gas_partition_coefficient": Write(CHECKED, _tissue_group, lambda group: 0.1),
+        "tissue_gas_partition_coefficient": Write(
+            CHECKED, _tissue_group, lambda group: PartitionCoefficient(0.1)
+        ),
         "agent_amount_l": Write(CHECKED, _tissue_group, lambda group: 40.0),
     },
     "uptake_system.AgentUptakeSystem": {

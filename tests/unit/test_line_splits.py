@@ -102,7 +102,15 @@ TEXT_MODE_RUNNERS: dict[tuple[str, str], str] = {
     "blobs and patches",
     ("tools/doc_check.py", "measure_digest"): "runs the session-start hook under bash to size it",
     ("tools/diff_mutation.py", "_mutmut"): "runs mutmut, whose output is its own and not git's",
-    ("tools/ignore_check.py", "run_mypy"): "runs mypy, whose report is its own and not git's",
+    (
+        "tools/diff_mutation.py",
+        "listing",
+    ): "runs mutmut's mutant generation, which prints one line of JSON and reads no git",
+    ("tools/type_ignore_check.py", "run_mypy"): "runs mypy, whose report is its own and not git's",
+    (
+        ".claude/hooks/thread_hooks.py",
+        "_run",
+    ): "runs the repository's session-start hooks, whose output is printed as it comes",
 }
 
 

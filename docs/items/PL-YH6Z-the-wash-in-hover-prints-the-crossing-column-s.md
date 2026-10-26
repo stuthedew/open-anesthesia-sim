@@ -3,11 +3,13 @@ id: PL-YH6Z
 title: The wash-in hover prints the crossing column's F_A/F_I above 1 under the label 'Wash-in F_A/F_I', a value app/wash_in.py classes as elimination and refuses to show as wash-in
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: replay-findings
-touches: src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py
+touches: src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py, docs/MODEL.md
 added: 2026-10-24
+closed: 2026-10-26
+pr: 1840
 payoff: the wash-in hover never prints an F_A/F_I above 1 as a wash-in fraction, so a learner is not taught a wash-in past completion
 verify: grep -q 'def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus' tests/unit/test_chart_frame.py
 ---

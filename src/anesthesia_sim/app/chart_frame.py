@@ -54,6 +54,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.chart_time_base import (
+    CHART_GRID_RESOLUTIONS_S,
     ChartTimeBase,
     fit_to_run,
     fitted_window,
@@ -90,7 +91,6 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
@@ -103,6 +103,7 @@ __all__ = [
     "WASH_IN_AXIS_MAXIMUM",
     "WASH_IN_GRID_INTERVAL",
     "WASH_IN_HOVER_LABEL",
+    "WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT",
     "WASH_IN_TERMINUS_CEILING",
     "ChartFrame",
     "HoverReading",
@@ -221,20 +222,31 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # have been rendered and checked by eye (`tools/glyph_check.py`).
 WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 
-# The resolution at which the hover states its instant. It is the step the run
-# advances by, which is also the clock's own resolution and the finest
-# resolution a control stamp carries. A drawn column sits wherever the anchored
-# grid puts it, such as 410.7383 s on a thirty-minute axis. The state reported
-# is the state at exactly that instant, evaluated in closed form. But printing
-# the instant to four decimals would claim a resolution that no other display
-# on the screen has and that no reader can use. Rounded to the tenth of a
-# second that the clock steps by, the printed instant differs from the drawn
-# one by at most 0.05 s. Over that interval no compartment moves by a
-# hundredth of a percent. The value is taken from the core's declared ceiling
-# rather than written as a digit, for the same reason the dashboard's own step
-# is. The shipped step sits at that ceiling on purpose, and a second literal
-# would drift from it silently.
-HOVER_INSTANT_RESOLUTION_S: Final = MAXIMUM_SIMULATION_STEP_S
+# The text that the wash-in hover prints, instead of a number, at a column past
+# equilibrium. The crossing column, where the trace passes equilibrium, is drawn only
+# so that the line meets the reference. Its quotient is above 1. Rule 2 of
+# `app/wash_in.py` and `docs/MODEL.md` § "F_A/F_I as a displayed ratio" do not allow
+# such a quotient to be shown as a wash-in fraction (`PL-YH6Z`). Printed under the
+# wash-in label, it would suggest that wash-in can go past completion. It would do so
+# at the dot that a reader is most likely to point at.
+WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
+
+# The resolution to which the hover rounds the instant it prints. It is the finest
+# grid that a drawn column can sit on, a hundredth of a second. So the instant
+# printed is the instant whose state is printed beside it (`PL-T5NJ`). Columns used
+# to sit wherever the plot's width put them, such as at 410.7383 s, and the hover
+# rounded that to the clock's tenth of a second. The state printed was still the
+# state at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
+# induction that difference matters. Desflurane at 18% and 10 L/min takes the
+# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s. So the hover at "6s" could print
+# 2.70% while the readout row at 6 s showed 2.68%.
+# `chart_time_base.grid_spacing_s` now rounds the column spacing down onto whole
+# hundredths of a second. It rounds onto tenths instead wherever that adds few
+# columns. Every other drawn instant (a bound, a control event, a fork) falls on a
+# simulation step. Rounding to this resolution therefore removes only
+# floating-point noise. The value is read from the grid's own declaration rather
+# than written as a digit, so the two cannot drift apart.
+HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -1273,7 +1285,9 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
 
     It has the same form as `format_trace_hover`, in the ratio's own units.
     F_A/F_I is dimensionless and has neither a percent nor a MAC reading, so
-    the third line is `format_wash_in_ratio`'s number alone.
+    the third line is `format_wash_in_ratio`'s number alone. At a column past
+    equilibrium the third line says so instead of printing a quotient above 1
+    (`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT`).
 
     Args:
         run: The run the stretch belongs to.
@@ -1295,9 +1309,23 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
         (
             _hover_context(run, stretch.times_s[index], RunCount(run_count)),
             WASH_IN_HOVER_LABEL,
-            format_wash_in_ratio(stretch.ratios[index]),
+            _wash_in_hover_value(stretch.ratios[index]),
         )
     )
+
+
+def _wash_in_hover_value(ratio: float) -> str:
+    """Return the ratio as the hover prints it, or a notice where it is not wash-in.
+
+    The stretch's crossing column, where the trace passes equilibrium, has a quotient
+    above 1. That is elimination rather than wash-in, so no number is printed for it
+    (`PL-YH6Z`).
+    """
+
+    if not is_wash_in(ratio):
+        return WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT
+
+    return format_wash_in_ratio(ratio)
 
 
 def _hover_context(run: RunFrame, time_s: float, run_count: RunCount) -> str:
@@ -1485,7 +1513,7 @@ def format_compared_wash_in_hover(answering: Sequence[tuple[RunFrame, WashInStre
             WASH_IN_HOVER_LABEL,
             *(
                 _hover_compared_value(
-                    run, stretch.times_s[index], format_wash_in_ratio(stretch.ratios[index])
+                    run, stretch.times_s[index], _wash_in_hover_value(stretch.ratios[index])
                 )
                 for run, stretch, index in answering
             ),
@@ -1500,12 +1528,11 @@ def _hover_agent(run: RunFrame) -> str:
 
 
 def _hover_instant(time_s: float) -> str:
-    """Return a drawn point's instant, rounded to the step the run advances by.
+    """Return a drawn point's instant, formatted the way the clock and the axis show time.
 
-    A drawn column sits wherever the anchored grid puts it, and the state
-    reported is the state at exactly that instant. But printing the instant to
-    four decimals would claim a resolution that no other display on the
-    screen has.
+    Every drawn instant is a whole multiple of `HOVER_INSTANT_RESOLUTION_S`. So the
+    rounding removes only floating-point noise, and the printed instant is the one
+    whose state the hover prints.
     """
 
     return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)

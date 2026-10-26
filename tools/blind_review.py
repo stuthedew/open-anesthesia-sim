@@ -52,7 +52,13 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import TESTS, blind_passes, is_test_file, tests_the_tooling  # noqa: E402
+from docket.arming import (  # noqa: E402
+    BLIND_SEVERITIES,
+    TESTS,
+    blind_passes,
+    is_test_file,
+    tests_the_tooling,
+)
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
@@ -64,7 +70,9 @@ from docket.vcs import (  # noqa: E402
 )
 
 #: The generalist reviewer's brief, as `PL-TCBJ` ran it for its clean control.
-#: `{DIR}` is the pass's own directory and `{SLUG}` its short name.
+#: `{DIR}` is the pass's own directory and `{SLUG}` its short name. The
+#: severities are `docket.arming.BLIND_SEVERITIES`, which the `Blind-review`
+#: record is read against, so the brief and the record cannot name different ones.
 BRIEF = """\
 You are the single code reviewer for an open-source anesthesia simulator (inhaled-anesthetic uptake and distribution, with a Qt interface for learners). You are reviewing ONE pull request before it merges.
 
@@ -76,20 +84,21 @@ Review the whole diff from your field. Look for faults this change introduces or
 
 Write at most eight findings, most severe first, in this exact form:
 
-### F<n> [blocking|should-fix|optional] <file path relative to tree/> :: <function, class or symbol>
+### F<n> [<severities>] <file path relative to tree/> :: <function, class or symbol>
 <two to four plain sentences: what goes wrong, under what input or sequence of actions, and what the user or the model gets as a result>
 
 If you find nothing worth reporting, write the single line `NO FINDINGS`.
 
 Save exactly that text to `{DIR}/findings-{SLUG}.md`, then return exactly the same text as your final answer, with nothing before or after it.
 """  # noqa: E501 - the brief as run, one paragraph per line
+BRIEF = BRIEF.replace("<severities>", "|".join(BLIND_SEVERITIES))
 
 #: The file in each pass's tree that holds the branch's commit messages and diff.
 DIFF_FILE = "REVIEW_DIFF.patch"
 
 
-def is_tooling_test(path: str, fork: str, root: Path) -> bool:
-    """Whether `path` is a test of the tooling on both sides of the change, which owes no pass.
+def is_tooling_test(path: str, before: str, after: str, root: Path) -> bool:
+    """Whether `path` is a test of the tooling at both `before` and `after`, so it owes no pass.
 
     A side holding no such file reads as empty, as a test the branch added or
     deleted has nothing on one side. A side that will not parse is not read as
@@ -98,7 +107,7 @@ def is_tooling_test(path: str, fork: str, root: Path) -> bool:
     if not path.startswith(TESTS) or not is_test_file(PurePosixPath(path).name):
         return False
     sides = []
-    for rev in (fork, "HEAD"):
+    for rev in (before, after):
         held = read_git(["ls-tree", "-z", "--name-only", rev, "--", path], root)
         sides.append(read_git(["show", f"{rev}:{path}"], root) if held.strip("\0") else "")
     try:
@@ -107,16 +116,25 @@ def is_tooling_test(path: str, fork: str, root: Path) -> bool:
         return False
 
 
+def passes_between(root: Path, before: str, after: str) -> int:
+    """How many passes the change from `before` to `after` owes.
+
+    `tools/blind_review_report.py` reads a merged pull request's passes owed
+    through this, from its merge commit's own diff.
+    """
+    changed = listed_paths(
+        read_git(changed_path_args("diff", "--name-only", "-z", f"{before}..{after}", "--"), root)
+    )
+    tooling = [path for path in changed if is_tooling_test(path, before, after, root)]
+    return blind_passes(changed, tooling)
+
+
 def passes_owed(root: Path, base: str) -> tuple[int, str]:
     """How many passes the branch owes, and the commit it forked from."""
     fork = read_git(["merge-base", base, "HEAD"], root).strip()
     if not fork:
         raise GitUnanswered(f"git gave no merge base of {base} and HEAD")
-    changed = listed_paths(
-        read_git(changed_path_args("diff", "--name-only", "-z", f"{fork}..HEAD", "--"), root)
-    )
-    tooling = [path for path in changed if is_tooling_test(path, fork, root)]
-    return blind_passes(changed, tooling), fork
+    return passes_between(root, fork, "HEAD"), fork
 
 
 def review_diff(root: Path, fork: str) -> str:

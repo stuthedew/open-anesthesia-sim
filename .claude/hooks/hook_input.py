@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -124,6 +126,34 @@ def deny(guard: str, rule: str, reason: str, payload: str) -> str:
         "permissionDecisionReason": reason,
     }
     return json.dumps({"hookSpecificOutput": decision})
+
+
+#: The mode a file `write_atomically` creates is given: readable by all,
+#: written by its owner, as a file `open` creates under the usual umask.
+NEW_FILE_MODE = 0o644
+
+
+def write_atomically(target: Path, text: str) -> None:
+    """Replace `target`'s contents, keeping its mode and never truncating it.
+
+    The hooks write files that Claude Code reads or runs while the session
+    goes on: the harness's stop hook, and the user settings that
+    `thread_hooks.py` writes. A partial write would break the session it was
+    meant to help. Writing a sibling and renaming it means the file is either
+    the old one or the new one. A file that does not exist yet is created
+    with `NEW_FILE_MODE`.
+    """
+    mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else NEW_FILE_MODE
+    handle_fd, name = tempfile.mkstemp(dir=str(target.parent), prefix=target.name + ".")
+    scratch = Path(name)
+    try:
+        with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.chmod(scratch, mode)
+        os.replace(scratch, target)
+    except BaseException:
+        scratch.unlink(missing_ok=True)
+        raise
 
 
 if __name__ == "__main__":

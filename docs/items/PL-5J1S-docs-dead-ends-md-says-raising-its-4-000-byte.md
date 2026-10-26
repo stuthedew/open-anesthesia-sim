@@ -3,12 +3,14 @@ id: PL-5J1S
 title: docs/dead-ends.md says raising its 4,000-byte budget is never right, but gives no rule for when every entry is still live and already one line: say what a session does then (bring the owner the per-turn cost of raising it, or move a group of entries to a path-scoped rule that fires where those approaches get proposed), and say how a session ranks entries before dropping one (chance it is re-proposed without reading the refutation, times the cost if it is)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: dead-ends-budget
-touches: docs/dead-ends.md, tools/dead_ends.py, tests/unit/test_dead_ends.py, .claude/rules/, .claude/skills/docket/modes/triage.md
+touches: docs/dead-ends.md, tools/dead_ends.py, tests/unit/test_dead_ends.py, tests/unit/test_quality_step_order.py, .claude/rules/, .claude/skills/docket/modes/triage.md, Makefile, .github/workflows/quality.yml, docs/apparatus.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-10-26
+pr: 1850
 payoff: a lesson learned the hard way can leave the always-loaded list only with a record of where it went or why it retired, and niche entries no longer fill the list just because it has room
 verify: grep -q 'def test_a_removed_entry_needs_a_catcher_or_a_retirement' tests/unit/test_dead_ends.py
 ---
@@ -118,3 +120,31 @@ step is in `.claude/skills/docket/modes/triage.md`.
 **Generator check.** A one-off, raised by the owner. The gap is one missing
 case in one document's rule, and no head's `misread:` states which refuted
 approaches stay resident.
+
+**Done 2026-10-26.** `docs/dead-ends.md` now states the admission test, the
+two ways an entry leaves, and that a session brings the owner the per-turn
+cost of a larger budget once every entry must stay. The "never right"
+sentences are gone from it, from `tools/dead_ends.py` and from the tests. The
+nine entries named above moved verbatim to `.claude/rules/dead-ends-apparatus.md`,
+whose `paths:` are `/subprojects/docket/**` and `/tools/**`. The emitted text
+fell from 3,176 to 1,409 bytes. A "Retired" section closes the file and is not
+emitted.
+
+`tools/dead_ends.py check --base REF` reads the file at the merge base of
+`HEAD` and `REF` and fails on an entry that is gone without a record. An entry
+is followed by its bolded title and by the ids it cites. Its removal is
+accepted when the title or an id is in a live entry (a merge), the title or an
+id is in a `.claude/rules/` file with `paths:` frontmatter or in the retired
+section, or an id is cited in code under `tools/`, `subprojects/docket/src/`
+or `src/`. An entry that cites no id and has its title reworded is refused,
+and the message says to cite its item id. `make check` passes
+`--base origin/main`, and CI passes the pull request's base on a pull request
+only, as it does for `contrast_check.py`. The over-budget advisory no longer
+offers dropping the entry least likely to be proposed. It offers moving or
+retiring one, and the budget question.
+
+The check decides only that a place is named. Whether the place still stops
+the approach is judgment, so the grooming step in
+`.claude/skills/docket/modes/triage.md` re-tests each entry. An id cited in
+code is a weak record, since a commonly cited id such as `PL-4S6C` is found in
+many files; the title match against a rule is the strong one.

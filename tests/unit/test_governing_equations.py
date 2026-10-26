@@ -29,6 +29,7 @@ from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
+    MAXIMUM_CUMULATIVE_AGENT_L,
     STATE_SIZE,
     TISSUE_GROUP_COUNT,
     UNIT_STATE,
@@ -36,8 +37,10 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
     build_system_matrix,
+    require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import matrix_exponential
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -54,25 +57,25 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 # These values are deliberately unlike each other and unlike the reference
 # adult's. Every volume, flow and coefficient below is distinct, so an entry
 # written into the wrong row or column lands on a value that nothing else has.
-CIRCUIT_VOLUME_L = 6.0
-ALVEOLAR_VOLUME_L = 2.5
-VENOUS_VOLUME_L = 3.5
+CIRCUIT_VOLUME_L = CompartmentVolume(6.0)
+ALVEOLAR_VOLUME_L = CompartmentVolume(2.5)
+VENOUS_VOLUME_L = CompartmentVolume(3.5)
 FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.2)
 ALVEOLAR_VENTILATION_L_MIN = AlveolarVentilation(6.6)
 CARDIAC_OUTPUT_L_MIN = CardiacOutput(7.8)
 FRESH_GAS_FLOW_L_S = FRESH_GAS_FLOW_L_MIN / SECONDS_PER_MINUTE
 ALVEOLAR_VENTILATION_L_S = ALVEOLAR_VENTILATION_L_MIN / SECONDS_PER_MINUTE
 CARDIAC_OUTPUT_L_S = CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
-BLOOD_GAS = 0.65
+BLOOD_GAS = PartitionCoefficient(0.65)
 DELIVERED_PERCENT = Percent(2.0)
 DELIVERED_FRACTION = fraction_from_percent(DELIVERED_PERCENT)
 MAX_DELIVERED_PERCENT = Percent(8.0)
 """Sevoflurane's vaporizer maximum, which the `PL-BBMG` reproduction exceeded."""
 
 TISSUES = (
-    ("vessel_rich", 6.0, 5.85, 1.7),
-    ("muscle", 33.0, 1.482, 2.9),
-    ("fat", 14.5, 0.468, 51.0),
+    ("vessel_rich", CompartmentVolume(6.0), 5.85, PartitionCoefficient(1.7)),
+    ("muscle", CompartmentVolume(33.0), 1.482, PartitionCoefficient(2.9)),
+    ("fat", CompartmentVolume(14.5), 0.468, PartitionCoefficient(51.0)),
 )
 """(name, volume_l, blood_flow_l_min, tissue:blood coefficient) for each group.
 
@@ -551,23 +554,32 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
 
 
 @pytest.mark.parametrize(
-    ("field", "value", "message"),
+    ("field", "value", "checked_type", "message"),
     [
-        ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite" + REFUSAL_REASON),
+        (
+            "circuit_volume_l",
+            0.0,
+            CompartmentVolume,
+            "^circuit_volume_l of 0.0 is outside the numerical envelope of 0.01 to 10000 L,",
+        ),
         (
             "alveolar_volume_l",
             -1.0,
-            "^alveolar_volume_l must be positive and finite" + REFUSAL_REASON,
+            CompartmentVolume,
+            "^alveolar_volume_l of -1.0 is outside the numerical envelope of 0.01 to 10000 L,",
         ),
         (
             "venous_volume_l",
             float("inf"),
-            "^venous_volume_l must be positive and finite" + REFUSAL_REASON,
+            CompartmentVolume,
+            "^venous_volume_l of inf is outside the numerical envelope of 0.01 to 10000 L,",
         ),
         (
             "blood_gas_partition_coefficient",
             0.0,
-            "^blood_gas_partition_coefficient must be positive and finite" + REFUSAL_REASON,
+            PartitionCoefficient,
+            "^blood_gas_partition_coefficient of 0.0 is outside the numerical envelope of "
+            "0.001 to 10000,",
         ),
         # A case with a dial past 100% was here until `PL-4R3W`. Such a dial
         # can no longer be built as the `Percent` that the record takes, so it
@@ -576,9 +588,24 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
     ],
 )
 def test_rejects_a_parameter_set_that_could_not_describe_a_patient(
-    field: str, value: float, message: str
+    field: str,
+    value: float,
+    checked_type: type[CompartmentVolume] | type[PartitionCoefficient],
+    message: str,
 ) -> None:
+    """A volume or coefficient outside the envelope is refused, and so is a bare float.
+
+    Since `PL-QX2G` the record takes checked types, so the value is refused when its type is
+    built. The record refuses the same value handed in as a bare float, naming the type.
+    """
+
     with pytest.raises(SimulationConfigurationError, match=message):
+        _settings(**{field: checked_type(value, name=field)})
+
+    with pytest.raises(
+        TypeError,
+        match=f"^{field} of {value!r} was not built as {checked_type.__name__}, it is float",
+    ):
         _settings(**{field: value})
 
 
@@ -656,9 +683,9 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
     one_group = (
         TissueGroupEquationSettings(
             name="vessel_rich",
-            volume_l=6.0,
+            volume_l=CompartmentVolume(6.0),
             blood_flow_l_min=CARDIAC_OUTPUT_L_MIN,
-            tissue_blood_partition_coefficient=1.7,
+            tissue_blood_partition_coefficient=PartitionCoefficient(1.7),
         ),
     )
 
@@ -670,35 +697,74 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
 
 
 @pytest.mark.parametrize(
-    ("field", "value", "message"),
+    ("field", "value", "error", "message"),
     [
-        ("volume_l", 0.0, "^muscle volume_l must be positive and finite" + REFUSAL_REASON),
+        (
+            "volume_l",
+            0.0,
+            TypeError,
+            "^muscle volume_l of 0.0 was not built as CompartmentVolume, it is float",
+        ),
         (
             "blood_flow_l_min",
             -0.1,
+            SimulationConfigurationError,
             "^muscle blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
         ),
         (
             "tissue_blood_partition_coefficient",
             0.0,
-            "^muscle tissue_blood_partition_coefficient must be positive and finite"
-            + REFUSAL_REASON,
+            TypeError,
+            "^muscle tissue_blood_partition_coefficient of 0.0 was not built as "
+            "PartitionCoefficient, it is float",
         ),
     ],
 )
 def test_rejects_a_tissue_group_that_could_not_describe_a_tissue(
-    field: str, value: float, message: str
+    field: str, value: float, error: type[Exception], message: str
 ) -> None:
+    """A tissue group refuses a value that could not describe a tissue.
+
+    Since `PL-QX2G` the volume and the coefficient are checked types, so the record refuses
+    either one passed as a bare float. `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)`
+    are refused when they are built, which the test below checks.
+    """
+
     fields: dict[str, object] = {
         "name": "muscle",
-        "volume_l": 33.0,
+        "volume_l": CompartmentVolume(33.0),
         "blood_flow_l_min": 0.023,
-        "tissue_blood_partition_coefficient": 2.9,
+        "tissue_blood_partition_coefficient": PartitionCoefficient(2.9),
     }
     fields[field] = value
 
-    with pytest.raises(SimulationConfigurationError, match=message):
+    with pytest.raises(error, match=message):
         TissueGroupEquationSettings(**fields)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("checked_type", "name", "message"),
+    [
+        (
+            CompartmentVolume,
+            "muscle volume_l",
+            "^muscle volume_l of 0.0 is outside the numerical envelope of 0.01 to 10000 L,",
+        ),
+        (
+            PartitionCoefficient,
+            "muscle tissue_blood_partition_coefficient",
+            "^muscle tissue_blood_partition_coefficient of 0.0 is outside the numerical "
+            "envelope of 0.001 to 10000,",
+        ),
+    ],
+)
+def test_a_tissue_volume_or_coefficient_of_zero_cannot_be_built(
+    checked_type: type[CompartmentVolume] | type[PartitionCoefficient], name: str, message: str
+) -> None:
+    """A zero volume or coefficient never reaches a tissue group's record (`PL-QX2G`)."""
+
+    with pytest.raises(SimulationConfigurationError, match=message):
+        checked_type(0.0, name=name)
 
 
 def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value() -> None:
@@ -717,7 +783,7 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
     fatter = tuple(
         TissueGroupEquationSettings(
             name=name,
-            volume_l=volume_l * (2.0 if name == "fat" else 1.0),
+            volume_l=CompartmentVolume(volume_l * (2.0 if name == "fat" else 1.0)),
             blood_flow_l_min=blood_flow_l_min,
             tissue_blood_partition_coefficient=tissue_blood,
         )
@@ -762,22 +828,23 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
     list of tissue groups was accepted, and it could not be hashed. The
     expected propagator here is the one built from plain floats and a tuple,
     which is what every record built by `AgentUptakeSystem.equation_settings`
-    stores.
+    stores. Since `PL-QX2G` a volume or coefficient reaches the record only as
+    its checked type, so a `numpy.float64` is built into that type first.
     """
 
     plain = _settings()
     built_otherwise = _settings(
-        circuit_volume_l=numpy.float64(CIRCUIT_VOLUME_L),
-        alveolar_volume_l=numpy.float64(ALVEOLAR_VOLUME_L),
-        venous_volume_l=numpy.float64(VENOUS_VOLUME_L),
-        blood_gas_partition_coefficient=numpy.float64(BLOOD_GAS),
+        circuit_volume_l=CompartmentVolume(numpy.float64(CIRCUIT_VOLUME_L)),
+        alveolar_volume_l=CompartmentVolume(numpy.float64(ALVEOLAR_VOLUME_L)),
+        venous_volume_l=CompartmentVolume(numpy.float64(VENOUS_VOLUME_L)),
+        blood_gas_partition_coefficient=PartitionCoefficient(numpy.float64(BLOOD_GAS)),
         tissues=[
             TissueGroupEquationSettings(
                 name=tissue.name,
-                volume_l=numpy.float64(tissue.volume_l),
+                volume_l=CompartmentVolume(numpy.float64(tissue.volume_l)),
                 blood_flow_l_min=numpy.float64(tissue.blood_flow_l_min),
-                tissue_blood_partition_coefficient=numpy.float64(
-                    tissue.tissue_blood_partition_coefficient
+                tissue_blood_partition_coefficient=PartitionCoefficient(
+                    numpy.float64(tissue.tissue_blood_partition_coefficient)
                 ),
             )
             for tissue in plain.tissues
@@ -785,11 +852,94 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
     )
 
     assert type(built_otherwise.tissues) is tuple
-    assert type(built_otherwise.circuit_volume_l) is float
-    assert all(type(tissue.volume_l) is float for tissue in built_otherwise.tissues)
+    assert type(built_otherwise.circuit_volume_l) is CompartmentVolume
+    assert all(type(tissue.volume_l) is CompartmentVolume for tissue in built_otherwise.tissues)
+    assert all(type(tissue.blood_flow_l_min) is float for tissue in built_otherwise.tissues)
     assert hash(built_otherwise) == hash(plain)
 
     for interval_s in (0.84, 7.0, 600.0):
         assert matrix_exponential(build_system_matrix(built_otherwise), interval_s) == (
             matrix_exponential(build_system_matrix(plain), interval_s)
         )
+
+
+def _empty_state_with(position: int, value: float) -> tuple[float, ...]:
+    """An empty canonical state with `value` at `position`."""
+
+    state = [0.0] * STATE_SIZE
+    state[UNIT_STATE] = 1.0
+    state[position] = value
+
+    return tuple(state)
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        INSPIRED_FRACTION,
+        ALVEOLAR_FRACTION,
+        VENOUS_FRACTION,
+        *(FIRST_TISSUE_FRACTION + offset for offset in range(TISSUE_GROUP_COUNT)),
+    ],
+)
+@pytest.mark.parametrize("value", [-0.3, nextafter(0.0, -1.0), nextafter(1.0, 2.0), 1.7])
+def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one(
+    position: int, value: float
+) -> None:
+    """A value outside 0 to 1 is refused at each of the six fraction positions (`PL-0WFJ`).
+
+    The live system's compartments refuse these values, so a `RunDefinition` that opened from
+    one would draw a state that the system can never hold. The values include the nearest
+    floats outside each bound.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, value))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "is outside 0 to 1" in str(raised.value)
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_a_negative_amount_of_agent(position: int) -> None:
+    """A cumulative amount of agent below zero describes a run that never happened."""
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, -1e-12))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "must be nonnegative" in str(raised.value)
+
+
+def test_require_canonical_state_accepts_each_fraction_at_both_bounds() -> None:
+    """Zero and one are physical fractions, so the range check must not refuse them."""
+
+    for position in range(FIRST_TISSUE_FRACTION + TISSUE_GROUP_COUNT):
+        require_canonical_state(_empty_state_with(position, 0.0))
+        require_canonical_state(_empty_state_with(position, 1.0))
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(position: int) -> None:
+    """A total above what a whole case can move at the fastest fresh gas flow is refused.
+
+    This was found at review. Set to the largest float, each total once passed the check, and
+    `state_at(600.0)` returned `inf` for each. The bound itself is accepted, and the next float
+    above it is not.
+    """
+
+    assert MAXIMUM_CUMULATIVE_AGENT_L == 14_400.0
+
+    require_canonical_state(_empty_state_with(position, MAXIMUM_CUMULATIVE_AGENT_L))
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(
+            _empty_state_with(position, nextafter(MAXIMUM_CUMULATIVE_AGENT_L, inf))
+        )
+
+    role = {DELIVERED_AGENT_L: "delivered", EXHAUSTED_AGENT_L: "exhausted"}[position]
+    assert str(raised.value) == (
+        f"state[{position}] ({role} agent in L) of 14400.000000000002 L is more than the "
+        "14400.0 L that a case can deliver or exhaust at the fastest supported fresh gas "
+        "flow over the supported run length"
+    )

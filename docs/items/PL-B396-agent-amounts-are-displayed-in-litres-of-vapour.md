@@ -298,3 +298,28 @@ displayed figure with delivered vapour converted by an independently computed
 factor. The `Done when` paragraphs above are superseded by this one.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true, and `PL-93B3` is added to `blocked-by`.** No agent cost View exists, and the accounting panel still shows litres of vapour. "What this item builds now" keeps the reader's unit in the preferences file that `PL-93B3` builds, as entry 10 of v0.7.0's Required scope does, so this item waits on that file too. The line numbers in the 2026-09-19 sweep paragraph above are replaced with the names they pointed at.
+
+**From `PL-KZ99`, 2026-10-26: the conversion exists, and it reads a store
+5.8 % high.** `AgentParameters.vapour_volume_per_liquid_volume` gives each
+agent's millilitres of vapour per millilitre of liquid, and
+`core/liquid_agent.py`'s `liquid_volume_ml` converts an amount with it. The
+conversion is exact for the delivered and exhausted amounts and the circuit's
+amount, which are gas at room temperature. It reads an alveolar, venous or
+tissue amount 5.8 % high, because those stores are body-temperature
+quantities under the 20 °C label (`docs/MODEL.md` § "Known limitations").
+So a readout that shows a store or the uptake in millilitres of liquid must
+either say so beside the figure or correct it. A delivered or exhausted
+figure needs neither. `PL-KZ99`'s first blind review pass found this.
+
+**Also from `PL-KZ99`'s reviews: make the conversion's caller unable to pair
+an amount with the wrong agent or the wrong kind.** `liquid_volume_ml` takes
+a bare vapour volume and a bare ratio. So nothing stops a caller from
+converting one agent's vapour with another agent's ratio after an agent
+switch. Sevoflurane vapour converted with desflurane's ratio reads about 13 %
+low. Nothing stops it from converting a store as though it were fresh gas
+either. Two reviewers named this. It was left for this item rather than built
+in `PL-KZ99`, because the right shape is an amount record that carries its
+agent and whether it is fresh gas or a store. `PL-KFTM` builds those records.
+Nothing calls `liquid_volume_ml` yet, so changing its signature costs nothing
+here. Recommended: take that record, refuse an agent mismatch, and refuse or
+label a store.

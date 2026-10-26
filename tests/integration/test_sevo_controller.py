@@ -8,6 +8,7 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -97,7 +98,7 @@ def test_ventilation_and_cardiac_output_changes_preserve_state() -> None:
 
 def test_reset_preserves_all_user_settings() -> None:
     controller = SimulationController(
-        circuit_volume_l=5.0,
+        circuit_volume_l=CompartmentVolume(5.0),
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
         delivered_concentration_percent=Percent(6.0),
         alveolar_ventilation_l_min=AlveolarVentilation(5.5),

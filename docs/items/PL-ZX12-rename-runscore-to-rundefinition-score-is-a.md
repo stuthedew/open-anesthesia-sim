@@ -101,7 +101,7 @@ uses it; `docs/releases/` is untouched; and no `RunScore`, `ScoreSegment` or
 `run_score` remains under `src/` or `tests/`.
 
 **`PL-8LXM` closed 2026-09-08, so this is unblocked and deferred rather than
-blocked** (project owner, same day): the M4 cleanup was the scope that was
+blocked** (project owner, 2026-09-08): the M4 cleanup was the scope that was
 approved, and the rename is its own piece of work. The sequencing note above
 still holds for whoever takes it - it lands before `PL-49R8`, which now waits
 on this item rather than on `PL-2FM6`.

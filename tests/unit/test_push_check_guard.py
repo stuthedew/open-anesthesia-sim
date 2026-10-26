@@ -2,10 +2,12 @@
 
 The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
 check --verify` (`PL-S1BG`) in the working tree a `git push` runs from, and
-denies the push while any fails. Each test builds a scratch repository whose three scripts
-are stubs printing a known report, and points `CLAUDE_PROJECT_DIR` at it, so
-what is pinned is the hook's own rule: which commands are pushes, which tree is
-checked, what a refusal shows, and that every error path lets the push through.
+denies the push while any fails. Since `PL-3JG7` it also runs four more of
+`make check`'s checks under the tree's `.venv/bin/python`. Each test builds a
+scratch repository whose scripts are stubs printing a known report, and points
+`CLAUDE_PROJECT_DIR` at it, so what is pinned is the hook's own rule: which
+commands are pushes, which tree is checked, what a refusal shows, and that
+every error path lets the push through.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -386,3 +389,91 @@ def test_a_linked_worktree_is_checked_from_its_own_tree(project: Path, tmp_path:
     # The project's own tree passes; the worktree's fails, and is the one pushed.
     assert _decision("git push", cwd=project, project=project) is None
     assert _decision("git push", cwd=worktree, project=project) is not None
+
+
+# --- the checks run under the project's interpreter (`PL-3JG7`) --------------
+
+# Each check the hook runs under the tree's `.venv/bin/python`, the file it runs,
+# and the command a refusal names to re-run it. `PL-2D1S` counted 22 red runs on
+# session branches behind these four between 2026-09-21 and 2026-10-25.
+PROJECT_CHECKS = (
+    (
+        "workflow_paths_check",
+        "tools/workflow_paths_check.py",
+        ".venv/bin/python tools/workflow_paths_check.py",
+    ),
+    ("fixture_id_check", "tools/fixture_id_check.py", ".venv/bin/python tools/fixture_id_check.py"),
+    (
+        "type_ignore_check",
+        "tools/type_ignore_check.py",
+        ".venv/bin/python tools/type_ignore_check.py",
+    ),
+    (
+        "line-split tests",
+        "tests/unit/test_line_splits.py",
+        ".venv/bin/python -m pytest -q -p no:cacheprovider tests/unit/test_line_splits.py",
+    ),
+)
+PROJECT_ERROR = "tests/unit/test_new.py is in neither workflow_paths nor the product's tests"
+
+
+def _interpreter(tree: Path) -> None:
+    """Give `tree` a `.venv/bin/python` that runs this test's own interpreter.
+
+    It is a wrapper rather than a symlink. Python looks for a virtual
+    environment's `pyvenv.cfg` beside the path that started it, so a symlink
+    would start without this environment's pytest.
+    """
+    python = tree / ".venv" / "bin" / "python"
+    python.parent.mkdir(parents=True, exist_ok=True)
+    python.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} "$@"\n')
+    python.chmod(0o755)
+
+
+def _project_stub(tree: Path, failing: str | None = None) -> None:
+    """Give `tree` each check run under the project interpreter, all passing except `failing`."""
+    for name, script, _ in PROJECT_CHECKS:
+        path = tree / script
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fails = name == failing
+        if script.startswith("tests/"):
+            body = f"def test_the_rule():\n    assert {not fails}, {PROJECT_ERROR!r}\n"
+        elif fails:
+            body = f"import sys\nprint({PROJECT_ERROR!r})\nsys.exit(1)\n"
+        else:
+            body = 'print("the check passed")\n'
+        path.write_text(body)
+
+
+@pytest.mark.parametrize(
+    ("name", "script", "rerun"), PROJECT_CHECKS, ids=[name for name, _, _ in PROJECT_CHECKS]
+)
+def test_a_push_whose_project_interpreter_check_fails_is_refused(
+    project: Path, name: str, script: str, rerun: str
+) -> None:
+    _interpreter(project)
+    _project_stub(project, failing=name)
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert f"`{name}` failed (`{rerun}` re-runs it)" in reason
+    assert PROJECT_ERROR in reason
+    assert "doc_check" not in reason
+
+
+def test_a_push_every_project_interpreter_check_passes_goes_through(project: Path) -> None:
+    _interpreter(project)
+    _project_stub(project)
+    assert _decision("git push", cwd=project, project=project) is None
+
+
+def test_a_tree_without_the_project_interpreter_skips_only_those_checks(project: Path) -> None:
+    """With no `.venv/bin/python`, the four are skipped and the other three still decide."""
+    _project_stub(project, failing="type_ignore_check")
+    assert _decision("git push", cwd=project, project=project) is None
+    _stub(project, doc=DOC_FAILS)
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert "`doc_check` failed" in reason
+    assert "type_ignore_check" not in reason

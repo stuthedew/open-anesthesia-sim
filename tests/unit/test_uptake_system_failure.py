@@ -61,10 +61,13 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
+    DELIVERED_AGENT_L,
+    EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
@@ -126,8 +129,8 @@ class _TissueGroupThatCanRefuseAStep(TissueGroup):
     can leave. The refusal is left to the real constructor rather than raised by hand, so
     that a caller sees the production message. Since `PL-4R3W` the refusal comes from
     `Fraction`, built here under the name that `_write_state_vector` gives the fat fraction.
-    `test_a_resume_into_an_impossible_fraction_says_which_compartment_refused` checks that
-    name on the production path.
+    `test_writing_an_impossible_fraction_says_which_compartment_refused` checks that name
+    at the writer that `advance()` calls.
     """
 
     refuse_next_fraction: bool = False
@@ -243,30 +246,93 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
     assert FAT_REFUSAL_TEXT in str(cause)
 
 
-def test_a_resume_into_an_impossible_fraction_says_which_compartment_refused() -> None:
+def test_a_resume_into_an_impossible_fraction_says_which_state_refused() -> None:
+    """A fraction out of range in a state handed to `resume_at` is refused before any write.
+
+    Since `PL-0WFJ`, `require_canonical_state` checks each fraction's range, so a `RunDefinition`
+    and the live system refuse the same states. The guard knows positions, not compartments,
+    so its message names the position and what it holds. Each of the six positions is driven
+    out of range alone. The messages must be pairwise distinct, and the run is left as it was.
+    """
+
+    system = _sevoflurane_at_one_mac()
+
+    for _ in range(STEPS_BEFORE_FAILURE):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    positions = (
+        INSPIRED_FRACTION,
+        ALVEOLAR_FRACTION,
+        VENOUS_FRACTION,
+        *(FIRST_TISSUE_FRACTION + offset for offset in range(len(system.patient.tissues))),
+    )
+
+    assert len(positions) == 6, "a compartment was added without being covered here"
+
+    before = system.state_vector()
+    initial_agent_l = system.agent_simulation_validator.initial_agent_l
+    messages = []
+
+    for position in positions:
+        malformed = list(before)
+        malformed[position] = -1.0
+
+        with pytest.raises(SimulationConfigurationError) as raised:
+            system.resume_at(tuple(malformed), initial_agent_l=initial_agent_l)
+
+        assert system.state_vector() == before
+        message = str(raised.value)
+        assert message.startswith(f"state[{position}] ("), message
+        assert "of -1.0 is outside 0 to 1" in message, message
+        messages.append(message)
+
+    assert len(set(messages)) == len(messages), messages
+
+
+@pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
+def test_rounding_can_carry_a_saturated_fraction_above_one(agent: str) -> None:
+    """The Metzler argument bounds a fraction below, not above (`PL-PM67`).
+
+    Every compartment at 1.0 under a 100% dial is the exact equilibrium, yet one step rounds
+    a tissue fraction to 1.0000000000000002. The step is refused and rolled back. So the
+    documents claim only the lower bound, and this test keeps that claim honest. No shipped
+    vaporizer maximum reaches the state, so the test widens the maximum by hand.
+    """
+
+    system = AgentUptakeSystem.for_agent(agent)
+    system.circuit.max_delivered_concentration_percent = Percent(100.0)
+    system.circuit.set_delivered_concentration_percent(Percent(100.0))
+    saturated = [1.0] * len(system.state_vector())
+    saturated[DELIVERED_AGENT_L] = 0.0
+    saturated[EXHAUSTED_AGENT_L] = 0.0
+    system.resume_at(tuple(saturated), initial_agent_l=0.0)
+    before = system.capture_state()
+
+    with pytest.raises(SimulationNumericalError, match="of 1.0000000000000002 is outside 0 to 1"):
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+
+    assert system.capture_state() == before
+
+
+def test_writing_an_impossible_fraction_says_which_compartment_refused() -> None:
     """Six places hold a fraction, and a refusal must name the one that refused.
 
-    This is regression cover for PL-SPN6, the defect that the assertion above could not have
-    caught. PL-9SH6 gave the alveolar compartment, the venous pool and the three tissue
-    groups one accessor name. Each passed that name to the shared guard without qualifying
-    it, so all five raised the same sentence. A refusal said only that *a* fraction had left
-    [0, 1]. Since `PL-4R3W`, the refusal comes from the `Fraction` constructor, reached in
-    `_write_state_vector` before any compartment's setter. So the name in the message is the
-    one under which that constructor call builds each fraction, and the test checks it at
-    all six positions.
+    This is regression cover for PL-SPN6. PL-9SH6 gave the alveolar compartment, the venous
+    pool and the three tissue groups one accessor name. Each passed that name to the shared
+    guard without qualifying it, so all five raised the same sentence. Since `PL-4R3W`, the
+    refusal comes from the `Fraction` constructor, reached in `_write_state_vector` before
+    any compartment's setter. So the name in the message is the one under which that
+    constructor call builds each fraction, and the test checks it at all six positions.
 
     This is not a readability point. The message reaches its reader as a banner rather than
-    a traceback. `app/dashboard_frame.py` shows a refused setting word for word, and
-    `advance()` wraps a refused step into the notice that the run has halted. So the stack
-    frame that would have told the compartments apart is not available where the message is
-    read. The collision can also be reached from outside this file's injected failures.
-    `require_canonical_state` does not check a fraction's range, so a `resume_at` into a
-    malformed state is refused by whichever of the six it reaches first. Each position is
-    driven alone, and the run is left as it was.
+    a traceback. `advance()` wraps a refused step into the notice that the run has halted,
+    so the stack frame that would have told the compartments apart is not available where
+    the message is read.
 
-    The test asserts a prefix and checks that the messages are pairwise distinct, rather
-    than comparing against six literal sentences. So a seventh place that holds a fraction
-    cannot quietly collide with one already here.
+    The test calls `_write_state_vector` directly. `advance()` is its production caller,
+    and no supported setting carries a propagated fraction out of range at a chosen
+    position. `resume_at` no longer reaches it with such a state either, because
+    `require_canonical_state` refuses the state first (`PL-0WFJ`).
     """
 
     system = _sevoflurane_at_one_mac()
@@ -287,7 +353,6 @@ def test_a_resume_into_an_impossible_fraction_says_which_compartment_refused() -
     assert len(owners) == 6, "a compartment was added or renamed without being covered here"
 
     before = system.state_vector()
-    initial_agent_l = system.agent_simulation_validator.initial_agent_l
     messages = {}
 
     for position, owner in owners.items():
@@ -295,9 +360,8 @@ def test_a_resume_into_an_impossible_fraction_says_which_compartment_refused() -
         malformed[position] = -1.0
 
         with pytest.raises(SimulationConfigurationError) as raised:
-            system.resume_at(tuple(malformed), initial_agent_l=initial_agent_l)
+            system._write_state_vector(tuple(malformed))
 
-        assert system.state_vector() == before
         messages[owner] = str(raised.value)
 
     for owner, message in messages.items():
@@ -397,7 +461,7 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     """
 
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         delivered_concentration_percent=Percent(100.0),
     )
@@ -621,26 +685,36 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     `PL-544D` limits the alveolar and tissue amounts to the compartment's capacity at each
     write, and a rollback is a write. Since `PL-19Y0`, only a write that bypasses the
     volume's own guard can move a capacity below an amount already held. When the rollback
-    went through the capacity guard, such a capacity made `restore_state` refuse at fat. By
-    then the circuit, the alveoli and two tissue groups had been restored. The venous pool,
-    which is restored after fat, was left holding the failed step, under a configuration
-    error that had replaced the step's own error. This was found at review on 2026-10-12, on
-    a run at 8% for 300 s whose fat volume was halved below the held amount. In that run the
-    step itself then refuses at fat.
+    went through the capacity guard, such a capacity made `restore_state` refuse at the fat
+    group. By then the circuit, the alveoli and two tissue groups had been restored. The
+    venous pool, which is restored after fat, was left holding the failed step. The error
+    raised was a configuration error, which had replaced the step's own error. This was
+    found at review on 2026-10-12, on a run at 8% for 300 s whose fat volume was halved
+    below the amount held. In that run the step itself then refuses at fat.
 
-    The refusal here is the armed one that the file injects throughout. Whether a shrunk fat
-    volume makes the *step* refuse depends on the parameter set. At ordinary loads it gives
-    fat a time constant shorter than the step, and the fraction written is back in range.
-    The rollback's requirement does not depend on the parameter set. The volume is written
-    directly, bypassing its own guard, because what is under test is the rollback and not
-    the route. The state left is the one the step began from, with fat over capacity as it
-    already was, for the snapshot's `Fraction` to refuse.
+    The refusal here is the armed, injected refusal that the file uses throughout. Whether
+    a shrunk fat volume makes the *step* refuse depends on the parameter set. At ordinary
+    loads the shrunk volume gives fat a time constant shorter than the step, so the
+    fraction written is back in range. The rollback's requirement does not depend on the
+    parameter set. The volume and the tissue:gas coefficient are written directly,
+    bypassing their own guards, because what is under test is the rollback and not how the
+    capacity became too small. The state left behind is the one that the step began from.
+    In it, fat is over capacity, as it already was, so that the snapshot's `Fraction`
+    refuses it.
     """
 
     system = _a_run_whose_next_step_a_compartment_refuses()
     fat = system.patient.fat
+    # Making the capacity half the amount held by changing the volume alone would need about
+    # 4e-6 L, which is below the numerical envelope (`PL-QX2G`). So the volume is set to the
+    # envelope's smallest value, 0.01 L, and the coefficient is set to make the capacity half
+    # the amount held. The capacity, and so fat's row of the system matrix, is the same as
+    # before.
+    object.__setattr__(fat, "volume_l", CompartmentVolume(0.01))
     object.__setattr__(
-        fat, "volume_l", fat.agent_amount_l / fat.tissue_gas_partition_coefficient / 2
+        fat,
+        "tissue_gas_partition_coefficient",
+        PartitionCoefficient(fat.agent_amount_l / fat.volume_l / 2),
     )
     before = system.capture_state()
 
@@ -886,7 +960,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # to move with that parameter, and the 3.7e-6 L drop is in the expected direction.
     assert circuit_agent_before_l == pytest.approx(0.048301285)
 
-    system.circuit.set_circuit_volume(3.0)
+    system.circuit.set_circuit_volume(CompartmentVolume(3.0))
 
     assert system.circuit.agent_amount_l == pytest.approx(circuit_agent_before_l)
     assert system.total_stored_agent_l == pytest.approx(total_agent_before_l)

@@ -3,11 +3,13 @@ id: PL-0WFJ
 title: The guard every run opening shares, require_canonical_state, checks a state's length, finiteness and unit entry but no physical range, so a RunDefinition opened from a state with an alveolar fraction of -0.3 and a fat fraction of 1.7 accepts it and returns negative and above-one fractions from state_at and evaluate_anchored without any error, while the live system refuses the same state
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, science, safety
 feature: replay-findings
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_resume_at.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: a physically impossible opening state fails visibly instead of drawing plausible traces, before saved runs can be loaded
 verify: grep -q 'def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one' tests/unit/test_governing_equations.py
 ---
@@ -19,3 +21,11 @@ verify: grep -q 'def test_require_canonical_state_refuses_a_fraction_outside_zer
 **Done when.** `require_canonical_state` refuses a state with a fraction outside zero to one or a negative accumulator, so `RunDefinition` and the live system refuse the same states. `tests/unit/test_governing_equations.py` has `test_require_canonical_state_refuses_a_fraction_outside_zero_to_one`.
 
 **Found by.** `PL-TBQS` reviewer replay on #430, finding 430 r05 F2, checked against main on 2026-10-25. Reproduced with `scratchpad/r/scripts/d_430_core.py`: the definition accepted the state, and `state_at(30.0)` returned a fat fraction of 1.6996, a circuit fraction of -0.0296 and an alveolar fraction of -0.0606.
+
+**Also the last input without an interval, 2026-10-26.** `PL-58D7`'s corner
+sweep and its blind review found that this guard is the one input to `core/`
+with no interval. From an opening state with every fraction at 1e308 at a
+10 000 L corner with the widest flows, `state_at(600.0)` returned fractions
+near 1e307 and an exhausted-agent total of `inf`, with no error. So
+`PL-58D7` is blocked on this item and lists it as a member. When it lands, add
+the opening state to the table in `docs/MODEL.md` § "The numerical envelope".

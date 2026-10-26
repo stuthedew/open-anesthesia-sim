@@ -12,17 +12,54 @@ This file does not restate the citation. It only shows that the displayed
 ratio is the same quantity that the published test validates.
 """
 
+import math
+
 import pytest
 
+from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
     WASH_IN_EQUILIBRIUM_RATIO,
+    WASH_IN_ROUNDING_ALLOWANCE,
     WashInDomain,
     is_wash_in,
     read_wash_in,
     wash_in_ratio,
 )
+from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION, INSPIRED_FRACTION
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    CardiacOutput,
+    FreshGasFlow,
+)
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+
+#: The limit is one hour of `SIMULATION_STEP_S` steps. Each run below reaches its fixed
+#: point in about 21 000 steps, so a run that has not reached it within the limit has failed.
+ZERO_OUTPUT_STEP_LIMIT = 36_000
+
+#: The largest share of the agent in the fast pool that a run may lose while it is held at the
+#: edge of `WASH_IN_ROUNDING_ALLOWANCE` for the longest supported run length. This is the
+#: clinical requirement on the allowance (`PL-N559`, project owner, 2026-10-26).
+HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL = 0.01
+
+#: The smallest allowed ratio of `WASH_IN_ROUNDING_ALLOWANCE` to the rounding at a settled state.
+#: Below this ratio, a later tightening of the allowance would bring back the false elimination
+#: caption.
+ROUNDING_MARGIN = 1_000
+
+#: How close each settled fraction must be to the closed form, relative. The
+#: measured distance is about 2e-14 (`PL-N559`, 2026-10-26).
+ZERO_OUTPUT_CLOSED_FORM_TOLERANCE = 1e-12
 
 
 def test_the_ratio_is_the_plain_quotient_of_the_two_fractions() -> None:
@@ -148,3 +185,121 @@ def test_the_domain_and_the_plotted_value_always_agree(
 
     assert reading.domain is expected
     assert (reading.plotted_ratio is not None) == (expected is WashInDomain.WASH_IN)
+
+
+@pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
+def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: str) -> None:
+    """At zero cardiac output, the settled run is treated as wash-in at equilibrium (`PL-N559`).
+
+    With no blood flow there is no uptake. The closed form then has the circuit and the alveoli
+    both settle at the delivered fraction, so $`F_A/F_I`$ is exactly 1. The stepped run settles
+    onto a floating-point fixed point instead, within rounding of that value. Isoflurane at the
+    fastest fresh gas flow settles with $`F_A`$ above $`F_I`$, which the rule once treated as
+    elimination.
+
+    The test does not depend on how long a run may last. It steps until one more step changes
+    neither fraction. From then on every step returns the same state, so the reading at the
+    fixed point is the reading for the rest of any run, however long the run limit becomes.
+    """
+
+    system = AgentUptakeSystem.for_agent(agent)
+    system.set_cardiac_output(CardiacOutput(0.0))
+    system.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN))
+    step = SIMULATION_STEP_S
+
+    previous = system.state_vector()
+    for _ in range(ZERO_OUTPUT_STEP_LIMIT):
+        system.advance(step)
+        state = system.state_vector()
+        settled = (state[INSPIRED_FRACTION], state[ALVEOLAR_FRACTION])
+        if settled == (previous[INSPIRED_FRACTION], previous[ALVEOLAR_FRACTION]):
+            break
+        previous = state
+    else:
+        pytest.fail(f"{agent} did not reach a fixed point in {ZERO_OUTPUT_STEP_LIMIT} steps")
+
+    delivered = float(system.circuit.delivered_partial_pressure_fraction)
+    inspired = state[INSPIRED_FRACTION]
+    alveolar = state[ALVEOLAR_FRACTION]
+
+    assert math.isclose(inspired, delivered, rel_tol=ZERO_OUTPUT_CLOSED_FORM_TOLERANCE)
+    assert math.isclose(alveolar, delivered, rel_tol=ZERO_OUTPUT_CLOSED_FORM_TOLERANCE)
+    reading = read_wash_in(alveolar, inspired)
+    assert reading.domain is WashInDomain.WASH_IN
+    assert reading.plotted_ratio == alveolar / inspired
+    if agent == "isoflurane":
+        assert alveolar > inspired, "the case that the rule once read as elimination"
+    overshoot = abs(alveolar / inspired - WASH_IN_EQUILIBRIUM_RATIO)
+    assert overshoot * ROUNDING_MARGIN <= WASH_IN_ROUNDING_ALLOWANCE, (
+        "Raise WASH_IN_ROUNDING_ALLOWANCE in src/anesthesia_sim/app/wash_in.py to at least "
+        f"{overshoot * ROUNDING_MARGIN:.1g}, or undo the solver change that made rounding worse.\n"
+        f"Why: {agent}'s settled state at zero cardiac output rounds to {overshoot:.2g} above "
+        f"1, and the allowance must be at least {ROUNDING_MARGIN} times that. Below it, the "
+        "wash-in plot shows elimination when nothing is changing (PL-N559)."
+    )
+
+
+def test_the_rounding_allowance_is_the_only_slack_above_equilibrium() -> None:
+    """A quotient past the allowance is still elimination, and the boundary is inclusive."""
+
+    assert is_wash_in(WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE)
+    assert not is_wash_in(
+        math.nextafter(WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE, math.inf)
+    )
+
+
+def _fast_pool_capacity_l(agent: str) -> float:
+    """Return the litres of vapour that the fast pool holds for each unit of gas fraction.
+
+    The fast pool is the alveolar gas, the venous blood and the vessel-rich group, which holds
+    the brain. Each compartment adds its volume times its partition coefficient against gas.
+    Muscle and fat are left out. That makes the fast pool the smallest store that a hidden loss
+    could deplete, so the bound is conservative.
+    """
+
+    agent_parameters = load_agent_parameters(agent)
+    patient = load_reference_adult_parameters()
+    return (
+        float(patient.alveolar_gas_volume_l)
+        + float(patient.venous_pool_volume_l)
+        * float(agent_parameters.blood_gas_partition_coefficient)
+        + float(patient.vessel_rich_volume_l)
+        * float(agent_parameters.vessel_rich_tissue_gas_partition_coefficient)
+    )
+
+
+@pytest.mark.parametrize("agent", sorted(AGENT_DATA_FILENAMES))
+def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent: str) -> None:
+    """A run held at the edge of the allowance loses less than 1% of the fast pool (`PL-N559`).
+
+    A quotient of 1 + `WASH_IN_ROUNDING_ALLOWANCE` is drawn as equilibrium. If the run were
+    really eliminating at that edge, agent would leave at alveolar ventilation times $`F_I`$
+    times the allowance. The fast pool holds its capacity times $`F_I`$, so the loss as a share
+    of the fast pool does not depend on the concentration. The test takes the fastest supported
+    ventilation and the longest supported run, so it covers every run the simulator allows. It
+    is meant to fail when either limit grows or a less soluble agent ships, and its message says
+    what to do then.
+    """
+
+    run_length_min = MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_MINUTE
+    capacity_l = _fast_pool_capacity_l(agent)
+    hidden_loss_fraction = (
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN * WASH_IN_ROUNDING_ALLOWANCE * run_length_min
+    ) / capacity_l
+    largest_allowance = (
+        HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL
+        * capacity_l
+        / (MAXIMUM_ALVEOLAR_VENTILATION_L_MIN * run_length_min)
+    )
+    suggested_allowance = 10.0 ** math.floor(math.log10(largest_allowance))
+
+    assert hidden_loss_fraction < HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL, (
+        "Lower WASH_IN_ROUNDING_ALLOWANCE in src/anesthesia_sim/app/wash_in.py to "
+        f"{suggested_allowance:.0e} (anything up to {largest_allowance:.2g} passes), and "
+        'update its note in docs/MODEL.md § "F_A/F_I as a displayed ratio".\n'
+        f"Why: a {run_length_min / 60:g} h run at {MAXIMUM_ALVEOLAR_VENTILATION_L_MIN:g} L/min "
+        f"alveolar ventilation could hide a loss of {hidden_loss_fraction:.1%} of the {agent} from "
+        f"the wash-in plot, and the limit is {HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL:.0%}. "
+        "A longer run-length limit, a higher ventilation limit or a less soluble agent "
+        "causes this (PL-N559)."
+    )
