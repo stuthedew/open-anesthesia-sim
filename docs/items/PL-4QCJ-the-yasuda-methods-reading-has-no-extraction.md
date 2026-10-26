@@ -135,5 +135,7 @@ abstract rather than from Table 6, because the abstract was the page read.
 "needs full texts that are not in PubMed Central and are not held in
 `docs/references/`" was stale twice over: both methods sections had been read,
 and they state the circuit exchange directly. It now gives the two pages,
-says the papers are in the private corpus, and points at the notes. So the
-passage no longer calls the point an inference.
+says the papers are in the private corpus, and points at the notes. The zero
+inspired fraction during elimination is still called an inference, because
+neither paper states it. A blind review on this branch caught a first wording
+that called it stated.

@@ -116,9 +116,9 @@ page in another file, the note names that file rather than copying the fact.
 `yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
 example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
 page images.
-Readings recorded before 2026-10-26 sit inside the source's entry below,
-as the Gas Man Workbook's do, and stay there. A later reading of such a source
-is added to its entry.
+Some sources already keep their readings inside their entry below, as the
+Gas Man Workbook does. Those readings stay there, and a later reading of such
+a source is added to its entry. Every other source gets a note file.
 
 **Two of its holdings are whole books**, added 2026-09-15 and split into
 section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
@@ -601,10 +601,13 @@ curves", taken 2026-09-27 for `PL-KK1Q`; the hybrid coefficients and their SDs
 2026-09-26 record. Figures 3 and 4 of each, the multi-day washout curves on
 logarithmic axes, were read qualitatively and no number was taken from them.
 
-Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
-317-23; the *Anesthesiology* paper is a scan with no text layer, read as page
-images of pp. 493-96 only, p. 496 again on 2026-09-27, and pp. 493-95 again the
-same day for `PL-KK1Q`.
+Route and depth, for the readings this paragraph lists: the *Anesth Analg*
+paper through the corpus's text layer, pp. 317-23; the *Anesthesiology* paper
+is a scan with no text layer, read as page images of pp. 493-96, p. 496 again
+on 2026-09-27, and pp. 493-95 again the same day for `PL-KK1Q`. Its methods and
+abstract pages were read too: pp. 490, 491, 492, 494 and 497 on 2026-09-13 for `PL-4QCJ`, p. 490 on
+2026-10-18 for `PL-R0NL`, and pp. 489-91 again on 2026-10-26. Each extraction
+note named below gives the pages it rests on.
 
 Their F_A/F_I curves during administration (Figure 2 of each, pp. 320 and 493)
 were read from the page images on 2026-10-18 for `PL-R0NL`, with the wash-in

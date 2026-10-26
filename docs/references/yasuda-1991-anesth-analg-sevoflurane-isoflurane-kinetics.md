@@ -39,8 +39,8 @@ These facts are stated in the methods on page 317.
   5 minutes and onward to 1400 minutes, and each morning for 6 to 7 days.
 - **The end of administration.** At exactly 30 minutes the potent agents were
   stopped and the circuit was exchanged for a fresh inspiratory and expiratory
-  circuit. So the inspired fraction of each potent agent during elimination is
-  zero.
+  circuit. So the inspired fraction of each potent agent during
+  elimination was zero or near it. The paper does not state that fraction.
 
 ## Values taken
 
@@ -48,8 +48,9 @@ These facts are stated in the methods on page 317.
 | --- | --- | --- | --- |
 | F_A/F_I at 30 min of administration, mean ± SD | 0.850 ± 0.018 | 0.733 ± 0.027 | Abstract, page 316 |
 | F_A/F_A0 after 5 min of elimination, mean ± SD | 0.157 ± 0.020 | 0.223 ± 0.024 | Abstract, page 316 |
+| Recovery, the volume recovered per volume taken up, mean ± SD | 101 ± 7% | 101 ± 6% | Abstract, page 316, and Table 6, page 322 |
 
-All four values are stated in the text, n = 7. None was read from a figure.
+All six values are stated in the text, n = 7. None was read from a figure.
 
 **What the ratios mean.** F_A is the end-tidal fraction and F_I the inspired
 fraction. F_A0 is "the alveolar concentration of anesthetic found immediately
@@ -58,9 +59,12 @@ last FA during administration". The protocol lists no sample at 30 minutes:
 its last sample during administration was at 29 minutes. So the "30 min" ratio
 is most likely the 29-minute sample, although the paper does not say so.
 
-**Where they are used.** They are reference values in
+**Where they are used.** The four ratios are reference values in
 `tests/reference/test_published_wash_in_and_elimination.py`, which compares
-the simulator's wash-in and elimination with them. They are not stored model
+the simulator's wash-in and elimination with them. The recovery values are
+cited in that module's docstring and in `docs/MODEL.md`, to show that
+metabolism is negligible over five minutes of elimination. None is a stored
+model
 parameters, so the adoption rules of `docs/MODEL.md` § "Source hierarchy" do
 not apply to them.
 
@@ -92,5 +96,5 @@ papers" says where each of these is recorded, with its pages:
 - The desflurane and halothane curves in Figures 2 and 3. They are the
   *Anesthesiology* study's data, normalized to this study's isoflurane cohort
   (page 320), so they are not this paper's measurements.
-- The pulmonary recovery of each agent (Table 6, page 322), which nothing in
-  this repository uses.
+- Table 6's total uptake and elimination volumes and the normalized recovery
+  (page 322). Only the recovery percentages are used.

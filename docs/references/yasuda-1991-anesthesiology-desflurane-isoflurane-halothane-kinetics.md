@@ -40,8 +40,8 @@ These facts are stated in the methods on page 490.
   and onward to 1,400 minutes, and each morning for 5 to 7 days.
 - **The end of administration.** "Precisely at 30 min, administration of the
   volatile anesthetics was discontinued, and the breathing circuit was
-  exchanged with a fresh inspiratory and expiratory circuit." So the inspired
-  fraction of each potent agent during elimination is zero.
+  exchanged with a fresh inspiratory and expiratory circuit." So the inspired fraction of each potent agent during
+  elimination was zero or near it. The paper does not state that fraction.
 
 ## The apparatus
 
@@ -69,6 +69,9 @@ Page 490 states each of these.
 
 All values are stated in the text, n = 8. None was read from a figure.
 
+Two halothane values from the same abstract are used too: an F_A/F_A0 after
+5 min of elimination of 0.25 ± 0.02, and a recovery of 64 ± 9% (page 489).
+
 **What the ratios mean.** F_A is the end-tidal fraction and F_I the inspired
 fraction. F_A0 is "the alveolar concentration of anesthetic found immediately
 before administration was discontinued" (page 491). The protocol lists no
@@ -78,8 +81,11 @@ the paper does not say so.
 
 **Where they are used.** The four F_A ratios are reference values in
 `tests/reference/test_published_wash_in_and_elimination.py`. The recovery
-values are cited in `docs/MODEL.md`, with halothane's 64 ± 9% (page 489) as
-the same method detecting an agent that is metabolized. None is a stored model
+values are cited in `docs/MODEL.md`, with halothane's 64 ± 9% as the same
+method detecting an agent that is metabolized. Halothane's 0.25 is in
+`docs/MODEL.md` § "Desflurane's residual, and why the parameter file was not
+changed", as the top of the range of published five-minute ratios that an
+explanation of desflurane's residual has to fit. None is a stored model
 parameter, so the
 adoption rules of `docs/MODEL.md` § "Source hierarchy" do not apply to them.
 
@@ -112,7 +118,8 @@ papers" says where each of these is recorded, with its pages:
 
 ## What was not taken
 
-- The nitrous oxide and halothane F_A ratios, because the simulator models
-  neither agent.
+- The nitrous oxide values, and halothane's F_A/F_I at 30 min (0.58 ± 0.04),
+  because the simulator models neither agent and no argument in this
+  repository uses them.
 - The gas chromatography and its calibration (pages 490 to 491), which nothing
   in this repository depends on.

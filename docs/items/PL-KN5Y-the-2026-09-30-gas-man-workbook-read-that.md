@@ -44,9 +44,9 @@ names the corpus file, the printed page and the quoted sentence.
 
 The Gas Man Workbook's readings already sit inside its entry in
 `docs/references/README.md`, so this one joined them rather than starting a
-separate file. The README now says that readings recorded before `PL-Z3V5`
-fixed the note's fields stay inside the source's entry, and that a later
-reading of such a source is added there. The new bullet gives the corpus file's
+separate file. The README now says that a source which already keeps its
+readings inside its entry keeps them there, and that a later reading of such a
+source is added to that entry. The new bullet gives the corpus file's
 chapter, the printed page and the quoted sentence, as this item asked, and
 says the value is tier 3. The sentence was checked again against the corpus's
 text extraction on this date.

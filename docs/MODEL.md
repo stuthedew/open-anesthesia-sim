@@ -4389,12 +4389,14 @@ a closed recirculating path except for fresh-gas inflow and exhaust, and
 inspired gas *is* circuit gas. So during an elimination $`F_I`$ settles near
 $`\dot V_A/(\dot V_A + \dot V_F)`$ of $`F_A`$. That fraction is 0.29 at the
 highest supported flow, and it was measured at 0.30 to 0.32 at five minutes.
-The published protocols did not rebreathe. Both methods sections say so. Each
-study gave the agents through a non-rebreathing circuit, and at exactly 30
-minutes exchanged it for a fresh inspiratory and expiratory circuit (*Anesth
-Analg* page 317, *Anesthesiology* page 490). Their elimination therefore ran
-at an inspired fraction of zero. This model cannot be set to that fraction at
-any supported flow. Neither full text is in PubMed Central. Both are in the
+The published protocols did not rebreathe. Both methods sections describe
+the apparatus that shows it. Each study gave the agents through a
+non-rebreathing circuit, and at exactly 30 minutes exchanged it for a fresh
+inspiratory and expiratory circuit (*Anesth Analg* page 317, *Anesthesiology*
+page 490). Neither paper states the inspired fraction during elimination, so
+the next step is an inference: their elimination ran at an inspired fraction
+at or near zero. This model cannot be set to that fraction at any supported
+flow. Neither full text is in PubMed Central. Both are in the
 private reference corpus that `docs/references/README.md` describes, and each
 has an extraction note in `docs/references/` that gives these pages.
 
