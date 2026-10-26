@@ -83,11 +83,12 @@ $$
 \frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
 $$
 
-The parameters are the same for every patient (page 1013):
+Every patient was given the same rules for the flow and the volume, and the
+same coefficients (page 1013):
 
 - cerebral blood flow is 14.3% of cardiac output, with the cardiac index
-  assumed to be 3.5 L/min/m²;
-- brain volume is 21 mL/kg of body weight;
+  assumed to be 3.5 L/min/m², so it scales with body surface area;
+- brain volume is 21 mL/kg of body weight, so it scales with weight;
 - the blood:gas coefficient is 0.63 for sevoflurane and 1.36 for isoflurane;
 - the brain:gas coefficient is 1.15 for sevoflurane and 2.09 for isoflurane.
 
@@ -122,9 +123,17 @@ gives the time to 99% blood-brain equilibration as 11.8 min for isoflurane and
 - Table 2's correlations of MAC-awake with the duration of anesthesia. Fast
   washout correlated with duration and slow washout did not (page 1014). The
   model has no use for the coefficients.
-- The paper's own blood:gas and brain:gas coefficients. They are cited from
-  Strum and Eger 1987, Lerman et al. 1984 and Yasuda et al. 1989, which the
-  agent files already cite directly.
+- The paper's own blood:gas and brain:gas coefficients, as stored values.
+  They are inputs to Katoh's calculation only, and the simulator keeps its own
+  coefficients. The paper cites Strum and Eger 1987 for sevoflurane's 0.63,
+  Lerman et al. 1984 for isoflurane's 1.36 and Yasuda et al. 1989 for both
+  brain:gas values (page 1013). The first two do not match what the agent
+  files record from those papers. `sevoflurane.json` records Strum and Eger's
+  measurement as 0.686, which is 8.9% above Katoh's 0.63. `isoflurane.json`
+  records Lerman's adult value, aged 20 to 40, as 1.46, which is 7.4% above
+  Katoh's 1.36. The paper does not say how its two figures were taken from
+  those sources. Katoh's brain:gas values, 1.15 and 2.09, are within 5% of the
+  vessel-rich tissue:gas coefficients this project stores, 1.10 and 2.10.
 
 ## The companion paper
 
