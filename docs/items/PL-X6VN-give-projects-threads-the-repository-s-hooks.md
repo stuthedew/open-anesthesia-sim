@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: infra
 feature: projects-trial
-touches: .claude/hooks/thread_hooks.py, .claude/hooks/hook_input.py, .claude/hooks/stop_hook_patch.py, tests/unit/test_thread_hooks.py, tests/unit/test_stop_hook_patch.py, docs/maintainer.md, docs/items/PL-X6VN-give-projects-threads-the-repository-s-hooks.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
+touches: .claude/hooks/thread_hooks.py, .claude/hooks/hook_input.py, .claude/hooks/stop_hook_patch.py, tests/unit/test_thread_hooks.py, tests/unit/test_stop_hook_patch.py, tests/unit/test_line_splits.py, docket.toml, docs/maintainer.md, docs/items/PL-X6VN-give-projects-threads-the-repository-s-hooks.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-10-26
 payoff: a Projects thread runs the repository's guard hooks and session-start digest, read from the one .claude/settings.json, once the owner pastes one setup script
 verify: grep -q 'def test_a_project_thread_gets_the_repository_hooks_in_its_user_settings' tests/unit/test_thread_hooks.py
