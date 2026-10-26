@@ -88,10 +88,20 @@ Element-wise reproduction survives. `_open_at` already opens the branch's defini
 
 **Closed in the same push, before the close-out review, because the push guard refuses a branch whose items' `verify:` commands already pass while they are open.** `#1844` stays a draft until the steps below are done.
 
+**The new tests against the code before the fix, 2026-10-26** (`.claude/rules/test-oracles.md` rule 6). The seven tests were copied unchanged into a worktree at `c4123db3`, as `tests/integration/test_zr49_replay.py`, and run there with that worktree's `src/` first on the path: `PYTHONPATH=<worktree>/src uv run --project <checkout> --frozen pytest tests/integration/test_zr49_replay.py -k "<the seven names>"`. All seven were collected, because they use no interface the fix added. Six failed:
+
+- `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there`: `AssertionError: here, after the edits`, with `ResumePoint` differing in `segment` and `crossing`. A "branch here" taken after the trunk changed the dial opened on the trunk's new stretch.
+- `test_a_change_made_on_the_halt_stays_the_trunks`: `assert 0.0 == 2.0` on `delivered_concentration_percent`. A "branch here" taken after the trunk turned the dial to 0% on the halt ran at 0%, not at the 2% that reached the mark (`PL-HSP8`).
+- `test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk`: `assert RunSegment(...) in (RunSegment(...),)` on `branch.opened_from.segment in trunk.run_segments`. After the trunk set the dial back, the branch's provenance named a stretch the trunk no longer holds (`PL-NRR6`).
+- `test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement`: `assert [] == [(30.0, <ControlInput.FRESH_GAS_FLOW>, 4.0, 8.0)]`. The reset branch ran at 8 L/min with nothing in its timeline to say so (`PL-K5BS`).
+- `test_a_branch_taken_at_a_keyframe_keeps_a_record_of_the_setting_it_opened_under`: `assert [] == [(60.0, <ControlInput.FRESH_GAS_FLOW>, 4.0, 6.0)]`. The keyframe branch ran under the trunk's change with an empty timeline (`PL-TNYP`).
+- `test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_added_back`: `assert None == BookmarkCrossing(instant_s=30.0, time_bookmarks=(TimeBookmark(instant_s=30.0, label='again'),), mac_targets=())`. After the mark was removed and added back, the halt record named nothing (`PL-XV0D`).
+
+`test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under` passed there, as it should. It pins the step-0 choice above, which keeps the behaviour the code already had, so it is a pin and not a regression test.
+
 **Left for the session that resumes, in order.**
 
-1. Run the seven new tests against `c4123db3` (the code before the fix) and record each failing assertion here, as `.claude/rules/test-oracles.md` rule 6 asks. They use no interface the fix added.
-2. Close-out step 8: `uv run python tools/new_prose.py`, and the fresh-reviewer subagent on its output.
-3. Close-out step 6: the source diff is about 480 lines added under `src/`, so run independent adversarial passes (lifecycle and state, the domain invariants, what a displayed value could mislead, whether the new tests fail when the behaviour is inverted, dead code) and refute what they return. Fix a confirmed finding on this branch.
-4. `bin/docket verify --self PL-ZR49 PL-HSP8 PL-TNYP PL-NRR6 PL-K5BS PL-XV0D` until it prints `ACCEPT`, and sort any mutation survivor it prints (close-out step 7).
-5. Write `#1844`'s body and mark it ready, per `.claude/skills/pull-request/SKILL.md`.
+1. Close-out step 8: `uv run python tools/new_prose.py`, and the fresh-reviewer subagent on its output.
+2. Close-out step 6: the source diff is about 480 lines added under `src/`, so run independent adversarial passes (lifecycle and state, the domain invariants, what a displayed value could mislead, whether the new tests fail when the behaviour is inverted, dead code) and refute what they return. Fix a confirmed finding on this branch.
+3. `bin/docket verify --self PL-ZR49 PL-HSP8 PL-TNYP PL-NRR6 PL-K5BS PL-XV0D` until it prints `ACCEPT`, and sort any mutation survivor it prints (close-out step 7).
+4. Write `#1844`'s body and mark it ready, per `.claude/skills/pull-request/SKILL.md`.
