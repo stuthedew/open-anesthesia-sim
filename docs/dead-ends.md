@@ -33,7 +33,7 @@ and the tools.
 a place that still stops the approach at the moment a session would propose it:
 a path-scoped rule, or a check or docstring that cites its id. Or, when its
 question no longer exists, for example because the code it names was removed,
-it is listed under "Retired" at the end of this file with the reason. Age is not
+it is listed under § "Retired" at the end of this file with the reason. Age is not
 a reason: an old entry that still guards a live temptation stays.
 `tools/dead_ends.py check --base origin/main` fails on an entry that left
 without either record. Each grooming pass re-tests every entry against the

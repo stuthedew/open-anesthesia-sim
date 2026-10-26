@@ -419,7 +419,7 @@ tree, move the entry into a path-scoped rule whose `paths:` cover that part,
 as `.claude/rules/dead-ends-apparatus.md` does for the item store and the
 tools. Second, does the entry refuse only the approach it names? Reword one
 that would also refuse a sound neighbour. An entry whose question no longer
-exists, for example because its code was removed, goes under "Retired" at the
+exists, for example because its code was removed, goes under § "Retired" at the
 end of `docs/dead-ends.md` with the reason. Age alone is never a reason to
 move one. `tools/dead_ends.py check --base` refuses a removal with neither
 record, so whichever you choose, the move has to be written down. "Nothing"
