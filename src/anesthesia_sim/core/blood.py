@@ -11,12 +11,17 @@ from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exponential_approach import exponential_approach
+from anesthesia_sim.core.numerical_envelope import (
+    CompartmentVolume,
+    PartitionCoefficient,
+    require_coefficient,
+    require_compartment_volume,
+)
 from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_a_capacity_with_room_for_the_agent,
     require_nonnegative_finite,
-    require_positive_finite,
     require_within_the_capacity,
 )
 
@@ -37,8 +42,8 @@ class VenousBloodCompartmentState:
 class VenousBloodCompartment:
     """One ideal, well-mixed venous blood compartment."""
 
-    volume_l: float
-    blood_gas_partition_coefficient: float
+    volume_l: CompartmentVolume
+    blood_gas_partition_coefficient: PartitionCoefficient
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
@@ -53,7 +58,7 @@ class VenousBloodCompartment:
         # `mypy` (`PL-LBQY`, found at review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a value the pool's constructor would refuse.
+            """Write a field, refusing a value that the pool's constructor would refuse.
 
             Each field is stored in one place, its slot. So the field's check runs here,
             and it applies alike to the constructor, the setters, `advance` and any
@@ -61,9 +66,9 @@ class VenousBloodCompartment:
             this (`PL-LBQY`, `PL-19Y0`). `restore_state` is the one write that bypasses
             this method, and its docstring says why. Nothing is written when a value is
             refused, and the constructor makes no check of its own. Until `PL-19Y0`, the
-            constructor made the only check. So an agent amount larger than the capacity,
-            written onto a pool already built, was stored, and the pool then reported a
-            partial pressure fraction of 1.0000001.
+            constructor made the only check. So an agent amount larger than the capacity
+            could be written onto a pool that was already built. The amount was stored,
+            and the pool then reported a partial pressure fraction of 1.0000001.
 
             The pool's partial pressure is its agent amount divided by its capacity, and
             the capacity is the volume times the blood:gas partition coefficient. So the
@@ -71,22 +76,22 @@ class VenousBloodCompartment:
             So is a volume or a coefficient too small for the amount the pool already
             holds (`require_room_for_the_agent_held`). The constructor writes the amount
             last, after the volume and the coefficient have passed their own checks. So
-            a factor is checked against the amount only once an amount exists. The volume
-            and the coefficient are also checked against each other, as a tissue group's
-            are. Whichever is written second must leave a capacity that is positive and
-            finite (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`). Each refusal names the
-            pool as well as the field, as in `"venous volume_l"` (`PL-2TZT`).
+            the volume and the coefficient are checked against the amount only once an
+            amount exists. Both are checked types, built only inside the numerical
+            envelope (`core/numerical_envelope.py`). So their product, the capacity, is
+            positive and finite by construction. Before, each factor was checked only as
+            positive and finite, and that did not guarantee a positive and finite
+            product (`PL-8LQZ`, `PL-FNH3`, `PL-QX2G`). Each refusal names the pool as
+            well as the field, as in `"venous volume_l"` (`PL-2TZT`).
 
             Raises:
-                TypeError: `value` is not an `int` or a `float`
-                    (`require_a_number`).
-                SimulationConfigurationError: the volume or the partition
-                    coefficient is not positive and finite, or the two multiply
-                    to a capacity that is zero or not finite. Also raised when
-                    the agent amount is negative or not finite, or would be more
-                    than the pool holds at a partial pressure of one atmosphere.
-                    That last check applies whichever of the amount, the volume
-                    and the coefficient is written.
+                TypeError: the volume was not built as a `CompartmentVolume`, or the
+                    coefficient as a `PartitionCoefficient`, or the agent amount is
+                    not an `int` or a `float` (`require_a_number`).
+                SimulationConfigurationError: the agent amount is negative or not
+                    finite, or would be more than the pool holds at a partial
+                    pressure of one atmosphere. The last check runs whichever of the
+                    amount, the volume and the coefficient is written.
             """
 
             # Every compartment holds an agent amount, and the tissue groups also hold a
@@ -95,7 +100,7 @@ class VenousBloodCompartment:
             field = f"venous {name}"
 
             if name == "volume_l":
-                require_positive_finite(field, value)
+                require_compartment_volume(field, value)
 
                 if hasattr(self, "blood_gas_partition_coefficient"):
                     require_a_capacity_with_room_for_the_agent(
@@ -108,7 +113,7 @@ class VenousBloodCompartment:
                         "Blood compartments",
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(field, value)
+                require_coefficient(field, value)
                 held_l = getattr(self, "agent_amount_l", None)
 
                 # The constructor, a copy and a pickle write the volume

@@ -49,6 +49,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.patient import PatientCompartmentsState
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -83,7 +84,7 @@ def _breathing_circuit() -> BreathingCircuit:
     """
 
     return BreathingCircuit(
-        circuit_volume_l=6.0,
+        circuit_volume_l=CompartmentVolume(6.0),
         max_delivered_concentration_percent=Percent(100.0),
         inspired_partial_pressure_fraction=Fraction(0.013),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
@@ -94,24 +95,28 @@ def _breathing_circuit() -> BreathingCircuit:
 
 def _alveolar_compartment() -> AlveolarCompartment:
     return AlveolarCompartment(
-        gas_volume_l=2.5, alveolar_ventilation_l_min=AlveolarVentilation(4.0), agent_amount_l=0.029
+        gas_volume_l=CompartmentVolume(2.5),
+        alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+        agent_amount_l=0.029,
     )
 
 
 def _tissue_group() -> TissueGroup:
     return TissueGroup(
         name="vessel_rich",
-        volume_l=6.0,
+        volume_l=CompartmentVolume(6.0),
         perfusion_fraction=1.0,
-        blood_gas_partition_coefficient=0.65,
-        tissue_gas_partition_coefficient=1.14,
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        tissue_gas_partition_coefficient=PartitionCoefficient(1.14),
         agent_amount_l=0.41,
     )
 
 
 def _venous_blood() -> VenousBloodCompartment:
     return VenousBloodCompartment(
-        volume_l=5.0, blood_gas_partition_coefficient=0.65, agent_amount_l=0.23
+        volume_l=CompartmentVolume(5.0),
+        blood_gas_partition_coefficient=PartitionCoefficient(0.65),
+        agent_amount_l=0.23,
     )
 
 
@@ -194,6 +199,11 @@ def _perturb(value: object) -> object:
         # Arithmetic on a flow gives a plain float, which the field refuses at
         # the write. So the perturbed flow is built as its type again.
         return type(value)(value + 1.0)
+
+    if isinstance(value, (CompartmentVolume, PartitionCoefficient)):
+        # A volume or a coefficient is halved, as it was while it was a plain float. Arithmetic
+        # on it gives a plain float, so the halved value is built as its type again.
+        return type(value)(value / 2.0)
 
     if isinstance(value, (Percent, Fraction)):
         # The value is halved rather than raised. A fraction has no room above
@@ -412,7 +422,7 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     system.set_cardiac_output(CardiacOutput(10.0))
     system.set_fresh_gas_flow(FreshGasFlow(0.5))
     system.set_alveolar_ventilation(AlveolarVentilation(1.0))
-    system.circuit.set_circuit_volume(0.5)
+    system.circuit.set_circuit_volume(CompartmentVolume(0.5))
 
     system.restore_state(state)
 
@@ -458,14 +468,19 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
 @pytest.mark.parametrize(
     ("move", "description"),
     [
-        (lambda s: s.circuit.set_circuit_volume(7.0), "circuit volume"),
-        (lambda s: setattr(s.alveoli, "gas_volume_l", 3.0), "alveolar volume"),
-        (lambda s: setattr(s.patient.venous_blood, "volume_l", 6.0), "venous volume"),
+        (lambda s: s.circuit.set_circuit_volume(CompartmentVolume(7.0)), "circuit volume"),
+        (lambda s: setattr(s.alveoli, "gas_volume_l", CompartmentVolume(3.0)), "alveolar volume"),
+        (
+            lambda s: setattr(s.patient.venous_blood, "volume_l", CompartmentVolume(6.0)),
+            "venous volume",
+        ),
         (lambda s: s.set_fresh_gas_flow(FreshGasFlow(3.0)), "fresh gas flow"),
         (lambda s: s.set_alveolar_ventilation(AlveolarVentilation(5.0)), "alveolar ventilation"),
         (lambda s: s.set_cardiac_output(CardiacOutput(6.0)), "cardiac output"),
         (
-            lambda s: setattr(s.patient.venous_blood, "blood_gas_partition_coefficient", 0.9),
+            lambda s: setattr(
+                s.patient.venous_blood, "blood_gas_partition_coefficient", PartitionCoefficient(0.9)
+            ),
             "blood:gas partition coefficient",
         ),
         (
@@ -476,13 +491,18 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             lambda s: setattr(s.circuit, "max_delivered_concentration_percent", Percent(10.0)),
             "the vaporizer maximum, which no equation reads and the record carries (PL-BBMG)",
         ),
-        (lambda s: setattr(s.patient.tissues[0], "volume_l", 9.0), "a tissue volume"),
+        (
+            lambda s: setattr(s.patient.tissues[0], "volume_l", CompartmentVolume(9.0)),
+            "a tissue volume",
+        ),
         (
             lambda s: object.__setattr__(s.patient.tissues[1], "perfusion_fraction", 0.2),
             "a tissue blood flow, moved through a perfusion fraction written past its guard",
         ),
         (
-            lambda s: setattr(s.patient.tissues[2], "tissue_gas_partition_coefficient", 90.0),
+            lambda s: setattr(
+                s.patient.tissues[2], "tissue_gas_partition_coefficient", PartitionCoefficient(90.0)
+            ),
             "a tissue partition coefficient, moved through the gas coefficient it derives from",
         ),
     ],
