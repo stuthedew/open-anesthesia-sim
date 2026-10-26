@@ -347,14 +347,26 @@ page and decides which file a session reads.
    `blocking` or `should-fix` finding on this branch, with the regression test
    the standards ask for. File a real finding that is not this change's with
    `bin/docket new`. Fix an `optional` one only where it is plainly correct
-   and small. List every finding in the pull request body with what happened
-   to it: fixed in a named commit, filed as an item, or rejected with the
-   reason. A fix made for a finding needs no further pass.
+   and small. List every finding in the pull request body with the pass that
+   named it and what happened to it: fixed in a named commit, filed as an
+   item, or rejected with the reason. A fix made for a finding needs no
+   further pass.
 
    Record the passes as a trailer in the last paragraph of the commit that
-   applies the last fix, or of the next commit where there was none:
-   `Blind-review: passes N, findings F, fixed X, filed Y, rejected Z`. Count
-   an `optional` finding left as it is among the rejected. `bin/docket arm`
+   applies the last fix, or of the next commit where there was none. List
+   every finding by pass, with the reviewer's severity and what happened to
+   it (`PL-0BRY`):
+   `Blind-review: pass 1: blocking fixed, optional rejected; pass 2: blocking fixed repeat, should-fix filed`.
+   Passes are separated by semicolons and numbered from 1, and findings by
+   commas. Write `repeat` after a finding that a lower-numbered pass also
+   named, so it counts once as new. Write `pass 2: none` for a pass that wrote
+   `NO FINDINGS`. Count an `optional` finding left as it is as `rejected`.
+   Keep the trailer on one line, or indent each continuation line. An
+   unindented line that is not a trailer stops git reading any trailer in
+   that paragraph, the claim's and the co-author's included.
+   `docket.arming.parse_blind_review` reads the record, and the monthly model
+   review's `uv run python tools/blind_review_report.py` counts each pass's
+   findings from it across merged pull requests. `bin/docket arm`
    holds a simulator branch until its newest such trailer records at least as
    many passes as `uv run python tools/blind_review.py --count` says it owes
    (`PL-HDRN`). A later change does not undo the record, but a change that
