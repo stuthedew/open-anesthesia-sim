@@ -870,12 +870,19 @@ def test_an_agent_record_refuses_a_molar_mass_that_is_not_positive() -> None:
         replace(agent, molar_mass_g_mol=0.0)
 
 
-def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density() -> None:
+@pytest.mark.parametrize(
+    ("liquid_density", "shown_and_type"),
+    [(None, "None has type NoneType"), (1.5203, "1.5203 has type float")],
+)
+def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density(
+    liquid_density: object, shown_and_type: str
+) -> None:
     """A record whose `liquid_density` is not a `LiquidDensity` is refused when built.
 
     Before this test, `replace(agent, liquid_density=None)` built a record
     without error, and the record failed only at the first conversion.
-    `PL-KZ99`'s first blind review pass found this.
+    `PL-KZ99`'s first blind review pass found this. The bare density checks
+    that the message names the value and type it was given.
     """
 
     agent = load_agent_parameters("sevoflurane")
@@ -883,11 +890,11 @@ def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density()
     with pytest.raises(
         TypeError,
         match=re.escape(
-            "liquid_density must be a LiquidDensity, which checks its own fields, and None "
-            "has type NoneType"
+            f"liquid_density must be a LiquidDensity, which checks its own fields, and "
+            f"{shown_and_type}"
         ),
     ):
-        replace(agent, liquid_density=None)  # type: ignore[arg-type]
+        replace(agent, liquid_density=liquid_density)
 
 
 def test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows() -> None:
