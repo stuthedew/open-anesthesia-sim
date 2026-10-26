@@ -394,20 +394,25 @@ def test_two_entries_merged_into_one_that_keeps_an_id_pass() -> None:
     assert dead_ends.departures(base, after, NO_CATCHERS) == []
 
 
-def test_a_rule_counts_as_a_place_only_when_paths_scope_it() -> None:
+def test_a_rule_counts_as_a_place_only_when_paths_scope_it(tmp_path: Path) -> None:
     """A rule without `paths:` loads in every session, so it would only move the entry's cost."""
-    assert dead_ends._scoped('---\npaths:\n  - "/tools/**"\n---\n\n# A rule\n')
-    assert not dead_ends._scoped("# A resident rule\n")
-    assert not dead_ends._scoped("---\ndescription: x\n---\n\npaths: in the body\n")
+    rules = tmp_path / ".claude" / "rules"
+    rules.mkdir(parents=True)
+    scoped = '---\npaths:\n  - "/tools/**"\n---\n\n' + entry("Scoped", "refuted.")
+    (rules / "scoped.md").write_text(scoped, encoding="utf-8")
+    (rules / "resident.md").write_text(entry("Resident", "refuted."), encoding="utf-8")
+
+    catchers = dead_ends.read_catchers(tmp_path)
+
+    assert "**Scoped**" in catchers.rules
+    assert "**Resident**" not in catchers.rules
 
 
 def test_the_shipped_rules_hold_every_entry_that_left_the_list() -> None:
     """The entries moved on 2026-10-26 are found in the rule they moved to."""
     catchers = dead_ends.read_catchers(REPO)
-    rule = (REPO / ".claude" / "rules" / "dead-ends-apparatus.md").read_text(encoding="utf-8")
 
     assert "**One shared queue document**" in catchers.rules
-    assert dead_ends._scoped(rule)
 
 
 def test_check_with_a_base_runs_under_a_bare_interpreter() -> None:

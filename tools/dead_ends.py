@@ -33,7 +33,7 @@ With `--base`, `check` reads the file at the merge base and fails on an entry
 that is gone from the list without a record of where it went. The record is
 one of four places. The entry's bolded title, or an id it cites, can appear in
 another live entry, which is a merge. It can appear in a path-scoped rule under
-`CATCHER_RULES`, a file with `paths:` frontmatter, which loads where the
+`.claude/rules/`, a file with `paths:` frontmatter, which loads where the
 approach would be built. An id it cites can appear in the code under
 `CATCHER_CODE`, where a check refuses the approach or a docstring explains why
 it fails. Or its title or an id can appear in the retired section below
@@ -131,10 +131,6 @@ DEAD_ENDS = ROOT / "docs" / "dead-ends.md"
 #: is held to an entry's shape but is not emitted and not budgeted (`PL-5J1S`).
 RETIRED = "## Retired"
 
-#: Where a path-scoped rule lives. A rule there counts as an entry's new place
-#: only when `paths:` frontmatter scopes it, since a rule without one is
-#: resident and would only move the entry's cost.
-CATCHER_RULES = ".claude/rules"
 #: The code trees where an id an entry cites counts as its new place: a check
 #: that refuses the approach, or a docstring a session building it must read.
 CATCHER_CODE = ("tools", "subprojects/docket/src", "src")
@@ -405,25 +401,22 @@ class Catchers:
     code_ids: frozenset[str]
 
 
-def _scoped(text: str) -> bool:
-    """Whether a rule file opens with frontmatter that declares `paths:`."""
-    lines = split_lines(text)
-    if not lines or lines[0].rstrip() != "---":
-        return False
-    for line in lines[1:]:
-        if line.rstrip() == "---":
-            return False
-        if line.startswith("paths:"):
-            return True
-    return False
-
-
 def read_catchers(root: Path) -> Catchers:
-    """The path-scoped rules and the code ids this checkout holds, through `tracked_under`."""
+    """The path-scoped rules and the code ids this checkout holds, through `tracked_under`.
+
+    A rule counts only when `paths:` frontmatter scopes it, since a rule
+    without one is resident and would only move the entry's cost. The rule
+    files and that reading of their scope are `rules_paths_check`'s and
+    `doc_check`'s, imported here rather than at the top so that `emit`, which
+    the digest runs on every session start, does not load them.
+    """
+    from doc_check import is_path_scoped
+    from rules_paths_check import rule_files
+
     rules = [
         text
-        for path in tracked_under(root, CATCHER_RULES, ".md")
-        if _scoped(text := path.read_text(encoding="utf-8"))
+        for path in rule_files(root)
+        if is_path_scoped(text := path.read_text(encoding="utf-8"))
     ]
     code_ids = {
         cited
@@ -463,7 +456,7 @@ def departures(base_text: str, text: str, catchers: Catchers) -> list[str]:
             continue
         problems.append(
             f"docs/dead-ends.md: the entry **{title}** left the list with no record of where "
-            f"it went. Move it into a path-scoped rule under {CATCHER_RULES}/ that loads where "
+            f"it went. Move it into a path-scoped rule under .claude/rules/ that loads where "
             f"the approach would be built, cite its id in the check or docstring that now "
             f"refuses it, or list it under `{RETIRED}` with the reason its question no longer "
             f"exists. If only its title was reworded, cite its item id in the entry so the "
