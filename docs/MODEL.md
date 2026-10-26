@@ -744,14 +744,14 @@ checked, rather than resting on convention.
 
    | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | At 37 °C |
    | --- | --- | --- | --- | --- | --- |
-   | Sevoflurane | 1.5203 | 200.055 | 182.8 | 184 | 193.4 |
-   | Isoflurane | 1.5019 | 184.492 | 195.8 | 195 | 207.2 |
-   | Desflurane | 1.4651 | 168.038 | 209.7 | 210 | 221.9 |
+   | Sevoflurane | 1.5203 | 200.05 | 182.8 | 184 | 193.4 |
+   | Isoflurane | 1.5019 | 184.49 | 195.8 | 195 | 207.2 |
+   | Desflurane | 1.4651 | 168.04 | 209.7 | 210 | 221.9 |
 
    The densities are those of Laster, Fang and Eger. They were measured in
    four 50-mL volumetric flasks at 20 °C, with a temperature coefficient of
-   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are exact
-   from the formula. So the field's constants are referenced at 20 °C as a
+   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are the
+   formula masses, which ChEMBL gives to two decimals. So the field's constants are referenced at 20 °C as a
    matter of arithmetic rather than of convention. A model that declared
    37 °C would either mix two conditions or print consumption figures 5.5 %
    below the numbers a reader can look up. That 5.5 % is $`1 - 1/1.058`$, the
@@ -799,6 +799,16 @@ checked, rather than resting on convention.
    litre and Gas Man's litre different quantities, even though every parameter
    feeding these volumes is shared with Gas Man.
 
+<!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.g_ml = 1.5019 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.g_ml = 1.4651 -->
+<!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
+<!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
+<!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- derived: 182.8 from data/agents/sevoflurane.json liquid_density.g_ml = 1.5203, molar_mass_g_mol = 200.05 -->
+<!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
+<!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
+
 **37 °C was the alternative, and it is not a poor one.** This model's
 partition coefficients were measured at 37 °C. The alveolar, venous and
 tissue compartments are physically at 37 °C. So 37 °C is the condition at
@@ -808,13 +818,46 @@ the stores. And the published constants that any figure will be compared
 against are 20 °C constants. What choosing 20 °C costs is recorded under
 § "Known limitations".
 
+**The conversion's inputs are stored, and one module does the conversion**
+(`PL-KZ99`). Each agent file stores the liquid's density as
+`liquid_density`, with its spread and the temperature at which it was
+measured. It stores the molar mass as `molar_mass_g_mol`. Each has its own
+`sources` entry. `core/liquid_agent.py` derives the millilitres of vapour per
+millilitre of liquid from them, as the table above does. It works out the
+molar volume from the gas constant, 20 °C and one standard atmosphere, rather
+than storing it. A density measured at any temperature other than 20 °C is
+refused when the file loads, because no correction for temperature is stored.
+The published ratios are not stored. `tests/reference/test_published_vapour_to_liquid.py`
+checks the derived ratios against Biro's within 1 % and against Gas Man's
+within 0.5 %. It also prices the isoflurane delivered in the Gas Man
+Workbook's Exercises 14-1 and 14-2 with the derived ratio. The prices must
+match the costs the book prints, allowing for the cent and for Gas Man's
+ratio being rounded to a whole millilitre. Nothing on screen reads the
+conversion yet. `PL-B396` builds the liquid-equivalent readout, and `PL-1P15`
+builds the cost.
+
 The sources for this section are listed below, with the route by which each
 was read.
 
 - Laster MJ, Fang Z, Eger EI II. *Specific gravities of desflurane, enflurane,
   halothane, isoflurane, and sevoflurane.* Anesth Analg 1994;78(6):1152-3.
   PMID 8198275, doi:10.1213/00000539-199406000-00022. Retrieved from PubMed
-  and verified against the abstract on 2026-09-17.
+  and verified against the abstract on 2026-09-17, and again on 2026-10-26,
+  when its densities were stored.
+- ChEMBL database, release 34, compounds CHEMBL1200694 (sevoflurane),
+  CHEMBL1256 (isoflurane) and CHEMBL1200733 (desflurane), for the molecular
+  formulas and the molar masses. Read through the ChEMBL MCP server on
+  2026-10-26. It is tier 2 under § "Source hierarchy", because a molar mass is
+  computed from the formula and the standard atomic weights rather than
+  measured on the agent. Each agent file's `sources` entry says why no tier-1
+  source exists for it.
+- Mohr PJ, Newell DB, Taylor BN, Tiesinga E. *CODATA recommended values of the
+  fundamental physical constants: 2022.* Rev Mod Phys 2025;97(2):025002.
+  doi:10.1103/RevModPhys.97.025002. Table XXXII gives the gas constant as the
+  product of the exact Avogadro and Boltzmann constants. Table XXXIII gives
+  the standard atmosphere, 101 325 Pa exactly, and the molar volume of an
+  ideal gas at 0 °C, which the unit tests use to check the 24.055 L/mol above.
+  Read at full text from arXiv:2409.03787v1 on 2026-10-26.
 - Biro P. *Calculation of volatile anaesthetics consumption from agent
   concentration and fresh gas flow.* Acta Anaesthesiol Scand
   2014;58(8):968-72. PMID 25060161, doi:10.1111/aas.12374. Retrieved from
@@ -3463,6 +3506,18 @@ a worked example, needs no marker.
 | MAC-awake standard deviation (isoflurane) | 0.05 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
 | MAC-awake (desflurane) | 0.36 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.fraction_of_mac` |
 | MAC-awake standard deviation (desflurane) | 0.063 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| Molar mass (sevoflurane) | 200.05 | g/mol | `data/agents/sevoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (isoflurane) | 184.49 | g/mol | `data/agents/isoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (desflurane) | 168.04 | g/mol | `data/agents/desflurane.json` · `molar_mass_g_mol` |
+| Liquid density at 20 °C (sevoflurane) | 1.5203 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (isoflurane) | 1.5019 | g/mL | `data/agents/isoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (desflurane) | 1.4651 | g/mL | `data/agents/desflurane.json` · `liquid_density.g_ml` |
+| Liquid density standard deviation (sevoflurane) | 0.0008 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (isoflurane) | 0.0006 | g/mL | `data/agents/isoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (desflurane) | 0.0004 | g/mL | `data/agents/desflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density measurement temperature (sevoflurane) | 20.0 | °C | `data/agents/sevoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (isoflurane) | 20.0 | °C | `data/agents/isoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (desflurane) | 20.0 | °C | `data/agents/desflurane.json` · `liquid_density.measured_at_celsius` |
 
 The reference patient weight identifies which patient the volumes and flows
 describe. No equation in this model uses it. `PatientParameters.weight_kg` is
@@ -8143,6 +8198,7 @@ measured on a 1 000 px plot. The chord is the rung's span divided by 1 000:
 | 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
 
 <!-- provenance: app/chart_time_base.py SELECTABLE_TIME_BASE_FLOOR_S = 900 -->
+<!-- not-restated: 0.0004 -->
 
 <!-- not-restated: 2 %, 6 % -->
 
