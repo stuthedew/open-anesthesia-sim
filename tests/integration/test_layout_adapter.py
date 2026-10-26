@@ -1972,6 +1972,26 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
         assert label.height() >= label.heightForWidth(label.width()) > 0
 
 
+def test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-Y65Q`: a split is refused where a half would be less than the Area's floor.
+
+    The Big view's Area is 400 by 250 px. Stacked halves would be 121 px
+    tall, which holds a header and one line but not the notice that each
+    half, too small for the Big view, would have to show. Halves side by
+    side are 196 px wide, wide enough for the header, so that split is
+    allowed.
+    """
+
+    container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (400, 250))
+    stacked = _operation(container, 1, SPLIT_STACKED_LABEL)
+
+    assert not stacked.available
+    assert "too small to hold its header and a notice" in stacked.refusal
+    assert _operation(container, 1, SPLIT_SIDE_BY_SIDE_LABEL).available
+
+
 def test_a_drag_stops_where_the_neighbour_reaches_its_views_declared_need(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:

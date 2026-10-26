@@ -289,7 +289,7 @@ _NOTHING_TAKES_ITS_PLACE_TEXT: Final = (
     "its place."
 )
 _TOO_SMALL_TO_SPLIT_TEXT: Final = (
-    "Not available: each half would be too small to hold its header and one line of text."
+    "Not available: each half would be too small to hold its header and a notice."
 )
 
 
@@ -933,8 +933,8 @@ class AreaLayout(QWidget):
         the model refuses the split.
         """
 
-        minimum = _structural_minimum(self._frames[area_id])
-        needed = minimum[0] if orientation is Orientation.ROW else minimum[1]
+        minimum = self._floor(area_id)
+        needed = minimum.width_px if orientation is Orientation.ROW else minimum.height_px
         at = offset_px / extent_px if extent_px > 0 else 0.0
         result: LayoutModel | None = None
 
@@ -959,16 +959,17 @@ class AreaLayout(QWidget):
     ) -> AreaOperation:
         """Return the menu entry that splits the Area halfway across.
 
-        The entry is refused if a half could not hold its header.
+        The entry is refused if a half would be less than the Area's floor
+        (`_floor`). Both halves show the cut View, so each has that floor.
         """
 
         frame = self._frames[area_id]
-        minimum = _structural_minimum(frame)
+        minimum = self._floor(area_id)
 
         if orientation is Orientation.ROW:
-            half, needed = (frame.width() - AREA_HANDLE_WIDTH) / 2, minimum[0]
+            half, needed = (frame.width() - AREA_HANDLE_WIDTH) / 2, minimum.width_px
         else:
-            half, needed = (frame.height() - AREA_HANDLE_WIDTH) / 2, minimum[1]
+            half, needed = (frame.height() - AREA_HANDLE_WIDTH) / 2, minimum.height_px
 
         if half < needed:
             return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
@@ -2698,9 +2699,11 @@ def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
     """The least width and height an Area can be drawn at: its header, and one line of a notice.
 
     `PL-30L5` Q2 set this minimum. Below it, a half could not hold its own
-    header row and the first line of `PL-DB5G`'s notice, so such a split is
-    refused. A half that is too small for the View it shows is allowed,
-    because the too-small notice of `PL-K285` then tells the reader so.
+    header row and the first line of `PL-DB5G`'s notice. An Area that shows
+    a View has a taller floor, which `AreaLayout._floor` works out, so that
+    the too-small notice of `PL-K285` fits (`PL-Y65Q`). A split is refused
+    where a half would be less than that floor, and allowed where a half is
+    only too small for its View, because the notice then tells the reader so.
     """
 
     title_font = QFont(frame.font())

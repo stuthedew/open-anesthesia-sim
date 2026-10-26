@@ -56,4 +56,13 @@ about 88 px sooner than before, in a window too small for every View.
 Area at its floor in a 170 by 300 px window. It checks that the Area is at its
 floor, that it shows the title and the short statement, and that each label is
 laid out at the height its wrapped text needs. On the old floor, the same Area
-was 31 px tall below its header and showed the full body.
+was 31 px tall below its header, and its notice's labels had no room.
+
+A split is now refused where a half would be less than this floor, not only
+where it would be less than the header and one line.
+`test_a_split_is_refused_where_a_half_could_not_hold_the_too_small_notice`
+pins it: a Big view's Area 250 px tall cannot be split top and bottom. Without
+that, a split could leave two halves whose floors add up to more than the
+split has, and the second would be pushed past the edge. The blind review
+found it (pass 1, F1). Its F2, that the floor is measured at the chooser's
+width even where the Area is drawn much wider, is filed as `PL-9Z74`.
