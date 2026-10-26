@@ -873,8 +873,9 @@ def test_an_agent_record_refuses_a_molar_mass_that_is_not_positive() -> None:
 def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density() -> None:
     """A record whose `liquid_density` is not a `LiquidDensity` is refused when built.
 
-    Before this test, `replace(agent, liquid_density=None)` built, and failed
-    only at the first conversion. Found by `PL-KZ99`'s first blind review pass.
+    Before this test, `replace(agent, liquid_density=None)` built a record
+    without error, and the record failed only at the first conversion.
+    `PL-KZ99`'s first blind review pass found this.
     """
 
     agent = load_agent_parameters("sevoflurane")
@@ -884,11 +885,12 @@ def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density()
 
 
 def test_an_agent_record_refuses_a_molar_mass_whose_ratio_overflows() -> None:
-    """The ratio is formed when the record is built, as the tissue:blood quotients are.
+    """The vapour-to-liquid ratio is formed when the record is built.
 
-    A molar mass of 1e-306 g/mol is positive and finite, and the ratio it
-    makes is not. Before this test, the record built and the overflow
-    surfaced only at a conversion (`PL-KZ99`'s first blind review pass).
+    The tissue:blood quotients are formed at the same point. A molar mass of
+    1e-306 g/mol is positive and finite, but the ratio it makes is not. Before
+    this test, the record was built without error, and the overflow appeared
+    only at a conversion (`PL-KZ99`'s first blind review pass).
     """
 
     agent = load_agent_parameters("sevoflurane")
@@ -1769,14 +1771,16 @@ def _machine_window_widened_to_4(monkeypatch: Any) -> None:
 
 
 def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: Any) -> None:
-    """Widening one family's version window changes nothing in the other two (`PL-HNWX`).
+    """Widening one family's schema-version window leaves the other two unchanged (`PL-HNWX`).
 
-    One integer, checked by exact equality, used to serve agents, patients and
-    machines together. Raising it for a machine-only change refused the three
-    agent files and the patient file, until each was edited for a change it
-    had nothing to do with. The last assertion checks the independence
-    itself: the machine family reading version 3 must not make the agent
-    family read it too, now that agent files are at version 4 (`PL-KZ99`).
+    The data files form three families: agents, patients and machines. One
+    schema-version integer, checked by exact equality, used to serve all three.
+    Raising it for a change to the machine files made the three agent files and
+    the patient file fail to load. Each then had to be edited for a change that
+    had nothing to do with it. The last assertion checks that the families
+    really are independent. The machine family accepting version 3 must not
+    make the agent family accept it too, now that agent files are at version 4
+    (`PL-KZ99`).
     """
 
     _machine_window_widened_to_4(monkeypatch)

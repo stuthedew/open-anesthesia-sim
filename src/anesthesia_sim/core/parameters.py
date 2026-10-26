@@ -295,15 +295,16 @@ class AgentParameters:
     names on purpose. `_StrictPayload` explains why that is a boundary rather
     than duplication.
 
-    The four partition coefficients are `PartitionCoefficient`s, built only
-    inside the numerical envelope (`core/numerical_envelope.py`). So are the
-    three tissue:blood coefficients derived from them. Two coefficients inside
-    the envelope can form a quotient outside it, so each quotient is formed
-    and checked when the record is built, as well as wherever it is read
-    (`PL-QX2G`).
+    The four partition coefficients are `PartitionCoefficient`s. A
+    `PartitionCoefficient` can be built only from a value inside the numerical
+    envelope that `core/numerical_envelope.py` defines. The three tissue:blood
+    coefficients derived from the four are `PartitionCoefficient`s too. Two
+    coefficients inside the envelope can form a quotient outside it. So each
+    quotient is formed and checked when the record is built, as well as
+    wherever it is read (`PL-QX2G`).
 
     `molar_mass_g_mol` and `liquid_density` describe the agent as a liquid.
-    No equation of uptake uses them. `vapour_volume_per_liquid_volume` is
+    No uptake equation uses them. `vapour_volume_per_liquid_volume` is
     derived from them, and it converts an amount of agent vapour into the
     millilitres of liquid it came from (`core/liquid_agent.py`, `PL-KZ99`).
 
@@ -317,28 +318,28 @@ class AgentParameters:
             `require_mac_percent`). Each value's range was checked when it was
             built, so nothing here checks it again. A MAC passed in as a
             fraction would be a hundred times too small, and every MAC multiple
-            shown divides by it (`PL-4R3W`).
+            shown divides by it (`PL-4R3W`). Also raised when `liquid_density`
+            is not a `LiquidDensity`. A `LiquidDensity` checks its own fields
+            when it is built.
         SimulationConfigurationError: `max_delivered_concentration_percent`
-            is zero. A `Percent` refuses a negative value when it is built, so
-            zero is the only non-positive value it can hold. A vaporizer that
-            delivers nothing has no dial to set. A zero MAC cannot reach this
-            record, because a `MacPercent` refuses zero when it is built. Every
-            MAC multiple shown is a concentration divided by the MAC, and the
-            MAC is the number in the `1 MAC = x%` reference beside the chart
-            (`PL-0FJ8`, `PL-F9TC`). For a shipped file, the loader's
-            `PositivePercent` refuses a zero MAC first. Also raised when
-            `mac_percent` is above the vaporizer maximum. The loader's
+            is zero. A vaporizer that delivers nothing has no dial to set. A
+            `Percent` refuses a negative value when it is built, so zero is the
+            only non-positive value it can hold. Also raised when `mac_percent`
+            is above the vaporizer maximum. A run opens at 1 MAC
+            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above the
+            vaporizer maximum. So such a run would open at a dial setting that
+            the vaporizer cannot deliver (`PL-HPKK`). The loader's
             `_mac_percent_must_not_exceed_vaporizer_max` refuses such a MAC in
             a file, and this check refuses it in a record built any other way.
-            A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a dial
-            cannot be set above the vaporizer maximum. So such a run would open
-            at a dial setting that the vaporizer cannot deliver (`PL-HPKK`).
             Also raised when a tissue:blood coefficient is outside the
-            numerical envelope, or when `molar_mass_g_mol` is not positive
-            and finite, or when the density and the molar mass give a
-            vapour-to-liquid ratio that is not finite. `LiquidDensity` checks
-            its own fields when it is built, and a `liquid_density` of any
-            other type raises `TypeError`.
+            numerical envelope, when `molar_mass_g_mol` is not positive and
+            finite, or when the density and the molar mass give a
+            vapour-to-liquid ratio that is not finite. A zero MAC cannot reach
+            this record, because a `MacPercent` refuses zero when it is built.
+            For a shipped file, the loader's `PositivePercent` refuses a zero
+            MAC before that. Every MAC multiple shown is a concentration divided
+            by the MAC, and the MAC is the number in the `1 MAC = x%` reference
+            beside the chart (`PL-0FJ8`, `PL-F9TC`).
     """
 
     schema_version: int
@@ -393,9 +394,9 @@ class AgentParameters:
                 f"{shown(self.liquid_density)} has type {type(self.liquid_density).__name__}"
             )
 
-        # The ratio is formed once here, as the tissue:blood quotients are above, so
-        # that a density and a molar mass whose ratio is not finite are refused when
-        # the record is built rather than at the first conversion.
+        # The ratio is formed once here, as the tissue:blood quotients are formed
+        # above. So a density and a molar mass whose ratio is not finite are refused
+        # when the record is built, not at the first conversion.
         _ = self.vapour_volume_per_liquid_volume
 
     @property
@@ -1019,9 +1020,10 @@ class _MacAwakePayload(_StrictPayload):
 class _LiquidDensityPayload(_StrictPayload):
     """Load-time schema for one agent's `liquid_density`, converted to `LiquidDensity`.
 
-    The payload builds the record once while it validates, so the file and the
-    record meet one rule. A density measured at a temperature other than the
-    model's reference temperature is refused with the file's key in the error.
+    The payload builds the `LiquidDensity` record once, while it validates the
+    file. So one rule checks both the file and the record. A density measured
+    at a temperature other than the model's reference temperature is refused,
+    and the error names the file's key.
     """
 
     g_ml: PositiveFinite
@@ -1262,10 +1264,10 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
             numerical envelope. It also covers a `sources` entry whose
             `authority_for` disagrees with `adopted`, or names something other
             than one of this file's stored numeric values. It also covers a
-            stored value that two entries both name, and coefficients whose
-            tissue:blood quotient is outside the numerical envelope. It also
-            covers a liquid density measured at a temperature other than the
-            model's reference temperature, 20 °C (`core/liquid_agent.py`).
+            stored value that two `sources` entries both name, and coefficients
+            whose tissue:blood quotient is outside the numerical envelope. It
+            also covers a liquid density measured at a temperature other than
+            the model's reference temperature, 20 °C (`core/liquid_agent.py`).
     """
 
     try:

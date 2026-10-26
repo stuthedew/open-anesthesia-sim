@@ -786,7 +786,7 @@ checked, rather than resting on convention.
    | Halothane | 228 | 227.7 (−0.15 %) | 240.9 (+5.6 %) |
    | Enflurane | 198 | 198.6 (+0.29 %) | 210.1 (+6.1 %) |
    | Isoflurane | 196 | 195.8 (−0.09 %) | 207.2 (+5.7 %) |
-   | Sevoflurane | 183 | 182.8 (−0.11 %) | 193.4 (+5.7 %) |
+   | Sevoflurane | 183 | 182.8 (−0.10 %) | 193.4 (+5.7 %) |
    | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
 
    The 20 °C derivation is within 0.35 % on all five, against 5.6–6.2 % at
@@ -12109,8 +12109,8 @@ conservation.** Every term is exact in the model's own arithmetic. The
 mass-balance identity closes to 1e-13 L whatever condition the unit names. So
 this is a statement about what the litres *mean*, not about agent going
 missing. Read as amounts of substance, the alveolar, venous and tissue stores
-hold 5.8 % fewer moles than their 20 °C label implies. The ratio behind
-that figure is 25.450/24.055. The fresh-gas terms are unaffected.
+hold 5.5 % fewer moles than their 20 °C label implies, so the label
+overstates them by 5.8 %. The ratio behind both figures is 25.450/24.055. The fresh-gas terms are unaffected.
 
 **It is invisible in everything the simulator shows today, which is why it has
 cost nothing so far.** A partial-pressure fraction is dimensionless and

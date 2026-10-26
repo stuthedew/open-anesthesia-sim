@@ -157,11 +157,12 @@ def test_a_liquid_density_measured_at_another_temperature_is_refused(
 def test_a_liquid_density_refuses_a_temperature_that_is_not_a_number(
     measured_at_celsius: object,
 ) -> None:
-    """A missing or mistyped temperature is a programming error, not a measurement at 20 °C or not.
+    """A missing or mistyped temperature is refused as a programming error.
 
-    Before this test, `None` was refused as "a liquid density measured at None
-    °C", which reports a real measurement at the wrong temperature (found by
-    `PL-KZ99`'s second blind review pass).
+    It is not treated as a measurement, whether at 20 °C or at another
+    temperature. Before this test, `None` was refused as "a liquid density
+    measured at None °C". That message reports a real measurement at the wrong
+    temperature. `PL-KZ99`'s second blind review pass found this.
     """
 
     with pytest.raises(TypeError, match="liquid density measured_at_celsius"):
@@ -199,3 +200,19 @@ def test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number(
         match=r"^a liquid density of .* g/mL and a molar mass of .* g/mol give a vapour-to-liquid",
     ):
         vapour_volume_per_liquid_volume(density, molar_mass_g_mol)
+
+
+@pytest.mark.parametrize(("vapour_volume_l", "vapour_per_liquid"), [(1e306, 182.8), (1.0, 1e-306)])
+def test_liquid_volume_refuses_a_result_that_overflows(
+    vapour_volume_l: float, vapour_per_liquid: float
+) -> None:
+    """Each input passes its own check, and the liquid volume they make is infinite.
+
+    Before this test, `liquid_volume_ml` returned `inf` without an error
+    (found by `PL-KZ99`'s adversarial review).
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError, match="gives a liquid volume that is not finite"
+    ):
+        liquid_volume_ml(vapour_volume_l, vapour_per_liquid)
