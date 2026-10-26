@@ -10,7 +10,7 @@ blocked-by: PL-W4XQ
 deferred-from: v0.6.0 - blocked on PL-W4XQ when the gate froze and unblocked after it; the owner's call once both returns are in use, and not safety or science
 added: 2026-09-20
 closed: 2026-10-12
-reason: Answered 2026-10-12: returning to a mark keeps forking (project owner, ratified, over truncating the run at the mark after a confirm), so the truncation this item would build is not wanted
+reason: Answered 2026-10-12: returning to a mark keeps forking (project owner, 2026-10-12, ratified, over truncating the run at the mark after a confirm), so the truncation this item would build is not wanted
 ---
 
 **Problem.** Returning to a mark truncates the run at that point after confirming intent, rather than forking, which is what Gas Man does and what the owner is leaning to
@@ -96,7 +96,7 @@ change this: finding, in use, that the two-run cap or the trunk Reset's
 (`ROADMAP.md` § "Explicitly out of scope for v0.5.0") rather than a reason to
 truncate.
 
-**Answered 2026-10-12** (project owner, ratified, over truncating the run at the
+**Answered 2026-10-12** (project owner, 2026-10-12, ratified, over truncating the run at the
 mark after a confirm): keep the fork. Returning to a mark branches, the trunk
 stays on the axis, and a branch's own Reset is the way to try something else
 from the same point. `docs/MODEL.md` and `docs/ARCHITECTURE.md` record it in

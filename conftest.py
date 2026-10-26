@@ -124,7 +124,7 @@ At the repository root rather than in each tree, for two reasons. One rule
 covers both trees and `pytest` resolves `rootdir` here however it is invoked -
 including from inside `subprojects/docket/`, whose own `pyproject.toml`
 declares no pytest section, so the walk continues up to this one. And
-`tools/ignore_check.py` type-checks `tests` and `subprojects/docket/tests` in a
+`tools/type_ignore_check.py` type-checks `tests` and `subprojects/docket/tests` in a
 single mypy invocation, where a second file named `conftest` in those trees is
 a duplicate-module error that stops mypy before it evaluates anything
 (`PL-CR36`). This file sits outside both, so it cannot collide.

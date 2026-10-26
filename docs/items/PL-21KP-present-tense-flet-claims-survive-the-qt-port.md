@@ -41,7 +41,7 @@ behaviour moves.
 
 **Re-confirmed 2026-10-11** on `main` at `16a20a4f`: `app/__init__.py` still
 opens "Flet application layer", and `grep -rlF tests/unit/test_simulation_view.py
-tests/` names the five test modules above plus `tests/unit/test_ignore_check.py`,
+tests/` names the five test modules above plus `tests/unit/test_type_ignore_check.py`,
 whose mention is a mypy-output fixture string and stays.
 
 **Why it matters.** A module docstring is the first thing a contributor reads. One

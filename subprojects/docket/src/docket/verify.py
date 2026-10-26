@@ -99,7 +99,7 @@ from .vcs import RECORDS
 # Whether an ignore is load-bearing is the only question worth asking about
 # one; a substring search cannot answer it, and the tool that can already
 # does. `strict = true` enables `warn_unused_ignores` over `[tool.mypy]
-# files`, which covered 11 of the 56, and `tools/ignore_check.py` runs the
+# files`, which covered 11 of the 56, and `tools/type_ignore_check.py` runs the
 # same setting over the two test trees `files` excludes, which covers the
 # other 45 (`PL-J5NN`). What no tool polices is a *live* ignore added to
 # silence an error the work itself introduced - and this check did not police
