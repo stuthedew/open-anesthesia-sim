@@ -2313,7 +2313,7 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
 factors, so each checks the quotient whenever a factor is written.
 
-**Every input to `core/` but one has an interval, and one sweep tests them**
+**Every input to `core/` has an interval, and one sweep tests them**
 (`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
 between 2026-09-06 and 2026-10-17, each one operation at a time. A product
 overflowed, a quotient underflowed or a subtraction cancelled at an extreme
@@ -2337,6 +2337,7 @@ lists each input that has one, and the function or type that refuses it.
 | The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
+| The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent at least 0 | `require_canonical_state` |
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
@@ -2350,14 +2351,16 @@ lists each input that has one, and the function or type that refuses it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
 
-**The state a run opens from has no interval yet.** `require_canonical_state`
-in `core/governing_equations.py` checks a state's length, that its values are
-finite and its unit entry. It does not check that each fraction lies from 0
-through 1. So a `RunDefinition` opened from a state with every fraction at
-1e308 is accepted, and its `state_at(600.0)` returns an exhausted-agent total
-of `inf` (reproduced 2026-10-26). Every state a shipped run opens from comes
-from a run that began in range, so no learner reaches this today. `PL-0WFJ`
-records the fix, and `PL-58D7` stays open until it lands.
+**The state a run opens from was the last input to get an interval.**
+`require_canonical_state` in `core/governing_equations.py` is the guard that a
+`RunDefinition` and the live system's `resume_at` share. Until `PL-0WFJ`, it
+checked a state's length, that its values are finite and its unit entry, and
+not that each fraction lies from 0 through 1. So a `RunDefinition` opened from
+a state with every fraction at 1e308 was accepted, and its `state_at(600.0)`
+returned an exhausted-agent total of `inf` (reproduced 2026-10-26). The guard
+now builds each of the six fractions as a `Fraction` and refuses a negative
+cumulative amount. `tests/unit/test_governing_equations.py` drives each
+fraction one representable value past each bound and expects a refusal.
 
 The blood flow that a tissue group or the venous pool is handed when it is
 stepped on its own has no upper bound either, by design. It must only be
