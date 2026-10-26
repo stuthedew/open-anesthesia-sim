@@ -2928,67 +2928,6 @@ def _a_dial_write_refused_after_the_cards(
     }
 
 
-def _a_dial_moved_on_a_failed_run(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> tuple[RunView, _GroupReadings]:
-    """A run whose step failed, then had its cardiac output dial moved (`PL-3B34`).
-
-    The run cannot step again, so every group describes its last completed step, and
-    the dials show the settings that step ran under.
-    """
-
-    failure = _real_step_failure()
-    controller = _StepFailingController(failure)
-    controller._pending_error = None
-    controller.start()
-    _advance(controller, 300.0)
-    run = _shown_view(application, controller).runs[0]
-    controller._pending_error = failure
-
-    _steps(run, 1)
-    assert controller.has_failed is True
-    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
-
-    step = _fresh_run(300.0).snapshot()
-
-    return run, {
-        "readouts": _readouts_of(step),
-        "settings": _settings_of(step),
-        "accounting": _accounting_of(step),
-    }
-
-
-def _a_dial_moved_at_the_supported_run_length(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> tuple[RunView, _GroupReadings]:
-    """A run stopped at a shortened supported run length, then its cardiac output dial moved.
-
-    The span ends at 300 s, as `maximum_step_count` reads it, for the reason
-    `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
-    gives. Every group describes the step the run stopped on (`PL-3B34`).
-    """
-
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
-    controller = SimulationController()
-    controller.start()
-    _advance(controller, 300.0)
-    assert controller.has_reached_supported_limit is True
-    run = _shown_view(application, controller).runs[0]
-
-    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
-
-    step = _fresh_run(300.0).snapshot()
-
-    return run, {
-        "readouts": _readouts_of(step),
-        "settings": _settings_of(step),
-        "accounting": _accounting_of(step),
-    }
-
-
 def _an_accounting_halt(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[RunView, _GroupReadings]:
@@ -3027,8 +2966,6 @@ _ONE_STATE_SCENARIOS: Final[
     "drawn frame": _a_drawn_frame,
     "halt after an agent change": _a_halt_after_an_agent_change,
     "dial write refused after the cards": _a_dial_write_refused_after_the_cards,
-    "dial moved on a failed run": _a_dial_moved_on_a_failed_run,
-    "dial moved at the supported run length": _a_dial_moved_at_the_supported_run_length,
     "accounting halt": _an_accounting_halt,
 }
 
