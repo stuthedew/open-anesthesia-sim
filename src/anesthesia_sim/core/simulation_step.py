@@ -15,7 +15,9 @@ the step that the whole system takes. A compartment stepped on its own therefore
 takes a plain `float`, and a step longer than the ceiling is correct for it. The
 floor is different. Rounding error grows as the step shrinks, in a compartment
 stepped alone just as in a run. So each compartment's own `advance` refuses a step
-below the floor, through `require_at_least_the_smallest_step` (`PL-WP52`).
+below the floor (`PL-WP52`). It also refuses a step longer than the supported run
+length (`PL-YT3T`). Both checks are `require_compartment_step` in
+`core/supported_ranges.py`, which holds the run length.
 
 **Why a `float` subclass rather than either of the other shapes used in
 `core/`.** A `NewType` is a label that the type checker uses and the
@@ -166,11 +168,12 @@ def require_at_least_the_smallest_step(name: str, simulation_step_s: float) -> N
     """Require a positive finite step no shorter than `MINIMUM_SIMULATION_STEP_S`.
 
     This function checks the floor and not the ceiling,
-    `MAXIMUM_SIMULATION_STEP_S`. A compartment stepped on its own calls it. Rounding
-    error grows as the compartment's step shrinks, but the compartment may take a
-    step longer than the run's ceiling (`PL-WP52`).
-    `require_supported_simulation_step` calls it too, so the run and the
-    compartments refuse a step below the floor with the same message. `name` is the
+    `MAXIMUM_SIMULATION_STEP_S`. A compartment stepped on its own calls it, through
+    `require_compartment_step` in `core/supported_ranges.py`. Rounding error grows
+    as the compartment's step shrinks, but the compartment may take a step longer
+    than the run's ceiling (`PL-WP52`). `require_supported_simulation_step` calls
+    it too, so the run and the compartments refuse a step below the floor with the
+    same message. `name` is the
     step's name. Where several objects can raise the error, `name` starts with the
     step's owner, as `core/validation.py` says of `name`.
 
@@ -200,7 +203,8 @@ def require_supported_simulation_step(simulation_step_s: float) -> None:
     because it is how long settings are held constant for, which is a property
     of the step the whole system takes. The floor is where the solution has
     been verified. It is checked by `require_at_least_the_smallest_step`, which
-    each compartment's own `advance` also calls (`PL-WP52`).
+    each compartment's own `advance` also calls, through
+    `require_compartment_step` (`PL-WP52`).
 
     The step must first be a number. `require_positive_finite`
     (`core/validation.py`) checks this. It refuses a `bool`, a `Decimal` or a

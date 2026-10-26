@@ -52,11 +52,11 @@ from anesthesia_sim.core.concentration import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
-from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     FreshGasFlow,
+    require_compartment_step,
     require_fresh_gas_flow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -706,12 +706,14 @@ class BreathingCircuit:
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
-                (`core/simulation_step.py`, `PL-WP52`). Nothing changes when the
-                step is refused.
+                and finite, is shorter than `MINIMUM_SIMULATION_STEP_S`, or
+                is longer than the supported run length,
+                `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
+                `require_compartment_step` says (`PL-WP52`, `PL-YT3T`).
+                Nothing changes when the step is refused.
         """
 
-        require_at_least_the_smallest_step("circuit simulation_step_s", simulation_step_s)
+        require_compartment_step("circuit simulation_step_s", simulation_step_s)
 
         initial_fraction = self.inspired_partial_pressure_fraction
         delivered_fraction = self.delivered_partial_pressure_fraction

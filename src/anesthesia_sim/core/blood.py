@@ -17,7 +17,7 @@ from anesthesia_sim.core.numerical_envelope import (
     require_coefficient,
     require_compartment_volume,
 )
-from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
+from anesthesia_sim.core.supported_ranges import require_compartment_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_a_capacity_with_room_for_the_agent,
@@ -209,8 +209,10 @@ class VenousBloodCompartment:
                 `Fraction`, which is the type that checks it lies in the range
                 0 to 1 (`core/concentration.py`).
             SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, or is shorter than `MINIMUM_SIMULATION_STEP_S`
-                (`core/simulation_step.py`, `PL-WP52`), or `blood_flow_l_min` is
+                and finite, is shorter than `MINIMUM_SIMULATION_STEP_S`, or
+                is longer than the supported run length,
+                `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
+                `require_compartment_step` says (`PL-WP52`, `PL-YT3T`), or `blood_flow_l_min` is
                 negative or not finite. These checks run before anything
                 changes. The error is also raised when the amount held is
                 already more than the capacity. Only a write that bypasses
@@ -224,7 +226,7 @@ class VenousBloodCompartment:
             "venous tissue_return_partial_pressure_fraction",
             tissue_return_partial_pressure_fraction,
         )
-        require_at_least_the_smallest_step("venous simulation_step_s", simulation_step_s)
+        require_compartment_step("venous simulation_step_s", simulation_step_s)
         time_constant_s = self.time_constant_s(blood_flow_l_min)
 
         initial_amount_l = self.agent_amount_l
