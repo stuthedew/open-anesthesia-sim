@@ -128,10 +128,10 @@ class LiquidDensity:
 
         if self.measured_at_celsius != REFERENCE_TEMPERATURE_CELSIUS:
             raise SimulationConfigurationError(
-                f"a liquid density measured at {shown(self.measured_at_celsius)} °C cannot be "
-                f"used: the model states every amount of agent at "
-                f"{REFERENCE_TEMPERATURE_CELSIUS:g} °C, and no correction for temperature is "
-                'stored (docs/MODEL.md, "Agent amount")'
+                f"a liquid density measured at {shown(self.measured_at_celsius)} degrees C "
+                "cannot be used: the model states every amount of agent at "
+                f"{REFERENCE_TEMPERATURE_CELSIUS:g} degrees C, and no correction for "
+                'temperature is stored (docs/MODEL.md, "Agent amount")'
             )
 
 

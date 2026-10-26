@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 
 import pytest
 
@@ -141,13 +142,15 @@ def test_a_liquid_density_measured_at_another_temperature_is_refused(
     into every liquid volume and every cost derived from it.
     """
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match=(
-            rf"^a liquid density measured at {measured_at_celsius!r} °C cannot be used: the "
-            r"model states every amount of agent at 20 °C"
-        ),
-    ):
+    # The message spells out "degrees C" because tools/glyph_check.py has not
+    # confirmed that the interface draws the degree sign.
+    expected = (
+        f"a liquid density measured at {measured_at_celsius!r} degrees C cannot be used: the "
+        "model states every amount of agent at 20 degrees C, and no correction for "
+        'temperature is stored (docs/MODEL.md, "Agent amount")'
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=f"^{re.escape(expected)}$"):
         LiquidDensity(
             g_ml=1.5, standard_deviation_g_ml=0.001, measured_at_celsius=measured_at_celsius
         )
@@ -165,7 +168,12 @@ def test_a_liquid_density_refuses_a_temperature_that_is_not_a_number(
     temperature. `PL-KZ99`'s second blind review pass found this.
     """
 
-    with pytest.raises(TypeError, match="liquid density measured_at_celsius"):
+    expected = (
+        f"liquid density measured_at_celsius of {measured_at_celsius!r} has type "
+        f"{type(measured_at_celsius).__name__}, not int or float"
+    )
+
+    with pytest.raises(TypeError, match=f"^{re.escape(expected)}"):
         LiquidDensity(
             g_ml=1.5,
             standard_deviation_g_ml=0.001,
@@ -174,16 +182,16 @@ def test_a_liquid_density_refuses_a_temperature_that_is_not_a_number(
 
 
 @pytest.mark.parametrize(
-    ("g_ml", "molar_mass_g_mol"),
+    ("g_ml", "molar_mass_g_mol", "shown_inputs", "shown_ratio"),
     [
         # 1.5 / 1e-306 overflows to inf once multiplied by the molar volume.
-        (1.5, 1e-306),
+        (1.5, 1e-306, "1.5 g/mL and a molar mass of 1e-306", "inf"),
         # 1e-300 / 1e300 underflows to zero.
-        (1e-300, 1e300),
+        (1e-300, 1e300, "1e-300 g/mL and a molar mass of 1e+300", "0.0"),
     ],
 )
 def test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number(
-    g_ml: float, molar_mass_g_mol: float
+    g_ml: float, molar_mass_g_mol: float, shown_inputs: str, shown_ratio: str
 ) -> None:
     """Each input is positive and finite, and the ratio they make is not.
 
@@ -195,16 +203,35 @@ def test_the_ratio_refuses_inputs_whose_ratio_is_not_a_positive_finite_number(
 
     density = LiquidDensity(g_ml=g_ml, standard_deviation_g_ml=0.0, measured_at_celsius=20.0)
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match=r"^a liquid density of .* g/mL and a molar mass of .* g/mol give a vapour-to-liquid",
-    ):
+    expected = (
+        f"a liquid density of {shown_inputs} g/mol give a vapour-to-liquid ratio of "
+        f"{shown_ratio}, which is not a positive finite number"
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=f"^{re.escape(expected)}$"):
         vapour_volume_per_liquid_volume(density, molar_mass_g_mol)
 
 
-@pytest.mark.parametrize(("vapour_volume_l", "vapour_per_liquid"), [(1e306, 182.8), (1.0, 1e-306)])
+def test_the_ratio_accepts_a_ratio_below_one() -> None:
+    """Only a ratio that is not a positive finite number is refused, not one below 1.
+
+    At 0.001 g/mL and 200 g/mol, 1 mL of liquid fills about 0.12 mL as vapour.
+    No agent has such a density, but nothing physical forbids the ratio.
+    """
+
+    density = LiquidDensity(g_ml=0.001, standard_deviation_g_ml=0.0, measured_at_celsius=20.0)
+
+    assert vapour_volume_per_liquid_volume(density, 200.0) == pytest.approx(
+        0.001 / 200.0 * _molar_volume_at_20_celsius_l_mol() * 1000.0, rel=1e-9
+    )
+
+
+@pytest.mark.parametrize(
+    ("vapour_volume_l", "vapour_per_liquid", "shown_inputs"),
+    [(1e306, 182.8, "1e+306 L of vapour at 182.8"), (1.0, 1e-306, "1.0 L of vapour at 1e-306")],
+)
 def test_liquid_volume_refuses_a_result_that_overflows(
-    vapour_volume_l: float, vapour_per_liquid: float
+    vapour_volume_l: float, vapour_per_liquid: float, shown_inputs: str
 ) -> None:
     """Each input passes its own check, and the liquid volume they make is infinite.
 
@@ -212,7 +239,9 @@ def test_liquid_volume_refuses_a_result_that_overflows(
     (found by `PL-KZ99`'s adversarial review).
     """
 
-    with pytest.raises(
-        SimulationConfigurationError, match="gives a liquid volume that is not finite"
-    ):
+    expected = (
+        f"{shown_inputs} mL of vapour per mL of liquid gives a liquid volume that is not finite"
+    )
+
+    with pytest.raises(SimulationConfigurationError, match=f"^{re.escape(expected)}$"):
         liquid_volume_ml(vapour_volume_l, vapour_per_liquid)

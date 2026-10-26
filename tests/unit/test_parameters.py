@@ -880,7 +880,13 @@ def test_an_agent_record_refuses_a_liquid_density_that_is_not_a_liquid_density()
 
     agent = load_agent_parameters("sevoflurane")
 
-    with pytest.raises(TypeError, match="^liquid_density must be a LiquidDensity"):
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "liquid_density must be a LiquidDensity, which checks its own fields, and None "
+            "has type NoneType"
+        ),
+    ):
         replace(agent, liquid_density=None)  # type: ignore[arg-type]
 
 
@@ -909,7 +915,33 @@ def test_rejects_a_liquid_density_measured_at_another_temperature_under_its_file
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=r"(?s)liquid_density\n.*a liquid density measured at 25\.0 °C cannot be used",
+        match=r"(?s)liquid_density\n.*a liquid density measured at 25\.0 degrees C cannot be used",
+    ):
+        parse_agent_parameters(payload)
+
+
+@pytest.mark.parametrize(
+    ("measured_at_celsius", "reason"),
+    [("20", "must be a number"), (True, "must be a number"), (math.nan, "must be finite")],
+)
+def test_rejects_a_measurement_temperature_that_is_not_a_finite_number_under_its_file_key(
+    measured_at_celsius: object, reason: str
+) -> None:
+    """The file's temperature is checked as a number before it is compared with 20 °C.
+
+    A string "20" or `true` in the file is a malformed file, not a measurement at 20 °C.
+    """
+
+    payload = _valid_agent_payload()
+    payload["liquid_density"] = {
+        "g_ml": 1.5,
+        "standard_deviation_g_ml": 0.001,
+        "measured_at_celsius": measured_at_celsius,
+    }
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"liquid_density\.measured_at_celsius\n +Value error, {reason} \[",
     ):
         parse_agent_parameters(payload)
 
