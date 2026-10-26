@@ -21,6 +21,7 @@ from anesthesia_sim.app.chart_frame import (
     HOVER_INSTANT_RESOLUTION_S,
     MAX_CHART_CONTROL_MARKS,
     WASH_IN_HOVER_LABEL,
+    WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT,
     WASH_IN_TERMINUS_CEILING,
     ChartFrame,
     RunCount,
@@ -60,6 +61,7 @@ from anesthesia_sim.app.formatting import (
     format_elapsed,
     format_mac_multiple,
     format_percent,
+    format_wash_in_ratio,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
@@ -523,6 +525,43 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
     assert all(ratio <= 1.0 for ratio in stretch.ratios[:-1])
     assert run.undrawn_wash_in_stretches == 0
+
+
+def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
+    """`PL-YH6Z`: the crossing column is drawn, but its quotient is not printed as wash-in.
+
+    The terminus is drawn so that the line meets the reference. Its quotient is
+    above 1, which `read_wash_in` classes as elimination. Printing it under the
+    label "Wash-in F_A/F_I" would teach a wash-in past completion.
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 600.0)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 300.0)
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    run = frame.runs[0]
+    stretch = run.wash_in[0]
+    terminus = len(stretch.ratios) - 1
+
+    assert stretch.ends_above_equilibrium
+    assert stretch.ratios[terminus] > 1.0
+
+    single = format_wash_in_hover(run, stretch, terminus, 1).splitlines()
+    compared = format_compared_wash_in_hover([(run, stretch, terminus)]).splitlines()
+
+    assert single[1:] == [WASH_IN_HOVER_LABEL, WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT]
+    assert compared[-1].endswith(WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT)
+    assert format_wash_in_ratio(stretch.ratios[terminus]) not in compared[-1]
+
+    # The column before the terminus is still wash-in, and still prints its number.
+    assert format_wash_in_hover(run, stretch, terminus - 1, 1).splitlines()[2] == (
+        format_wash_in_ratio(stretch.ratios[terminus - 1])
+    )
 
 
 # ----------------------------------------------------------------- the hover

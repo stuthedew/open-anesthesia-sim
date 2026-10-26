@@ -103,6 +103,7 @@ __all__ = [
     "WASH_IN_AXIS_MAXIMUM",
     "WASH_IN_GRID_INTERVAL",
     "WASH_IN_HOVER_LABEL",
+    "WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT",
     "WASH_IN_TERMINUS_CEILING",
     "ChartFrame",
     "HoverReading",
@@ -220,6 +221,14 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # division sign, because every non-ASCII character shown to a reader must first
 # have been rendered and checked by eye (`tools/glyph_check.py`).
 WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
+
+# What the wash-in hover prints in place of a number at a column past
+# equilibrium. The crossing column is drawn only so that the line meets the
+# reference. Its quotient is above 1, which rule 2 of `app/wash_in.py` and
+# `docs/MODEL.md` § "F_A/F_I as a displayed ratio" refuse to show as a wash-in
+# fraction (`PL-YH6Z`). Printed under the wash-in label it would teach a wash-in
+# past completion, at the dot a reader is most likely to point at.
+WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
 
 # The resolution at which the hover states its instant. It is the finest grid
 # a drawn column can sit on, a hundredth of a second, so the instant printed is
@@ -1275,7 +1284,9 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
 
     It has the same form as `format_trace_hover`, in the ratio's own units.
     F_A/F_I is dimensionless and has neither a percent nor a MAC reading, so
-    the third line is `format_wash_in_ratio`'s number alone.
+    the third line is `format_wash_in_ratio`'s number alone. At a column past
+    equilibrium the third line says so instead of printing a quotient above 1
+    (`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT`).
 
     Args:
         run: The run the stretch belongs to.
@@ -1297,9 +1308,22 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_
         (
             _hover_context(run, stretch.times_s[index], RunCount(run_count)),
             WASH_IN_HOVER_LABEL,
-            format_wash_in_ratio(stretch.ratios[index]),
+            _wash_in_hover_value(stretch.ratios[index]),
         )
     )
+
+
+def _wash_in_hover_value(ratio: float) -> str:
+    """Return the ratio as the hover prints it, or a statement where it is not wash-in.
+
+    The stretch's crossing column has a quotient above 1, which is elimination
+    rather than wash-in, so no number is printed for it (`PL-YH6Z`).
+    """
+
+    if not is_wash_in(ratio):
+        return WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT
+
+    return format_wash_in_ratio(ratio)
 
 
 def _hover_context(run: RunFrame, time_s: float, run_count: RunCount) -> str:
@@ -1487,7 +1511,7 @@ def format_compared_wash_in_hover(answering: Sequence[tuple[RunFrame, WashInStre
             WASH_IN_HOVER_LABEL,
             *(
                 _hover_compared_value(
-                    run, stretch.times_s[index], format_wash_in_ratio(stretch.ratios[index])
+                    run, stretch.times_s[index], _wash_in_hover_value(stretch.ratios[index])
                 )
                 for run, stretch, index in answering
             ),

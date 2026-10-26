@@ -9202,6 +9202,14 @@ all, and the stretch ends where it would have ended without it. The stretch is
 not clamped onto the ceiling and not interpolated onto it.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
+**The crossing column is drawn, but its number is not printed as wash-in.**
+Its quotient is above 1, so it is elimination rather than a wash-in fraction.
+The chart's hover at that column says "Past equilibrium: not a wash-in
+fraction" under the wash-in label instead of printing the quotient
+(`WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT` in `app/chart_frame.py`, `PL-YH6Z`).
+Printed there, a value such as 1.03 would teach a wash-in past completion, at
+the dot a reader is most likely to point at.
+
 **A blank stretch says which boundary it is.** "No agent has reached the
 circuit yet" and "the patient is returning agent" are opposite situations. A
 reader shown only an absent trace cannot tell which of the two applies. The
