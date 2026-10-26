@@ -3,11 +3,13 @@ id: PL-MLPT
 title: docs/MODEL.md and core/supported_ranges.py argue the 24-hour supported run length with two claims that do not hold: that it sits near the outer edge of the measured 0.35-to-9.5 MAC-hour range, when a run at 1 MAC reaches about 24 MAC-hours at the cap, and that the fat time constant bounds it from below, when 24 hours is about 0.6 of that time constant
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, docs
 feature: supported-run-length-text
 touches: docs/MODEL.md, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1860
 payoff: the authoritative specification no longer certifies a 24-hour span as inside the evidence it cites, and its argument for the limit no longer contradicts itself
 verify: ! grep -qF 'near the outer edge of the exposure range' docs/MODEL.md && ! grep -qF 'It is near the outer edge of the' src/anesthesia_sim/core/supported_ranges.py && ! grep -qF 'With a span shorter than about one' docs/MODEL.md && ! grep -qF 'with a cap shorter than about one' src/anesthesia_sim/core/supported_ranges.py
 recurrences: 2026-10-25 PL-KHXB
@@ -48,3 +50,14 @@ read from a fresh controller: sevoflurane opens at 2.0% with an 8.0% dial
 maximum, isoflurane at 1.2% of 5.0%, desflurane at 6.0% of 18.0%
 (scripts/b1_mac_hours.py). Finding r06 F3 on #421, the time-constant
 floor, was checked against main on 2026-10-25 by reading both places.
+
+**Closed on #1860, counting MAC-hours end-tidal** (2026-10-26). A blind
+review pass on #1860 found that the first rewrite counted MAC-hours at the
+dial. A MAC-hour is conventionally counted at the end-tidal concentration,
+which in this model is the alveolar fraction, and that fraction stays below
+the dial during uptake. So `docs/MODEL.md` and the comment count about 24
+MAC-hours for a run whose alveolar fraction is held near 1 MAC, say a run
+left at its opening dial accumulates somewhat less, and give the 96 at
+sevoflurane's 8% dial maximum as an upper bound counted at the dial. The cap
+is still argued in elapsed time. Enforcing it in exposure terms would be a
+model change, not a text change, and nothing here asked for one.
