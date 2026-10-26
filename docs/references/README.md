@@ -84,8 +84,38 @@ directory.** Without one the corpus is consulted once per *session* instead of
 once per *source*, and each later session re-reads the same PDF at full
 context; `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
 is that argument applied to literature. The obligation and its home are settled
-here. What a note contains, and the first worked example, are `PL-Z3V5`'s and
-are deliberately not fixed here.
+here.
+
+**What an extraction note contains** (`PL-Z3V5`, 2026-10-26). Write one note
+per source, as a Markdown file in this directory named for the first author,
+the year and the subject. A reading of one part that stands on its own, such as
+one figure read across two papers, may have a note of its own. A note gives,
+in this order:
+
+1. **The citation**, with its PMID or DOI, and a pointer to the source's entry
+   under "The documents" below.
+2. **The route and depth**: that it was read in the private corpus, whether
+   through the text layer or as page images, which printed pages, on what date,
+   and for which item.
+3. **The study** behind the values: who or what was measured, how many, and
+   the conditions a reader needs to judge whether a value fits this model.
+4. **Each value taken**: the quantity, its value with units and dispersion,
+   n, and its locator, meaning the printed page and the table, figure or
+   section. Say whether the source states the value or it was read from a
+   figure. A value read from a figure also carries the method and its reading
+   error.
+5. **Where the repository uses each value**, and its standing under
+   `docs/MODEL.md` § "Source hierarchy": adopted as the authority for a stored
+   value, with its tier, or used as a reference value in a test.
+6. **What was not taken**, and why, so a later session does not open the
+   source again to find out.
+
+A note records facts and short quotations. It never reproduces a table or a
+figure in its published arrangement. Where a fact is already recorded with its
+page in another file, the note names that file rather than copying the fact.
+`yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
+example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
+page images.
 
 **Two of its holdings are whole books**, added 2026-09-15 and split into
 section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
@@ -495,6 +525,23 @@ chapter's authors find compartmental and physiologic models fit equally well
 (Hendrickx et al. 2006a). `docs/MODEL.md` § "Known limitations" cites them for
 that description and those cautions, and for no value.
 
+### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
+
+**Not held here. Held in the private corpus**, like every other owner-supplied
+full text.
+
+> Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+> isoflurane, and halothane in plastics and rubber composing a conventional
+> anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID
+> [2764290](https://pubmed.ncbi.nlm.nih.gov/2764290/).
+
+What has been taken from it, with the pages, is in
+`docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md`: the
+measured system volume, the order of the circuit components' partition
+coefficients, the ideal wash-in line, and the authors' reading for desflurane.
+It was read in full on 2026-09-13 and checked again on 2026-10-26 for
+`PL-N701`.
+
 ### Yasuda et al. 1991 — the two human kinetics papers
 
 **Not held here. Held in the private corpus**, like every other owner-supplied
@@ -551,3 +598,9 @@ layer, *Anesthesiology* p. 490 as a page image). Every value read, the method
 and its reading error are in `docs/references/yasuda-1991-figure-2-wash-in.md`,
 and the values are `PUBLISHED_WASH_IN_TIME_COURSE` in
 `tests/reference/test_published_wash_in_and_elimination.py`.
+
+The *Anesth Analg* paper's 30-minute wash-in and five-minute elimination
+ratios, the study they come from and the methods fact behind its tissue
+coefficients are in
+`docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`,
+with their pages, read 2026-10-26 for `PL-Z3V5`.

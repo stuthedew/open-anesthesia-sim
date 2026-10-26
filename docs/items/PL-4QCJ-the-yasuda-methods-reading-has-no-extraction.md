@@ -3,12 +3,14 @@ id: PL-4QCJ
 title: The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: provenance
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13
+payoff: the apparatus facts that desflurane's residual analysis rests on carry page locators in a public note, and docs/MODEL.md says where the full texts are
+verify: grep -qF '2001028' docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md && ! grep -qF 'are not in PubMed Central and are not held in' docs/MODEL.md
 ---
 
 **Problem.** The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
@@ -50,6 +52,7 @@ It has already happened twice for these two papers. `PL-ZDWL` is about to open
 them a third time, and it is the natural session to write the note from, since
 it will have the PDFs attached.
 
+[superseded 2026-10-26: `PL-Z3V5` closed and fixed the note's fields]
 **Blocked on.** `PL-Z3V5`, which decides what an extraction note contains and
 writes the first worked example. `docs/references/README.md` says so
 explicitly: "What a note contains, and the first worked example, are

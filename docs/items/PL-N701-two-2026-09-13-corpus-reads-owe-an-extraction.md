@@ -3,12 +3,14 @@ id: PL-N701
 title: Two 2026-09-13 corpus reads owe an extraction note under docs/references/README.md, once PL-Z3V5 settles what one contains
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: docs
 feature: provenance
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13
+payoff: the circuit paper's and the Anesth Analg kinetics paper's facts carry page locators in public notes, so neither PDF is read again for them
+verify: grep -qF '2764290' docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md && grep -qF '1994760' docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md
 recurrences: 2026-09-30 PL-KN5Y
 ---
 
@@ -51,6 +53,7 @@ has no way to learn from the specification that these readings happened or what
 page carries each fact, which is the traceability the safety-critical standard
 asks for.
 
+[superseded 2026-10-26: `PL-Z3V5` closed, and this branch takes all three papers]
 **Related, and cheapest taken together.** `PL-4QCJ` (the Yasuda methods reading
 has no extraction note) is the same obligation for the third paper - the
 *Anesthesiology* 1991 desflurane/isoflurane/halothane study - and is blocked on
