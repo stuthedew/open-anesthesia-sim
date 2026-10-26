@@ -28,6 +28,7 @@ forbids it.
 import re
 from bisect import bisect_right
 from dataclasses import replace
+from itertools import pairwise
 from math import inf, nan, nextafter
 
 import pytest
@@ -1107,7 +1108,7 @@ def test_evaluate_ends_its_last_column_exactly_at_stop() -> None:
     assert len(window.times_s) == 42
     assert window.times_s[0] == 0.3
     assert window.times_s[-1] == 11.0
-    assert all(later > earlier for earlier, later in zip(window.times_s, window.times_s[1:]))
+    assert all(later > earlier for earlier, later in pairwise(window.times_s))
 
 
 def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plot() -> None:
