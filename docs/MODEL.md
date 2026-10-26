@@ -5715,9 +5715,17 @@ learner can reach while the run is playing. § "Supported simulation step"
 publishes the grid on which a *control change* lands. That grid is
 `multiplier × 0.1` s, so 0.1 s at 1x and 30 simulated seconds at 300x. A halt
 is not on that grid. It lands on the crossing step itself, at every playback
-rate. So the concentration displayed beside a halt is the height the learner
-marked. It is not a value up to a whole burst's worth of simulated time past
-that height. If the test ran once per rendered frame instead, the same
+rate. So the concentration displayed beside a halt is the reading on the
+first step at or past the height the learner marked. It lies
+within one simulation step of that height, not up to a whole burst's worth of
+simulated time past it. On a fast compartment one step can still show on screen. With
+8% sevoflurane at 10 L/min, one 0.1 s step moves the circuit's reading by up
+to 0.011 ×MAC. So a circuit target can halt one display count past its mark:
+13 of 59 targets from 0.05 to 2.95 ×MAC did, and a 0.10 ×MAC target halts
+showing 0.11 ×MAC. The alveolar reading moves by at most 0.003 ×MAC per step
+under the same settings, and none of the same 59 targets halted past its
+mark. A halt one count past the mark is therefore correct, and is not a
+detection fault. If the test ran once per rendered frame instead, the same
 bookmark would stop at a different concentration depending on how fast the
 case was being played. Nothing on screen would say so. Two branches nominally
 taken "at 0.8 ×MAC" would then open from two different states.

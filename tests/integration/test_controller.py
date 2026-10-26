@@ -16,7 +16,11 @@ from anesthesia_sim.app.controller import (
     SimulationController,
 )
 from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
-from anesthesia_sim.app.formatting import format_supported_run_length
+from anesthesia_sim.app.formatting import (
+    MAC_UNIT_SUFFIX,
+    format_mac_multiple,
+    format_supported_run_length,
+)
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -3262,6 +3266,49 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     assert after.agent_id == "desflurane"
     assert after.control_timeline == ()
     assert after.bookmarks.mac_targets == (target,)
+
+
+def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past_it() -> (
+    None
+):
+    """`docs/MODEL.md` § "Halting on a marked crossing" says the halt is within one step of the mark.
+
+    It used to say that the value displayed beside a halt is the height the
+    learner marked (`PL-M8F6`). The circuit is the fastest compartment, so one
+    0.1 s step can carry its reading past the next display count. The
+    specification gives this case as its example: a 0.10 ×MAC circuit target,
+    with 8% sevoflurane at 10 L/min, halts showing 0.11 ×MAC.
+    """
+
+    controller = SimulationController()
+    controller.set_agent("sevoflurane")
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    mark = MacMultiple(0.10)
+    controller.add_mac_target(MacTarget(RecordedQuantity.CIRCUIT, mark))
+    controller.start()
+    mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
+    before = float(controller.snapshot().inspired_partial_pressure_fraction) / mac_fraction
+
+    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        halted = controller.snapshot()
+        reading = float(halted.inspired_partial_pressure_fraction) / mac_fraction
+        if halted.bookmark_halt is not None:
+            break
+        before = reading
+    else:
+        raise AssertionError("the 0.10 ×MAC circuit target did not halt the run within 60 s")
+
+    # The halting step is the one that crossed: the reading before it was
+    # below the mark, and its own reading is at or past it.
+    assert before < mark <= reading
+    # So the halt is past the mark by less than the one step's change.
+    assert reading - mark < reading - before
+    # And that step is large enough here to show on screen.
+    assert format_mac_multiple(
+        halted.inspired_partial_pressure_fraction, halted.agent_mac_percent
+    ) == (f"0.11{MAC_UNIT_SUFFIX}")
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
