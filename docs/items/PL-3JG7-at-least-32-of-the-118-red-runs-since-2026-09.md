@@ -1,15 +1,10 @@
 ---
 id: PL-3JG7
 title: At least 32 of the 118 red runs since 2026-09-21 that caught a real defect failed a check a local make check also runs: 18 whole-repository self-check tests in pytest, which the push guard does not run, and 14 repeated pushes on three branches past a failure make check reports
-priority: P2
-effort: M
-status: ready
-classes: infra
+status: untriaged
 feature: fewer-red-runs
-touches: .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py
+touches: .claude/hooks
 added: 2026-10-25
-payoff: a push that a whole-repository self-check test would refuse is refused on the session's machine, not in a CI run
-verify: grep -qF 'test_workflow_paths_check' .claude/hooks/push-check-guard.sh
 ---
 
 **Problem.** At least 32 of the 118 red runs since 2026-09-21 that caught a real defect failed a check a local make check also runs: 18 whole-repository self-check tests in pytest, which the push guard does not run, and 14 repeated pushes on three branches past a failure make check reports
@@ -41,22 +36,3 @@ failing local check. `PL-PLSJ` found the second mechanism in September, and
 
 **Why it matters.** Each of these red runs is a push and a full quality run
 that a check on the session's own machine would have saved.
-
-**Reproduced 2026-10-26.** `.claude/hooks/push-check-guard.sh` runs three
-checks before a push: `doc_check`, `branch_id_check` and `bin/docket check
---verify`. None of them is a `pytest` run, so a whole-repository self-check
-test such as `test_workflow_paths_check.py` or `test_fixture_id_check.py`
-first runs in CI.
-
-**Done when.** The push guard also runs the whole-repository self-check tests
-named above, `test_workflow_paths_check.py` and `test_fixture_id_check.py` at
-least, unless a timing shows they make the guard too slow. The brief then
-records that timing either way. It also records why three branches pushed
-again past a failing `make check`. Where that cause needs a change of its own,
-it is filed as a new item.
-
-**Generator check.** The closest heads are `PL-0HPV` and `PL-ZQ3R`, whose fact
-is which checks the local gate and the merge gate each run. Those two gates
-still agree here, because all 32 runs failed `make check` too. The push guard
-is a chosen subset of `make check`, so this item asks which checks that subset
-should hold. Nobody misread a gate's set, so it is a one-off.
