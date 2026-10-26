@@ -3,12 +3,14 @@ id: PL-4QCJ
 title: The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: provenance
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13
+closed: 2026-10-26
+pr: 1853
 payoff: the apparatus facts that desflurane's residual analysis rests on carry page locators in a public note, and docs/MODEL.md says where the full texts are
 verify: grep -qF '2001028' docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md && ! grep -qF 'are not in PubMed Central and are not held in' docs/MODEL.md
 ---
@@ -115,3 +117,23 @@ half `bin/docket next` reads, rather than stated only in the prose above.
 `docs/references/README.md` forbids inventing the format here, so this is a
 blocker rather than an overstated relationship. `PL-YPWT` is the item that
 asked for that disposition and closes with it.
+
+## Done 2026-10-26
+
+`docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md`
+records the apparatus facts with their pages. Pages 489, 490 and 491 were read
+again as page images on this date, and each fact citing them was checked: the
+50 ml of tubing and its purpose, the port sitings, the mixing chamber, the
+circuit exchanged at 30 minutes, the cylinder and the cohort on page 490; the
+F_M formula and its 10-, 15- and 20-minute averaging on page 491; and the
+abstract's wash-in, elimination and recovery values on page 489. The facts on
+pages 492 and 494 are recorded as this item had them on 2026-09-13, and the
+note says they were not read again. The recovery values are cited from the
+abstract rather than from Table 6, because the abstract was the page read.
+
+`docs/MODEL.md`'s sentence that confirming the no-rebreathing inference
+"needs full texts that are not in PubMed Central and are not held in
+`docs/references/`" was stale twice over: both methods sections had been read,
+and they state the circuit exchange directly. It now gives the two pages,
+says the papers are in the private corpus, and points at the notes. So the
+passage no longer calls the point an inference.
