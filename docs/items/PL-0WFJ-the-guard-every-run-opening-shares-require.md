@@ -3,11 +3,13 @@ id: PL-0WFJ
 title: The guard every run opening shares, require_canonical_state, checks a state's length, finiteness and unit entry but no physical range, so a RunDefinition opened from a state with an alveolar fraction of -0.3 and a fat fraction of 1.7 accepts it and returns negative and above-one fractions from state_at and evaluate_anchored without any error, while the live system refuses the same state
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, science, safety
 feature: replay-findings
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_resume_at.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: a physically impossible opening state fails visibly instead of drawing plausible traces, before saved runs can be loaded
 verify: grep -q 'def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one' tests/unit/test_governing_equations.py
 ---

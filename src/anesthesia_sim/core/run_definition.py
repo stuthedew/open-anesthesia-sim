@@ -528,7 +528,7 @@ class RunDefinition:
         return self._segments[self._segment_index_at(instant_s)]
 
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
-        """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
+        """Return `columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
 
         This is the display path. Inside one segment the columns are uniformly
         spaced, so a single propagator over the column spacing serves all of
@@ -540,18 +540,22 @@ class RunDefinition:
         and one covers the spacing. Taking each column canonically would
         instead form `columns` of them.
 
-        That saving costs bit-identity. Chaining composes the same operations
-        in a different order from `state_at`. Values from this method are for
-        drawing. They come back as `DisplayState`, so that they cannot be
-        stored, exported or forked from just because they have the same shape
-        as a canonical state. The module docstring explains why.
+        That saving costs bit-identity with `state_at`. Chaining the propagator
+        composes the same operations in a different order from `state_at`, so
+        the results need not match it to the last bit. Values from this method
+        are for drawing. They come back as `DisplayState`, so that they cannot
+        be stored, exported or forked from just because they have the same
+        shape as a canonical state. The module docstring explains why.
 
         Args:
             start_s: The window's first instant, in seconds.
             stop_s: The window's last instant, in seconds. Equal to `start_s`
                 for a window of one instant.
             columns: How many instants to sample, at least one. With one
-                column, only `start_s` is sampled.
+                column, only `start_s` is sampled. With more, the last column
+                is `stop_s` itself rather than `start_s` plus a multiple of
+                the spacing, which can round one unit past `stop_s` and so past
+                the time the run has reached (`PL-9SL5`).
 
         Raises:
             TypeError: `columns` is not an `int`, or is a `bool`.
@@ -585,7 +589,9 @@ class RunDefinition:
             )
 
         spacing_s = 0.0 if columns == 1 else (stop_s - start_s) / (columns - 1)
-        times_s = tuple(start_s + column * spacing_s for column in range(columns))
+        times_s = tuple(start_s + column * spacing_s for column in range(columns - 1)) + (
+            (start_s,) if columns == 1 else (stop_s,)
+        )
         states: list[tuple[float, ...]] = []
         segment_index = self._segment_index_at(start_s)
         column = 0
@@ -1084,21 +1090,22 @@ def _advanced(propagator: Matrix | None, state: tuple[float, ...]) -> tuple[floa
 
 
 def _require_state(state: tuple[float, ...] | DisplayState) -> None:
-    """Refuse a state vector the equations could not be read against.
+    """Reject a state vector that the equations cannot be applied to.
 
     A display value is refused first, and by name. Otherwise it would fail the
-    structural test in `require_canonical_state` with a message naming its
-    type. That message is true but tells the reader nothing about *why* a
-    wrapper exists, and the error a safety-critical path raises is part of
-    what makes the path auditable. Every check after that refusal is about the
-    state vector rather than about this module. So those checks belong to
+    structural test in `require_canonical_state`, with a message that names its
+    type. That message is true, but it does not tell the reader *why* a wrapper
+    exists. The error that a safety-critical path raises is part of what makes
+    the path auditable. Every check after that refusal is about the state
+    vector rather than about this module. So those checks belong to
     `governing_equations.require_canonical_state`, and the live system that a
     branch resumes into applies the identical guard by calling it too.
 
     Raises:
         SimulationConfigurationError: `state` came from the display path, or is
-            not `STATE_SIZE` long, holds a non-finite value, or does not carry
-            exactly one in `UNIT_STATE`.
+            not `STATE_SIZE` long, holds a non-finite value, holds a fraction
+            outside 0 to 1 or an amount of agent that the live system cannot
+            hold, or does not carry exactly one at the `UNIT_STATE` position.
     """
 
     if isinstance(state, DisplayState):

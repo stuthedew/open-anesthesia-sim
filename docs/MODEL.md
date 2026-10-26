@@ -564,10 +564,14 @@ label repairs.
 
 The guarantee does not cover four things, and none of them is a defect:
 
-- **A different step size.** Two runs at different steps are two roundings of
-  the same solution, not two solutions. The step is exact, so what separates
-  them is floating-point accumulation. "Step-refinement test" is what bounds
-  that difference.
+- **A different step size.** Between setting changes, two runs at different
+  steps are two roundings of the same solution, not two solutions. The step
+  is exact, so what separates them there is floating-point accumulation.
+  "Step-refinement test" is what bounds that difference. A setting change is
+  different. It takes effect at the next step boundary, and the boundaries
+  fall at different times on each step grid. So a change's timing moves with
+  the step, and two runs with any setting change follow different
+  trajectories by more than rounding after it (`PL-5RPD`).
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
 - **A different platform.** Addition, multiplication and division are
@@ -1751,8 +1755,11 @@ fraction, the alveolar amount, each of the three tissue amounts, the venous
 amount, and the cumulative delivered and exhausted amounts. Each cumulative
 amount is captured with its compensation term, as § "Mass-balance identity"
 explains, so a step retried after a rollback gives the same result as the
-step that was undone. Settings and parameters are deliberately not captured. A rollback that restored cardiac
-output would undo a change that the run had accepted. Each compartment
+step that was undone. Settings and parameters are deliberately not restored. A rollback that restored cardiac
+output would undo a change that the run had accepted. The circuit's record
+holds its volume beside the inspired fraction for one reason. After a volume
+change, a restore puts back the captured amount of agent rather than the
+captured fraction, and the volume stays at its setting (`PL-QG52`). Each compartment
 captures its own values. So if a dynamic field is added later without a
 matching capture, the result is a local omission. It is not a partial restore
 that looks complete.
@@ -1896,16 +1903,25 @@ was not a cost either.
 
 **Two consequences worth stating rather than leaving to be inferred.**
 
-First, **the fractions cannot leave their physical range**. Every off-diagonal
+First, **a step cannot drive a fraction negative**. Every off-diagonal
 entry of $`A`$ is a transfer rate, so it is nonnegative. That makes $`A`$ a
 Metzler matrix and $`\exp(A\Delta t)`$ an entrywise nonnegative matrix.
 `core/matrix_exponential.py` shifts the matrix before summing its series, so
 that this property holds in floating point and not only in exact arithmetic.
 A step therefore cannot drive a compartment negative at any step size. This
-follows from the construction, not from the shipped parameters. So no patient
-file or agent can trigger the compartment capacity guard through the model.
-The guard and the rollback remain as protection for a model extension
-whose matrix is not a pure transfer system.
+follows from the construction, not from the shipped parameters.
+
+The argument proves the lower bound only. It says nothing about the upper
+bound of 1. In exact arithmetic no fraction passes the larger of the
+delivered fraction and the largest fraction the run opened with. Rounding can
+still carry a fraction just above 1 from a state already at 1.
+With every compartment at 1.0 and a 100% dial, the first 0.1 s step raised
+`SimulationNumericalError` in all 12 agent and flow cases tried (`PL-PM67`,
+measured 2026-10-25). No supported setting reaches that state, because every
+shipped vaporizer maximum keeps each fraction far below 1. The capacity guard
+and the rollback therefore cover two cases: a state at the top of the range,
+and a model extension whose matrix is not a pure transfer system.
+<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
 Second, **refining the step no longer changes the answer**. Under the split,
 halving $`\Delta t`$ halved the error. The step-refinement gate
@@ -2278,10 +2294,12 @@ enter.** Where a step drives an amount out of range,
 `AgentUptakeSystem.advance()` reports `SimulationNumericalError`. The step is
 rolled back in full, and simulation time does not advance. The caller must
 stop the run, and the run stops at the last completed step rather than at a
-partially applied one. Under the exact step, no parameter set triggers the
-guard, because the system matrix is Metzler and its propagator is therefore
-entrywise nonnegative (see § "Selected method (as implemented)"). The guard is cover for
-a model extension whose matrix is not a pure transfer system. It is not cover
+partially applied one. Under the exact step, no step drives a fraction below
+zero, because the system matrix is Metzler and its propagator is therefore
+entrywise nonnegative (see § "Selected method (as implemented)"). Rounding can
+still carry a fraction just above 1 from a state already at 1, which no
+supported setting reaches. The guard is cover for that state, and for a model
+extension whose matrix is not a pure transfer system. It is not cover
 for a caller stepping too coarsely. The two failures are kept deliberately
 distinct. `SimulationConfigurationError` says that the setting was rejected
 and the run is still trustworthy. `SimulationNumericalError` says that a run
@@ -2347,7 +2365,7 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
 factors, so each checks the quotient whenever a factor is written.
 
-**Every input to `core/` but one has an interval, and one sweep tests them**
+**Every input to `core/` has an interval, and one sweep tests them**
 (`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
 between 2026-09-06 and 2026-10-17, each one operation at a time. A product
 overflowed, a quotient underflowed or a subtraction cancelled at an extreme
@@ -2371,6 +2389,7 @@ lists each input that has one, and the function or type that refuses it.
 | The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
+| The state a run opens from, each fraction | 0 to 1, and each cumulative amount of agent 0 to 14 400 L | `require_canonical_state` |
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
@@ -2384,14 +2403,20 @@ lists each input that has one, and the function or type that refuses it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
 
-**The state a run opens from has no interval yet.** `require_canonical_state`
-in `core/governing_equations.py` checks a state's length, that its values are
-finite and its unit entry. It does not check that each fraction lies from 0
-through 1. So a `RunDefinition` opened from a state with every fraction at
-1e308 is accepted, and its `state_at(600.0)` returns an exhausted-agent total
-of `inf` (reproduced 2026-10-26). Every state a shipped run opens from comes
-from a run that began in range, so no learner reaches this today. `PL-0WFJ`
-records the fix, and `PL-58D7` stays open until it lands.
+**The state a run opens from was the last input to get an interval.**
+`require_canonical_state` in `core/governing_equations.py` is the guard that a
+`RunDefinition` and the live system's `resume_at` share. Until `PL-0WFJ`, it
+checked a state's length, that its values are finite and its unit entry, and
+not that each fraction lies from 0 through 1. So a `RunDefinition` opened from
+a state with every fraction at 1e308 was accepted, and its `state_at(600.0)`
+returned an exhausted-agent total of `inf` (reproduced 2026-10-26). The guard
+now builds each of the six fractions as a `Fraction`. It also refuses a
+cumulative amount of agent below zero or above 14 400 L, which is the fresh gas
+of a whole 24-hour case at 10 L/min. Neither the delivered nor the exhausted
+fraction exceeds 1, so no case can move more agent than that.
+`tests/unit/test_governing_equations.py` drives each fraction and each amount
+one representable value past each bound and expects a refusal.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 The blood flow that a tissue group or the venous pool is handed when it is
 stepped on its own has no upper bound either, by design. It must only be
@@ -9721,6 +9746,37 @@ contributes a point only where both of these conditions are true:
    the tissues are returning agent faster than it is being delivered. That is
    elimination, not wash-in. Equilibrium is drawn on the chart as a labelled
    reference line.
+
+   The comparison allows `WASH_IN_ROUNDING_ALLOWANCE`, 1e-6, above 1 for
+   rounding (`PL-N559`). At zero cardiac output the exact solution has
+   $`F_A`$ rise to $`F_I`$ and stop. The stepped run instead settles onto a
+   floating-point fixed point within about 1e-13 of that, and in some runs
+   the fixed point has $`F_A`$ above $`F_I`$. Isoflurane at a fresh gas flow of
+   10 L/min settles
+   at 1 + 2.2e-14, which the plot once captioned as the patient returning
+   agent. Once a run reaches its fixed point, every later step returns the
+   same state, so the overshoot does not grow with run length. On 2026-10-26
+   it was the same at 96 h as at 1 h.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+
+   The value comes from a clinical requirement rather than from the rounding
+   (project owner, 2026-10-26, ratified, over 1e-9 sized from the rounding
+   and over deriving the value in code). A whole run of the longest supported
+   length, held at a quotient of 1 + 1e-6, must lose less than 1% of the
+   agent in the fast pool: alveolar gas, venous blood and the vessel-rich
+   group. Agent then leaves at alveolar ventilation times $`F_I`$ times
+   1e-6, and the concentration cancels against the pool. The worst case is
+   desflurane at an alveolar ventilation of 12 L/min, which loses about 0.3%
+   in 24 h.
+   `test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`
+   checks this for every shipped agent from the run-length limit, the
+   ventilation limit and the data files, so extending any of them fails it.
+   The allowance is also about 10 million times the largest overshoot
+   measured, 9.6e-14.
+   `test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`
+   checks the fixed point against the closed form for each shipped agent.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Outside either boundary nothing is drawn. The value is not clamped to the
 axis, not interpolated across, and not replaced by a default. A ratio pinned

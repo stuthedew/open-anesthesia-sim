@@ -472,13 +472,22 @@ class AgentUptakeSystem:
         """Restore the state previously captured by `capture_state()`.
 
         No compartment's restore can reject what `capture_state()` captured,
-        so this method cannot raise. The alveolar compartment, the venous pool
-        and each tissue group write their amounts in a way that bypasses their
-        write guards. The circuit and the validator write theirs through guards
-        that cannot reject a captured state (`PL-19Y0`). This is a requirement,
-        not an accident. The method runs while a failure is already being
-        handled, and a rollback that could fail partway would leave exactly the
-        partial state that it exists to prevent.
+        so this method cannot raise, apart from the one exception below. The
+        alveolar compartment, the venous pool and each tissue group write
+        their amounts in a way that bypasses their write guards. The circuit
+        and the validator write theirs through guards that cannot reject a
+        captured state (`PL-19Y0`). This is a requirement, not an accident.
+        The method runs while a failure is already being handled, and a
+        rollback that could fail partway would leave exactly the partial state
+        that it exists to prevent.
+
+        The one exception is a circuit whose volume has shrunk since the
+        capture to less than the agent that the circuit held at the capture.
+        The circuit refuses to put that agent back
+        (`BreathingCircuit.restore_state`, `PL-QG52`). The circuit is restored
+        first, so its refusal leaves every compartment untouched. No rollback
+        inside `advance()` or `resume_at()` can reach this case, because
+        nothing there changes the volume.
         """
 
         self.circuit.restore_state(state.circuit)
@@ -748,24 +757,26 @@ class AgentUptakeSystem:
         case and not to the branch.
 
         `initial_agent_l` is the anchor of that same accounting period: the
-        amount that the *parent's* period started from. It is passed in for the
-        reason that `reset()` gives, that a check must not rest on an invariant
-        it does not establish. The alternative would derive the anchor as the
-        value that makes `docs/MODEL.md`'s mass-balance identity close exactly.
-        This method deliberately does not do that, because the canonical path's
-        own conservation residual has no reason to fall on the positive side.
-        On a 900 s sevoflurane run with two setting changes, the derived anchor
-        was measured at -6.9e-14 L. That is a negative initial amount, which
-        `AgentSimulationValidator` rightly rejects. When the anchor is carried
-        over rather than derived, that residual stays where it belongs: inside
-        the check, at 6.9e-14 L against the 1e-12 L absolute tolerance. It is
-        not absorbed into the anchor, where nothing would report it.
+        amount that the *parent's* period started from. It is passed in rather
+        than derived, for the reason that `reset()` gives: a check must not
+        rest on an invariant that it does not establish. Deriving it would mean
+        taking the anchor as the value that makes `docs/MODEL.md`'s
+        mass-balance identity close exactly. This method deliberately does not
+        do that, because the canonical path's own conservation residual has no
+        reason to fall on the positive side. On a 900 s sevoflurane run with
+        two setting changes, the derived anchor was measured at -6.9e-14 L.
+        That is a negative initial amount, which `AgentSimulationValidator`
+        rightly rejects. When the anchor is carried over rather than derived,
+        that residual stays where it belongs: inside the check, at 6.9e-14 L
+        against the 1e-12 L absolute tolerance. It is not absorbed into the
+        anchor, where nothing would report it.
 
-        If any guard fires, the system is left untouched, by the route that
-        `advance()` uses and for the same reason. `_write_state_vector` writes
-        one compartment at a time, so a fraction that the model cannot
-        represent is rejected after earlier compartments have already been
-        written.
+        If any guard fires, the system is left untouched, through the same
+        rollback that `advance()` uses. `require_canonical_state` checks every
+        fraction before anything is written, so a fraction out of range is
+        refused first. A later refusal, such as the validator rejecting the
+        carried-over accounting, comes after the compartments have been
+        written, and the rollback undoes those writes.
 
         The cached propagator is neither rebuilt nor cleared, because
         `_propagator_cache_key()` reads only the settings that the system matrix
@@ -774,16 +785,16 @@ class AgentUptakeSystem:
         Raises:
             SimulationConfigurationError: `state` did not come from the
                 canonical path, is not `STATE_SIZE` long, holds a non-finite
-                value, or does not carry exactly one in `UNIT_STATE`. Or
-                `initial_agent_l` or either cumulative total is negative or not
-                finite. Or a fraction is outside 0 to 1, which is rejected
-                under the name of the compartment that would hold it.
+                value, holds a fraction outside 0 to 1 or a cumulative total
+                outside 0 to `MAXIMUM_CUMULATIVE_AGENT_L`, or does not carry
+                exactly one at the `UNIT_STATE` position. All of these are
+                `require_canonical_state`'s checks, which a `RunDefinition`
+                applies to its opening state too. The error is also raised when
+                `initial_agent_l` is negative or not finite.
         """
 
         require_canonical_state(state)
         require_nonnegative_finite("initial_agent_l", initial_agent_l)
-        require_nonnegative_finite("delivered_agent_l", state[DELIVERED_AGENT_L])
-        require_nonnegative_finite("exhausted_agent_l", state[EXHAUSTED_AGENT_L])
 
         state_before = self.capture_state()
         resumed = False
@@ -823,12 +834,12 @@ class AgentUptakeSystem:
         for its two callers, and it would not be safe for a third.
         `_advance_step` passes it what `propagate` returned from this system's
         own state. `resume_at` passes it a state that `require_canonical_state`
-        has already checked for length, finiteness and the constant entry. A
-        caller that reached this method with anything else would get an
-        `IndexError` from a short vector, a silent truncation from a long one,
-        and no error at all for a wrong `UNIT_STATE`. None of these is how the
-        rest of `core/` rejects a value. So `resume_at` is the entry point for a
-        state that this system did not produce itself.
+        has already checked for length, finiteness, range and the constant
+        entry. A caller that reached this method with anything else would get
+        an `IndexError` from a short vector, a silent truncation from a long
+        one, and no error at all for a wrong `UNIT_STATE`. None of these is how
+        the rest of `core/` rejects a value. So `resume_at` is the entry point
+        for a state that this system did not produce itself.
         """
 
         self.circuit.set_inspired_partial_pressure_fraction(

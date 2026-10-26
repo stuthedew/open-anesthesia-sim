@@ -3,17 +3,19 @@ id: PL-58D7
 title: core's closed forms and products are fixed one at a time at extreme inputs - overflow to inf, underflow to zero, cancellation and rounding at the wrong scale - because nothing states the floating-point domain each operation must hold: nine members from 2026-09-06 to 2026-10-17
 priority: P1
 effort: L
-status: blocked
+status: done
 classes: defect, refactor
 feature: defect-review-2026-10
 touches: src/anesthesia_sim/core, src/anesthesia_sim/data, docs/MODEL.md, tests/unit, docs/items/PL-0WFJ-the-guard-every-run-opening-shares-require.md
 blocked-by: PL-0WFJ
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1864
 payoff: each core operation states and enforces the inputs on which its floating-point answer is correct, so an extreme input is refused at build rather than found as a nan or a negative uptake
 verify: grep -q '^| The state a run opens from, each fraction |' docs/MODEL.md && grep -q 'def test_every_core_operation_holds_its_equations_at_every_envelope_corner' tests/unit/test_numerical_envelope_sweep.py
 root-cause-of: PL-3PRZ, PL-2MD9, PL-6QYJ, PL-8H2R, PL-B26Y, PL-YT8N, PL-XWFP, PL-FNH3, PL-8LQZ, PL-0WFJ
-generator: live - the corner sweep found one more input with no interval, a run's opening state (PL-0WFJ), so the structure is not finished until that lands (2026-10-26)
+generator: spent - every input to core/ now has a closed interval refused at build, the opening state last (PL-0WFJ, 2026-10-26), and the corner sweep tests an operation added later without anyone writing a domain for it; PL-9B1M, the rounding at the top of the fraction range, is a refusal and stays an ordinary member
 misread: The floating-point input domain on which each closed form and product in core gives a correct answer
 ---
 
@@ -99,3 +101,11 @@ it to the table in `docs/MODEL.md` as a row that starts "The state a run opens
 from, each fraction", which this item's `verify:` looks for. Then close this head and mark the
 generator spent. `PL-9B1M`, the rounding at the top of the fraction range, is
 a member of the feature but not a blocker: its refusal is the safe failure.
+
+**Closed 2026-10-26 (#1864).** `PL-0WFJ` gave the opening state its interval:
+`require_canonical_state` now builds each fraction as a `Fraction` and refuses
+a negative cumulative amount, for a `RunDefinition` and `resume_at` alike. The
+table in `docs/MODEL.md` § "The numerical envelope" has the row this item's
+`verify:` looks for. The generator is marked spent, because no input to
+`core/` is left without an interval. `PL-9B1M` stays open as an ordinary
+member.

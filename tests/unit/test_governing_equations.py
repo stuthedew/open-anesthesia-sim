@@ -29,6 +29,7 @@ from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
+    MAXIMUM_CUMULATIVE_AGENT_L,
     STATE_SIZE,
     TISSUE_GROUP_COUNT,
     UNIT_STATE,
@@ -36,6 +37,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
     build_system_matrix,
+    require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import matrix_exponential
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
@@ -859,3 +861,85 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
         assert matrix_exponential(build_system_matrix(built_otherwise), interval_s) == (
             matrix_exponential(build_system_matrix(plain), interval_s)
         )
+
+
+def _empty_state_with(position: int, value: float) -> tuple[float, ...]:
+    """An empty canonical state with `value` at `position`."""
+
+    state = [0.0] * STATE_SIZE
+    state[UNIT_STATE] = 1.0
+    state[position] = value
+
+    return tuple(state)
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        INSPIRED_FRACTION,
+        ALVEOLAR_FRACTION,
+        VENOUS_FRACTION,
+        *(FIRST_TISSUE_FRACTION + offset for offset in range(TISSUE_GROUP_COUNT)),
+    ],
+)
+@pytest.mark.parametrize("value", [-0.3, nextafter(0.0, -1.0), nextafter(1.0, 2.0), 1.7])
+def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one(
+    position: int, value: float
+) -> None:
+    """A value outside 0 to 1 is refused at each of the six fraction positions (`PL-0WFJ`).
+
+    The live system's compartments refuse these values, so a `RunDefinition` that opened from
+    one would draw a state that the system can never hold. The values include the nearest
+    floats outside each bound.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, value))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "is outside 0 to 1" in str(raised.value)
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_a_negative_amount_of_agent(position: int) -> None:
+    """A cumulative amount of agent below zero describes a run that never happened."""
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(_empty_state_with(position, -1e-12))
+
+    assert str(raised.value).startswith(f"state[{position}] (")
+    assert "must be nonnegative" in str(raised.value)
+
+
+def test_require_canonical_state_accepts_each_fraction_at_both_bounds() -> None:
+    """Zero and one are physical fractions, so the range check must not refuse them."""
+
+    for position in range(FIRST_TISSUE_FRACTION + TISSUE_GROUP_COUNT):
+        require_canonical_state(_empty_state_with(position, 0.0))
+        require_canonical_state(_empty_state_with(position, 1.0))
+
+
+@pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
+def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(position: int) -> None:
+    """A total above what a whole case can move at the fastest fresh gas flow is refused.
+
+    This was found at review. Set to the largest float, each total once passed the check, and
+    `state_at(600.0)` returned `inf` for each. The bound itself is accepted, and the next float
+    above it is not.
+    """
+
+    assert MAXIMUM_CUMULATIVE_AGENT_L == 14_400.0
+
+    require_canonical_state(_empty_state_with(position, MAXIMUM_CUMULATIVE_AGENT_L))
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_canonical_state(
+            _empty_state_with(position, nextafter(MAXIMUM_CUMULATIVE_AGENT_L, inf))
+        )
+
+    role = {DELIVERED_AGENT_L: "delivered", EXHAUSTED_AGENT_L: "exhausted"}[position]
+    assert str(raised.value) == (
+        f"state[{position}] ({role} agent in L) of 14400.000000000002 L is more than the "
+        "14400.0 L that a case can deliver or exhaust at the fastest supported fresh gas "
+        "flow over the supported run length"
+    )
