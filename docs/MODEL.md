@@ -9320,18 +9320,42 @@ estimates the brain concentration at awakening. That estimate is not a
 measurement, because cerebral concentration cannot be sampled in these
 patients. The abstract says the brain concentrations were "calculated with
 end-tidal anesthetic concentrations", and the title calls them "predicted".
-So they come from Katoh's own model of brain uptake (`PL-YDRT`). The full paper
-is not in the reference corpus, so the form of that model is not recorded
-here. During fast washout, the calculated cerebral concentration at first eye
-opening was 0.34 of MAC for sevoflurane and 0.30 for isoflurane,
-"nearly equal to MAC-Awake obtained by slow alveolar washout". The stored
-values are therefore the slow-washout ones, and the trace they belong against
-is the vessel-rich one. That rests on a modelled estimate agreeing with an
+So they come from Katoh's own model of brain uptake (`PL-YDRT`). That model
+treats the brain as one well-mixed compartment perfused by arterial blood. Its
+equation 1 (p. 1013) is:
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+
+$$
+\frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
+$$
+
+This is the perfusion-limited form that § "Tissue uptake and return" uses for
+each tissue group. Katoh's compartment is the brain alone, though, while this
+model's vessel-rich group pools the brain with the heart, liver, kidney and
+viscera. Every patient was given the same rules for the flow and the volume.
+Cerebral blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac
+index of 3.5 L/min/m², so it scales with body surface area. Brain volume
+$`V_{Brain}`$ is 21 mL/kg, so it scales with body weight. The brain's time
+constant therefore varied a little from patient to patient. The coefficients
+were the same for everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is
+0.63 for sevoflurane and 1.36 for isoflurane, and the brain:gas coefficient
+$`\lambda_{T/G}`$ is 1.15 and 2.09.
+The arterial partial pressure was not measured. Katoh's equation 2 sets it
+equal to the end-tidal value. Equation 3 (p. 1016) corrects the end-tidal
+value for 20% dead-space gas, as $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. The
+two give different answers. During fast washout, the calculated cerebral
+concentration at first eye opening was 0.30 of MAC for sevoflurane and 0.26
+for isoflurane under equation 2 (Table 1, p. 1014). Under equation 3 it was
+0.34 and 0.30 (Table 3, p. 1016). The abstract quotes the equation 3 figures,
+"nearly equal to MAC-Awake obtained by slow alveolar washout". Neither set
+differs significantly from the slow-washout values. The stored values are
+therefore the slow-washout ones, and the trace they belong against is the
+vessel-rich one. That rests on a modelled estimate agreeing with an
 equilibrated measurement, which is weaker evidence than a direct measurement
 of the brain would be.
 
-<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
-<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+<!-- not-restated: 0.34 -->
 
 **Three ways of misreading the band run in the same direction, and it is the
 consequential one.** Concentration falls during emergence. So a trace crosses
@@ -9363,12 +9387,35 @@ Mapleson's 1.80%, at 7.31 min. The isoflurane and desflurane gaps are inside
 the limits, so Mapleson does not show either band to be off. For desflurane a
 direct measurement points the same way. The drawn centre of 2.16% agrees with
 Song et al.'s measured 2.17%, as the paragraph below says. All three figures
-are gaps from Mapleson's MAC, not from the MAC each source used. Katoh's
-sevoflurane and isoflurane fractions are ratios to an age-adjusted MAC that the
-abstract does not name, so the gap from Katoh's own denominator is not yet
-known (`PL-P319`).
+are gaps from Mapleson's MAC, not from the MAC each source used.
 <!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 <!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+
+Katoh's own denominator is each patient's age-adjusted MAC, from two linear
+equations on p. 1013. For isoflurane it is 1.43 − 0.0061 × age (yr) percent,
+and for sevoflurane 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC
+studies for them and does not say how the equations were derived from those
+studies. At age 40 the equations give 1.94% for sevoflurane and 1.19% for
+isoflurane. At that age the stored MAC is 3.3% above Katoh's for sevoflurane
+and 1.2% above it for isoflurane. The band is the stored fraction times the
+stored MAC, so it sits above Katoh's own age-40 awakening concentration by
+the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
+isoflurane, where Katoh's fractions times Katoh's age-40 MAC give 0.658% and
+0.368%. Both differences are much less than the 0.05 of MAC standard
+deviation of Katoh's fractions. Katoh's slow-washout patients themselves woke
+at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
+(Table 1, p. 1014). Those figures are lower than the band mostly because the
+patients were older, with mean ages of 45.9 and 45.1 years. So they are not a
+like-for-like check of a band drawn for age 40. The age-40 comparison points
+the same way as the Mapleson one: the band sits slightly high, so it teaches a
+slightly early wake-up (`PL-P319`).
+<!-- not-restated: 0.36 -->
+<!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 3.3% from data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- derived: 1.2% from data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
 
 **The value is stored as a fraction of MAC, never as a percent of one
 atmosphere, and that is a safety decision rather than a schema preference.**
