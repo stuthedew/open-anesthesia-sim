@@ -116,6 +116,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
+    WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     HaltDisposition,
     NewCaseQuestion,
@@ -712,7 +713,7 @@ class RunView(QWidget):
         # cards' ×MAC numbers. It is written on both the frame path and the halt path,
         # and before the dials. So an exception raised in `setting_readouts` cannot
         # leave another agent's 1 MAC on screen. When a halt finds cards that were
-        # divided by another agent's MAC, it withholds their multiples (`present_halt`,
+        # divided by another agent's MAC, it withholds their values (`present_halt`,
         # `PL-6RJ0`).
         self._one_mac_text.setText(
             format_mac_reference(record.agent_display_name, record.agent_mac_percent)
@@ -794,21 +795,25 @@ class RunView(QWidget):
         )
 
         if self._cards_agent_id != record.agent_id:
-            self._withhold_card_multiples()
+            self._withhold_card_values()
 
-    def _withhold_card_multiples(self) -> None:
-        """Replace each card's ×MAC number with `WITHHELD_MAC_MULTIPLE_TEXT`.
+    def _withhold_card_values(self) -> None:
+        """Replace each compartment card's percent and ×MAC number with a withheld text.
 
         `present_halt` calls this when the agent has changed and no frame has yet
-        been drawn for the new agent. The cards then hold the last frame's values,
-        divided by the old agent's MAC. The 1 MAC line and the delivered line,
-        however, state values for the new agent. Showing those multiples would put
-        a number on screen beside a divisor that did not produce it (`PL-6RJ0`).
-        The next frame writes every card again.
+        been drawn for the new agent. The cards then hold the last frame's values:
+        the old agent's concentrations, divided by the old agent's MAC. The heading
+        above them, the 1 MAC line and the delivered line already name the new
+        agent. Showing either number would put a value on screen under a substance
+        or a divisor that did not produce it. `PL-6RJ0` withheld the multiples, and
+        `PL-J5GC`'s guard found the percents still under the new agent's heading.
+        The clock keeps the last frame's instant, which the halt banner states. The
+        next frame writes every card again.
         """
 
         for index, panel in enumerate(self._readout_row.panels):
             if index != _CLOCK_PANEL_INDEX:
+                panel.value_label.setText(WITHHELD_CONCENTRATION_TEXT)
                 panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
 
     def _write_settings(self, settings: RunSettings) -> None:

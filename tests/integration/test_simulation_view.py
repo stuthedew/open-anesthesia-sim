@@ -2320,11 +2320,14 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
         record.agent_display_name, record.agent_mac_percent
     )
     assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
-    # The cards keep the last frame's values, but none of sevoflurane's multiples.
-    assert [panel.value_label.text() for panel in run._readout_row.panels] == cards_before
+    # The clock keeps the last frame's instant. No card keeps sevoflurane's percent
+    # under the desflurane heading, or its multiple under desflurane's 1 MAC (`PL-J5GC`).
+    clock = run_view_module._CLOCK_PANEL_INDEX
+    assert run._readout_row.panels[clock].value_label.text() == cards_before[clock]
 
     for index, panel in enumerate(run._readout_row.panels):
-        if index != run_view_module._CLOCK_PANEL_INDEX:
+        if index != clock:
+            assert panel.value_label.text() == "\u2014%"
             assert panel.secondary_label.text() == "\u2014 \u00d7MAC"
 
     monkeypatch.undo()

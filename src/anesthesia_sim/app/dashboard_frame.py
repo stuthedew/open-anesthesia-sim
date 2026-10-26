@@ -59,6 +59,7 @@ from anesthesia_sim.app.controller import (
     RunStatus,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -1104,12 +1105,14 @@ WIDEST_COMPARTMENT_SECONDARY: Final = max(
     ),
     key=len,
 )
-#: The text that a readout card shows instead of its ×MAC number during a halt that
-#: follows an agent change. The card still holds the last frame's value, divided by
-#: the old agent's MAC, while the 1 MAC line already states the new agent's 1 MAC
-#: (`PL-6RJ0`). The text keeps the ×MAC unit, so the card's line still says which
-#: value is missing. It is shorter than `WIDEST_COMPARTMENT_SECONDARY`, so the card
-#: does not resize.
+#: The two lines that a readout card shows instead of its values during a halt that
+#: follows an agent change. The card was last written for the old agent, so its
+#: percent is that agent's concentration and its multiple was divided by that
+#: agent's MAC. The heading and the 1 MAC line above the cards already name the new
+#: agent (`PL-6RJ0`, `PL-J5GC`). Each text keeps its unit, so the card still says
+#: which value is missing. Each is shorter than the widest string its line reserves,
+#: so the card does not resize.
+WITHHELD_CONCENTRATION_TEXT: Final = f"\u2014{DisplayUnit.CONCENTRATION.label}"
 WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
