@@ -78,15 +78,12 @@ write: a session that will not start is a worse outcome than a spurious demand.
 from __future__ import annotations
 
 import locale
-import os
-import stat
 import subprocess
 import sys
-import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
-from hook_input import project_root
+from hook_input import project_root, write_atomically
 
 #: The line as the harness ships it, and the line that replaces it. Matched
 #: whole, indentation included, so a near-miss elsewhere in the script cannot
@@ -142,26 +139,6 @@ def corrected(source: str) -> str | None:
     return source.replace(VULNERABLE, CORRECTED)
 
 
-def _write_atomically(target: Path, text: str) -> None:
-    """Replace `target`'s contents, keeping its mode and never truncating it.
-
-    The file is executed by every `Stop` in the session, so a partial write
-    would break the session it was meant to help. Writing a sibling and
-    renaming it means the hook is either the old script or the new one.
-    """
-    mode = stat.S_IMODE(target.stat().st_mode)
-    handle_fd, name = tempfile.mkstemp(dir=str(target.parent), prefix=target.name + ".")
-    scratch = Path(name)
-    try:
-        with os.fdopen(handle_fd, "w", encoding="utf-8") as handle:
-            handle.write(text)
-        os.chmod(scratch, mode)
-        os.replace(scratch, target)
-    except BaseException:
-        scratch.unlink(missing_ok=True)
-        raise
-
-
 #: What a full clone carries, and what a `--depth 1` clone does not.
 WIDE_REFSPEC = "+refs/heads/*:refs/remotes/origin/*"
 
@@ -215,7 +192,7 @@ def main(argv: list[str]) -> int:
         print(UNPATCHED.format(path=target, reason="the line it rewrites is not there"))
         return 0
     try:
-        _write_atomically(target, replacement)
+        write_atomically(target, replacement)
     except OSError as error:
         print(UNPATCHED.format(path=target, reason=f"writing it failed: {error}"))
     return 0

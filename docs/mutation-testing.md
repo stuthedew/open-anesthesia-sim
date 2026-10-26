@@ -61,6 +61,13 @@ must come from, and that rule applies whatever the score.
   refuses the audit. Write the test that kills it, or, where no input can tell
   the mutant from the original, mark its line `# pragma: no mutate`, which the
   check prints.
+- `--verdict` runs only the mutants that can change it (`PL-88HC`). Before
+  mutmut runs, the tool lists the changed functions' mutants and places each
+  on its line. A mutant that changes only lines the branch did not change is
+  left out, and a note counts it. One that cannot be placed still runs. A
+  plain `make mutate` still runs every mutant of each changed function, so a
+  reviewer still sees the survivors on the lines the branch left alone.
+  Neither shortens the coverage collection at the start of a run.
 
 ### What the check of a changed test leaves unmeasured
 
