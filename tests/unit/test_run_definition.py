@@ -1086,6 +1086,30 @@ def test_a_window_refuses_to_reach_past_the_run() -> None:
         definition.evaluate(10.0, 30.1, 5)
 
 
+def test_evaluate_ends_its_last_column_exactly_at_stop() -> None:
+    """The last column is `stop_s` itself, so it never lands past the run (`PL-9SL5`).
+
+    `0.3 + 41 * (10.7 / 41)` is 11.000000000000002, one rounding unit past 11 s. On an 11 s
+    run that is past the time the run has reached, which `_require_within_run` refuses when
+    a caller names it. The window's first column stays `start_s`.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+    definition.advance_to(CaseInstant(11.0))
+
+    assert 0.3 + 41 * ((11.0 - 0.3) / 41) > 11.0, "the case no longer rounds past the stop"
+
+    window = definition.evaluate(0.3, 11.0, 42)
+
+    assert len(window.times_s) == 42
+    assert window.times_s[0] == 0.3
+    assert window.times_s[-1] == 11.0
+    assert all(later > earlier for earlier, later in zip(window.times_s, window.times_s[1:]))
+
+
 def test_the_window_column_bound_is_the_documented_one_and_admits_an_eight_k_plot() -> None:
     """The bound is the number the item states, and a full-width 8K plot is far inside it.
 

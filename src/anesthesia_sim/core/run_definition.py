@@ -551,7 +551,10 @@ class RunDefinition:
             stop_s: The window's last instant, in seconds. Equal to `start_s`
                 for a window of one instant.
             columns: How many instants to sample, at least one. With one
-                column, only `start_s` is sampled.
+                column, only `start_s` is sampled. With more, the last column
+                is `stop_s` itself rather than `start_s` plus a multiple of
+                the spacing, which can round one unit past `stop_s` and so past
+                the time the run has reached (`PL-9SL5`).
 
         Raises:
             TypeError: `columns` is not an `int`, or is a `bool`.
@@ -585,7 +588,9 @@ class RunDefinition:
             )
 
         spacing_s = 0.0 if columns == 1 else (stop_s - start_s) / (columns - 1)
-        times_s = tuple(start_s + column * spacing_s for column in range(columns))
+        times_s = tuple(start_s + column * spacing_s for column in range(columns - 1)) + (
+            (start_s,) if columns == 1 else (stop_s,)
+        )
         states: list[tuple[float, ...]] = []
         segment_index = self._segment_index_at(start_s)
         column = 0
