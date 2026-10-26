@@ -3,11 +3,13 @@ id: PL-X4X2
 title: The playback-rate line under the clock reads "300× real time" while the run is paused, reset or halted, but `docs/MODEL.md` § "Minimum displayed outputs" still defines that line as the rate at which simulated time is advancing, which contradicts § "Interface boundary"'s statement that the label states the setting
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, ux, safety
 feature: replay-findings
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1840
 payoff: the specification gives one definition of the rate line under the clock, the one the screen matches, so a stopped run is not described as advancing
 verify: ! grep -qF 'the rate at which simulated time is advancing' docs/MODEL.md && ! grep -qF 'State how fast simulated time is being played' src/anesthesia_sim/app/formatting.py
 ---
@@ -19,3 +21,5 @@ verify: ! grep -qF 'the rate at which simulated time is advancing' docs/MODEL.md
 **Done when.** `docs/MODEL.md` § "Minimum displayed outputs" and the docstring of `format_playback_rate` define the line under the clock as the playback setting, as § "Interface boundary" does, and no longer as the rate at which simulated time is advancing. If the line is also worded by run state, `tests/unit/test_dashboard_frame.py` checks the wording for a paused run.
 
 **Found by.** `PL-TBQS` reviewer replay on #331: r01 F2, r02 F3, r03 F4 and r06 F3, plus `PL-ZWXD`'s entry "the rate line still reads 300x while paused". Checked against main 2026-10-25 by reading the code. The halted-run case after a dropdown change was fixed separately by `PL-P58M`.
+
+**Route taken 2026-10-26.** The wording was left as it is, and the two definitions now agree on the setting. A run-state prefix such as "Paused · plays at 300×" was weighed and not taken, for two reasons. `format_playback_rate` is the one string that both the rate dropdown and the clock's second line show, so that the control and the clock cannot state the mode differently, and a prefix on the clock alone would give the same mode two wordings. And the transport row's status word already says whether the run is running. So `docs/MODEL.md` § "Minimum displayed outputs" and the docstring of `format_playback_rate` now define the line as the playback rate that is set, and say that a paused, reset or halted run still shows it. The wording is a placeholder under the owner's rule of 2026-10-18 on look and wording.
