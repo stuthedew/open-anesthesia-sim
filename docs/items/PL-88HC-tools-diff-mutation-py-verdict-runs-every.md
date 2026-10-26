@@ -3,10 +3,12 @@ id: PL-88HC
 title: tools/diff_mutation.py --verdict runs every mutant of each changed function although only mutants on changed lines can refuse, so verify --self spent 36 minutes on PL-2TZT's 340-mutant batch; select the mutants of changed lines before mutmut runs
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost
-touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md
+touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, docs/apparatus.md
 added: 2026-10-24
+closed: 2026-10-26
+pr: 1849
 payoff: a review of a branch with a large changed function no longer waits on mutants that cannot change verify's verdict; #1676's run took 36 minutes
 verify: grep -q 'def test_the_verdict_runs_only_the_mutants_of_changed_lines' tests/unit/test_diff_mutation.py
 ---
@@ -20,3 +22,26 @@ verify: grep -q 'def test_the_verdict_runs_only_the_mutants_of_changed_lines' te
 **Done when.** `tools/diff_mutation.py --verdict` asks mutmut to run only the mutants that change a line the branch changed. A mutant whose line cannot be placed before the run still runs, so it can still refuse. The verdict's `uncaught` and `undecided` lists are unchanged for every branch. A test shows that a mutant on an unchanged line of a changed function is not run. The note that names survivors on unchanged lines of a changed function goes with them, and the builder says in `docs/mutation-testing.md` whether `make mutate` without `--verdict` still runs whole functions for a reviewer.
 
 **Generator check.** A one-off. It is a known cost of the tool `PL-CZXN` built, measured and recorded in that item's own brief when it closed, and not a misread fact: `run` selects by function because mutmut names its mutants by function, while `verdict` counts by line. No `reenters:`, because `PL-CZXN`'s done-when asked for the replacement check, not for its run time.
+
+**Done 2026-10-26.** Before mutmut runs, `--verdict` now calls `listing`. It
+runs a short script that takes the steps mutmut 3.8.0's `run` takes before
+coverage collection: it copies the tree, generates the mutants, and prints
+each changed function's mutant diffs as JSON from one process. `listing`
+places each mutant with `mutated_rows`, the same function `verdict` uses. A
+mutant runs when a line it changes is one the branch changed, or when it
+cannot be placed. mutmut then runs those names alone. `verdict` skips a
+listed mutant that did not run, and a "Not run" note counts it in place of the
+old note about survivors on unchanged lines. A listed diff also replaces the
+`mutmut show` call that `verdict` made for each mutant not caught. The script
+uses mutmut's internals rather than its command line, so it relies on the
+version pin in `pyproject.toml`. If it fails, every mutant of the changed
+functions runs as before.
+
+A plain `make mutate` still runs whole functions, so a reviewer still sees the
+survivors on unchanged lines. `docs/mutation-testing.md` says so.
+
+Checked end to end on 2026-10-26: a comment added to the last line of
+`VenousBloodCompartment.time_constant_s` ran 2 of its 10 mutants and left 8
+out, in 4 minutes 6 seconds on four cores. The fixed coverage collection is
+most of that time, as the brief expected.
+
