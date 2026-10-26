@@ -45,9 +45,11 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
+    "CHART_GRID_RESOLUTIONS_S",
     "CHART_LIVE_HEADROOM_FRACTION",
     "FIT_RUN_KEY",
     "SELECTABLE_TIME_BASES",
@@ -56,6 +58,7 @@ __all__ = [
     "fit_to_run",
     "fitted_window",
     "following_window",
+    "grid_spacing_s",
     "saved_time_base",
     "saved_time_base_value",
     "tick_times",
@@ -69,6 +72,31 @@ __all__ = [
 # and invisible on a twelve-hour one. The fraction is small enough that the width
 # a reader selected is still very nearly the width they are reading.
 CHART_LIVE_HEADROOM_FRACTION: Final = 0.02
+
+# The grids onto which the spacing of chart columns is rounded down, coarsest first.
+# They are the step by which the run advances, and a tenth of that step. The chart's
+# hover prints the instant of the column it reports, and the value it prints is the
+# state at exactly that column (`PL-T5NJ`). A spacing derived from the plot's width
+# alone puts columns at instants such as 410.7383 s. Printed to the clock's tenth of
+# a second, that instant can be up to 0.05 s away from the state it labels. Early in
+# a fast induction, the circuit concentration moves by 0.02 percentage points in
+# 0.04 s. On these grids every column is a whole number of hundredths of a second,
+# so the hover can print the instant it reports exactly. `grid_spacing_s` decides
+# which grid applies.
+CHART_GRID_RESOLUTIONS_S: Final = (MAXIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S / 10)
+
+# How many units of a grid a spacing must span before it is rounded onto that grid
+# rather than a finer one. Rounding down then removes less than one unit, which is
+# less than one part in this many of the spacing. So rounding adds at most that
+# fraction more columns.
+_GRID_UNITS_FOR_A_COARSER_GRID: Final = 10
+
+# How far a spacing's count of grid units may fall short of a whole number and still
+# count as that number. In binary floating point, dividing a spacing such as 0.9 s by
+# 0.01 s can give a result just below 90. Taking the floor would then lose a whole
+# unit. A billionth of a unit is far smaller than any spacing the chart could be
+# asked for.
+_GRID_UNIT_COUNT_TOLERANCE: Final = 1e-9
 
 # The key of the selector's "Fit run" entry. It is a sentinel rather than a
 # width, because fitting is a *rule* for choosing the width each frame, not one
@@ -353,3 +381,51 @@ def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float,
     last = math.floor(stop_s / interval_s)
 
     return tuple(index * interval_s for index in range(first, last + 1))
+
+
+def grid_spacing_s(raw_spacing_s: float) -> float:
+    """Round a column spacing down onto the coarsest grid that adds few columns.
+
+    A grid is used where the spacing is at least ten of its units. Rounding down then
+    adds at most a tenth more columns. So a spacing of 1 s or more lands on the clock's
+    tenth of a second, and each column's printed instant is one that the clock also
+    shows. A spacing of less than 1 s lands on hundredths of a second. A spacing of
+    less than a tenth of a second spans fewer than ten hundredths, but there is no
+    finer grid, so it still lands on hundredths. There, rounding can add more columns,
+    up to twice as many just below 0.02 s. Only the one- and two-minute axes reach such
+    spacings, on plots wider than 600 px and 1200 px respectively.
+
+    The spacing is rounded down, never up, so each column is still no more than one
+    pixel's width of time from the next. That is the chart's guarantee in
+    `docs/MODEL.md` § "What the chart draws". The one exception is a spacing of less
+    than a hundredth of a second, which needs a one-minute axis more than 6000 px wide.
+    That spacing is raised to a hundredth, so there the line segment between two
+    columns spans more than a pixel.
+
+    Args:
+        raw_spacing_s: The axis span divided by its intervals, in simulated
+            seconds. It must be positive and finite.
+
+    Returns:
+        The spacing to evaluate the grid at, in simulated seconds: a whole
+        number of units of one of `CHART_GRID_RESOLUTIONS_S`.
+
+    Raises:
+        ValueError: If `raw_spacing_s` is not a positive finite number.
+    """
+
+    if not math.isfinite(raw_spacing_s) or raw_spacing_s <= 0.0:
+        raise ValueError(f"column spacing must be positive and finite, got {raw_spacing_s!r}")
+
+    finest = CHART_GRID_RESOLUTIONS_S[-1]
+    resolution = next(
+        (
+            unit
+            for unit in CHART_GRID_RESOLUTIONS_S
+            if raw_spacing_s >= _GRID_UNITS_FOR_A_COARSER_GRID * unit
+        ),
+        finest,
+    )
+    units = math.floor(raw_spacing_s / resolution + _GRID_UNIT_COUNT_TOLERANCE)
+
+    return max(units, 1) * resolution

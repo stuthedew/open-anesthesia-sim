@@ -66,7 +66,8 @@ self-assessment by each session).
 1. **The CI run history.** Run `python3 tools/ci_runs.py refresh`. GitHub
    deletes a workflow run 90 days after it ran, so `docs/ci-runs.tsv` keeps
    one row per run: run id, workflow, run number, attempt, event, branch, head
-   commit, linked pull requests, status, conclusion and the two times. The
+   commit, linked pull requests, status, conclusion, the two times, and the
+   steps a failed run failed, read from its jobs (`PL-SW87`). The
    tool asks for every day from the day before the newest row, keeps every row
    GitHub no longer returns, and keeps a pull request link that GitHub has
    dropped because the branch was deleted. It refuses a day that reaches
@@ -118,7 +119,7 @@ include `planning`, or whose brief records a decision the owner took, written
 | A fix that did not hold | `read_items`: later items whose `reenters:` names the item, and the item's own `recurrences:` entries that are not withdrawn | Filings dated within the window, with the sum of the re-entering items' efforts (S = 1, M = 3, L = 8) and, where the ledger joins them, their sessions' `cost_usd`. This is the primary outcome |
 | A decision reopened | Later items and `docs/dead-ends.md` entries that name the item's id within a paragraph containing "reopen" or "refuted" | Matches within the window. This is a text match, so list each one in the report for a reader to confirm |
 | Churn on its files | `git log --numstat` over the files its pull request added or changed, from its merge to the window's end | Lines added and deleted by later commits, divided by the lines the pull request itself added (relative churn: Nagappan N, Ball T. Use of relative code churn measures to predict system defect density. ICSE 2005) |
-| Red CI runs on its pull request | `docs/ci-runs.tsv`: rows whose `pull_requests` holds its number | Runs with `conclusion` `failure`, and the distinct `head_sha` values created after the first failure (pushes after the first red run) |
+| Red CI runs on its pull request | `docs/ci-runs.tsv`: rows whose `head_branch` is its pull request's head branch and whose `created_at` falls while the pull request was open. Not `pull_requests` alone, which GitHub empties once the branch is deleted: the first run joined only 1 item through it | Runs with `conclusion` `failure`, less those whose `failed_steps`, a JSON list of step names, holds only hold steps, and the distinct `head_sha` values created after the first such failure (pushes after the first red run). The hold steps fail by design until a later hand step, so they say nothing about the work: "every closure records this pull request's number" and "the pull request's body is recorded in the tree" (retired 2026-09-26). A new hold is added to this list. A row whose `failed_steps` is `[]` failed no step of its own, such as a cancelled run, and is not counted either |
 | Review findings | The `Blind-review:` trailer on its squash commit, and the review threads on its pull request | The trailer's `findings` count, and the number of review threads opened by a reviewer other than the author |
 
 **A citation is not rework.** An earlier version of this table counted every
