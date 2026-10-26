@@ -64,6 +64,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     DECIMAL_BASE,
     FLOW_DISPLAY_DECIMALS,
+    MAC_UNIT_SUFFIX,
     format_agent_residual,
     format_agent_volume,
     format_branch_discard_warning,
@@ -1103,6 +1104,13 @@ WIDEST_COMPARTMENT_SECONDARY: Final = max(
     ),
     key=len,
 )
+#: The text that a readout card shows instead of its ×MAC number during a halt that
+#: follows an agent change. The card still holds the last frame's value, divided by
+#: the old agent's MAC, while the 1 MAC line already states the new agent's 1 MAC
+#: (`PL-6RJ0`). The text keeps the ×MAC unit, so the card's line still says which
+#: value is missing. It is shorter than `WIDEST_COMPARTMENT_SECONDARY`, so the card
+#: does not resize.
+WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
