@@ -6105,10 +6105,10 @@ conversion to get right.
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
 way** (`PL-B8MK`, decided and built 2026-09-20). The two conditions above
-coincide for every fork the program takes today. Those forks are taken *at*
-control events, and a control event is a keyframe. So "opens at a keyframe" and
-"opens at the fork instant" name one instant, and nothing distinguishes them. A
-bookmark's instant is not in general a keyframe. On a 120 s run with two
+coincided for every fork the program took before bookmarks. Those forks were
+taken *at* control events, and a control event is a keyframe. So "opens at a
+keyframe" and "opens at the fork instant" named one instant, and nothing
+distinguished them. A bookmark's instant is not in general a keyframe. On a 120 s run with two
 control changes, only 3 of the 1 201 instants where a halt could land are
 keyframes. Meeting both conditions there would mean *recording* a keyframe
 where the run halts. This project measured that route and refused it. It makes
@@ -6131,6 +6131,61 @@ sevoflurane run with changes at 300 s and 600 s, forked at a bookmark of
 elements differ. The trunk stays byte-identical to the same case built without
 the bookmark.
 
+**An instant where a run stands has two sides, and every branch opens on the
+first** (`PL-ZR49`, 2026-10-26). The step that reached the instant ran under
+one stretch of settings. A setting changed while the run stands there opens the
+next stretch, at that instant. The first stretch can no longer change, because
+a change is recorded only at the instant the run has reached, and it replaces
+only a stretch that opens there. The second is still open to every change made
+before the next step. Until this item each way of branching, the reset and the
+halt record picked a side for itself, and eight defects followed from the
+disagreements (`PL-3K9B`, `PL-2N43`, `PL-1ZQ4`, `PL-HSP8`, `PL-TNYP`,
+`PL-NRR6`, `PL-K5BS`, `PL-XV0D`). The rule is now one for every branch:
+
+- **Its provenance is the first side.** `ResumePoint.segment` is the stretch the
+  step reaching the fork ran under (`RunDefinition.reaching_segment_at`), and
+  the branch's run definition opens at that stretch's keyframe. A fork at a
+  control event is built the same way as a fork at a bookmark, so the
+  construction above serves every fork. No change the parent makes at the fork
+  afterwards can replace the stretch the branch names.
+- **What it runs under that differs from the first side is recorded at the
+  fork.** The difference goes into the branch's run definition and into its own
+  control timeline alike, so the two records agree and both start from the
+  provenance. A branch whose settings match that stretch records nothing.
+- **Only a branch taken at a keyframe runs under the second side.**
+  `resumed_at` exists to branch at a setting change, so it opens after the
+  change at its instant and records that change as its own. Its timeline then
+  states the setting it runs under, whatever the trunk does at that instant
+  afterwards (`PL-TNYP`). `resumed_here` and `resumed_at_mark` open under the
+  first side. A setting changed while the trunk stands on a halt therefore
+  stays the trunk's, whether the halt branch is taken before the change or
+  after it, and the branch returned to at the mark later agrees with both
+  (`PL-HSP8`). All three ways of branching at one instant name the same
+  provenance. They differ only in that one recorded change.
+- **A reset branch keeps its settings and records the difference** (`PL-K5BS`).
+  It reopens at the fork on the same provenance, and each setting that differs
+  from it is recorded at the fork, as at any branch's opening. So a reset
+  branch's record and its provenance agree on what it runs under. That entry
+  is where the branch began rather than something done to it since, so it does
+  not count as something a Reset of the trunk would discard
+  (`SimulationSnapshot.opened_with`).
+- **The halt record names the marks as they are.** A run's halt record is what
+  the step it stopped on crossed: the step that halted a trunk, or the step
+  that reached a branch's fork. It is asked again whenever it is read, against
+  the current marks, as the standings are (`PL-1ZQ4`). So a mark removed and
+  added back under another label is named as it now is (`PL-XV0D`). On a
+  trunk, what the stepped readings crossed when the step halted the run is
+  kept as well, by instant and by height. A height that a stepped reading lands
+  on exactly can lie about 1e-14 beyond the canonical reading, and a trunk
+  halted there must still say why it stopped.
+
+At the case's opening no step has closed a stretch, so the opening stretch is
+both sides. A trunk edit at the opening still replaces the opening stretch,
+after a branch was taken there as before. The branch then names settings the
+trunk no longer opens under. Nothing it names has become false, because the
+opening keyframe is a state that no setting produced, and the branch did run
+under those settings from there.
+
 **Returning to a marked instant the run has already passed is that fork taken
 late** (`PL-W4XQ`, 2026-10-12). Consider a learner paused at three hours who
 marks the one-hour point and goes back to it. The learner is asking for a fork
@@ -6152,8 +6207,10 @@ what that reproduces, and what it does not:
 - **It is the branch the halt would have given.** A mark set before the run
   passed it halts the run, and the run is forked at the halt. The same mark set
   after the clock went past it is forked here. The two branches' whole
-  provenance compares equal: stretch, fork state, step count, the step the fork
-  ends, and crossing. It also stays that branch for a mark added later. Every
+  provenance compares equal: stretch, fork state, step count and the step the
+  fork ends. Both open under the settings the halting step ran under, even
+  after the trunk changed a setting while it stood on the halt (`PL-HSP8`).
+  It also stays that branch for a mark added later. Every
   run asks the step it opened on, or stands on, which marks it crossed. It asks
   against the marks as they are whenever its standings are read. So a mark
   added inside that step is treated the same on the trunk and on the branch,
@@ -6176,7 +6233,8 @@ what that reproduces, and what it does not:
 - **It does not replay what the trunk did afterwards.** The branch continues
   under the settings in force at the mark, with a control record of its own
   that starts empty, until the learner changes something. The trunk's later
-  changes stay the trunk's. This is how it differs from the reference
+  changes stay the trunk's, including a change made while it stood on the
+  mark. This is how it differs from the reference
   simulator's rewind. That rewind returns to time zero, keeps the recorded
   settings and plays them back as it runs (Philip JH, *Workbook for Gas Man®*,
   Med Man Simulations, appendix E, "Replaying Simulations", printed pages
@@ -6258,8 +6316,9 @@ keeps the settings and restores the state. Consider a branch that is reset
 after its learner has dialled something new. It stands at the fork state under
 settings its parent never used. Its definition still opens at the parent's
 keyframe under the parent's settings. What the learner has dialled is recorded
-as a *change at the fork*. The keyframe that this change opens is the fork's
-own state. So the trace starts where the readouts say the branch is standing,
+as a *change at the fork*, in the run definition and in the branch's own
+control timeline (`PL-K5BS`). The keyframe that this change opens is the
+fork's own state. So the trace starts where the readouts say the branch is standing,
 and the parent's stretch stays the parent's.
 
 **Deciding that from the settings instead makes it depend on the order of two
@@ -6291,9 +6350,9 @@ rather than restarting at the fork. This one time is what the clock displays
 and what stamps every recorded control change. It is also what rules the
 chart's axis, what the supported run length is measured against, and what the
 run definition's segments and keyframes are stamped in.
-`SimulationController.resumed_at()` opens the branch's definition at the fork
-instant. `resumed_here()` and `resumed_at_mark()` open it at the keyframe at or
-before the fork instant. All three do so on the case's own axis. `advance()`
+`SimulationController.resumed_at()`, `resumed_here()` and `resumed_at_mark()`
+all open the branch's definition at the keyframe where the stretch the step
+reaching the fork ran under opens, on the case's own axis. `advance()`
 and `drawn_window()` pass case time straight through to the definition. Nothing
 converts between frames anywhere, because there is only the one frame.
 
@@ -7343,6 +7402,16 @@ Reset must:
 - clear any recorded failure state, so that a session halted by a failed step
   can be started again from a clean state; and
 - preserve the user’s selected settings.
+
+**A branch's Reset returns it to its fork rather than to zero**, because a
+branch never held the case's induction (§ "The canonical evaluation rule").
+Its clock, its state and its accounting go back to the fork. Its settings are
+preserved as a trunk's are. A trunk's fresh run definition opens under those
+settings. A branch's opens on the parent's stretch it was taken from, so each
+preserved setting that differs from that stretch is recorded as a change at
+the fork. The control-input timeline is cleared and then holds exactly those
+changes. So a reset branch's timeline and its provenance agree on the settings
+it runs under (`PL-K5BS`, `PL-ZR49`).
 
 A Reset that the core refuses does none of these things. The fresh run
 definition opens on a settings record, which is built from the compartments.

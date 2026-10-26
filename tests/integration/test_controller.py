@@ -40,7 +40,12 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
-from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
+from anesthesia_sim.core.governing_equations import (
+    DELIVERED_AGENT_L,
+    EXHAUSTED_AGENT_L,
+    STATE_SIZE,
+    UptakeEquationSettings,
+)
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     load_agent_parameters,
@@ -3101,8 +3106,8 @@ def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> 
     it is the only one that tells "the branch carries its parent's patient"
     apart from "the branch rebuilds the same reference patient from the same
     data file". A run that never changes it checks the second claim while
-    appearing to check the first, because `_setting_at` then falls through to
-    the value in force now. So this test changes it mid-run and forks *before*
+    appearing to check the first, because a branch built from the value in
+    force now would pass too. So this test changes it mid-run and forks *before*
     the change. The branch must carry the value the case was computed under at
     the fork, which is no longer the trunk's current value.
     """
@@ -5244,3 +5249,411 @@ def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
         "passed it, or, standing on the step that crosses it, with resumed_here"
     )
     assert str(unmarked.value) == "no time bookmark stands at 60.0 s, so there is no mark there"
+
+
+# --- Edits made at a paused instant (PL-ZR49) --------------------------------
+#
+# An instant where a run stands has two sides. The step that reached it ran
+# under one stretch, which nothing can change any more. A setting changed
+# while the run stands there opens the next stretch. Every branch takes its
+# provenance from the first side, and records how the settings it runs under
+# differ from it as a change at the fork. The halt record is what the step
+# crossed, asked of the marks as they are. `docs/MODEL.md` § "The canonical
+# evaluation rule" states the rule these tests hold each door to.
+
+
+def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
+    """Each change as its instant, control and two values, leaving out how it was grouped."""
+
+    return [
+        (change.elapsed_s, change.control, change.previous_value, change.new_value)
+        for change in changes
+    ]
+
+
+def _replayed_from_provenance(branch: SimulationController) -> UptakeEquationSettings:
+    """The settings a branch's provenance and its own control timeline say it runs under.
+
+    The test applies each recorded change to the stretch the branch opened
+    from, by hand, so the result does not come from the controller's own
+    reading of either record.
+    """
+
+    fields_of_controls = {
+        ControlInput.FRESH_GAS_FLOW: ("fresh_gas_flow_l_min", FreshGasFlow),
+        ControlInput.DELIVERED: ("delivered_concentration_percent", Percent),
+        ControlInput.ALVEOLAR_VENTILATION: ("alveolar_ventilation_l_min", AlveolarVentilation),
+        ControlInput.CARDIAC_OUTPUT: ("cardiac_output_l_min", CardiacOutput),
+    }
+    assert branch.opened_from is not None
+    settings = branch.opened_from.segment.settings
+
+    for change in branch.snapshot().control_timeline:
+        name, checked = fields_of_controls[change.control]
+        settings = dataclasses.replace(settings, **{name: checked(change.new_value)})
+
+    return settings
+
+
+def _states_agree_after_the_fork(
+    run: SimulationController, expected: SimulationController, fork_s: float, steps: int
+) -> None:
+    """Assert that two runs hold bit-identical canonical states for `steps` steps past `fork_s`."""
+
+    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+
+    for steps_past_fork in range(steps + 1):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+
+        assert run._run_definition.state_at(case_s) == expected._run_definition.state_at(case_s), (
+            f"the runs differ at {case_s} s"
+        )
+
+
+def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> None:
+    """`PL-ZR49`: every way of branching at one instant reads the same two sides of it.
+
+    The trunk runs at 2% and a mark at 30 s halts it. Standing there, the
+    learner turns the vaporizer to 4%, removes the mark and adds it back under
+    another label, and marks an instant inside the halting step. Each door is
+    taken before those edits, after them, and again after the trunk has run
+    on. Each branch is then reset.
+
+    The rule each door is held to is the one `docs/MODEL.md` states. All of
+    them share one provenance, the stretch the halting step ran under. Only
+    the door at the keyframe the change recorded runs under 4%, and its own
+    timeline says so. Every branch taken after the edits names the marks as
+    they now are in its halt record, as the trunk standing there does. A
+    reset reopens each branch on the same record. The expected settings are
+    the dialled literals, and the marks are expected by the instants and
+    labels the test gave them. The run each record describes is checked
+    against a run built directly: a 2% case nobody changed, or the trunk.
+    """
+
+    first = TimeBookmark(CaseInstant(30.0), "first")
+    relabelled = TimeBookmark(CaseInstant(30.0), "relabelled")
+    trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
+    trunk.add_time_bookmark(first)
+    trunk.start()
+    _advance_until_halted(trunk, limit_s=31.0)
+    fork_s = trunk.snapshot().elapsed_s
+    inside_s = fork_s - MAXIMUM_SIMULATION_STEP_S / 2
+    inside = TimeBookmark(CaseInstant(inside_s), "inside the step")
+
+    branches = {
+        "here, before the edits": trunk.resumed_here(),
+        "at the mark, before the edits": trunk.resumed_at_mark(first),
+    }
+
+    trunk.set_delivered_concentration_percent(Percent(4.0))
+    trunk.remove_time_bookmark(first)
+    trunk.add_time_bookmark(relabelled)
+    trunk.add_time_bookmark(inside)
+
+    branches |= {
+        "here, after the edits": trunk.resumed_here(),
+        "at the mark, after the edits": trunk.resumed_at_mark(relabelled),
+        "at the keyframe, after the edits": trunk.resumed_at(fork_s),
+    }
+    halt_on_the_trunk = trunk.snapshot().bookmark_halt
+    here_on_the_trunk = trunk.here_fork_point
+
+    trunk.start()
+    _advance_for(trunk, duration_s=10.0)
+    trunk.pause()
+
+    branches |= {
+        "at the mark, after running on": trunk.resumed_at_mark(relabelled),
+        "at the keyframe, after running on": trunk.resumed_at(fork_s),
+    }
+
+    def runs_under_the_change(name: str) -> bool:
+        return name.startswith("at the keyframe")
+
+    def named(crossing: BookmarkCrossing | None) -> set[tuple[float, str | None]]:
+        assert crossing is not None
+        assert crossing.instant_s == fork_s
+
+        return {(mark.instant_s, mark.label) for mark in crossing.time_bookmarks}
+
+    # One provenance: the stretch the halting step ran under, which opens at 0 s.
+    provenance = branches["here, before the edits"].opened_from
+    assert provenance is not None
+    assert provenance.segment == trunk.run_segments[0]
+    assert provenance.fork.instant_s == fork_s
+
+    for name, branch in branches.items():
+        assert branch.opened_from == provenance, name
+
+    # Settings: only the keyframe door runs under the change, and its own record says so.
+    for name, branch in branches.items():
+        snapshot = branch.snapshot()
+
+        if runs_under_the_change(name):
+            assert snapshot.delivered_concentration_percent == 4.0, name
+            assert _described(snapshot.control_timeline) == [
+                (fork_s, ControlInput.DELIVERED, 2.0, 4.0)
+            ], name
+        else:
+            assert snapshot.delivered_concentration_percent == 2.0, name
+            assert snapshot.control_timeline == (), name
+
+        assert _replayed_from_provenance(branch) == branch.run_segments[-1].settings, name
+
+    # Marks: the trunk standing there and every branch taken after the edits
+    # name the marks as they now are. A branch taken before the edits holds
+    # the marks the trunk held when it was taken.
+    now_marked = {(30.0, "relabelled"), (inside_s, "inside the step")}
+    assert named(halt_on_the_trunk) == now_marked
+    assert here_on_the_trunk == HereForkPoint(fork_s, stopped_on_mark=True)
+
+    for name, branch in branches.items():
+        snapshot = branch.snapshot()
+
+        if name.endswith("before the edits"):
+            assert named(snapshot.bookmark_halt) == {(30.0, "first")}, name
+            continue
+
+        assert named(snapshot.bookmark_halt) == now_marked, name
+        assert snapshot.bookmark_standings.of_time_bookmark(inside) is MarkStanding.PASSED, name
+
+    # A branch's reset reopens it on the same record.
+    for name, branch in branches.items():
+        before_reset = branch.snapshot()
+        branch.reset()
+        after_reset = branch.snapshot()
+
+        assert branch.opened_from == provenance, name
+        assert after_reset.control_timeline == before_reset.control_timeline, name
+        assert after_reset.delivered_concentration_percent == (
+            before_reset.delivered_concentration_percent
+        ), name
+        assert after_reset.bookmark_halt == before_reset.bookmark_halt, name
+
+    # And the record is the run: a 2% branch is the case nobody changed, and
+    # the 4% branch is the trunk, element for element.
+    never_changed = SimulationController(delivered_concentration_percent=Percent(2.0))
+    never_changed.start()
+    _advance_for(never_changed, duration_s=40.0)
+
+    for name, branch in branches.items():
+        branch.start()
+        _advance_for(branch, duration_s=10.0)
+        _states_agree_after_the_fork(
+            branch, trunk if runs_under_the_change(name) else never_changed, fork_s, steps=100
+        )
+
+
+def test_a_change_made_on_the_halt_stays_the_trunks() -> None:
+    """`PL-HSP8`: a setting changed while the trunk stands on a halt is the trunk's own act.
+
+    The trunk runs at 2% and a mark at 60 s halts it. The vaporizer is turned
+    off while it stands there, and the trunk runs on to 120 s. The halt
+    branch, taken before or after the change, and the branch returned to at
+    the mark afterwards all open under 2%, the setting the halting step ran
+    under, and their provenance compares equal. `resumed_at` at the keyframe
+    the change recorded opens after it, at 0%, with the same provenance and
+    the change in its own timeline. The expected settings are the dialled
+    literals, and the halt branch is checked against a 2% run nobody changed.
+    """
+
+    mark = TimeBookmark(CaseInstant(60.0), "on your mark")
+    trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
+    trunk.add_time_bookmark(mark)
+    trunk.start()
+    _advance_until_halted(trunk, limit_s=61.0)
+    halt_s = trunk.snapshot().elapsed_s
+
+    before_the_change = trunk.resumed_here()
+    trunk.set_delivered_concentration_percent(Percent(0.0))
+    after_the_change = trunk.resumed_here()
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    at_the_mark = trunk.resumed_at_mark(mark)
+    at_the_keyframe = trunk.resumed_at(halt_s)
+
+    for branch in (before_the_change, after_the_change, at_the_mark):
+        assert branch.snapshot().delivered_concentration_percent == 2.0
+        assert branch.snapshot().control_timeline == ()
+        assert branch.opened_from == before_the_change.opened_from
+
+    assert at_the_keyframe.opened_from == before_the_change.opened_from
+    assert at_the_keyframe.snapshot().delivered_concentration_percent == 0.0
+    assert _described(at_the_keyframe.snapshot().control_timeline) == [
+        (halt_s, ControlInput.DELIVERED, 2.0, 0.0)
+    ]
+
+    never_changed = SimulationController(delivered_concentration_percent=Percent(2.0))
+    never_changed.start()
+    _advance_for(never_changed, duration_s=70.0)
+    before_the_change.start()
+    _advance_for(before_the_change, duration_s=10.0)
+
+    _states_agree_after_the_fork(before_the_change, never_changed, halt_s, steps=100)
+
+
+def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk() -> None:
+    """`PL-NRR6`: setting the dial back where a branch was taken leaves its provenance standing.
+
+    The trunk is paused at 30 s at 2% and set to 4%. A branch is taken at the
+    keyframe that change recorded, and the trunk is then set back to 2%. That
+    removes the trunk's keyframe at 30 s, because nothing about the trunk
+    changed there. The branch's provenance is the stretch the step reaching
+    30 s ran under, which is still the trunk's, and its own timeline records
+    the 4% it runs under. The instant stays a place to branch for as long as
+    the trunk stands there, and a branch taken there now names the same
+    provenance.
+    """
+
+    trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_delivered_concentration_percent(Percent(4.0))
+    branch = trunk.resumed_at(fork_s)
+    trunk.set_delivered_concentration_percent(Percent(2.0))
+
+    assert branch.opened_from is not None
+    assert branch.opened_from.segment in trunk.run_segments
+    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0.0]
+    assert branch.snapshot().delivered_concentration_percent == 4.0
+    assert _described(branch.snapshot().control_timeline) == [
+        (fork_s, ControlInput.DELIVERED, 2.0, 4.0)
+    ]
+    assert trunk.here_fork_point == HereForkPoint(fork_s, stopped_on_mark=False)
+    assert trunk.resumed_here().opened_from == branch.opened_from
+
+
+def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_in_agreement() -> (
+    None
+):
+    """`PL-K5BS`: a reset branch runs under settings that its record and its provenance both state.
+
+    The trunk changes the fresh gas flow from 4 to 6 L/min at 30 s, and a
+    branch is taken at that keyframe. The learner runs the branch for 10 s,
+    sets 8 L/min and resets. The reset keeps 8 L/min, as a reset keeps
+    settings, and records it as a change at the fork. Replaying the branch's
+    timeline over the stretch it opened from gives the settings it runs
+    under. The reset branch is checked against a branch taken directly at
+    the keyframe and set to 8 L/min there.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.pause()
+    branch.set_fresh_gas_flow(FreshGasFlow(8.0))
+    branch.reset()
+
+    built_directly = trunk.resumed_at(fork_s)
+    built_directly.set_fresh_gas_flow(FreshGasFlow(8.0))
+
+    snapshot = branch.snapshot()
+    assert snapshot.elapsed_s == fork_s
+    assert snapshot.fresh_gas_flow_l_min == 8.0
+    assert _described(snapshot.control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 8.0)
+    ]
+    assert _described(snapshot.control_timeline) == _described(
+        built_directly.snapshot().control_timeline
+    )
+    assert _replayed_from_provenance(branch) == branch.run_segments[-1].settings
+    assert _replayed_from_provenance(branch) == branch._state.uptake_system.equation_settings()
+
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    built_directly.start()
+    _advance_for(built_directly, duration_s=10.0)
+
+    _states_agree_after_the_fork(branch, built_directly, fork_s, steps=100)
+
+
+def test_a_branch_taken_at_a_keyframe_keeps_a_record_of_the_setting_it_opened_under() -> None:
+    """`PL-TNYP`: a keyframe branch's own record states its setting, whatever the trunk does next.
+
+    The trunk is paused at 60 s and set from 4 to 6 L/min, a branch is taken
+    at that keyframe, and the trunk is set back to 4 L/min. The branch runs at
+    6 L/min, and its own control timeline, which its panel lists, says so.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    branch = BranchedCase(trunk).fork_at(fork_s)
+    trunk.set_fresh_gas_flow(FreshGasFlow(4.0))
+
+    snapshot = branch.snapshot()
+    assert trunk.snapshot().control_timeline == ()
+    assert snapshot.fresh_gas_flow_l_min == 6.0
+    assert _described(snapshot.control_timeline) == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW, 4.0, 6.0)
+    ]
+    assert _replayed_from_provenance(branch) == branch._state.uptake_system.equation_settings()
+
+
+def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_added_back() -> None:
+    """`PL-XV0D`: the halt record names the marks as they are, on the trunk and after a reset.
+
+    A mark labelled "original" halts the trunk at 30 s, and a branch is taken
+    there. On both runs the mark is removed, which leaves no halt to report,
+    and a mark at the same instant labelled "again" is added. The branch is
+    then reset. Both runs report the halt on "again", and the trunk still
+    offers a branch on its mark.
+    """
+
+    original = TimeBookmark(CaseInstant(30.0), "original")
+    again = TimeBookmark(CaseInstant(30.0), "again")
+    trunk = SimulationController()
+    trunk.add_time_bookmark(original)
+    trunk.start()
+    _advance_until_halted(trunk, limit_s=31.0)
+    halt_s = trunk.snapshot().elapsed_s
+    branch = trunk.resumed_here()
+
+    for run in (trunk, branch):
+        run.remove_time_bookmark(original)
+
+        assert run.snapshot().bookmark_halt is None
+
+        run.add_time_bookmark(again)
+
+    branch.reset()
+
+    for run in (trunk, branch):
+        assert run.snapshot().bookmark_halt == BookmarkCrossing(halt_s, (again,))
+
+    assert trunk.here_fork_point == HereForkPoint(halt_s, stopped_on_mark=True)
+
+
+def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> None:
+    """At the case's opening no step has closed a stretch, so the opening stretch is both sides.
+
+    A trunk edit at the opening still replaces the opening stretch, after a
+    branch was taken there as before. What the branch opened from is the
+    opening keyframe, whose state no setting produced, and the settings it
+    ran under from there. Both stay true of the branch after the trunk's
+    edit, so the branch's provenance still states what it runs under.
+    """
+
+    trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
+    trunk.set_delivered_concentration_percent(Percent(4.0))
+    branch = trunk.resumed_at(CaseInstant(0.0))
+    trunk.set_delivered_concentration_percent(Percent(2.0))
+
+    assert branch.opened_from is not None
+    assert branch.opened_from.fork == trunk.run_segments[0].opening
+    assert branch.opened_from.segment.settings.delivered_concentration_percent == 4.0
+    assert branch.snapshot().delivered_concentration_percent == 4.0
+    assert branch.snapshot().control_timeline == ()

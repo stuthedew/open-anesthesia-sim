@@ -578,19 +578,27 @@ run for that reason, and it refuses outright on a branch. A branch inherits the
 circuit volume, applied before any state is. This is because
 `BreathingCircuit.set_circuit_volume` conserves agent by rewriting the inspired
 fraction. A volume set afterwards would move the branch off the state it opened
-at. A branch inherits the four live controls, replayed from the recorded
-timeline in the units the compartments hold. The rebuilt branch is then checked
-against the trunk rather than trusted. The check covers the settings that the
-trunk's own stretch carries, and the agent's displayed references, since the
-agent and patient are re-read from their data files. A refusal names each value
-that differs, with both of its values (`PL-NC62`). And a branch inherits the
+at. A branch inherits the four live controls, read from the settings of the
+trunk's stretch, which hold each value as it was set. The rebuilt branch is
+then checked against those settings rather than trusted. The check covers
+every setting the stretch carries, and the agent's displayed references, since
+the agent and patient are re-read from their data files. A refusal names each
+value that differs, with both of its values (`PL-NC62`). Which stretch is
+settled by one rule for every way of branching. It is the stretch the step
+reaching the fork ran under, which no later change on the trunk can replace.
+Only a branch taken at a setting change runs under that change instead, and it
+records the change as its own (`docs/MODEL.md` § "The canonical evaluation
+rule", `PL-ZR49`). And a branch inherits the
 bookmarks. That is the opposite case to the timeline below, and it is settled
 by the same test. A mark is a question about what is still to come, and a
 comparison is two managements answering one question. If a learner had to
 re-enter the marks, two branches could be compared at two different heights
 with nothing saying so. What a branch does not inherit is the trunk's control
-timeline, which starts empty. The branch's record is of what the learner does
-to *it*, and `opened_from` is what records where the fork was taken.
+timeline. The branch's record is of what the learner does to *it*, and
+`opened_from` is what records where the fork was taken. The one entry it can
+open with is a setting it runs under that differs from the stretch it opened
+from: the trunk's change at a setting change it was taken at, or the learner's
+dial kept by a reset (`SimulationSnapshot.opened_with`).
 `began_at_s` is the one number to read for that. It is zero on a trunk and the
 fork instant on a branch. The definition's own first segment used to start at
 the same instant, and it no longer always does. That is why the property

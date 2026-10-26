@@ -22,9 +22,8 @@ not a record of what happened in the case. `control_record.ControlChange` is tha
 record: it has one entry per setting the model integrated under, and re-applying it
 reproduces the run. Nothing here is re-applied, and nothing here changes a run. That
 difference is why the two are carried differently across a fork.
-`SimulationController.resumed_at` starts a branch with an empty control timeline but
-with its trunk's marks, and `docs/ARCHITECTURE.md` § "What a branch is" states the
-rule.
+A branch starts without its trunk's control timeline but with its trunk's marks, and
+`docs/ARCHITECTURE.md` § "What a branch is" states the rule.
 
 **This module detects crossings, but the loop that calls it lives elsewhere**
 (`PL-CTD7`). A mark can report whether it lies between two readings, through

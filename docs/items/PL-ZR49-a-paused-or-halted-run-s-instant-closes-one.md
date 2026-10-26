@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: defect, safety
 feature: defect-review-2026-10
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/integration/test_controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/core/run_definition.py, tests/integration/test_controller.py, tests/unit/test_run_definition.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 payoff: every branch, reset and halt record states the settings and marks it was opened under, whichever door took it
@@ -70,3 +70,23 @@ Element-wise reproduction survives. `_open_at` already opens the branch's defini
 6. Write `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there`, plus each open member's named test. Update `docs/MODEL.md` § "The canonical evaluation rule" and § "Reset behavior", and the docstrings of `ResumePoint`, `_open_at`, `resumed_at` and `segment_at`.
 
 *Open at the time of writing.* At the run's opening, at step 0, no step has closed a stretch. A trunk edit at 0 after a branch was taken at 0 still replaces the opening stretch. Settle this in the build. Either take the opening stretch as both sides, since the opening state does not depend on the settings, or record the edit at 0 in the branch the same way. `PL-NRR6`'s case is at 30 s, so it does not depend on this choice.
+
+**Build, 2026-10-26 (reset in place at 342k spend, before close-out).** Steps 1 to 6 of the build order are done on `claude/pl-zr49-iusum9`, in `cca420e4`, `e0985a95` and the commit that adds this paragraph.
+
+- `RunDefinition.reaching_segment_at` returns the reaching stretch, with four unit tests in `tests/unit/test_run_definition.py`.
+- Every door builds its `ResumePoint` from the reaching stretch. `_branch_from(resume_point, settings)` builds the branch from the settings record directly, and `_setting_at` is deleted: `UptakeEquationSettings` holds each value exactly as set and already as its checked type, so no timeline read was needed. `resumed_at` passes the open side's settings. `_open_at` records each difference from the reaching stretch as a change at the fork, in the run definition and, through the new `_record_in_timeline` (split out of `_record_control_change`), in the control timeline. Reset uses the same path.
+- `SimulationSnapshot.opened_with` names the entries a branch opened with, and `has_recorded_run` compares the timeline with it, so a fresh keyframe branch and a reset branch still hold nothing to destroy (`PL-7TBQ`'s rule).
+- The halt record is `_halt_crossing`: the current marks at the keys the stepped readings crossed when a trunk halted, plus what the step crosses when asked of the current marks canonically. `ResumePoint.crossing` and `_stand_on` are gone. **Placeholder decided here:** the stepped keys are kept because `tests/unit/test_bookmarks.py::test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances` halts on a height a stepped reading lands on exactly, and the canonical reading missed it, which left a halted trunk naming no mark. A branch has no stepped readings of its parent, so in that edge case the trunk and a branch at the halt still disagree. Filed as `PL-QVBR`.
+- **The step-0 question is settled as the first option:** the opening stretch is both sides, because the opening keyframe is a state no setting produced. `test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under` pins it.
+- **`PL-NRR6`'s Done-when, second clause:** after the trunk sets the dial back, its keyframe at the fork is gone, so `resumed_at` no longer accepts that instant. The first clause holds (the provenance stays in the trunk's segments), and the instant stays offered by `here_fork_point` while the trunk stands there, with a provenance that compares equal to the branch's. The clause was written while the provenance named the keyframe. Close `PL-NRR6` with that reason.
+- Tests: the head's `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there` and each member's named test are in `tests/integration/test_controller.py`, section "Edits made at a paused instant (PL-ZR49)". Seventeen existing tests that stated the old behaviour were rewritten to the rule, two renamed (`..._replaces_the_stretch_at_its_fork`, `..._opens_with_only_the_change_it_runs_under_in_its_timeline`), and `test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork` became `..._is_carried_only_by_the_keyframe_fork`, because it pinned `PL-HSP8`'s defect.
+- Docs: `docs/MODEL.md` § "The canonical evaluation rule" gains the paragraph "An instant where a run stands has two sides", and four sentences there and in § "Reset behavior" are updated. `docs/ARCHITECTURE.md` § "What a branch inherits" and `app/bookmarks.py`'s module docstring are corrected.
+
+**Left for the session that resumes, in order.**
+
+1. Run the seven new tests against `c4123db3` (the code before the fix) and record each failing assertion here, as `.claude/rules/test-oracles.md` rule 6 asks. They use no interface the fix added.
+2. Close-out step 8: `uv run python tools/new_prose.py`, and the fresh-reviewer subagent on its output.
+3. Close-out step 6: the source diff is about 470 lines added under `src/`, so run independent adversarial passes (lifecycle and state, the domain invariants, what a displayed value could mislead, whether the new tests fail when the behaviour is inverted, dead code) and refute what they return.
+4. `bin/docket set PL-ZR49 --status done --closed DATE`, and close `PL-HSP8`, `PL-TNYP`, `PL-NRR6`, `PL-K5BS` and `PL-XV0D` in the same commit, each with one line saying which test closes it. Retitle draft `#1844` to lead with all six ids first.
+5. `bin/docket verify --self` with all six ids, until it prints `ACCEPT`, and sort any mutation survivor it prints (close-out step 7).
+6. Mark `#1844` ready, per `.claude/skills/pull-request/SKILL.md`.
