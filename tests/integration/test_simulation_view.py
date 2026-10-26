@@ -2286,6 +2286,39 @@ def test_a_halt_after_an_agent_change_names_one_agent(
         assert scheme.foreground in control.styleSheet(), control
 
 
+def test_the_one_mac_line_and_the_cards_name_the_same_agent_after_a_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-6RJ0`: the 1 MAC line keeps the divisor of the cards beside it.
+
+    The line states the divisor of every ×MAC number in the readout row. It
+    was written with the dials, which a halt writes, while the cards are
+    written only by a frame. So a halt on the first frame after an agent
+    change put "1 MAC desflurane = 6.0%" above cards still holding
+    sevoflurane's multiples, divided by 2.0%. The line is now written with
+    the cards, from the snapshot they were divided by.
+    """
+
+    controller = SimulationController()
+    run = _shown_view(application, controller).runs[0]
+    drawn = controller.snapshot()
+    line_before = run._one_mac_text.text()
+    cards_before = [panel.value_label.text() for panel in run._readout_row.panels]
+
+    assert line_before == format_mac_reference(drawn.agent_display_name, drawn.agent_mac_percent)
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    _select_agent(run, "desflurane")
+
+    assert controller.agent_id == "desflurane"
+    assert controller.has_failed is True
+    # The cards still show the last frame's sevoflurane values, so the line
+    # above them still names sevoflurane's 1 MAC.
+    assert [panel.value_label.text() for panel in run._readout_row.panels] == cards_before
+    assert run._one_mac_text.text() == line_before
+    assert "desflurane" not in run._one_mac_text.text().lower()
+
+
 def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2336,6 +2369,11 @@ FRAME_WIDGETS: dict[str, str] = {
         "readouts, so no row pairs one instant's clock with another's values. "
         "The playback line under the clock is run state, and the test below "
         "compares it on its own (`PL-P58M`)."
+    ),
+    "_one_mac_text": (
+        "the 1 MAC line, which states the divisor of every ×MAC number in the "
+        "readout row. It is written with those readouts, from the snapshot they "
+        "were divided by, so it stays with them on a halt (`PL-6RJ0`)."
     ),
     "_accounting_panels[0]._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "

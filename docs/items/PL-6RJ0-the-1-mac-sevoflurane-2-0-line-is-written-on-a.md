@@ -3,11 +3,13 @@ id: PL-6RJ0
 title: The "1 MAC sevoflurane = 2.0%" line is written on a different path from the readout cards whose ×MAC values it divides: a halt after an agent change writes the new agent's 1 MAC above cards still holding the old agent's multiples, and a raise from setting_readouts would leave the old 1 MAC above freshly written cards
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, ux, safety
 feature: replay-findings
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-X6VN-try-a-setup-script-line-that-copies-claude.md
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1840
 payoff: the 1 MAC line always states the divisor of the ×MAC numbers beside it, including while a halt is shown
 verify: grep -q 'def test_the_one_mac_line_and_the_cards_name_the_same_agent_after_a_halt' tests/integration/test_simulation_view.py
 reenters: PL-X7D5

@@ -625,6 +625,13 @@ class RunView(QWidget):
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
+        # The 1 MAC line states the divisor of every ×MAC number in the row
+        # above, so it is written here, from the snapshot those numbers were
+        # divided by. Written with the dials, it named a new agent's 1 MAC above
+        # cards a halt had left holding the old agent's multiples (`PL-6RJ0`).
+        self._one_mac_text.setText(
+            format_mac_reference(snapshot.agent_display_name, snapshot.agent_mac_percent)
+        )
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()
 
@@ -801,10 +808,6 @@ class RunView(QWidget):
         for setting in self._settings_shown:
             if setting.control is ControlInput.DELIVERED:
                 self._delivered_text.setText(delivered_line(setting))
-
-        self._one_mac_text.setText(
-            format_mac_reference(settings.agent_display_name, settings.agent_mac_percent)
-        )
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """Return this run's transport enablement, adding two facts `dashboard_frame` cannot read.
