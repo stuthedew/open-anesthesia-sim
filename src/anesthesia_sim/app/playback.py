@@ -112,14 +112,17 @@ STEP_COUNT_TOLERANCE: Final = 1e-9
 
 #: The largest number of steps that one tick may take. A tick runs all of its
 #: steps before the interface can respond, so an unbounded count would hang the
-#: interface without raising an error (`PL-T6P0`). The shipped loop takes at
-#: most 300 steps per tick. That count comes from the fastest offered rate,
-#: 300x, with a 0.1 s tick that is one 0.1 s step long. Even at the smallest
-#: step that `core/simulation_step.py` supports, 1 ms, that rate and tick need
-#: 30 000 steps. This bound is about three times that count.
-#: `test_the_most_steps_one_tick_may_take_covers_every_rate_at_the_smallest_step`
-#: fails if a faster rate or a longer tick would need more steps than this bound.
-MAXIMUM_STEPS_PER_TICK: Final = 100_000
+#: interface without raising an error (`PL-T6P0`). The bound is set by time,
+#: because a tick that outlasts its own interval freezes the interface and
+#: plays slower than its label. The shipped tick is 0.1 s, one step long, and
+#: one step of the running controller measured about 53 microseconds on
+#: 2026-10-26. So a tick has room for about 1 900 steps. This bound allows
+#: 1 000, about 53 ms, which leaves the rest of the tick for drawing. The
+#: fastest offered rate, 300x, takes 300 steps per tick, because the tick is
+#: always one step long.
+#: `test_the_most_steps_one_tick_may_take_covers_every_rate_at_a_one_step_tick`
+#: fails if a faster rate would need more steps than this bound.
+MAXIMUM_STEPS_PER_TICK: Final = 1_000
 
 
 @dataclass(frozen=True, slots=True)

@@ -27,12 +27,14 @@ a guard stops firing, this test fails and names the input.
 """
 
 import itertools
+import re
 import sys
 from collections.abc import Callable
 from math import inf, isfinite, nextafter
 from typing import NamedTuple
 
 import pytest
+from test_numerical_envelope import MOST_SQUARINGS, _squarings
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -46,10 +48,11 @@ from anesthesia_sim.core.governing_equations import (
     FIRST_TISSUE_FRACTION,
     STATE_SIZE,
     UNIT_STATE,
+    Matrix,
     TissueGroupEquationSettings,
     UptakeEquationSettings,
+    build_system_matrix,
 )
-from anesthesia_sim.core.matrix_exponential import MAXIMUM_SQUARINGS
 from anesthesia_sim.core.numerical_envelope import (
     MAXIMUM_PARTITION_COEFFICIENT,
     MAXIMUM_VOLUME_L,
@@ -81,18 +84,31 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-PROPAGATOR_ERROR = 3.0 * 2.0**MAXIMUM_SQUARINGS * 2.0**-52
-"""The largest relative error that one propagator may carry, from the bound that its module states.
+MACHINE_EPSILON = 2.0**-52
+"""The spacing of doubles just above 1, the unit in which a rounding error is counted."""
+
+PROPAGATOR_MARGIN = 3.0
+"""How many times the stated bound one propagator's error may reach here.
 
 `core/matrix_exponential.py` states that after `s` squarings, a propagator's
-entries carry an error of up to about `2**s` times the machine epsilon,
-`2**-52`. It also states that the worst entry measured stayed within 2.7 times
-that bound. The module refuses a propagator that would need more than
-`MAXIMUM_SQUARINGS` squarings. So no propagator that it returns is further from
-the exact exponential than this constant, which rounds 2.7 up to 3. A state
-reached by composing several propagators may carry that error once for each of
-them.
+entries carry an error of up to about `2**s` times `MACHINE_EPSILON`. It also
+states that the worst entry measured stayed within 2.7 times that bound, so
+this margin rounds 2.7 up to 3. On 2026-10-26 the worst result in this sweep
+reached 2.5 times the bound for the squarings it used.
 """
+
+
+def _propagator_error(matrix: Matrix, interval_s: float) -> float:
+    """Return the relative error that one propagator over `interval_s` may carry.
+
+    The bound uses the squarings that this matrix and interval actually need,
+    counted by `test_numerical_envelope._squarings` independently of the
+    module's own code. A corner that needs few squarings is held to a tight
+    bound, so a cancellation that loses digits there fails the sweep.
+    """
+
+    return PROPAGATOR_MARGIN * 2.0 ** _squarings(matrix, interval_s) * MACHINE_EPSILON
+
 
 SMALLEST_SUBNORMAL = 5e-324
 """The smallest positive float. Each flow that may be zero is also run at this value."""
@@ -244,7 +260,7 @@ def _stored_agent_l(corner: Corner, state: tuple[float, ...]) -> float:
 
 
 def _require_what_the_equations_require(
-    corner: Corner, opening: tuple[float, ...], state: tuple[float, ...], propagators: int
+    corner: Corner, opening: tuple[float, ...], state: tuple[float, ...], tolerance: float
 ) -> None:
     """Check one state of a run that opened at `opening`, with the dial full or at zero.
 
@@ -252,11 +268,9 @@ def _require_what_the_equations_require(
     equilibrium, which here always means between 0 and 1. Neither accumulator is
     negative. The agent held now, plus the agent exhausted, equals the agent held
     at the opening plus the agent delivered. The fraction check and the balance
-    check allow an error of up to `PROPAGATOR_ERROR` for each of the
-    `propagators` that were composed to reach the state.
+    check allow a relative error of up to `tolerance`, the sum of the bounds of
+    the propagators that were composed to reach the state.
     """
-
-    tolerance = propagators * PROPAGATOR_ERROR
 
     assert all(isfinite(value) for value in state), state
 
@@ -273,7 +287,10 @@ def _require_what_the_equations_require(
 
 
 COLUMNS = 60
-"""How many columns the display path samples across the run, 1440 s apart."""
+"""How many columns the display path samples across the run, about 1464 s apart."""
+
+COLUMN_SPACING_S = MAXIMUM_ELAPSED_SIMULATION_TIME_S / (COLUMNS - 1)
+"""The interval between two columns, which the display path's chained propagator spans."""
 
 
 def _require_the_run(corner: Corner) -> None:
@@ -282,34 +299,41 @@ def _require_the_run(corner: Corner) -> None:
     Each run is either a wash-in or a washout. A wash-in opens empty with the
     dial full. A washout opens full with the dial at zero. Each run is sampled
     on the display path at `COLUMNS` columns. The display path composes one
-    propagator per column, so its last column carries the error of `COLUMNS`
+    propagator per column, so the `n`th column carries the error of `n`
     propagators. Each run is also sampled on the canonical path at five
     instants, from the smallest supported step to the end of the run. The
     canonical path forms one propagator from the opening to each instant. At the
     stiffest corners, the whole 86 400 s interval needs more than
     `MAXIMUM_SQUARINGS` squarings. So the instant at the end of the run may be
-    refused there, with the simulator's own error. No other refusal is accepted.
+    refused there, with the simulator's own error naming the squarings. No
+    other refusal is accepted.
     """
 
     for flows in FLOW_CORNERS:
         for opening_fraction, dial_percent in ((0.0, FULL_DIAL_PERCENT), (1.0, 0.0)):
             opening = _opening_state(opening_fraction)
-            run = RunDefinition(
-                _settings(corner, flows, dial_percent), opening, opened_at_s=CaseInstant(0.0)
-            )
+            settings = _settings(corner, flows, dial_percent)
+            matrix = build_system_matrix(settings)
+            run = RunDefinition(settings, opening, opened_at_s=CaseInstant(0.0))
             run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
             window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
+            column_error = _propagator_error(matrix, COLUMN_SPACING_S)
 
             for column, drawn in enumerate(window.states, start=1):
-                _require_what_the_equations_require(corner, opening, drawn.values, column)
+                _require_what_the_equations_require(
+                    corner, opening, drawn.values, column * column_error
+                )
 
             for instant_s in (MINIMUM_SIMULATION_STEP_S, 0.1, 60.0, 1440.0, 86_400.0):
                 try:
                     state = run.state_at(instant_s)
-                except SimulationConfigurationError:
-                    assert instant_s == 86_400.0
+                except SimulationConfigurationError as refusal:
+                    assert instant_s == 86_400.0, refusal
+                    assert "squarings" in str(refusal), refusal
                 else:
-                    _require_what_the_equations_require(corner, opening, state, 1)
+                    _require_what_the_equations_require(
+                        corner, opening, state, _propagator_error(matrix, instant_s)
+                    )
 
 
 def _system(
@@ -371,6 +395,17 @@ def _system(
     )
 
 
+def _held_amounts_l(system: AgentUptakeSystem) -> tuple[float, ...]:
+    """Return the agent each compartment of the system holds, in litres of gas."""
+
+    return (
+        system.circuit.agent_amount_l,
+        system.alveoli.agent_amount_l,
+        system.patient.venous_blood.agent_amount_l,
+        *(getattr(system.patient, name).agent_amount_l for name in TISSUE_NAMES),
+    )
+
+
 def _require_the_system(corner: Corner) -> None:
     """Step the coupled system once per flow corner, at the smallest and largest supported step.
 
@@ -380,10 +415,13 @@ def _require_the_system(corner: Corner) -> None:
     `PL-D88N` measures.
 
     A step from a full state may be refused, but only for the one reason that
-    `PL-9B1M` describes. Rounding can take a fraction a few units in the last
-    place past 1. The fraction check then refuses that fraction, and the step is
-    rolled back.
+    `PL-9B1M` describes. Rounding can take a fraction just past 1. The fraction
+    check then refuses that fraction, and the step is rolled back. The refused
+    fraction must lie within one step's propagator bound of 1, at the most
+    squarings any corner's step needs, and the state must be unchanged.
     """
+
+    largest_refused_fraction = 1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON
 
     for flows, fraction, step_s, perfusion_fractions in itertools.product(
         FLOW_CORNERS,
@@ -392,12 +430,17 @@ def _require_the_system(corner: Corner) -> None:
         (PERFUSION_FRACTIONS, LOPSIDED_PERFUSION_FRACTIONS),
     ):
         system = _system(corner, flows, fraction, perfusion_fractions)
+        held_before_l = _held_amounts_l(system)
 
         try:
             result = system.advance(SimulationStep(step_s))
         except SimulationNumericalError as refusal:
+            refused = re.search(r"fraction of (\S+) is outside 0 to 1", str(refusal))
+
             assert fraction == 1.0, refusal
-            assert "is outside 0 to 1" in str(refusal), refusal
+            assert refused is not None, refusal
+            assert 1.0 < float(refused[1]) <= largest_refused_fraction, refusal
+            assert _held_amounts_l(system) == held_before_l
             continue
 
         assert isfinite(result.circuit_to_alveolar_agent_l)
@@ -406,12 +449,7 @@ def _require_the_system(corner: Corner) -> None:
         assert result.fresh_gas_exchange.exhausted_agent_l >= 0.0
         assert result.agent_accounting.passes_validation
 
-        for held_l in (
-            system.circuit.agent_amount_l,
-            system.alveoli.agent_amount_l,
-            system.patient.venous_blood.agent_amount_l,
-            *(getattr(system.patient, name).agent_amount_l for name in TISSUE_NAMES),
-        ):
+        for held_l in _held_amounts_l(system):
             assert isfinite(held_l)
             assert held_l >= 0.0
 
@@ -450,7 +488,9 @@ def _require_the_compartments_alone(corner: Corner) -> None:
                 owed_l = held_l + exchange.delivered_agent_l
                 unaccounted_l = owed_l - exchange.exhausted_agent_l - circuit.agent_amount_l
 
-                assert abs(unaccounted_l) <= PROPAGATOR_ERROR * max(owed_l, 1e-300)
+                # The circuit steps alone by a closed form, not a propagator, so
+                # its balance is held to a few roundings: 0.73 of one measured.
+                assert abs(unaccounted_l) <= 4 * MACHINE_EPSILON * max(owed_l, 1e-300)
 
             for blood_flow_l_min in (
                 0.0,

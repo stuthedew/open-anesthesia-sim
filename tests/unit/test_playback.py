@@ -237,7 +237,7 @@ def test_a_step_outside_the_supported_range_is_refused(simulation_step_s: float)
 def test_a_step_count_too_large_to_count_is_refused() -> None:
     """An enormous tick gives an infinite count, which is refused rather than rounded."""
 
-    with pytest.raises(SimulationConfigurationError, match="more than the 100000 one tick"):
+    with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
         PlaybackRate(300).steps_per_tick(
             tick_interval_s=1e307, simulation_step_s=SimulationStep(0.1)
         )
@@ -245,7 +245,7 @@ def test_a_step_count_too_large_to_count_is_refused() -> None:
 
 @pytest.mark.parametrize(
     ("multiplier", "tick_interval_s", "simulation_step_s"),
-    [(100_001, 0.1, 0.1), (300, 1e300, MINIMUM_SIMULATION_STEP_S)],
+    [(1_001, 0.1, 0.1), (300, 1e300, MINIMUM_SIMULATION_STEP_S)],
     ids=["one past the bound", "a count of 3e305"],
 )
 def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused(
@@ -258,7 +258,7 @@ def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused(
     would have stepped for ever (`PL-T6P0`).
     """
 
-    with pytest.raises(SimulationConfigurationError, match="more than the 100000 one tick"):
+    with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
         PlaybackRate(multiplier).steps_per_tick(
             tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
         )
@@ -266,16 +266,16 @@ def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused(
 
 @pytest.mark.parametrize(
     ("tick_interval_s", "simulation_step_s"),
-    [(1.0, 1e-3), (70.00000000000001, 0.07)],
-    ids=["exactly 100 000", "a rounding error above 100 000"],
+    [(0.1, 0.01), (0.07, 0.007)],
+    ids=["exactly 1 000", "a rounding error above 1 000"],
 )
 def test_a_tick_at_the_most_steps_one_tick_may_take_is_played(
     tick_interval_s: float, simulation_step_s: float
 ) -> None:
-    """A count of exactly 100 000, at the bound itself, is played rather than refused.
+    """A count of exactly 1 000, at the bound itself, is played rather than refused.
 
-    The second ratio is 100000.00000000001 in floating point. The intended count
-    is exactly 100 000, and binary division misses it by one rounding error. So
+    The second ratio is 1000.0000000000001 in floating point. The intended count
+    is exactly 1 000, and binary division misses it by one rounding error. So
     the tick is played rather than refused.
     """
 
@@ -283,22 +283,29 @@ def test_a_tick_at_the_most_steps_one_tick_may_take_is_played(
         tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
     )
 
-    assert steps == 100_000
+    assert steps == 1_000
 
 
-def test_the_most_steps_one_tick_may_take_covers_every_rate_at_the_smallest_step() -> None:
-    """Every offered rate plays at the shipped tick even at the smallest supported step.
+@pytest.mark.parametrize(
+    "simulation_step_s", [MINIMUM_SIMULATION_STEP_S, SIMULATION_STEP_S], ids=["1 ms", "0.1 s"]
+)
+def test_the_most_steps_one_tick_may_take_covers_every_rate_at_a_one_step_tick(
+    simulation_step_s: float,
+) -> None:
+    """Every offered rate plays when the tick is one step long, as the interface sets it.
 
-    The fastest rate, 300x, needs 30 000 steps per tick at that step. If a faster
-    rate or a longer tick would need more steps than the bound, this test fails.
-    The bound can then be reconsidered before a learner ever meets the refusal.
+    The interface defines its tick as one step, so a tick takes as many steps as
+    the rate's multiplier, whatever the step. The fastest rate, 300x, takes 300.
+    If a faster rate would need more steps than the bound, this test fails. The
+    bound can then be reconsidered before a learner ever meets the refusal.
     """
 
     for rate in SUPPORTED_PLAYBACK_RATES:
-        rate.steps_per_tick(
-            tick_interval_s=TICK_INTERVAL_S,
-            simulation_step_s=SimulationStep(MINIMUM_SIMULATION_STEP_S),
+        steps = rate.steps_per_tick(
+            tick_interval_s=simulation_step_s, simulation_step_s=SimulationStep(simulation_step_s)
         )
+
+        assert steps == rate.multiplier
 
 
 def test_a_rate_is_looked_up_by_multiplier() -> None:

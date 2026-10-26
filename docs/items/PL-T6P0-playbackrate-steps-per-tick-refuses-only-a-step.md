@@ -26,12 +26,19 @@ verify: grep -q 'def test_a_tick_past_the_most_steps_one_tick_may_take_is_refuse
 **Done when.** `steps_per_tick` refuses a count past the stated bound, and a test drives it one past the bound and at the bound.
 
 **Fixed, 2026-10-26.** `MAXIMUM_STEPS_PER_TICK` in `app/playback.py` is
-100 000, and `steps_per_tick` refuses a count past it with a
-`SimulationConfigurationError`. The fastest offered rate, 300x, takes 300 steps
-per tick at the shipped 0.1 s tick and step, and would take 30 000 at the
-smallest supported step of 1 ms. So the bound leaves a margin of about three
-over the worst case the app could reach, and a test fails if a faster rate or a
-slower tick would need more. The count is compared after rounding, so a ratio
-that misses 100 000 by one rounding error is played, not refused. The bound
-was not derived in code from the ladder and the tick, because the tick lives in
-`app/dashboard_frame.py`, which imports this module.
+1 000, and `steps_per_tick` refuses a count past it with a
+`SimulationConfigurationError`. The count is compared after rounding, so a
+ratio that misses 1 000 by one rounding error is played, not refused.
+
+How the bound was chosen. The brief suggested the fastest rate times the
+slowest tick over the smallest step, which first gave 100 000. The blind
+review showed two faults in that. The interface defines its tick as one step
+(`SIMULATION_TICK_INTERVAL_S` in `app/dashboard_frame.py`), so a smaller step
+shrinks the tick too, and the fastest rate always takes 300 steps per tick.
+And a count bound is only useful if a tick that meets it still finishes. One
+step of the running controller measured about 53 microseconds here, so 100 000
+steps would freeze the interface for about 5 s on every 0.1 s tick. So the
+bound is set by time instead: 1 000 steps take about 53 ms, half of the tick,
+and leave the rest for drawing. That is about three times the 300 the
+interface needs. The bound is not derived in code from the rate ladder and the
+tick, because a measured step time is not a fact the code holds.

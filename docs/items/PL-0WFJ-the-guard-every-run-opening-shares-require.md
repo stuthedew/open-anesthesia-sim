@@ -19,3 +19,11 @@ verify: grep -q 'def test_require_canonical_state_refuses_a_fraction_outside_zer
 **Done when.** `require_canonical_state` refuses a state with a fraction outside zero to one or a negative accumulator, so `RunDefinition` and the live system refuse the same states. `tests/unit/test_governing_equations.py` has `test_require_canonical_state_refuses_a_fraction_outside_zero_to_one`.
 
 **Found by.** `PL-TBQS` reviewer replay on #430, finding 430 r05 F2, checked against main on 2026-10-25. Reproduced with `scratchpad/r/scripts/d_430_core.py`: the definition accepted the state, and `state_at(30.0)` returned a fat fraction of 1.6996, a circuit fraction of -0.0296 and an alveolar fraction of -0.0606.
+
+**Also the last input without an interval, 2026-10-26.** `PL-58D7`'s corner
+sweep and its blind review found that this guard is the one input to `core/`
+with no interval. From an opening state with every fraction at 1e308 at a
+10 000 L corner with the widest flows, `state_at(600.0)` returned fractions
+near 1e307 and an exhausted-agent total of `inf`, with no error. So
+`PL-58D7` is blocked on this item and lists it as a member. When it lands, add
+the opening state to the table in `docs/MODEL.md` § "The numerical envelope".

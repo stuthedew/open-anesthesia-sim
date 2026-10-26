@@ -2299,14 +2299,14 @@ the one place that forms the quotient, and it builds the result as a
 `PartitionCoefficient`. `TissueGroup` and `AgentParameters` each hold both
 factors, so each checks the quotient whenever a factor is written.
 
-**Every input to `core/` has an interval, and one sweep tests them all**
+**Every input to `core/` but one has an interval, and one sweep tests them**
 (`PL-58D7`, 2026-10-26). Nine floating-point defects were found in `core/`
 between 2026-09-06 and 2026-10-17, each one operation at a time. A product
 overflowed, a quotient underflowed or a subtraction cancelled at an extreme
 input that a constructor had accepted. So each input now has a closed interval,
 and a value outside it is refused when it is built. An operation added later
 inherits those intervals without anyone writing a domain for it. The table
-lists every input and the function or type that refuses it.
+lists each input that has one, and the function or type that refuses it.
 
 | Input | Interval | Refused by |
 | --- | --- | --- |
@@ -2336,10 +2336,21 @@ lists every input and the function or type that refuses it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
 
+**The state a run opens from has no interval yet.** `require_canonical_state`
+in `core/governing_equations.py` checks a state's length, that its values are
+finite and its unit entry. It does not check that each fraction lies from 0
+through 1. So a `RunDefinition` opened from a state with every fraction at
+1e308 is accepted, and its `state_at(600.0)` returns an exhausted-agent total
+of `inf` (reproduced 2026-10-26). Every state a shipped run opens from comes
+from a run that began in range, so no learner reaches this today. `PL-0WFJ`
+records the fix, and `PL-58D7` stays open until it lands.
+
 The blood flow that a tissue group or the venous pool is handed when it is
-stepped on its own is the one input with no upper bound. It must only be finite
-and not negative. The sweep steps both at a flow of the largest float, and each
-result stays finite and between where it started and its equilibrium.
+stepped on its own has no upper bound either, by design. It must only be
+finite and not negative. A run computes that flow from a bounded cardiac
+output, so a bound there would refuse nothing a run can produce. The sweep
+steps both at a flow of the largest float, and each result stays finite and
+between where it started and its equilibrium.
 
 `tests/unit/test_numerical_envelope_sweep.py` tests the two halves of the
 claim. The first test runs every operation at each of the 96 corners of the
@@ -2349,10 +2360,13 @@ the tissue:blood quotient's bounds cut out. At each corner, each flow is at
 zero, at the smallest positive float and at its maximum. The test steps the
 coupled system once at each bound of its step, steps each compartment on its
 own at each bound of its own step, and evaluates a run across the 24 hours on
-both the display and the canonical path. Each result must be finite, must stay
-between 0 and 1 as a fraction, and must close the agent balance to within the
-error bound that `core/matrix_exponential.py` states for the propagators that
-produced it. The second test builds every input in the table at each edge of
+both the display and the canonical path. Each result must be finite. Each
+fraction must lie from 0 through 1, and the agent balance must close, both to
+within the error bound that `core/matrix_exponential.py` states for the
+propagators that produced it. That bound uses the squarings each propagator
+actually needed, with a margin of 3, so a corner that needs few squarings is
+held to a few roundings. The worst result measured on 2026-10-26 reached 2.5
+times its bound. The second test builds every input in the table at each edge of
 its interval, and then one representable value past each edge, and requires
 the simulator's own refusal.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2360,13 +2374,21 @@ the simulator's own refusal.
 Two refusals inside the intervals are accepted by name. Both are errors from
 `core/exceptions.py`, never a wrong value. On the canonical path, one
 propagator across the whole 86 400 s at the stiffest corners needs more than 32
-squarings. It is refused, as "What a long interval costs at the corners" below
-describes. And a step
-from a state at the top of the fraction range, with every compartment at a
-fraction of 1, can round one fraction a few units in the last place past 1.
-The fraction check then refuses it and the step is rolled back. No shipped
-agent's dial reaches a fraction near 1. `PL-9B1M` records that defect.
+squarings. It is refused, as § "What a long interval costs at the corners" below
+describes. And a step from a state at the top of the fraction range, with
+every compartment at a fraction of 1, can round one fraction past 1, by up to
+3.5e-11 in the sweep. The fraction check then refuses it and the step is
+rolled back. The sweep checks that the state is unchanged after the refusal.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**A drawn fraction can exceed 1 slightly at the stiffest corners.** The
+display path, `RunDefinition.evaluate`, does not check its fractions. Washing
+out from a full state at the stiffest corners, it draws fractions up to
+1.000033 after 60 chained propagators. That is inside the error bound of
+those propagators, so the sweep accepts it, but a plotted partial pressure is
+then above one atmosphere. No shipped agent's dial reaches a fraction near 1,
+so no shipped run draws this. `PL-9B1M` records both effects at the top of the
+fraction range.
 
 **How the bounds were measured.** The products and quotients would allow far
 wider bounds. The bound that binds is the accuracy of the step's propagator.
@@ -8238,12 +8260,14 @@ advancing at a rate other than the one displayed. This rule keeps a faster playb
 "The reproducibility guarantee" rather than making it a second numerical
 solution. Identical inputs still produce identical run definitions. Two
 learners comparing the same case at different speeds are comparing the same
-arithmetic. A count of more than 100 000 steps per tick is refused too
+arithmetic. A count of more than 1 000 steps per tick is refused too
 (`PL-T6P0`). A tick takes all of its steps before the interface can respond,
 so a count with no bound would freeze the application with no error. The
-fastest offered rate needs 300 steps per tick at the shipped step, and 30 000
-at the smallest supported step.
-<!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 100000 -->
+bound is set by time: one step measured about 53 microseconds on 2026-10-26,
+so 1 000 steps take about half of the 0.1 s tick. The tick is one step long,
+so the fastest offered rate takes 300 steps per tick at any step.
+<!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 1000 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **What the rate label is a statement about, and what was measured**
 (`PL-SQJ1`). The label states the *setting*: the multiple of real time that
