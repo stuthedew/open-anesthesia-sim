@@ -411,6 +411,20 @@ session meets the check, not here. "Nothing" is the common answer, and the
 reply says so. Each outcome is an item rather than a fix-now edit, because
 keeping a check is a defensible choice.
 
+**On a grooming pass, re-test the dead-ends list** (project owner, 2026-10-19,
+ratified, `PL-5J1S`). Read `python3 tools/dead_ends.py emit` and ask two
+questions of each entry. First, would a session propose this approach before
+opening any file? If it would only propose it while editing one part of the
+tree, move the entry into a path-scoped rule whose `paths:` cover that part,
+as `.claude/rules/dead-ends-apparatus.md` does for the item store and the
+tools. Second, does the entry refuse only the approach it names? Reword one
+that would also refuse a sound neighbour. An entry whose question no longer
+exists, for example because its code was removed, goes under "Retired" at the
+end of `docs/dead-ends.md` with the reason. Age alone is never a reason to
+move one. `tools/dead_ends.py check --base` refuses a removal with neither
+record, so whichever you choose, the move has to be written down. "Nothing"
+is the common answer, and the reply says so.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.

@@ -20,11 +20,29 @@ rewriting by +10.6% on agent tasks (Agentic Context Engineering,
 arXiv:2510.04618). Removing a single stale entry is the de-duplication half of
 that prescription, not a violation of it.
 
-**So the budget does not saturate — it is what forces the removal.** Entries
-are not permanent: one earns its line only while a session could plausibly
-propose the approach again *without first reading the code that refutes it*. An
-entry whose refutation sits in a docstring the session would open anyway, or
-whose design question no longer exists, fails that test and comes out.
+**An entry joins this list only if a session would propose the approach before
+opening any file** (project owner, 2026-10-19, ratified, `PL-5J1S`). That is a
+proposal made in a reply or a design round, which no read precedes. An approach
+proposed only while editing one part of the tree goes into a path-scoped rule
+under `.claude/rules/` whose `paths:` cover that part, however much room this
+list has. The budget is a cap, not a target to fill.
+`.claude/rules/dead-ends-apparatus.md` holds the entries about the item store
+and the tools.
+
+**An entry leaves in one of two ways, and never by deletion alone.** It moves to
+a place that still stops the approach at the moment a session would propose it:
+a path-scoped rule, or a check or docstring that cites its id. Or, when its
+question no longer exists, for example because the code it names was removed,
+it is listed under "Retired" at the end of this file with the reason. Age is not
+a reason: an old entry that still guards a live temptation stays.
+`tools/dead_ends.py check --base origin/main` fails on an entry that left
+without either record. Each grooming pass re-tests every entry against the
+admission test above, and moves the ones that fail.
+
+**When every entry must stay resident and each is already one line, bring the
+owner the budget question.** State its cost: about one token per 4 bytes, on
+every turn of every session. Dropping a lesson that is still needed is not an
+answer.
 
 **Why these are resident rather than grepped on demand.** Not because records
 like this go unread — that is a finding about human lessons-learned systems and
@@ -37,17 +55,17 @@ somebody re-proposes the thing — which is the only moment they are worth
 anything.
 
 **Size warns; it never fails the build.** `tools/dead_ends.py` nudges at 80% of
-either budget, naming the headroom and the three repairs, so the decision
-arrives with slack rather than being forced on whoever trips the cap mid-task.
+either budget, naming the headroom and the repairs, so the decision arrives
+with slack rather than being forced on whoever trips the cap mid-task.
 `tests/unit/test_dead_ends.py` keeps the shipped file below the nudge, so a
-session that adds an entry makes room for it in the same commit.
-Going over warns louder and still does not go red — a blocked commit on an
-unrelated task is how a session learns to raise the cap, which is the one
-repair that is never right. Only a structural fault fails: an entry citing an
-id that resolves to nothing, one wrapped across two lines, or a bullet opening
-with a bolded title that is not in an entry's shape, `- **approach** — why`,
-with nothing between the closing `**` and the dash. All three are otherwise
-silent: the last is never emitted at all.
+session that adds an entry makes room for it in the same commit. Going over
+warns louder and still does not go red. A blocked commit on an unrelated task
+is how a session learns to raise the cap just to get moving, and a larger
+budget is the owner's decision, put as above. Only a structural fault fails: an
+entry citing an id that resolves to nothing, one wrapped across two lines, or a
+bullet opening with a bolded title that is not in an entry's shape,
+`- **approach** — why`, with nothing between the closing `**` and the dash.
+All three are otherwise silent: the last is never emitted at all.
 
 **What does not belong here.** An item dropped as a duplicate, as superseded,
 or as out of scope. Those are ordinary queue outcomes and their `reason:` field
@@ -55,26 +73,15 @@ already records them. This file is for an approach whose *premise* was tested
 and failed, where the refutation is a fact a future session would otherwise
 have to rediscover by building the thing.
 
-## Store and queue design
-
-- **An index, database or manifest committed beside the items** — rejected: anything an index holds is recomputable, and an index is one more thing two branches conflict over. `subprojects/docket/src/docket/store.py`
-- **One shared queue document** — rejected: it serializes every writer, which is the property one-file-per-item exists to buy. `subprojects/docket/src/docket/model.py`
-- **The items on a branch of their own, as a worktree** — refuted 2026-10-17: it ends only item-only pull requests, which merge unattended, and parts an item's closure from its work and its provenance from the 767 ids the simulator cites; beads built one and deleted it. `PL-3YNG`
-- **Partitioning closed items out of the live store** — refuted 2026-09-13: parsing is 76 ms of an 830 ms command whose cost is git, and an 86.1% cross-referenced store stays flat. `PL-KM3X`; a separate reading surface was refused 2026-10-03. `PL-4V6B`
-- **Open-backlog ratio as a health measure** — refuted 2026-09-13: the comparison set is multi-contributor projects where an open issue is a promise to a stranger. `PL-03XH`
-
-## Provenance and merge detection
-
-- **Commit-containment (`git branch --merged`) for in-flight and stranded detection** — rejected: a squash merge contains none of the branch's commits, so every squash-merged branch reads as unmerged forever.
-
-## Classification and concurrency
-
-- **`classes`-derived lanes instead of `touches`-derived** — refuted 2026-09-04: put 33 of 145 open items on the wrong side, 18 of them workflow defects that would have gone to a simulator session.
-- **Treating a shared file as a concurrency refusal** — refuted 2026-09-06: excluded 27 of Gate 1's 112 open entries, all declaring `docs/MODEL.md`, from every batch. `PL-VRMK`
-
 ## Process claims that did not survive checking
 
 - **Detecting duplicate captures by shared cited referents (item ids, shas, `#NNN`, paths)** — refuted 2026-09-16: fires on 84% of open items and ranks the true original in the top 3 for only 3 of 5 confirmed pairs; same-day narrowing is worse, 95%. This store is 86.1% cross-referenced, so referent overlap cannot separate a duplicate from an ordinary citation. Title terms are worse again. `PL-85NT`
 - **A pull request template to make filing more reliable** — refuted 2026-09-20: the four-path search runs whether one exists or not, GitHub applies no template to an API-created body, and the harness reads one as layout and ignores its rules. 30 of 30 recent bodies already carry the id, the rationale and the verification claim. `PL-NDQD`
 - **A cheaper model or lower effort for a subagent** — refused by the owner 2026-10-19: price, even zero, never justifies a setting that may be less correct. Reopen only on a measurement that it is no less correct at that task. `PL-2D28`
 - **Working out a fact by hand where the repository already holds it** — refuted: a second regex or hand-written test of one predicate gave three heads 22, 15 and 26 items (PL-PVW2, PL-KGYT, PL-5DZ8), and sweeps alone never stopped them. Read the module that owns the fact, and make a check refuse the next copy. `PL-4S6C`
+
+## Retired
+
+Entries whose question no longer exists, each with the reason, in an entry's
+shape. This section is not emitted and not budgeted. It is the record that
+lets `tools/dead_ends.py check --base` accept an entry's removal.
