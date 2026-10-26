@@ -1322,112 +1322,123 @@ class SimulationController:
         return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
 
     def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
-        """Open a second live run at this run's canonical state at `instant_s`.
+        """Open a second live run from this run's canonical state at `instant_s`.
 
         This method makes a branch something a learner can *manage*, not just
         a second curve (`PL-J2TD`). Managing a branch means advancing it. The
-        result is an ordinary paused `SimulationController`, standing at the
-        state this run passed through at `instant_s`. It advances by the same
-        path every run takes. `advance()` is not overridden, and no second way
-        to move a run forward is introduced.
+        method returns an ordinary paused `SimulationController`. It starts at
+        the state that this run passed through at `instant_s`, and it advances
+        through the same code as every other run. `advance()` is not
+        overridden, and no second way to move a run forward is introduced.
 
-        **It opens at a keyframe, because that is this method's scope**
-        (`PL-54V0`). `instant_s` must be an instant at which this run holds a
-        keyframe, which means its start or a recorded setting change. Any other
-        instant is rejected, but not because it cannot be reproduced.
-        `resumed_at_mark` branches at a marked instant, and `resumed_here`
-        branches at the instant where a paused run stands. Both fork between
-        two keyframes and reproduce this run element-wise, by opening the
-        branch's run definition at the keyframe before the fork (`_open_at`).
-        No method offers any other instant, so a learner first marks it or
-        pauses the run on it. No method *restarts* a run definition at the fork
-        from the canonical state there. That would replace one propagation over
-        an interval with two propagations over its halves. The result would be
-        a different rounding of the same exact solution, measured at up to
-        5.3e-13 in an accumulator. A branch must reproduce its parent
-        element-wise (`PL-Z3W6`).
+        **The branch opens at a keyframe, because that is this method's scope**
+        (`PL-54V0`). `instant_s` must be an instant at which this run has a
+        keyframe. A keyframe is the run's start or a recorded setting change.
+        Any other instant is rejected, but not because it cannot be reproduced.
+        Two other methods branch between two keyframes. `resumed_at_mark`
+        branches at a marked instant, and `resumed_here` branches at the
+        instant where a paused run has stopped. Both reproduce this run
+        element-wise, by opening the branch's run definition at the keyframe
+        before the fork (`_open_at`). No method offers any other instant, so a
+        learner first marks the instant or pauses the run there.
+
+        No method *restarts* a run definition at the fork from the canonical
+        state there. A restart would replace one propagation over an interval
+        with two propagations, one on each side of the fork. The result would
+        be a different rounding of the same exact solution. The difference was
+        measured at up to 5.3e-13 in an accumulator. A branch must reproduce
+        its parent element-wise (`PL-Z3W6`).
 
         **The branch's clock continues the case's clock**, because a branch is
-        one patient's case under a second management, not a second patient.
+        the same patient's case managed a second way, not a second patient.
         Three things follow, and each is a correctness property rather than a
-        convenience. First, the guard on the 24 h supported run length checks the
-        step count. A branch that restarted the count would get a fresh 24 h
-        envelope. A fork at 23 h could then be advanced to 47 h of case time
-        with every guard passing. The model is not claimed to represent a
-        patient for a case that long. As `core/supported_ranges.py` argues, the
-        model omits metabolism and its fat flow is uncertain, so how far the
-        slow part of the trace can stray from a patient grows as a run goes on.
-        Second, the clock, every control-change stamp and the chart's axis all
-        read `snapshot().elapsed_s`. `format_elapsed` says that these three
-        "state one quantity one way". A branch counting from zero would place the
-        patient at the wrong point on the uptake curve in all three places at
-        once. Third, elapsed time stays one multiplication: `(k + n)` steps
-        times the step length. It is not the fork instant plus the branch's own
-        elapsed time. `docs/MODEL.md` § "Simulated time is a count of steps, not
-        a running total" states the rule against that sum.
+        convenience. First, the guard on the 24 h supported run length checks
+        the step count. A branch that restarted the count would get a fresh
+        24 h allowance. A fork at 23 h could then be advanced to 47 h of case
+        time with every guard passing. The model is not claimed to represent a
+        patient over a case that long. `core/supported_ranges.py` gives the
+        reason. The model omits metabolism, and its fat flow is uncertain. So
+        the slow part of the trace can stray further from a patient the longer
+        a run goes on.
 
-        **The run definition opens on the case's own axis rather than at a
-        zero of its own**, so the branch's clock and its run definition's
-        instants are one quantity, and nothing converts between them
-        (`PL-ZMRT`). `docs/MODEL.md` § "The canonical evaluation rule" requires
-        this. When asked for a case instant, the branch forms its interval from
-        the same two floats its parent used. A run definition shifted to its
-        own zero would depend on a subtraction that does not always round-trip.
-        The branch's run definition opens at the keyframe where the stretch
-        before `instant_s` opens, as every branch's does. `_open_at` and
-        `docs/MODEL.md` § "What this requires of a branch" explain this.
+        Second, the clock, every control-change timestamp and the chart's axis
+        all read `snapshot().elapsed_s`. The docstring of `format_elapsed` says
+        that these three "state one quantity one way". A branch counting from
+        zero would place the patient at the wrong point on the uptake curve in
+        all three places at once.
 
-        **It opens after the change made at `instant_s`, and records that
-        change in its own timeline** (`PL-ZR49`). A keyframe is a setting
-        change, and this method branches in order to run under it. The
-        branch's provenance, `opened_from.segment`, is still the stretch that
-        the step reaching `instant_s` ran under. The change is then recorded on
-        the branch as a change at the fork (`RunRecord.opened_with`). So
-        the branch's own record states the setting it runs under. That stays
-        true whatever the trunk does at `instant_s` afterwards, including
-        setting the dial back, which removes the trunk's keyframe (`PL-TNYP`).
-        And the stretch named as its provenance is one the trunk can no
-        longer replace (`PL-NRR6`). The other two ways of branching take the
-        same provenance and record no change made at the fork.
+        Third, elapsed time stays one multiplication: `(k + n)` steps times the
+        step length. Here `k` is the number of steps up to the fork, and `n` is
+        the number of steps the branch has taken since. Elapsed time is not the
+        fork instant plus the branch's own elapsed time. `docs/MODEL.md`
+        § "Simulated time is a count of steps, not a running total" states the
+        rule against that sum.
+
+        **The branch's run definition opens on the case's own time axis rather
+        than at a zero of its own** (`PL-ZMRT`). So the branch's clock and the
+        instants in its run definition are one quantity, and nothing converts
+        between them. `docs/MODEL.md` § "The canonical evaluation rule"
+        requires this. When the branch evaluates a case instant, it forms the
+        interval from the same two floats that its parent used. A run
+        definition shifted to its own zero would depend on a subtraction that
+        does not always round-trip. The branch's run definition opens at the
+        keyframe that starts the stretch before `instant_s`, as every branch's
+        does. `_open_at` and `docs/MODEL.md` § "What this requires of a branch"
+        explain this.
+
+        **The branch opens after the change made at `instant_s`, and records
+        that change in its own timeline** (`PL-ZR49`). A keyframe is a setting
+        change, and the point of branching at one is to run under the new
+        setting. The branch's provenance, `opened_from.segment`, is still the
+        stretch that the step ending at `instant_s` ran under. The change is
+        then recorded on the branch as a change at the fork
+        (`RunRecord.opened_with`). So the branch's own record states the
+        setting that the branch runs under. That record stays true whatever the
+        trunk later does at `instant_s`. The trunk may even set the dial back,
+        which removes the trunk's keyframe there (`PL-TNYP`). The stretch named
+        as the branch's provenance is also one that the trunk can no longer
+        replace (`PL-NRR6`). The other two ways of branching, `resumed_at_mark`
+        and `resumed_here`, take the same provenance and record no change made
+        at the fork.
 
         **The settings are read from the run definition, and then checked.**
         A branch is built through the ordinary constructor, so the circuit
         volume is applied before any state is. `set_circuit_volume` conserves
         agent by rewriting the inspired fraction. So a volume set afterwards
         would silently move the branch off its parent's keyframe. The four
-        live controls come from the stretch's settings, which hold each value
+        live controls come from the stretch's settings, which store each value
         as it was set (`UptakeEquationSettings`, `PL-SM5V`). The rebuilt
         branch is then checked against those settings rather than trusted.
         The check matters because a branch that assembled a system matrix its
         parent never used would diverge from its first step. That divergence
-        would stay within the tolerance that keeps the two records together.
-        The agent's displayed references are checked as well. A rejection
-        names each value that differs rather than a cause, because the rebuild
-        reads the data files again (`_disagreements_with`).
+        would stay within the tolerance used to judge that the two records
+        agree. The agent's displayed references are checked as well. A
+        rejection names each value that differs, not a cause, because the
+        rebuild reads the data files again (`_disagreements_with`).
 
         Args:
             instant_s: The case instant to open at, in seconds. It must be an
-                instant at which this run holds a keyframe.
+                instant at which this run has a keyframe.
 
         Returns:
-            A paused `SimulationController` standing at that state, carrying
-            this run's agent, patient and circuit, with a copy of this run's
-            bookmarks. Its control timeline opens with each setting this run
-            changed at `instant_s`.
+            A paused `SimulationController` at that state. It carries this
+            run's agent, patient and circuit, and a copy of this run's
+            bookmarks. Its control timeline opens with each setting that this
+            run changed at `instant_s`.
 
         Raises:
             TypeError: `instant_s` is not a `CaseInstant`, so nothing has
                 checked it against the supported run length
                 (`core/supported_ranges.py`).
-            SimulationConfigurationError: If any of the following is true. `instant_s`
-                is not an instant at which this run holds a keyframe. This run
-                is itself a branch, because a branch of a branch is rejected
-                rather than silently flattened (`PL-TFX5`). The frame this run
-                is drawn in has failed (`fork_refusal`). The fork instant is not
-                a whole number of this run's steps. Or the rebuilt branch holds
-                an equation setting or agent reference that this run did not
-                hold at the fork. The error names each differing setting or
-                reference with both of its values.
+            SimulationConfigurationError: At least one of the following is true:
+                - `instant_s` is not an instant at which this run has a keyframe.
+                - This run is itself a branch. A branch of a branch is rejected
+                  rather than silently flattened (`PL-TFX5`).
+                - The frame this run is drawn in has failed (`fork_refusal`).
+                - The fork instant is not a whole number of this run's steps.
+                - The rebuilt branch has an equation setting or agent reference
+                  that this run did not have at the fork. The error names each
+                  differing setting or reference with both of its values.
         """
 
         resume_point = self._resume_point_at(instant_s)
