@@ -1118,11 +1118,11 @@ def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone
 ) -> None:
     """`PL-YT3T`: the circuit stepped on its own refuses a step longer than 24 h.
 
-    Before the ceiling, a step near 1e308 s overflowed the count of time constants
-    elapsed to `inf`, and the exhaust came back as `inf` or `nan`. Both
-    `advance_fresh_gas` and `advance` refuse the step, and the inspired fraction does
-    not change. The ceiling itself is accepted. The expected ceiling, 86 400 s, is
-    written out here rather than read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    Before the ceiling existed, a step near 1e308 s made the count of elapsed time constants
+    overflow to `inf`, and the exhaust came back as `inf` or `nan`. Both `advance_fresh_gas` and
+    `advance` refuse the step, and the inspired fraction does not change. The ceiling itself is
+    accepted. The expected ceiling, 86 400 s, is written out here rather than read from
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
     circuit = BreathingCircuit(
@@ -1154,8 +1154,9 @@ def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone
 @pytest.mark.parametrize(
     ("starting_fraction", "dial_percent", "delivered_l", "exhausted_l"),
     [
-        # Wash-in: 10 L/min for 86 400 s admits 14 400 L at 2%, which is 288 L of
-        # agent. The empty 0.01 L circuit keeps 0.01 x 0.02 = 2e-4 L of it.
+        # Wash-in. Fresh gas at 10 L/min for 86 400 s delivers 14 400 L at 2%,
+        # which is 288 L of agent. The circuit starts empty and its volume is 0.01 L,
+        # so it keeps 0.01 x 0.02 = 2e-4 L of that agent.
         (0.0, 2.0, 288.0, 288.0 - 2e-4),
         # The dial equals the circuit: everything delivered leaves. This case
         # returned an exhaust of nan (0 x inf) at a step near 1e308 s.
@@ -1169,12 +1170,12 @@ def test_the_circuit_stepped_alone_at_the_ceiling_returns_a_finite_exchange_at_t
 ) -> None:
     """`PL-YT3T`: at the step ceiling and the envelope's stiffest circuit, the exchange is exact.
 
-    The circuit is the smallest that the numerical envelope admits, 0.01 L, at the
-    largest supported fresh gas flow, 10 L/min, stepped by the 86 400 s ceiling. That
-    is about 1.4e6 time constants, the most any accepted step can elapse. The circuit
-    ends at the dial's fraction, and the expected amounts are worked by hand in the
-    parameter list, from the flow, the step, the volume and the fractions. They are
-    not read from the code under test.
+    The circuit has the smallest volume that the numerical envelope admits, 0.01 L. It runs at the
+    largest supported fresh gas flow, 10 L/min, and is stepped by the 86 400 s ceiling. That step
+    spans about 1.4e6 time constants, the most that any accepted step can span.
+    The circuit ends at the dial's fraction. The expected amounts in the parameter list are worked
+    out by hand from the flow, the step, the volume and the fractions. They are not read from the
+    code under test.
     """
 
     circuit = BreathingCircuit(

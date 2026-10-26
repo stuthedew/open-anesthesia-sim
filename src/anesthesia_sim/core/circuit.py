@@ -699,18 +699,18 @@ class BreathingCircuit:
 
         This method is the circuit's own closed-form solution with no patient
         connected. It is not how a run advances. A connected patient adds a
-        ventilation term, which `docs/MODEL.md` § "Breathing circuit" gives beside
-        this one, and `AgentUptakeSystem.advance()` is the step that solves both.
+        ventilation term, and `docs/MODEL.md` § "Breathing circuit" gives that term
+        beside this one. `AgentUptakeSystem.advance()` is the step that solves both.
         The package docstring in `core/__init__.py` explains the distinction. It
         also explains why zero flow needs no separate branch here.
 
         Raises:
-            SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, is shorter than `MINIMUM_SIMULATION_STEP_S`, or
-                is longer than the supported run length,
-                `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
-                `require_compartment_step` says (`PL-WP52`, `PL-YT3T`).
-                Nothing changes when the step is refused.
+            SimulationConfigurationError: `simulation_step_s` is outside the range
+                that `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
+                step must be positive and finite, no shorter than
+                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. Nothing changes when
+                the step is refused.
         """
 
         require_compartment_step("circuit simulation_step_s", simulation_step_s)

@@ -195,11 +195,11 @@ class VenousBloodCompartment:
 
         This method is the venous pool's own closed-form solution. It is not how a
         run advances. In a run, the tissue return changes continuously as the
-        tissues fill, and `AgentUptakeSystem.advance()` is the step that follows
+        tissues fill, and `AgentUptakeSystem.advance()` is the step that tracks
         that change. The package docstring in `core/__init__.py` explains the
-        distinction. `core/exponential_approach.py` holds the form in which the
-        amount is advanced. That form is exact at zero flow, so this method needs
-        no separate branch for it. `docs/MODEL.md` § "Venous blood" gives the
+        distinction. `core/exponential_approach.py` holds the formula that advances
+        the amount. That formula is exact at zero flow, so this method needs no
+        separate branch for zero flow. `docs/MODEL.md` § "Venous blood" gives the
         equation.
 
         Returns the signed change in venous agent amount.
@@ -208,18 +208,18 @@ class VenousBloodCompartment:
             TypeError: the tissue return fraction was not built as a
                 `Fraction`, which is the type that checks it lies in the range
                 0 to 1 (`core/concentration.py`).
-            SimulationConfigurationError: `simulation_step_s` is not positive
-                and finite, is shorter than `MINIMUM_SIMULATION_STEP_S`, or
-                is longer than the supported run length,
-                `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
-                `require_compartment_step` says (`PL-WP52`, `PL-YT3T`), or `blood_flow_l_min` is
-                negative or not finite. These checks run before anything
-                changes. The error is also raised when the amount held is
-                already more than the capacity. Only a write that bypasses
-                `__setattr__` can have stored such an amount. The new amount is
-                always written through `__setattr__`, which refuses an amount
-                past the capacity. That includes zero flow, where the new amount
-                is the amount held, unchanged.
+            SimulationConfigurationError: `blood_flow_l_min` is negative or not
+                finite, or `simulation_step_s` is outside the range that
+                `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
+                step must be positive and finite, no shorter than
+                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. These checks run
+                before anything changes. The error is also raised when the amount
+                held is already more than the capacity. Only a write that bypasses
+                `__setattr__` can have stored such an amount. This method always
+                writes the new amount through `__setattr__`, which refuses an
+                amount greater than the capacity. It does so even at zero flow,
+                where the new amount equals the amount held.
         """
 
         require_fraction(

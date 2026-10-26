@@ -821,27 +821,26 @@ def require_supported_step_count(step_count: StepCount, simulation_step_s: Simul
 def require_compartment_step(name: str, simulation_step_s: float) -> None:
     """Require a step that a compartment stepped on its own may take.
 
-    A compartment's own `advance` takes a plain `float`, not a
-    `SimulationStep`. The run's ceiling, `MAXIMUM_SIMULATION_STEP_S`, is how
-    long the run holds its settings constant, and a compartment stepped alone
-    at 1 s is correct (`PL-WP52`). So each compartment's `advance` calls this
-    function before anything changes. It is the one statement of which steps
-    a compartment accepts.
+    A compartment's own `advance` takes a plain `float`, not a `SimulationStep`. The run's
+    ceiling, `MAXIMUM_SIMULATION_STEP_S`, limits how long the run holds its settings constant.
+    That ceiling does not apply to a compartment stepped alone, which gives a correct result at a
+    step of 1 s (`PL-WP52`). Instead, each compartment's `advance` calls this function before it
+    changes anything. This function is the one place that states which steps a compartment
+    accepts.
 
-    The floor is `MINIMUM_SIMULATION_STEP_S`. `require_at_least_the_smallest_step`
-    checks it, in the same words that it uses for the run. Below the floor,
-    rounding is a growing share of what each step changes.
+    The floor is `MINIMUM_SIMULATION_STEP_S`. `require_at_least_the_smallest_step` checks it,
+    with the same message that it gives for the run. Below the floor, rounding error is a growing
+    share of the change in each step.
 
-    The ceiling is `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, the supported run
-    length. One step cannot stand for more simulated time than the longest
-    span over which the model is claimed to represent a patient. The ceiling
-    also keeps each quantity formed from the step finite (`PL-YT3T`). Before it
-    existed, a circuit stepped by about 1e308 s overflowed its count of time
-    constants to `inf`, and `BreathingCircuit.advance_fresh_gas` returned an
-    exhaust of `inf` or `nan` without an error. At the ceiling, the largest
-    supported fresh gas flow in the smallest circuit that the numerical
-    envelope admits elapses about 1.4e6 time constants. That count is about
-    300 decades below the largest `float`.
+    The ceiling is `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, the supported run length. One step cannot
+    stand for more simulated time than the longest span over which the model is claimed to
+    represent a patient. The ceiling also keeps every quantity computed from the step finite
+    (`PL-YT3T`). Before the ceiling existed, a step of about 1e308 s made a circuit's count of
+    elapsed time constants overflow to `inf`. `BreathingCircuit.advance_fresh_gas` then returned
+    an exhaust of `inf` or `nan` without raising an error. Take the smallest circuit that the
+    numerical envelope allows, at the largest supported fresh gas flow. A step at the ceiling
+    spans about 1.4e6 of its time constants. That count is about 300 orders of magnitude below
+    the largest `float`.
 
     Raises:
         TypeError: the step is not an `int` or a `float`, or is a `bool`, as

@@ -433,12 +433,11 @@ def test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone(
 ) -> None:
     """`PL-YT3T`: the venous pool stepped on its own refuses a step longer than 24 h.
 
-    Every compartment stepped alone takes one ceiling, the supported run length, so
-    that one statement says which steps a compartment accepts. The step is refused
-    and the amount held does not change. A step of exactly 86 400 s is accepted, and
-    it brings the venous pool to its equilibrium, 0.02 of its capacity. The expected
-    ceiling is written out here rather than read from
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    Every compartment stepped alone has the same ceiling, the supported run length, so one
+    function states which steps a compartment accepts. The step is refused and the amount held
+    does not change. A step of exactly 86 400 s is accepted, and it brings the venous pool to
+    its equilibrium, 0.02 of its capacity. The expected ceiling is written out here rather than
+    read from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
     venous = _build_venous_blood()
