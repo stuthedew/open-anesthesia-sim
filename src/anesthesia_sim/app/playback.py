@@ -110,6 +110,16 @@ from anesthesia_sim.core.validation import require_positive_finite
 #: because the nearest such rate is half a step away from a whole number.
 STEP_COUNT_TOLERANCE: Final = 1e-9
 
+#: The most steps one tick may take. A tick runs its whole burst before the
+#: interface can respond, so a count with no bound is a hang with no error
+#: (`PL-T6P0`). The shipped loop takes at most 300 steps per tick: the fastest
+#: offered rate, 300x, with a tick one 0.1 s step long. Even at the smallest
+#: step that `core/simulation_step.py` supports, 1 ms, that rate and tick need
+#: 30 000 steps. This bound leaves a margin of about three over that, and
+#: `test_the_most_steps_one_tick_may_take_covers_every_rate_at_the_smallest_step`
+#: fails if a faster rate or a slower tick would need more.
+MAXIMUM_STEPS_PER_TICK: Final = 100_000
+
 
 @dataclass(frozen=True, slots=True)
 class PlaybackRate:
@@ -166,8 +176,11 @@ class PlaybackRate:
             SimulationConfigurationError: If the tick interval is not
                 positive and finite, as `core.validation.require_positive_finite`
                 checks (`PL-F9TC`). Also if the step count that these give is
-                too large to count. A vanishing step or an enormous tick used
-                to raise that as a bare `OverflowError` (`PL-YZ17`). Also if
+                more than `MAXIMUM_STEPS_PER_TICK`. An enormous tick used to
+                raise a bare `OverflowError` once the count could not be
+                counted (`PL-YZ17`), and a large count that could be counted
+                was returned, so the run loop would have stepped for ever
+                (`PL-T6P0`). Also if
                 this rate does not land on a whole number of steps at these
                 intervals. The refusal is deliberate. The alternatives are a
                 step of a different size, or a run that plays at a rate other
@@ -179,11 +192,15 @@ class PlaybackRate:
 
         exact = self.multiplier * tick_interval_s / simulation_step_s
 
-        if not math.isfinite(exact):
+        # The count is compared after rounding, so a ratio that lands a rounding
+        # error above the bound, and would be returned as the bound, is not
+        # refused. An infinite ratio cannot be rounded and is refused first.
+        if not math.isfinite(exact) or round(exact) > MAXIMUM_STEPS_PER_TICK:
             raise SimulationConfigurationError(
                 f"playing at {self.multiplier}x real time with a {tick_interval_s} s tick "
-                f"and a {simulation_step_s} s step needs more steps per tick than can be "
-                "counted"
+                f"and a {simulation_step_s} s step needs {exact:g} steps per tick, more "
+                f"than the {MAXIMUM_STEPS_PER_TICK} one tick may take, because the "
+                "interface cannot respond until a tick's steps are done"
             )
 
         steps = round(exact)

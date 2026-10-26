@@ -8238,7 +8238,12 @@ advancing at a rate other than the one displayed. This rule keeps a faster playb
 "The reproducibility guarantee" rather than making it a second numerical
 solution. Identical inputs still produce identical run definitions. Two
 learners comparing the same case at different speeds are comparing the same
-arithmetic.
+arithmetic. A count of more than 100 000 steps per tick is refused too
+(`PL-T6P0`). A tick takes all of its steps before the interface can respond,
+so a count with no bound would freeze the application with no error. The
+fastest offered rate needs 300 steps per tick at the shipped step, and 30 000
+at the smallest supported step.
+<!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 100000 -->
 
 **What the rate label is a statement about, and what was measured**
 (`PL-SQJ1`). The label states the *setting*: the multiple of real time that
