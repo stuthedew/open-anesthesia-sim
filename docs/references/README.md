@@ -84,8 +84,41 @@ directory.** Without one the corpus is consulted once per *session* instead of
 once per *source*, and each later session re-reads the same PDF at full
 context; `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
 is that argument applied to literature. The obligation and its home are settled
-here. What a note contains, and the first worked example, are `PL-Z3V5`'s and
-are deliberately not fixed here.
+here.
+
+**What an extraction note contains** (`PL-Z3V5`, 2026-10-26). Write one note
+per source, as a Markdown file in this directory named for the first author,
+the year and the subject. A reading of one part that stands on its own, such as
+one figure read across two papers, may have a note of its own. A note gives,
+in this order:
+
+1. **The citation**, with its PMID or DOI, and a pointer to the source's entry
+   under "The documents" below.
+2. **The route and depth**: that it was read in the private corpus, whether
+   through the text layer or as page images, which printed pages, on what date,
+   and for which item.
+3. **The study** behind the values: who or what was measured, how many, and
+   the conditions a reader needs to judge whether a value fits this model.
+4. **Each value taken**: the quantity, its value with units and dispersion,
+   n, and its locator, meaning the printed page and the table, figure or
+   section. Say whether the source states the value or it was read from a
+   figure. A value read from a figure also carries the method and its reading
+   error.
+5. **Where the repository uses each value**, and its standing under
+   `docs/MODEL.md` § "Source hierarchy": adopted as the authority for a stored
+   value, with its tier, or used as a reference value in a test.
+6. **What was not taken**, and why, so a later session does not open the
+   source again to find out.
+
+A note records facts and short quotations. It never reproduces a table or a
+figure in its published arrangement. Where a fact is already recorded with its
+page in another file, the note names that file rather than copying the fact.
+`yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md` is the worked
+example, and `yasuda-1991-figure-2-wash-in.md` is a note on a figure read from
+page images.
+Some sources already keep their readings inside their entry below, as the
+Gas Man Workbook does. Those readings stay there, and a later reading of such
+a source is added to its entry. Every other source gets a note file.
 
 **Two of its holdings are whole books**, added 2026-09-15 and split into
 section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
@@ -374,6 +407,18 @@ value:
   is where they are written down. `PL-9GP1` brought it into those notes and
   into `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as a value
   no source contained; no stored value changed.
+- **Chapter 13, "Patient Size", printed p. 127, states the 70 kg reference
+  weight.** It says: "Values for volumes and flows for a 70 kg patient are
+  those found often in the literature: VA = 4 L/min, CO = 5 L/min, and oxygen
+  consumption = 250 mL/min." The same paragraph says Gas Man scales alveolar
+  ventilation and cardiac output with weight to the 3/4 power, and compartment
+  volumes linearly. Read through the corpus's text extraction on 2026-09-30
+  for `PL-9LXK`, and checked again on 2026-10-26 for `PL-KN5Y`. It is the
+  page that the Workbook entry of
+  `src/anesthesia_sim/data/patients/reference_adult.json` names for the 70 kg
+  reference weight. Like the rest
+  of the book it is tier 3: the program's own reference patient, not a
+  measurement.
 - **Appendix C also carries a `Volatility` line, and it states a
   temperature.** Read on 2026-09-16 while working `PL-S6WW`: the per-agent
   entry is written `Volatility=209           Vapor/Liquid volume ratio
@@ -495,6 +540,23 @@ chapter's authors find compartmental and physiologic models fit equally well
 (Hendrickx et al. 2006a). `docs/MODEL.md` § "Known limitations" cites them for
 that description and those cautions, and for no value.
 
+### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
+
+**Not held here. Held in the private corpus**, like every other owner-supplied
+full text.
+
+> Targ AG, Yasuda N, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+> isoflurane, and halothane in plastics and rubber composing a conventional
+> anesthetic circuit.* Anesth Analg 1989;69(2):218-25. PMID
+> [2764290](https://pubmed.ncbi.nlm.nih.gov/2764290/).
+
+What has been taken from it, with the pages, is in
+`docs/references/targ-1989-circuit-plastics-and-rubber-solubility.md`: the
+measured system volume, the order of the circuit components' partition
+coefficients, the ideal wash-in line, and the authors' reading for desflurane.
+It was read in full on 2026-09-13 and checked again on 2026-10-26 for
+`PL-N701`.
+
 ### Yasuda et al. 1991 — the two human kinetics papers
 
 **Not held here. Held in the private corpus**, like every other owner-supplied
@@ -539,10 +601,13 @@ curves", taken 2026-09-27 for `PL-KK1Q`; the hybrid coefficients and their SDs
 2026-09-26 record. Figures 3 and 4 of each, the multi-day washout curves on
 logarithmic axes, were read qualitatively and no number was taken from them.
 
-Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
-317-23; the *Anesthesiology* paper is a scan with no text layer, read as page
-images of pp. 493-96 only, p. 496 again on 2026-09-27, and pp. 493-95 again the
-same day for `PL-KK1Q`.
+Route and depth, for the readings this paragraph lists: the *Anesth Analg*
+paper through the corpus's text layer, pp. 317-23; the *Anesthesiology* paper
+is a scan with no text layer, read as page images of pp. 493-96, p. 496 again
+on 2026-09-27, and pp. 493-95 again the same day for `PL-KK1Q`. Its methods and
+abstract pages were read too: pp. 490, 491, 492, 494 and 497 on 2026-09-13 for `PL-4QCJ`, p. 490 on
+2026-10-18 for `PL-R0NL`, and pp. 489-91 again on 2026-10-26. Each extraction
+note named below gives the pages it rests on.
 
 Their F_A/F_I curves during administration (Figure 2 of each, pp. 320 and 493)
 were read from the page images on 2026-10-18 for `PL-R0NL`, with the wash-in
@@ -551,3 +616,9 @@ layer, *Anesthesiology* p. 490 as a page image). Every value read, the method
 and its reading error are in `docs/references/yasuda-1991-figure-2-wash-in.md`,
 and the values are `PUBLISHED_WASH_IN_TIME_COURSE` in
 `tests/reference/test_published_wash_in_and_elimination.py`.
+
+The *Anesth Analg* paper's 30-minute wash-in and five-minute elimination
+ratios, the study they come from and the methods fact behind its tissue
+coefficients are in
+`docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`,
+with their pages, read 2026-10-26 for `PL-Z3V5`.

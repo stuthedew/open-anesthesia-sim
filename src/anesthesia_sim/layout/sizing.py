@@ -19,18 +19,19 @@ not changed: they are the reader's proportions, and they apply again once the
 extent is large enough.
 
 **An Area that cannot be given its need says so** (`PL-K285` Q2 and Q3,
-`PL-30L5` Q2). That happens when the reader's own operation asks for more room
-than the extent has: a split whose halves are smaller than their View needs,
-a View chosen for an Area too small for it, or a layout opened at a smaller
-size than it was arranged at. Such an Area is *too small*. It is held only at
-its *floor*, the least size at which it can show its header and one line of a
-notice, and the adapter draws `PL-DB5G`'s notice there, stating the size the
-View needs and the size the Area has. The adapter gives its host the sum of
-the needs as its least size (`minimum_extent`), so a host that can grow, such
-as the dashboard's scrolling page, grows instead, and no Area there is too
-small. Nothing is clipped, and nothing is collapsed to zero extent. Collapsing
-to zero is what Blender does with `RGN_FLAG_TOO_SMALL`
-(`docs/interface-provenance.md`).
+`PL-30L5` Q2). This happens when something the reader does asks for more room
+than the extent has: a split whose halves are smaller than their View needs, a
+View chosen for an Area too small for it, or a layout opened at a smaller size
+than it was arranged at. Such an Area is *too small*, and it is given only its
+*floor*. The floor is the least size at which the Area can show its header, the
+notice's title, and a short statement of the size the View needs and the size
+the Area has (`PL-Y65Q`). The adapter draws `PL-DB5G`'s notice in the Area, and
+adds the notice's advice sentence only where the Area has room for it. The
+adapter gives its host the sum of the needs as the adapter's least size
+(`minimum_extent`). A host that can grow, such as the dashboard's scrolling
+page, grows to that size instead, so no Area in it is too small. Nothing is
+clipped, and nothing is collapsed to zero extent. Collapsing to zero is what
+Blender does with `RGN_FLAG_TOO_SMALL` (`docs/interface-provenance.md`).
 
 **Which Areas are too small is decided once per change, by `settle`.** Every
 Area is first tried at its need. When a split cannot fit its children's

@@ -45,6 +45,13 @@ from anesthesia_sim.core.concentration import (
     require_percent,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.numerical_envelope import (
+    CompartmentVolume,
+    PartitionCoefficient,
+    require_coefficient,
+    require_compartment_volume,
+    tissue_blood_partition_coefficient,
+)
 from anesthesia_sim.core.validation import require_positive_finite
 
 
@@ -286,8 +293,17 @@ class AgentParameters:
     names on purpose. `_StrictPayload` explains why that is a boundary rather
     than duplication.
 
+    The four partition coefficients are `PartitionCoefficient`s, built only
+    inside the numerical envelope (`core/numerical_envelope.py`). So are the
+    three tissue:blood coefficients derived from them. Two coefficients inside
+    the envelope can form a quotient outside it, so each quotient is formed
+    and checked when the record is built, as well as wherever it is read
+    (`PL-QX2G`).
+
     Raises:
-        TypeError: `max_delivered_concentration_percent` was not built as a
+        TypeError: a partition coefficient was not built as a
+            `PartitionCoefficient`. Also raised when
+            `max_delivered_concentration_percent` was not built as a
             `Percent`, or `mac_percent` was not built as a `MacPercent`. A
             `Fraction` and a bare `float` are both refused
             (`core/concentration.py`'s `require_percent` and
@@ -299,26 +315,28 @@ class AgentParameters:
             is zero. A `Percent` refuses a negative value when it is built, so
             zero is the only non-positive value it can hold. A vaporizer that
             delivers nothing has no dial to set. A zero MAC cannot reach this
-            record, because a `MacPercent` refuses zero when it is built. The
-            MAC divides every MAC multiple shown, and it is the number in the
-            `1 MAC = x%` reference beside the chart (`PL-0FJ8`, `PL-F9TC`).
-            For a shipped file, the loader's `PositivePercent` refuses a zero
-            MAC first. Also raised when `mac_percent` is above the vaporizer
-            maximum. The loader's `_mac_percent_must_not_exceed_vaporizer_max`
-            refuses a MAC above the maximum for a file, and this check refuses
-            it for every other record. A run opens at 1 MAC
-            (`AgentUptakeSystem.for_agent`), and a dial cannot be set above
-            the vaporizer maximum. So such a run would open at a dial setting
-            that the vaporizer cannot deliver (`PL-HPKK`).
+            record, because a `MacPercent` refuses zero when it is built. Every
+            MAC multiple shown is a concentration divided by the MAC, and the
+            MAC is the number in the `1 MAC = x%` reference beside the chart
+            (`PL-0FJ8`, `PL-F9TC`). For a shipped file, the loader's
+            `PositivePercent` refuses a zero MAC first. Also raised when
+            `mac_percent` is above the vaporizer maximum. The loader's
+            `_mac_percent_must_not_exceed_vaporizer_max` refuses such a MAC in
+            a file, and this check refuses it in a record built any other way.
+            A run opens at 1 MAC (`AgentUptakeSystem.for_agent`), and a dial
+            cannot be set above the vaporizer maximum. So such a run would open
+            at a dial setting that the vaporizer cannot deliver (`PL-HPKK`).
+            Also raised when a tissue:blood coefficient is outside the
+            numerical envelope.
     """
 
     schema_version: int
     id: str
     display_name: str
-    blood_gas_partition_coefficient: float
-    vessel_rich_tissue_gas_partition_coefficient: float
-    muscle_tissue_gas_partition_coefficient: float
-    fat_tissue_gas_partition_coefficient: float
+    blood_gas_partition_coefficient: PartitionCoefficient
+    vessel_rich_tissue_gas_partition_coefficient: PartitionCoefficient
+    muscle_tissue_gas_partition_coefficient: PartitionCoefficient
+    fat_tissue_gas_partition_coefficient: PartitionCoefficient
     max_delivered_concentration_percent: Percent
     mac_percent: MacPercent
     mac_awake: MacAwakeReference
@@ -328,6 +346,24 @@ class AgentParameters:
     provenance_gap: str | None
 
     def __post_init__(self) -> None:
+        require_coefficient("blood_gas_partition_coefficient", self.blood_gas_partition_coefficient)
+        require_coefficient(
+            "vessel_rich_tissue_gas_partition_coefficient",
+            self.vessel_rich_tissue_gas_partition_coefficient,
+        )
+        require_coefficient(
+            "muscle_tissue_gas_partition_coefficient", self.muscle_tissue_gas_partition_coefficient
+        )
+        require_coefficient(
+            "fat_tissue_gas_partition_coefficient", self.fat_tissue_gas_partition_coefficient
+        )
+        # Each quotient is formed once here, so that a record whose coefficients make a
+        # tissue:blood coefficient outside the envelope is refused when it is built.
+        _ = (
+            self.vessel_rich_tissue_blood_partition_coefficient,
+            self.muscle_tissue_blood_partition_coefficient,
+            self.fat_tissue_blood_partition_coefficient,
+        )
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
@@ -338,24 +374,34 @@ class AgentParameters:
         require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
 
     @property
-    def vessel_rich_tissue_blood_partition_coefficient(self) -> float:
+    def vessel_rich_tissue_blood_partition_coefficient(self) -> PartitionCoefficient:
         """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
-        return (
-            self.vessel_rich_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
+        return tissue_blood_partition_coefficient(
+            self.vessel_rich_tissue_gas_partition_coefficient,
+            self.blood_gas_partition_coefficient,
+            name="vessel_rich_tissue_blood_partition_coefficient",
         )
 
     @property
-    def muscle_tissue_blood_partition_coefficient(self) -> float:
+    def muscle_tissue_blood_partition_coefficient(self) -> PartitionCoefficient:
         """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
-        return self.muscle_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
+        return tissue_blood_partition_coefficient(
+            self.muscle_tissue_gas_partition_coefficient,
+            self.blood_gas_partition_coefficient,
+            name="muscle_tissue_blood_partition_coefficient",
+        )
 
     @property
-    def fat_tissue_blood_partition_coefficient(self) -> float:
+    def fat_tissue_blood_partition_coefficient(self) -> PartitionCoefficient:
         """Derive tissue:blood as tissue:gas / blood:gas, rather than storing it redundantly."""
 
-        return self.fat_tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
+        return tissue_blood_partition_coefficient(
+            self.fat_tissue_gas_partition_coefficient,
+            self.blood_gas_partition_coefficient,
+            name="fat_tissue_blood_partition_coefficient",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -365,26 +411,42 @@ class ReferenceAdultParameters:
     `parse_reference_adult_parameters()` builds this record from
     `_ReferenceAdultPayload`, which validates the file and is then discarded.
     See `_StrictPayload` for why the pair of types exists.
+
+    The five volumes are `CompartmentVolume`s, built only inside the
+    numerical envelope (`core/numerical_envelope.py`, `PL-QX2G`).
+
+    Raises:
+        TypeError: a volume was not built as a `CompartmentVolume`.
     """
 
     schema_version: int
     id: str
     display_name: str
     weight_kg: float
-    alveolar_gas_volume_l: float
-    venous_pool_volume_l: float
+    alveolar_gas_volume_l: CompartmentVolume
+    venous_pool_volume_l: CompartmentVolume
     default_alveolar_ventilation_l_min: float
     default_cardiac_output_l_min: float
-    vessel_rich_volume_l: float
+    vessel_rich_volume_l: CompartmentVolume
     vessel_rich_perfusion_fraction: float
-    muscle_volume_l: float
+    muscle_volume_l: CompartmentVolume
     muscle_perfusion_fraction: float
-    fat_volume_l: float
+    fat_volume_l: CompartmentVolume
     fat_perfusion_fraction: float
     sources: tuple[SourceReference, ...]
     # The reason no primary source is adopted, if none is, or `None` if one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
     provenance_gap: str | None
+
+    def __post_init__(self) -> None:
+        for field in (
+            "alveolar_gas_volume_l",
+            "venous_pool_volume_l",
+            "vessel_rich_volume_l",
+            "muscle_volume_l",
+            "fat_volume_l",
+        ):
+            require_compartment_volume(field, getattr(self, field))
 
     @property
     def total_perfusion_fraction(self) -> float:
@@ -425,8 +487,9 @@ class BreathingCircuitParameters:
     # a manufacturer's published apparatus volume, which leaves out the patient
     # circuit. `_BreathingCircuitPayload` says what a profile author adds to
     # such a figure, and why nothing in the tree could tell the two apart
-    # (`PL-TBMX`).
-    circuit_volume_l: float
+    # (`PL-TBMX`). It is a `CompartmentVolume`, built only inside the numerical
+    # envelope (`core/numerical_envelope.py`, `PL-QX2G`).
+    circuit_volume_l: CompartmentVolume
     # The flow this profile opens a run at, or `None` if it states none.
     # `None` means *this profile states no startup flow*, never *this machine
     # has none*. No surveyed machine publishes a startup flow. A run built
@@ -445,6 +508,16 @@ class BreathingCircuitParameters:
     # No source of any tier is adopted for either value here, as the file's
     # own entry says.
     provenance_gap: str | None
+
+    def __post_init__(self) -> None:
+        """Require the circuit volume as a `CompartmentVolume`.
+
+        Raises:
+            TypeError: `circuit_volume_l` was not built as a
+                `CompartmentVolume` (`core/numerical_envelope.py`).
+        """
+
+        require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
 
 
 def _validate_nonempty_string(value: object) -> str:
@@ -579,7 +652,7 @@ PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
-"""**Which set of types a new field in this file uses** (`PL-KL2Q`).
+"""**This note says which set of types a new field in this file uses** (`PL-KL2Q`).
 
 Two overlapping sets of types meet here, and they do different halves of one
 job. The `Positive*` aliases above are Pydantic `BeforeValidator`s. They check
@@ -595,9 +668,11 @@ the quantity:
   refuse a bad file, and the payload is discarded immediately afterwards. A
   type that marks a boundary therefore gains nothing on a value that is about
   to be thrown away.
-- **A public dataclass field takes the `concentration` type.** The public
-  types are what the rest of the application holds. They are therefore where
-  a conversion can be missed, and where a marked boundary is worth having.
+- **A public dataclass field takes a type from `core/concentration.py`.** A
+  volume or a partition coefficient takes the numerical envelope's type
+  instead (`core/numerical_envelope.py`, `PL-QX2G`). The public types are what
+  the rest of the application holds. They are therefore where a conversion can
+  be missed, and where a marked boundary is worth having.
   `parse_agent_parameters` and `parse_reference_adult_parameters` are the only
   places where a value crosses from one layer to the other. They wrap each
   value explicitly, as in `Percent(model.mac_percent)` and
@@ -1111,10 +1186,12 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
     Raises:
         SimulationConfigurationError: the payload is not a valid agent file.
             That covers a missing or misspelled key, an unsupported
-            `schema_version`, and a value outside its validated range. It also
-            covers a `sources` entry whose `authority_for` disagrees with
-            `adopted` or names something other than one of this file's stored
-            numeric values, and a stored value that two entries both name.
+            `schema_version`, and a value outside its validated range or the
+            numerical envelope. It also covers a `sources` entry whose
+            `authority_for` disagrees with `adopted`, or names something other
+            than one of this file's stored numeric values. It also covers a
+            stored value that two entries both name, and coefficients whose
+            tissue:blood quotient is outside the numerical envelope.
     """
 
     try:
@@ -1128,10 +1205,18 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         schema_version=model.schema_version,
         id=model.id,
         display_name=model.display_name,
-        blood_gas_partition_coefficient=model.blood_gas_partition_coefficient,
-        vessel_rich_tissue_gas_partition_coefficient=coefficients.vessel_rich,
-        muscle_tissue_gas_partition_coefficient=coefficients.muscle,
-        fat_tissue_gas_partition_coefficient=coefficients.fat,
+        blood_gas_partition_coefficient=PartitionCoefficient(
+            model.blood_gas_partition_coefficient, name="blood_gas_partition_coefficient"
+        ),
+        vessel_rich_tissue_gas_partition_coefficient=PartitionCoefficient(
+            coefficients.vessel_rich, name="tissue_gas_partition_coefficients.vessel_rich"
+        ),
+        muscle_tissue_gas_partition_coefficient=PartitionCoefficient(
+            coefficients.muscle, name="tissue_gas_partition_coefficients.muscle"
+        ),
+        fat_tissue_gas_partition_coefficient=PartitionCoefficient(
+            coefficients.fat, name="tissue_gas_partition_coefficients.fat"
+        ),
         max_delivered_concentration_percent=(Percent(model.max_delivered_concentration_percent)),
         mac_percent=MacPercent(model.mac_percent),
         mac_awake=MacAwakeReference(
@@ -1152,11 +1237,12 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
     Raises:
         SimulationConfigurationError: the payload is not a valid patient file.
             That covers a missing or misspelled key, an unsupported
-            `schema_version`, a value outside its validated range, and
-            perfusion fractions that do not sum to 1. It also covers a `sources`
-            entry whose `authority_for` disagrees with `adopted` or names
-            something other than one of this file's stored numeric values, and
-            a stored value that two entries both name.
+            `schema_version`, a value outside its validated range or the
+            numerical envelope, and perfusion fractions that do not sum to 1.
+            It also covers a `sources` entry whose `authority_for` disagrees
+            with `adopted`, or names something other than one of this file's
+            stored numeric values. It also covers a stored value that two
+            entries both name.
     """
 
     try:
@@ -1171,15 +1257,25 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         id=model.id,
         display_name=model.display_name,
         weight_kg=model.weight_kg,
-        alveolar_gas_volume_l=model.alveolar_gas_volume_l,
-        venous_pool_volume_l=model.venous_pool_volume_l,
+        alveolar_gas_volume_l=CompartmentVolume(
+            model.alveolar_gas_volume_l, name="alveolar_gas_volume_l"
+        ),
+        venous_pool_volume_l=CompartmentVolume(
+            model.venous_pool_volume_l, name="venous_pool_volume_l"
+        ),
         default_alveolar_ventilation_l_min=model.default_alveolar_ventilation_l_min,
         default_cardiac_output_l_min=model.default_cardiac_output_l_min,
-        vessel_rich_volume_l=tissue_groups.vessel_rich.volume_l,
+        vessel_rich_volume_l=CompartmentVolume(
+            tissue_groups.vessel_rich.volume_l, name="tissue_groups.vessel_rich.volume_l"
+        ),
         vessel_rich_perfusion_fraction=tissue_groups.vessel_rich.perfusion_fraction,
-        muscle_volume_l=tissue_groups.muscle.volume_l,
+        muscle_volume_l=CompartmentVolume(
+            tissue_groups.muscle.volume_l, name="tissue_groups.muscle.volume_l"
+        ),
         muscle_perfusion_fraction=tissue_groups.muscle.perfusion_fraction,
-        fat_volume_l=tissue_groups.fat.volume_l,
+        fat_volume_l=CompartmentVolume(
+            tissue_groups.fat.volume_l, name="tissue_groups.fat.volume_l"
+        ),
         fat_perfusion_fraction=tissue_groups.fat.perfusion_fraction,
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,
@@ -1192,12 +1288,12 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
     Raises:
         SimulationConfigurationError: the payload is not a valid machine
             profile. That covers a missing or misspelled key, an unsupported
-            `schema_version`, a value outside its validated range, and a
-            `deliverable_fresh_gas_flow_range` whose minimum is above its
-            maximum. It also covers a `sources` entry whose `authority_for`
-            disagrees with `adopted` or names something other than one of this
-            file's stored numeric values, and a stored value that two entries
-            both name.
+            `schema_version`, a value outside its validated range or the
+            numerical envelope, and a `deliverable_fresh_gas_flow_range` whose
+            minimum is above its maximum. It also covers a `sources` entry
+            whose `authority_for` disagrees with `adopted`, or names something
+            other than one of this file's stored numeric values. It also
+            covers a stored value that two entries both name.
     """
 
     try:
@@ -1211,7 +1307,7 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
         schema_version=model.schema_version,
         id=model.id,
         display_name=model.display_name,
-        circuit_volume_l=model.circuit_volume_l,
+        circuit_volume_l=CompartmentVolume(model.circuit_volume_l, name="circuit_volume_l"),
         default_fresh_gas_flow_l_min=model.default_fresh_gas_flow_l_min,
         deliverable_fresh_gas_flow_range=(
             None

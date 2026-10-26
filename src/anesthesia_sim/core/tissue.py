@@ -12,6 +12,13 @@ from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
+from anesthesia_sim.core.numerical_envelope import (
+    CompartmentVolume,
+    PartitionCoefficient,
+    require_coefficient,
+    require_compartment_volume,
+    tissue_blood_partition_coefficient,
+)
 from anesthesia_sim.core.simulation_step import require_at_least_the_smallest_step
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -44,10 +51,10 @@ class TissueGroup:
     """One ideal, perfusion-limited tissue group."""
 
     name: str
-    volume_l: float
+    volume_l: CompartmentVolume
     perfusion_fraction: float
-    blood_gas_partition_coefficient: float
-    tissue_gas_partition_coefficient: float
+    blood_gas_partition_coefficient: PartitionCoefficient
+    tissue_gas_partition_coefficient: PartitionCoefficient
     agent_amount_l: float = 0.0
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
@@ -63,7 +70,7 @@ class TissueGroup:
         # review).
 
         def __setattr__(self, name: str, value: object) -> None:
-            """Write a field, refusing a value the tissue's constructor would refuse.
+            """Write a field, refusing a value that the tissue's constructor would refuse.
 
             Each field is stored in one place, its slot. So the field's check runs here,
             and it applies alike to the constructor, the setters, `advance` and any
@@ -77,14 +84,20 @@ class TissueGroup:
             three values are checked together. An amount above the capacity is refused.
             So is a volume or a coefficient too small for the amount the tissue already
             holds. Such a value would put the partial pressure above one atmosphere
-            without the amount's own check ever running (`PL-544D`, found at review;
-            `require_room_for_the_agent_held`). The constructor writes the amount last,
-            after the volume and the coefficient have passed their own checks. So a factor
-            is checked against the amount only once an amount exists. The volume and the
-            coefficient are also checked against each other. Whichever is written second
-            must leave a capacity that is positive and finite. Two positive finite factors
-            can fail this by underflowing to zero or overflowing to `inf`
-            (`require_a_capacity`, `PL-8LQZ`, `PL-FNH3`).
+            without the amount's own check ever running (`PL-544D`, found at review).
+            `require_room_for_the_agent_held` makes this check. The constructor writes
+            the amount last, after the volume and the coefficient have passed their own
+            checks. So the volume and the coefficient are checked against the amount only
+            once an amount exists.
+
+            The volume and both coefficients are checked types, built only inside the
+            numerical envelope (`core/numerical_envelope.py`). So the capacity is
+            positive and finite by construction. Before, each factor was checked only as
+            positive and finite, and that did not guarantee a positive and finite
+            product (`PL-8LQZ`, `PL-FNH3`). The two coefficients are also checked against
+            each other. Whichever is written second must leave a tissue:blood coefficient
+            inside the envelope too, because the quotient of two coefficients inside it
+            can lie far outside it (`PL-QX2G`).
 
             Each refusal names the group as well as the field, as in `"muscle volume_l"`,
             because all three groups hold every field (`PL-2TZT`).
@@ -94,26 +107,26 @@ class TissueGroup:
             to 1 only when the patient is built, and a tissue group does not know which
             patient it belongs to. A fraction changed afterwards would change the group's
             blood flow, which is its fraction of the cardiac output. Nothing would then
-            check that the flows still add up to the cardiac output. The new value is
-            checked first, so a value the constructor would refuse is refused in the
-            constructor's words. A copy and a pickle write the fraction onto a new group,
-            which has none yet, so both still work.
+            check that the flows still add up to the cardiac output. A later write checks
+            the new value first, so a value that the constructor would refuse is refused
+            in the constructor's words. A copy and a pickle write the fraction onto a new
+            group, which has none yet, so both still work.
 
             Raises:
-                TypeError: the field written is `name` and `value` is not a `str`, or
-                    the value written to any other field is not an `int` or a
-                    `float` (`require_a_number`).
+                TypeError: the field written is `name` and `value` is not a `str`.
+                    Also raised when the volume was not built as a
+                    `CompartmentVolume`, or a coefficient as a
+                    `PartitionCoefficient`, or when the value written to any other
+                    field is not an `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the name is blank. Also raised when
-                    the volume, a partition coefficient or the perfusion fraction
-                    is not positive and finite, or when the perfusion fraction is
-                    above 1. Also raised when the volume and the tissue:gas
-                    coefficient multiply to a capacity that is zero or not finite,
-                    or when the perfusion fraction is written to a group that
-                    already has one. Also raised when the agent amount is negative
-                    or not finite, or would be more than the tissue holds at a
-                    partial pressure of one atmosphere. That last check applies
-                    whichever of the amount, the volume and the tissue:gas
-                    coefficient is written.
+                    the perfusion fraction is not positive and finite, or is above
+                    1, or is written to a group that already has one. Also raised
+                    when the two coefficients would make a tissue:blood
+                    coefficient outside the numerical envelope. Also raised when
+                    the agent amount is negative or not finite, or would be more
+                    than the tissue holds at a partial pressure of one atmosphere.
+                    That last check applies whichever of the amount, the volume
+                    and the tissue:gas coefficient is written.
             """
 
             if name == "name":
@@ -136,7 +149,7 @@ class TissueGroup:
             compartment = f"{self.name} tissue"
 
             if name == "volume_l":
-                require_positive_finite(field, value)
+                require_compartment_volume(field, value)
 
                 if hasattr(self, "tissue_gas_partition_coefficient"):
                     require_a_capacity_with_room_for_the_agent(
@@ -163,14 +176,32 @@ class TissueGroup:
                         '"Tissue groups"): build a new patient with the new fractions'
                     )
             elif name == "blood_gas_partition_coefficient":
-                require_positive_finite(field, value)
+                require_coefficient(field, value)
+
+                if hasattr(self, "tissue_gas_partition_coefficient"):
+                    tissue_blood_partition_coefficient(
+                        self.tissue_gas_partition_coefficient,
+                        value,
+                        name=f"{self.name} tissue_blood_partition_coefficient",
+                    )
             elif name == "tissue_gas_partition_coefficient":
-                require_positive_finite(field, value)
-                held_l = getattr(self, "agent_amount_l", None)
-                # The constructor, a copy and a pickle write the volume
-                # first, so it is always there to multiply.
+                require_coefficient(field, value)
+                # The constructor, a copy and a pickle write the blood:gas
+                # coefficient and the volume first, so both are always there.
+                tissue_blood_partition_coefficient(
+                    value,
+                    self.blood_gas_partition_coefficient,
+                    name=f"{self.name} tissue_blood_partition_coefficient",
+                )
+
                 require_a_capacity_with_room_for_the_agent(
-                    field, value, self.volume_l, value, held_l, compartment, "Tissue compartments"
+                    field,
+                    value,
+                    self.volume_l,
+                    value,
+                    getattr(self, "agent_amount_l", None),
+                    compartment,
+                    "Tissue compartments",
                 )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
@@ -211,10 +242,19 @@ class TissueGroup:
         return self.volume_l * self.tissue_gas_partition_coefficient
 
     @property
-    def tissue_blood_partition_coefficient(self) -> float:
-        """Return the tissue:blood partition coefficient."""
+    def tissue_blood_partition_coefficient(self) -> PartitionCoefficient:
+        """Return the tissue:blood partition coefficient, $`\\lambda_{i:g}/\\lambda_{b:g}`$.
 
-        return self.tissue_gas_partition_coefficient / self.blood_gas_partition_coefficient
+        `core/numerical_envelope.py` forms the quotient and builds it as a checked
+        type. Every write of either factor has already checked that the quotient
+        lies inside the envelope, so reading it here never raises.
+        """
+
+        return tissue_blood_partition_coefficient(
+            self.tissue_gas_partition_coefficient,
+            self.blood_gas_partition_coefficient,
+            name=f"{self.name} tissue_blood_partition_coefficient",
+        )
 
     @property
     def partial_pressure_fraction(self) -> float:

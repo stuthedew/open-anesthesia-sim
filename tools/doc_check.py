@@ -8487,7 +8487,7 @@ def check_gate_parity(root: Path, report: Report) -> None:
     the gate a branch has to pass to merge, and they are two independently
     maintained lists of commands. Nothing compared them, so a script wired into
     one was silently absent from the other - and the asymmetry is invisible in
-    both directions. `tools/dead_ends.py`, `tools/ignore_check.py` and
+    both directions. `tools/dead_ends.py`, `tools/type_ignore_check.py` and
     `tools/possessive_section_check.py` were all `make check`-only, two of them
     for weeks, which means a branch pushed without a local `make check` landed
     green on a tree `make check` would have refused. `PL-PBP5`.

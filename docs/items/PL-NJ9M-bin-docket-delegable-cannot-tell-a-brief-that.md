@@ -115,7 +115,7 @@ withheld twice: `Item.delegability` returns at `status != "ready"` before
 read of the same fact would withhold the four answered items above, whose briefs
 determine their fix completely.
 
-**Decided 2026-09-22 (project owner, ratified)**, over all three options the
+**Decided 2026-09-22 (project owner, 2026-09-22, ratified)**, over all three options the
 brief named - triage resolving a brief's open options before it may read as
 delegable, `delegable` printing the caution beside the item, and making the
 shape of a resolved brief decidable. None is built. The population measured

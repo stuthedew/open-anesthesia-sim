@@ -128,7 +128,7 @@ check: sync
 # reason goes, so the question arrives at the moment a line is added here
 # rather than whenever somebody next notices (`PL-PBP5`). It is placed beside
 # this line because this is the first `tools/` script the target runs.
-	uv run python tools/ignore_check.py
+	uv run python tools/type_ignore_check.py
 # Under `uv run` for the same kind of reason: it runs pylint, a `dev`
 # dependency, for its duplicate-code check alone. A block copied between two
 # modules fails here unless its baseline allows it (`PL-VWXL`).
@@ -277,8 +277,9 @@ check: sync
 # `.claude/hooks/docket-digest.sh` emits `docs/dead-ends.md`'s entry lines at
 # session start, and a `SessionStart` hook's output is resent on every turn -
 # so an entry added without a thought for the cap is paid by every session
-# forever. Reads two files, so it costs milliseconds. `PL-NB35`.
-	python3 tools/dead_ends.py check
+# forever. With `--base` it also fails on an entry that left the list with no
+# record of where it went (`PL-5J1S`). `PL-NB35`.
+	python3 tools/dead_ends.py check --base origin/main
 # Beside the guards above and, like them, bare: it reads the apparatus trees -
 # `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
 # held to the floor themselves, so the floor interpreter parses all of it. It
@@ -385,7 +386,7 @@ check: sync
 # named one belongs, and a numeric constant defined in two modules: the
 # colours' one-home rule in `contrast_check.py`, extended to numbers.
 #
-# `tools/ignore_check.py` above is the same category for a different reason.
+# `tools/type_ignore_check.py` above is the same category for a different reason.
 # All eight tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.

@@ -212,15 +212,15 @@ jobs:
           python-version: '3.11'
 
       # **The item-only fast path** (`PL-DXD4`). A pull request that changes
-      # only item files cannot change what ruff, mypy or `ignore_check.py`
+      # only item files cannot change what ruff, mypy or `type_ignore_check.py`
       # find, nor the result of most tests. Before `PL-T9X9` split the suite
       # across two jobs, the full suite took 8m33s of the one job's 10m23s on
       # run 39062070913. So this step asks `bin/docket ci-scope` whether every
       # path the pull request changed is under the store, and writes
       # `scope=items` as its output if so. It writes `scope=apparatus` when
-      # every path is under `workflow_paths`, which only the second part's
-      # pytest step reads (`PL-STM6`), and `scope=full` otherwise. On
-      # `items`, ruff, mypy, `ignore_check.py` and both parts of the suite are
+      # every path is under `workflow_paths`, which both parts' pytest steps
+      # read (`PL-STM6`), and `scope=full` otherwise. On
+      # `items`, ruff, mypy, `type_ignore_check.py` and both parts of the suite are
       # skipped, with the coverage the parts upload and `checks` combines. The second part runs
       # only the tests marked `reads_item_store` instead. The root
       # `conftest.py` fails any test that reads the store without that marker,
@@ -230,7 +230,7 @@ jobs:
       # The others took about 9 seconds together on that run. They were
       # measured not to read the store on 2026-10-17, but nothing about what
       # they are guarantees it, so skipping them could miss a tool that starts
-      # reading it. ruff's linter, mypy and `ignore_check.py` read only Python
+      # reading it. ruff's linter, mypy and `type_ignore_check.py` read only Python
       # files, and no item file is one. ruff's formatter also formats fenced
       # Python blocks in Markdown, so `pyproject.toml` excludes the store from
       # it. Without that exclusion an item-only pull request could merge green
@@ -277,7 +277,18 @@ jobs:
       # to run the local gate. `tools/doc_check.py`'s `check_gate_parity`
       # refuses that asymmetry now rather than leaving it to be noticed
       # (`PL-PBP5`).
-      - run: python3 tools/dead_ends.py check
+      #
+      # On a pull request it also reads the file at the base and fails on an
+      # entry that left the list with no record of where it went (`PL-5J1S`).
+      # A push to `main` compares nothing: the pull request's run was the gate.
+      - name: dead ends, with removals compared to the base
+        if: github.event_name == 'pull_request'
+        env:
+          DEAD_ENDS_BASE: origin/${{ github.base_ref }}
+        run: python3 tools/dead_ends.py check --base "$DEAD_ENDS_BASE"
+      - name: dead ends
+        if: github.event_name != 'pull_request'
+        run: python3 tools/dead_ends.py check
       # Bare for the same reason as the lines above, and the one tool here that
       # reads source with `ast` and still belongs at the floor: the apparatus
       # trees it reads are held to the floor themselves, where `src/` is not,
@@ -324,7 +335,7 @@ jobs:
       # `.mypy_cache`. Measured on this tree, four cores: 27.3 s from a cold
       # cache against 9.2 s straight after `uv run mypy`. Reversing the two
       # lines would triple its bill and prove nothing extra (`PL-PBP5`).
-      - run: uv run python tools/ignore_check.py
+      - run: uv run python tools/type_ignore_check.py
         if: steps.scope.outputs.scope != 'items'
       # Under `uv run` because it runs pylint, a `dev` dependency, for its
       # duplicate-code check alone. An item file holds no code, so the fast
@@ -373,8 +384,15 @@ jobs:
         # Write each line to the log as pytest prints it. Without this, the log
         # stamped pytest's session header at the end of collection, which hid
         # where a slow part spent its time (`PL-2N6J`).
+        #
+        # This part asks for `--skip-costly` on the same answer as the second
+        # part, though it holds no costly test. The parts deal the ordinary
+        # tests with other shares when the costly ones are left out, so both
+        # parts have to ask, or some tests would run in neither part and some
+        # in both. `checks` fails a run whose parts answered differently.
         env:
           PYTHONUNBUFFERED: "1"
+          SKIP_COSTLY_TESTS: ${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}
       # `.coverage` is a hidden file, which the action leaves out unless asked.
       # One day is enough, since only this run's `checks` job reads it.
       - uses: actions/upload-artifact@v7.0.2
@@ -624,7 +642,10 @@ jobs:
         # change. It is not `PYTEST_ADDOPTS`, which every pytest a test starts
         # in a subprocess inherits: the docket tests' own pytest, in a scratch
         # repository with no such option, stopped at exit 4 on `#1774`. A push
-        # to `main` never asks `ci-scope`, so it runs them all.
+        # to `main` never asks `ci-scope`, so it runs them all. The first part
+        # asks for the skip too, so that both parts deal the ordinary tests
+        # with the shares `tests/conftest.py` keeps for a run without the
+        # costly tests.
         #
         # Coverage still runs, but `checks` does not hold it to 100% on this
         # answer, for the reason its `COSTLY_SKIPPED` comment gives. Without
@@ -705,6 +726,16 @@ jobs:
           PART_1: ${{ needs.checks-part-1.result }}
           PART_2: ${{ needs.checks-part-2.result }}
         run: test "$PART_1" = success && test "$PART_2" = success
+      # The parts deal the ordinary tests with other shares when they skip the
+      # costly ones (`PL-STM6`). If one part answered `apparatus` and the other
+      # `full`, some tests would run in neither part, and coverage could still
+      # pass. The two parts diff the same merge commit, so they agree in
+      # practice. This step makes a disagreement fail instead of passing quietly.
+      - name: both parts answered the same scope
+        env:
+          SCOPE_1: ${{ needs.checks-part-1.outputs.scope }}
+          SCOPE_2: ${{ needs.checks-part-2.outputs.scope }}
+        run: test "$SCOPE_1" = "$SCOPE_2"
       # The same checkout and environment the parts measured, so the source
       # paths in their coverage data name files that exist here.
       - uses: actions/checkout@v7.0.1

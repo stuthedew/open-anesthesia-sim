@@ -141,7 +141,7 @@ SKIPPED_ON_ITEMS = {
         "Run uv run ruff format --check .",
         "Run uv run ruff check .",
         "Run uv run mypy",
-        "Run uv run python tools/ignore_check.py",
+        "Run uv run python tools/type_ignore_check.py",
         "Run uv run python tools/duplicate_code_check.py",
         "write the test modules' rewritten bytecode",
         "Run uv run pytest -n $(python3",
@@ -336,7 +336,7 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
     for reader in (
         "Run python3 tools/doc_check.py check",
         "Run uv run python tools/doc_check.py check",
-        "Run python3 tools/dead_ends.py check",
+        "dead ends, with removals compared to the base",
         "Run uv run python tools/fixture_id_check.py",
         "Run bin/docket check",
         "verify replay, scoped to what this branch changed",
@@ -351,7 +351,8 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
     asks for `--skip-costly` through `SKIP_COSTLY_TESTS`, and only on that
     answer. No step sets `PYTEST_ADDOPTS`, which the docket tests' own pytest
     inherits in a scratch repository that has no such option (`#1774`).
-    The first part holds no costly test, so its step passes nothing. `checks`
+    The first part holds no costly test, but it asks too, because the parts
+    deal the ordinary tests with other shares on a run that skips. `checks`
     still combines coverage, and prints it without the threshold, because a
     gap it showed would come from an earlier product change.
     """
@@ -379,11 +380,27 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
         for part in _PARTS
     }
     assert [skip in step for step in suites["checks-part-2"]] == [True]
-    assert [skip in step for step in suites["checks-part-1"]] == [False]
+    assert [skip in step for step in suites["checks-part-1"]] == [True]
     assert all(
         "--skip-costly" not in step.splitlines()[0] for steps in suites.values() for step in steps
     )
     assert not re.search(r"^\s*PYTEST_ADDOPTS:", text, re.MULTILINE)
+
+
+def test_checks_fails_when_the_parts_answered_different_scopes() -> None:
+    """`checks` compares the two parts' answers, on every event (`PL-STM6`).
+
+    With `apparatus`, both parts deal the ordinary tests with the shares for a
+    run without the costly tests. If only one part had that answer, some tests
+    would run in neither part. The comparison has no `if:`, so it runs on a
+    push to `main` too, where neither part asks and both answers are empty.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+    [step] = [step for step in _steps(text, _GATE) if "both parts answered the same scope" in step]
+    assert _CONDITION.search(step) is None
+    assert "SCOPE_1: ${{ needs.checks-part-1.outputs.scope }}" in step
+    assert "SCOPE_2: ${{ needs.checks-part-2.outputs.scope }}" in step
+    assert 'run: test "$SCOPE_1" = "$SCOPE_2"' in step
 
 
 @pytest.mark.parametrize(

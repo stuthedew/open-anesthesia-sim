@@ -15,7 +15,7 @@ where pytest is configured to look.
 **Named one by one, they drifted, which is what this check is for (`PL-JBZK`).**
 The list held three when it was written. Nine more test files were in exactly
 the same position by 2026-09-06 - the `tools/` scripts `branch_id_check`,
-`ignore_check`, `pr_title_check` and `rules_paths_check`, the four
+`type_ignore_check`, `pr_title_check` and `rules_paths_check`, the four
 `.claude/hooks/` guards, and `test_tools_portability.py` - and two of the nine
 had arrived the day before. So the list does not fall behind once and get
 corrected; it falls behind continuously, at the rate `tools/` grows, and every

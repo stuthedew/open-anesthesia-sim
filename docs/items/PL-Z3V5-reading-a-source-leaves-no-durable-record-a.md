@@ -3,12 +3,14 @@ id: PL-Z3V5
 title: Reading a source leaves no durable record a later session can use: the extracted values, units and page locators are not written back to the public repository, so the same PDF is re-read per session
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: provenance
 touches: .claude/rules/citing-sources.md, docs/references/README.md
 blocked-by: PL-XJ5P
 added: 2026-09-13
+closed: 2026-10-26
+pr: 1853
 payoff: stops every session re-reading the same PDF at full context, by making the numbers taken from a source survive in the repository instead of only in the item that prompted the reading
 verify: grep -rqF '1994760' docs/references/ --include='*.md' --exclude=README.md
 ---
@@ -133,3 +135,24 @@ Everything the sweep established stands: the obligation and its home are settled
 at `docs/references/README.md:68` and `:73`, `PL-XJ5P` is closed, and what is
 left is the note's field set and the first worked example, which both files
 reserve to this item by id.
+
+## Done 2026-10-26
+
+`docs/references/README.md` § "Where owner-supplied full texts live now" now
+states what an extraction note contains: the citation, the route and depth, the
+study, each value with its units, dispersion, n and locator, where the
+repository uses it and its standing under `docs/MODEL.md` § "Source
+hierarchy", and what was not taken. The worked example is
+`docs/references/yasuda-1991-anesth-analg-sevoflurane-isoflurane-kinetics.md`.
+It was read from the corpus's text layer of the *Anesth Analg* paper on this
+date. It locates the four ratios that
+`tests/reference/test_published_wash_in_and_elimination.py` asserts in the
+abstract on page 316, and the methods fact on page 319 that sends the tissue
+coefficients back to the 1989 tissue paper. `.claude/rules/citing-sources.md`
+now points at the README for the fields instead of at this item.
+
+By the time this ran, `PL-R0NL` had already written
+`docs/references/yasuda-1991-figure-2-wash-in.md` on 2026-10-18. Its shape is
+the one the fields above describe, so the field set was taken from it rather
+than invented, and the README names it as the example for a figure read from
+page images.

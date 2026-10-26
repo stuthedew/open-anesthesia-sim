@@ -3,10 +3,12 @@ id: PL-LSTW
 title: tools/ignore_check.py is named for .gitignore but evaluates type: ignore directives, so a session looking for the gitignore check finds it and a session looking for the mypy one does not
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
-touches: tools/ignore_check.py, tests/unit/test_ignore_check.py, Makefile, .github/workflows/quality.yml, tests/unit/test_quality_step_order.py, docket.toml, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_verify.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_line_splits.py, tests/unit/test_concentration.py
+touches: tools/type_ignore_check.py, tests/unit/test_type_ignore_check.py, Makefile, .github/workflows/quality.yml, tests/unit/test_quality_step_order.py, docket.toml, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_verify.py, tests/unit/test_workflow_paths_check.py, tests/unit/test_line_splits.py, tests/unit/test_concentration.py, .claude/hooks/push-check-guard.sh, tests/unit/test_push_check_guard.py, conftest.py, pyproject.toml, docs/apparatus.md, tools/config_home_check.py, tools/doc_check.py, tools/literal_home_check.py, tools/workflow_paths_check.py
 added: 2026-09-15
+closed: 2026-10-26
+pr: 1856
 verify: python3 tools/type_ignore_check.py --help >/dev/null && ! test -e tools/ignore_check.py
 ---
 
@@ -44,3 +46,5 @@ test. `touches:` now names all twelve, so `bin/docket concurrent` can see the
 overlap. The third-place workflow thread claimed it and yielded it unworked,
 because `tests/unit/test_concentration.py` was changing on another open branch
 at the time.
+
+**Done 2026-10-26.** `tools/ignore_check.py` is now `tools/type_ignore_check.py`, and its test is `tests/unit/test_type_ignore_check.py`, both moved with `git mv`. Every live reference moved with them: 20 files, including the `make check` line, `quality.yml`'s step, the push guard's step list and its test, `docket.toml`'s test list, and the docstrings and comments that name it. `docs/apparatus.md`'s tree lists it in its alphabetical place. The item store, the release notes and the published pull request bodies keep the old name, because they record what was true when they were written. `ROADMAP.md`'s two mentions and open item `PL-21KP`'s brief give the new name, because `tools/doc_check.py` refuses a citation of a path that no longer exists.

@@ -81,7 +81,7 @@ offers: the work landed and the item was never closed. Each clause of the
 | Clause | State |
 | --- | --- |
 | Neither `ROADMAP.md` nor `docs/WORKING_NOTES.md` cites a `v0.5.x - the interface pass` timeline row | **Satisfied** - 0 matches in both, since `#634` |
-| Item 33's placement note says it is **absorbed by the port** | **Superseded** - the absorption was reversed (project owner, on `PL-L9RD`), and `ROADMAP.md:308` records it |
+| Item 33's placement note says it is **absorbed by the port** | **Superseded** - the absorption was reversed (project owner, 2026-09-16, ratified, on `PL-L9RD`), and `ROADMAP.md:308` records it |
 | The notes thread says where the interface pass now runs | **Satisfied** - `docs/WORKING_NOTES.md:668` carries both orderings, dated |
 
 The second clause is why this looked like a question and is not one. It asks the
