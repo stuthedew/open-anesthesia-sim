@@ -6,7 +6,7 @@ effort: L
 status: done
 classes: defect, safety
 feature: defect-review-2026-10
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, tests/integration/test_controller.py, tests/unit/test_run_definition.py, tests/unit/test_dashboard_frame.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_bookmarks.py, docs/MODEL.md, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/core/run_definition.py, tests/integration/test_controller.py, tests/unit/test_run_definition.py, tests/unit/test_dashboard_frame.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_bookmarks.py, tests/unit/test_display_units.py, docs/MODEL.md, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - recorded as a generator head by PL-R4Y2's defect review on 2026-10-25; each member's safety finding was filed and placed by its own triage, and this head's work is the structure that stops the next one
 added: 2026-10-25
 closed: 2026-10-26
