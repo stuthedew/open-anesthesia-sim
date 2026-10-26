@@ -37,6 +37,6 @@ before, and the text `format_mac_multiple` gives. On the circuit, 13 of 59
 halts showed one count past the mark, the largest one-step change was
 0.0109 ×MAC and the largest overshoot 0.0091 ×MAC. On the alveolar
 compartment, 0 of 59 did, with a largest step of 0.0026 ×MAC. The new test
-`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past_it`
+`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past`
 pins the specification's example: a 0.10 ×MAC circuit target halts showing
 0.11 ×MAC, past the mark by less than the step that crossed it.

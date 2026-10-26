@@ -3268,16 +3268,15 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     assert after.bookmarks.mac_targets == (target,)
 
 
-def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past_it() -> (
-    None
-):
-    """`docs/MODEL.md` § "Halting on a marked crossing" says the halt is within one step of the mark.
+def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
+    """A halt lands within one simulation step of its mark, as `docs/MODEL.md` now says.
 
-    It used to say that the value displayed beside a halt is the height the
-    learner marked (`PL-M8F6`). The circuit is the fastest compartment, so one
-    0.1 s step can carry its reading past the next display count. The
-    specification gives this case as its example: a 0.10 ×MAC circuit target,
-    with 8% sevoflurane at 10 L/min, halts showing 0.11 ×MAC.
+    § "Halting on a marked crossing" used to say that the value displayed
+    beside a halt is the height the learner marked (`PL-M8F6`). The circuit is
+    the fastest compartment, so one 0.1 s step can carry its reading past the
+    next display count. The specification gives this case as its example: a
+    0.10 ×MAC circuit target, with 8% sevoflurane at 10 L/min, halts showing
+    0.11 ×MAC.
     """
 
     controller = SimulationController()
