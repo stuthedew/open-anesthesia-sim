@@ -1373,15 +1373,16 @@ def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
 
 
 def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
-    """The case `PL-7TBQ` measured: a branch advanced and reset still had a run to lose.
+    """A branch that was advanced and then reset still had a run to lose, as `PL-7TBQ` measured.
 
     A branch's reset returns it to its fork rather than to zero. So a branch
     that was only advanced is a fresh branch after its reset, and it must
-    count as one. A setting the learner changed and kept through the reset
-    is different. `PL-7TBQ`'s Done-when counts "a setting change of its own"
-    as something to lose. Until `PL-K5BS`, a reset dropped the record of
-    such a change while the branch kept running under it, so this test once
-    expected nothing to lose there too (`PL-ZR49`).
+    count as one. A setting that the learner changed and kept through the
+    reset is different. `PL-7TBQ`'s Done-when, the condition for closing that
+    item, counts "a setting change of its own" as something to lose. Until
+    `PL-K5BS`, a reset dropped the record of such a change while the branch
+    kept running under it. So this test once expected nothing to lose in that
+    case too (`PL-ZR49`).
     """
 
     trunk = _trunk_with_two_changes()
@@ -5850,15 +5851,15 @@ def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose
 
 
 def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_order_holds() -> None:
-    """ "Change, reset, change back" and "change, change back, reset" give one result.
+    """ "Change, reset, change back" and "change, change back, reset" give the same result.
 
-    Each branch is taken where the paused trunk stands at 30 s. On both, the
-    flow goes from 4 to 8 L/min and back, with a reset before or after the
-    change back. A reset keeps the settings and records them at the fork
-    (`PL-K5BS`), but it keeps the entries each branch first opened with. The
-    two branches end with the same run, the same control timeline and the
-    same opened entries, and neither holds anything that a trunk Reset would
-    lose.
+    Each branch is taken from the trunk, which is paused at 30 s. On both
+    branches, the fresh gas flow goes from 4 to 8 L/min and back, with a reset
+    before or after the change back. A reset keeps the settings and records
+    them at the fork (`PL-K5BS`). It does not replace the entries that each
+    branch first opened with. The two branches end with the same run, the
+    same control timeline and the same opened entries. Neither holds anything
+    that a trunk Reset would lose.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5886,16 +5887,17 @@ def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_or
 
 
 def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() -> None:
-    """A branch that ends where it opened holds nothing, whatever path its dial took there.
+    """A branch that ends where it opened holds nothing to lose, whatever path its dial took.
 
-    The trunk is paused at 60 s and set from 4 to 6 L/min, and two branches
-    are taken at that keyframe. Each opens with the trunk's change at the
-    fork. One branch is set to 4 L/min and then to 6 L/min. The other is set
-    to 8 L/min and then to 6 L/min. Setting 4 L/min removes the opened entry,
-    and setting 6 L/min records it again with a new adjustment number. Both
-    branches then run as a branch freshly taken there does. The adversarial
-    review of `PL-ZR49`'s change found the first counted as holding a change,
-    because the comparison included the adjustment number.
+    The trunk is paused at 60 s and its fresh gas flow set from 4 to 6 L/min,
+    and two branches are taken at that keyframe. Each opens with the trunk's
+    change at the fork. One branch is set to 4 L/min and then to 6 L/min. The
+    other is set to 8 L/min and then to 6 L/min. Setting 4 L/min removes the
+    opened entry, and setting 6 L/min records it again with a new adjustment
+    number. Both branches then run as a branch freshly taken at that keyframe
+    would. The adversarial review of `PL-ZR49`'s change found that the first
+    branch counted as holding a change, because the comparison included the
+    adjustment number.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5922,14 +5924,15 @@ def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() 
 def test_a_learner_s_first_change_on_a_branch_is_an_adjustment_of_its_own() -> None:
     """The "Control changes" panel never merges the trunk's change with the learner's.
 
-    The trunk is paused at 60 s and set from 4 to 6 L/min, and a branch is
-    taken at that keyframe. It opens with the trunk's change. The branch runs
-    10 s, and then the flow is set to 8 L/min through the setter alone, with
-    no adjustment boundary from the interface. The interface marks a boundary
-    only when a drag starts, so another input path would arrive this way. The
-    panel must still show two acts: the trunk's at the fork and the
-    learner's. The test-strength review of `PL-ZR49`'s change found that no
-    test noticed if a branch's opening did not start a new adjustment.
+    The trunk is paused at 60 s and its fresh gas flow set from 4 to 6 L/min,
+    and a branch is taken at that keyframe. The branch opens with the trunk's
+    change. It runs 10 s, and then its flow is set to 8 L/min through the
+    setter alone. The interface marks no adjustment boundary for that change,
+    because it marks one only when a drag starts. A change from any other
+    input path would arrive in this way. The panel must still show two acts:
+    the trunk's at the fork and the learner's. The test-strength review of
+    `PL-ZR49`'s change found that no test noticed if a branch's opening did
+    not start a new adjustment.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -5957,13 +5960,14 @@ def test_a_learner_s_first_change_on_a_branch_is_an_adjustment_of_its_own() -> N
 def test_a_reset_branch_stands_on_no_halt_it_made_after_its_fork() -> None:
     """A branch that halted on a mark after its fork, and was then reset, reports no halt.
 
-    The trunk is paused at 20 s, and a branch is taken where it stands. The
+    The trunk is paused at 20 s, and a branch is taken at that instant. The
     branch gets a MAC target at 0.4 MAC alveolar and runs until the target
-    halts it. Its reset returns it to its 20 s fork, which crossed no mark,
-    so its halt record must be empty. A trunk's halt keeps the heights its
-    stepped readings crossed (`_halted_on_crossings`). The test-strength
-    review of `PL-ZR49`'s change found that no test noticed if a reset left
-    those heights behind, which would name the target at the fork.
+    halts it. Its reset returns it to its fork at 20 s. The step that reached
+    the fork crossed no mark, so the branch's halt record must be empty. A
+    trunk's halt keeps the heights that its stepped readings crossed
+    (`_halted_on_crossings`). The test-strength review of `PL-ZR49`'s change
+    found that no test noticed if a reset left those heights behind. Heights
+    left behind would make the halt record name the target at the fork.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "later")
@@ -5991,16 +5995,19 @@ def test_a_reset_branch_stands_on_no_halt_it_made_after_its_fork() -> None:
 def test_a_setting_kept_through_a_branch_reset_is_work_a_trunk_reset_would_lose() -> None:
     """A branch reset keeps the learner's settings, and they still count as the learner's work.
 
-    The trunk runs at 4 L/min, 2% and 4 L/min of ventilation, is paused at
-    60 s and set to 6 L/min. A branch taken at that keyframe opens with the
-    trunk's change. On the branch the learner sets 3% and runs 5 s, then
-    resets the branch, which keeps 3% and records it at the fork
+    The trunk runs with a fresh gas flow of 4 L/min, a delivered
+    concentration of 2% and 4 L/min of ventilation. It is paused at 60 s, and
+    its fresh gas flow is set to 6 L/min. A branch taken at that keyframe
+    opens with the trunk's change. On the branch, the learner sets the
+    delivered concentration to 3% and runs the branch for 5 s. The learner
+    then resets the branch. The reset keeps 3% and records it at the fork
     (`PL-K5BS`). The learner then sets 5 L/min of ventilation. The timeline
-    holds three entries. Only the trunk's change is one the branch opened
-    with, so the other two are work that the trunk's Reset would discard,
-    and it must ask first (`PL-W5WX`). The adversarial review of `PL-ZR49`'s
-    change found the 3% treated as an opened entry after the reset, so that
-    a branch holding only it was dropped without asking.
+    holds three entries. The branch opened with only the trunk's change. So
+    the other two entries are work that the trunk's Reset would discard, and
+    the Reset must ask first (`PL-W5WX`). The adversarial review of
+    `PL-ZR49`'s change found that the 3% was treated as an opened entry
+    after the reset. So a branch whose only work was the 3% was discarded
+    without asking.
     """
 
     trunk = SimulationController(
