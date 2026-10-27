@@ -827,7 +827,7 @@ def test_a_stopped_run_refuses_every_setting_and_records_nothing(
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=f"^the {_NAMED[control]} setting cannot be changed on a stopped run, because every",
+        match=f"^the {_NAMED[control]} setting cannot be changed on a stopped run, because no step",
     ):
         _SETTERS[control](controller)
 

@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, ux, safety
 feature: replay-findings
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-10-25
 closed: 2026-10-27
 pr: 1846
@@ -92,3 +92,10 @@ The passes also named a branch forked on a mark at the limit, whose Reset return
 `test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while_one_can_be_taken` covers it. Against the code before the fix it failed at the second banner: `assert False` where the trunk's banner, after the branch was taken, still ended "...branch at an earlier instant, where each dial starts at what it was set to then, or Reset to start a new run, which keeps every setting." The unit test of the way out now checks both values of `branch_offered`.
 
 The owner asked on 2026-10-27 why there are four dial setters. The answer found a gap in this item's own test: `test_a_stopped_run_refuses_every_setting_and_records_nothing` listed the four controls by hand, so a fifth control whose setter left out the refusal would have passed it. It now runs once for each `ControlInput`, so a fifth member fails it until it has a setter and a refusal.
+
+**Adversarial review, 2026-10-27.** Two findings were this item's, and both are fixed on `#1846`.
+
+- The refusal said "every value it holds was computed under the settings it stopped with". That is false when a run fails on the first step after a setting was accepted. The dial then holds the new setting, and no step ran under it. The refusal now gives only the reason that is always true: "because no step will run under a new one". `docs/MODEL.md` and `docs/ARCHITECTURE.md` now say that the dial springs back to the setting the run holds.
+- `RunView._branch_offered` did not know whether the dashboard had a branch control. A dashboard built with no case hides it, yet the banner named a branch. `main.py` always builds a case, so no learner could reach this. `RunView` now takes `branch_control`, which `SimulationView._place_run` sets from whether the dashboard has a case. The guard's run-length scenario now builds its view with a case, and `test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while_one_can_be_taken` checks a dashboard with no case first.
+
+Against `268ce36c`, run as `PL-J5GC`'s brief records, the branch test failed on the dashboard with no case (`assert False`, from `endswith` on a banner naming a branch). Both cases of `test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_values_ran_under` failed on the old wording.

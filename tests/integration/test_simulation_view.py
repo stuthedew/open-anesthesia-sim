@@ -124,6 +124,7 @@ from anesthesia_sim.app.dashboard_frame import (
     TRUNK_RUN_INDEX,
     WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
+    WITHHELD_ELAPSED_TIME_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     ComparedRuns,
     ForkPoint,
@@ -2342,10 +2343,12 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
         record.agent_display_name, record.agent_mac_percent
     )
     assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
-    # The clock keeps the last frame's instant. No card keeps sevoflurane's percent
-    # under the desflurane heading, or its multiple under desflurane's 1 MAC (`PL-J5GC`).
+    # No card keeps sevoflurane's percent under the desflurane heading, or its multiple
+    # under desflurane's 1 MAC (`PL-J5GC`). The clock is withheld with the cards, because
+    # it states their instant (adversarial review of `PL-J5GC`).
     clock = run_view_module._CLOCK_PANEL_INDEX
-    assert run._readout_row.panels[clock].value_label.text() == cards_before[clock]
+    assert cards_before[clock] == "0s"
+    assert run._readout_row.panels[clock].value_label.text() == "\u2014"
 
     for index, panel in enumerate(run._readout_row.panels):
         if index != clock:
@@ -2442,17 +2445,17 @@ FRAME_WIDGETS: dict[str, str] = {
         "and so compartment values."
     ),
     "_accounting_panels[0]._agent_accounting_status_text": (
-        "the verdict on those amounts, which only a frame states. A halt after an "
-        "agent change withholds it with the amounts, because it judged the old case "
-        "(blind review of `PL-J5GC`)."
+        "the verdict on those amounts, which only a frame states. A halt that no frame "
+        "has drawn since the run started over withholds it with the amounts, because it "
+        "judged the discarded run (blind and adversarial reviews of `PL-J5GC`)."
     ),
     "_accounting_panels[0]._agent_accounting_detail_text": (
         "the sentence under the verdict, which a halt withholds with it."
     ),
     "_notice_text": (
         "the banner. `_write_statement` writes it on both paths, worded for "
-        "whether a frame drew: `halt_notice` says no frame of the stopped run "
-        "has, and `notice` says the values shown are the last completed step. "
+        "whether a frame drew: `halt_notice` says no frame has been drawn, and "
+        "`notice` says the values shown are the last completed step. "
         "The test below holds each to its own wording."
     ),
 }
@@ -2593,7 +2596,9 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
         "these widgets read alike on a halted run and a drawn one now, so their exemption "
         "is stale - remove the entry"
     )
-    assert halted_banner == halt_notice(controller.record())
+    # The agent change started the run over, so the halt's banner says the readouts are
+    # withheld rather than showing the last frame (adversarial review of `PL-J5GC`).
+    assert halted_banner == halt_notice(controller.record(), started_over=True)
     assert run._notice_text.notice() == notice(controller.snapshot(), None)
     assert halted_playback_line == run._playback_rate_text.text() == format_playback_rate(5)
 
@@ -2605,10 +2610,12 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 #: scenario names for that group (`PL-J5GC`).
 #:
 #: In the readouts group, `_readout_row` stands for its six compartment cards,
-#: each with its percent and its ×MAC line. The heading names the substance of
-#: those cards, and the 1 MAC line states the divisor of their ×MAC lines. The
-#: clock card is not a member. `ReadoutRow.set_readouts` writes it in the same
-#: call as the cards, and on a halt the banner says which frame it shows.
+#: each with its percent and its ×MAC line, and for the clock's value line. The
+#: heading names the substance of those cards, the 1 MAC line states the divisor
+#: of their ×MAC lines, and the clock states their instant. Until the adversarial
+#: review of `PL-J5GC` the clock was left out, and a halt after a Reset kept the
+#: discarded run's instant. The playback line under the clock is a setting of the
+#: view, so it is not a member.
 VALUE_GROUPS: dict[str, tuple[str, ...]] = {
     "readouts": ("_readout_row", "_compartment_substance_text", "_one_mac_text"),
     "settings": (
@@ -2681,7 +2688,9 @@ def _shown_readouts(run: RunView) -> dict[str, object]:
     }
 
     for index, panel in enumerate(run._readout_row.panels):
-        if index != _CLOCK_INDEX:
+        if index == _CLOCK_INDEX:
+            shown["clock"] = panel.value_label.text()
+        else:
             shown[f"card {index}"] = (panel.value_label.text(), panel.secondary_label.text())
 
     return shown
@@ -2728,8 +2737,9 @@ def _readouts_of(step: RunSettings, *, cards_withheld: bool = False) -> dict[str
     Args:
         step: The step whose agent the heading and the 1 MAC line name. Unless
             the cards are withheld, it is a snapshot, and the cards show its values.
-        cards_withheld: True where the scenario requires every card to withhold its
-            values, because no frame has been drawn for `step`'s agent.
+        cards_withheld: True where the scenario requires every card and the clock to
+            withhold their values, because no frame has been drawn since the run
+            started over.
     """
 
     expected: dict[str, object] = {
@@ -2739,15 +2749,18 @@ def _readouts_of(step: RunSettings, *, cards_withheld: bool = False) -> dict[str
 
     if cards_withheld:
         cards = [(WITHHELD_CONCENTRATION_TEXT, WITHHELD_MAC_MULTIPLE_TEXT)] * len(READOUT_PANELS)
+        cards[_CLOCK_INDEX] = (WITHHELD_ELAPSED_TIME_TEXT, "")
     else:
         assert isinstance(step, SimulationSnapshot)
         cards = [
             (readout.value, readout.secondary) for readout in readouts(step, DEFAULT_PLAYBACK_RATE)
         ]
 
-    for index, card in enumerate(cards):
-        if index != _CLOCK_INDEX:
-            expected[f"card {index}"] = card
+    for index, (value, secondary) in enumerate(cards):
+        if index == _CLOCK_INDEX:
+            expected["clock"] = value
+        else:
+            expected[f"card {index}"] = (value, secondary)
 
     return expected
 
@@ -2890,11 +2903,12 @@ def _a_halt_after_an_agent_change(
 ) -> tuple[RunView, _GroupReadings]:
     """A run whose agent changed when no frame could be drawn (`PL-6RJ0`).
 
-    The heading, the 1 MAC line and the dials describe the new case. The cards and
-    the accounting panel withhold the old agent's values, because the new case has
-    no frame yet, and the old case's values would sit under the new agent's name.
-    Until the blind review of `PL-J5GC`, the accounting panel kept the old case's
-    verdict and amounts.
+    The heading, the 1 MAC line and the dials describe the new case. The cards, the
+    clock and the accounting panel withhold the old agent's values, because the new
+    case has no frame yet, and the old case's values would sit under the new agent's
+    name. Until the blind review of `PL-J5GC`, the accounting panel kept the old
+    case's verdict and amounts, and until its adversarial review the clock kept the
+    old case's 10 minutes.
     """
 
     controller = SimulationController()
@@ -3034,7 +3048,7 @@ def _a_dial_moved_at_the_supported_run_length(
     controller.start()
     _advance(controller, 300.0)
     assert controller.has_reached_supported_limit is True
-    run = _shown_view(application, controller).runs[0]
+    run = _case_view(application, BranchedCase(controller)).runs[0]
 
     _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
@@ -3079,6 +3093,75 @@ def _an_accounting_halt(
     }
 
 
+def _an_accounting_halt_that_no_frame_draws(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A run halted by a failed accounting check, whose next frame cannot be drawn.
+
+    Only a frame wrote the accounting panel. So until the adversarial review of
+    `PL-J5GC`, the panel kept the last frame's "Valid" under a banner that named the
+    failed check. The readouts and the dials describe the last completed step, which
+    is also the step the last frame drew.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    run = _shown_view(application, controller).runs[0]
+    completed = _fresh_run(300.0)
+    rejected = _fresh_run(300.0)
+    rejected.start()
+    rejected.advance(SIMULATION_STEP_S)
+    _reject_the_next_accounting_check(monkeypatch)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _steps(run, 1)
+
+    assert controller.status().rejected_accounting is not None
+    step = completed.snapshot()
+
+    return run, {
+        "readouts": _readouts_of(step),
+        "settings": _settings_of(step),
+        "accounting": _rejected_accounting_of(rejected.snapshot()),
+    }
+
+
+def _a_halt_after_a_reset_that_no_frame_draws(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A Reset after a drawn accounting halt, on a run whose frames can no longer be drawn.
+
+    The last frame drew the accounting halt at 300 s, with "Validation failed" and
+    the rejected step's totals. Reset starts the run over at 0 s and clears the
+    rejected check, and then no frame draws. Until the adversarial review of
+    `PL-J5GC`, only an agent change was detected. So the clock, every card and the
+    accounting panel went on describing the run that Reset discarded. The heading and
+    the dials describe the restarted run, which keeps every setting.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    run = _shown_view(application, controller).runs[0]
+    _reject_the_next_accounting_check(monkeypatch)
+    _steps(run, 1)
+    assert run._accounting_panels[0]._agent_accounting_status_text.text() == ACCOUNTING_FAILED_TEXT
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    run._reset_button.click()
+
+    assert controller.has_failed is True
+    assert controller.status().rejected_accounting is None
+    restarted = SimulationController().record()
+
+    return run, {
+        "readouts": _readouts_of(restarted, cards_withheld=True),
+        "settings": _settings_of(restarted),
+        "accounting": _withheld_accounting(),
+    }
+
+
 _ONE_STATE_SCENARIOS: Final[
     Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], tuple[RunView, _GroupReadings]]]
 ] = {
@@ -3091,6 +3174,8 @@ _ONE_STATE_SCENARIOS: Final[
     "dial moved on a failed run": _a_dial_moved_on_a_failed_run,
     "dial moved at the supported run length": _a_dial_moved_at_the_supported_run_length,
     "accounting halt": _an_accounting_halt,
+    "accounting halt, no frame drawn": _an_accounting_halt_that_no_frame_draws,
+    "halt after a Reset, no frame drawn": _a_halt_after_a_reset_that_no_frame_draws,
 }
 
 
@@ -3142,8 +3227,7 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
 # to the wording fails here.
 _REFUSED_ON_A_STOPPED_RUN_TEMPLATE: Final = (
     "Setting refused — the {setting} setting cannot be changed on a stopped run, "
-    "because every value it holds was computed under the settings it stopped with, and no "
-    "step will run under a new one"
+    "because no step will run under a new one"
 )
 _CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN: Final = _REFUSED_ON_A_STOPPED_RUN_TEMPLATE.format(
     setting="cardiac output"
@@ -3166,8 +3250,8 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
 ) -> None:
     """A dial moved on a stopped run springs back, records nothing, and the banner says why.
 
-    No step runs after a stop, so every value on screen was computed under the
-    settings the run stopped with. Until `PL-3B34` the moved dial was applied.
+    No step runs after a stop, so a new setting would sit beside values it never
+    produced. Until `PL-3B34` the moved dial was applied.
     The cardiac output then read 10.0 L/min beside concentrations computed at
     5.0 L/min, and the record claimed a change at the stop instant that never
     acted on the patient. The two stopped states name different ways out
@@ -3196,7 +3280,9 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     branch is on the chart, the branch control is locked, so naming it would send
     the reader to a control that is not there. Until the blind review of
     `PL-3B34`, the banner chose its way out from the run's status alone and went
-    on naming the branch. The span ends at 300 s, for the reason
+    on naming the branch. A dashboard built with no case has no branch control,
+    so its banner never names one. Until the adversarial review of `PL-J5GC`, it
+    did. The span ends at 300 s, for the reason
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
@@ -3204,13 +3290,25 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     monkeypatch.setattr(
         supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
     )
+    refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
+    reset_alone = refused + "Reset to start a new run, which keeps every setting."
+
+    caseless = SimulationController()
+    caseless.start()
+    _advance(caseless, 300.0)
+    caseless_run = _shown_view(application, caseless).runs[0]
+    _drag(caseless_run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+
+    no_control = caseless_run._notice_text.notice()
+    assert no_control is not None
+    assert no_control.endswith(reset_alone)
+
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
     assert controller.has_reached_supported_limit is True
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
-    refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
 
     _drag(trunk._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
@@ -3227,7 +3325,32 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     assert len(view.runs) == 2
     compared = trunk._notice_text.notice()
     assert compared is not None
-    assert compared.endswith(refused + "Reset to start a new run, which keeps every setting.")
+    assert compared.endswith(reset_alone)
+
+
+@pytest.mark.parametrize(
+    "scenario", ["halt after an agent change", "halt after a Reset, no frame drawn"]
+)
+def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts_are_withheld(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    """The banner of such a halt says the readouts are withheld, not that they show the last frame.
+
+    Until the adversarial review of `PL-J5GC`, the banner said that the chart and
+    the readouts showed the last frame drawn before the run stopped. That frame
+    belongs to the run before the restart, and the readouts are withheld. The
+    chart still shows it, because only a frame writes the chart.
+    """
+
+    run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    banner = run._notice_text.notice()
+    assert banner is not None
+    assert (
+        "No frame has been drawn since the run started over: the readouts are withheld, "
+        "the chart still shows the run before it started over, and the run itself stands at "
+        "its last completed step."
+    ) in banner
 
 
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(
@@ -4143,7 +4266,7 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
     host = QWidget()
     windows_before = len(application.topLevelWindows())
 
-    run = RunView(SimulationController(), host, run_id=FIRST_RUN)
+    run = RunView(SimulationController(), host, run_id=FIRST_RUN, branch_control=False)
     application.processEvents()
 
     assert len(application.topLevelWindows()) == windows_before

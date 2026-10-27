@@ -733,6 +733,42 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
     assert "The values shown are the last completed step" in drawn
 
 
+def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withheld() -> None:
+    """After a Reset or an agent change, the last frame drawn belongs to the discarded run.
+
+    `RunView.present_halt` then withholds the readouts. So the banner must not
+    say that they show the last frame drawn, as it did until the adversarial
+    review of `PL-J5GC`. The supported run length keeps its wording, because a
+    run that has just started over has not reached it.
+    """
+
+    failed = RunStatus(
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason="RuntimeError: boom",
+        rejected_accounting=None,
+    )
+
+    banner = halt_notice(failed, started_over=True)
+
+    assert banner == (
+        "Simulation stopped — RuntimeError: boom. No frame has been drawn since the run "
+        "started over: the readouts are withheld, the chart still shows the run before it "
+        "started over, and the run itself stands at its last completed step. Reset to start "
+        "a new run."
+    )
+    assert halt_notice(failed) != banner
+
+    at_limit = RunStatus(
+        is_running=False,
+        supported_limit_reason="supported run length",
+        failure_reason=None,
+        rejected_accounting=None,
+    )
+
+    assert halt_notice(at_limit, started_over=True) == halt_notice(at_limit)
+
+
 def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     """A `RunStatus`, which carries no compartment value, decides the three halt widgets.
 

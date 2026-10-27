@@ -442,12 +442,12 @@ every identity widget (`PL-1YDD`). The control-change panel lists the record
 that the run holds (`PL-DTJQ`). Some things only a frame can state: the
 readouts and the clock read with them, the accounting panel, the off-scale and
 wash-in lines, and both legends. These stay as the last frame drew them.
-Values shown together still describe one step. After a halt that follows an
-agent change, each readout card withholds its values under the new agent's
-heading and 1 MAC line, and the accounting panel withholds its verdict and
-amounts. After an accounting halt, the accounting panel shows
-the rejected step's check. A stopped run refuses a dial, so the dials keep
-the settings the stopped values ran under (`PL-3B34`).
+Values shown together still describe one step. After a halt that no frame
+has drawn since the run started over, by a Reset or an agent change, each
+readout card and the clock withhold their values, and the accounting panel
+withholds its verdict and amounts. After an accounting halt, the accounting
+panel shows the rejected step's check, whether or not a frame draws. A stopped
+run refuses a dial, so the dials keep the settings the run holds (`PL-3B34`).
 `test_every_value_and_its_qualifiers_on_screen_come_from_one_state`
 checks each value and what qualifies it against one step (`PL-J5GC`).
 `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`

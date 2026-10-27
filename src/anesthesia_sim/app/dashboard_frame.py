@@ -87,6 +87,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -239,6 +240,18 @@ UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "the chart and the readouts show the last frame drawn before it stopped, and the "
     "run itself stands at its last completed step. {exit}"
 )
+# The failure banner for a halt that no frame has drawn since the run started
+# over, after a Reset or an agent change. The last frame then belongs to the run
+# before the restart. So `RunView.present_halt` withholds the readouts and their
+# clock, and the banner says so rather than calling them the last frame drawn.
+# The chart is not withheld, because only a frame writes it, so the banner says
+# whose frame it still shows (adversarial review of `PL-J5GC`). The wording is a
+# placeholder.
+STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. No frame has been drawn since the run "
+    "started over: the readouts are withheld, the chart still shows the run before it "
+    "started over, and the run itself stands at its last completed step. {exit}"
+)
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
     "This model leaves out metabolism, and its fat flow is uncertain. How far the "
@@ -253,7 +266,7 @@ REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
 
 # The exit a stopped run's banner names once a dial was moved on it. The
 # controller refuses every setting on a stopped run, so the dial springs back
-# to the setting the stopped values ran under (`SimulationController.
+# to the setting the run holds (`SimulationController.
 # _refuse_a_setting_on_a_stopped_run`, `PL-3B34`). Without a sentence the
 # refusal would be a dial that moves and returns for no stated reason. A
 # stopped run outranks a refused setting, so the refusal is stated inside the
@@ -791,9 +804,9 @@ ACCOUNTING_REJECTED_DETAIL_TEXT: Final = (
     "A step failed this check and was rolled back. The amounts below are that step's."
 )
 # The detail line while the panel withholds what it last showed, after a halt
-# that follows an agent change (`WITHHELD_ACCOUNTING`). The wording is a
-# placeholder.
-ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame of the new agent has been drawn yet."
+# that no frame has drawn since the run started over (`WITHHELD_ACCOUNTING`).
+# The wording is a placeholder.
+ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run started over."
 ACCOUNTING_UNIT_CAPTION: Final = "Litres of equivalent pure agent gas"
 #: The names of the panel's five amount lines, in the order the panel shows them.
 ACCOUNTING_AMOUNT_NAMES: Final = (
@@ -1172,14 +1185,20 @@ WIDEST_COMPARTMENT_SECONDARY: Final = max(
     key=len,
 )
 #: The two lines that a readout card shows instead of its values during a halt that
-#: follows an agent change. The card was last written for the old agent, so its
-#: percent is that agent's concentration and its multiple was divided by that
-#: agent's MAC. The heading and the 1 MAC line above the cards already name the new
-#: agent (`PL-6RJ0`, `PL-J5GC`). Each text keeps its unit, so the card still says
-#: which value is missing. Each is shorter than the widest string its line reserves,
-#: so the card does not resize.
+#: no frame has drawn since the run started over. The card was last written for the
+#: run before the Reset or the agent change. After an agent change its percent is
+#: the old agent's concentration, and its multiple was divided by that agent's MAC,
+#: while the heading and the 1 MAC line above the cards already name the new agent
+#: (`PL-6RJ0`, `PL-J5GC`). Each text keeps its unit, so the card still says which
+#: value is missing. Each is shorter than the widest string its line reserves, so
+#: the card does not resize.
 WITHHELD_CONCENTRATION_TEXT: Final = f"\u2014{DisplayUnit.CONCENTRATION.label}"
 WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
+#: The clock's value line during the same halt. The clock states the instant of
+#: the cards beside it, so it is withheld with them. Otherwise it showed the
+#: discarded run's instant beside a run standing at its opening (adversarial
+#: review of `PL-J5GC`).
+WITHHELD_ELAPSED_TIME_TEXT: Final = "\u2014"
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
@@ -1739,6 +1758,7 @@ def halt_notice(
     *,
     refused_reset: str | None = None,
     branch_offered: bool = False,
+    started_over: bool = False,
 ) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
@@ -1767,13 +1787,24 @@ def halt_notice(
             was refused, or None while Reset is the way out.
         branch_offered: As `notice` takes it: whether a branch can be taken
             from this run now.
+        started_over: Whether the run has started over, by a Reset or an
+            agent change, since its last frame was drawn. A failure then uses
+            `STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE`, because the
+            readouts are withheld rather than showing the last frame. A run
+            that has started over has not reached the supported run length,
+            so that wording does not change.
 
     Returns:
         The banner text, or None when the run is not halted.
     """
 
     if status.failure_reason is not None:
-        return UNDRAWN_FAILURE_NOTICE_TEMPLATE.format(
+        template = (
+            STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+            if started_over
+            else UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        )
+        return template.format(
             failure_reason=status.failure_reason,
             exit=_stopped_run_exit(
                 status, rejected_setting_notice, refused_reset, branch_offered=branch_offered
@@ -1912,20 +1943,8 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         The panel's three parts.
     """
 
-    rejected = snapshot.rejected_accounting
-
-    if rejected is not None:
-        return Accounting(
-            StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING),
-            ACCOUNTING_REJECTED_DETAIL_TEXT,
-            _accounting_amounts(
-                delivered_l=rejected.delivered_agent_l,
-                exhausted_l=rejected.exhausted_agent_l,
-                stored_l=rejected.currently_stored_agent_l,
-                unaccounted_l=rejected.unaccounted_agent_l,
-                absolute_error_l=rejected.absolute_error_l,
-            ),
-        )
+    if snapshot.rejected_accounting is not None:
+        return rejected_step_accounting(snapshot.rejected_accounting)
 
     if snapshot.agent_accounting_passes_validation:
         status = StatusWord(ACCOUNTING_VALID_TEXT, Emphasis.ACCENT)
@@ -1943,6 +1962,35 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
     )
 
     return Accounting(status, detail, amounts)
+
+
+def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accounting:
+    """The agent-accounting panel for a step whose accounting check failed and was rolled back.
+
+    `accounting` returns it for a frame that drew after the failure.
+    `RunView.present_halt` writes it when no frame can draw, from the
+    `rejected_accounting` that the run's record carries. Otherwise the panel
+    kept the last frame's "Valid" under a banner reporting the failed check
+    (adversarial review of `PL-J5GC`).
+
+    Args:
+        rejected: The rejected step's check, with the totals it judged.
+
+    Returns:
+        The panel's three parts: "Validation failed" and the rejected step's totals.
+    """
+
+    return Accounting(
+        StatusWord(ACCOUNTING_FAILED_TEXT, Emphasis.WARNING),
+        ACCOUNTING_REJECTED_DETAIL_TEXT,
+        _accounting_amounts(
+            delivered_l=rejected.delivered_agent_l,
+            exhausted_l=rejected.exhausted_agent_l,
+            stored_l=rejected.currently_stored_agent_l,
+            unaccounted_l=rejected.unaccounted_agent_l,
+            absolute_error_l=rejected.absolute_error_l,
+        ),
+    )
 
 
 def _accounting_amounts(
@@ -1968,13 +2016,14 @@ def _accounting_amounts(
     )
 
 
-#: The accounting panel shown in place of its last frame's during a halt that
-#: follows an agent change, for the reason that the readout cards withhold theirs
-#: (`WITHHELD_CONCENTRATION_TEXT`). The panel was last written for the old agent.
-#: So its verdict and amounts describe the case that the change discarded, while
-#: the heading above it names the new agent, whose case has delivered nothing.
-#: Each amount line keeps its name, so the panel still says which values are
-#: missing. The next frame writes the panel again (blind review of `PL-J5GC`).
+#: The accounting panel shown in place of its last frame's during a halt that no
+#: frame has drawn since the run started over, for the reason that the readout
+#: cards withhold theirs (`WITHHELD_CONCENTRATION_TEXT`). The panel was last
+#: written for the run before the Reset or the agent change. So its verdict and
+#: amounts describe a run that was discarded, while the heading above it names the
+#: run that replaced it. Each amount line keeps its name, so the panel still says
+#: which values are missing. The next frame writes the panel again (blind and
+#: adversarial reviews of `PL-J5GC`).
 WITHHELD_ACCOUNTING: Final = Accounting(
     StatusWord("\u2014", Emphasis.MUTED),
     ACCOUNTING_WITHHELD_DETAIL_TEXT,

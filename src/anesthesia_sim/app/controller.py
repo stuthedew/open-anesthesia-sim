@@ -2412,12 +2412,14 @@ class SimulationController:
         """Refuse a setting on a run that has stopped, before anything is applied.
 
         Each of the four setters calls this first. A run stops on a failure or
-        at the supported run length, and no step runs after either. Every value
-        the run holds was computed under the settings it stopped with. If a
+        at the supported run length, and no step runs after either. If a
         setting were applied here, the dial would show a setting that no step
-        ran under, beside values computed under the previous one. The control
+        will ever run under, beside values it did not produce. The control
         record would also claim a change at the stop instant that never acted
-        on the patient (`PL-3B34`).
+        on the patient (`PL-3B34`). The refusal gives only that reason. A run
+        can fail on the first step after a setting was accepted, and then no
+        value it holds was computed under that setting either (adversarial
+        review of `PL-J5GC`).
 
         So the setting is refused, and nothing is applied or recorded.
         `RunView._apply_setting` treats the error as a refused setting. The
@@ -2442,8 +2444,7 @@ class SimulationController:
 
         raise SimulationConfigurationError(
             f"the {CONTROL_INPUT_LABELS[control].lower()} setting cannot be changed on a "
-            "stopped run, because every value it holds was computed under the settings it "
-            "stopped with, and no step will run under a new one"
+            "stopped run, because no step will run under a new one"
         )
 
     def begin_control_adjustment(self) -> None:

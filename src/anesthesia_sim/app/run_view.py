@@ -118,7 +118,9 @@ from anesthesia_sim.app.dashboard_frame import (
     START_LABEL,
     WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
+    WITHHELD_ELAPSED_TIME_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
+    Accounting,
     HaltDisposition,
     NewCaseQuestion,
     Transport,
@@ -133,6 +135,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readouts,
     refused_reset_exit,
     refused_setting_notice,
+    rejected_step_accounting,
     run_statement,
     setting_readouts,
     status_word,
@@ -302,7 +305,12 @@ class RunView(QWidget):
     case_restarted = Signal()
 
     def __init__(
-        self, controller: SimulationController, parent: QWidget | None = None, *, run_id: RunId
+        self,
+        controller: SimulationController,
+        parent: QWidget | None = None,
+        *,
+        run_id: RunId,
+        branch_control: bool,
     ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
@@ -310,6 +318,9 @@ class RunView(QWidget):
             controller: The run this view drives and displays.
             parent: The Qt parent.
             run_id: The run's identity, minted by the dashboard that places it.
+            branch_control: Whether the dashboard that places this run has a
+                branch control. A dashboard with no case has none, so the
+                banner never names a branch there (`_branch_offered`).
 
         Raises:
             TypeError: If `run_id` is not a `RunId`.
@@ -321,6 +332,7 @@ class RunView(QWidget):
         super().__init__(parent)
         self.controller = controller
         self.run_id = run_id
+        self._branch_control = branch_control
         snapshot = controller.snapshot()
 
         # The reason the last setting change did not take effect, or None if
@@ -500,10 +512,12 @@ class RunView(QWidget):
         self._readout_row = ReadoutRow(
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
-        # The agent whose MAC divided the ×MAC numbers on the readout cards.
-        # Only a frame writes the cards, so after a halt that follows an agent
-        # change they still hold another agent's multiples (`PL-6RJ0`).
-        self._cards_agent_id = snapshot.agent_id
+        # Whether the run has started over, by a Reset or an agent change, since
+        # the readout cards were last written. Only a frame writes the cards, the
+        # clock and the accounting panel. So until one draws, they describe the run
+        # that was discarded, and a halt withholds them (`present_halt`, `PL-6RJ0`,
+        # adversarial review of `PL-J5GC`).
+        self._started_over_since_the_cards = False
 
         # The values last shown by this run's two surfaces that may sit in an
         # Area, and the copies of each surface that Qt has not destroyed. A
@@ -635,15 +649,10 @@ class RunView(QWidget):
 
         self._presented = True
         self._readout_row.set_readouts(readouts(snapshot, self._playback_rate))
-        self._cards_agent_id = snapshot.agent_id
+        self._started_over_since_the_cards = False
         self._restate_new_case_question(snapshot)
         self._restate_reset_question()
-
-        self._accounting_shown = accounting(snapshot)
-
-        for accounting_panel in self._accounting_panels:
-            accounting_panel.show_accounting(self._accounting_shown)
-
+        self._show_accounting(accounting(snapshot))
         self._write_statement(
             snapshot,
             banner=notice(
@@ -772,6 +781,12 @@ class RunView(QWidget):
         over a failed controller, and no banner would name the exception
         (`PL-25KS`). The frame widgets keep what the last frame drew. They show
         compartment values, and the first frame that draws rewrites them.
+        Two exceptions keep each value beside what qualifies it. After a step
+        whose accounting failed its check, the accounting panel shows that
+        step's check, which the record carries. And when the run has started
+        over since the last frame, the readout cards, their clock and the
+        accounting panel are withheld, because they describe the run that was
+        discarded (`_withhold_the_discarded_run_s_values`).
 
         It writes every widget that a frame would write, because a halt can
         follow a change that no frame has shown. A dial dragged into a halt
@@ -795,16 +810,20 @@ class RunView(QWidget):
         Raises:
             ValueError: If `setting_readouts` rejects the record. By then
                 `_write_statement` has put everything else on screen, and the
-                old agent's values are withheld.
+                discarded run's values are withheld.
         """
 
         record = self.controller.record()
+        started_over = self._started_over_since_the_cards
 
-        # The values are withheld before the statement is written, because
-        # `_write_statement` can raise after it has named the new agent
-        # (blind review of `PL-J5GC`).
-        if self._cards_agent_id != record.agent_id:
-            self._withhold_the_old_agent_s_values()
+        # The frame-only values are withheld or restated before the statement is
+        # written, because `_write_statement` can raise after it has named the
+        # new agent (blind review of `PL-J5GC`).
+        if started_over:
+            self._withhold_the_discarded_run_s_values()
+
+        if record.rejected_accounting is not None:
+            self._show_accounting(rejected_step_accounting(record.rejected_accounting))
 
         self._write_statement(
             record,
@@ -813,34 +832,44 @@ class RunView(QWidget):
                 self._rejected_setting_notice,
                 refused_reset=self._refused_reset_notice,
                 branch_offered=self._branch_offered,
+                started_over=started_over,
             ),
         )
 
-    def _withhold_the_old_agent_s_values(self) -> None:
-        """Replace the values that the last frame wrote for the old agent with withheld texts.
+    def _withhold_the_discarded_run_s_values(self) -> None:
+        """Replace the values that the last frame wrote for a discarded run with withheld texts.
 
-        `present_halt` calls this when the agent has changed and no frame has yet
-        been drawn for the new agent. Each compartment card then holds the old
-        agent's concentration, divided by the old agent's MAC. The accounting
-        panel holds the old case's verdict and amounts. The heading, the 1 MAC
-        line and the delivered line name the new agent, whose case has delivered
-        nothing. Showing any of those values would put it on screen under a
-        substance or a divisor that did not produce it. `PL-6RJ0` withheld the
-        multiples, `PL-J5GC`'s guard found the percents still under the new
-        agent's heading, and its blind review found the accounting panel. The
-        clock keeps the last frame's instant, which the halt banner states. The
-        next frame writes every card and the panel again.
+        `present_halt` calls this when the run has started over, by a Reset or
+        an agent change, and no frame has been drawn since. Each compartment
+        card then holds the discarded run's concentration, and the clock holds
+        its instant. After an agent change, each ×MAC number was also divided
+        by the old agent's MAC. The accounting panel holds the discarded run's
+        verdict and amounts. The heading, the 1 MAC line and the delivered line
+        name the run that replaced it. Showing any of those values would put it
+        on screen under a substance, a divisor or a run that did not produce it.
+        `PL-6RJ0` withheld the multiples, `PL-J5GC`'s guard found the percents,
+        its blind review found the accounting panel, and its adversarial review
+        found the clock and a Reset. The playback line under the clock is a
+        setting of this view, so `_write_statement` writes it. The next frame
+        writes every card and the panel again.
         """
 
         for index, panel in enumerate(self._readout_row.panels):
-            if index != _CLOCK_PANEL_INDEX:
+            if index == _CLOCK_PANEL_INDEX:
+                panel.value_label.setText(WITHHELD_ELAPSED_TIME_TEXT)
+            else:
                 panel.value_label.setText(WITHHELD_CONCENTRATION_TEXT)
                 panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
 
-        self._accounting_shown = WITHHELD_ACCOUNTING
+        self._show_accounting(WITHHELD_ACCOUNTING)
+
+    def _show_accounting(self, shown: Accounting) -> None:
+        """Write the accounting panel on every copy of it, and keep it for a copy built later."""
+
+        self._accounting_shown = shown
 
         for accounting_panel in self._accounting_panels:
-            accounting_panel.show_accounting(WITHHELD_ACCOUNTING)
+            accounting_panel.show_accounting(shown)
 
     def _write_settings(self, settings: RunSettings) -> None:
         """Write the four setting controls from the settings in force.
@@ -895,13 +924,15 @@ class RunView(QWidget):
     def _branch_offered(self) -> bool:
         """Whether a branch can be taken from this run now, for the stopped run's banner.
 
-        None can be taken while two runs are compared, because `fork_offer`
-        locks the branch control then. None can be taken from a run whose
-        `fork_refusal` gives a reason: a branch, or a trunk whose dashboard
-        failed. Otherwise the control offers at least the run's opening.
+        None can be taken on a dashboard with no branch control, which is one
+        built with no case. None can be taken while two runs are compared,
+        because `fork_offer` locks the branch control then. None can be taken
+        from a run whose `fork_refusal` gives a reason: a branch, or a trunk
+        whose dashboard failed. Otherwise the control offers at least the
+        run's opening.
         """
 
-        return not self._comparing and self.controller.fork_refusal is None
+        return self._branch_control and not self._comparing and self.controller.fork_refusal is None
 
     def set_comparing(self, comparing: bool) -> None:
         """Record whether a second run is on the chart, and rewrite the transport at once.
@@ -1054,7 +1085,7 @@ class RunView(QWidget):
         failed run refuses every dial (`PL-3B34`), so the setting that clears that
         way out is an agent switch, which starts a new case. On a stopped run the
         refusal is stated inside the stopped run's banner, and the dial springs back
-        to the setting the stopped values ran under.
+        to the setting the run holds.
 
         The method leaves the frame for the render tick to draw only when two things
         are true: `coalesce` is set, and no refusal was in effect before the call or
@@ -1300,7 +1331,7 @@ class RunView(QWidget):
 
         self._rejected_setting_notice = None
         self._refused_reset_notice = None
-        self.case_restarted.emit()
+        self._announce_the_start_over()
         self.presentation_requested.emit(False)
 
     @halt_gate
@@ -1408,9 +1439,21 @@ class RunView(QWidget):
 
         def switch() -> None:
             self.controller.set_agent(agent_id)
-            self.case_restarted.emit()
+            self._announce_the_start_over()
 
         self._apply_setting(switch)
+
+    def _announce_the_start_over(self) -> None:
+        """Record that the run has started over since the cards were written, then say so.
+
+        `_reset_now` and an accepted agent change call this method. Until a
+        frame draws, the cards, the clock and the accounting panel describe the
+        run that was discarded, so a halt withholds them (`present_halt`).
+        Then `case_restarted` is emitted for the dashboard.
+        """
+
+        self._started_over_since_the_cards = True
+        self.case_restarted.emit()
 
     def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
         """Ask before discarding a recorded run, with the selector already put back.
