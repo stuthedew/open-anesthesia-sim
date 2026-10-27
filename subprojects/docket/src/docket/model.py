@@ -1092,6 +1092,35 @@ class Item:
             return LANE_PRODUCT
         return LANE_CROSSING
 
+    def generator_question_paths(
+        self, workflow_paths: tuple[str, ...], new_work_classes: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """The `touches` paths that make this item owe triage's generator question.
+
+        The question is which fact the item misread, asked so that a cause
+        behind three or more items is found as one generator. Every path under
+        `workflow_paths` owes it, whatever the item's lane and classes, because
+        the apparatus is largely built and anything filed against it is
+        evidence of a cause (`PL-4NZ7`).
+
+        A product path owes it unless every class is new work, as
+        `new_work_classes` defines it. A feature is expected inflow, so asking
+        where it came from returns "the owner asked for it" every time. A
+        product defect is evidence, and 75 of the 75 product members of a
+        product head were asked under this key, measured on 2026-10-27. Keyed
+        on `debt_classes` instead, 6 of them were not, four of them `docs`
+        items of the largest product family (`PL-K5CX`). An item with no
+        classes is asked, since nothing says it is new work.
+
+        Empty `workflow_paths` returns nothing, as `lane` places nothing then.
+        """
+        if not workflow_paths:
+            return ()
+        new_work = bool(self.classes) and all(c in new_work_classes for c in self.classes)
+        return tuple(
+            path for path in self.touches if is_under(path, workflow_paths) or not new_work
+        )
+
     @property
     def safety_classes(self) -> tuple[str, ...]:
         return tuple(c for c in self.classes if c in SAFETY_CLASSES)

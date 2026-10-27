@@ -3099,13 +3099,38 @@ def test_triage_marks_a_crossing_item_as_owing_a_generator_check(
 
     `triage.md` asked where an item came from only of one triaged into the
     workflow lane, and an item touching a tool and the simulator is `crossing`.
-    The mark keys on the apparatus path instead and names only that path, so
-    the simulator-only capture beside it is not asked.
+    The mark keys on the apparatus path instead and names only that path.
     """
-    _triage(tmp_path, CROSSING, SIMULATOR_ONLY, config=WORKFLOW_TOOLS)
+    _triage(tmp_path, CROSSING, config=WORKFLOW_TOOLS)
     output = capsys.readouterr().out
 
-    assert "Owes a Generator check, whatever its lane: it touches tools/check.py," in output
+    assert (
+        "Owes a Generator check, whatever its lane: it touches tools/check.py, under "
+        "workflow_paths." in output
+    )
+    assert output.count("Owes a Generator check") == 1
+
+
+def test_triage_marks_a_product_defect_as_owing_a_generator_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-K5CX`: keyed on apparatus paths alone, no product defect was asked.
+
+    `PL-R4Y2`'s second sweep found two product heads among 56 product defects,
+    none of which triage had asked which fact it misread. A product path owes
+    the question unless the work is classed only as new work, and an item with
+    no classes is asked, since nothing says it is new work.
+    """
+    feature = SIMULATOR_ONLY.replace("id: PL-S3S3", "id: PL-S4S4").replace(
+        "touches:", "classes: feature\ntouches:"
+    )
+    _triage(tmp_path, SIMULATOR_ONLY, feature, config=WORKFLOW_TOOLS)
+    output = capsys.readouterr().out
+
+    assert (
+        "Owes a Generator check: it touches src/model.py, a product path, on work not "
+        "classed only as new work." in output
+    )
     assert output.count("Owes a Generator check") == 1
 
 
@@ -3201,6 +3226,18 @@ def test_set_calls_a_generator_check_undecided_where_triage_ends_with_no_touches
     assert "PL-G1G1: owes a Generator check" in capsys.readouterr().out
 
 
+def test_set_names_the_product_paths_a_triage_write_leaves_owing_a_generator_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-K5CX`: a product defect leaves triage owing the question, as the mark says."""
+    _set_under_workflow_paths(tmp_path, GENERATOR_CAPTURE, "--touches", "src/model.py", *TRIAGED)
+
+    assert (
+        "PL-G1G1: owes a Generator check: it touches src/model.py, a product path, on work "
+        "not classed only as new work\n"
+    ) in capsys.readouterr().out
+
+
 @pytest.mark.parametrize(
     ("document", "args"),
     [
@@ -3210,7 +3247,10 @@ def test_set_calls_a_generator_check_undecided_where_triage_ends_with_no_touches
             ),
             ("--touches", "tools/check.py", *TRIAGED),
         ),
-        (GENERATOR_CAPTURE, ("--touches", "src/model.py", *TRIAGED)),
+        (
+            GENERATOR_CAPTURE,
+            ("--touches", "src/model.py", *TRIAGED[:4], "--classes", "feature", *TRIAGED[6:]),
+        ),
         (
             READY.replace("touches: a.py", "touches: tools/check.py"),
             ("--touches", "tools/check.py, tools/other.py", "--overwrite"),
@@ -3228,7 +3268,7 @@ def test_set_calls_a_generator_check_undecided_where_triage_ends_with_no_touches
     ],
     ids=[
         "the brief answers it",
-        "no path is apparatus",
+        "a product feature",
         "a rewrite after triage",
         "a drop, undecided",
         "triage ended before",
