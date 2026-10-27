@@ -524,51 +524,52 @@ Five things in `app/controller.py` implement a branch:
 - `SimulationController.resumed_at(instant_s)` makes a branch at one of the
   trunk's keyframes. It builds a second controller through the ordinary
   constructor, with the settings of the trunk's stretch that opens at
-  `instant_s`, so the branch runs under the change recorded there. It then
+  `instant_s`. So the branch runs under the change recorded there. It then
   seeds the new controller's system with the trunk's canonical state at
   `instant_s`, and returns the controller paused. The trunk is read and never
   written. So the two runs share no compartment, no accounting and no clock,
   and that is what lets both be advanced.
 - `SimulationController.resumed_here()` makes a branch where the paused trunk
-  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). The branch
-  it makes is the one the bullet above describes, because the two methods share
+  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). It makes
+  the branch that the bullet above describes, because the two methods share
   `_branch_from`. Only the place where the fork may be taken differs. So a
-  setting the learner changed on the trunk while it stood there is on the
+  setting that the learner changed on the trunk while it stood there is on the
   branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
   because the fork is the clock. So a caller has no float with which to name
-  an instant the run has not reached.
-  Nor can anyone confuse the instant a learner *marked* with the step instant
-  the run actually stopped on. It refuses a running trunk, a failed one, and
-  one standing at its opening. It also refuses one at the supported run length,
-  where a branch would have no step to take. `here_fork_point` returns its
-  result from the same check, so an offer built from it cannot disagree with
-  `resumed_here`. The crossing that the branch opens on is the step's crossing.
-  It is asked again of the marks as they stand at each read, in the same way
-  for every branch. So a mark added inside the halting step counts as passed
-  on the branch, just as it does on the trunk (`PL-2N43`, `PL-XV0D`).
+  an instant the run has not reached. Nor can anyone confuse the instant a
+  learner *marked* with the step instant the run actually stopped on. The
+  method refuses a running trunk, a failed one, and one standing at its
+  opening. It also refuses one at the supported run length, where a branch
+  would have no step to take. `here_fork_point` returns its result from the
+  same check, so an offer built from it cannot disagree with `resumed_here`.
+  The crossing that the branch opens on is the crossing of the step it stands
+  on. That crossing is computed again from the marks as they are at each read,
+  in the same way for every branch. So a mark added inside the halting step
+  counts as passed on the branch, just as it does on the trunk (`PL-2N43`,
+  `PL-XV0D`).
 - `SimulationController.resumed_at_mark(bookmark)` makes a branch at a time
   bookmark that the trunk has passed. The run may have halted there, or the
   learner may have marked the instant after the clock went past it (`PL-W4XQ`).
   It is the halt fork, taken late. The fork is the end of the step that reached
-  the mark. `TimeBookmark.steps_to_reach` finds that step from the crossing
+  the mark, and `TimeBookmark.steps_to_reach` finds that step from the crossing
   rule itself. The branch opens from the trunk's canonical state there, exactly
   as a halt fork does. The method takes the mark rather than an instant, for
   the same reason that `resumed_here` takes nothing. `mark_fork_points` lists
   the marks it accepts, each with the instant at which its branch would open.
 - `ResumePoint` records where the branch came from. It holds the trunk stretch
   that the step reaching the fork ran under. It holds the fork, which is the
-  instant the fork was taken at and the canonical state there. It holds the
-  case's step count at the fork, the step the fork was taken at, and the agent
-  that the branch's accounting period started from. It holds no crossing. A
-  crossing stored with the marks it named would go on naming a mark that was
-  removed and added back (`PL-XV0D`), so the branch asks the step it was taken
-  at again, at each read. `opened_from` is `None` on a trunk and a
-  `ResumePoint` on a branch, so every run knows which kind it is. The
-  stretch's opening and the fork are two instants for every fork except one
-  at the case's opening (`PL-B8MK`, `PL-ZR49`). `reset()` goes back through
-  the same `_open_at`, with the settings the branch runs under, so a reset
-  opens the branch on the same provenance and records the same differences
-  from it (`PL-K5BS`).
+  instant at which the fork was taken and the canonical state there. It holds
+  the case's step count at the fork, the step that ends at the fork, and the
+  agent that the branch's accounting period started from. It holds no
+  crossing. A crossing stored with the marks it named would go on naming a mark
+  that was removed and added back (`PL-XV0D`). So at each read, the branch asks
+  again what the step ending at its fork crossed. `opened_from` is `None` on a
+  trunk and a `ResumePoint` on a branch, so every run knows which kind it is.
+  The stretch's opening and the fork are two instants for every fork except one
+  at the case's opening (`PL-B8MK`, `PL-ZR49`). `reset()` goes back through the
+  same `_open_at`, with the settings the branch runs under. So a reset opens
+  the branch on the same provenance and records each setting that differs from
+  it (`PL-K5BS`).
 - `BranchedCase` holds a trunk and the branches taken from it. It is what makes
   two controllers one case rather than two unrelated sessions. It is also where
   the flat shape stops depending on a refusal. The trunk is the only run that
@@ -581,34 +582,34 @@ rather than a second management of this one. `set_agent` already starts a new
 run for that reason, and it refuses outright on a branch. A branch inherits the
 circuit volume, applied before any state is. This is because
 `BreathingCircuit.set_circuit_volume` conserves agent by rewriting the inspired
-fraction. A volume set afterwards would move the branch off the state it opened
-at. A branch inherits the four live controls, read from the settings of the
-trunk's stretch, which hold each value as it was set. The rebuilt branch is
+fraction, so a volume set afterwards would move the branch off the state it
+opened at. A branch inherits the four live controls, read from the settings of
+the trunk's stretch, which hold each value as it was set. The rebuilt branch is
 then checked against those settings rather than trusted. The check covers
 every setting the stretch carries, and the agent's displayed references, since
-the agent and patient are re-read from their data files. A refusal names each
-value that differs, with both of its values (`PL-NC62`). Which stretch is
-settled by one rule for every way of branching. The branch names as its
-provenance the stretch the step reaching the fork ran under, which no later
-change on the trunk can replace. It runs under the stretch still open at the
-fork, which is what the dial says there, and it records a change the trunk made
-there as its own (`docs/MODEL.md` § "The canonical evaluation rule",
-`PL-ZR49`). And a branch inherits the
-bookmarks. That is the opposite case to the timeline below, and it is settled
-by the same test. A mark is a question about what is still to come, and a
-comparison is two managements answering one question. If a learner had to
-re-enter the marks, two branches could be compared at two different heights
-with nothing saying so. What a branch does not inherit is the trunk's control
-timeline. The branch's record is of what the learner does to *it*, and
-`opened_from` is what records where the fork was taken. The entries it can
-open with are the settings it runs under that differ from the stretch it opened
-from, one for each control that differs. They are the trunk's changes at the
-instant it was taken at, or the learner's dials kept by a reset
-(`RunRecord.opened_with`).
-`began_at_s` is the one number to read for that. It is zero on a trunk and the
-fork instant on a branch. The definition's own first segment used to start at
-the same instant, and it no longer always does. That is why the property
-exists, rather than leaving readers to infer the instant (`PL-B8MK`).
+the agent and patient are read again from their data files. A refusal names
+each value that differs, with both of its values (`PL-NC62`). One rule, the
+same for every way of branching, decides which stretch. The branch names as
+its provenance the stretch that the step reaching the fork ran under, which no
+later change on the trunk can replace. The branch runs under the stretch still
+open at the fork, which is what the dial says there. It records a change that
+the trunk made there as a change of its own (`docs/MODEL.md` § "The canonical
+evaluation rule", `PL-ZR49`). And a branch inherits the bookmarks. That is the
+opposite case to the timeline below, and it is settled by the same test. A
+mark is a question about what is still to come, and a comparison is two
+managements answering one question. If a learner had to re-enter the marks,
+two branches could be compared at two different heights with nothing saying
+so. What a branch does not inherit is the trunk's control timeline. The
+branch's record is of what the learner does to *it*. The entries that the
+branch's timeline can open with are the settings it runs under that differ
+from the stretch it opened from, one for each control that differs. They are
+the trunk's changes at the instant the branch was taken, or the learner's
+dials kept by a reset (`RunRecord.opened_with`). `opened_from` is what records
+where the fork was taken, and `began_at_s` is the one number to read for the
+fork instant. It is zero on a trunk and the fork instant on a branch. The
+definition's own first segment used to start at the same instant, and it no
+longer always does. That is why the property exists, rather than leaving
+readers to infer the instant (`PL-B8MK`).
 
 **One time frame, and every reader is in it.** A branch continues the case's
 step count. So `snapshot().elapsed_s`, every control-change stamp,
@@ -712,8 +713,8 @@ is a property of the display, not of the model:
   owner, 2026-10-12, ratified, over truncating the run at the mark after a
   confirm as Gas Man does, `PL-ZW0J`).
 - **Two controls, because the ways into a fork last for different lengths of
-  time** (`PL-TYWQ`, `PL-Y2SL`). The selector offers two kinds of row, merged
-  with the earliest first. The first kind is each instant in
+  time** (`PL-TYWQ`, `PL-Y2SL`). The selector offers two kinds of row in one
+  list, earliest first. The first kind is each instant in
   `BranchedCase.fork_points_s`, taken through `fork_at`. The second kind is
   every time bookmark that the trunk has passed, from
   `BranchedCase.mark_fork_points` and taken through `fork_at_mark`
@@ -722,30 +723,30 @@ is a property of the display, not of the model:
   states where the mark itself lies. Below the selector, a second button takes
   the branch at the point where the paused trunk is, through `fork_here`. The
   button is on the panel whenever `BranchedCase.here_fork_point` offers that
-  point and no comparison is shown. It is labelled
-  "Branch here: 1h23m" with the instant at which the branch will open. When a
-  mark stopped the trunk there, the label is
-  "..., stopped on your mark". Every entry and the button open under what the
-  dial says at their instant. So two controls labelled with one instant open
-  under the same settings (`PL-ZR49`). Pausing records no keyframe, so the
-  paused point adds nothing to `fork_points_s`. The selector therefore never
-  loses a row as the run moves. It gains a row as the clock passes a mark. It
-  loses a row only when the learner unmarks that mark or the trunk starts over.
-  The project owner chose this shape (2026-09-21,
+  point and no comparison is shown. It is labelled "Branch here: 1h23m", with
+  the instant at which the branch will open. When a mark stopped the trunk
+  there, the label is "..., stopped on your mark". Every entry and the button
+  open under what the dial says at their instant. So two controls labelled
+  with one instant open under the same settings (`PL-ZR49`). Pausing records
+  no keyframe, so the paused point adds nothing to `fork_points_s`. The
+  selector therefore never loses a row as the run moves. It gains a row as the
+  clock passes a mark. It loses a row only when the learner unmarks that mark
+  or the trunk starts over. The project owner chose this shape (2026-09-21,
   ratified, over one list that grows a row while the run is halted; and
   2026-10-12, ratified, over a row at the top of the selector selected by
   default). The reasons are these. A row that vanishes from a list can be
-  noticed only by comparing the list with a remembered one. That is the
+  noticed only by comparing the list with a remembered one, which is the
   stale-state case that `.claude/rules/expert-review.md` names. A control
-  that vanishes, by contrast, can be noticed on sight. And a default selection
-  that jumped to the paused point would move a choice the reader had made. The button passes no instant to
-  `fork_here`, which takes none. That method exists to prevent one hazard: a
-  fork asked for at the instant a learner *marked*, rather than at the step on
-  which the run stopped. Because the button names no instant, that hazard
-  cannot be expressed through the interface either. `fork_offer` takes the
-  paused point from the **trunk**, not from the displayed runs. The reason is
-  that `fork_here` forks the trunk and refuses a branch. A panel drawn from a
-  branch's paused point would offer a fork that the case cannot take.
+  that vanishes, by contrast, can be noticed on sight. And a default
+  selection that jumped to the paused point would move a choice the reader
+  had made. The button passes no instant to `fork_here`, which takes none.
+  That method exists to prevent one hazard: a fork asked for at the instant a
+  learner *marked*, rather than at the step on which the run stopped.
+  Because the button names no instant, that hazard cannot be expressed
+  through the interface either. `fork_offer` takes the paused point from the
+  **trunk**, not from the displayed runs, because `fork_here` forks the trunk
+  and refuses a branch. A panel drawn from a branch's paused point would
+  offer a fork that the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction.** Until `PL-VKJW`, the dashboard's run set was fixed at
   construction ("the count cannot change while a dashboard is alive"). So a

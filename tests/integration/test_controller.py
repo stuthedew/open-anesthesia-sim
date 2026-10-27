@@ -4411,14 +4411,14 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
 
 
 def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyframe_fork() -> None:
-    """Where the halt fork and the control-event fork meet, at one instant with two sides.
+    """The halt fork and the control-event fork meet at one instant, which has two sides.
 
     A halt is an ordinary pause, and the setters apply unconditionally. So a
-    learner may stop on a mark and dial something before branching. That
-    opens a segment at the halt instant, so the halt is now a keyframe as
-    well. Both ways of branching at that instant name the stretch the halting
-    step ran under as their provenance (`PL-ZR49`). Both run under the
-    change, which is what the dial says there, and record it in their own
+    learner may stop on a mark and dial something before branching. The
+    change opens a segment at the halt instant, so the halt is now a keyframe
+    as well. Both ways of branching at that instant name as their provenance
+    the stretch that the halting step ran under (`PL-ZR49`). Both run under
+    the change, which is what the dial says there, and record it in their own
     timeline (project owner, 2026-10-26). Both reproduce the trunk, which
     made the change, element for element.
     """
@@ -5441,18 +5441,18 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     branching is used before those edits, after them, and again after the
     trunk has run on. Each branch is then reset.
 
-    Each way of branching is checked against the rule that `docs/MODEL.md`
-    states. All of them share one provenance, the stretch the halting step ran
+    Each branch is checked against the rule that `docs/MODEL.md` states. All
+    of them share one provenance, the stretch that the halting step ran
     under. Each runs under what the dial said when it was taken. So a branch
-    taken before the edits runs under 2%, and every branch taken after them
-    runs under 4%, with the change recorded at the fork in its own timeline
-    (project owner, 2026-10-26). Every branch taken after the edits names the
-    marks as they now are in its halt record, as the trunk standing there
-    does. A reset reopens each branch on the same record. The expected
-    settings are the dialled literals, and the marks are expected by the
-    instants and labels the test gave them. The run each record describes is
-    checked against a run built directly: a 2% case nobody changed, or the
-    trunk.
+    taken before the edits runs under 2%. Every branch taken after them runs
+    under 4% and records the change at the fork in its own timeline (project
+    owner, 2026-10-26). Every branch taken after the edits names the marks
+    as they now are in its halt record, as the trunk standing there does. A
+    reset reopens each branch on the same record. The expected settings are
+    the literal values that the test dialled, and the expected marks are the
+    instants and labels that the test gave them. The run that each record
+    describes is checked against a run built directly, which is either a 2%
+    case nobody changed or the trunk.
     """
 
     first = TimeBookmark(CaseInstant(30.0), "first")
@@ -5573,20 +5573,22 @@ def test_a_change_made_on_the_halt_opens_every_branch_taken_after_it() -> None:
     """`PL-HSP8`: a branch taken on a halt runs under what the dial says when it is taken.
 
     The trunk runs at 2% and a mark at 60 s halts it. The vaporizer is turned
-    off while it stands there, and the trunk runs on to 120 s. There it is
-    turned to 1%, a change made after the halt. The halt branch is taken
-    before the change and after it. A branch is taken at the mark, and one
-    with `resumed_at` at the keyframe the change recorded, once the trunk has
-    run on and made its later change.
+    off while the trunk stands there, and the trunk then runs on to 120 s.
+    There the vaporizer is turned to 1%, a change made after the halt. The
+    halt branch is taken both before and after the change made on the halt.
+    Once the trunk has run on and made its later change, a branch is taken
+    at the mark, and another with `resumed_at` at the keyframe that the
+    change on the halt recorded.
 
     The halt branch taken before the change runs at 2%. The other three run
     at 0%, the setting the trunk left the halt under, and none takes the
     later 1%. Each of the three records the change at the fork in its own
-    timeline. All four name the same provenance, the stretch the halting step
-    ran under (project owner, 2026-10-26). The expected settings are the
-    dialled literals. The 2% branch is checked against a 2% run nobody
-    changed, and each 0% branch against the trunk, which is the case run
-    directly with the change made on the halt.
+    timeline. All four name the same provenance, the stretch that the
+    halting step ran under (project owner, 2026-10-26). The expected
+    settings are the literal values that the test dialled. The 2% branch is
+    checked against a 2% run nobody changed. Each 0% branch is checked
+    against the trunk, which is the case run directly with the change made
+    on the halt.
     """
 
     mark = TimeBookmark(CaseInstant(60.0), "on your mark")
@@ -5804,13 +5806,13 @@ def test_a_change_at_the_fork_that_undoes_an_opened_entry_leaves_nothing_to_lose
 
     The trunk is paused at 60 s, its fresh gas flow is set from 4 to 6 L/min,
     and a branch is taken at that keyframe. Setting the branch to 8 L/min at
-    the fork replaces the entry it opened with, which is one change made
-    since opening. Setting it back to 4 L/min removes that entry. The branch
-    then runs under the trunk's settings from before the change, as a branch
-    taken there before the trunk's change would. So it holds nothing that a
-    trunk Reset would lose. The blind review of `PL-ZR49`'s change found
-    that the Reset question named such a branch as having "0 recorded
-    control changes".
+    the fork replaces the entry that the branch opened with. The replacement
+    counts as one change made since opening. Setting the branch back to
+    4 L/min removes that entry. The branch then runs under the trunk's
+    settings from before the change, as a branch taken there before the
+    trunk's change would. So it holds nothing that a trunk Reset would lose.
+    The blind review of `PL-ZR49`'s change found that the Reset question
+    named such a branch as having "0 recorded control changes".
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -6046,13 +6048,14 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
     """ "Branch here" runs under the settings the dials show when it is taken.
 
     The trunk is paused at 60 s and its fresh gas flow is set from 4 to
-    6 L/min. A branch taken where it stands then runs at 6 L/min, as the
-    keyframe branch at that instant does, and both record the change at the
-    fork. Setting the flow back to 4 L/min removes the change. A branch taken
-    where the trunk stands then runs at 4 L/min and records nothing (project
-    owner, 2026-10-26). The expected flows are the dialled literals. Each
-    branch is checked against a run built directly: a 4 L/min case nobody
-    changed, or one set to 6 L/min at the same instant.
+    6 L/min. A branch taken where the trunk stands then runs at 6 L/min, as
+    the keyframe branch at that instant does, and both record the change at
+    the fork. Setting the flow back to 4 L/min removes the change. A branch
+    taken where the trunk stands then runs at 4 L/min and records nothing
+    (project owner, 2026-10-26). The expected flows are the literal values
+    that the test dialled. Each branch is checked against a run built
+    directly, which is either a 4 L/min case nobody changed or one set to
+    6 L/min at the same instant.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
@@ -6098,18 +6101,19 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
 
 
 def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under() -> None:
-    """A mark's branch runs under the settings the trunk ran under leaving the mark's instant.
+    """A mark's branch runs under the settings the trunk had as it left the mark's instant.
 
     The trunk is paused at 30 s, its fresh gas flow is set from 4 to 6 L/min,
-    and it then runs on to 60 s. Three marks are then set at instants the
-    trunk has already passed: at the opening, on the change and at 45 s. The
-    branch at the opening runs at 4 L/min, because the change came later. The
-    branch on the change runs at 6 L/min and records the change at its fork,
-    as the keyframe branch there does. The branch at 45 s runs at 6 L/min and
-    records nothing, because the step reaching 45 s already ran at 6 L/min
-    (project owner, 2026-10-26). The expected flows are the dialled literals.
-    Each branch is checked against a run built directly: a 4 L/min case
-    nobody changed, or the trunk.
+    and it then runs on to 60 s. Three marks are then set at instants that
+    the trunk has already passed: at the opening, on the change and at 45 s.
+    The branch at the opening runs at 4 L/min, because the change came
+    later. The branch on the change runs at 6 L/min and records the change
+    at its fork, as the keyframe branch there does. The branch at 45 s runs
+    at 6 L/min and records nothing, because the step reaching 45 s already
+    ran at 6 L/min (project owner, 2026-10-26). The expected flows are the
+    literal values that the test dialled. Each branch is checked against a
+    run built directly, which is either a 4 L/min case nobody changed or the
+    trunk.
     """
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))

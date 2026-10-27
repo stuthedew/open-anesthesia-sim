@@ -129,3 +129,27 @@ Element-wise reproduction survives. `_open_at` already opens the branch's defini
 
 **Third merge of `main`, 2026-10-26.** Before the rework, `main` had moved two commits: `PL-D902`, a sentence in the pull-request skill, and `#1864`'s eight core fixes (`PL-0WFJ` and seven more). It merged without a conflict.
 
+**Rework checked, 2026-10-27: two defects to fix before the owner's merge.** The rework (`4bd1e30c`) makes `_branch_from` read `RunDefinition.segment_at(fork)` for every door, and `make check` passed on it with 11,129 tests. CI was green on it. Then the prose review and two fresh blind review passes ran against it.
+
+- **The trunk's Reset can discard a branch whose only work undid its opening entry.** Both blind passes found this independently. Take a trunk paused at 30 s at 2% and set to 3%. "Branch here" opens at 3%, with the change 2 to 3 at 30 s as its opened entry. If the learner sets the branch back to 2% at the fork, `_record_in_timeline` deletes that entry, because the new value equals the entry's previous value. Running the branch, setting 2% later and then resetting it ends the same way, because the reset records the difference from the provenance, which is 2%. Both times `changes_since_opening` is empty and `has_recorded_run` is False, so `branch_at_stake` returns None, and the trunk's Reset discards a 2% branch without asking. Every branch now offered at 30 s opens at 3%, so that branch is the learner's work. Pass 1's probe found this in 10 of 150 random sequences. The reason in the docstrings, "as a branch newly opened on the same stretch would", held only under the rule the owner reversed.
+  - Route A: make `has_recorded_run` test the symmetric difference between the timeline and `opened_with`. That is small. But the Reset question's count is `len(group_adjustments(control_timeline))`, which would read 0 while the question is asked, the inconsistency that the first blind review fixed.
+  - **Route B, recommended:** keep an opened entry fixed. In `_record_in_timeline`, a change at the fork to a control whose entry is in `opened_with` is added as a new entry rather than merged into the opened one or deleting it. A branch's reset rebuilds its timeline as `opened_with` followed by the difference from the opened settings, not from the provenance. The branch's "Control changes" panel then reads, for example, "opened 2% to 3%, then 3% to 2%". The count matches the panel, and `changes_since_opening` needs no change. Check first that nothing requires one timeline entry per instant and control: the run definition and timeline agreement, `group_adjustments` and the chart's markers.
+- **A branch at the case's opening has an empty timeline while it runs under the trunk's edits made before Start.** Blind pass 2 found this. Set the trunk to 3% before Start, branch at 0 s, then set the trunk to 4%. The branch runs at 3%. Its panel is empty, while the trunk's reads "0s: 2% → 4%", so a learner reading both would take the branch to be at 2%. At 0 s no step has closed a stretch, so the provenance is the opening stretch as it stood at the fork, and the difference recorded against it is empty. The fix is for a branch at 0 s to record its settings against the settings the case was created with, so its timeline copies the trunk's 0 s entries (for example "0s: 2% → 3%") as its opened entries. The trunk's 0 s entries already hold the creation value as `previous_value`.
+- **The prose review (close-out step 8) is applied but not finished.** It read 29 units and rewrote 23. All 23 rewrites are applied, and none lost a backticked name, an id, a number or a negation. It flagged sentences that are false against the code. Two in `docs/MODEL.md` were fixed by hand: the provenance bullet now names the opening exception, and the reset bullet now says a setting kept through a branch's reset counts. Eight more remain, to fix with the two defects above:
+  - [2] and [7]: a branch "opens with that change in its timeline". This is false at 0 s, and the opening-instant fix makes it true.
+  - [3] and [5]: the provenance is one "the trunk can no longer replace". Each needs the opening exception.
+  - [9]: `reset`'s "In the reproducing case, no setting differs and nothing is recorded". A plain reset re-records the trunk's change at the fork. Route B rewrites this anyway.
+  - [15]: a test docstring in `tests/integration/test_controller.py` says every way of branching is used at each stage. It is not.
+  - [24]: `docs/MODEL.md` says "for a typed 45.35 s it is at 45.4 s". The fork is 45.400000000000006 s.
+  - [28]: `docs/ARCHITECTURE.md` says "a recorded control change" makes the trunk's Reset ask. Only a change of the branch's own does (`has_recorded_run`).
+
+  `/tmp/claude-0/-home-user-open-anesthesia-sim/5769ee62-c004-52e4-8605-e5853c9ce550/scratchpad/prose_reply_5.txt` has each finding in full while the container lasts. Record `Prose-review: read 29, rewrote 23, rejected 0` once these are fixed.
+- **Still owed before the owner says merge:**
+  1. Fix both defects, with regression tests that fail on `4bd1e30c`.
+  2. Fix the eight sentences.
+  3. Run `make check`.
+  4. Record the `Blind-review:` trailer for these two passes. The findings were 2 in pass 1 and 2 in pass 2, 2 distinct and both fixed.
+  5. Record the `Prose-review:` and `Owner-read: needed` trailers.
+  6. Run `bin/docket arm`, then push.
+  7. Rewrite the body of `#1844` for the owner's rule. Its "What a learner sees differently", the ", before your change" placeholder and the `PL-HSP8` bullet all describe the old rule.
+

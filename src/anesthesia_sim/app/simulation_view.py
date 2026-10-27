@@ -1001,7 +1001,7 @@ class SimulationView(QWidget):
 
         A branch whose snapshot rejects a value still holds work. So this
         method builds what the branch would lose from what its controller can
-        report without a snapshot. That is the branch's fork and its recorded
+        report without a snapshot, which is the branch's fork and its recorded
         control changes (`branch_at_stake`). This method does not handle the
         rejection. The rejection is the branch's own halt, and the branch's
         own frame reports it.
@@ -1010,11 +1010,11 @@ class SimulationView(QWidget):
         "Control changes" panel lists it. So the Reset question and the panel
         give the same number. The count includes a change that the branch
         opened with, such as the trunk's change at the instant where the
-        branch was taken (`PL-ZR49`). `has_recorded_run` decides whether to
-        ask at all, and it counts only the changes made since the branch
-        opened. A branch that holds such a change also holds a timeline
-        entry. So the question never says "0 recorded control changes" for a
-        branch that has not run.
+        branch was taken (`PL-ZR49`). Whether to ask at all is decided by
+        `has_recorded_run`, which counts only the changes made since the
+        branch opened. Any change made since the branch opened is also an
+        entry in its timeline. So the question never says "0 recorded control
+        changes" for a branch that has not run.
         """
 
         try:

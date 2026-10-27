@@ -3579,13 +3579,13 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     """A control event and a mark at the same instant get two entries, control event first.
 
     A mark set on a recorded control event is a different way to branch.
-    `fork_at` opens at the keyframe, and `fork_at_mark` opens at the end of
-    the step that reaches the mark, the step in which the run crossed it. So
-    neither entry replaces the other. The entries keep the order in which the
-    two lists are given, so one case is always listed the same way. The
-    case's opening, at 0 s, is the boundary case. No step reaches a mark
-    there. Its branch opens at the opening keyframe, and the mark is listed
-    after that keyframe.
+    `fork_at` opens at the keyframe. `fork_at_mark` opens at the end of the
+    step that reaches the mark, which is the step in which the run crossed
+    it. So neither entry replaces the other. The entries keep the order in
+    which the two lists are given, so one case is always listed the same
+    way. The case's opening, at 0 s, is the boundary case, because no step
+    reaches a mark there. A branch at that mark opens at the opening
+    keyframe, and the mark is listed after that keyframe.
     """
 
     at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))
