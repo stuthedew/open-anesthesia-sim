@@ -266,7 +266,7 @@ WRITES: dict[str, dict[str, Write]] = {
                 "A replaced pool's agent is held to the accounting identity, which the "
                 "system checks at every step and read. Its blood:gas coefficient should "
                 "equal the tissue groups' own copies, and nothing checks that, at a write "
-                "or when the patient is built (PL-YXGX)."
+                "or when the patient is built (PL-DQL9)."
             ),
         ),
     },
@@ -296,7 +296,7 @@ WRITES: dict[str, dict[str, Write]] = {
             GAP,
             why=(
                 "No rule of the group ties it to another of the group's fields. Its "
-                "agreement with the venous pool's copy is not checked anywhere (PL-YXGX)."
+                "agreement with the venous pool's copy is not checked anywhere (PL-DQL9)."
             ),
         ),
         "tissue_gas_partition_coefficient": Write(

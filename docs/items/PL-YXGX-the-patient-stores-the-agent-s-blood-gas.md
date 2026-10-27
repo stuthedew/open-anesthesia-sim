@@ -1,9 +1,11 @@
 ---
 id: PL-YXGX
 title: The patient stores the agent's blood:gas partition coefficient four times, once in each tissue group and once in the venous pool, and nothing checks that the copies agree: PatientCompartments checks only that the perfusion fractions sum to 1, so a group built or written with a different coefficient gives a patient whose blood carries the agent at two solubilities, and the solver reads the venous copy for the lung and each group's own copy for its tissue:blood ratio (found building PL-N7MM)
-status: untriaged
+status: dropped
 feature: one-source-of-truth
 added: 2026-10-25
+closed: 2026-10-26
+reason: duplicate of PL-DQL9, which reports the same four blood:gas copies from the uptake matrix's side and is ready at P1 on v0.7.0's gate; its two extra facts are folded into PL-DQL9's brief
 ---
 
 **Problem.** The patient stores the agent's blood:gas partition coefficient four times, once in each tissue group and once in the venous pool, and nothing checks that the copies agree: PatientCompartments checks only that the perfusion fractions sum to 1, so a group built or written with a different coefficient gives a patient whose blood carries the agent at two solubilities, and the solver reads the venous copy for the lung and each group's own copy for its tissue:blood ratio (found building PL-N7MM)
@@ -25,3 +27,23 @@ Checking that four copies agree was considered and rejected. It would leave a ne
 **What would change this.** Blood:gas is not a fixed property of the agent alone. Lerman et al. 1984 (Anesthesiology 61:139-43, doi:10.1097/00000542-198408000-00005, abstract read through PubMed 2026-10-25) measured isoflurane at 1.19 in newborns and 1.46 in adults aged 20 to 40, and found it correlated with serum albumin and triglycerides. Esper et al. 2015, which `data/agents/sevoflurane.json` already cites, found no significant correlation with age, body mass index, hemoglobin or hematocrit in adults aged 19 to 86. So a patient-specific blood:gas would matter mainly if the simulator models children. If it ever does, that value is a patient covariate applied to the agent's reference value. One function computes it once from the agent record and the patient record, and it is not stored again in each compartment. The recommendation above still holds.
 
 `tests/unit/test_record_writes.py` lists `patient.venous_blood` and `TissueGroup.blood_gas_partition_coefficient` as `GAP` entries naming this item. Once the copies are removed, those entries are deleted, or they change to `ONCE` where a field remains. This touches `core/tissue.py` and `core/blood.py`, which `PL-QX2G` (a declared numerical range for volumes and partition coefficients) also changes, so it should run after that item lands.
+
+**Reproduced 2026-10-26.** `PatientCompartments.from_parameters` passes one
+`blood_gas` to all three `TissueGroup`s and to the `VenousBloodCompartment`. A
+`PatientCompartments` built directly, with the fat group at blood:gas 2.0 and
+the rest at sevoflurane's 0.65, was accepted. Writing 3.0 to the fat group's
+`blood_gas_partition_coefficient` afterwards was accepted too.
+`__post_init__` checks only the perfusion fractions.
+
+**Why it matters.** Blood:gas solubility sets how fast the alveolar
+concentration rises. The solver reads the venous copy for the lung and each
+group's own copy for that group's tissue:blood ratio. If the copies disagree,
+the uptake values have no physical meaning, and nothing reports it.
+`CLAUDE.md` makes one source of truth for a shared fact a core design
+principle.
+
+**Done when.** The agent record holds the blood:gas coefficient in one
+place, and each tissue group and the venous pool read it from there. A second copy that could
+disagree no longer exists. `tests/unit/test_patient.py` has
+`test_a_patient_holds_one_blood_gas_coefficient`, which shows the
+coefficient cannot be set differently for one group.
