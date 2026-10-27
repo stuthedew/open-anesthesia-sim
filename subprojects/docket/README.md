@@ -3997,7 +3997,8 @@ An item is delegable when all of: its `status` is `ready`; `model_guidance` is
 silent, which excludes safety- and science-classed work and open decisions by
 the rule that already governs model choice; it names a `verify` command; its
 `touches` is declared and lies wholly outside `protected_paths` *and*
-`gate_paths`; and its effort is `S` or `M`.
+`gate_paths`; each of its paths outside `tests/` is placed by `workflow_paths`
+or `product_paths`; and its effort is `S` or `M`.
 
 There is no `delegable: yes`. The only writable control is `not-delegable`,
 which withholds an item that would otherwise qualify, so delegability can be
@@ -4025,11 +4026,25 @@ exists for. The reasons stay distinguishable in the output — `touches
 protected path(s) X` against `touches the checks themselves: X` — and the
 protected one is reported first where both apply.
 
-The two lists are read differently when empty, and the asymmetry follows from
-which of them has a default. An empty `protected_paths` means a project has
-never declared one, and delegation closes. An empty `gate_paths` can only mean
-a real default was cleared on purpose — a project that told `verify` to stop
-auditing its checks has not asked delegability to start.
+The lane lists withhold for the same reason as `gate_paths`: the work would be
+refused once done. Outside `tests/`, the lane check refuses a tracked file that
+neither `workflow_paths` nor `product_paths` places. In this repository the
+lane check is `tools/workflow_paths_check.py`. Placing such a file is an edit
+to `docket.toml`, which is a gate path. So an item whose `touches` names such a
+path is withheld. The path is most often a file that the work will create.
+`placed_by_neither` in `docket.model` is the one rule that both the check and
+delegability read (`PL-GKX6`). A file under `tests/` is placed by its imports
+instead, so the condition passes it. The condition also withholds nothing while
+either list is empty, because the check then declines. It is reported after
+the gate reason, because naming `docket.toml` in `touches` cannot make such an
+item delegable.
+
+`protected_paths` and `gate_paths` are read differently when empty, and the
+asymmetry follows from which of them has a default. An empty `protected_paths`
+means a project has never declared one, and delegation closes. An empty
+`gate_paths` can only mean a real default was cleared on purpose — a project
+that told `verify` to stop auditing its checks has not asked delegability to
+start.
 
 A `verify` command bounds what "done" means; it does not prove the work is
 right. It can be satisfied by the wrong route — a weakened assertion, an added

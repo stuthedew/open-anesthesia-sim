@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: worker-runs
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_model_choice.py, subprojects/docket/tests/test_vcs.py, tools/workflow_paths_check.py
 added: 2026-10-20
 payoff: a paid worker run is never spent on an item it can only block on
 verify: grep -q 'def test_an_item_touching_an_unplaced_path_is_not_delegable' subprojects/docket/tests/test_model.py
