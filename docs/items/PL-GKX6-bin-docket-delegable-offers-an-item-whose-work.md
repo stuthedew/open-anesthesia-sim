@@ -3,11 +3,13 @@ id: PL-GKX6
 title: bin/docket delegable offers an item whose work creates a new tracked file outside every workflow_paths and product_paths entry, while its touches omit docket.toml, so tools/workflow_paths_check.py fails make check and the worker must block (PL-928V, docs/workflow.md)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: worker-runs
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_model_choice.py, subprojects/docket/tests/test_vcs.py, tools/workflow_paths_check.py, docs/maintainer.md
 added: 2026-10-20
+closed: 2026-10-27
+pr: 1873
 payoff: a paid worker run is never spent on an item it can only block on
 verify: grep -q 'def test_an_item_touching_an_unplaced_path_is_not_delegable' subprojects/docket/tests/test_model.py
 ---
@@ -36,3 +38,15 @@ case.
 **Generator check.** A one-off. The fact is which list places a path, and `tools/workflow_paths_check.py` already reads it; `delegability` is a reader that never asked. No head's `misread:` states that fact, and no other open item misreads it.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): still true.** `Item.delegability` still takes only `protected_paths` and `gate_paths`, and the named test does not exist.
+
+**Worked 2026-10-27.** `placed_by_neither` in `docket.model` now holds the
+placement rule, and both `Item.delegability` and
+`tools/workflow_paths_check.py` call it. `delegability` needed the two lane
+lists, and the protected and gate lists were passed separately through about
+twenty functions. So it now takes one `DelegationPaths` value, built by
+`Config.delegation()`, and no caller can pass three lists of four. Against
+the store, `bin/docket delegable` offered 58 items before and 57 after. The one
+withheld is `PL-MBP6`, whose `touches` name `assets/screenshots/`. The same
+branch fixed a second defect in place: a directory holding a protected or gate
+path, such as `PL-93B3`'s `src/anesthesia_sim`, passed as outside it. A new
+test file under `tests/` is left to `PL-3JX4`.

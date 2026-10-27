@@ -137,7 +137,7 @@ from docket.arming import PRODUCT_PACKAGE, TESTS, imports_product, is_test_file 
 from docket.arming import TEST_FILE_PATTERNS as TEST_FILE_PATTERNS  # noqa: E402
 from docket.config import CONFIG_NAME  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
-from docket.model import is_under  # noqa: E402
+from docket.model import is_under, placed_by_neither  # noqa: E402
 
 # Which files the repository holds is git's fact, so the list lives beside git's one
 # runner in `docket.vcs`, where docket's own readers reach it too (`PL-J4YY`). The
@@ -315,9 +315,9 @@ def placement_problems(root: Path) -> list[str]:
     for relative in tracked:
         parts = PurePosixPath(relative).parts
         prefixes.update("/".join(parts[:depth]) for depth in range(1, len(parts) + 1))
-        if parts[0] == TESTS_DIR.name:
-            continue
-        if is_under(relative, workflow) or is_under(relative, product):
+        # The rule is `placed_by_neither`'s, which `docket delegable` reads
+        # too, so a delegated item is never offered work this check refuses.
+        if not placed_by_neither(relative, workflow, product):
             continue
         ancestor = unplaced_ancestor(relative, entries)
         unplaced[ancestor] = unplaced.get(ancestor, 0) + 1
