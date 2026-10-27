@@ -173,6 +173,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -2714,8 +2715,10 @@ def _shown_settings(run: RunView) -> dict[str, object]:
 
 
 def _shown_accounting(run: RunView) -> dict[str, object]:
-    panel = run._accounting_panels[0]
+    return _accounting_reading(run._accounting_panels[0])
 
+
+def _accounting_reading(panel: AccountingPanel) -> dict[str, object]:
     return {
         "verdict": panel._agent_accounting_status_text.text(),
         "detail": panel._agent_accounting_detail_text.text(),
@@ -2804,18 +2807,38 @@ def _withheld_accounting() -> dict[str, object]:
     }
 
 
-def _rejected_accounting_of(step: SimulationSnapshot) -> dict[str, object]:
-    """The accounting group for a step whose accounting check failed and was rolled back.
+#: The amounts that the failing check from `_a_failing_check` judged, written by hand.
+#: 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored, leaves 6.0 L
+#: unaccounted. The panel states that amount and the absolute error as the power of
+#: ten each is less than.
+_REJECTED_CHECK_AMOUNTS: Final = (
+    "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\n"
+    "Unaccounted: <1e+01 L\nAbsolute error: <1e+01 L"
+)
 
-    Args:
-        step: The rejected step, taken by a run whose check passes it. Its totals are
-            the totals the rejected step's check judged.
+
+def _a_failing_check() -> AgentSimulationValidationResult:
+    """A failing accounting check whose totals no run in these tests reaches.
+
+    A run at the default settings has delivered about 0.4 L of agent at 5 minutes.
+    So a panel that pairs this check's verdict with the restored step's amounts reads
+    differently from one that shows this check's own amounts. The validator builds
+    the check from the totals, as it does for a step.
     """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=40.0, exhausted_agent_l=20.0)
+
+    return validator.check_agent_accounting(currently_stored_agent_l=14.0)
+
+
+def _rejected_accounting() -> dict[str, object]:
+    """The accounting group for the step that `_reject_the_next_accounting_check` rejects."""
 
     return {
         "verdict": ACCOUNTING_FAILED_TEXT,
         "detail": ACCOUNTING_REJECTED_DETAIL_TEXT,
-        "amounts": accounting(step).amounts,
+        "amounts": _REJECTED_CHECK_AMOUNTS,
     }
 
 
@@ -2838,23 +2861,26 @@ def _fresh_run(
 
 
 def _reject_the_next_accounting_check(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make the next step's accounting check fail on that step's own totals, once.
+    """Make the next step's accounting check fail, once, with the check from `_a_failing_check`.
 
-    For one call, `require_valid_agent_accounting` runs the real check with its
-    verdict turned to failed. So the step raises the real
-    `AgentSimulationValidationError`, built by the real code from the totals of the
-    step that the core then rolls back. No supported setting makes the accounting
-    fail, which is why the failure is injected.
+    For one call, `require_valid_agent_accounting` judges that check in place of the
+    step's own. So the step raises the real `AgentSimulationValidationError`, built
+    by the real code, and the core rolls the step back. No supported setting makes
+    the accounting fail, which is why the failure is injected. The check's totals
+    differ from the restored step's at the panel's resolution. Until the
+    test-strength pass of `PL-J5GC`, the step's own totals were used, and one 0.1 s
+    step changed no amount the panel shows. So a panel that showed the restored
+    step's amounts under the rejected verdict passed.
     """
 
     real_require = AgentSimulationValidator.require_valid_agent_accounting
-    real_check = AgentSimulationValidator.check_agent_accounting
+    rejected = _a_failing_check()
     armed = [True]
 
     def failed_check(
         validator: AgentSimulationValidator, currently_stored_agent_l: float
     ) -> AgentSimulationValidationResult:
-        return replace(real_check(validator, currently_stored_agent_l), passes_validation=False)
+        return rejected
 
     def require_once(
         validator: AgentSimulationValidator, currently_stored_agent_l: float
@@ -3075,21 +3101,17 @@ def _an_accounting_halt(
     controller.start()
     _advance(controller, 300.0)
     run = _shown_view(application, controller).runs[0]
-    completed = _fresh_run(300.0)
-    rejected = _fresh_run(300.0)
-    rejected.start()
-    rejected.advance(SIMULATION_STEP_S)
     _reject_the_next_accounting_check(monkeypatch)
 
     _steps(run, 1)
 
     assert controller.has_failed is True
-    step = completed.snapshot()
+    step = _fresh_run(300.0).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
         "settings": _settings_of(step),
-        "accounting": _rejected_accounting_of(rejected.snapshot()),
+        "accounting": _rejected_accounting(),
     }
 
 
@@ -3108,22 +3130,18 @@ def _an_accounting_halt_that_no_frame_draws(
     controller.start()
     _advance(controller, 300.0)
     run = _shown_view(application, controller).runs[0]
-    completed = _fresh_run(300.0)
-    rejected = _fresh_run(300.0)
-    rejected.start()
-    rejected.advance(SIMULATION_STEP_S)
     _reject_the_next_accounting_check(monkeypatch)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     _steps(run, 1)
 
     assert controller.status().rejected_accounting is not None
-    step = completed.snapshot()
+    step = _fresh_run(300.0).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
         "settings": _settings_of(step),
-        "accounting": _rejected_accounting_of(rejected.snapshot()),
+        "accounting": _rejected_accounting(),
     }
 
 
@@ -3163,6 +3181,111 @@ def _a_halt_after_a_reset_that_no_frame_draws(
     }
 
 
+def _a_frame_after_a_reset_that_followed_an_accounting_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A drawn accounting halt, then a Reset that a frame draws.
+
+    Reset starts a new run at 0 s, which keeps every setting, and the frame draws
+    it. So every group describes a run that has taken no step, and the accounting
+    panel reads as a fresh run's does. If Reset kept the rejected check, every frame
+    of the new run would show "Validation failed" and the discarded step's totals,
+    under a banner that names no failure. Until the test-strength pass of `PL-J5GC`,
+    no test checked that Reset clears it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    run = _shown_view(application, controller).runs[0]
+    _reject_the_next_accounting_check(monkeypatch)
+    _steps(run, 1)
+    assert controller.status().rejected_accounting is not None
+
+    run._reset_button.click()
+
+    assert controller.has_failed is False
+    restarted = SimulationController().snapshot()
+
+    return run, {
+        "readouts": _readouts_of(restarted),
+        "settings": _settings_of(restarted),
+        "accounting": _accounting_of(restarted),
+    }
+
+
+def _a_frame_after_an_agent_change_that_followed_an_accounting_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """A drawn accounting halt, then a change to desflurane that a frame draws.
+
+    The agent change starts a new case, and the frame draws it. So every group
+    describes a desflurane run that has taken no step. Until the test-strength pass
+    of `PL-J5GC`, no test checked that a new case clears the rejected check, for the
+    reason that `_a_frame_after_a_reset_that_followed_an_accounting_halt` gives.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    run = _shown_view(application, controller).runs[0]
+    _reject_the_next_accounting_check(monkeypatch)
+    _steps(run, 1)
+    assert controller.status().rejected_accounting is not None
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+
+    assert controller.has_failed is False
+    new_case = SimulationController("desflurane").snapshot()
+
+    return run, {
+        "readouts": _readouts_of(new_case),
+        "settings": _settings_of(new_case),
+        "accounting": _accounting_of(new_case),
+    }
+
+
+def _a_halt_after_a_frame_drawn_for_a_new_agent(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """An agent change that a frame drew, then a frame that cannot be drawn.
+
+    The frame drawn after the change wrote every card and the clock for the new
+    case, so the run has not started over since that frame. The halt keeps what the
+    frame wrote, and every group describes the new case at its opening. If the
+    drawn frame did not end the start-over (`RunView.refresh`), the halt would
+    withhold values that describe the run on screen. Until the test-strength pass
+    of `PL-J5GC`, no test checked this.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    _advance(controller, 600.0)
+    controller.pause()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert controller.has_failed is True
+    new_case = SimulationController("desflurane").snapshot()
+
+    return run, {
+        "readouts": _readouts_of(new_case),
+        "settings": _settings_of(new_case),
+        "accounting": _accounting_of(new_case),
+    }
+
+
 _ONE_STATE_SCENARIOS: Final[
     Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], tuple[RunView, _GroupReadings]]]
 ] = {
@@ -3177,6 +3300,13 @@ _ONE_STATE_SCENARIOS: Final[
     "accounting halt": _an_accounting_halt,
     "accounting halt, no frame drawn": _an_accounting_halt_that_no_frame_draws,
     "halt after a Reset, no frame drawn": _a_halt_after_a_reset_that_no_frame_draws,
+    "frame after a Reset that followed an accounting halt": (
+        _a_frame_after_a_reset_that_followed_an_accounting_halt
+    ),
+    "frame after an agent change that followed an accounting halt": (
+        _a_frame_after_an_agent_change_that_followed_an_accounting_halt
+    ),
+    "halt after a frame drawn for a new agent": _a_halt_after_a_frame_drawn_for_a_new_agent,
 }
 
 
@@ -3223,6 +3353,26 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
     assert shown == {group: expected[group] for group in checked}
 
 
+@pytest.mark.parametrize("scenario", list(_ONE_STATE_SCENARIOS))
+def test_an_accounting_panel_opened_after_each_scenario_shows_the_same_step(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    """A copy of the accounting panel built after a halt shows the step that the first copy shows.
+
+    The accounting panel may sit in a View that a reader closes and opens again,
+    so a copy can be built at any time (`build_accounting_panel`). Each new copy
+    starts from what the run last wrote to the panel. A halt that wrote only the
+    copies already built would leave a copy built after it showing the last
+    frame's "Valid", beside a banner that reports the failed check or the start
+    over. Until the test-strength pass of `PL-J5GC`, no test built a copy after a
+    halt.
+    """
+
+    run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    assert _accounting_reading(run.build_accounting_panel()) == expected["accounting"]
+
+
 # How a stopped run states a dial that it refused (`PL-3B34`). This is written as
 # a literal rather than read from the controller or `dashboard_frame`, so a change
 # to the wording fails here.
@@ -3260,6 +3410,10 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     earlier instant can take the new setting. A failure is a fault, so Reset stays
     its way out. Each scenario builds its run, and takes the dials that the run
     should show from a run that never stopped.
+
+    The halt that the run shows when no frame can be drawn (`present_halt`) gives
+    the same refusal and the same way out. Until the test-strength pass of
+    `PL-J5GC`, no test read that banner after a refused dial.
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -3269,6 +3423,12 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     notice = run._notice_text.notice()
     assert notice is not None
     assert notice.endswith(f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. {way_out}")
+
+    run.present_halt()
+
+    halted = run._notice_text.notice()
+    assert halted is not None
+    assert halted.endswith(f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. {way_out}")
 
 
 def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while_one_can_be_taken(
@@ -3327,6 +3487,51 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     compared = trunk._notice_text.notice()
     assert compared is not None
     assert compared.endswith(reset_alone)
+
+
+def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_length_names_reset(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A trunk whose dashboard has failed offers no branch, so a refused dial names Reset alone.
+
+    Here the frame raises the supported-limit error itself. The run stops at the
+    supported run length rather than failing, and it records that its dashboard
+    failed. Its `fork_refusal` then gives a reason, and the case offers no branch,
+    because a branch would be drawn by the same dashboard (`PL-T2Q2`). So the way
+    out of a refused dial must not name one. Until the test-strength pass of
+    `PL-J5GC`, no test checked that `RunView._branch_offered` reads
+    `fork_refusal`. The supported run length here ends at 300 s, for the reason
+    that `_a_dial_moved_at_the_supported_run_length` gives.
+    """
+
+    last_step = round(300.0 / SIMULATION_STEP_S)
+    monkeypatch.setattr(
+        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
+    )
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    view = _case_view(application, BranchedCase(controller))
+    trunk = view.runs[0]
+
+    def limit(*args: object, **kwargs: object) -> NoReturn:
+        raise SimulationDomainLimitError("this run has reached 300 s of simulated time")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", limit)
+    view.present(False)
+
+    assert controller.has_failed is False
+    assert controller.has_reached_supported_limit is True
+    assert controller.fork_refusal is not None
+
+    _drag(trunk._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+
+    banner = trunk._notice_text.notice()
+    assert banner is not None
+    assert banner.endswith(
+        f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
+        "Reset to start a new run, which keeps every setting."
+    )
 
 
 @pytest.mark.parametrize(
