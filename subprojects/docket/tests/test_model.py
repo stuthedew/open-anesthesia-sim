@@ -506,6 +506,27 @@ def test_a_protected_prefix_does_not_match_a_merely_similar_path() -> None:
     assert _delegable(touches=("docs/MODEL.md.bak",)).delegability(PATHS) is None
 
 
+def test_a_directory_holding_a_protected_path_is_not_delegable() -> None:
+    """A worker confined to `src/anesthesia_sim` may still edit the protected code inside it.
+
+    `PL-93B3` was offered on 2026-10-27 with `touches: src/anesthesia_sim`,
+    which holds `src/anesthesia_sim/core`. `is_under` asks only whether a
+    declared path lies inside a root, so the directory above one passed.
+    """
+    item = _delegable(touches=("src/anesthesia_sim",))
+    assert item.delegability(PATHS) == (
+        "touches protected path(s) src/anesthesia_sim (holding src/anesthesia_sim/core)"
+    )
+
+
+def test_a_directory_holding_a_gate_path_is_not_delegable() -> None:
+    item = _delegable(touches=("tools/", ".claude/skills"))
+    gates = DelegationPaths(protected=PROTECTED, gates=("tools/ruff.toml", ".claude"))
+    assert item.delegability(gates) == (
+        "touches the checks themselves: tools/ (holding tools/ruff.toml), .claude/skills"
+    )
+
+
 def test_an_item_touching_the_checks_themselves_is_not_delegable() -> None:
     """`docket verify` refuses such a diff, so offering the work refuses it later.
 

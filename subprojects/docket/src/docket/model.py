@@ -1132,7 +1132,8 @@ class Item:
         - a `verify:` command exists, because without one "done" is a
           judgment and there is nothing for a reviewer to trust instead;
         - `touches` is declared and wholly outside the protected paths, so the
-          diff's blast radius is known before the work starts;
+          diff's blast radius is known before the work starts. A declared
+          directory holding a protected path is not outside it;
         - `touches` is also outside the gate paths, because `verify` fails any
           diff that edits them and an item offered here would be refused
           after the work was done rather than before it was started;
@@ -1165,14 +1166,14 @@ class Item:
             return "no `verify:` command"
         if not self.touches:
             return "declares no `touches`"
-        protected = [path for path in self.touches if is_under(path, paths.protected)]
+        protected = self._reaching(paths.protected)
         if protected:
             return f"touches protected path(s) {', '.join(protected)}"
         # Reported after the protected paths and phrased differently, because
         # the two prohibitions differ in kind: one guards a clinical value and
         # the other guards the measurement. A reader who cannot tell them
         # apart learns to read neither.
-        gates = [path for path in self.touches if is_under(path, paths.gates)]
+        gates = self._reaching(paths.gates)
         if gates:
             return f"touches the checks themselves: {', '.join(gates)}"
         # After the gates, so an item that already names the settings file
@@ -1190,6 +1191,26 @@ class Item:
         if self.effort not in DELEGABLE_EFFORTS:
             return f"effort {self.effort or 'unset'} is not {' or '.join(DELEGABLE_EFFORTS)}"
         return None
+
+    def _reaching(self, roots: tuple[str, ...]) -> list[str]:
+        """The declared paths that can reach a file under `roots`, for a refusal to name.
+
+        A path inside a root reaches it, and so does a directory holding one:
+        `src/anesthesia_sim` holds `src/anesthesia_sim/core`, so a worker
+        confined to it may still edit the protected code. The paths compare
+        through `covers`, which reads them as paths rather than strings, and
+        a directory is named with the roots it holds. An empty root is
+        skipped, as `is_under` skips one, rather than read as the whole tree.
+        """
+        found = []
+        for path in self.touches:
+            if is_under(path, roots):
+                found.append(path)
+                continue
+            held = [root for root in roots if root.strip().strip("/") and covers(path, root)]
+            if held:
+                found.append(f"{path} (holding {', '.join(held)})")
+        return found
 
     def sort_key(self) -> tuple[int, int, str]:
         """Order for display: priority band, then effort, then id.
