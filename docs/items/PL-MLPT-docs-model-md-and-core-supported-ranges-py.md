@@ -12,7 +12,7 @@ closed: 2026-10-26
 pr: 1860
 payoff: the authoritative specification no longer certifies a 24-hour span as inside the evidence it cites, and its argument for the limit no longer contradicts itself
 verify: ! grep -qF 'near the outer edge of the exposure range' docs/MODEL.md && ! grep -qF 'It is near the outer edge of the' src/anesthesia_sim/core/supported_ranges.py && ! grep -qF 'With a span shorter than about one' docs/MODEL.md && ! grep -qF 'with a cap shorter than about one' src/anesthesia_sim/core/supported_ranges.py
-recurrences: 2026-10-25 PL-KHXB
+recurrences: 2026-10-25 PL-KHXB withdrawn 2026-10-27 PL-8MRM
 ---
 
 **Problem.** The comment above `MAXIMUM_ELAPSED_SIMULATION_TIME_S`

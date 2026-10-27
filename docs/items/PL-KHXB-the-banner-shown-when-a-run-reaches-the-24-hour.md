@@ -12,7 +12,7 @@ closed: 2026-10-26
 pr: 1860
 payoff: the one sentence that explains the 24-hour stop is true for every agent, instead of teaching that metabolism dominates desflurane's kinetics after a day
 verify: ! grep -qF 'fat perfusion dominate' src/anesthesia_sim/app/dashboard_frame.py && ! grep -qF 'fat perfusion dominate' src/anesthesia_sim/core/supported_ranges.py && grep -q 'def test_the_supported_limit_notice_says_why_the_model_is_not_claimed_past_the_span' tests/unit/test_dashboard_frame.py
-recurrences: 2026-10-25 PL-0889
+recurrences: 2026-10-25 PL-0889 withdrawn 2026-10-27 PL-8MRM
 ---
 
 **Problem.** `SUPPORTED_LIMIT_NOTICE_TEMPLATE` (`app/dashboard_frame.py`)

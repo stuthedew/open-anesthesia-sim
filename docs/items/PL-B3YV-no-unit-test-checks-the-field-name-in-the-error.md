@@ -3,11 +3,13 @@ id: PL-B3YV
 title: No unit test checks the field name in the error that record_external_agent_transfer raises for a refused transfer: mutating either require_nonnegative_finite name argument (to None, upper case or padded) survives tests/unit/test_agent_simulation_validation.py, so a refused delivered transfer could be reported as the exhausted one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1874
 payoff: a refused agent transfer's error names the transfer that was refused, and a test fails if it names the other
 verify: grep -q 'def test_a_refused_transfer_names_its_own_field' tests/unit/test_agent_simulation_validation.py
 ---
@@ -36,3 +38,25 @@ use the same two field names, so on a fresh validator they raise the same
 message, and the test would still pass with a per-transfer check deleted. With
 that check deleted, a negative transfer smaller than the total is accepted and
 silently lowers the total in the mass balance.
+
+**Done 2026-10-27.** `test_a_refused_transfer_names_its_own_field` records
+2.0 L delivered and 2.0 L exhausted, then refuses -1.0 L delivered and -1.0 L
+exhausted in turn. It matches each message from its start on the refused
+field's name, and checks that neither refusal changed the validator. The
+running totals would still be 1.0 L, so only the per-transfer checks can
+refuse these transfers.
+
+The test was replayed against seven mutants of the two per-transfer checks in
+`record_external_agent_transfer`, and it failed on every one. The command was
+`uv run pytest -q tests/unit/test_agent_simulation_validation.py::test_a_refused_transfer_names_its_own_field`,
+run once per mutant with the original source restored between runs.
+
+| Mutant | Failing assertion |
+| --- | --- |
+| first name `"DELIVERED_AGENT_L"` | `Regex pattern did not match`, expected `^delivered_agent_l must be nonnegative and finite...` |
+| second name `"EXHAUSTED_AGENT_L"` | `Regex pattern did not match`, expected `^exhausted_agent_l must be nonnegative and finite...` |
+| first name `None` | `Regex pattern did not match`, expected `^delivered_agent_l ...` |
+| second name `" exhausted_agent_l "` | `Regex pattern did not match`, expected `^exhausted_agent_l ...` |
+| first name `"exhausted_agent_l"` | `Regex pattern did not match`, expected `^delivered_agent_l ...` |
+| first check deleted | `DID NOT RAISE SimulationConfigurationError` |
+| second check deleted | `DID NOT RAISE SimulationConfigurationError` |

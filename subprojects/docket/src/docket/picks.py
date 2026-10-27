@@ -38,7 +38,7 @@ from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
 
 from . import markdown
-from .model import Item, ranks_as_generator
+from .model import NO_DELEGATION, DelegationPaths, Item, ranks_as_generator
 from .plan import GATE_LANES, Recommendation, awaits_decision, offerable, recommend
 from .release import code_spans
 from .roadmap import CLEAR, ScopeEntry, Wave
@@ -208,8 +208,7 @@ def picks(
     *,
     workflow_paths: tuple[str, ...] = (),
     generator_paths: tuple[str, ...] = (),
-    protected_paths: tuple[str, ...] = (),
-    gate_paths: tuple[str, ...] = (),
+    delegation: DelegationPaths = NO_DELEGATION,
     limit: int = MAX_LINES,
 ) -> Picks:
     """The pick list for `plan`'s recorded gate, ranked the way `next` ranks.
@@ -229,8 +228,7 @@ def picks(
             scope=plan.scope,
             workflow_paths=workflow_paths,
             generator_paths=generator_paths,
-            protected_paths=protected_paths,
-            gate_paths=gate_paths,
+            delegation=delegation,
         )
         return found[0] if found else None
 

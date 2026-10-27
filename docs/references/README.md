@@ -472,6 +472,17 @@ value:
   reproduces the four costs, and `PL-1P15` carries them for the cost
   readout. Tier 3: a program's arithmetic, which is what makes it an
   independent check of the conversion rather than a source for it.
+- **How Gas Man takes a price, and the two prices it gives for one bottle.**
+  The Set Cost command "Allows you to type in the bottle volume and bottle
+  cost of the anesthetic agent you have selected, in the local currency"
+  (printed p. 15). Appendix C's listing labels the same value "Bottle cost in
+  $US" (printed p. 171). Chapter 14's closing text gives "$78.00 per 100 mL
+  bottle of isoflurane and $70.00 per 240 mL bottle of desflurane on March 5,
+  2008" (printed p. 141). Appendix C prices those bottles at 20.47 and 115.13.
+  The isoflurane costs that the chapter prints are reproduced at 20.47.
+  Read on 2026-10-26 for `PL-VJZK`. `docs/MODEL.md` § "A cost at the
+  reader's price" cites it for taking a price per bottle, for storing the
+  currency as a code and for showing the date of a price.
 - **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
   coefficients (calculated)" it lists Blood/Gas, Brain/Blood, Muscle/Blood and
   Fat/Blood rows, which are tissue/**blood** ratios. Every column reproduces as

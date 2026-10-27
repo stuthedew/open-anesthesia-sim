@@ -1408,11 +1408,14 @@ def test_the_status_view_says_when_a_ref_went_unread() -> None:
 
 def test_the_delegable_list_says_when_a_ref_went_unread() -> None:
     """Both halves of it: a worker handed a list, and a worker handed none."""
+    from docket.model import NO_DELEGATION
     from docket.render import format_delegable
 
-    assert "1 ref could not be compared" in format_delegable(_store(), UNREAD, (), ())
-    assert "1 ref could not be compared" in format_delegable(Report(items=[]), UNREAD, (), ())
-    assert "could not be compared" not in format_delegable(_store(), READ, (), ())
+    assert "1 ref could not be compared" in format_delegable(_store(), UNREAD, NO_DELEGATION)
+    assert "1 ref could not be compared" in format_delegable(
+        Report(items=[]), UNREAD, NO_DELEGATION
+    )
+    assert "could not be compared" not in format_delegable(_store(), READ, NO_DELEGATION)
 
 
 def test_the_unread_line_counts_the_refs_and_names_where_they_are_listed() -> None:

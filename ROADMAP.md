@@ -7175,9 +7175,9 @@ step. The head and its two other members, `PL-06LS` and `PL-XST1`, are not
    may show a bare "mL". The subsection says what the share bar shows: each
    compartment's amount as a share of all the agent the run holds, circuit
    included. It derives the displayed precision of a per-compartment amount in
-   § "Displayed precision". That precision does not come from
-   `AGENT_VOLUME_DISPLAY_DECIMALS`, which was derived for the three totals.
-   At that constant's resolution of 0.1 L, venous blood and the alveoli read
+   § "Displayed precision". That precision does not come from the run totals'
+   entry in `AGENT_AMOUNT_DISPLAY_PRECISION`, which was derived for the three
+   totals. At that entry's resolution of 0.1 L, venous blood and the alveoli read
    0.0 L for a whole hour at 1 MAC. The subsection adds two rows to the hazard
    table in
    § "Reasonably foreseeable misuse, and the hazards the presentation carries".
@@ -7252,9 +7252,11 @@ step. The head and its two other members, `PL-06LS` and `PL-XST1`, are not
    is a check that the model conserves mass.
 
 9. **What a reader's price carries** (queue item `PL-VJZK`). `docs/MODEL.md`
-   states that a stored price carries its currency and the date it was set.
-   It also states how a cost display shows that the price is the reader's
-   rather than an authoritative figure.
+   § "A cost at the reader's price" states what a stored price carries,
+   including its currency and the date on which it applied. It also states
+   what a cost readout shows beside the cost: the modelled liquid volume that
+   the cost multiplies, the price it used, and words saying that the price is
+   the reader's rather than an authoritative figure.
 
 10. **A preferences file** (queue item `PL-93B3`). The price and the cost
     View's unit belong to the reader, not to a layout. So they are kept in a

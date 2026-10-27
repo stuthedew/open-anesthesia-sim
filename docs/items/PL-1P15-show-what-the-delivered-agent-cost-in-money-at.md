@@ -76,6 +76,24 @@ decides the details.
    price the same way, and showing the price per mL it implies, makes a bottle
    price typed into a per-mL field visible. That mistake multiplies the cost by the
    bottle volume in mL, which is 100 to 250 for the volatile agents in Gas
-   Man's defaults (Appendix C, printed pp. 171-172). Whether to take the
-   price per bottle is `PL-VJZK`'s decision, because `PL-VJZK` stores the
-   price.
+   Man's defaults (Appendix C, printed pp. 171-172). `PL-VJZK` decided on
+   2026-10-26 to take the price per bottle, as the paragraph below says.
+
+**Built to `docs/MODEL.md` § "A cost at the reader's price"** (`PL-VJZK`,
+2026-10-26). That section is the specification this readout builds to. It
+says what a stored price carries, the six things shown beside a cost, and when
+no cost is shown. It takes the price per bottle, with the bottle's volume, and
+derives the price per millilitre. It names both millilitre figures as liquid
+and shows the currency as its ISO 4217 code. So part 2's example reads
+"39.4 mL of liquid delivered x USD 0.2047 per mL of liquid" rather than
+"39.4 mL x US$0.2047/mL". Two parts of that section are this item's work:
+
+- Derive two displayed precisions in § "Displayed precision": the cost's and
+  the price per millilitre's. Both depend on the price, so neither can be
+  derived before a price exists. The section says what they must achieve when a
+  reader multiplies the figures shown.
+- Replace `no test yet (`PL-1P15`)` in the hazard table's two cost rows with
+  the tests that enforce them. `tools/doc_check.py` fails once this item
+  closes with either row still naming it.
+
+**Checked 2026-10-27 (`PL-0S0V`): where the liquid volume's precision comes from.** `app/formatting.py`'s `AGENT_AMOUNT_DISPLAY_PRECISION` holds the delivered total's precision in millilitres of liquid. Whether that is 1 mL or 0.1 mL is open in `PL-0S0V`, because § "A cost at the reader's price" shows one decimal in its examples. The cost's and the price per millilitre's precisions stay this item's to derive.
