@@ -34,3 +34,11 @@ reader-set price useless for comparing a case against their own institution.
 
 **Done when.** The price and the unit persist across a restart, a missing or
 unreadable file fails safely, and `docs/ARCHITECTURE.md` describes the store.
+
+**What a stored price holds is specified** (`PL-VJZK`, 2026-10-26).
+`docs/MODEL.md` § "A cost at the reader's price" lists the fields of a stored
+price and what the store refuses. The price is taken per bottle, as a bottle
+price and a bottle volume in millilitres of liquid. The store never holds a
+price per millilitre, so the two cannot disagree. Build the record to that
+section rather than to this brief. Whether the currency's three letters are
+also checked against the codes ISO 4217 assigns is this item's decision.
