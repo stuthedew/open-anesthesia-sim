@@ -7260,9 +7260,11 @@ take.
    is a check that the model conserves mass.
 
 9. **What a reader's price carries** (queue item `PL-VJZK`). `docs/MODEL.md`
-   states that a stored price carries its currency and the date it was set.
-   It also states how a cost display shows that the price is the reader's
-   rather than an authoritative figure.
+   § "A cost at the reader's price" states what a stored price carries,
+   including its currency and the date on which it applied. It also states
+   what a cost readout shows beside the cost: the modelled liquid volume that
+   the cost multiplies, the price it used, and words saying that the price is
+   the reader's rather than an authoritative figure.
 
 10. **A preferences file** (queue item `PL-93B3`). The price and the cost
     View's unit belong to the reader, not to a layout. So they are kept in a

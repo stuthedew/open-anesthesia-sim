@@ -1233,8 +1233,7 @@ def _offered(
         flight.ids,
         scope=plan.scope if plan is not None else None,
         generator_paths=config.generator_paths,
-        protected_paths=config.protected_paths,
-        gate_paths=config.gate_paths,
+        delegation=config.delegation(),
     )
     return OfferedReport(
         ids=frozenset(pick.item.identifier for pick in picks), declined=render.format_unread(flight)
@@ -1247,7 +1246,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     report = analyze(
         items, args.today or date.today(), config, milestones=_milestones(root, config)
     )
-    rendered = render.format_list(report, _flight(args), config.protected_paths, config.gate_paths)
+    rendered = render.format_list(report, _flight(args), config.delegation())
     if rendered:
         print(rendered)
     _say_read_from_base(args, replaced)
@@ -1323,8 +1322,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         _orphaned(args),
         _cuts(root, config, args) if ready.is_worth_cutting else None,
         generator_paths=config.generator_paths,
-        protected_paths=config.protected_paths,
-        gate_paths=config.gate_paths,
+        delegation=config.delegation(),
         now=_now(args),
         read=_holdings(args),
         interrupted=_interrupted(root, items, current),
@@ -2447,9 +2445,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     model = []
     if item.model_guidance is not None:
         model.append(f"{item.model_guidance}, strongest model")
-    chosen = choose_model(
-        item, config.models, config.workflow_paths, config.protected_paths, config.gate_paths
-    )
+    chosen = choose_model(item, config.models, config.workflow_paths, config.delegation())
     if chosen is not None:
         model.append(chosen.describe())
     if (evidence := item.model_evidence(config.model_evidence, config.workflow_paths)) is not None:
@@ -3055,8 +3051,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         lane=lane,
         workflow_paths=config.workflow_paths,
         generator_paths=config.generator_paths,
-        protected_paths=config.protected_paths,
-        gate_paths=config.gate_paths,
+        delegation=config.delegation(),
         model_evidence=config.model_evidence,
         models=config.models,
     )
@@ -3133,8 +3128,7 @@ def _next_oldest(
         lane=lane,
         workflow_paths=config.workflow_paths,
         generator_paths=config.generator_paths,
-        protected_paths=config.protected_paths,
-        gate_paths=config.gate_paths,
+        delegation=config.delegation(),
         model_evidence=config.model_evidence,
         models=config.models,
     )
@@ -3225,8 +3219,7 @@ def _say_plan_pick(
         lane=lane,
         workflow_paths=config.workflow_paths,
         generator_paths=config.generator_paths,
-        protected_paths=config.protected_paths,
-        gate_paths=config.gate_paths,
+        delegation=config.delegation(),
     )
     if not found:
         return
@@ -3581,8 +3574,7 @@ def _say_answer_lane(
             lane=wanted,
             workflow_paths=config.workflow_paths,
             generator_paths=config.generator_paths,
-            protected_paths=config.protected_paths,
-            gate_paths=config.gate_paths,
+            delegation=config.delegation(),
         )
         return found[0].item if found else None
 
@@ -4671,9 +4663,7 @@ def cmd_delegable(args: argparse.Namespace) -> int:
         if unread:
             print(unread, file=sys.stderr)
             return 1
-        candidates = render.delegable_items(
-            report, flight, config.protected_paths, config.gate_paths
-        )
+        candidates = render.delegable_items(report, flight, config.delegation())
         for item in candidates:
             print(item.identifier)
         # What the answer was read from still travels, on stderr.
@@ -4684,7 +4674,7 @@ def cmd_delegable(args: argparse.Namespace) -> int:
         finally:
             sys.stdout = stdout
         return 0
-    print(render.format_delegable(report, flight, config.protected_paths, config.gate_paths))
+    print(render.format_delegable(report, flight, config.delegation()))
     _say_read_from_base(args, replaced)
     _say_snapshot(args)
     return 0
@@ -4925,8 +4915,7 @@ def cmd_picks(args: argparse.Namespace) -> int:
                 flight.ids,
                 workflow_paths=config.workflow_paths,
                 generator_paths=config.generator_paths,
-                protected_paths=config.protected_paths,
-                gate_paths=config.gate_paths,
+                delegation=config.delegation(),
             )
         )
     )

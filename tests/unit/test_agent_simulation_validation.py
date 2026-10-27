@@ -445,6 +445,40 @@ def test_a_transfer_whose_second_total_is_refused_writes_neither_total() -> None
     assert astuple(validator) == held
 
 
+def test_a_refused_transfer_names_its_own_field() -> None:
+    """A negative transfer is refused with an error that names the transfer that was negative.
+
+    `record_external_agent_transfer` checks each transfer and then each running
+    total. Both checks report errors under the same two field names. On a fresh
+    validator, a negative transfer makes a negative total, so the total's check
+    would raise the same message if the transfer's check were missing. Here each
+    total already holds 2.0 L, so a transfer of -1.0 L would leave a total of
+    1.0 L that passes its own check. Only the transfer's check can refuse it.
+    Without that check, the transfer is accepted and silently lowers the total
+    in the mass balance. Until `PL-B3YV`, no test checked which field name each
+    transfer check reports. A refused delivered transfer could therefore have
+    been reported under the exhausted transfer's name.
+    """
+
+    validator = AgentSimulationValidator()
+    validator.record_external_agent_transfer(delivered_agent_l=2.0, exhausted_agent_l=2.0)
+    held = astuple(validator)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^delivered_agent_l must be nonnegative and finite" + REFUSAL_REASON,
+    ):
+        validator.record_external_agent_transfer(delivered_agent_l=-1.0, exhausted_agent_l=0.0)
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^exhausted_agent_l must be nonnegative and finite" + REFUSAL_REASON,
+    ):
+        validator.record_external_agent_transfer(delivered_agent_l=0.0, exhausted_agent_l=-1.0)
+
+    assert astuple(validator) == held
+
+
 @pytest.mark.parametrize("term", ["delivered_compensation_l", "exhausted_compensation_l"])
 @pytest.mark.parametrize("value", [nan, inf, -inf])
 def test_a_compensation_term_must_be_finite(term: str, value: float) -> None:

@@ -3,11 +3,10 @@ id: PL-CR81
 title: Projects threads in the v0.7.0 project run without this repository's hooks: no session-start digest and no guard hook fired in one thread on 2026-10-25, although it started inside the checkout with one repository
 priority: P1
 effort: S
-status: blocked
+status: ready
 classes: infra
 feature: projects-trial
 touches: docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-8Z38-report-to-anthropic-that-projects-threads-on.md, docs/items/PL-876V-until-projects-threads-load-claude-again-pl.md
-blocked-by: PL-8Z38
 added: 2026-10-25
 payoff: every thread in the project runs with the repository's guard hooks and session-start digest again, or the project knows it does not and why
 verify: grep -qE '^\*\*Probe refused in a thread\.' docs/items/PL-CR81-*.md
@@ -129,11 +128,12 @@ had it, but reaching it means paging back through thousands of events.
 guard hook, no session-start digest and no permission rule from
 `.claude/settings.json`. It also cannot load the `docket`, `pull-request`,
 `run-the-app` or `model-review` skills through the Skill tool, so it has to read
-their files by path. The fix belongs to Anthropic. This item stays blocked until
-the owner reports the defect and a thread started after a fix runs the probe
-above and records here that it was refused, in a paragraph that opens
-`**Probe refused in a thread.**`, which the `verify:` command reads.
+their files by path. This paragraph first said the fix belonged to Anthropic.
+The paragraph "Documented, not a fault" below shows that it does not, and the
+paragraph "Unblocked 2026-10-27" at the end says what is left.
 
 **Narrowed 2026-10-26, about 00:15Z, in the "Fix recurring and P1 items" thread** (Claude Code 2.1.310, `CLAUDE_CODE_ENTRYPOINT=remote_projects`). The CLI's diagnostics log (`CLAUDE_CODE_DIAGNOSTICS_FILE`) records `settings_load_completed` with `source_count: 2` at start, when the checkout and its `.claude/settings.json` were already on disk. The project's `CLAUDE.md` and rules were loaded (`claudemd_length: 82813`). A `PreToolUse` hook written into `~/.claude/settings.json` mid-session fired on the next Bash call, with `CLAUDE_PROJECT_DIR` set to the checkout. The same hook written into `.claude/settings.local.json`, and a touch of `.claude/settings.json`, caused a reload that again read two sources, and neither fired. So the CLI reads user and launcher settings and skips the project and local ones. Copying the repository's `hooks` block into `~/.claude/settings.json` made the repository's hooks fire, and `gate-status-guard.sh` refused the probe. That is a working stop-gap for one session, and a setup-script line that writes the same file is a candidate for every thread. Whether a file the setup script writes survives the thread's start was not tested. Neither was whether skills copied into `~/.claude/skills` would load, since the skills sync manages that directory.
 
 **Documented, not a fault (2026-10-26, about 00:20Z).** Claude Code's Projects documentation, § "What threads pick up from your repositories" (https://code.claude.com/docs/en/claude-projects.md, read with curl on 2026-10-26), says: "Cloud threads load each repository's `CLAUDE.md` instructions but not its skills, `.mcp.json` servers, or `.claude/settings.json`, whether the project has one repository or several." Its table lists "Hooks in `.claude/settings.json`" as "Not run", permission rules as "Not applied", and skills under `.claude/skills/` as "Not loaded". The routes it gives are to run the thread on the owner's own computer, or to enable skills on the claude.ai account. So the 2.1.310 behaviour the paragraphs above measured is the documented one, and the report `PL-8Z38` asks for is not owed. The earlier paragraphs' reading of it as a regression rested on a 2026-09-27 thread that did load `.claude/`; the documentation does not say when that changed. The environment documentation the harness serves still says permission rules apply "only in a project with one repository", which the public page contradicts. The user-settings stop-gap that `PL-X6VN` proposes is still the one route that gives cloud threads the guards without running them on the owner's computer.
+
+**Unblocked 2026-10-27.** `PL-8Z38`, the report to Anthropic, was dropped. The public page was re-read with curl on 2026-10-27 and still says that hooks in `.claude/settings.json` are "Not run" in a cloud thread, so there is no defect to report. The environment documentation the harness serves now says that a cloud session reads `permissions.allow` from `.claude/settings.json` "only" when it has "one repository". That text is about cloud sessions in general and does not mention threads, so it is not worth a report either. The stop-gap is built: `PL-X6VN` added `.claude/hooks/thread_hooks.py` and the setup script in `docs/maintainer.md`, and `PL-TNY6` fixed the copied hooks after a thread's working directory moved. What is left is the end-to-end proof. A thread started after the owner has added that setup script runs `uv run pytest --version | head -1`. If `gate-status-guard.sh` refuses it, the thread records that here in a paragraph that opens `**Probe refused in a thread.**`, which the `verify:` command reads. If the probe prints the pytest version, the thread records that instead and says whether `~/.claude/settings.json` holds the copied hooks.
