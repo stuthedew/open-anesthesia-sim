@@ -3,11 +3,13 @@ id: PL-S11T
 title: A frozen `UptakeEquationSettings` restored by unpickling is rebuilt through `__setstate__`, so its `__post_init__` never runs: a saved record whose state holds cardiac output as a bare 1000.0 and fresh gas flow as NaN loads with no error, and `RunDefinition` accepts it and advances, although `PL-5D1Z` closed the same hole for the flow values themselves
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/core/governing_equations.py, tests/unit/test_governing_equations.py, docs/MODEL.md
 added: 2026-10-25
+closed: 2026-10-27
+pr: 1877
 payoff: holding a settings record stays proof that its flows are in range, even for one read back from a saved file
 verify: grep -q 'def test_an_unpickled_settings_record_is_rebuilt_through_its_checks' tests/unit/test_governing_equations.py
 ---
