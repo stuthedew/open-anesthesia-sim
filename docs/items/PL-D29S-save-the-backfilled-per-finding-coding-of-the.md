@@ -3,7 +3,7 @@ id: PL-D29S
 title: Save the backfilled per-finding coding of the blind review passes (41 merged pull requests, #1766 to #1863) as docs/blind-review-findings.tsv with a note on how it was coded, because it is the only per-finding data from before the per-pass Blind-review record and exists only in a session's scratch directory
 status: done
 feature: review-panel
-touches: docs/blind-review-findings.tsv, docs/blind-review-findings.md, docket.toml
+touches: docs/blind-review-findings.tsv, docs/blind-review-findings.md, docket.toml, tools/rules_paths_check.py
 added: 2026-10-26
 closed: 2026-10-27
 pr: 1870
