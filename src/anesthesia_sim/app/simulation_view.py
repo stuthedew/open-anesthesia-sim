@@ -97,6 +97,7 @@ from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
+from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
     RunSettings,
@@ -970,13 +971,14 @@ class SimulationView(QWidget):
         self._rename_runs()
 
     def _trunk_reset_question(self) -> NewCaseQuestion | None:
-        """What the trunk's Reset must ask, or None where it discards no branch's work.
+        """Return what the trunk's Reset must ask, or None if it discards no branch's work.
 
         The trunk's Reset drops every branch drawn beside it
         (`_handle_case_restarted`), and a branch is not the run the reader
-        pressed Reset on. So the press asks first wherever a drawn branch
-        holds elapsed time or a recorded control change (`PL-W5WX`). A
-        dashboard with no case drops nothing on a Reset, so it asks nothing.
+        pressed Reset on. So Reset asks first whenever a drawn branch has run
+        past its fork or holds a control change made since it opened
+        (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). A dashboard with no
+        case drops nothing on a Reset, so it asks nothing.
         """
 
         if self._case is None:
@@ -996,13 +998,24 @@ class SimulationView(QWidget):
 
     @staticmethod
     def _branch_at_stake(run: RunView) -> BranchAtStake | None:
-        """What discarding this drawn branch would lose, or None where it holds nothing.
+        """Return what discarding this drawn branch would lose, or None if it holds nothing.
 
-        A branch whose snapshot rejects a value still holds work. So what it
-        would lose is stated from what its controller can report without a
-        snapshot: its fork and its recorded control changes
-        (`branch_at_stake`). The rejection is not handled here. It is the
-        branch's own halt, which the branch's own frame states.
+        A branch whose snapshot rejects a value still holds work. So this
+        method builds what the branch would lose from what its controller can
+        report without a snapshot, which is the branch's fork and its recorded
+        control changes (`branch_at_stake`). This method does not handle the
+        rejection. The rejection is the branch's own halt, and the branch's
+        own frame reports it.
+
+        The count covers the whole control timeline, grouped as the branch's
+        "Control changes" panel lists it. So the Reset question and the panel
+        give the same number. The count includes a change that the branch
+        opened with, such as the trunk's change at the instant where the
+        branch was taken (`PL-ZR49`). Whether to ask at all is decided by
+        `has_recorded_run`, which counts only the changes made since the
+        branch opened. Any change made since the branch opened is also an
+        entry in its timeline. So the question never says "0 recorded control
+        changes" for a branch that has not run.
         """
 
         try:
@@ -1013,7 +1026,10 @@ class SimulationView(QWidget):
         record = run.controller.record() if snapshot is None else snapshot
 
         return branch_at_stake(
-            run_label(run.run_id), run.controller.began_at_s, snapshot, len(run.adjustments(record))
+            run_label(run.run_id),
+            run.controller.began_at_s,
+            snapshot,
+            len(group_adjustments(record.control_timeline)),
         )
 
     def _remove_run(self, run: RunView, slots: _RunSlots) -> None:

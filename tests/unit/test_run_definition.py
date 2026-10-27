@@ -560,6 +560,85 @@ def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
     assert definition.segments[-1].opening.state == definition.state_at(12.5)
 
 
+def _changed_at_12_5_and_30() -> RunDefinition:
+    """A run opened at 0 s at 4 L/min, changed to 1.5 L/min at 12.5 s and to 6 L/min at 30 s."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.set_fresh_gas_flow(FreshGasFlow(4.0))
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+
+    for instant_s, flow_l_min in ((12.5, 1.5), (30.0, 6.0)):
+        definition.advance_to(CaseInstant(instant_s))
+        system.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
+        definition.record_change(system.equation_settings())
+
+    return definition
+
+
+def test_the_reaching_stretch_at_a_keyframe_is_the_one_before_it() -> None:
+    """At a keyframe the step that arrived ran under the stretch before it, not the one opening.
+
+    The expected flows are the ones the helper dialled. Between keyframes
+    the reaching stretch and `segment_at` are the same stretch. At a
+    keyframe they are the stretches on either side of it (`PL-ZR49`).
+    """
+
+    definition = _changed_at_12_5_and_30()
+
+    def flows(instant_s: float) -> tuple[float, float]:
+        return (
+            definition.reaching_segment_at(instant_s).settings.fresh_gas_flow_l_min,
+            definition.segment_at(instant_s).settings.fresh_gas_flow_l_min,
+        )
+
+    assert flows(6.0) == (4.0, 4.0)
+    assert flows(12.5) == (4.0, 1.5)
+    assert flows(20.0) == (1.5, 1.5)
+    assert flows(30.0) == (1.5, 6.0)
+
+
+def test_the_reaching_stretch_at_the_opening_is_the_first_stretch() -> None:
+    """No step reaches the opening, so the first stretch is the reaching stretch there."""
+
+    definition = _changed_at_12_5_and_30()
+
+    assert definition.reaching_segment_at(0.0) == definition.segments[0]
+
+
+def test_a_change_at_the_reached_instant_never_replaces_the_reaching_stretch() -> None:
+    """Setting the dial back at the reached instant removes the open stretch, not the reaching one.
+
+    When a stretch already opens at the instant of a change, `record_change`
+    folds the change into that stretch. The stretch that the reaching step ran
+    under opens earlier, so no change made while the run stands at 30 s can
+    touch it. That is what makes it a provenance that cannot later point at
+    nothing.
+    """
+
+    definition = _changed_at_12_5_and_30()
+    reaching = definition.reaching_segment_at(30.0)
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for flow_l_min in (8.0, 1.5):
+        system.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
+        definition.record_change(system.equation_settings())
+
+        assert definition.reaching_segment_at(30.0) == reaching
+        assert reaching in definition.segments
+
+    assert [segment.opening.instant_s for segment in definition.segments] == [0.0, 12.5]
+
+
+@pytest.mark.parametrize("instant_s", [-0.1, 30.1, nan, inf])
+def test_the_reaching_stretch_is_refused_outside_the_run(instant_s: float) -> None:
+    """An instant the run has not covered has no reaching stretch, as it has no state."""
+
+    with pytest.raises(SimulationConfigurationError):
+        _changed_at_12_5_and_30().reaching_segment_at(instant_s)
+
+
 def test_the_run_starts_where_the_system_does() -> None:
     """A definition opened from a system's state returns that state at time zero."""
 

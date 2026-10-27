@@ -3,11 +3,13 @@ id: PL-XV0D
 title: A run's halt record, bookmark_halt, is filtered by instant when a mark is removed rather than re-derived from the current marks as the standings are since PL-1ZQ4, so a branch reset after a mark was removed and re-added names the removed mark and its old label, and a trunk halted on a mark loses "stopped on your mark" from its Branch here button once the same mark is removed and added back, although its row still reads passed
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-10-25
+closed: 2026-10-26
+pr: 1844
 payoff: the Branch here button and the halt record agree with the marks panel after a mark is removed and added back
 verify: grep -q 'def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_added_back' tests/integration/test_controller.py
 ---
@@ -19,3 +21,5 @@ verify: grep -q 'def test_the_halt_record_follows_the_current_marks_after_a_mark
 **Done when.** `bookmark_halt` is derived from the step and the current marks, as the standings are, so after a mark is removed and an equal one added, a branch reset names the current mark and the trunk keeps "stopped on your mark". `tests/integration/test_controller.py` has `test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_added_back`.
 
 **Found by.** `PL-TBQS` reviewer replay on #805, findings 805 r02 F3 and 805 r05 F2 (their standing-flip half is fixed by `PL-1ZQ4`), checked against main on 2026-10-25. Reproduced with `scratchpad/r/scripts/d_805.py` and `d_805_trunk.py`: after reset the branch's halt named 'orig' while the panel listed 'again', and the trunk's `here_fork_point.stopped_on_mark` went from True to False on re-adding the mark.
+
+**Closed 2026-10-26 by `PL-ZR49`.** Every branch now takes its provenance from the stretch the step reaching its fork ran under, records how its settings differ from that stretch as a change at the fork, and reads its halt record from the step and the current marks. `tests/integration/test_controller.py::test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_added_back` checks this item's case, and `test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there` checks it beside the other doors.
