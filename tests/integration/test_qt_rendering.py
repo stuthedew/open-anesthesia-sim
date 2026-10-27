@@ -160,9 +160,12 @@ _SHOWING_THROUGH_FRACTION = 0.05
 #: same 45. With the minimum at 40, the 5% limit still allows only 2 pixels to show through.
 _DRAWN_BENEATH_MIN_PX = 40
 
-#: Sixty times the hover's own cooldown of 1/60 s, which is the longest the
-#: hover waits on a pointer position before it responds.
-_HOVER_DELIVERY_MS = 1000
+#: The longest that `_wait_until` waits for the hover to respond. It is Qt's
+#: own default for `QTRY_COMPARE`. The wait ends as soon as the condition
+#: holds, so a fast run pays none of it. The same 1000 ms limit in
+#: `test_qt_chart.py` failed under a load average of about 30 on four cores
+#: (`PL-FPLQ`).
+_HOVER_WAIT_MS = 5000
 
 
 @pytest.fixture(scope="module")
@@ -274,14 +277,14 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 
 
 def _wait_for(condition: Callable[[], bool]) -> None:
-    """Run the event loop until `condition` is true or `_HOVER_DELIVERY_MS` has passed.
+    """Run the event loop until `condition` is true or `_HOVER_WAIT_MS` has passed.
 
     This waits the way `QTRY_COMPARE` does. The hover responds to a move made
     during its cooldown when the cooldown ends, from a timer rather than inside
     the move. The caller then asserts what is true.
     """
 
-    deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
+    deadline = QDeadlineTimer(_HOVER_WAIT_MS)
 
     while not condition() and not deadline.hasExpired():
         QTest.qWait(10)
