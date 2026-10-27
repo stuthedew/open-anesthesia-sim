@@ -14,7 +14,13 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 
 from . import model_choice
-from .model import SAFETY_CLASSES, SELECTABLE_LANES, ModelEvidence, parse_model_evidence
+from .model import (
+    SAFETY_CLASSES,
+    SELECTABLE_LANES,
+    DelegationPaths,
+    ModelEvidence,
+    parse_model_evidence,
+)
 from .model_choice import ModelTable
 
 CONFIG_NAME = "docket.toml"
@@ -445,6 +451,15 @@ class Config:
             + self.new_work_classes
             + self.minor_classes
             + BRANCHED_ON
+        )
+
+    def delegation(self) -> DelegationPaths:
+        """The four path lists `Item.delegability` reads, as the one value it takes."""
+        return DelegationPaths(
+            protected=self.protected_paths,
+            gates=self.gate_paths,
+            workflow=self.workflow_paths,
+            product=self.product_paths,
         )
 
 

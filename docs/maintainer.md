@@ -150,8 +150,10 @@ lineup it captured **75%**.
 `Item.delegability`. An item qualifies when it is `ready`, has no `safety` or
 `science` class and no open decision, and has a `verify:` command that proves
 it done. Its `touches` must also be declared and lie wholly outside
-`protected_paths` and `gate_paths`, and its effort must be `S` or `M`. There
-is deliberately no field that *grants* delegability. There is only
+`protected_paths` and `gate_paths`, where a directory holding one of those
+paths counts as inside it. Each `touches` path outside `tests/` must also be
+placed by `workflow_paths` or `product_paths`, and its effort must be `S` or
+`M`. There is deliberately no field that *grants* delegability. There is only
 `not-delegable:`, which withholds it. Declining the offer and running the
 strongest model anyway is always available and never wrong. The flag exists
 so that the cheap case is visible, not so that it is taken.

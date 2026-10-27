@@ -222,6 +222,7 @@ from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .digits import whole_number
 from .lines import split_lines
+from .model import TESTS as TESTS
 from .python import imports
 from .vcs import (
     PULL_OPEN,
@@ -674,10 +675,6 @@ PIN_PREFIXES = ("test_arm_", "_arm", "ARM_")
 #: Names whose use in a test marks it as pinning an answer of `arm`'s: the
 #: helper that runs the command, and this module.
 PIN_NAMES = frozenset({"_arm", "arming"})
-
-#: The simulator's tests, at the root: `subprojects/docket/tests/` starts with
-#: `subprojects/`, so the prefix leaves it to the tooling.
-TESTS = "tests/"
 
 #: The simulator's source tree, at the root. The tools read it through
 #: `tools/product_paths.py`, since `docket` cannot import `tools/` (`PL-S08Z`).
